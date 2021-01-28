@@ -25,5 +25,3 @@ cd build
 cmake .. -DCMAKE_INSTALL_PREFIX=<install_dir> -DUSE_PYTHON=ON -DUSE_FORTRAN=ON
 make install
 ```
-
-## The IRIS source code will be open in Spring 2021.
