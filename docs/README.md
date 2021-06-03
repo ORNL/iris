@@ -5,7 +5,7 @@ systems (e.g., OpenMP, OpenCL, CUDA, HIP) simultaneously in the same application
 
 IRIS is open source software. You may freely distribute it under the terms of the license agreement found in LICENSE.txt.
 
-<img src="https://raw.githubusercontent.com/ornl/iris/master/iris.png" width="60%">
+<img src="https://raw.githubusercontent.com/ornl/iris/main/iris.png" width="60%">
 
 ## Requirements
 
@@ -15,7 +15,7 @@ IRIS is open source software. You may freely distribute it under the terms of th
 
 ## Installation
 
-The `master` branch of this repo is aimed to be buildable with the latest IRIS `master` revision.
+The `main` branch of this repo is aimed to be buildable with the latest IRIS `main` revision.
 
 ```
 git clone https://github.com/ornl/iris.git
