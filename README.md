@@ -1,16 +1,18 @@
 # IRIS
 
 IRIS is an intelligent runtime system for extremely heterogeneous architectures. IRIS discovers available functionality, manage multiple diverse programming
-systems (e.g., OpenMP, OpenCL, CUDA, HIP) simultaneously in the same application, represents data dependencies, orchestrates data movement proactively, and allows configurable work schedulers for diverse heterogeneous devices.
+systems (e.g., OpenMP, CUDA, HIP, Level Zero, OpenCL, Hexagon) simultaneously in the same application, represents data dependencies, orchestrates data movement proactively, and allows configurable work schedulers for diverse heterogeneous devices.
+
+<img src="https://raw.githubusercontent.com/ornl/iris/main/iris.png" width="60%">
 
 IRIS is open source software. You may freely distribute it under the terms of the license agreement found in LICENSE.txt.
 
-<img src="https://raw.githubusercontent.com/ornl/iris/main/iris.png" width="60%">
+The IRIS source code will be available at this repository on September, 2021.
 
 ## Requirements
 
 * C++11 compiler
-* CMake (>=3.8)
+* CMake (>=2.8)
 * LLVM/Polly/Clang (*optional)
 
 ## Installation
