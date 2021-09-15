@@ -1,8 +1,118 @@
+#include <iris/iris.h>
 #include <brisbane/brisbane.h>
 #include "Debug.h"
 #include "Platform.h"
 
 using namespace brisbane::rt;
+
+
+int iris_init(int* argc, char*** argv, int sync) {
+  return brisbane_init(argc, argv, sync);
+}
+
+int iris_finalize() {
+  return brisbane_finalize();
+}
+
+int iris_synchronize() {
+  return brisbane_synchronize();
+}
+
+int iris_env_set(const char* key, const char* value) {
+  return brisbane_env_set(key, value);
+}
+
+int iris_env_get(const char* key, char** value, size_t* vallen) {
+  return brisbane_env_get(key, value, vallen);
+}
+
+int iris_platform_count(int* nplatforms) {
+  return brisbane_platform_count(nplatforms);
+}
+
+int iris_platform_info(int platform, int param, void* value, size_t* size) {
+  return brisbane_platform_info(platform, param, value, size);
+}
+
+int iris_device_count(int* ndevs) {
+  return brisbane_device_count(ndevs);
+}
+
+int iris_device_info(int device, int param, void* value, size_t* size) {
+  return brisbane_device_info(device, param, value, size);
+}
+
+int iris_device_set_default(int device) {
+  return brisbane_device_set_default(device);
+}
+
+int iris_device_get_default(int* device) {
+  return brisbane_device_get_default(device);
+}
+
+int iris_device_synchronize(int ndevs, int* devices) {
+  return brisbane_device_synchronize(ndevs, devices);
+}
+
+int iris_register_policy(const char* lib, const char* name, void* params) {
+  return brisbane_register_policy(lib, name, params);
+}
+
+int iris_task_create(iris_task* task) {
+  return brisbane_task_create(task);
+}
+
+int iris_task_depend(iris_task task, int ntasks, iris_task* tasks) {
+  return brisbane_task_depend(task, ntasks, tasks);
+}
+
+int iris_task_h2d(iris_task task, iris_mem mem, size_t off, size_t size, void* host) {
+  return brisbane_task_h2d(task, mem, off, size, host);
+}
+
+int iris_task_d2h(iris_task task, iris_mem mem, size_t off, size_t size, void* host) {
+  return brisbane_task_d2h(task, mem, off, size, host);
+}
+
+int iris_task_h2d_full(iris_task task, iris_mem mem, void* host) {
+  return brisbane_task_h2d_full(task, mem, host);
+}
+
+int iris_task_d2h_full(iris_task task, iris_mem mem, void* host) {
+  return brisbane_task_d2h_full(task, mem, host);
+}
+
+int iris_task_kernel(iris_task task, const char* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, int* params_info) {
+  return brisbane_task_kernel(task, kernel, dim, off, gws, lws, nparams, params, params_info);
+}
+
+int iris_task_submit(iris_task task, int device, const char* opt, int sync) {
+  return brisbane_task_submit(task, device, opt, sync);
+}
+
+int iris_task_wait(iris_task task) {
+  return brisbane_task_wait(task);
+}
+
+int iris_task_wait_all(int ntasks, iris_task* tasks) {
+  return brisbane_task_wait_all(ntasks, tasks);
+}
+
+int iris_task_release(iris_task task) {
+  return brisbane_task_release(task);
+}
+
+int iris_mem_create(size_t size, iris_mem* mem) {
+  return brisbane_mem_create(size, mem);
+}
+
+int iris_mem_release(iris_mem mem) {
+  return brisbane_mem_release(mem);
+}
+
+int iris_timer_now(double* time) {
+  return brisbane_timer_now(time);
+}
 
 int brisbane_init(int* argc, char*** argv, int sync) {
   return Platform::GetPlatform()->Init(argc, argv, sync);

@@ -8,11 +8,11 @@
 #define _TRACE_ENABLE
 #define _CHECK_ENABLE
 #define _DEBUG_ENABLE
+#define _INFO_ENABLE
+#define _TODO_ENABLE
 #endif
 
-#define _INFO_ENABLE
 #define _ERROR_ENABLE
-#define _TODO_ENABLE
 #define _CLERROR_ENABLE
 #define _CUERROR_ENABLE
 #define _HIPERROR_ENABLE

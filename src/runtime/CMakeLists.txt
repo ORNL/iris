@@ -129,23 +129,22 @@ if(USE_FORTRAN)
   MESSAGE(STATUS "USE_FORTRAN")
   enable_language(Fortran)
   list(APPEND BRISBANE_RUNTIME_SOURCES FortranAPI.f90)
-  install(FILES ${BRISBANE_BIN_DIR}/runtime/brisbane.mod DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/brisbane)
+  install(FILES ${BRISBANE_BIN_DIR}/runtime/brisbane.mod DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/iris)
 endif()
 
 if(USE_PYTHON)
   MESSAGE(STATUS "USE_PYTHON")
-  install(FILES brisbane.py DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/brisbane)
+  install(FILES iris.py DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/iris)
 endif()
 
-add_library(brisbane ${BRISBANE_RUNTIME_SOURCES})
+add_library(iris ${BRISBANE_RUNTIME_SOURCES})
 
-#target_compile_options(brisbane PRIVATE -Wall)
+target_compile_options(iris PRIVATE -Wall)
 
-#install(TARGETS brisbane DESTINATION ${CMAKE_INSTALL_LIBDIR})
-install(TARGETS brisbane DESTINATION ${CMAKE_INSTALL_PREFIX}/lib64)
+install(TARGETS iris DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 install(FILES
   ${BRISBANE_RUNTIME_HEADERS}
   ${BRISBANE_BIN_DIR}/runtime/Config.h
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/brisbane/rt)
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/iris/rt)
 

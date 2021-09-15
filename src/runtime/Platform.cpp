@@ -65,7 +65,7 @@ Platform::Platform() {
   arch_available_ = 0UL;
   present_table_ = NULL;
   recording_ = false;
-  enable_profiler_ = getenv("BRISBANE_PROFILE");
+  enable_profiler_ = getenv("IRIS_PROFILE");
   nprofilers_ = 0;
   time_app_ = 0.0;
   time_init_ = 0.0;
@@ -107,7 +107,6 @@ int Platform::Init(int* argc, char*** argv, int sync) {
     pthread_mutex_unlock(&mutex_);
     return BRISBANE_ERR;
   }
-  Utils::Logo(true);
 
   gethostname(brisbane_log_prefix_, 256);
   gethostname(host_, 256);
@@ -123,6 +122,11 @@ int Platform::Init(int* argc, char*** argv, int sync) {
   json_ = new JSON(this);
 
   EnvironmentInit();
+
+  char* logo = NULL;
+  EnvironmentGet("LOGO", &logo, NULL);
+  if (strcmp("on", logo) == 0) Utils::Logo(true);
+
   SetDevsAvailable();
 
   char* archs = NULL;
@@ -202,6 +206,7 @@ int Platform::EnvironmentInit() {
   EnvironmentSet("KERNEL_OPENMP",   "kernel.openmp.so",   false);
   EnvironmentSet("KERNEL_SPV",      "kernel.spv",         false);
 
+  EnvironmentSet("LOGO",            "off",                false);
   return BRISBANE_OK;
 }
 
@@ -219,7 +224,7 @@ int Platform::EnvironmentSet(const char* key, const char* value, bool overwrite)
 
 int Platform::EnvironmentGet(const char* key, char** value, size_t* vallen) {
   char env_key[128];
-  sprintf(env_key, "BRISBANE_%s", key);
+  sprintf(env_key, "IRIS_%s", key);
   const char* val = getenv(env_key);
   if (!val) {
     std::string keystr = std::string(key);
@@ -238,7 +243,7 @@ int Platform::EnvironmentGet(const char* key, char** value, size_t* vallen) {
 }
 
 int Platform::SetDevsAvailable() {
-  const char* enabled = getenv("BRISBANE_DEV_ENABLED");
+  const char* enabled = getenv("IRIS_DEV_ENABLED");
   if (!enabled) {
     for (int i = 0; i < BRISBANE_MAX_NDEVS; i++) devs_enabled_[i] = i;
     ndevs_enabled_ = BRISBANE_MAX_NDEVS;
@@ -279,7 +284,7 @@ int Platform::InitCUDA() {
   int ndevs = 0;
   err = loaderCUDA_->cuDeviceGetCount(&ndevs);
   _cuerror(err);
-  if (getenv("BRISBANE_SINGLE")) ndevs = 1;
+  if (getenv("IRIS_SINGLE")) ndevs = 1;
   _trace("CUDA platform[%d] ndevs[%d]", nplatforms_, ndevs);
   for (int i = 0; i < ndevs; i++) {
     CUdevice dev;
@@ -312,7 +317,7 @@ int Platform::InitHIP() {
   int ndevs = 0;
   err = loaderHIP_->hipGetDeviceCount(&ndevs);
   _hiperror(err);
-  if (getenv("BRISBANE_SINGLE")) ndevs = 1;
+  if (getenv("IRIS_SINGLE")) ndevs = 1;
   _trace("HIP platform[%d] ndevs[%d]", nplatforms_, ndevs);
   for (int i = 0; i < ndevs; i++) {
     hipDevice_t dev;
@@ -489,7 +494,7 @@ int Platform::InitDevices(bool sync) {
     ___error("%s", "NO AVAILABLE DEVICES!");
     return BRISBANE_ERR;
   }
-  char* c = getenv("BRISBANE_DEVICE_DEFAULT");
+  char* c = getenv("IRIS_DEVICE_DEFAULT");
   if (c) dev_default_ = atoi(c);
 
   Task** tasks = new Task*[ndevs_];

@@ -1,9 +1,9 @@
-#include <brisbane/brisbane_openmp.h>
+#include <iris/iris_openmp.h>
 
-static void ijk(float* C, float* A, float* B, BRISBANE_OPENMP_KERNEL_ARGS) {
+static void ijk(float* C, float* A, float* B, IRIS_OPENMP_KERNEL_ARGS) {
   int i;
 #pragma omp parallel for shared(C, A, B) private(i)
-  BRISBANE_OPENMP_KERNEL_BEGIN (i)
+  IRIS_OPENMP_KERNEL_BEGIN (i)
   for (int j = 0; j < _ndr; j++) {
     float sum = 0.0;
     for (int k = 0; k < _ndr; k++) {
@@ -11,6 +11,6 @@ static void ijk(float* C, float* A, float* B, BRISBANE_OPENMP_KERNEL_ARGS) {
     }
     C[i * _ndr + j] = sum;
   }
-  BRISBANE_OPENMP_KERNEL_END
+  IRIS_OPENMP_KERNEL_END
 }
 

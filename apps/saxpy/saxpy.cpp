@@ -1,10 +1,10 @@
-#include <brisbane/brisbane.hpp>
+#include <iris/iris.hpp>
 #include <stdio.h>
 #include <stdlib.h>
 #include <malloc.h>
 
 int main(int argc, char** argv) {
-  brisbane::Platform platform;
+  iris::Platform platform;
   platform.init(&argc, &argv, 1);
 
   size_t SIZE;
@@ -33,15 +33,15 @@ int main(int argc, char** argv) {
   for (int i = 0; i < SIZE; i++) printf(" %2.0f.", Y[i]);
   printf("]\n");
 
-  brisbane::Mem mem_X(SIZE * sizeof(float));
-  brisbane::Mem mem_Y(SIZE * sizeof(float));
-  brisbane::Mem mem_Z(SIZE * sizeof(float));
+  iris::Mem mem_X(SIZE * sizeof(float));
+  iris::Mem mem_Y(SIZE * sizeof(float));
+  iris::Mem mem_Z(SIZE * sizeof(float));
 
-  brisbane::Task task;
+  iris::Task task;
   task.h2d_full(&mem_X, X);
   task.h2d_full(&mem_Y, Y);
   void* params0[4] = { &mem_Z, &A, &mem_X, &mem_Y };
-  int pinfo0[4] = { brisbane_w, sizeof(A), brisbane_r, brisbane_r };
+  int pinfo0[4] = { iris_w, sizeof(A), iris_r, iris_r };
   task.kernel("saxpy", 1, NULL, &SIZE, NULL, 4, params0, pinfo0);
   task.d2h_full(&mem_Z, Z);
   task.submit(1, NULL, 1);

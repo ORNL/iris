@@ -1,10 +1,10 @@
-#include <brisbane/brisbane.h>
+#include <iris/iris.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <malloc.h>
 
 int main(int argc, char** argv) {
-  brisbane_init(&argc, &argv, 1);
+  iris_init(&argc, &argv, 1);
 
   size_t SIZE;
   int TARGET;
@@ -39,22 +39,22 @@ int main(int argc, char** argv) {
 
   }
 
-  brisbane_mem mem_X;
-  brisbane_mem mem_Y;
-  brisbane_mem mem_Z;
-  brisbane_mem_create(SIZE * sizeof(float), &mem_X);
-  brisbane_mem_create(SIZE * sizeof(float), &mem_Y);
-  brisbane_mem_create(SIZE * sizeof(float), &mem_Z);
+  iris_mem mem_X;
+  iris_mem mem_Y;
+  iris_mem mem_Z;
+  iris_mem_create(SIZE * sizeof(float), &mem_X);
+  iris_mem_create(SIZE * sizeof(float), &mem_Y);
+  iris_mem_create(SIZE * sizeof(float), &mem_Z);
 
-  brisbane_task task0;
-  brisbane_task_create(&task0);
-  brisbane_task_h2d_full(task0, mem_X, X);
-  brisbane_task_h2d_full(task0, mem_Y, Y);
+  iris_task task0;
+  iris_task_create(&task0);
+  iris_task_h2d_full(task0, mem_X, X);
+  iris_task_h2d_full(task0, mem_Y, Y);
   void* saxpy_params[4] = { mem_Z, &A, mem_X, mem_Y };
-  int saxpy_params_info[4] = { brisbane_w, sizeof(A), brisbane_r, brisbane_r };
-  brisbane_task_kernel(task0, "saxpy", 1, NULL, &SIZE, NULL, 4, saxpy_params, saxpy_params_info);
-  brisbane_task_d2h_full(task0, mem_Z, Z);
-  brisbane_task_submit(task0, TARGET, NULL, 1);
+  int saxpy_params_info[4] = { iris_w, sizeof(A), iris_r, iris_r };
+  iris_task_kernel(task0, "saxpy", 1, NULL, &SIZE, NULL, 4, saxpy_params, saxpy_params_info);
+  iris_task_d2h_full(task0, mem_Z, Z);
+  iris_task_submit(task0, TARGET, NULL, 1);
 
   if (VERBOSE) {
 
@@ -69,17 +69,17 @@ int main(int argc, char** argv) {
 
   }
 
-  brisbane_mem_release(mem_X);
-  brisbane_mem_release(mem_Y);
-  brisbane_mem_release(mem_Z);
+  iris_mem_release(mem_X);
+  iris_mem_release(mem_Y);
+  iris_mem_release(mem_Z);
 
   free(X);
   free(Y);
   free(Z);
 
-  brisbane_task_release(task0);
+  iris_task_release(task0);
 
-  brisbane_finalize();
+  iris_finalize();
 
   return 0;
 }

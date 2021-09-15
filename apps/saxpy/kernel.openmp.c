@@ -30,7 +30,7 @@ static int brisbane_openmp_saxpy_setmem(int idx, void* mem) {
   return BRISBANE_OK;
 }
 
-#include "kernel.cl.openmp.h"
+#include "kernel.openmp.h"
 
 int brisbane_openmp_kernel(const char* name) {
   brisbane_openmp_lock();
