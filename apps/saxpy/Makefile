@@ -7,7 +7,7 @@ CXXFLAGS=-I$(IRIS)/include/ -O3
 FFLAGS=-g -I$(IRIS)/include/iris
 LDFLAGS=-L$(IRIS)/lib64 -liris -lpthread -ldl
 
-all: saxpy-c saxpy-cpp kernel.openmp.so
+all: saxpy-c saxpy-cpp saxpy-f90 kernel.openmp.so
 
 saxpy-c: saxpy.c
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
@@ -38,4 +38,4 @@ kernel.poly.so: kernel.cl.poly.c
 	$(CC) -g -fPIC -shared -I. -o $@ $^
 
 clean:
-	rm -f saxpy-c saxpy-cpp
+	rm -f saxpy-c saxpy-cpp saxpy-f90
