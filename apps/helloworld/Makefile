@@ -1,4 +1,4 @@
-BRISBANE=$(HOME)/.local
+IRIS=$(HOME)/.local
 #CC=xlc
 #CXX=xlC
 CC=gcc
@@ -7,7 +7,7 @@ FORTRAN=gfortran
 CFLAGS=-I$(IRIS)/include/ -O3 -std=c99
 CXXFLAGS=-I$(IRIS)/include/ -O3
 FFLAGS=-g -I$(IRIS)/include/iris
-LDFLAGS=-L$(IRIS)/lib64 -liris -lpthread -ldl
+LDFLAGS=-L$(IRIS)/lib -L$(IRIS)/lib64 -liris -lpthread -ldl
 
 all: helloworld-c helloworld-cpp
 
@@ -31,13 +31,13 @@ kernel.hip: kernel.hip.cpp
 
 kernel.openmp.so: kernel.openmp.c
 	#$(CC) -O3 -qsmp -fPIC -shared -I. -o $@ $^
-	$(CC) -O3 -fopenmp -fPIC -shared -I. -o $@ $^
+	$(CC) $(CFLAGS) -O3 -fopenmp -fPIC -shared -I. -o $@ $^
 
 kernel.hexagon.so: kernel.hexagon.c
-	$(CC) -g -fPIC -shared -I. -o $@ $^
+	$(CC) $(CFLAGS) -g -fPIC -shared -I. -o $@ $^
 
 kernel.poly.so: kernel.cl.poly.c
-	$(CC) -g -fPIC -shared -I. -o $@ $^
+	$(CC) $(CFLAGS) -g -fPIC -shared -I. -o $@ $^
 
 clean:
 	rm -f helloworld-c helloworld-cpp

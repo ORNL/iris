@@ -1,5 +1,7 @@
+IRIS=$(HOME)/.local
 CC=gcc
-CXX=g++
+CFLAGS=-I$(IRIS)/include/ -O3 -std=c99
+LDFLAGS=-L$(IRIS)/lib -L$(IRIS)/lib64 -liris -lpthread -ldl
 
 all: sgemm kernel.openmp.so
 
@@ -10,10 +12,10 @@ kernel.hip: kernel.hip.cpp
 	hipcc --genco -o $@ $^
 
 kernel.openmp.so: kernel.openmp.c
-	$(CC) -std=c99 -fopenmp -fPIC -shared -I. -o $@ $^
+	$(CC) $(CFLAGS) -std=c99 -fopenmp -fPIC -shared -I. -o $@ $^
 
 sgemm: sgemm.c
-	$(CC) -O3 -std=c99 -o $@ $^ -liris -lpthread -ldl
+	$(CC) $(CFLAGS) -O3 -std=c99 -o $@ $^ $(LDFLAGS)
 
 clean:
 	rm -f sgemm
