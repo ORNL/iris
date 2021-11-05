@@ -5,7 +5,7 @@ FORTRAN=gfortran
 CFLAGS=-I$(IRIS)/include/ -O3 -std=c99
 CXXFLAGS=-I$(IRIS)/include/ -O3
 FFLAGS=-g -I$(IRIS)/include/iris
-LDFLAGS=-L$(IRIS)/lib -liris -lpthread -ldl
+LDFLAGS=-L$(IRIS)/lib -L$(IRIS)/lib64 -liris -lpthread -ldl
 
 all: saxpy-c saxpy-cpp saxpy-f90 kernel.openmp.so
 
@@ -29,13 +29,13 @@ kernel.hip: kernel.hip.cpp
 	hipcc --genco -o $@ $^
 
 kernel.openmp.so: kernel.openmp.c
-	$(CC) -O3 -fopenmp -fPIC -shared -I. -o $@ $^
+	$(CC) $(CFLAGS) -O3 -fopenmp -fPIC -shared -I. -o $@ $^
 
 kernel.hexagon.so: kernel.hexagon.c
-	$(CC) -g -fPIC -shared -I. -o $@ $^
+	$(CC) $(CFLAGS) -g -fPIC -shared -I. -o $@ $^
 
 kernel.poly.so: kernel.cl.poly.c
-	$(CC) -g -fPIC -shared -I. -o $@ $^
+	$(CC) $(CFLAGS) -g -fPIC -shared -I. -o $@ $^
 
 clean:
 	rm -f saxpy-c saxpy-cpp saxpy-f90
