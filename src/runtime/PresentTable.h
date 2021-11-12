@@ -1,6 +1,7 @@
 #ifndef BRISBANE_SRC_RT_PRESENT_TABLE_H
 #define BRISBANE_SRC_RT_PRESENT_TABLE_H
 
+#include "Config.h"
 #include <map>
 
 namespace brisbane {
