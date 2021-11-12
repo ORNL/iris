@@ -3,7 +3,7 @@
 
 #include "Loader.h"
 #define CL_TARGET_OPENCL_VERSION 220
-#include <brisbane/CL/cl.h>
+#include <iris/CL/cl.h>
 
 namespace brisbane {
 namespace rt {

@@ -1,8 +1,8 @@
 #ifndef BRISBANE_INCLUDE_BRISBANE_POLY_H
 #define BRISBANE_INCLUDE_BRISBANE_POLY_H
 
-#include <brisbane/brisbane_errno.h>
-#include <brisbane/brisbane_poly_types.h>
+#include <iris/brisbane_errno.h>
+#include <iris/brisbane_poly_types.h>
 #include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>

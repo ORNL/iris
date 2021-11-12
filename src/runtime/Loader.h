@@ -1,7 +1,7 @@
 #ifndef BRISBANE_SRC_RT_LOADER_H
 #define BRISBANE_SRC_RT_LOADER_H
 
-#include <brisbane/brisbane.h>
+#include <iris/brisbane.h>
 #include <dlfcn.h>
 
 #define LOADFUNC(FUNC)          *(void**) (&FUNC) = dlsym(handle_, #FUNC);      \

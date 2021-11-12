@@ -1,7 +1,7 @@
 #ifndef BRISBANE_INCLUDE_BRISBANE_OPENMP_H
 #define BRISBANE_INCLUDE_BRISBANE_OPENMP_H
 
-#include <brisbane/brisbane_errno.h>
+#include <iris/brisbane_errno.h>
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>

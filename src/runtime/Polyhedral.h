@@ -1,8 +1,8 @@
 #ifndef BRISBANE_SRC_RT_POLYHEDRAL_H
 #define BRISBANE_SRC_RT_POLYHEDRAL_H
 
-#include <brisbane/brisbane.h>
-#include <brisbane/brisbane_poly_types.h>
+#include <iris/brisbane.h>
+#include <iris/brisbane_poly_types.h>
 #include "Loader.h"
 
 namespace brisbane {

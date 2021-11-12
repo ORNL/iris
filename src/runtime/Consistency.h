@@ -1,7 +1,7 @@
 #ifndef BRISBANE_SRC_RT_CONSISTENCY_H
 #define BRISBANE_SRC_RT_CONSISTENCY_H
 
-#include <brisbane/brisbane_poly_types.h>
+#include <iris/brisbane_poly_types.h>
 #include "Kernel.h"
 
 namespace brisbane {

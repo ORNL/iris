@@ -17,8 +17,8 @@
 #ifndef __OPENCL_CL_H
 #define __OPENCL_CL_H
 
-#include <brisbane/CL/cl_version.h>
-#include <brisbane/CL/cl_platform.h>
+#include <iris/CL/cl_version.h>
+#include <iris/CL/cl_platform.h>
 
 #ifdef __cplusplus
 extern "C" {

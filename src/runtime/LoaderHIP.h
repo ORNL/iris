@@ -2,7 +2,7 @@
 #define BRISBANE_SRC_RT_LOADER_HIP_H
 
 #include "Loader.h"
-#include <brisbane/hip/hip_runtime.h>
+#include <iris/hip/hip_runtime.h>
 #include <pthread.h>
 
 namespace brisbane {

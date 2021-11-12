@@ -5,7 +5,7 @@
 #include "Mem.h"
 #include "Task.h"
 #include "Utils.h"
-#include <brisbane/hexagon/rpcmem.h>
+#include <iris/hexagon/rpcmem.h>
 #include <dlfcn.h>
 #include <stdint.h>
 #include <stdlib.h>

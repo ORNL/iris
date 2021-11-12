@@ -1,7 +1,7 @@
 #ifndef BRISBANE_SRC_RT_COMMAND_H
 #define BRISBANE_SRC_RT_COMMAND_H
 
-#include <brisbane/brisbane_poly_types.h>
+#include <iris/brisbane_poly_types.h>
 #include "Kernel.h"
 #include <stddef.h>
 

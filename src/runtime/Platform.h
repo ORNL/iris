@@ -1,7 +1,7 @@
 #ifndef BRISBANE_SRC_RT_PLATFORM_H
 #define BRISBANE_SRC_RT_PLATFORM_H
 
-#include <brisbane/brisbane.h>
+#include <iris/brisbane.h>
 #include <pthread.h>
 #include <stddef.h>
 #include <set>

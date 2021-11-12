@@ -11,7 +11,7 @@
 #cmakedefine01 USE_HUB
 #cmakedefine01 USE_SIGHANDLER
 
-#include <brisbane/brisbane.h>
+#include <iris/brisbane.h>
 #include <stddef.h>
 
 #endif /* BRISBANE_RT_SRC_CONFIG_H */

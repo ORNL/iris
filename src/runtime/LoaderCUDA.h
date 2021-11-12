@@ -2,7 +2,7 @@
 #define BRISBANE_SRC_RT_LOADER_CUDA_H
 
 #include "Loader.h"
-#include <brisbane/cuda/cuda.h>
+#include <iris/cuda/cuda.h>
 
 namespace brisbane {
 namespace rt {

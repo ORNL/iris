@@ -1,5 +1,5 @@
 #include <iris/iris.h>
-#include <brisbane/brisbane.h>
+#include <iris/brisbane.h>
 #include "Debug.h"
 #include "Platform.h"
 

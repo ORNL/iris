@@ -1,4 +1,5 @@
-IRIS=$(HOME)/.local
+#IRIS=$(HOME)/.local
+IRIS=$(HOME)/tmp/iris/install
 #CC=xlc
 #CXX=xlC
 CC=gcc

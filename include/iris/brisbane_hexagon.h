@@ -1,8 +1,8 @@
 #ifndef BRISBANE_INCLUDE_BRISBANE_HEXAGON_H
 #define BRISBANE_INCLUDE_BRISBANE_HEXAGON_H
 
-#include <brisbane/brisbane_errno.h>
-#include <brisbane/hexagon/rpcmem.h>
+#include <iris/brisbane_errno.h>
+#include <iris/hexagon/rpcmem.h>
 #include <dlfcn.h>
 #include <pthread.h>
 #include <stdlib.h>

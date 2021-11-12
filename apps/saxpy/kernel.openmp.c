@@ -1,4 +1,4 @@
-#include <brisbane/brisbane_openmp.h>
+#include <iris/brisbane_openmp.h>
 
 #ifdef __cplusplus
 extern "C" {

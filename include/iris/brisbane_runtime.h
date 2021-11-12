@@ -1,7 +1,7 @@
 #ifndef BRINSBANE_INCLUDE_BRISBANE_BRISBANE_RUNTIME_H
 #define BRINSBANE_INCLUDE_BRISBANE_BRISBANE_RUNTIME_H
 
-#include <brisbane/brisbane_errno.h>
+#include <iris/brisbane_errno.h>
 #include <stddef.h>
 
 #ifdef __cplusplus

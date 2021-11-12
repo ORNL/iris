@@ -1,7 +1,7 @@
 #ifndef BRINSBANE_INCLUDE_BRISBANE_BRISBANE_HPP
 #define BRINSBANE_INCLUDE_BRISBANE_BRISBANE_HPP
 
-#include <brisbane/brisbane_runtime.h>
+#include <iris/brisbane_runtime.h>
 
 namespace brisbane {
 

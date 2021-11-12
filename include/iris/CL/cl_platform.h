@@ -17,7 +17,7 @@
 #ifndef __CL_PLATFORM_H
 #define __CL_PLATFORM_H
 
-#include <brisbane/CL/cl_version.h>
+#include <iris/CL/cl_version.h>
 
 #ifdef __cplusplus
 extern "C" {

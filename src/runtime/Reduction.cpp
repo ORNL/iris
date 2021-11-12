@@ -1,4 +1,4 @@
-#include <brisbane/brisbane.h>
+#include <iris/brisbane.h>
 #include "Reduction.h"
 #include "Debug.h"
 #include "Mem.h"

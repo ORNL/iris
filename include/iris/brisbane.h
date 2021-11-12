@@ -1,7 +1,7 @@
 #ifndef BRINSBANE_INCLUDE_BRISBANE_BRISBANE_H
 #define BRINSBANE_INCLUDE_BRISBANE_BRISBANE_H
 
-#include <brisbane/brisbane_runtime.h>
+#include <iris/brisbane_runtime.h>
 
 #endif /* BRINSBANE_INCLUDE_BRISBANE_BRISBANE_H */
 

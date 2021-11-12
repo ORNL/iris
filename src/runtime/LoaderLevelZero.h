@@ -2,7 +2,7 @@
 #define BRISBANE_SRC_RT_LOADER_LEVEL_ZERO_H
 
 #include "Loader.h"
-#include <brisbane/level_zero/ze_api.h>
+#include <iris/level_zero/ze_api.h>
 #include <pthread.h>
 
 namespace brisbane {

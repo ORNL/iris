@@ -6,7 +6,7 @@
 #ifndef RPCMEM_H
 #define RPCMEM_H
 
-#include <brisbane/hexagon/AEEStdDef.h>
+#include <iris/hexagon/AEEStdDef.h>
 
 /**
  * RPCMEM_DEFAULT_HEAP
