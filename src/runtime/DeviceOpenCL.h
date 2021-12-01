@@ -26,6 +26,7 @@ public:
   int Synchronize();
   int AddCallback(Task* task);
   int RecreateContext();
+  bool SupportJIT() { return false; }
 
 private:
   int CreateProgram(const char* suffix, char** src, size_t* srclen);

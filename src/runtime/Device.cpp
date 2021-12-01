@@ -23,6 +23,7 @@ Device::Device(int devno, int platform) {
   memset(vendor_, 0, sizeof(vendor_));
   memset(name_, 0, sizeof(name_));
   memset(version_, 0, sizeof(version_));
+  memset(kernel_path_, 0, sizeof(kernel_path_));
   timer_ = new Timer();
   hook_task_pre_ = NULL;
   hook_task_post_ = NULL;
@@ -71,6 +72,32 @@ void Device::Execute(Task* task) {
 
 void Device::ExecuteInit(Command* cmd) {
   timer_->Start(BRISBANE_TIMER_INIT);
+  if (SupportJIT()) {
+    char* tmpdir = NULL;
+    char* src = NULL;
+    char* bin = NULL;
+    Platform::GetPlatform()->EnvironmentGet("TMPDIR", &tmpdir, NULL);
+    Platform::GetPlatform()->EnvironmentGet(kernel_src(), &src, NULL);
+    Platform::GetPlatform()->EnvironmentGet(kernel_bin(), &bin, NULL);
+    bool stat_src = Utils::Exist(src);
+    bool stat_bin = Utils::Exist(bin);
+    if (!stat_src && !stat_bin) {
+      _error("NO KERNEL SRC[%s] NO KERNEL BIN[%s]", src, bin);
+    } else if (!stat_src && stat_bin) {
+      strncpy(kernel_path_, bin, strlen(bin));
+    } else if (stat_src && !stat_bin) {
+      sprintf(kernel_path_, "%s/%s-%d", tmpdir, bin, devno_);
+      errid_ = Compile(src);
+    } else {
+      long mtime_src = Utils::Mtime(src);
+      long mtime_bin = Utils::Mtime(bin);
+      if (mtime_src > mtime_bin) {
+        sprintf(kernel_path_, "%s/%s-%d", tmpdir, bin, devno_);
+        errid_ = Compile(src);
+      } else strncpy(kernel_path_, bin, strlen(bin));
+    }
+    if (errid_ != BRISBANE_OK) _error("iret[%d]", errid_);
+  }
   errid_ = Init();
   if (errid_ != BRISBANE_OK) _error("iret[%d]", errid_);
   double time = timer_->Stop(BRISBANE_TIMER_INIT);

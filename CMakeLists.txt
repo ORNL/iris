@@ -12,7 +12,7 @@ set(BRISBANE_INC_DIR ${PROJECT_SOURCE_DIR}/include)
 set(BRISBANE_BIN_DIR ${PROJECT_BINARY_DIR}/src)
 
 option(USE_PYTHON       "Enable support for Python"     ON )
-option(USE_FORTRAN      "Enable support for Fortran 90" ON)
+option(USE_FORTRAN      "Enable support for Fortran 90" OFF)
 
 option(USE_SIGHANDLER   "Enable signal handler"         OFF)
 option(USE_HUB          "Enable hub"                    OFF)

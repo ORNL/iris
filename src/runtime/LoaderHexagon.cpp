@@ -15,7 +15,7 @@ LoaderHexagon::~LoaderHexagon() {
 
 const char* LoaderHexagon::library() {
   char* path = NULL;
-  Platform::GetPlatform()->EnvironmentGet("KERNEL_HEXAGON", &path, NULL);
+  Platform::GetPlatform()->EnvironmentGet("KERNEL_BIN_HEXAGON", &path, NULL);
   return path;
 }
 

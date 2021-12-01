@@ -204,7 +204,7 @@ int DeviceOpenCL::AddCallback(Task* task) {
 
 int DeviceOpenCL::CreateProgram(const char* suffix, char** src, size_t* srclen) {
   char* p = NULL;
-  if (Platform::GetPlatform()->EnvironmentGet(strcmp("spv", suffix) == 0 ? "KERNEL_SPV" : "KERNEL_OPENCL", &p, NULL) == BRISBANE_OK) {
+  if (Platform::GetPlatform()->EnvironmentGet(strcmp("spv", suffix) == 0 ? "KERNEL_BIN_SPV" : "KERNEL_SRC_SPV", &p, NULL) == BRISBANE_OK) {
     Utils::ReadFile(p, src, srclen);
   }
 

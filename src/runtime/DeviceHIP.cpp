@@ -30,6 +30,17 @@ DeviceHIP::DeviceHIP(LoaderHIP* ld, hipDevice_t dev, int ordinal, int devno, int
 }
 
 DeviceHIP::~DeviceHIP() {
+
+}
+int DeviceHIP::Compile(char* src) {
+  char cmd[256];
+  memset(cmd, 0, 256);
+  sprintf(cmd, "hipcc --genco %s -o %s", src, kernel_path_);
+  if (system(cmd) == EXIT_SUCCESS) {
+    _error("cmd[%s]", cmd);
+    return BRISBANE_ERR;
+  }
+  return BRISBANE_OK;
 }
 
 int DeviceHIP::Init() {
@@ -58,8 +69,7 @@ int DeviceHIP::Init() {
 
   _info("devid[%d] max_compute_units[%zu] max_work_group_size_[%zu] max_work_item_sizes[%zu,%zu,%zu] max_block_dims[%d,%d,%d] concurrent_kernels[%d]", devid_, max_compute_units_, max_work_group_size_, max_work_item_sizes_[0], max_work_item_sizes_[1], max_work_item_sizes_[2], max_block_dims_[0], max_block_dims_[1], max_block_dims_[2], ck);
 
-  char* path = NULL;
-  Platform::GetPlatform()->EnvironmentGet("KERNEL_HIP", &path, NULL);
+  char* path = kernel_path_;
   char* src = NULL;
   size_t srclen = 0;
   if (Utils::ReadFile(path, &src, &srclen) == BRISBANE_ERR) {

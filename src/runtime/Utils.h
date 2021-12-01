@@ -10,6 +10,9 @@ class Utils {
 public:
 static void Logo(bool color);
 static int ReadFile(char* path, char** string, size_t* len);
+static int Mkdir(char* path);
+static bool Exist(char* path);
+static long Mtime(char* path);
 static void Datetime(char* str);
 };
 

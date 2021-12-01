@@ -7,6 +7,8 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <time.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 namespace brisbane {
 namespace rt {
@@ -47,6 +49,27 @@ int Utils::ReadFile(char* path, char** string, size_t* len) {
   }
   close(fd);
   return BRISBANE_OK;
+}
+
+int Utils::Mkdir(char* path) {
+  struct stat st;
+  if (stat(path, &st) == -1) {
+    if (mkdir(path, 0700) == -1) {
+      return BRISBANE_ERR;
+    }
+  }
+  return BRISBANE_OK;
+}
+
+bool Utils::Exist(char* path) {
+  struct stat st;
+  return stat(path, &st) != -1;
+}
+
+long Utils::Mtime(char* path) {
+  struct stat st;
+  if (stat(path, &st) == -1) return -1;
+  return st.st_mtime;
 }
 
 void Utils::Datetime(char* str) {

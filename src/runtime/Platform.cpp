@@ -127,6 +127,12 @@ int Platform::Init(int* argc, char*** argv, int sync) {
   EnvironmentGet("LOGO", &logo, NULL);
   if (strcmp("on", logo) == 0) Utils::Logo(true);
 
+  char* tmpdir = NULL;
+  EnvironmentGet("TMPDIR", &tmpdir, NULL);
+  if (Utils::Mkdir(tmpdir) != BRISBANE_OK) {
+    _error("tmpdir[%s]", tmpdir);
+  }
+
   SetDevsAvailable();
 
   char* archs = NULL;
@@ -198,13 +204,19 @@ int Platform::Synchronize() {
 }
 
 int Platform::EnvironmentInit() {
-  EnvironmentSet("ARCHS", "openmp:cuda:hip:levelzero:hexagon:opencl", false);
+  EnvironmentSet("ARCHS",  "openmp:cuda:hip:levelzero:hexagon:opencl",  false);
+  EnvironmentSet("TMPDIR", "/tmp/iris",                                 false);
 
-  EnvironmentSet("KERNEL_CUDA",     "kernel.ptx",         false);
-  EnvironmentSet("KERNEL_HEXAGON",  "kernel.hexagon.so",  false);
-  EnvironmentSet("KERNEL_HIP",      "kernel.hip",         false);
-  EnvironmentSet("KERNEL_OPENMP",   "kernel.openmp.so",   false);
-  EnvironmentSet("KERNEL_SPV",      "kernel.spv",         false);
+  EnvironmentSet("KERNEL_SRC_CUDA",     "kernel.cu",          false);
+  EnvironmentSet("KERNEL_BIN_CUDA",     "kernel.ptx",         false);
+  EnvironmentSet("KERNEL_SRC_HEXAGON",  "kernel.hexagon.cpp", false);
+  EnvironmentSet("KERNEL_BIN_HEXAGON",  "kernel.hexagon.so",  false);
+  EnvironmentSet("KERNEL_SRC_HIP",      "kernel.hip.cpp",     false);
+  EnvironmentSet("KERNEL_BIN_HIP",      "kernel.hip",         false);
+  EnvironmentSet("KERNEL_SRC_OPENMP",   "kernel.openmp.h",    false);
+  EnvironmentSet("KERNEL_BIN_OPENMP",   "kernel.openmp.so",   false);
+  EnvironmentSet("KERNEL_SRC_SPV",      "kernel.cl",          false);
+  EnvironmentSet("KERNEL_BIN_SPV",      "kernel.spv",         false);
 
   EnvironmentSet("LOGO",            "off",                false);
   return BRISBANE_OK;

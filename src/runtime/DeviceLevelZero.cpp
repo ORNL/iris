@@ -51,7 +51,7 @@ int DeviceLevelZero::Init() {
   _zeerror(err_);
 
   char* path = NULL;
-  Platform::GetPlatform()->EnvironmentGet("KERNEL_SPV", &path, NULL);
+  Platform::GetPlatform()->EnvironmentGet("KERNEL_BIN_SPV", &path, NULL);
   uint8_t* src = nullptr;
   size_t srclen = 0;
   if (Utils::ReadFile(path, (char**) &src, &srclen) == BRISBANE_ERR) {

@@ -13,6 +13,7 @@ public:
   DeviceHIP(LoaderHIP* ld, hipDevice_t cudev, int ordinal, int devno, int platform);
   ~DeviceHIP();
 
+  int Compile(char* src);
   int Init();
   int MemAlloc(void** mem, size_t size);
   int MemFree(void* mem);
@@ -24,6 +25,9 @@ public:
   int KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws);
   int Synchronize();
   int AddCallback(Task* task);
+
+  const char* kernel_src() { return "KERNEL_SRC_HIP"; }
+  const char* kernel_bin() { return "KERNEL_BIN_HIP"; }
 
 private:
   LoaderHIP* ld_;

@@ -53,6 +53,17 @@ DeviceCUDA::DeviceCUDA(LoaderCUDA* ld, CUdevice cudev, int devno, int platform) 
 DeviceCUDA::~DeviceCUDA() {
 }
 
+int DeviceCUDA::Compile(char* src) {
+  char cmd[256];
+  memset(cmd, 0, 256);
+  sprintf(cmd, "nvcc -ptx %s -o %s", src, kernel_path_);
+  if (system(cmd) != EXIT_SUCCESS) {
+    _error("cmd[%s]", cmd);
+    return BRISBANE_ERR;
+  }
+  return BRISBANE_OK;
+}
+
 int DeviceCUDA::Init() {
   err_ = ld_->cuCtxCreate(&ctx_, CU_CTX_SCHED_AUTO, dev_);
   _cuerror(err_);
@@ -61,8 +72,7 @@ int DeviceCUDA::Init() {
     _cuerror(err_);
   }
 
-  char* path = NULL;
-  Platform::GetPlatform()->EnvironmentGet("KERNEL_CUDA", &path, NULL);
+  char* path = kernel_path_;
   char* src = NULL;
   size_t srclen = 0;
   if (Utils::ReadFile(path, &src, &srclen) == BRISBANE_ERR) {
@@ -78,7 +88,6 @@ int DeviceCUDA::Init() {
     return BRISBANE_ERR;
   }
   if (src) free(src);
-  if (path) free(path);
   return BRISBANE_OK;
 }
 

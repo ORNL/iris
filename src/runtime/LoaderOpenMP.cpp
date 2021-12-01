@@ -14,7 +14,7 @@ LoaderOpenMP::~LoaderOpenMP() {
 
 const char* LoaderOpenMP::library() {
   char* path = NULL;
-  Platform::GetPlatform()->EnvironmentGet("KERNEL_OPENMP", &path, NULL);
+  Platform::GetPlatform()->EnvironmentGet("KERNEL_BIN_OPENMP", &path, NULL);
   return path;
 }
 

@@ -24,6 +24,7 @@ public:
   int KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws);
   int Synchronize();
   int AddCallback(Task* task);
+  bool SupportJIT() { return false; }
 
 private:
   LoaderHexagon* ld_;

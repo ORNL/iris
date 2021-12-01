@@ -42,6 +42,7 @@ public:
   int RegisterCommand(int tag, command_handler handler);
   int RegisterHooks();
 
+  virtual int Compile(char* src) { return BRISBANE_OK; }
   virtual int Init() = 0;
   virtual int BuildProgram(char* path) { return BRISBANE_OK; }
   virtual int MemAlloc(void** mem, size_t size) = 0;
@@ -57,6 +58,9 @@ public:
   virtual int AddCallback(Task* task) = 0;
   virtual int Custom(int tag, char* params) { return BRISBANE_OK; }
   virtual int RecreateContext() { return BRISBANE_ERR; }
+  virtual bool SupportJIT() { return true; }
+  virtual const char* kernel_src() { return " "; }
+  virtual const char* kernel_bin() { return " "; }
 
   int platform() { return platform_; }
   int devno() { return devno_; }
@@ -87,6 +91,8 @@ protected:
   int nqueues_;
   int q_;
   int errid_;
+
+  char kernel_path_[256];
 
   bool busy_;
   bool enable_;

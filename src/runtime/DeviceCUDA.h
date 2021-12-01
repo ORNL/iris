@@ -15,6 +15,7 @@ public:
   DeviceCUDA(LoaderCUDA* ld, CUdevice cudev, int devno, int platform);
   ~DeviceCUDA();
 
+  int Compile(char* src);
   int Init();
   int MemAlloc(void** mem, size_t size);
   int MemFree(void* mem);
@@ -27,6 +28,9 @@ public:
   int Synchronize();
   int AddCallback(Task* task);
   int Custom(int tag, char* params);
+
+  const char* kernel_src() { return "KERNEL_SRC_CUDA"; }
+  const char* kernel_bin() { return "KERNEL_BIN_CUDA"; }
 
   virtual void TaskPre(Task* task);
 
