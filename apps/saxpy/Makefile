@@ -5,7 +5,7 @@ FORTRAN=gfortran
 CFLAGS=-I$(IRIS)/include/ -O3 -std=c99
 CXXFLAGS=-I$(IRIS)/include/ -O3
 FFLAGS=-g -I$(IRIS)/include/iris
-LDFLAGS=-L$(IRIS)/lib -L$(IRIS)/lib64 -liris -lpthread -ldl
+LDFLAGS=-L$(IRIS)/lib64 -L$(IRIS)/lib -liris -lpthread -ldl
 
 all: saxpy-c saxpy-cpp saxpy-f90 kernel.openmp.so
 

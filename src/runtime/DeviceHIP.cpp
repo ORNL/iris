@@ -36,7 +36,7 @@ int DeviceHIP::Compile(char* src) {
   char cmd[256];
   memset(cmd, 0, 256);
   sprintf(cmd, "hipcc --genco %s -o %s", src, kernel_path_);
-  if (system(cmd) == EXIT_SUCCESS) {
+  if (system(cmd) != EXIT_SUCCESS) {
     _error("cmd[%s]", cmd);
     return BRISBANE_ERR;
   }
@@ -181,7 +181,7 @@ int DeviceHIP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, s
     }
   }
 
-  _trace("kernel[%s] dim[%d] grid[%d,%d,%d] block[%d,%d,%d] shared_mem_bytes[%u] q[%d]", kernel->name(), dim, grid[0], grid[1], grid[2], block[0], block[1], block[2], shared_mem_bytes_, q_);
+  _trace("dev[%d] kernel[%s] dim[%d] grid[%d,%d,%d] block[%d,%d,%d] shared_mem_bytes[%u] q[%d]", devno_, kernel->name(), dim, grid[0], grid[1], grid[2], block[0], block[1], block[2], shared_mem_bytes_, q_);
   err_ = ld_->hipModuleLaunchKernel(func, grid[0], grid[1], grid[2], block[0], block[1], block[2], shared_mem_bytes_, 0, params_, NULL);
   _hiperror(err_);
   if (err_ != hipSuccess) return BRISBANE_ERR;

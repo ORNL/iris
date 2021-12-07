@@ -135,7 +135,7 @@ int DeviceOpenMP::KernelSetMem(Kernel* kernel, int idx, Mem* mem, size_t off) {
 }
 
 int DeviceOpenMP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws) {
-  _trace("kernel[%s] dim[%d] off[%lu] gws[%lu]", kernel->name(), dim, off[0], gws[0]);
+  _trace("dev[%d] kernel[%s] dim[%d] off[%lu] gws[%lu]", devno_, kernel->name(), dim, off[0], gws[0]);
   return ld_->brisbane_openmp_launch(dim, off[0], gws[0]);
 }
 
