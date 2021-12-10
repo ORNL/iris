@@ -30,7 +30,22 @@ DeviceLevelZero::DeviceLevelZero(LoaderLevelZero* ld, ze_device_handle_t zedev, 
 }
 
 DeviceLevelZero::~DeviceLevelZero() {
+}
 
+int DeviceLevelZero::Compile(char* src) {
+  char cmd[256];
+  memset(cmd, 0, 256);
+  sprintf(cmd, "clang -cc1 -finclude-default-header -triple spir %s -flto -emit-llvm-bc -o %s.bc", src, kernel_path_);
+  if (system(cmd) != EXIT_SUCCESS) {
+    _error("cmd[%s]", cmd);
+    return BRISBANE_ERR;
+  }
+  sprintf(cmd, "llvm-spirv %s.bc -o %s", kernel_path_, kernel_path_);
+  if (system(cmd) != EXIT_SUCCESS) {
+    _error("cmd[%s]", cmd);
+    return BRISBANE_ERR;
+  }
+  return BRISBANE_OK;
 }
 
 int DeviceLevelZero::Init() {
@@ -50,8 +65,8 @@ int DeviceLevelZero::Init() {
   err_ = ld_->zeEventPoolCreate(zectx_, &evtpool_desc, 1, &zedev_, &zeevtpool_);
   _zeerror(err_);
 
-  char* path = NULL;
-  Platform::GetPlatform()->EnvironmentGet("KERNEL_BIN_SPV", &path, NULL);
+  char* path = kernel_path_;
+//  Platform::GetPlatform()->EnvironmentGet("KERNEL_BIN_SPV", &path, NULL);
   uint8_t* src = nullptr;
   size_t srclen = 0;
   if (Utils::ReadFile(path, (char**) &src, &srclen) == BRISBANE_ERR) {

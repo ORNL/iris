@@ -12,6 +12,7 @@ public:
   DeviceLevelZero(LoaderLevelZero* ld, ze_device_handle_t zedev, ze_context_handle_t zectx, ze_driver_handle_t zedriver, int devno, int platform);
   ~DeviceLevelZero();
 
+  int Compile(char* src);
   int Init();
   int MemAlloc(void** mem, size_t size);
   int MemFree(void* mem);
@@ -23,6 +24,9 @@ public:
   int KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws);
   int Synchronize();
   int AddCallback(Task* task);
+
+  const char* kernel_src() { return "KERNEL_SRC_SPV"; }
+  const char* kernel_bin() { return "KERNEL_BIN_SPV"; }
 
 private:
   LoaderLevelZero* ld_;
