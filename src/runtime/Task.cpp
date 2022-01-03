@@ -140,6 +140,13 @@ void Task::CompleteSub() {
   pthread_mutex_lock(&mutex_subtasks_);
   if (++subtasks_complete_ == subtasks_.size()) Complete();
   pthread_mutex_unlock(&mutex_subtasks_);
+  /*
+  size_t complete;
+  do {
+    complete = subtasks_complete_ + 1;
+  } while (!__sync_bool_compare_and_swap(&subtasks_complete_, subtasks_complete_, complete));
+  if (subtasks_complete_ == subtasks_.size()) Complete();
+  */
 }
 
 void Task::Wait() {
