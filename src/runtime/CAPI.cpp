@@ -5,113 +5,112 @@
 
 using namespace brisbane::rt;
 
-
 int iris_init(int* argc, char*** argv, int sync) {
-  return brisbane_init(argc, argv, sync);
+  return Platform::GetPlatform()->Init(argc, argv, sync);
 }
 
 int iris_finalize() {
-  return brisbane_finalize();
+  return Platform::GetPlatform()->Finalize();
 }
 
 int iris_synchronize() {
-  return brisbane_synchronize();
+  return Platform::GetPlatform()->Synchronize();
 }
 
 int iris_env_set(const char* key, const char* value) {
-  return brisbane_env_set(key, value);
+  return Platform::GetPlatform()->EnvironmentSet(key, value, true);
 }
 
 int iris_env_get(const char* key, char** value, size_t* vallen) {
-  return brisbane_env_get(key, value, vallen);
+  return Platform::GetPlatform()->EnvironmentGet(key, value, vallen);
 }
 
 int iris_platform_count(int* nplatforms) {
-  return brisbane_platform_count(nplatforms);
+  return Platform::GetPlatform()->PlatformCount(nplatforms);
 }
 
 int iris_platform_info(int platform, int param, void* value, size_t* size) {
-  return brisbane_platform_info(platform, param, value, size);
+  return Platform::GetPlatform()->PlatformInfo(platform, param, value, size);
 }
 
 int iris_device_count(int* ndevs) {
-  return brisbane_device_count(ndevs);
+  return Platform::GetPlatform()->DeviceCount(ndevs);
 }
 
 int iris_device_info(int device, int param, void* value, size_t* size) {
-  return brisbane_device_info(device, param, value, size);
+  return Platform::GetPlatform()->DeviceInfo(device, param, value, size);
 }
 
 int iris_device_set_default(int device) {
-  return brisbane_device_set_default(device);
+  return Platform::GetPlatform()->DeviceSetDefault(device);
 }
 
 int iris_device_get_default(int* device) {
-  return brisbane_device_get_default(device);
+  return Platform::GetPlatform()->DeviceGetDefault(device);
 }
 
 int iris_device_synchronize(int ndevs, int* devices) {
-  return brisbane_device_synchronize(ndevs, devices);
+  return Platform::GetPlatform()->DeviceSynchronize(ndevs, devices);
 }
 
 int iris_register_policy(const char* lib, const char* name, void* params) {
-  return brisbane_register_policy(lib, name, params);
+  return Platform::GetPlatform()->PolicyRegister(lib, name, params);
 }
 
 int iris_task_create(iris_task* task) {
-  return brisbane_task_create(task);
+  return Platform::GetPlatform()->TaskCreate(NULL, false, task);
 }
 
 int iris_task_depend(iris_task task, int ntasks, iris_task* tasks) {
-  return brisbane_task_depend(task, ntasks, tasks);
+  return Platform::GetPlatform()->TaskDepend(task, ntasks, tasks);
 }
 
 int iris_task_h2d(iris_task task, iris_mem mem, size_t off, size_t size, void* host) {
-  return brisbane_task_h2d(task, mem, off, size, host);
+  return Platform::GetPlatform()->TaskH2D(task, mem, off, size, host);
 }
 
 int iris_task_d2h(iris_task task, iris_mem mem, size_t off, size_t size, void* host) {
-  return brisbane_task_d2h(task, mem, off, size, host);
+  return Platform::GetPlatform()->TaskD2H(task, mem, off, size, host);
 }
 
 int iris_task_h2d_full(iris_task task, iris_mem mem, void* host) {
-  return brisbane_task_h2d_full(task, mem, host);
+  return Platform::GetPlatform()->TaskH2DFull(task, mem, host);
 }
 
 int iris_task_d2h_full(iris_task task, iris_mem mem, void* host) {
-  return brisbane_task_d2h_full(task, mem, host);
+  return Platform::GetPlatform()->TaskD2HFull(task, mem, host);
 }
 
 int iris_task_kernel(iris_task task, const char* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, int* params_info) {
-  return brisbane_task_kernel(task, kernel, dim, off, gws, lws, nparams, params, params_info);
+  return Platform::GetPlatform()->TaskKernel(task, kernel, dim, off, gws, lws, nparams, params, NULL, params_info, NULL);
 }
 
 int iris_task_submit(iris_task task, int device, const char* opt, int sync) {
-  return brisbane_task_submit(task, device, opt, sync);
+  return Platform::GetPlatform()->TaskSubmit(task, device, opt, sync);
 }
 
 int iris_task_wait(iris_task task) {
-  return brisbane_task_wait(task);
+  return Platform::GetPlatform()->TaskWait(task);
 }
 
 int iris_task_wait_all(int ntasks, iris_task* tasks) {
-  return brisbane_task_wait_all(ntasks, tasks);
+  return Platform::GetPlatform()->TaskWaitAll(ntasks, tasks);
 }
 
 int iris_task_release(iris_task task) {
-  return brisbane_task_release(task);
+  return Platform::GetPlatform()->TaskRelease(task);
 }
 
 int iris_mem_create(size_t size, iris_mem* mem) {
-  return brisbane_mem_create(size, mem);
+  return Platform::GetPlatform()->MemCreate(size, mem);
 }
 
 int iris_mem_release(iris_mem mem) {
-  return brisbane_mem_release(mem);
+  return Platform::GetPlatform()->MemRelease(mem);
 }
 
 int iris_timer_now(double* time) {
-  return brisbane_timer_now(time);
+  return Platform::GetPlatform()->TimerNow(time);
 }
 
 int brisbane_init(int* argc, char*** argv, int sync) {
@@ -162,8 +161,8 @@ int brisbane_device_get_default(int* device) {
   return Platform::GetPlatform()->DeviceGetDefault(device);
 }
 
-int brisbane_device_synchronize(int ndev, int* devices) {
-  return Platform::GetPlatform()->DeviceSynchronize(ndev, devices);
+int brisbane_device_synchronize(int ndevs, int* devices) {
+  return Platform::GetPlatform()->DeviceSynchronize(ndevs, devices);
 }
 
 int brisbane_register_policy(const char* lib, const char* name, void* params) {

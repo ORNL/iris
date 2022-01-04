@@ -1,18 +1,12 @@
 #include <iris/iris.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <malloc.h>
 
 int main(int argc, char** argv) {
   iris_init(&argc, &argv, 1);
 
-  size_t SIZE;
+  size_t SIZE = 8;
   float *X, *Y, *Z;
-  int ERROR = 0;
-
-  SIZE = argc > 1 ? atol(argv[1]) : 8;
-
-  printf("[%s:%d] SIZE[%zu]\n", __FILE__, __LINE__, SIZE);
 
   X = (float*) malloc(SIZE * sizeof(float));
   Y = (float*) malloc(SIZE * sizeof(float));
@@ -24,10 +18,10 @@ int main(int argc, char** argv) {
   }
 
   printf("X [");
-  for (int i = 0; i < SIZE; i++) printf(" %2.0f.", X[i]);
+  for (int i = 0; i < SIZE; i++) printf(" %3.0f.", X[i]);
   printf("]\n");
   printf("Y [");
-  for (int i = 0; i < SIZE; i++) printf(" %2.0f.", Y[i]);
+  for (int i = 0; i < SIZE; i++) printf(" %3.0f.", Y[i]);
   printf("]\n");
 
   iris_mem mem_X;
@@ -54,11 +48,7 @@ int main(int argc, char** argv) {
   iris_task_d2h_full(task1, mem_Z, Z);
   iris_task_submit(task1, iris_cpu, NULL, 1);
 
-  for (int i = 0; i < SIZE; i++) {
-    if (Z[i] != X[i] + Y[i]) ERROR++;
-  }
-
-  printf("S = X + Y [");
+  printf("Z [");
   for (int i = 0; i < SIZE; i++) printf(" %3.0f.", Z[i]);
   printf("]\n");
 
@@ -69,11 +59,7 @@ int main(int argc, char** argv) {
   iris_mem_release(mem_Y);
   iris_mem_release(mem_Z);
 
-  free(X);
-  free(Y);
-  free(Z);
-
   iris_finalize();
-
   return 0;
 }
+
