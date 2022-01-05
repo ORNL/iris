@@ -987,10 +987,12 @@ int Platform::TimerNow(double* time) {
 }
 
 int Platform::InitScheduler() {
+  /*
   if (ndevs_ == 1) {
     _info("No scheduler ndevs[%d]", ndevs_);
     return BRISBANE_OK;
   }
+  */
   _info("Scheduler ndevs[%d] ndevs_enabled[%d]", ndevs_, ndevs_enabled_);
   scheduler_ = new Scheduler(this);
   scheduler_->Start();
@@ -998,7 +1000,7 @@ int Platform::InitScheduler() {
 }
 
 int Platform::InitWorkers() {
-  if (ndevs_ == 1) {
+  if (!scheduler_) {
     workers_[0] = new Worker(devs_[0], this, true);
     workers_[0]->Start();
     return BRISBANE_OK;
