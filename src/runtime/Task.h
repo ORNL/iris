@@ -64,6 +64,8 @@ public:
   void set_devno(int devno) { devno_ = devno; }
   int devno() { return devno_; }
   int ncmds() { return ncmds_; }
+  int ncmds_kernel();
+  int ncmds_memcpy();
   void set_time_start(double d) { time_start_ = d; }
   void set_time_end(double d) { time_end_ = d; }
   double time() { return time_; }

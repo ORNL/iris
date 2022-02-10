@@ -26,9 +26,10 @@ extern "C" {
 #define brisbane_data               (1 << 20)
 #define brisbane_profile            (1 << 21)
 #define brisbane_random             (1 << 22)
-#define brisbane_any                (1 << 23)
-#define brisbane_all                (1 << 24)
-#define brisbane_custom             (1 << 25)
+#define brisbane_pending            (1 << 23)
+#define brisbane_any                (1 << 24)
+#define brisbane_all                (1 << 25)
+#define brisbane_custom             (1 << 26)
 
 #define brisbane_cuda               1
 //#define brisbane_hexagon            2
@@ -56,6 +57,11 @@ extern "C" {
 #define brisbane_vendor             0x1002
 #define brisbane_name               0x1003
 #define brisbane_type               0x1004
+
+#define brisbane_ncmds              1
+#define brisbane_ncmds_kernel       2
+#define brisbane_ncmds_memcpy       3
+#define brisbane_cmds               4
 
 typedef struct _brisbane_task*      brisbane_task;
 typedef struct _brisbane_mem*       brisbane_mem;
