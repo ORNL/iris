@@ -1,4 +1,5 @@
-IRIS=$(HOME)/.local
+IRIS_INSTALL_ROOT ?= $(HOME)/.local
+IRIS=$(IRIS_INSTALL_ROOT)
 CC=gcc
 CFLAGS=-I$(IRIS)/include/ -O3 -std=c99
 LDFLAGS=-L$(IRIS)/lib -L$(IRIS)/lib64 -liris -lpthread -ldl

@@ -93,6 +93,10 @@ int iris_task_kernel_selector(iris_task task, iris_selector_kernel func, void* p
   return Platform::GetPlatform()->TaskKernelSelector(task, func, params, params_size);
 }
 
+int iris_task_custom(iris_task task, int tag, void* params, size_t params_size) {
+  return Platform::GetPlatform()->TaskCustom(task, tag, params, params_size);
+}
+
 int iris_task_submit(iris_task task, int device, const char* opt, int sync) {
   return Platform::GetPlatform()->TaskSubmit(task, device, opt, sync);
 }
@@ -103,6 +107,10 @@ int iris_task_wait(iris_task task) {
 
 int iris_task_wait_all(int ntasks, iris_task* tasks) {
   return Platform::GetPlatform()->TaskWaitAll(ntasks, tasks);
+}
+
+int iris_task_kernel_cmd_only(iris_task task) {
+  return Platform::GetPlatform()->TaskKernelCmdOnly(task);
 }
 
 int iris_task_release(iris_task task) {
@@ -301,7 +309,7 @@ int brisbane_task_kernel(brisbane_task task, const char* kernel, int dim, size_t
   return Platform::GetPlatform()->TaskKernel(task, kernel, dim, off, gws, lws, nparams, params, NULL, params_info, NULL);
 }
 
-int brisbane_task_kernel_v2(iris_task task, const char* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, size_t* params_off, int* params_info) {
+int brisbane_task_kernel_v2(brisbane_task task, const char* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, size_t* params_off, int* params_info) {
   return Platform::GetPlatform()->TaskKernel(task, kernel, dim, off, gws, lws, nparams, params, params_off, params_info, NULL);
 }
 
@@ -317,7 +325,7 @@ int brisbane_task_host(brisbane_task task, brisbane_host_task func, void* params
   return Platform::GetPlatform()->TaskHost(task, func, params);
 }
 
-int iris_task_custom(brisbane_task task, int tag, void* params, size_t params_size) {
+int brisbane_task_custom(brisbane_task task, int tag, void* params, size_t params_size) {
   return Platform::GetPlatform()->TaskCustom(task, tag, params, params_size);
 }
 
@@ -337,7 +345,7 @@ int brisbane_task_add_subtask(brisbane_task task, brisbane_task subtask) {
   return Platform::GetPlatform()->TaskAddSubtask(task, subtask);
 }
 
-int iris_task_kernel_cmd_only(iris_task task) {
+int brisbane_task_kernel_cmd_only(brisbane_task task) {
   return Platform::GetPlatform()->TaskKernelCmdOnly(task);
 }
 
@@ -347,6 +355,10 @@ int brisbane_task_release(brisbane_task task) {
 
 int brisbane_task_release_mem(brisbane_task task, brisbane_mem mem) {
   return Platform::GetPlatform()->TaskReleaseMem(task, mem);
+}
+
+int brisbane_task_info(brisbane_task task, int param, void* value, size_t* size) {
+  return Platform::GetPlatform()->TaskInfo(task, param, value, size);
 }
 
 int brisbane_mem_create(size_t size, brisbane_mem* mem) {

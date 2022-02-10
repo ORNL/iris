@@ -1,5 +1,5 @@
-#IRIS=$(HOME)/.local
-IRIS=$(HOME)/tmp/iris/install
+IRIS_INSTALL_ROOT ?= $(HOME)/.local
+IRIS=$(IRIS_INSTALL_ROOT)
 #CC=xlc
 #CXX=xlC
 CC=gcc

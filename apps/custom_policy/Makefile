@@ -1,4 +1,5 @@
-IRIS=$(HOME)/.local
+IRIS_INSTALL_ROOT ?= $(HOME)/.local
+IRIS=$(IRIS_INSTALL_ROOT)
 CC=gcc
 CXX=g++
 FORTRAN=gfortran

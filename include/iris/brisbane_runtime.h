@@ -133,6 +133,7 @@ extern int brisbane_task_add_subtask(brisbane_task task, brisbane_task subtask);
 extern int brisbane_task_kernel_cmd_only(brisbane_task task);
 extern int brisbane_task_release(brisbane_task task);
 extern int brisbane_task_release_mem(brisbane_task task, brisbane_mem mem);
+extern int brisbane_task_info(brisbane_task task, int param, void* value, size_t* size);
 
 extern int brisbane_mem_create(size_t size, brisbane_mem* mem);
 extern int brisbane_mem_arch(brisbane_mem mem, int device, void** arch);
