@@ -843,6 +843,27 @@ int Platform::TaskReleaseMem(brisbane_task brs_task, brisbane_mem brs_mem) {
   return BRISBANE_OK;
 }
 
+int Platform::TaskInfo(brisbane_task brs_task, int param, void* value, size_t* size) {
+  Task* task = brs_task->class_obj;
+  if (param == brisbane_ncmds) {
+    if (size) *size = sizeof(int);
+    *((int*) value) = task->ncmds();
+  } else if (param == brisbane_ncmds_kernel) {
+    if (size) *size = sizeof(int);
+    *((int*) value) = task->ncmds_kernel();
+  } else if (param == brisbane_ncmds_memcpy) {
+    if (size) *size = sizeof(int);
+    *((int*) value) = task->ncmds_memcpy();
+  } else if (param == brisbane_cmds) {
+    if (size) *size = sizeof(int) * task->ncmds();
+    int* cmd_types = (int*) value;
+    for (int i = 0; i < task->ncmds(); i++) {
+      cmd_types[i] = task->cmd(i)->type();
+    }    
+  }
+  return BRISBANE_OK;
+}
+
 int Platform::MemCreate(size_t size, brisbane_mem* brs_mem) {
   Mem* mem = new Mem(size, this);
   if (brs_mem) *brs_mem = mem->struct_obj();
