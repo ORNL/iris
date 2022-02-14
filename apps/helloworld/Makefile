@@ -1,14 +1,4 @@
-IRIS_INSTALL_ROOT ?= $(HOME)/.local
-IRIS=$(IRIS_INSTALL_ROOT)
-#CC=xlc
-#CXX=xlC
-CC=gcc
-CXX=g++
-FORTRAN=gfortran
-CFLAGS=-I$(IRIS)/include/ -O3 -std=c99
-CXXFLAGS=-I$(IRIS)/include/ -O3
-FFLAGS=-g -I$(IRIS)/include/iris
-LDFLAGS=-L$(IRIS)/lib -L$(IRIS)/lib64 -liris -lpthread -ldl
+include ../makefile_defs.mk
 
 all: helloworld-c helloworld-cpp
 
@@ -19,7 +9,7 @@ helloworld-cpp: helloworld.cpp
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
 kernel.ptx: kernel.cu
-	nvcc -ptx $^
+	$(NVCC) -ptx $^
 
 kernel.spv: kernel.cl
 	#clang -cc1 -finclude-default-header -triple spir $^ -O0 -emit-llvm-bc -o kernel.bc
@@ -28,7 +18,7 @@ kernel.spv: kernel.cl
 
 kernel.hip: kernel.hip.cpp
 	#hipcc --genco --targets gfx906 -o $@ $^
-	hipcc --genco -o $@ $^
+	$(HIPCC) --genco -o $@ $^
 
 kernel.openmp.so: kernel.openmp.c
 	#$(CC) -O3 -qsmp -fPIC -shared -I. -o $@ $^
