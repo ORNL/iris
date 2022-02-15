@@ -106,6 +106,7 @@ extern int iris_task_h2d_full(iris_task task, iris_mem mem, void* host);
 extern int iris_task_d2h_full(iris_task task, iris_mem mem, void* host);
 extern int iris_task_kernel(iris_task task, const char* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, int* params_info);
 extern int iris_task_kernel_v2(iris_task task, const char* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, size_t* params_off, int* params_info);
+extern int iris_task_kernel_v3(iris_task task, const char* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, size_t* params_off, int* params_info, size_t* memranges);
 extern int iris_task_custom(iris_task task, int tag, void* params, size_t params_size);
 extern int iris_task_submit(iris_task task, int device, const char* opt, int sync);
 extern int iris_task_wait(iris_task task);
