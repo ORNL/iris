@@ -23,21 +23,21 @@ int main(int argc, char** argv) {
 
 #pragma acc parallel loop copyin(A[0:SIZE], B[0:SIZE]) device(gpu)
 #pragma omp target teams distribute parallel for map(to:A[0:SIZE], B[0:SIZE]) device(gpu)
-#pragma brisbane kernel h2d(A[0:SIZE], B[0:SIZE]) alloc(C[0:SIZE]) device(gpu)
+#pragma iris kernel h2d(A[0:SIZE], B[0:SIZE]) alloc(C[0:SIZE]) device(gpu)
   for (int i = 0; i < SIZE; i++) {
     C[i] = A[i] + B[i];
   }
 
 #pragma acc parallel loop present(C[0:SIZE]) device(cpu)
 #pragma omp target teams distribute parallel for device(cpu)
-#pragma brisbane kernel present(C[0:SIZE]) device(cpu)
+#pragma iris kernel present(C[0:SIZE]) device(cpu)
   for (int i = 0; i < SIZE; i++) {
     D[i] = C[i] * 10;
   }
 
 #pragma acc parallel loop present(D[0:SIZE]) device(data)
 #pragma omp target teams distribute parallel for map(from:E[0:SIZE]) device(data)
-#pragma brisbane kernel d2h(E[0:SIZE]) present(D[0:SIZE]) device(data)
+#pragma iris kernel d2h(E[0:SIZE]) present(D[0:SIZE]) device(data)
   for (int i = 0; i < SIZE; i++) {
     E[i] = D[i] * 2;
   }

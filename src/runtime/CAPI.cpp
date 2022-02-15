@@ -89,6 +89,10 @@ int iris_task_kernel_v2(iris_task task, const char* kernel, int dim, size_t* off
   return Platform::GetPlatform()->TaskKernel(task, kernel, dim, off, gws, lws, nparams, params, params_off, params_info, NULL);
 }
 
+int iris_task_kernel_v3(iris_task task, const char* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, size_t* params_off, int* params_info, size_t* memranges) {
+  return Platform::GetPlatform()->TaskKernel(task, kernel, dim, off, gws, lws, nparams, params, params_off, params_info, memranges);
+}
+
 int iris_task_kernel_selector(iris_task task, iris_selector_kernel func, void* params, size_t params_size) {
   return Platform::GetPlatform()->TaskKernelSelector(task, func, params, params_size);
 }
