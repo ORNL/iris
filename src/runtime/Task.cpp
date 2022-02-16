@@ -192,5 +192,23 @@ int Task::Ok(){
   return BRISBANE_OK;
 }
 
+int Task::ncmds_kernel() {
+  int total = 0;
+  for (int i = 0; i < ncmds_; i++) {
+    Command* cmd = cmds_[i];
+    if (cmd->type_kernel()) total++;
+  }
+  return total;
+}
+
+int Task::ncmds_memcpy() {
+  int total = 0;
+  for (int i = 0; i < ncmds_; i++) {
+    Command* cmd = cmds_[i];
+    if (cmd->type_h2d() || cmd->type_h2dnp() || cmd->type_d2h()) total++;
+  }
+  return total;
+}
+
 } /* namespace rt */
 } /* namespace brisbane */

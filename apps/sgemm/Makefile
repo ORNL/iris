@@ -1,15 +1,12 @@
-IRIS=$(HOME)/.local
-CC=gcc
-CFLAGS=-I$(IRIS)/include/ -O3 -std=c99
-LDFLAGS=-L$(IRIS)/lib -L$(IRIS)/lib64 -liris -lpthread -ldl
+include ../makefile_defs.mk
 
 all: sgemm kernel.openmp.so
 
 kernel.ptx: kernel.cu
-	nvcc -ptx $^
+	$(NVCC) -ptx $^
 
 kernel.hip: kernel.hip.cpp
-	hipcc --genco -o $@ $^
+	$(HIPCC) --genco -o $@ $^
 
 kernel.openmp.so: kernel.openmp.c
 	$(CC) $(CFLAGS) -std=c99 -fopenmp -fPIC -shared -I. -o $@ $^

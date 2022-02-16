@@ -96,6 +96,7 @@ public:
   int TaskKernelCmdOnly(brisbane_task brs_task);
   int TaskRelease(brisbane_task brs_task);
   int TaskReleaseMem(brisbane_task brs_task, brisbane_mem brs_mem);
+  int TaskInfo(brisbane_task brs_task, int param, void* value, size_t* size);
 
   int MemCreate(size_t size, brisbane_mem* brs_mem);
   int MemArch(brisbane_mem brs_mem, int device, void** arch);

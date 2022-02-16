@@ -21,6 +21,22 @@
 
 #define BRISBANE_CMD_KERNEL_NARGS_MAX   16
 
+#define IRIS_CMD_NOP            0x1000
+#define IRIS_CMD_INIT           0x1001
+#define IRIS_CMD_KERNEL         0x1002
+#define IRIS_CMD_MALLOC         0x1003
+#define IRIS_CMD_H2D            0x1004
+#define IRIS_CMD_H2DNP          0x1005
+#define IRIS_CMD_D2H            0x1006
+#define IRIS_CMD_MAP            0x1007
+#define IRIS_CMD_MAP_TO         0x1008
+#define IRIS_CMD_MAP_FROM       0x1009
+#define IRIS_CMD_RELEASE_MEM    0x100a
+#define IRIS_CMD_HOST           0x100b
+#define IRIS_CMD_CUSTOM         0x100c
+
+#define IRIS_CMD_KERNEL_NARGS_MAX   16
+
 namespace brisbane {
 namespace rt {
 
