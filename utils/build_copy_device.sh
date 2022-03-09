@@ -1,0 +1,2 @@
+rm -rf ship ; rm -rf build ; mkdir -p ship ; mkdir -p build ; cd build/; sh $IRIS/utils/build_android.sh -DCMAKE_INSTALL_PREFIX=$PWD/../ship -DCDSP_FLAG=ON $@ ; make -j16; make -j16 install; cd ..  ; tar -cvzf install.tar.gz ship ; scp install.tar.gz mcmurdo:~/. ; ssh mcmurdo 'source /home/nqx/setup_android.source ; adb push install.tar.gz /data/local/tmp/. ; adb shell "cd /data/local/tmp/; tar -xvzf install.tar.gz ; "'
+echo "Build is installed and copied successfully to mcmurdo snapdragon device in location /data/local/tmp/ship"

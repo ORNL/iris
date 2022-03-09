@@ -1,0 +1,578 @@
+import re
+import argparse
+import pdb
+import regex
+import os
+import tempfile
+
+arguments_start_index=7
+valid_params = { 'PARAM' : 1, 'IN_TASK' : 1, 'OUT_TASK' : 1, 'IN_OUT_TASK' : 1, 'VEC_PARAM' : 1 }
+def extractTaskCalls(args):
+    file = args.input[0]
+    f = tempfile.NamedTemporaryFile(delete=False)
+    os.system(f"cpp {file} -o {f.name} {args.compile_options} -DUNDEF_IRIS_MACROS")
+    fh = open(f.name, "r")
+    lines = fh.readlines()
+    single_line = " ".join(lines);
+    single_line = re.sub(r'\r', '', single_line)
+    single_line = re.sub(r'\n', '', single_line)
+    result = regex.findall(r'''IRIS_SINGLE_TASK
+        (?<rec> #capturing group rec
+        \( #open parenthesis
+        (?: #non-capturing group
+        [^()]++ #anyting but parenthesis one or more times without backtracking
+        | #or
+        (?&rec) #recursive substitute of group rec
+        )*
+        \) #close parenthesis
+        )
+        ''',single_line,flags=regex.VERBOSE)
+    fh.close()
+    os.unlink(f.name)
+    return result
+
+def writeExtracts(code, args):
+    fh = open(args.output, "w")
+    for l in code:
+        fh.write(l+"\n")
+    fh.close()
+
+def parse_nested(text, left=r'[(]', right=r'[)]', sep=r','):
+    """ Based on https://stackoverflow.com/a/17141899/190597 (falsetru) """
+    text = re.sub(r'\s', '', text)
+    nstack = parseFnParams(text)
+    pat = r'({}|{}|{})'.format(left, right, sep)
+    tokens = re.split(pat, text)    
+    tokens = [ x for x in tokens if x != '']
+    stack = [[]]
+    pdb.set_trace()
+    for x in tokens:
+        if not x or re.match(sep, x): continue
+        if re.match(left, x):
+            pdb.set_trace()
+            stack[-1].append([])
+            stack.append(stack[-1][-1])
+        elif re.match(right, x):
+            pdb.set_trace()
+            stack.pop()
+            if not stack:
+                raise ValueError('error: opening bracket is missing')
+        else:
+            pdb.set_trace()
+            stack[-1].append(x)
+    if len(stack) > 1:
+        print(stack)
+        raise ValueError('error: closing bracket is missing')
+    return stack.pop()
+
+def parseFnParams(text):
+    text = re.sub(r'\s', '', text)
+    fn_name, nstack = parseFnParamsCore(text)
+    i = arguments_start_index
+    nnstack = nstack[0:i]
+    while (i<len(nstack)):
+        lfn_name, lnstack = parseFnParamsCore(nstack[i])
+        nnstack.append(lfn_name)
+        nnstack.append(lnstack)
+        i = i+1
+    return nnstack
+
+def parseFnParamsCore(text):
+    left = re.compile(r'\(')
+    right = re.compile(r'\)')
+    sep = re.compile(r',')
+    level = 0
+    fn_name = ''    
+    stack = []
+    for y in text:
+        if level == 0 and not left.match(y):
+            fn_name += y
+        if left.match(y):
+            level=level+1
+            if level > 1:
+                stack[-1] += y
+        elif right.match(y):
+            if level > 1:
+                stack[-1] += y
+            level=level-1
+        elif sep.match(y) and level == 1:
+            stack.append("")
+        elif level > 0:
+            if len(stack) == 0:
+                stack.append("")
+            stack[-1] += y
+    stack = [ x for x in stack if x != '']
+    return fn_name, stack
+#'(task0, "saxpy", target_dev, SIZE,           OUT_TASK(Z, int32_t *, sizeof(int32_t)*SIZE),           IN_TASK(X, int32_t *, sizeof(int32_t)*SIZE),           IN_TASK(Y, int32_t *, sizeof(i
+#nt32_t)*SIZE),           PARAM(A, int32_t),           PARAM(SIZE, int, brisbane_cpu),           PARAM(dspUsecPtr, int32_t*, (brisbane_cpu || brisbane_dsp)),           PARAM(dspCycPtr, int32_t*, brisb
+#ane_cpu || brisbane_dsp))\n'
+#["task0", "saxpy", "target_dev", "SIZE", { "fn" : "OUT_TASK", "params": [ "Z", "int32_t *", { "fn" : "*", "params": { { "fn" : "sizeof", "params": "int32_t" }, "SIZE" }}, 
+def preprocess_data(data):
+    return data
+
+def generateIrisInterfaceCode(args, input):
+    codes = []
+    for file in input:
+        print("Reading input: "+file)
+        fh = open(file, 'r')
+        lcodes = fh.readlines()
+        for code in lcodes:
+            codes.append(code)
+        fh.close()
+    #print("\n".join(codes))
+    data = []
+    data_hash = {}
+    for code in codes:
+        d = [parseFnParams(code)]
+        kname = d[0][1]
+        kname = re.sub(r'"', '', kname)
+        d[0][1] = kname
+        data.append(d[0])
+        data_hash[kname] = preprocess_data(d[0])
+    k_hash = {}
+    k_index = 0
+    for k,v in data_hash.items():
+        k_hash[k] = k_index
+        k_index = k_index+1
+    lines = []
+    lines.append('''
+#ifndef __IRIS_CPU_DSP_INTERFACE_H__
+#define __IRIS_CPU_DSP_INTERFACE_H__
+
+#include <stdint.h>
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+static int brisbane_kernel_idx = 0;
+
+        ''')
+    lines.append('''
+#ifdef ENABLE_IRIS_HEXAGON_APIS
+#define brisbane_kernel_lock   brisbane_hexagon_lock
+#define brisbane_kernel_unlock brisbane_hexagon_unlock
+#define brisbane_kernel brisbane_hexagon_kernel
+#define brisbane_setarg brisbane_hexagon_setarg
+#define brisbane_setmem brisbane_hexagon_setmem
+#define brisbane_launch brisbane_hexagon_launch
+            ''')
+    for k,v in data_hash.items():
+        lines.append("#define brisbane_kernel_"+k+" brisbanehxg_"+k)
+    lines.append('''
+#define HANDLE brisbanehxg_handle_stub(), 
+#define HANDLETYPE uint64_t,
+#endif //IRIS_HEXAGON
+            ''')
+    lines.append('''
+#ifndef ENABLE_IRIS_HEXAGON_APIS
+#ifndef ENABLE_IRIS_HOST2HIP_APIS
+#ifndef ENABLE_IRIS_HOST2CUDA_APIS
+#ifndef ENABLE_IRIS_HOST2OPENCL_APIS
+#define ENABLE_IRIS_OPENMP_APIS
+#endif
+#endif
+#endif
+#endif
+            ''')
+    lines.append('''
+#ifdef ENABLE_IRIS_OPENMP_APIS 
+#include "brisbane/brisbane_openmp.h"
+#define brisbane_kernel_lock   brisbane_openmp_lock
+#define brisbane_kernel_unlock brisbane_openmp_unlock
+#define brisbane_kernel brisbane_openmp_kernel
+#define brisbane_setarg brisbane_openmp_setarg
+#define brisbane_setmem brisbane_openmp_setmem
+#define brisbane_launch brisbane_openmp_launch
+#define HANDLE
+#define HANDLETYPE 
+            ''')
+    for k,v in data_hash.items():
+        lines.append("#define brisbane_kernel_"+k+" "+k)
+    lines.append('''
+#endif //ENABLE_IRIS_OPENMP_APIS
+            ''')
+    lines.append('''
+#ifdef ENABLE_IRIS_HOST2OPENCL_APIS 
+#include "brisbane/brisbane_host2opencl.h"
+#define brisbane_kernel_lock   brisbane_host2opencl_lock
+#define brisbane_kernel_unlock brisbane_host2opencl_unlock
+#define brisbane_kernel brisbane_host2opencl_kernel
+#define brisbane_setarg brisbane_host2opencl_setarg
+#define brisbane_setmem brisbane_host2opencl_setmem
+#define brisbane_launch brisbane_host2opencl_launch
+#define HANDLE  brisbane_host2opencl_get_handle(), 
+#define HANDLETYPE void *,
+            ''')
+    lines.append("#ifdef HOST2OPENCL")
+    for k,v in data_hash.items():
+        lines.append("#define "+k+" HOST2OPENCL("+k+")")
+    lines.append("#endif //HOST2OPENCL")
+    for k,v in data_hash.items():
+        lines.append("#define brisbane_kernel_"+k+" "+k)
+    lines.append('''
+#endif //ENABLE_IRIS_HOST2OPENCL_APIS
+            ''')
+    lines.append('''
+#ifdef ENABLE_IRIS_HOST2HIP_APIS 
+#include "brisbane/brisbane_host2hip.h"
+#define brisbane_kernel_lock   brisbane_host2hip_lock
+#define brisbane_kernel_unlock brisbane_host2hip_unlock
+#define brisbane_kernel brisbane_host2hip_kernel
+#define brisbane_setarg brisbane_host2hip_setarg
+#define brisbane_setmem brisbane_host2hip_setmem
+#define brisbane_launch brisbane_host2hip_launch
+#define HANDLE 
+#define HANDLETYPE 
+            ''')
+    lines.append("#ifdef HOST2HIP")
+    for k,v in data_hash.items():
+        lines.append("#define "+k+" HOST2HIP("+k+")")
+    lines.append("#endif //HOST2HIP")
+    for k,v in data_hash.items():
+        lines.append("#define brisbane_kernel_"+k+" "+k)
+    lines.append('''
+#endif //ENABLE_IRIS_HOST2HIP_APIS
+            ''')
+    lines.append('''
+#ifdef ENABLE_IRIS_HOST2CUDA_APIS 
+#include "brisbane/brisbane_host2cuda.h"
+#define brisbane_kernel_lock   brisbane_host2cuda_lock
+#define brisbane_kernel_unlock brisbane_host2cuda_unlock
+#define brisbane_kernel brisbane_host2cuda_kernel
+#define brisbane_setarg brisbane_host2cuda_setarg
+#define brisbane_setmem brisbane_host2cuda_setmem
+#define brisbane_launch brisbane_host2cuda_launch
+#define HANDLE 
+#define HANDLETYPE 
+            ''')
+    lines.append("#ifdef HOST2CUDA")
+    for k,v in data_hash.items():
+        lines.append("#define "+k+" HOST2CUDA("+k+")")
+    lines.append("#endif //HOST2CUDA")
+    for k,v in data_hash.items():
+        lines.append("#define brisbane_kernel_"+k+" "+k)
+    lines.append('''
+#endif //ENABLE_IRIS_HOST2CUDA_APIS
+            ''')
+    appendStructure(lines, data_hash, k_hash)
+    appendKernelSignature(lines, data_hash, k_hash)
+    for k,v in data_hash.items():
+        appendKernelSetArgMemParamFunctions(lines, k, v)
+    appendKernelSetArgMemGlobalFunctions(lines, data_hash, k_hash)
+    appendKernelLaunchFunction(lines, data_hash, k_hash)
+    lines.append('''
+#ifdef __cplusplus
+} /* end of extern "C" */
+#endif
+#endif //__IRIS_CPU_DSP_INTERFACE_H__
+            ''')
+    for k,v in data_hash.items():
+        print("Generated CPU/DSP interface code for kernel:"+k)
+    wfh = open(args.output, 'w')
+    print("Consolidated CPU/DSP interface code for all kernels in header file:"+args.output)
+    wfh.write("\n".join(lines)+"\n")
+    wfh.close()
+
+def getKernelParamVairable(k):
+    return "__k_"+k+"_args"
+
+def appendKernelSignature(lines, data_hash, k_hash):
+    global valid_params
+    for k,v in data_hash.items():
+        kvar = getKernelParamVairable(k)
+        func_sig = "int brisbane_kernel_"+k
+        params = []
+        hexagon_params = []
+        param_hash = {}
+        i = arguments_start_index
+        while (i<len(v)):
+            f_param = v[i]
+            i = i+1
+            if f_param not in valid_params:
+                continue
+            f_details = v[i]
+            i = i+1
+            fvar = f_details[0]
+            fdt = f_details[1]
+            if fvar not in param_hash:
+                param_hash[fvar] = True
+                if f_param == "VEC_PARAM":
+                    params.append(fdt+" *")
+                    hexagon_params.append(fdt+" *")
+                else:
+                    params.append(fdt)
+                    hexagon_params.append(fdt)
+                if f_param == "IN_TASK" or f_param == "OUT_TASK" or f_param == "IN_OUT_TASK":
+                    hexagon_params.append("int") # SIZE only for hexagon
+        lines.append("#ifndef ENABLE_IRIS_HEXAGON_APIS")
+        lines.append(func_sig+"(HANDLETYPE "+", ".join(params)+", size_t, size_t);")
+        lines.append("#else //ENABLE_IRIS_HEXAGON_APIS")
+        lines.append(func_sig+"(HANDLETYPE "+", ".join(hexagon_params)+", int, int);")
+        lines.append("#endif //ENABLE_IRIS_HEXAGON_APIS")
+
+def appendStructure(lines, data_hash, k_hash):
+    global valid_params
+    for k,v in data_hash.items():
+        kvar = getKernelParamVairable(k)
+        lines.append("typedef struct {")
+        params = []
+        param_hash = {}
+        i = arguments_start_index
+        while (i<len(v)):
+            f_param = v[i]
+            i = i+1
+            if f_param not in valid_params:
+                continue
+            f_details = v[i]
+            i = i+1
+            fvar = f_details[0]
+            fdt = f_details[1]
+            if fvar not in param_hash:
+                param_hash[fvar] = True
+                if f_param == "VEC_PARAM":
+                    params.append("__global "+fdt+" *"+fvar+";")
+                else:
+                    params.append("__global "+fdt+" "+fvar+";")
+                if f_param == "IN_TASK" or f_param == "OUT_TASK" or f_param == "IN_OUT_TASK":
+                    params.append("__global int "+fvar+"___size;")
+        lines.append("\t"+"\n\t".join(params))
+        lines.append("} brisbane_"+kvar+";")
+        lines.append("static brisbane_"+kvar+" "+kvar+";")
+
+def appendKernelSetArgMemParamFunctions(lines, kernel, data):
+    global arguments_start_index
+    global valid_params
+    kvar = getKernelParamVairable(kernel)
+    lines.append("static int brisbane_"+kernel+"_setarg(int idx, size_t size, void* value) {")
+    lines.append('''
+  switch (idx) {
+    ''')
+    p_index = 0
+    i = arguments_start_index
+    while (i<len(data)):
+        f_param = data[i]
+        i = i+1
+        if f_param not in valid_params:
+            continue
+        f_details = data[i]
+        i = i+1
+        fvar = f_details[0]
+        if f_param=="PARAM":
+            lines.append("\t\t\tcase "+str(p_index)+": memcpy(&"+kvar+"."+fvar+", value, size); break;")
+        p_index = p_index+1
+    lines.append('''
+        default: return BRISBANE_ERR;
+    }
+    return BRISBANE_OK;
+}
+        ''')
+    lines.append("static int brisbane_"+kernel+"_setmem(int idx, void *mem, int size) {")
+    lines.append('''
+  switch (idx) {
+    ''')
+    p_index = 0
+    i = arguments_start_index
+    while (i<len(data)):
+        f_param = data[i]
+        i = i+1
+        if f_param not in valid_params:
+            continue
+        f_details = data[i]
+        i = i+1
+        fvar = f_details[0]
+        fdt = f_details[1]
+        if f_param=="IN_TASK" or f_param =="OUT_TASK" or f_param == "IN_OUT_TASK":
+            lines.append("\t\t\tcase "+str(p_index)+": "+kvar+"."+fvar+" = ("+fdt+")mem; "+kvar+"."+fvar+"___size = size; break;")
+        elif f_param=="VEC_PARAM":
+            lines.append("\t\t\tcase "+str(p_index)+": "+kvar+"."+fvar+" = ("+fdt+"*)mem; break;")
+        p_index = p_index+1
+    lines.append('''
+        default: return BRISBANE_ERR;
+    }
+    return BRISBANE_OK;
+}
+        ''')
+
+def appendKernelSetArgMemGlobalFunctions(lines, data_hash, k_hash):
+    lines.append('''
+int brisbane_setarg(int idx, size_t size, void* value) {
+  switch (brisbane_kernel_idx) {
+    ''')
+    for k,v in data_hash.items():
+        lines.append("\t\t\t case "+str(k_hash[k])+": return brisbane_"+k+"_setarg(idx, size, value);")
+    lines.append('''
+    }
+    return BRISBANE_ERR;
+}
+        ''')
+    lines.append('''
+int brisbane_setmem(int idx, void *mem, int size) {
+  switch (brisbane_kernel_idx) {
+    ''')
+    for k,v in data_hash.items():
+        lines.append("\t\t\t case "+str(k_hash[k])+": return brisbane_"+k+"_setmem(idx, mem, size);")
+    lines.append('''
+    }
+    return BRISBANE_ERR;
+}
+        ''')
+
+def appendKernelLaunchFunction(lines, data_hash, k_hash):
+    global arguments_start_index
+    global valid_params
+    lines.append('''
+int brisbane_kernel(const char* name) {
+    brisbane_kernel_lock();
+    ''')
+    for k,v in data_hash.items():
+        lines.append("\t if (strcmp(name, \""+k+"\") == 0) {")
+        lines.append("\t\t brisbane_kernel_idx = "+str(k_hash[k])+";")
+        lines.append("\t\t return BRISBANE_OK;")
+        lines.append("\t }")
+    lines.append('''
+    return BRISBANE_ERR;
+}
+        ''')
+    lines.append('''
+int brisbane_launch(int dim, size_t off, size_t ndr) {
+        switch(brisbane_kernel_idx) {
+        ''')
+    def getPyExprString(l):
+        if type(l) == list:
+            p = []
+            for i in l:
+                if type(i) == list:
+                    p.append(" ( ")
+                    p.append(getPyExprString(i))
+                    p.append(" ) ")
+                else:
+                    p.append(i)
+            return " ".join(p)
+        else:
+            return l
+    def InsertConditionalParameters(k, expr, f_details, params, lines):
+        res= { "brisbane_all" : 0xFFFFFFFF, 
+            "brisbane_cpu"    : 0x01, 
+            "brisbane_dsp"    : 0x02, 
+            "brisbane_fpga"   : 0x04, 
+            "brisbane_xfpga"  : 0x04, 
+            "brisbane_ifpga"  : 0x08, 
+            "brisbane_gpu"    : 0x0C,
+        }
+        if not re.match(r'brisbane_', expr):
+            params.append(getKernelParamVairable(k)+"."+f_details[0])
+            return
+        expr = re.sub('\|\|', ' | ', expr)
+        expr = re.sub('\&\&', ' & ', expr)
+        #print("EXPR: "+expr)
+        expr_eval = eval(expr, res)
+        if (expr_eval & res['brisbane_cpu']) and (expr_eval & res['brisbane_dsp']):
+           params.append(getKernelParamVairable(k)+"."+f_details[0])
+        elif expr_eval & res['brisbane_dsp']:
+           if len(params) > 0:
+                lines.append("\t\t\t\t"+", \n\t\t\t\t".join(params)+",")
+           lines.append("#ifdef ENABLE_IRIS_HEXAGON_APIS")
+           lines.append("\t\t\t\t"+getKernelParamVairable(k)+"."+f_details[0]+",")
+           lines.append("#endif")
+           params.clear()
+        elif expr_eval & res['brisbane_cpu']:
+           if len(params) > 0:
+                lines.append("\t\t\t\t"+", \n\t\t\t\t".join(params)+",")
+           lines.append("#ifndef ENABLE_IRIS_HEXAGON_APIS")
+           lines.append("\t\t\t\t"+getKernelParamVairable(k)+"."+f_details[0]+",")
+           lines.append("#endif")
+           params.clear()
+
+    for k,v in data_hash.items():
+        lines.append("\t\t\tcase "+str(k_hash[k])+": brisbane_kernel_"+k+"(HANDLE ")
+        params = []
+        i = arguments_start_index
+        one_param_exists = False
+        while (i<len(v)):
+            f_param = v[i]
+            i = i+1
+            if f_param not in valid_params:
+                continue
+            f_details = v[i]
+            if f_param == 'PARAM' and len(f_details)>2:
+                expr = getPyExprString(f_details[2])
+                InsertConditionalParameters(k, expr, f_details, params, lines)
+                one_param_exists = True
+            elif f_param == 'VEC_PARAM' and len(f_details)>2:
+                expr = getPyExprString(f_details[2])
+                InsertConditionalParameters(k, expr, f_details, params, lines)
+                one_param_exists = True
+            elif f_param == 'IN_TASK':
+                expr = getPyExprString(f_details[-1])
+                InsertConditionalParameters(k, expr, f_details, params, lines)
+                if len(params) > 0:
+                     lines.append("\t\t\t\t"+", \n\t\t\t\t".join(params)+",")
+                lines.append("#ifdef ENABLE_IRIS_HEXAGON_APIS")
+                lines.append("\t\t\t\t("+getKernelParamVairable(k)+"."+f_details[0]+"___size)/sizeof("+f_details[2]+"),")
+                lines.append("#endif")
+                params.clear()
+                one_param_exists = True
+            elif f_param == 'OUT_TASK':
+                expr = getPyExprString(f_details[-1])
+                InsertConditionalParameters(k, expr, f_details, params, lines)
+                if len(params) > 0:
+                     lines.append("\t\t\t\t"+", \n\t\t\t\t".join(params)+",")
+                lines.append("#ifdef ENABLE_IRIS_HEXAGON_APIS")
+                lines.append("\t\t\t\t("+getKernelParamVairable(k)+"."+f_details[0]+"___size)/sizeof("+f_details[2]+"),")
+                lines.append("#endif")
+                params.clear()
+                one_param_exists = True
+            elif f_param == 'IN_OUT_TASK':
+                expr = getPyExprString(f_details[-1])
+                InsertConditionalParameters(k, expr, f_details, params, lines)
+                if len(params) > 0:
+                     lines.append("\t\t\t\t"+", \n\t\t\t\t".join(params)+",")
+                lines.append("#ifdef ENABLE_IRIS_HEXAGON_APIS")
+                lines.append("\t\t\t\t("+getKernelParamVairable(k)+"."+f_details[0]+"___size)/sizeof("+f_details[2]+"),")
+                lines.append("#endif")
+                params.clear()
+                one_param_exists = True
+            else:
+                params.append(getKernelParamVairable(k)+"."+f_details[0])
+                one_param_exists = True
+            i = i+1
+        if len(params) > 0:
+            lines.append("\t\t\t\t"+", \n\t\t\t\t".join(params)+",")
+        lines.append("#ifndef DISABLE_OFFSETS")
+        lines.append("#ifdef ENABLE_IRIS_HEXAGON_APIS")
+        lines.append("\t\t\t\t(int)off, (int)ndr") 
+        lines.append("#else")
+        #lines.append("#ifdef ENABLE_IRIS_OPENMP_APIS")
+        lines.append("\t\t\t\toff, ndr") 
+        lines.append("#endif")
+        lines.append("#endif")
+        lines.append("\t\t\t\t);");
+        lines.append("\t\t\t\t\t break;")
+    lines.append('''
+        }
+        brisbane_kernel_unlock();
+        return BRISBANE_OK;
+}
+        ''')
+
+def InitParser(parser):
+    parser.add_argument("-input", dest="input", nargs='+', default="sample.c")
+    parser.add_argument("-output", dest="output", default="sample.c.iris")
+    parser.add_argument("-extract", dest="extract", action="store_true")
+    parser.add_argument("-generate", dest="generate", action="store_true")
+    parser.add_argument("-compile_options", dest="compile_options", default="")
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    InitParser(parser)
+    args = parser.parse_args()
+    input = args.input
+    if args.extract and args.generate:
+        input = [args.output]
+    if not args.extract and not args.generate:
+        args.extract = True 
+    if args.extract:
+        iris_calls = extractTaskCalls(args)
+        writeExtracts(iris_calls, args)
+    if args.generate:
+        generateIrisInterfaceCode(args, input)

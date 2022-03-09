@@ -1,9 +1,9 @@
-#ifndef BRISBANE_SRC_RT_QUEUE_READY_H
-#define BRISBANE_SRC_RT_QUEUE_READY_H
+#ifndef IRIS_SRC_RT_QUEUE_READY_H
+#define IRIS_SRC_RT_QUEUE_READY_H
 
 #include "Queue.h"
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 class QueueReady : public Queue {
@@ -25,6 +25,6 @@ private:
 };
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 
-#endif /* BRISBANE_SRC_RT_QUEUE_READY_H */
+#endif /* IRIS_SRC_RT_QUEUE_READY_H */

@@ -1,9 +1,9 @@
-#ifndef BRISBANE_SRC_RT_PROFILER_GOOGLE_CHARTS_H
-#define BRISBANE_SRC_RT_PROFILER_GOOGLE_CHARTS_H
+#ifndef IRIS_SRC_RT_PROFILER_GOOGLE_CHARTS_H
+#define IRIS_SRC_RT_PROFILER_GOOGLE_CHARTS_H
 
 #include "Profiler.h"
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 class ProfilerGoogleCharts : public Profiler {
@@ -23,8 +23,8 @@ private:
 };
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 
 
-#endif /*BRISBANE_SRC_RT_PROFILER_GOOGLE_CHARTS_H */
+#endif /*IRIS_SRC_RT_PROFILER_GOOGLE_CHARTS_H */
 

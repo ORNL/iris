@@ -1,11 +1,11 @@
-#ifndef BRISBANE_SRC_RT_POLICY_H
-#define BRISBANE_SRC_RT_POLICY_H
+#ifndef IRIS_SRC_RT_POLICY_H
+#define IRIS_SRC_RT_POLICY_H
 
 #define REGISTER_CUSTOM_POLICY(class_name, name)              \
-  brisbane::rt::class_name name;                              \
+  iris::rt::class_name name;                              \
   extern "C" void* name ## _instance() { return (void*) &name; }
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 class Device;
@@ -33,7 +33,7 @@ protected:
 };
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 
-#endif /* BRISBANE_SRC_RT_POLICY_H */
+#endif /* IRIS_SRC_RT_POLICY_H */
 

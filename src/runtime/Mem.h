@@ -1,5 +1,5 @@
-#ifndef BRISBANE_SRC_RT_MEM_H
-#define BRISBANE_SRC_RT_MEM_H
+#ifndef IRIS_SRC_RT_MEM_H
+#define IRIS_SRC_RT_MEM_H
 
 #include "Config.h"
 #include "Retainable.h"
@@ -7,12 +7,12 @@
 #include <pthread.h>
 #include <set>
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 class Platform;
 
-class Mem: public Retainable<struct _brisbane_mem, Mem> {
+class Mem: public Retainable<struct _iris_mem, Mem> {
 public:
   Mem(size_t size, Platform* platform);
   virtual ~Mem();
@@ -40,7 +40,7 @@ public:
   bool mapped() { return mapped_host_ != NULL; }
 
   void** archs() { return archs_; }
-  void* arch(Device* dev);
+  void* arch(Device* dev, void *host=NULL);
   void** archs_off() { return archs_off_; }
 
 private:
@@ -56,14 +56,14 @@ private:
   int expansion_;
   void* mapped_host_;
   size_t mapped_size_;
-  void* archs_[BRISBANE_MAX_NDEVS];
-  void* archs_off_[BRISBANE_MAX_NDEVS];
-  Device* archs_dev_[BRISBANE_MAX_NDEVS];
+  void* archs_[IRIS_MAX_NDEVS];
+  void* archs_off_[IRIS_MAX_NDEVS];
+  Device* archs_dev_[IRIS_MAX_NDEVS];
 
   pthread_mutex_t mutex_;
 };
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 
-#endif /* BRISBANE_SRC_RT_MEM_H */
+#endif /* IRIS_SRC_RT_MEM_H */

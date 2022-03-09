@@ -1,7 +1,7 @@
 #include "LoaderCUDA.h"
 #include "Debug.h"
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 LoaderCUDA::LoaderCUDA() {
@@ -37,9 +37,9 @@ int LoaderCUDA::LoadFunctions() {
   LOADFUNCSYM(cuMemcpyDtoH, cuMemcpyDtoH_v2);
   LOADFUNCSYM(cuMemcpyDtoHAsync, cuMemcpyDtoHAsync);
   LOADFUNC(cuLaunchKernel);
-  return BRISBANE_OK;
+  return IRIS_OK;
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 

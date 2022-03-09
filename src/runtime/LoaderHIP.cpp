@@ -1,7 +1,7 @@
 #include "LoaderHIP.h"
 #include "Debug.h"
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 LoaderHIP::LoaderHIP() {
@@ -31,7 +31,7 @@ int LoaderHIP::LoadFunctions() {
   LOADFUNC(hipMemcpyDtoH);
   LOADFUNC(hipModuleLaunchKernel);
   LOADFUNC(hipDeviceSynchronize);
-  return BRISBANE_OK;
+  return IRIS_OK;
 }
 
 void LoaderHIP::Lock() {
@@ -43,5 +43,5 @@ void LoaderHIP::Unlock() {
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 

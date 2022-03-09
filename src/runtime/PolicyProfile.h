@@ -1,9 +1,9 @@
-#ifndef BRISBANE_SRC_RT_POLICY_PROFILE_H
-#define BRISBANE_SRC_RT_POLICY_PROFILE_H
+#ifndef IRIS_SRC_RT_POLICY_PROFILE_H
+#define IRIS_SRC_RT_POLICY_PROFILE_H
 
 #include "Policy.h"
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 class Policies;
@@ -21,6 +21,6 @@ private:
 };
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 
-#endif /* BRISBANE_SRC_RT_POLICY_PROFILE_H */
+#endif /* IRIS_SRC_RT_POLICY_PROFILE_H */

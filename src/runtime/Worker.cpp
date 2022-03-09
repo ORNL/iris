@@ -8,7 +8,7 @@
 #include "Task.h"
 #include "Timer.h"
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 Worker::Worker(Device* dev, Platform* platform, bool single) {
@@ -71,4 +71,4 @@ unsigned long Worker::ntasks() {
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */

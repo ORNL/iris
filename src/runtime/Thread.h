@@ -1,10 +1,10 @@
-#ifndef BRISBANE_SRC_RT_THREAD_H
-#define BRISBANE_SRC_RT_THREAD_H
+#ifndef IRIS_SRC_RT_THREAD_H
+#define IRIS_SRC_RT_THREAD_H
 
 #include <semaphore.h>
 #include <pthread.h>
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 class Thread {
@@ -30,6 +30,6 @@ protected:
 };
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 
-#endif /* BRISBANE_SRC_RT_THREAD_H */
+#endif /* IRIS_SRC_RT_THREAD_H */

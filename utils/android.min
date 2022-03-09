@@ -1,0 +1,46 @@
+# stub library
+BUILD_DLLS += libbrisbanehxg
+
+DSP_TAG ?= cdsp
+C_FLAGS += -DDSP_TAG=$(DSP_TAG)  -I$(IRIS)/include -I$(IRIS)/include/brisbane/hexagon -Isd_host
+CC_FLAGS += -I$(IRIS)/include -I$(IRIS)/include/brisbane/hexagon -Isd_host
+libbrisbanehxg_QAICIDLS += brisbanehxg 
+
+STUB_DIR ?= .
+STUB_CSRCS_RAW = $(wildcard $(STUB_DIR)/sd_host/*.c)
+STUB_CSRCS ?= $(patsubst $(STUB_DIR)/sd_host/%.c, $(STUB_DIR)/sd_host/%, $(STUB_CSRCS_RAW))
+
+libbrisbanehxg_C_SRCS += $V/brisbanehxg_stub \
+                       $(STUB_CSRCS) \
+
+libbrisbanehxg_DLLS += libadsprpc
+libbrisbanehxg_LIBS += rpcmem
+libbrisbanehxg_LD_FLAGS += -llog
+
+ENABLE_EXE=0
+ifeq (1,$(ENABLE_EXE))
+# stand-alone benchmark executable
+BUILD_EXES+=brisbanehxg
+brisbanehxg_QAICIDLS += brisbanehxg \
+
+BENCHMARK_CSRCS ?= \
+                    src/benchmark \
+                    src/sobel3x3_ref \
+                    
+brisbanehxg_C_SRCS += $(BENCHMARK_CSRCS)
+
+brisbanehxg_LIBS += rpcmem
+
+brisbanehxg_DLLS += libadsprpc \
+                  libbrisbanehxg \
+                  
+brisbanehxg_C_FLAGS += -Isd_host/ -I.
+brisbanehxg_LD_FLAGS += -llog
+brisbanehxg_DEFINES += VERIFY_PRINT_ERROR
+endif
+# copy final build products to the ship directory
+BUILD_COPIES = \
+   $(DLLS) \
+   $(EXES) \
+   $(LIBS) \
+   $(SHIP_DIR)/ ;

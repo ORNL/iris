@@ -5,7 +5,7 @@
 #include "Platform.h"
 #include "Kernel.h"
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 History::History(Kernel* kernel) {
@@ -103,4 +103,4 @@ size_t History::total(size_t* s) {
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */

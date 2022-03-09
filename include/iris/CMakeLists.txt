@@ -9,6 +9,12 @@ install(FILES
   iris_poly.h
   iris_poly_types.h
   iris_runtime.h
+  iris_host2opencl.h
+  iris_host2cuda.h
+  iris_host2hip.h
+  gettime.h
+  verify.h
+  iris_macros.h
   brisbane.h
   brisbane.hpp
   brisbane_errno.h

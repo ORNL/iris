@@ -3,7 +3,7 @@
 #include "Device.h"
 #include "Task.h"
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 PolicyDepend::PolicyDepend(Scheduler* scheduler) {
@@ -35,4 +35,4 @@ void PolicyDepend::GetDevices(Task* task, Device** devs, int* ndevs) {
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */

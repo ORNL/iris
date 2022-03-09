@@ -1,10 +1,10 @@
-#ifndef BRISBANE_SRC_RT_DEVICE_LEVEL_ZERO_H
-#define BRISBANE_SRC_RT_DEVICE_LEVEL_ZERO_H
+#ifndef IRIS_SRC_RT_DEVICE_LEVEL_ZERO_H
+#define IRIS_SRC_RT_DEVICE_LEVEL_ZERO_H
 
 #include "Device.h"
 #include "LoaderLevelZero.h"
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 class DeviceLevelZero : public Device {
@@ -43,7 +43,7 @@ private:
 };
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 
-#endif /* BRISBANE_SRC_RT_DEVICE_LEVEL_ZERO_H */
+#endif /* IRIS_SRC_RT_DEVICE_LEVEL_ZERO_H */
 

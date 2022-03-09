@@ -2,7 +2,7 @@
 #include "Debug.h"
 #include "Scheduler.h"
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 Policy::Policy() {
@@ -18,5 +18,5 @@ void Policy::SetScheduler(Scheduler* scheduler) {
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 

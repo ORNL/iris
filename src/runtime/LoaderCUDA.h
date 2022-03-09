@@ -1,10 +1,10 @@
-#ifndef BRISBANE_SRC_RT_LOADER_CUDA_H
-#define BRISBANE_SRC_RT_LOADER_CUDA_H
+#ifndef IRIS_SRC_RT_LOADER_CUDA_H
+#define IRIS_SRC_RT_LOADER_CUDA_H
 
 #include "Loader.h"
 #include <iris/cuda/cuda.h>
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 class LoaderCUDA : public Loader {
@@ -46,7 +46,7 @@ public:
 };
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 
-#endif /* BRISBANE_SRC_RT_LOADER_CUDA_H */
+#endif /* IRIS_SRC_RT_LOADER_CUDA_H */
 

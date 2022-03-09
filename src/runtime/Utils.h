@@ -1,9 +1,9 @@
-#ifndef BRISBANE_SRC_RT_UTILS_H
-#define BRISBANE_SRC_RT_UTILS_H
+#ifndef IRIS_SRC_RT_UTILS_H
+#define IRIS_SRC_RT_UTILS_H
 
 #include <stdlib.h>
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 class Utils {
@@ -17,6 +17,6 @@ static void Datetime(char* str);
 };
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 
-#endif /* BRISBANE_SRC_RT_UTILS_H */
+#endif /* IRIS_SRC_RT_UTILS_H */

@@ -1,12 +1,12 @@
-#ifndef BRISBANE_SRC_RT_JSON_H
-#define BRISBANE_SRC_RT_JSON_H
+#ifndef IRIS_SRC_RT_JSON_H
+#define IRIS_SRC_RT_JSON_H
 
 #include <string>
 #include <set>
 
-#define BRISBANE_JSON_MAX_TOK (1024 * 1024)
+#define IRIS_JSON_MAX_TOK (1024 * 1024)
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 class Command;
@@ -54,7 +54,7 @@ private:
 };
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 
 
-#endif /*BRISBANE_SRC_RT_JSON_H */
+#endif /*IRIS_SRC_RT_JSON_H */

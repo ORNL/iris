@@ -9,12 +9,12 @@
 #include "Timer.h"
 #include "Worker.h"
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 Task::Task(Platform* platform, int type, const char* name) {
   type_ = type;
-  perm_ = type == BRISBANE_TASK_PERM;
+  perm_ = type == IRIS_TASK_PERM;
   ncmds_ = 0;
   cmd_kernel_ = NULL;
   cmd_last_ = NULL;
@@ -36,7 +36,7 @@ Task::Task(Platform* platform, int type, const char* name) {
   given_name_ = name != NULL;
   if (name) strcpy(name_, name);
 //  else sprintf(name_, "task%ld", uid());
-  status_ = BRISBANE_NONE;
+  status_ = IRIS_NONE;
 
   pthread_mutex_init(&mutex_executable_, NULL);
   pthread_mutex_init(&mutex_complete_, NULL);
@@ -67,7 +67,7 @@ void Task::set_parent(Task* task) {
 }
 
 void Task::set_brs_policy(int brs_policy) {
-  brs_policy_ = brs_policy == brisbane_default ? platform_->device_default() : brs_policy;
+  brs_policy_ = brs_policy == iris_default ? platform_->device_default() : brs_policy;
   if (!HasSubtasks()) return;
   for (std::vector<Task*>::iterator I = subtasks_.begin(), E = subtasks_.end(); I != E; ++I)
     (*I)->set_brs_policy(brs_policy);
@@ -87,14 +87,14 @@ void Task::set_target_perm(int brs_policy, const char* opt) {
 void Task::AddCommand(Command* cmd) {
   if (ncmds_ == 63) _error("ncmds[%d]", ncmds_);
   cmds_[ncmds_++] = cmd;
-  if (cmd->type() == BRISBANE_CMD_KERNEL) {
+  if (cmd->type() == IRIS_CMD_KERNEL) {
     if (cmd_kernel_) _error("kernel[%s] is already set", cmd->kernel()->name());
     //if (!given_name_) strcpy(name_, cmd->kernel()->name());
     cmd_kernel_ = cmd;
   }
   if (!system_ &&
-     (cmd->type() == BRISBANE_CMD_KERNEL || cmd->type() == BRISBANE_CMD_H2D ||
-      cmd->type() == BRISBANE_CMD_H2DNP  || cmd->type() == BRISBANE_CMD_D2H))
+     (cmd->type() == IRIS_CMD_KERNEL || cmd->type() == IRIS_CMD_H2D ||
+      cmd->type() == IRIS_CMD_H2DNP  || cmd->type() == IRIS_CMD_D2H))
     cmd_last_ = cmd;
 }
 
@@ -105,15 +105,15 @@ void Task::ClearCommands() {
 
 bool Task::Dispatchable() {
   for (int i = 0; i < ndepends_; i++) {
-    if (depends_[i]->status() != BRISBANE_COMPLETE) return false;
+    if (depends_[i]->status() != IRIS_COMPLETE) return false;
   }
   return true;
 }
 
 bool Task::Executable() {
   pthread_mutex_lock(&mutex_executable_);
-  if (status_ == BRISBANE_NONE || (perm_ && status_ == BRISBANE_COMPLETE)) {
-    status_ = BRISBANE_RUNNING;
+  if (status_ == IRIS_NONE || (perm_ && status_ == IRIS_COMPLETE)) {
+    status_ = IRIS_RUNNING;
     pthread_mutex_unlock(&mutex_executable_);
     return true;
   }
@@ -123,7 +123,7 @@ bool Task::Executable() {
 
 void Task::Complete() {
   pthread_mutex_lock(&mutex_complete_);
-  status_ = BRISBANE_COMPLETE;
+  status_ = IRIS_COMPLETE;
   pthread_cond_broadcast(&complete_cond_);
   pthread_mutex_unlock(&mutex_complete_);
   if (parent_) parent_->CompleteSub();
@@ -144,7 +144,7 @@ void Task::CompleteSub() {
 
 void Task::Wait() {
   pthread_mutex_lock(&mutex_complete_);
-  if (status_ != BRISBANE_COMPLETE)
+  if (status_ != IRIS_COMPLETE)
     pthread_cond_wait(&complete_cond_, &mutex_complete_);
   pthread_mutex_unlock(&mutex_complete_);
 }
@@ -178,7 +178,7 @@ void Task::Submit(int brs_policy, const char* opt, int sync) {
   sync_ = sync;
   if (cmd_last_) cmd_last_->set_last();
   user_ = true;
-  status_ = BRISBANE_NONE;
+  status_ = IRIS_NONE;
   Retain();
 }
 
@@ -189,7 +189,7 @@ Task* Task::Create(Platform* platform, int type, const char* name) {
 
 int Task::Ok(){
   if (dev_) return dev_->ok();
-  return BRISBANE_OK;
+  return IRIS_OK;
 }
 
 int Task::ncmds_kernel() {
@@ -211,4 +211,4 @@ int Task::ncmds_memcpy() {
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */

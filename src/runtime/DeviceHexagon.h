@@ -1,10 +1,10 @@
-#ifndef BRISBANE_SRC_RT_DEVICE_HEXAGON_H
-#define BRISBANE_SRC_RT_DEVICE_HEXAGON_H
+#ifndef IRIS_SRC_RT_DEVICE_HEXAGON_H
+#define IRIS_SRC_RT_DEVICE_HEXAGON_H
 
 #include "Device.h"
 #include "LoaderHexagon.h"
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 class DeviceHexagon : public Device {
@@ -36,7 +36,7 @@ private:
 };
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 
-#endif /* BRISBANE_SRC_RT_DEVICE_HEXAGON_H */
+#endif /* IRIS_SRC_RT_DEVICE_HEXAGON_H */
 

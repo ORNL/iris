@@ -1,12 +1,12 @@
-#ifndef BRISBANE_SRC_RT_DEVICE_H
-#define BRISBANE_SRC_RT_DEVICE_H
+#ifndef IRIS_SRC_RT_DEVICE_H
+#define IRIS_SRC_RT_DEVICE_H
 
 #include "Config.h"
 #include <map>
 
-#define BRISBANE_SYNC_EXECUTION
+#define IRIS_SYNC_EXECUTION
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 class Command;
@@ -27,7 +27,7 @@ public:
   void Execute(Task* task);
 
   void ExecuteInit(Command* cmd);
-  void ExecuteKernel(Command* cmd);
+  virtual void ExecuteKernel(Command* cmd);
   void ExecuteMalloc(Command* cmd);
   void ExecuteH2D(Command* cmd);
   void ExecuteH2DNP(Command* cmd);
@@ -42,26 +42,28 @@ public:
   int RegisterCommand(int tag, command_handler handler);
   int RegisterHooks();
 
-  virtual int Compile(char* src) { return BRISBANE_OK; }
+  virtual int Compile(char* src) { return IRIS_OK; }
   virtual int Init() = 0;
-  virtual int BuildProgram(char* path) { return BRISBANE_OK; }
+  virtual int BuildProgram(char* path) { return IRIS_OK; }
   virtual int MemAlloc(void** mem, size_t size) = 0;
   virtual int MemFree(void* mem) = 0;
   virtual int MemH2D(Mem* mem, size_t off, size_t size, void* host) = 0;
   virtual int MemD2H(Mem* mem, size_t off, size_t size, void* host) = 0;
   virtual int KernelGet(void** kernel, const char* name) = 0;
-  virtual int KernelLaunchInit(Kernel* kernel) { return BRISBANE_OK; }
+  virtual int KernelLaunchInit(Kernel* kernel) { return IRIS_OK; }
   virtual int KernelSetArg(Kernel* kernel, int idx, size_t size, void* value) = 0;
   virtual int KernelSetMem(Kernel* kernel, int idx, Mem* mem, size_t off) = 0;
   virtual int KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws) = 0;
   virtual int Synchronize() = 0;
   virtual int AddCallback(Task* task) = 0;
-  virtual int Custom(int tag, char* params) { return BRISBANE_OK; }
-  virtual int RecreateContext() { return BRISBANE_ERR; }
+  virtual int Custom(int tag, char* params) { return IRIS_OK; }
+  virtual int RecreateContext() { return IRIS_ERR; }
   virtual bool SupportJIT() { return true; }
   virtual const char* kernel_src() { return " "; }
   virtual const char* kernel_bin() { return " "; }
 
+  void set_shared_memory_buffers(bool flag=true) { shared_memory_buffers_ = flag; }
+  bool is_shared_memory_buffers() { return shared_memory_buffers_; }
   int platform() { return platform_; }
   int devno() { return devno_; }
   int type() { return type_; }
@@ -96,6 +98,7 @@ protected:
 
   bool busy_;
   bool enable_;
+  bool shared_memory_buffers_;
 
   Worker* worker_;
   Timer* timer_;
@@ -108,6 +111,6 @@ protected:
 };
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 
-#endif /* BRISBANE_SRC_RT_DEVICE_H */
+#endif /* IRIS_SRC_RT_DEVICE_H */

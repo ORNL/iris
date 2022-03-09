@@ -1,7 +1,7 @@
 option(BUILD_SHARED_LIBS "Build shared libs" ON)
 
-include_directories(${BRISBANE_INC_DIR})
-include_directories(${BRISBANE_BIN_DIR}/runtime)
+include_directories(${IRIS_INC_DIR})
+include_directories(${IRIS_BIN_DIR}/runtime)
 
 configure_file(Config.h.in Config.h)
 
@@ -12,7 +12,7 @@ else()
   set(CMAKE_CXX_STANDARD 11)
 endif()
 
-set(BRISBANE_RUNTIME_SOURCES
+set(IRIS_RUNTIME_SOURCES
   CAPI.cpp
   Command.cpp
   Consistency.cpp
@@ -31,6 +31,9 @@ set(BRISBANE_RUNTIME_SOURCES
   Kernel.cpp
   Loader.cpp
   LoaderCUDA.cpp
+  LoaderHost2OpenCL.cpp
+  LoaderHost2HIP.cpp
+  LoaderHost2CUDA.cpp
   LoaderHexagon.cpp
   LoaderHIP.cpp
   LoaderLevelZero.cpp
@@ -70,7 +73,7 @@ set(BRISBANE_RUNTIME_SOURCES
   Utils.cpp
   Worker.cpp)
 
-set(BRISBANE_RUNTIME_HEADERS
+set(IRIS_RUNTIME_HEADERS
   Command.h
   Consistency.h
   Debug.h
@@ -87,6 +90,9 @@ set(BRISBANE_RUNTIME_HEADERS
   JSON.h
   Kernel.h
   Loader.h
+  LoaderHost2OpenCL.h
+  LoaderHost2HIP.h
+  LoaderHost2CUDA.h
   LoaderCUDA.h
   LoaderHexagon.h
   LoaderHIP.h
@@ -128,8 +134,8 @@ set(BRISBANE_RUNTIME_HEADERS
 if(USE_FORTRAN)
   MESSAGE(STATUS "USE_FORTRAN")
   enable_language(Fortran)
-  list(APPEND BRISBANE_RUNTIME_SOURCES FortranAPI-IRIS.f90)
-  install(FILES ${BRISBANE_BIN_DIR}/runtime/iris.mod DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/iris)
+  list(APPEND IRIS_RUNTIME_SOURCES FortranAPI-IRIS.f90)
+  install(FILES ${IRIS_BIN_DIR}/runtime/iris.mod DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/iris)
 endif()
 
 if(USE_PYTHON)
@@ -137,14 +143,14 @@ if(USE_PYTHON)
   install(FILES iris.py DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/iris)
 endif()
 
-add_library(iris ${BRISBANE_RUNTIME_SOURCES})
+add_library(iris ${IRIS_RUNTIME_SOURCES})
 
 target_compile_options(iris PRIVATE -Wall)
 
 install(TARGETS iris DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 install(FILES
-  ${BRISBANE_RUNTIME_HEADERS}
-  ${BRISBANE_BIN_DIR}/runtime/Config.h
+  ${IRIS_RUNTIME_HEADERS}
+  ${IRIS_BIN_DIR}/runtime/Config.h
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/iris/rt)
 

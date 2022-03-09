@@ -11,11 +11,12 @@
 #include "Timer.h"
 #include "Utils.h"
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
-DeviceCUDA::DeviceCUDA(LoaderCUDA* ld, CUdevice cudev, int devno, int platform) : Device(devno, platform) {
+DeviceCUDA::DeviceCUDA(LoaderCUDA* ld, LoaderHost2CUDA *host2cuda_ld, CUdevice cudev, int devno, int platform) : Device(devno, platform) {
   ld_ = ld;
+  host2cuda_ld_ = host2cuda_ld;
   max_arg_idx_ = 0;
   ngarbage_ = 0;
   shared_mem_bytes_ = 0;
@@ -23,8 +24,8 @@ DeviceCUDA::DeviceCUDA(LoaderCUDA* ld, CUdevice cudev, int devno, int platform) 
   strcpy(vendor_, "NVIDIA Corporation");
   err_ = ld_->cuDeviceGetName(name_, sizeof(name_), dev_);
   _cuerror(err_);
-  type_ = brisbane_nvidia;
-  model_ = brisbane_cuda;
+  type_ = iris_nvidia;
+  model_ = iris_cuda;
   err_ = ld_->cuDriverGetVersion(&driver_version_);
   _cuerror(err_);
   sprintf(version_, "NVIDIA CUDA %d", driver_version_);
@@ -51,6 +52,9 @@ DeviceCUDA::DeviceCUDA(LoaderCUDA* ld, CUdevice cudev, int devno, int platform) 
 }
 
 DeviceCUDA::~DeviceCUDA() {
+    if (host2cuda_ld_->iris_host2cuda_finalize){
+        host2cuda_ld_->iris_host2cuda_finalize();
+    }
 }
 
 int DeviceCUDA::Compile(char* src) {
@@ -59,9 +63,9 @@ int DeviceCUDA::Compile(char* src) {
   sprintf(cmd, "nvcc -ptx %s -o %s", src, kernel_path_);
   if (system(cmd) != EXIT_SUCCESS) {
     _error("cmd[%s]", cmd);
-    return BRISBANE_ERR;
+    return IRIS_ERR;
   }
-  return BRISBANE_OK;
+  return IRIS_OK;
 }
 
 int DeviceCUDA::Init() {
@@ -71,13 +75,16 @@ int DeviceCUDA::Init() {
     err_ = ld_->cuStreamCreate(streams_ + i, CU_STREAM_DEFAULT);
     _cuerror(err_);
   }
+  if (host2cuda_ld_->iris_host2cuda_init != NULL) {
+    host2cuda_ld_->iris_host2cuda_init();
+  }
 
   char* path = kernel_path_;
   char* src = NULL;
   size_t srclen = 0;
-  if (Utils::ReadFile(path, &src, &srclen) == BRISBANE_ERR) {
-    _error("dev[%d][%s] has no kernel file [%s]", devno_, name_, path);
-    return BRISBANE_OK;
+  if (Utils::ReadFile(path, &src, &srclen) == IRIS_ERR) {
+    _trace("dev[%d][%s] has no kernel file [%s]", devno_, name_, path);
+    return IRIS_OK;
   }
   _trace("dev[%d][%s] kernels[%s]", devno_, name_, path);
   err_ = ld_->cuModuleLoad(&module_, path);
@@ -85,30 +92,30 @@ int DeviceCUDA::Init() {
     _cuerror(err_);
     _error("srclen[%zu] src\n%s", srclen, src);
     if (src) free(src);
-    return BRISBANE_ERR;
+    return IRIS_ERR;
   }
   if (src) free(src);
-  return BRISBANE_OK;
+  return IRIS_OK;
 }
 
 int DeviceCUDA::MemAlloc(void** mem, size_t size) {
   CUdeviceptr* cumem = (CUdeviceptr*) mem;
   err_ = ld_->cuMemAlloc(cumem, size);
   _cuerror(err_);
-  if (err_ != CUDA_SUCCESS) return BRISBANE_ERR;
-  return BRISBANE_OK;
+  if (err_ != CUDA_SUCCESS) return IRIS_ERR;
+  return IRIS_OK;
 }
 
 int DeviceCUDA::MemFree(void* mem) {
   CUdeviceptr cumem = (CUdeviceptr) mem;
-  if (ngarbage_ >= BRISBANE_MAX_GABAGES) _error("ngarbage[%d]", ngarbage_);
+  if (ngarbage_ >= IRIS_MAX_GABAGES) _error("ngarbage[%d]", ngarbage_);
   else garbage_[ngarbage_++] = cumem;
   /*
   _trace("dptr[%p]", cumem);
   err_ = ld_->cuMemFree(cumem);
   _cuerror(err_);
   */
-  return BRISBANE_OK;
+  return IRIS_OK;
 }
 
 void DeviceCUDA::ClearGarbage() {
@@ -124,34 +131,34 @@ void DeviceCUDA::ClearGarbage() {
 int DeviceCUDA::MemH2D(Mem* mem, size_t off, size_t size, void* host) {
   CUdeviceptr cumem = (CUdeviceptr) mem->arch(this);
   _trace("dev[%d][%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", devno_, name_, mem->uid(), cumem, off, size, host, q_);
-#ifdef BRISBANE_SYNC_EXECUTION
+#ifdef IRIS_SYNC_EXECUTION
   err_ = ld_->cuMemcpyHtoD(cumem + off, host, size);
 #else
   err_ = ld_->cuMemcpyHtoDAsync(cumem + off, host, size, streams_[q_]);
 #endif
   _cuerror(err_);
-  if (err_ != CUDA_SUCCESS) return BRISBANE_ERR;
-  return BRISBANE_OK;
+  if (err_ != CUDA_SUCCESS) return IRIS_ERR;
+  return IRIS_OK;
 }
 
 int DeviceCUDA::MemD2H(Mem* mem, size_t off, size_t size, void* host) {
   CUdeviceptr cumem = (CUdeviceptr) mem->arch(this);
   _trace("dev[%d][%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", devno_, name_, mem->uid(), cumem, off, size, host, q_);
-#ifdef BRISBANE_SYNC_EXECUTION
+#ifdef IRIS_SYNC_EXECUTION
   err_ = ld_->cuMemcpyDtoH(host, cumem + off, size);
 #else
   err_ = ld_->cuMemcpyDtoHAsync(host, cumem + off, size, streams_[q_]);
 #endif
   _cuerror(err_);
-  if (err_ != CUDA_SUCCESS) return BRISBANE_ERR;
-  return BRISBANE_OK;
+  if (err_ != CUDA_SUCCESS) return IRIS_ERR;
+  return IRIS_OK;
 }
 
 int DeviceCUDA::KernelGet(void** kernel, const char* name) {
   CUfunction* cukernel = (CUfunction*) kernel;
   err_ = ld_->cuModuleGetFunction(cukernel, module_, name);
   _cuerror(err_);
-  if (err_ != CUDA_SUCCESS) return BRISBANE_ERR;
+  if (err_ != CUDA_SUCCESS) return IRIS_ERR;
 
   char name_off[256];
   memset(name_off, 0, sizeof(name_off));
@@ -162,7 +169,7 @@ int DeviceCUDA::KernelGet(void** kernel, const char* name) {
     kernels_offs_.insert(std::pair<CUfunction, CUfunction>(*cukernel, cukernel_off));
   }
 
-  return BRISBANE_OK;
+  return IRIS_OK;
 }
 
 int DeviceCUDA::KernelSetArg(Kernel* kernel, int idx, size_t size, void* value) {
@@ -173,7 +180,9 @@ int DeviceCUDA::KernelSetArg(Kernel* kernel, int idx, size_t size, void* value) 
     shared_mem_bytes_ += size;
   }
   if (max_arg_idx_ < idx) max_arg_idx_ = idx;
-  return BRISBANE_OK;
+  if (host2cuda_ld_->iris_host2cuda_setarg)
+      host2cuda_ld_->iris_host2cuda_setarg(idx, size, value);
+  return IRIS_OK;
 }
 
 int DeviceCUDA::KernelSetMem(Kernel* kernel, int idx, Mem* mem, size_t off) {
@@ -181,12 +190,24 @@ int DeviceCUDA::KernelSetMem(Kernel* kernel, int idx, Mem* mem, size_t off) {
   if (off) {
     *(mem->archs_off() + devno_) = (void*) ((CUdeviceptr) mem->arch(this) + off);
     params_[idx] = mem->archs_off() + devno_;
-  } else params_[idx] = mem->archs() + devno_;
+  } else params_[idx] = *(mem->archs() + devno_);
   if (max_arg_idx_ < idx) max_arg_idx_ = idx;
-  return BRISBANE_OK;
+  if (host2cuda_ld_->iris_host2cuda_setmem) {
+      host2cuda_ld_->iris_host2cuda_setmem(idx, params_[idx]);
+  }
+  return IRIS_OK;
+}
+
+int DeviceCUDA::KernelLaunchInit(Kernel* kernel) {
+    if (host2cuda_ld_->iris_host2cuda_kernel)
+        return host2cuda_ld_->iris_host2cuda_kernel(kernel->name());
+    return IRIS_OK;
 }
 
 int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws) {
+  if (host2cuda_ld_->iris_host2cuda_launch) {
+      return host2cuda_ld_->iris_host2cuda_launch(dim, off[0], gws[0]);
+  }
   CUfunction cukernel = (CUfunction) kernel->arch(this);
   int block[3] = { lws ? (int) lws[0] : 1, lws ? (int) lws[1] : 1, lws ? (int) lws[2] : 1 };
   if (!lws) {
@@ -210,42 +231,42 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
     }
   }
   _trace("dev[%d] kernel[%s] dim[%d] grid[%d,%d,%d] block[%d,%d,%d] blockoff[%lu,%lu,%lu] max_arg_idx[%d] shared_mem_bytes[%u] q[%d]", devno_, kernel->name(), dim, grid[0], grid[1], grid[2], block[0], block[1], block[2], blockOff_x, blockOff_y, blockOff_z, max_arg_idx_, shared_mem_bytes_, q_);
-#ifdef BRISBANE_SYNC_EXECUTION
+#ifdef IRIS_SYNC_EXECUTION
   err_ = ld_->cuLaunchKernel(cukernel, grid[0], grid[1], grid[2], block[0], block[1], block[2], shared_mem_bytes_, 0, params_, NULL);
 //  err_ = ld_->cuStreamSynchronize(0);
 #else
   err_ = ld_->cuLaunchKernel(cukernel, grid[0], grid[1], grid[2], block[0], block[1], block[2], shared_mem_bytes_, streams_[q_], params_, NULL);
 #endif
   _cuerror(err_);
-  if (err_ != CUDA_SUCCESS) return BRISBANE_ERR;
-  for (int i = 0; i < BRISBANE_MAX_KERNEL_NARGS; i++) params_[i] = NULL;
+  if (err_ != CUDA_SUCCESS) return IRIS_ERR;
+  for (int i = 0; i < IRIS_MAX_KERNEL_NARGS; i++) params_[i] = NULL;
   max_arg_idx_ = 0;
   shared_mem_bytes_ = 0;
-  return BRISBANE_OK;
+  return IRIS_OK;
 }
 
 int DeviceCUDA::Synchronize() {
   err_ = ld_->cuCtxSynchronize();
   _cuerror(err_);
-  if (err_ != CUDA_SUCCESS) return BRISBANE_ERR;
-  return BRISBANE_OK;
+  if (err_ != CUDA_SUCCESS) return IRIS_ERR;
+  return IRIS_OK;
 }
 
 int DeviceCUDA::AddCallback(Task* task) {
   err_ = ld_->cuStreamAddCallback(streams_[q_], DeviceCUDA::Callback, task, 0);
   _cuerror(err_);
-  if (err_ != CUDA_SUCCESS) return BRISBANE_ERR;
-  return BRISBANE_OK;
+  if (err_ != CUDA_SUCCESS) return IRIS_ERR;
+  return IRIS_OK;
 }
 
 int DeviceCUDA::Custom(int tag, char* params) {
   if (!cmd_handlers_.count(tag)) {
     _error("unknown tag[0x%x]", tag);
-    return BRISBANE_ERR;
+    return IRIS_ERR;
   }
   command_handler handler = cmd_handlers_[tag];
   handler(params, this);
-  return BRISBANE_OK;
+  return IRIS_OK;
 }
 
 void DeviceCUDA::Callback(CUstream stream, CUresult status, void* data) {
@@ -258,5 +279,5 @@ void DeviceCUDA::TaskPre(Task* task) {
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 

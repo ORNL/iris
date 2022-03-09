@@ -1,4 +1,4 @@
-#include <iris/brisbane.h>
+#include <iris/iris.h>
 #include "Utils.h"
 #include "Config.h"
 #include "Debug.h"
@@ -10,7 +10,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 void Utils::Logo(bool color) {
@@ -36,7 +36,7 @@ int Utils::ReadFile(char* path, char** string, size_t* len) {
   int fd = open((const char*) path, O_RDONLY);
   if (fd == -1) {
     *len = 0UL;
-    return BRISBANE_ERR;
+    return IRIS_ERR;
   }
   off_t s = lseek(fd, 0, SEEK_END);
   *string = (char*) malloc(s);
@@ -45,20 +45,20 @@ int Utils::ReadFile(char* path, char** string, size_t* len) {
   ssize_t r = read(fd, *string, s);
   if (r != s) {
     _error("read[%zd] vs [%lu]", r, s);
-    return BRISBANE_ERR;
+    return IRIS_ERR;
   }
   close(fd);
-  return BRISBANE_OK;
+  return IRIS_OK;
 }
 
 int Utils::Mkdir(char* path) {
   struct stat st;
   if (stat(path, &st) == -1) {
     if (mkdir(path, 0700) == -1) {
-      return BRISBANE_ERR;
+      return IRIS_ERR;
     }
   }
-  return BRISBANE_OK;
+  return IRIS_OK;
 }
 
 bool Utils::Exist(char* path) {
@@ -79,4 +79,4 @@ void Utils::Datetime(char* str) {
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */

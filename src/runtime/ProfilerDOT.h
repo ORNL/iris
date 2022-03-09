@@ -1,10 +1,10 @@
-#ifndef BRISBANE_SRC_RT_PROFILER_DOT_H
-#define BRISBANE_SRC_RT_PROFILER_DOT_H
+#ifndef IRIS_SRC_RT_PROFILER_DOT_H
+#define IRIS_SRC_RT_PROFILER_DOT_H
 
 #include "Profiler.h"
 #include <set>
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 class ProfilerDOT : public Profiler {
@@ -25,8 +25,8 @@ private:
 };
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 
 
-#endif /*BRISBANE_SRC_RT_PROFILER_DOT_H */
+#endif /*IRIS_SRC_RT_PROFILER_DOT_H */
 

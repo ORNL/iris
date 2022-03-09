@@ -1,17 +1,17 @@
-#ifndef BRISBANE_SRC_RT_TIMER_H
-#define BRISBANE_SRC_RT_TIMER_H
+#ifndef IRIS_SRC_RT_TIMER_H
+#define IRIS_SRC_RT_TIMER_H
 
-#define BRISBANE_TIMER_MAX        128
-#define BRISBANE_TIMER_APP        1
-#define BRISBANE_TIMER_PLATFORM   2
-#define BRISBANE_TIMER_INIT       3
-#define BRISBANE_TIMER_KERNEL     4
-#define BRISBANE_TIMER_H2D        5
-#define BRISBANE_TIMER_D2H        6
+#define IRIS_TIMER_MAX        128
+#define IRIS_TIMER_APP        1
+#define IRIS_TIMER_PLATFORM   2
+#define IRIS_TIMER_INIT       3
+#define IRIS_TIMER_KERNEL     4
+#define IRIS_TIMER_H2D        5
+#define IRIS_TIMER_D2H        6
 
 #include <stddef.h>
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 class Timer {
@@ -29,15 +29,15 @@ public:
   size_t Inc(int i, size_t s);
 
 private:
-  double start_[BRISBANE_TIMER_MAX];
-  double total_[BRISBANE_TIMER_MAX];
-  size_t total_ull_[BRISBANE_TIMER_MAX];
+  double start_[IRIS_TIMER_MAX];
+  double total_[IRIS_TIMER_MAX];
+  size_t total_ull_[IRIS_TIMER_MAX];
 
   double boot_;
 };
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 
-#endif /* BRISBANE_SRC_RT_TIMER_H */
+#endif /* IRIS_SRC_RT_TIMER_H */
 

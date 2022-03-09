@@ -1,9 +1,9 @@
-#ifndef BRISBANE_SRC_RT_HUB_CLIENT_H
-#define BRISBANE_SRC_RT_HUB_CLIENT_H
+#ifndef IRIS_SRC_RT_HUB_CLIENT_H
+#define IRIS_SRC_RT_HUB_CLIENT_H
 
 #include <sys/msg.h>
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 class Message;
@@ -47,7 +47,7 @@ private:
 };
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 
-#endif /* BRISBANE_SRC_RT_HUB_CLIENT_H */
+#endif /* IRIS_SRC_RT_HUB_CLIENT_H */
 

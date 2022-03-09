@@ -2,7 +2,7 @@
 #include "Debug.h"
 #include "Platform.h"
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 PolicyDefault::PolicyDefault(Scheduler* scheduler) {
@@ -18,4 +18,4 @@ void PolicyDefault::GetDevices(Task* task, Device** devs, int* ndevs) {
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */

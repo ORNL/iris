@@ -1,7 +1,7 @@
 #include "LoaderOpenCL.h"
 #include "Debug.h"
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 LoaderOpenCL::LoaderOpenCL() {
@@ -33,9 +33,9 @@ int LoaderOpenCL::LoadFunctions() {
   LOADFUNC(clEnqueueNDRangeKernel);
   LOADFUNC(clCreateCommandQueue);
   LOADFUNC(clSetEventCallback);
-  return BRISBANE_OK;
+  return IRIS_OK;
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 

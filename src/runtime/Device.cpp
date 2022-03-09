@@ -10,7 +10,7 @@
 #include "Timer.h"
 #include "Utils.h"
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 Device::Device(int devno, int platform) {
@@ -18,6 +18,7 @@ Device::Device(int devno, int platform) {
   platform_ = platform;
   busy_ = false;
   enable_ = false;
+  shared_memory_buffers_ = false;
   nqueues_ = 32;
   q_ = 0;
   memset(vendor_, 0, sizeof(vendor_));
@@ -43,20 +44,20 @@ void Device::Execute(Task* task) {
     Command* cmd = task->cmd(i);
     if (hook_command_pre_) hook_command_pre_(cmd);
     switch (cmd->type()) {
-      case BRISBANE_CMD_INIT:         ExecuteInit(cmd);       break;
-      case BRISBANE_CMD_KERNEL:       ExecuteKernel(cmd);     break;
-      case BRISBANE_CMD_MALLOC:       ExecuteMalloc(cmd);     break;
-      case BRISBANE_CMD_H2D:          ExecuteH2D(cmd);        break;
-      case BRISBANE_CMD_H2DNP:        ExecuteH2DNP(cmd);      break;
-      case BRISBANE_CMD_D2H:          ExecuteD2H(cmd);        break;
-      case BRISBANE_CMD_MAP:          ExecuteMap(cmd);        break;
-      case BRISBANE_CMD_RELEASE_MEM:  ExecuteReleaseMem(cmd); break;
-      case BRISBANE_CMD_HOST:         ExecuteHost(cmd);       break;
-      case BRISBANE_CMD_CUSTOM:       ExecuteCustom(cmd);     break;
+      case IRIS_CMD_INIT:         ExecuteInit(cmd);       break;
+      case IRIS_CMD_KERNEL:       ExecuteKernel(cmd);     break;
+      case IRIS_CMD_MALLOC:       ExecuteMalloc(cmd);     break;
+      case IRIS_CMD_H2D:          ExecuteH2D(cmd);        break;
+      case IRIS_CMD_H2DNP:        ExecuteH2DNP(cmd);      break;
+      case IRIS_CMD_D2H:          ExecuteD2H(cmd);        break;
+      case IRIS_CMD_MAP:          ExecuteMap(cmd);        break;
+      case IRIS_CMD_RELEASE_MEM:  ExecuteReleaseMem(cmd); break;
+      case IRIS_CMD_HOST:         ExecuteHost(cmd);       break;
+      case IRIS_CMD_CUSTOM:       ExecuteCustom(cmd);     break;
       default: _error("cmd type[0x%x]", cmd->type());
     }
     if (hook_command_post_) hook_command_post_(cmd);
-#ifndef BRISBANE_SYNC_EXECUTION
+#ifndef IRIS_SYNC_EXECUTION
     if (cmd->last()) AddCallback(task);
 #endif
   }
@@ -64,14 +65,14 @@ void Device::Execute(Task* task) {
   if (hook_task_post_) hook_task_post_(task);
 //  if (++q_ >= nqueues_) q_ = 0;
   if (!task->system()) _trace("task[%lu] complete dev[%d][%s] time[%lf]", task->uid(), devno(), name(), task->time());
-#ifdef BRISBANE_SYNC_EXECUTION
+#ifdef IRIS_SYNC_EXECUTION
   task->Complete();
 #endif
   busy_ = false;
 }
 
 void Device::ExecuteInit(Command* cmd) {
-  timer_->Start(BRISBANE_TIMER_INIT);
+  timer_->Start(IRIS_TIMER_INIT);
   if (SupportJIT()) {
     char* tmpdir = NULL;
     char* src = NULL;
@@ -96,17 +97,17 @@ void Device::ExecuteInit(Command* cmd) {
         errid_ = Compile(src);
       } else strncpy(kernel_path_, bin, strlen(bin));
     }
-    if (errid_ != BRISBANE_OK) _error("iret[%d]", errid_);
+    if (errid_ != IRIS_OK) _error("iret[%d]", errid_);
   }
   errid_ = Init();
-  if (errid_ != BRISBANE_OK) _error("iret[%d]", errid_);
-  double time = timer_->Stop(BRISBANE_TIMER_INIT);
+  if (errid_ != IRIS_OK) _error("iret[%d]", errid_);
+  double time = timer_->Stop(IRIS_TIMER_INIT);
   cmd->SetTime(time);
   enable_ = true;
 }
 
 void Device::ExecuteKernel(Command* cmd) {
-  timer_->Start(BRISBANE_TIMER_KERNEL);
+  timer_->Start(IRIS_TIMER_KERNEL);
   Kernel* kernel = ExecuteSelectorKernel(cmd);
   int dim = cmd->dim();
   size_t* off = cmd->off();
@@ -114,7 +115,7 @@ void Device::ExecuteKernel(Command* cmd) {
   size_t gws0 = gws[0];
   size_t* lws = cmd->lws();
   bool reduction = false;
-  brisbane_poly_mem* polymems = cmd->polymems();
+  iris_poly_mem* polymems = cmd->polymems();
   int npolymems = cmd->npolymems();
   int max_idx = 0;
   int mem_idx = 0;
@@ -125,13 +126,13 @@ void Device::ExecuteKernel(Command* cmd) {
     KernelArg* arg = args + idx;
     Mem* mem = arg->mem;
     if (mem) {
-      if (arg->mode == brisbane_w || arg->mode == brisbane_rw) {
+      if (arg->mode == iris_w || arg->mode == iris_rw) {
         if (npolymems) {
-          brisbane_poly_mem* pm = polymems + mem_idx;
+          iris_poly_mem* pm = polymems + mem_idx;
           mem->SetOwner(pm->typesz * pm->w0, pm->typesz * (pm->w1 - pm->w0 + 1), this);
         } else mem->SetOwner(arg->mem_off, arg->mem_size, this);
       }
-      if (mem->mode() & brisbane_reduction) {
+      if (mem->mode() & iris_reduction) {
         lws = (size_t*) alloca(3 * sizeof(size_t));
         lws[0] = 1;
         lws[1] = 1;
@@ -157,7 +158,7 @@ void Device::ExecuteKernel(Command* cmd) {
   }
 #endif
   errid_ = KernelLaunch(kernel, dim, off, gws, lws[0] > 0 ? lws : NULL);
-  double time = timer_->Stop(BRISBANE_TIMER_KERNEL);
+  double time = timer_->Stop(IRIS_TIMER_KERNEL);
   cmd->SetTime(time);
   cmd->kernel()->history()->AddKernel(cmd, this, time);
 }
@@ -176,10 +177,10 @@ void Device::ExecuteH2D(Command* cmd) {
   void* host = cmd->host();
   if (exclusive) mem->SetOwner(off, size, this);
   else mem->AddOwner(off, size, this);
-  timer_->Start(BRISBANE_TIMER_H2D);
+  timer_->Start(IRIS_TIMER_H2D);
   errid_ = MemH2D(mem, off, size, host);
-  if (errid_ != BRISBANE_OK) _error("iret[%d]", errid_);
-  double time = timer_->Stop(BRISBANE_TIMER_H2D);
+  if (errid_ != IRIS_OK) _error("iret[%d]", errid_);
+  double time = timer_->Stop(IRIS_TIMER_H2D);
   cmd->SetTime(time);
   Command* cmd_kernel = cmd->task()->cmd_kernel();
   if (cmd_kernel) cmd_kernel->kernel()->history()->AddH2D(cmd, this, time);
@@ -201,14 +202,14 @@ void Device::ExecuteD2H(Command* cmd) {
   void* host = cmd->host();
   int mode = mem->mode();
   int expansion = mem->expansion();
-  timer_->Start(BRISBANE_TIMER_D2H);
-  errid_ = BRISBANE_OK;
-  if (mode & brisbane_reduction) {
+  timer_->Start(IRIS_TIMER_D2H);
+  errid_ = IRIS_OK;
+  if (mode & iris_reduction) {
     errid_ = MemD2H(mem, off, mem->size() * expansion, mem->host_inter());
     Reduction::GetInstance()->Reduce(mem, host, size);
   } else errid_ = MemD2H(mem, off, size, host);
-  if (errid_ != BRISBANE_OK) _error("iret[%d]", errid_);
-  double time = timer_->Stop(BRISBANE_TIMER_D2H);
+  if (errid_ != IRIS_OK) _error("iret[%d]", errid_);
+  double time = timer_->Stop(IRIS_TIMER_D2H);
   cmd->SetTime(time);
   Command* cmd_kernel = cmd->task()->cmd_kernel();
   if (cmd_kernel) cmd_kernel->kernel()->history()->AddD2H(cmd, this, time);
@@ -226,7 +227,7 @@ void Device::ExecuteReleaseMem(Command* cmd) {
 }
 
 void Device::ExecuteHost(Command* cmd) {
-  brisbane_host_task func = cmd->func();
+  iris_host_task func = cmd->func();
   void* params = cmd->func_params();
   const int dev = devno_;
   _trace("dev[%d][%s] func[%p] params[%p]", devno_, name_, func, params);
@@ -242,7 +243,7 @@ void Device::ExecuteCustom(Command* cmd) {
 Kernel* Device::ExecuteSelectorKernel(Command* cmd) {
   Kernel* kernel = cmd->kernel();
   if (!cmd->selector_kernel()) return kernel;
-  brisbane_selector_kernel func = cmd->selector_kernel();
+  iris_selector_kernel func = cmd->selector_kernel();
   void* params = cmd->selector_kernel_params();
   char kernel_name[256];
   memset(kernel_name, 0, 256);
@@ -253,7 +254,7 @@ Kernel* Device::ExecuteSelectorKernel(Command* cmd) {
 
 int Device::RegisterCommand(int tag, command_handler handler) {
   cmd_handlers_[tag] = handler;
-  return BRISBANE_OK;
+  return IRIS_OK;
 }
 
 int Device::RegisterHooks() {
@@ -261,9 +262,9 @@ int Device::RegisterHooks() {
   hook_task_post_ = Platform::GetPlatform()->hook_task_post();
   hook_command_pre_ = Platform::GetPlatform()->hook_command_pre();
   hook_command_post_ = Platform::GetPlatform()->hook_command_post();
-  return BRISBANE_OK;
+  return IRIS_OK;
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 

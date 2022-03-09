@@ -9,7 +9,7 @@
 
 #define PROFILER_DOT_FOOTER "}\n"
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 ProfilerDOT::ProfilerDOT(Platform* platform) : Profiler(platform) {
@@ -24,7 +24,7 @@ ProfilerDOT::~ProfilerDOT() {
 
 int ProfilerDOT::Main() {
   Write(PROFILER_DOT_HEADER);
-  return BRISBANE_OK;
+  return IRIS_OK;
 }
 
 int ProfilerDOT::Exit() {
@@ -38,7 +38,7 @@ int ProfilerDOT::Exit() {
   sprintf(s, "end[shape=Msquare, label=\"exit\\n%lf\"]\n", platform_->time_app());
   Write(s);
   Write(PROFILER_DOT_FOOTER);
-  return BRISBANE_OK;
+  return IRIS_OK;
 }
 
 int ProfilerDOT::CompleteTask(Task* task) {
@@ -51,7 +51,7 @@ int ProfilerDOT::CompleteTask(Task* task) {
   tasks_exit_.insert(tid);
   char s[64];
   sprintf(s, "task%lu[style=filled, fillcolor=%s, label=\"%s (%s)\\n%lf\"]\n", tid,
-      type & brisbane_cpu ? "cyan" : type & brisbane_gpu ? "green" : "purple", task->name(), policy_str(policy), time);
+      type & iris_cpu ? "cyan" : type & iris_gpu ? "green" : "purple", task->name(), policy_str(policy), time);
   Write(s);
 
   int ndepends = task->ndepends();
@@ -67,7 +67,7 @@ int ProfilerDOT::CompleteTask(Task* task) {
       Write(s);
     }
   }
-  return BRISBANE_OK;
+  return IRIS_OK;
 }
 
 const char* ProfilerDOT::FileExtension() {
@@ -75,5 +75,5 @@ const char* ProfilerDOT::FileExtension() {
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 

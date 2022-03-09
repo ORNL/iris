@@ -7,7 +7,7 @@
 #include "Timer.h"
 #include "Utils.h"
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 DeviceLevelZero::DeviceLevelZero(LoaderLevelZero* ld, ze_device_handle_t zedev, ze_context_handle_t zectx, ze_driver_handle_t zedriver, int devno, int platform) : Device(devno, platform) {
@@ -23,7 +23,7 @@ DeviceLevelZero::DeviceLevelZero(LoaderLevelZero* ld, ze_device_handle_t zedev, 
 
   strcpy(name_, props.name);
 
-  type_ = brisbane_gpu_intel;
+  type_ = iris_gpu_intel;
   align_ = 0x1000;
 
   _info("device[%d] platform[%d] device[%s] type[0x%x:%d] align[0x%x]", devno_, platform_, name_, type_, type_, align_);
@@ -38,14 +38,14 @@ int DeviceLevelZero::Compile(char* src) {
   sprintf(cmd, "clang -cc1 -finclude-default-header -triple spir %s -flto -emit-llvm-bc -o %s.bc", src, kernel_path_);
   if (system(cmd) != EXIT_SUCCESS) {
     _error("cmd[%s]", cmd);
-    return BRISBANE_ERR;
+    return IRIS_ERR;
   }
   sprintf(cmd, "llvm-spirv %s.bc -o %s", kernel_path_, kernel_path_);
   if (system(cmd) != EXIT_SUCCESS) {
     _error("cmd[%s]", cmd);
-    return BRISBANE_ERR;
+    return IRIS_ERR;
   }
-  return BRISBANE_OK;
+  return IRIS_OK;
 }
 
 int DeviceLevelZero::Init() {
@@ -69,9 +69,9 @@ int DeviceLevelZero::Init() {
 //  Platform::GetPlatform()->EnvironmentGet("KERNEL_BIN_SPV", &path, NULL);
   uint8_t* src = nullptr;
   size_t srclen = 0;
-  if (Utils::ReadFile(path, (char**) &src, &srclen) == BRISBANE_ERR) {
+  if (Utils::ReadFile(path, (char**) &src, &srclen) == IRIS_ERR) {
     _error("dev[%d][%s] has no kernel file [%s]", devno_, name_, path);
-    return BRISBANE_OK;
+    return IRIS_OK;
   }
 
   ze_module_desc_t mod_desc = {}; 
@@ -87,7 +87,7 @@ int DeviceLevelZero::Init() {
 
   if (src) free(src);
 
-  return BRISBANE_OK;
+  return IRIS_OK;
 }
 
 int DeviceLevelZero::MemAlloc(void** mem, size_t size) {
@@ -96,14 +96,14 @@ int DeviceLevelZero::MemAlloc(void** mem, size_t size) {
   desc.stype = ZE_STRUCTURE_TYPE_DEVICE_MEM_ALLOC_DESC;
   err_ = ld_->zeMemAllocDevice(zectx_, &desc, size, align_, zedev_, dptr);
   _zeerror(err_);
-  return BRISBANE_OK;
+  return IRIS_OK;
 }
 
 int DeviceLevelZero::MemFree(void* mem) {
   void* dptr = mem;
   err_ = ld_->zeMemFree(zectx_, dptr);
   _zeerror(err_);
-  return BRISBANE_OK;
+  return IRIS_OK;
 }
 
 int DeviceLevelZero::MemH2D(Mem* mem, size_t off, size_t size, void* host) {
@@ -136,7 +136,7 @@ int DeviceLevelZero::MemH2D(Mem* mem, size_t off, size_t size, void* host) {
   err_ = ld_->zeCommandListReset(zecml_);
   _zeerror(err_);
 
-  return BRISBANE_OK;
+  return IRIS_OK;
 }
 
 int DeviceLevelZero::MemD2H(Mem* mem, size_t off, size_t size, void* host) {
@@ -161,7 +161,7 @@ int DeviceLevelZero::MemD2H(Mem* mem, size_t off, size_t size, void* host) {
   err_ = ld_->zeCommandListReset(zecml_);
   _zeerror(err_);
 
-  return BRISBANE_OK;
+  return IRIS_OK;
 }
 
 int DeviceLevelZero::KernelGet(void** kernel, const char* name) {
@@ -171,14 +171,14 @@ int DeviceLevelZero::KernelGet(void** kernel, const char* name) {
   kernel_desc.pKernelName = name;
   err_ = ld_->zeKernelCreate(zemod_, &kernel_desc, zekernel);
   _zeerror(err_);
-  return BRISBANE_OK;
+  return IRIS_OK;
 }
 
 int DeviceLevelZero::KernelSetArg(Kernel* kernel, int idx, size_t size, void* value) {
   ze_kernel_handle_t zekernel = (ze_kernel_handle_t) kernel->arch(this);
   err_ = ld_->zeKernelSetArgumentValue(zekernel, idx, size, value);
   _zeerror(err_);
-  return BRISBANE_OK;
+  return IRIS_OK;
 }
 
 int DeviceLevelZero::KernelSetMem(Kernel* kernel, int idx, Mem* mem, size_t off) {
@@ -186,7 +186,7 @@ int DeviceLevelZero::KernelSetMem(Kernel* kernel, int idx, Mem* mem, size_t off)
   void* dptr = (void*) ((char*) mem->arch(this) + off);
   err_ = ld_->zeKernelSetArgumentValue(zekernel, idx, sizeof(dptr), &dptr);
   _zeerror(err_);
-  return BRISBANE_OK;
+  return IRIS_OK;
 }
 
 int DeviceLevelZero::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws) {
@@ -214,17 +214,17 @@ int DeviceLevelZero::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* 
   err_ = ld_->zeCommandListReset(zecml_);
   _zeerror(err_);
   
-  return BRISBANE_OK;
+  return IRIS_OK;
 }
 
 int DeviceLevelZero::Synchronize() {
-  return BRISBANE_OK;
+  return IRIS_OK;
 }
 
 int DeviceLevelZero::AddCallback(Task* task) {
-  return BRISBANE_OK;
+  return IRIS_OK;
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 

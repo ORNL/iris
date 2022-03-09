@@ -1,11 +1,11 @@
-#ifndef BRISBANE_SRC_RT_HISTORY_H
-#define BRISBANE_SRC_RT_HISTORY_H
+#ifndef IRIS_SRC_RT_HISTORY_H
+#define IRIS_SRC_RT_HISTORY_H
 
 #include "Config.h"
 #include <map>
 #include <string>
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 class Command;
@@ -41,20 +41,20 @@ private:
   Platform* platform_;
   int ndevs_;
 
-  double t_kernel_[BRISBANE_MAX_NDEVS];
-  double t_h2d_[BRISBANE_MAX_NDEVS];
-  double t_d2h_[BRISBANE_MAX_NDEVS];
+  double t_kernel_[IRIS_MAX_NDEVS];
+  double t_h2d_[IRIS_MAX_NDEVS];
+  double t_d2h_[IRIS_MAX_NDEVS];
 
-  double ta_kernel_[BRISBANE_MAX_NDEVS];
-  double ta_h2d_[BRISBANE_MAX_NDEVS];
-  double ta_d2h_[BRISBANE_MAX_NDEVS];
+  double ta_kernel_[IRIS_MAX_NDEVS];
+  double ta_h2d_[IRIS_MAX_NDEVS];
+  double ta_d2h_[IRIS_MAX_NDEVS];
 
-  size_t c_kernel_[BRISBANE_MAX_NDEVS];
-  size_t c_h2d_[BRISBANE_MAX_NDEVS];
-  size_t c_d2h_[BRISBANE_MAX_NDEVS];
+  size_t c_kernel_[IRIS_MAX_NDEVS];
+  size_t c_h2d_[IRIS_MAX_NDEVS];
+  size_t c_d2h_[IRIS_MAX_NDEVS];
 };
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 
-#endif /* BRISBANE_SRC_RT_HISTORY_H */
+#endif /* IRIS_SRC_RT_HISTORY_H */

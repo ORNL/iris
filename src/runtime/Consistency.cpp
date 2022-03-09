@@ -7,7 +7,7 @@
 #include "Scheduler.h"
 #include "Task.h"
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 Consistency::Consistency(Scheduler* scheduler) {
@@ -22,8 +22,8 @@ void Consistency::Resolve(Task* task) {
   for (int i = 0; i < task->ncmds(); i++) {
     Command* cmd = task->cmd(i);
     switch (cmd->type()) {
-      case BRISBANE_CMD_KERNEL:       ResolveKernel(task, cmd);     break;
-      case BRISBANE_CMD_D2H:          ResolveD2H(task, cmd);        break;
+      case IRIS_CMD_KERNEL:       ResolveKernel(task, cmd);     break;
+      case IRIS_CMD_D2H:          ResolveD2H(task, cmd);        break;
     }
   }
 }
@@ -31,7 +31,7 @@ void Consistency::Resolve(Task* task) {
 void Consistency::ResolveKernel(Task* task, Command* cmd) {
 //  if (task->parent()) return;
   Device* dev = task->dev();
-  brisbane_poly_mem* polymems = cmd->polymems();
+  iris_poly_mem* polymems = cmd->polymems();
   int npolymems = cmd->npolymems();
   KernelArg* args = cmd->kernel_args();
   int mem_idx = 0;
@@ -45,18 +45,18 @@ void Consistency::ResolveKernel(Task* task, Command* cmd) {
   }
 }
 
-void Consistency::ResolveKernelWithPolymem(Task* task, Command* cmd, Mem* mem, KernelArg* arg, brisbane_poly_mem* polymem) {
+void Consistency::ResolveKernelWithPolymem(Task* task, Command* cmd, Mem* mem, KernelArg* arg, iris_poly_mem* polymem) {
   Device* dev = task->dev();
   Kernel* kernel = cmd->kernel();
   size_t off = 0UL;
   size_t size = 0UL;
-  if (arg->mode == brisbane_r) {
+  if (arg->mode == iris_r) {
     off = polymem->typesz * polymem->r0;
     size = polymem->typesz * (polymem->r1 - polymem->r0 + 1);
-  } else if (arg->mode == brisbane_w) {
+  } else if (arg->mode == iris_w) {
     off = polymem->typesz * polymem->w0;
     size = polymem->typesz * (polymem->w1 - polymem->w0 + 1);
-  } else if (arg->mode == brisbane_rw) {
+  } else if (arg->mode == iris_rw) {
     off = polymem->r0 < polymem->w0 ? polymem->r0 : polymem->w0;
     size = polymem->typesz * (polymem->r1 > polymem->w1 ? polymem->r1 - off + 1 : polymem->w1 - off + 1);
     off *= polymem->typesz;
@@ -72,7 +72,7 @@ void Consistency::ResolveKernelWithPolymem(Task* task, Command* cmd, Mem* mem, K
   scheduler_->SubmitTaskDirect(task_d2h, owner);
   task_d2h->Wait();
 
-  Command* h2d = arg->mode == brisbane_r ?
+  Command* h2d = arg->mode == iris_r ?
     Command::CreateH2DNP(task, mem, off, size, (char*) mem->host_inter() + off) :
     Command::CreateH2D(task, mem, off, size, (char*) mem->host_inter() + off);
   dev->ExecuteH2D(h2d);
@@ -130,5 +130,5 @@ void Consistency::ResolveD2H(Task* task, Command* cmd) {
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 

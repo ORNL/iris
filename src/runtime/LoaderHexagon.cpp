@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 LoaderHexagon::LoaderHexagon() {
@@ -21,19 +21,19 @@ const char* LoaderHexagon::library() {
 
 
 int LoaderHexagon::LoadFunctions() {
-  LOADFUNC(brisbane_hexagon_init);
-  LOADFUNC(brisbane_hexagon_finalize);
-  LOADFUNC(brisbane_hexagon_kernel);
-  LOADFUNC(brisbane_hexagon_setarg);
-  LOADFUNC(brisbane_hexagon_setmem);
-  LOADFUNC(brisbane_hexagon_launch);
+  LOADFUNC(iris_hexagon_init);
+  LOADFUNC(iris_hexagon_finalize);
+  LOADFUNC(iris_hexagon_kernel);
+  LOADFUNC(iris_hexagon_setarg);
+  LOADFUNC(iris_hexagon_setmem);
+  LOADFUNC(iris_hexagon_launch);
 
-  LOADFUNC(brisbane_hexagon_rpcmem_alloc);
-  LOADFUNC(brisbane_hexagon_rpcmem_free);
+  LOADFUNC(iris_hexagon_rpcmem_alloc);
+  LOADFUNC(iris_hexagon_rpcmem_free);
 
-  return BRISBANE_OK;
+  return IRIS_OK;
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 

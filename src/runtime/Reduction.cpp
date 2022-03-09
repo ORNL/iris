@@ -1,9 +1,9 @@
-#include <iris/brisbane.h>
+#include <iris/iris.h>
 #include "Reduction.h"
 #include "Debug.h"
 #include "Mem.h"
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 Reduction::Reduction() {
@@ -18,16 +18,16 @@ Reduction::~Reduction() {
 void Reduction::Reduce(Mem* mem, void* host, size_t size) {
   int mode = mem->mode();
   switch (mode) {
-    case brisbane_sum: return Sum(mem, host, size);
+    case iris_sum: return Sum(mem, host, size);
   }
   _error("not support mode[0x%x]", mode);
 }
 
 void Reduction::Sum(Mem* mem, void* host, size_t size) {
   int type = mem->type();
-  if (type == brisbane_long)      return SumLong(mem, (long*) host, size);
-  if (type == brisbane_float)     return SumFloat(mem, (float*) host, size);
-  if (type == brisbane_double)    return SumDouble(mem, (double*) host, size);
+  if (type == iris_long)      return SumLong(mem, (long*) host, size);
+  if (type == iris_float)     return SumFloat(mem, (float*) host, size);
+  if (type == iris_double)    return SumDouble(mem, (double*) host, size);
   _error("not support type[0x%x]", type);
 }
 
@@ -83,4 +83,4 @@ Reduction* Reduction::GetInstance() {
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */

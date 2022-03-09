@@ -12,7 +12,7 @@
 #include "Timer.h"
 #include "Worker.h"
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 Scheduler::Scheduler(Platform* platform) {
@@ -40,7 +40,7 @@ Scheduler::~Scheduler() {
 }
 
 void Scheduler::InitHubClient() {
-  hub_available_ = hub_client_->Init() == BRISBANE_OK;
+  hub_available_ = hub_client_->Init() == IRIS_OK;
 }
 
 void Scheduler::StartTask(Task* task, Worker* worker) {
@@ -63,10 +63,10 @@ void Scheduler::CompleteTask(Task* task, Worker* worker) {
 int Scheduler::RefreshNTasksOnDevs() {
   if (!hub_available_) {
     for (int i = 0; i < ndevs_; i++) ntasks_on_devs_[i] = workers_[i]->ntasks();
-    return BRISBANE_OK;
+    return IRIS_OK;
   }
   hub_client_->TaskAll(ntasks_on_devs_, ndevs_);
-  return BRISBANE_OK;
+  return IRIS_OK;
 }
 
 size_t Scheduler::NTasksOnDev(int i) {
@@ -120,8 +120,8 @@ void Scheduler::SubmitTask(Task* task) {
   int brs_policy = task->brs_policy();
   char* opt = task->opt();
   int ndevs = 0;
-  Device* devs[BRISBANE_MAX_NDEVS];
-  if (brs_policy < BRISBANE_MAX_NDEVS) {
+  Device* devs[IRIS_MAX_NDEVS];
+  if (brs_policy < IRIS_MAX_NDEVS) {
     if (brs_policy >= ndevs_) ndevs = 0;
     else {
       ndevs = 1;
@@ -141,4 +141,4 @@ void Scheduler::SubmitTask(Task* task) {
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */

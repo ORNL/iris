@@ -1,10 +1,10 @@
-#ifndef BRISBANE_SRC_RT_REDUCTION_H
-#define BRISBANE_SRC_RT_REDUCTION_H
+#ifndef IRIS_SRC_RT_REDUCTION_H
+#define IRIS_SRC_RT_REDUCTION_H
 
 #include <stdlib.h>
 #include <pthread.h>
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 class Mem;
@@ -32,6 +32,6 @@ private:
 };
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 
-#endif /* BRISBANE_SRC_RT_REDUCTION_H */
+#endif /* IRIS_SRC_RT_REDUCTION_H */

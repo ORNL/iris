@@ -3,15 +3,15 @@
 #include "Scheduler.h"
 #include "Task.h"
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 Graph::Graph(Platform* platform) {
   platform_ = platform;
   if (platform) scheduler_ = platform_->scheduler();
-  status_ = BRISBANE_NONE;
+  status_ = IRIS_NONE;
 
-  end_ = Task::Create(platform_, BRISBANE_TASK_PERM, NULL);
+  end_ = Task::Create(platform_, IRIS_TASK_PERM, NULL);
   tasks_.push_back(end_);
 
   pthread_mutex_init(&mutex_complete_, NULL);
@@ -30,12 +30,12 @@ void Graph::AddTask(Task* task) {
 }
 
 void Graph::Submit() {
-  status_ = BRISBANE_SUBMITTED;
+  status_ = IRIS_SUBMITTED;
 }
 
 void Graph::Complete() {
   pthread_mutex_lock(&mutex_complete_);
-  status_ = BRISBANE_COMPLETE;
+  status_ = IRIS_COMPLETE;
   pthread_cond_broadcast(&complete_cond_);
   pthread_mutex_unlock(&mutex_complete_);
 }
@@ -49,4 +49,4 @@ Graph* Graph::Create(Platform* platform) {
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */

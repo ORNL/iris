@@ -1,10 +1,10 @@
-#ifndef BRISBANE_SRC_RT_MEM_RANGE_H
-#define BRISBANE_SRC_RT_MEM_RANGE_H
+#ifndef IRIS_SRC_RT_MEM_RANGE_H
+#define IRIS_SRC_RT_MEM_RANGE_H
 
 #include <stddef.h>
 #include <set>
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 class Device;
@@ -32,7 +32,7 @@ private:
 };
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 
-#endif /* BRISBANE_SRC_RT_MEM_RANGE_H */
+#endif /* IRIS_SRC_RT_MEM_RANGE_H */
 

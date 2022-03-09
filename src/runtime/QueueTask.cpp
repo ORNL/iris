@@ -2,7 +2,7 @@
 #include "Platform.h"
 #include "Debug.h"
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 QueueTask::QueueTask(Platform* platform) {
@@ -66,4 +66,4 @@ bool QueueTask::Empty() {
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */

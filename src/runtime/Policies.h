@@ -1,10 +1,10 @@
-#ifndef BRISBANE_SRC_RT_POLICIES_H
-#define BRISBANE_SRC_RT_POLICIES_H
+#ifndef IRIS_SRC_RT_POLICIES_H
+#define IRIS_SRC_RT_POLICIES_H
 
 #include <map>
 #include <string>
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 class Policy;
@@ -37,7 +37,7 @@ private:
 };
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 
-#endif /* BRISBANE_SRC_RT_POLICIES_H */
+#endif /* IRIS_SRC_RT_POLICIES_H */
 

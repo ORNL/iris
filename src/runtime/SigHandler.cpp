@@ -8,7 +8,7 @@
 #include <unistd.h>
 #endif
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 struct sigaction SigHandler::sa_;
@@ -38,5 +38,5 @@ void SigHandler::Handle(int signum, siginfo_t* si, void* arg) {
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 

@@ -1,10 +1,10 @@
-#ifndef BRISBANE_SRC_RT_LOADER_HEXAGON_H
-#define BRISBANE_SRC_RT_LOADER_HEXAGON_H
+#ifndef IRIS_SRC_RT_LOADER_HEXAGON_H
+#define IRIS_SRC_RT_LOADER_HEXAGON_H
 
 #include "Loader.h"
 #include <stdint.h>
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 class LoaderHexagon : public Loader {
@@ -15,19 +15,19 @@ public:
   const char* library();
   int LoadFunctions();
 
-  int (*brisbane_hexagon_init)();
-  int (*brisbane_hexagon_finalize)();
-  int (*brisbane_hexagon_kernel)(const char* name);
-  int (*brisbane_hexagon_setarg)(int idx, size_t size, void* value);
-  int (*brisbane_hexagon_setmem)(int idx, void* mem, int size);
-  int (*brisbane_hexagon_launch)(int dim, size_t off, size_t gws);
+  int (*iris_hexagon_init)();
+  int (*iris_hexagon_finalize)();
+  int (*iris_hexagon_kernel)(const char* name);
+  int (*iris_hexagon_setarg)(int idx, size_t size, void* value);
+  int (*iris_hexagon_setmem)(int idx, void* mem, int size);
+  int (*iris_hexagon_launch)(int dim, size_t off, size_t gws);
   
-  void* (*brisbane_hexagon_rpcmem_alloc)(int heapid, uint32_t flags, int size);
-  void (*brisbane_hexagon_rpcmem_free)(void* po);
+  void* (*iris_hexagon_rpcmem_alloc)(int heapid, uint32_t flags, int size);
+  void (*iris_hexagon_rpcmem_free)(void* po);
 };
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 
-#endif /* BRISBANE_SRC_RT_LOADER_HEXAGON_H */
+#endif /* IRIS_SRC_RT_LOADER_HEXAGON_H */
 

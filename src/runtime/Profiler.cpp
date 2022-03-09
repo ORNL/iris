@@ -10,7 +10,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 Profiler::Profiler(Platform* platform) {
@@ -33,17 +33,17 @@ int Profiler::OpenFD() {
   if (fd_ == -1) {
     _error("open profiler file[%s]", path_);
     perror("open");
-    return BRISBANE_ERR;
+    return IRIS_ERR;
   }
-  return BRISBANE_OK;
+  return IRIS_OK;
 }
 
 int Profiler::Main() {
-  return BRISBANE_OK;
+  return IRIS_OK;
 }
 
 int Profiler::Exit() {
-  return BRISBANE_OK;
+  return IRIS_OK;
 }
 
 int Profiler::Write(const char* s, int tab) {
@@ -51,10 +51,10 @@ int Profiler::Write(const char* s, int tab) {
     Flush();
     if (!msg_->WriteString(s)) {
       _error("s[%s]", s);
-      return BRISBANE_ERR;
+      return IRIS_ERR;
     }
   }
-  return BRISBANE_OK;
+  return IRIS_OK;
 }
 
 int Profiler::Flush() {
@@ -63,10 +63,10 @@ int Profiler::Flush() {
     if ((size_t) ssret != off) {
       _error("path[%s] ssret[%zd] off[%zu]", path_, ssret, off);
       perror("write");
-      return BRISBANE_ERR;
+      return IRIS_ERR;
     }
     msg_->Clear();
-    return BRISBANE_OK;
+    return IRIS_OK;
 }
 
 int Profiler::CloseFD() {
@@ -78,26 +78,26 @@ int Profiler::CloseFD() {
       perror("close");
     }
   }
-  return BRISBANE_OK;
+  return IRIS_OK;
 }
 
 const char* Profiler::policy_str(int policy) {
   switch (policy) {
-    case brisbane_default:  return "default";
-    case brisbane_cpu:      return "cpu";
-    case brisbane_nvidia:   return "nvidia";
-    case brisbane_amd:      return "amd";
-    case brisbane_gpu:      return "gpu";
-    case brisbane_phi:      return "phi";
-    case brisbane_fpga:     return "fpga";
-    case brisbane_data:     return "data";
-    case brisbane_profile:  return "profile";
-    case brisbane_random:   return "random";
-    case brisbane_any:      return "any";
+    case iris_default:  return "default";
+    case iris_cpu:      return "cpu";
+    case iris_nvidia:   return "nvidia";
+    case iris_amd:      return "amd";
+    case iris_gpu:      return "gpu";
+    case iris_phi:      return "phi";
+    case iris_fpga:     return "fpga";
+    case iris_data:     return "data";
+    case iris_profile:  return "profile";
+    case iris_random:   return "random";
+    case iris_any:      return "any";
   }
-  return policy & brisbane_all ? "all" : "?";
+  return policy & iris_all ? "all" : "?";
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 

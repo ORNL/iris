@@ -1,11 +1,11 @@
-#ifndef BRISBANE_SRC_RT_LOADER_OPENCL_H
-#define BRISBANE_SRC_RT_LOADER_OPENCL_H
+#ifndef IRIS_SRC_RT_LOADER_OPENCL_H
+#define IRIS_SRC_RT_LOADER_OPENCL_H
 
 #include "Loader.h"
 #define CL_TARGET_OPENCL_VERSION 220
 #include <iris/CL/cl.h>
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 class LoaderOpenCL : public Loader {
@@ -175,7 +175,7 @@ CL_API_ENTRY cl_int CL_API_CALL
 };
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 
-#endif /* BRISBANE_SRC_RT_LOADER_OPENCL_H */
+#endif /* IRIS_SRC_RT_LOADER_OPENCL_H */
 
