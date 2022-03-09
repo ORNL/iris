@@ -29,9 +29,9 @@ int LoaderPolicy::LoadFunctions() {
   *(void**) (&instance_) = dlsym(handle_, func);
   if (!instance_) {
     _error("%s", dlerror());
-    return IRIS_ERR;
+    return IRIS_ERROR;
   }
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 void LoaderPolicy::Init(void* arg) {

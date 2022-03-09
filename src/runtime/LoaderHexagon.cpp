@@ -31,7 +31,7 @@ int LoaderHexagon::LoadFunctions() {
   LOADFUNC(iris_hexagon_rpcmem_alloc);
   LOADFUNC(iris_hexagon_rpcmem_free);
 
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 } /* namespace rt */

@@ -24,7 +24,7 @@ ProfilerDOT::~ProfilerDOT() {
 
 int ProfilerDOT::Main() {
   Write(PROFILER_DOT_HEADER);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int ProfilerDOT::Exit() {
@@ -38,7 +38,7 @@ int ProfilerDOT::Exit() {
   sprintf(s, "end[shape=Msquare, label=\"exit\\n%lf\"]\n", platform_->time_app());
   Write(s);
   Write(PROFILER_DOT_FOOTER);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int ProfilerDOT::CompleteTask(Task* task) {
@@ -67,7 +67,7 @@ int ProfilerDOT::CompleteTask(Task* task) {
       Write(s);
     }
   }
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 const char* ProfilerDOT::FileExtension() {

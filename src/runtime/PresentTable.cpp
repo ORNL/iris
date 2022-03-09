@@ -16,13 +16,13 @@ PresentTable::~PresentTable() {
 int PresentTable::Add(void* host, size_t size, Mem* mem) {
   if (entities_.find(host) != entities_.end()) {
     _error("%p", host);
-    return IRIS_ERR;
+    return IRIS_ERROR;
   }
   PresentTableEntity* entity = new PresentTableEntity;
   entity->size = size;
   entity->mem = mem;
   entities_[host] = entity;
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 Mem* PresentTable::Get(void* host, size_t* off) {

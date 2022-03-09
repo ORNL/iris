@@ -37,7 +37,7 @@ int LoaderCUDA::LoadFunctions() {
   LOADFUNCSYM(cuMemcpyDtoH, cuMemcpyDtoH_v2);
   LOADFUNCSYM(cuMemcpyDtoHAsync, cuMemcpyDtoHAsync);
   LOADFUNC(cuLaunchKernel);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 } /* namespace rt */

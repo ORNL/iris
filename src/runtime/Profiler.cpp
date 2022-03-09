@@ -33,17 +33,17 @@ int Profiler::OpenFD() {
   if (fd_ == -1) {
     _error("open profiler file[%s]", path_);
     perror("open");
-    return IRIS_ERR;
+    return IRIS_ERROR;
   }
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Profiler::Main() {
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Profiler::Exit() {
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Profiler::Write(const char* s, int tab) {
@@ -51,10 +51,10 @@ int Profiler::Write(const char* s, int tab) {
     Flush();
     if (!msg_->WriteString(s)) {
       _error("s[%s]", s);
-      return IRIS_ERR;
+      return IRIS_ERROR;
     }
   }
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Profiler::Flush() {
@@ -63,10 +63,10 @@ int Profiler::Flush() {
     if ((size_t) ssret != off) {
       _error("path[%s] ssret[%zd] off[%zu]", path_, ssret, off);
       perror("write");
-      return IRIS_ERR;
+      return IRIS_ERROR;
     }
     msg_->Clear();
-    return IRIS_OK;
+    return IRIS_SUCCESS;
 }
 
 int Profiler::CloseFD() {
@@ -78,7 +78,7 @@ int Profiler::CloseFD() {
       perror("close");
     }
   }
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 const char* Profiler::policy_str(int policy) {

@@ -41,9 +41,9 @@ int DeviceHIP::Compile(char* src) {
   sprintf(cmd, "hipcc --genco %s -o %s", src, kernel_path_);
   if (system(cmd) != EXIT_SUCCESS) {
     _error("cmd[%s]", cmd);
-    return IRIS_ERR;
+    return IRIS_ERROR;
   }
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int DeviceHIP::Init() {
@@ -78,9 +78,9 @@ int DeviceHIP::Init() {
   char* path = kernel_path_;
   char* src = NULL;
   size_t srclen = 0;
-  if (Utils::ReadFile(path, &src, &srclen) == IRIS_ERR) {
+  if (Utils::ReadFile(path, &src, &srclen) == IRIS_ERROR) {
     _trace("dev[%d][%s] has no kernel file [%s]", devno_, name_, path);
-    return IRIS_OK;
+    return IRIS_SUCCESS;
   }
   _trace("dev[%d][%s] kernels[%s]", devno_, name_, path);
   ld_->Lock();
@@ -90,26 +90,26 @@ int DeviceHIP::Init() {
     _hiperror(err_);
     _error("srclen[%zu] src\n%s", srclen, src);
     if (src) free(src);
-    return IRIS_ERR;
+    return IRIS_ERROR;
   }
   if (src) free(src);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int DeviceHIP::MemAlloc(void** mem, size_t size) {
   void** hipmem = mem;
   err_ = ld_->hipMalloc(hipmem, size);
   _hiperror(err_);
-  if (err_ != hipSuccess) return IRIS_ERR;
-  return IRIS_OK;
+  if (err_ != hipSuccess) return IRIS_ERROR;
+  return IRIS_SUCCESS;
 }
 
 int DeviceHIP::MemFree(void* mem) {
   void* hipmem = mem;
   err_ = ld_->hipFree(hipmem);
   _hiperror(err_);
-  if (err_ != hipSuccess) return IRIS_ERR;
-  return IRIS_OK;
+  if (err_ != hipSuccess) return IRIS_ERROR;
+  return IRIS_SUCCESS;
 }
 
 int DeviceHIP::MemH2D(Mem* mem, size_t off, size_t size, void* host) {
@@ -117,8 +117,8 @@ int DeviceHIP::MemH2D(Mem* mem, size_t off, size_t size, void* host) {
   _trace("dev[%d][%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", devno_, name_, mem->uid(), hipmem, off, size, host, q_);
   err_ = ld_->hipMemcpyHtoD((char*) hipmem + off, host, size);
   _hiperror(err_);
-  if (err_ != hipSuccess) return IRIS_ERR;
-  return IRIS_OK;
+  if (err_ != hipSuccess) return IRIS_ERROR;
+  return IRIS_SUCCESS;
 }
 
 int DeviceHIP::MemD2H(Mem* mem, size_t off, size_t size, void* host) {
@@ -126,15 +126,15 @@ int DeviceHIP::MemD2H(Mem* mem, size_t off, size_t size, void* host) {
   _trace("dev[%d][%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", devno_, name_, mem->uid(), hipmem, off, size, host, q_);
   err_ = ld_->hipMemcpyDtoH(host, (char*) hipmem + off, size);
   _hiperror(err_);
-  if (err_ != hipSuccess) return IRIS_ERR;
-  return IRIS_OK;
+  if (err_ != hipSuccess) return IRIS_ERROR;
+  return IRIS_SUCCESS;
 }
 
 int DeviceHIP::KernelGet(void** kernel, const char* name) {
   hipFunction_t* hipkernel = (hipFunction_t*) kernel;
   err_ = ld_->hipModuleGetFunction(hipkernel, module_, name);
   _hiperror(err_);
-  if (err_ != hipSuccess) return IRIS_ERR;
+  if (err_ != hipSuccess) return IRIS_ERROR;
 
   char name_off[256];
   memset(name_off, 0, sizeof(name_off));
@@ -144,7 +144,7 @@ int DeviceHIP::KernelGet(void** kernel, const char* name) {
   if (err_ == hipSuccess)
     kernels_offs_.insert(std::pair<hipFunction_t, hipFunction_t>(*hipkernel, hipkernel_off));
 
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int DeviceHIP::KernelSetArg(Kernel* kernel, int idx, size_t size, void* value) {
@@ -157,7 +157,7 @@ int DeviceHIP::KernelSetArg(Kernel* kernel, int idx, size_t size, void* value) {
   if (max_arg_idx_ < idx) max_arg_idx_ = idx;
   if (host2hip_ld_->iris_host2hip_setarg)
       host2hip_ld_->iris_host2hip_setarg(idx, size, value);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int DeviceHIP::KernelSetMem(Kernel* kernel, int idx, Mem* mem, size_t off) {
@@ -167,13 +167,13 @@ int DeviceHIP::KernelSetMem(Kernel* kernel, int idx, Mem* mem, size_t off) {
   if (host2hip_ld_->iris_host2hip_setmem) {
       host2hip_ld_->iris_host2hip_setmem(idx, params_[idx]);
   }
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int DeviceHIP::KernelLaunchInit(Kernel* kernel) {
     if (host2hip_ld_->iris_host2hip_kernel)
         return host2hip_ld_->iris_host2hip_kernel(kernel->name());
-    return IRIS_OK;
+    return IRIS_SUCCESS;
 }
 
 
@@ -207,23 +207,23 @@ int DeviceHIP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, s
   _trace("dev[%d] kernel[%s] dim[%d] grid[%d,%d,%d] block[%d,%d,%d] shared_mem_bytes[%u] q[%d]", devno_, kernel->name(), dim, grid[0], grid[1], grid[2], block[0], block[1], block[2], shared_mem_bytes_, q_);
   err_ = ld_->hipModuleLaunchKernel(func, grid[0], grid[1], grid[2], block[0], block[1], block[2], shared_mem_bytes_, 0, params_, NULL);
   _hiperror(err_);
-  if (err_ != hipSuccess) return IRIS_ERR;
+  if (err_ != hipSuccess) return IRIS_ERROR;
 #ifdef IRIS_SYNC_EXECUTION
   err_ = ld_->hipDeviceSynchronize();
   _hiperror(err_);
-  if (err_ != hipSuccess) return IRIS_ERR;
+  if (err_ != hipSuccess) return IRIS_ERROR;
 #endif
   for (int i = 0; i < IRIS_MAX_KERNEL_NARGS; i++) params_[i] = NULL;
   max_arg_idx_ = 0;
   shared_mem_bytes_ = 0;
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int DeviceHIP::Synchronize() {
   err_ = ld_->hipDeviceSynchronize();
   _hiperror(err_);
-  if (err_ != hipSuccess) return IRIS_ERR;
-  return IRIS_OK;
+  if (err_ != hipSuccess) return IRIS_ERROR;
+  return IRIS_SUCCESS;
 }
 
 int DeviceHIP::AddCallback(Task* task) {

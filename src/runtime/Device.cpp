@@ -97,10 +97,10 @@ void Device::ExecuteInit(Command* cmd) {
         errid_ = Compile(src);
       } else strncpy(kernel_path_, bin, strlen(bin));
     }
-    if (errid_ != IRIS_OK) _error("iret[%d]", errid_);
+    if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
   }
   errid_ = Init();
-  if (errid_ != IRIS_OK) _error("iret[%d]", errid_);
+  if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
   double time = timer_->Stop(IRIS_TIMER_INIT);
   cmd->SetTime(time);
   enable_ = true;
@@ -179,7 +179,7 @@ void Device::ExecuteH2D(Command* cmd) {
   else mem->AddOwner(off, size, this);
   timer_->Start(IRIS_TIMER_H2D);
   errid_ = MemH2D(mem, off, size, host);
-  if (errid_ != IRIS_OK) _error("iret[%d]", errid_);
+  if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
   double time = timer_->Stop(IRIS_TIMER_H2D);
   cmd->SetTime(time);
   Command* cmd_kernel = cmd->task()->cmd_kernel();
@@ -203,12 +203,12 @@ void Device::ExecuteD2H(Command* cmd) {
   int mode = mem->mode();
   int expansion = mem->expansion();
   timer_->Start(IRIS_TIMER_D2H);
-  errid_ = IRIS_OK;
+  errid_ = IRIS_SUCCESS;
   if (mode & iris_reduction) {
     errid_ = MemD2H(mem, off, mem->size() * expansion, mem->host_inter());
     Reduction::GetInstance()->Reduce(mem, host, size);
   } else errid_ = MemD2H(mem, off, size, host);
-  if (errid_ != IRIS_OK) _error("iret[%d]", errid_);
+  if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
   double time = timer_->Stop(IRIS_TIMER_D2H);
   cmd->SetTime(time);
   Command* cmd_kernel = cmd->task()->cmd_kernel();
@@ -254,7 +254,7 @@ Kernel* Device::ExecuteSelectorKernel(Command* cmd) {
 
 int Device::RegisterCommand(int tag, command_handler handler) {
   cmd_handlers_[tag] = handler;
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Device::RegisterHooks() {
@@ -262,7 +262,7 @@ int Device::RegisterHooks() {
   hook_task_post_ = Platform::GetPlatform()->hook_task_post();
   hook_command_pre_ = Platform::GetPlatform()->hook_command_pre();
   hook_command_post_ = Platform::GetPlatform()->hook_command_post();
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 } /* namespace rt */

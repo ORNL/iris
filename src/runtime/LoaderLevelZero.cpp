@@ -40,7 +40,7 @@ int LoaderLevelZero::LoadFunctions() {
   LOADFUNC(zeEventCreate);
   LOADFUNC(zeEventDestroy);
   LOADFUNC(zeEventHostSynchronize);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 void LoaderLevelZero::Lock() {

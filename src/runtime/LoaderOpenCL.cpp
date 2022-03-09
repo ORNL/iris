@@ -33,7 +33,7 @@ int LoaderOpenCL::LoadFunctions() {
   LOADFUNC(clEnqueueNDRangeKernel);
   LOADFUNC(clCreateCommandQueue);
   LOADFUNC(clSetEventCallback);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 } /* namespace rt */

@@ -38,14 +38,14 @@ int DeviceLevelZero::Compile(char* src) {
   sprintf(cmd, "clang -cc1 -finclude-default-header -triple spir %s -flto -emit-llvm-bc -o %s.bc", src, kernel_path_);
   if (system(cmd) != EXIT_SUCCESS) {
     _error("cmd[%s]", cmd);
-    return IRIS_ERR;
+    return IRIS_ERROR;
   }
   sprintf(cmd, "llvm-spirv %s.bc -o %s", kernel_path_, kernel_path_);
   if (system(cmd) != EXIT_SUCCESS) {
     _error("cmd[%s]", cmd);
-    return IRIS_ERR;
+    return IRIS_ERROR;
   }
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int DeviceLevelZero::Init() {
@@ -69,9 +69,9 @@ int DeviceLevelZero::Init() {
 //  Platform::GetPlatform()->EnvironmentGet("KERNEL_BIN_SPV", &path, NULL);
   uint8_t* src = nullptr;
   size_t srclen = 0;
-  if (Utils::ReadFile(path, (char**) &src, &srclen) == IRIS_ERR) {
+  if (Utils::ReadFile(path, (char**) &src, &srclen) == IRIS_ERROR) {
     _error("dev[%d][%s] has no kernel file [%s]", devno_, name_, path);
-    return IRIS_OK;
+    return IRIS_SUCCESS;
   }
 
   ze_module_desc_t mod_desc = {}; 
@@ -87,7 +87,7 @@ int DeviceLevelZero::Init() {
 
   if (src) free(src);
 
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int DeviceLevelZero::MemAlloc(void** mem, size_t size) {
@@ -96,14 +96,14 @@ int DeviceLevelZero::MemAlloc(void** mem, size_t size) {
   desc.stype = ZE_STRUCTURE_TYPE_DEVICE_MEM_ALLOC_DESC;
   err_ = ld_->zeMemAllocDevice(zectx_, &desc, size, align_, zedev_, dptr);
   _zeerror(err_);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int DeviceLevelZero::MemFree(void* mem) {
   void* dptr = mem;
   err_ = ld_->zeMemFree(zectx_, dptr);
   _zeerror(err_);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int DeviceLevelZero::MemH2D(Mem* mem, size_t off, size_t size, void* host) {
@@ -136,7 +136,7 @@ int DeviceLevelZero::MemH2D(Mem* mem, size_t off, size_t size, void* host) {
   err_ = ld_->zeCommandListReset(zecml_);
   _zeerror(err_);
 
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int DeviceLevelZero::MemD2H(Mem* mem, size_t off, size_t size, void* host) {
@@ -161,7 +161,7 @@ int DeviceLevelZero::MemD2H(Mem* mem, size_t off, size_t size, void* host) {
   err_ = ld_->zeCommandListReset(zecml_);
   _zeerror(err_);
 
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int DeviceLevelZero::KernelGet(void** kernel, const char* name) {
@@ -171,14 +171,14 @@ int DeviceLevelZero::KernelGet(void** kernel, const char* name) {
   kernel_desc.pKernelName = name;
   err_ = ld_->zeKernelCreate(zemod_, &kernel_desc, zekernel);
   _zeerror(err_);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int DeviceLevelZero::KernelSetArg(Kernel* kernel, int idx, size_t size, void* value) {
   ze_kernel_handle_t zekernel = (ze_kernel_handle_t) kernel->arch(this);
   err_ = ld_->zeKernelSetArgumentValue(zekernel, idx, size, value);
   _zeerror(err_);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int DeviceLevelZero::KernelSetMem(Kernel* kernel, int idx, Mem* mem, size_t off) {
@@ -186,7 +186,7 @@ int DeviceLevelZero::KernelSetMem(Kernel* kernel, int idx, Mem* mem, size_t off)
   void* dptr = (void*) ((char*) mem->arch(this) + off);
   err_ = ld_->zeKernelSetArgumentValue(zekernel, idx, sizeof(dptr), &dptr);
   _zeerror(err_);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int DeviceLevelZero::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws) {
@@ -214,15 +214,15 @@ int DeviceLevelZero::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* 
   err_ = ld_->zeCommandListReset(zecml_);
   _zeerror(err_);
   
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int DeviceLevelZero::Synchronize() {
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int DeviceLevelZero::AddCallback(Task* task) {
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 } /* namespace rt */

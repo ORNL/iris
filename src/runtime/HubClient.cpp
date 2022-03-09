@@ -28,25 +28,25 @@ HubClient::~HubClient() {
 
 int HubClient::Init() {
   int ret = OpenMQ();
-  if (ret == IRIS_OK) ret = OpenFIFO();
-  if (ret == IRIS_OK) Register();
-  available_ = ret == IRIS_OK;
+  if (ret == IRIS_SUCCESS) ret = OpenFIFO();
+  if (ret == IRIS_SUCCESS) Register();
+  available_ = ret == IRIS_SUCCESS;
   return ret;
 }
 
 int HubClient::StopHub() {
-  if (!available_) return IRIS_ERR;
+  if (!available_) return IRIS_ERROR;
   Message msg(IRIS_HUB_MQ_STOP);
   msg.WritePID(pid_);
   SendMQ(msg);
   msg.Clear();
   RecvFIFO(msg);
   stop_hub_ = true;
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int HubClient::Status() {
-  if (!available_) return IRIS_ERR;
+  if (!available_) return IRIS_ERROR;
   Message msg(IRIS_HUB_MQ_STATUS);
   msg.WritePID(pid_);
   SendMQ(msg);
@@ -57,17 +57,17 @@ int HubClient::Status() {
   for (int i = 0; i < ndevs; i++) {
     _info("Device[%d] ntasks[%lu]", i, msg.ReadULong());
   }
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int HubClient::OpenMQ() {
 #if !USE_HUB
-  return IRIS_ERR;
+  return IRIS_ERROR;
 #else
   key_t key;
-  if ((key = ftok(IRIS_HUB_MQ_PATH, IRIS_HUB_MQ_PID)) == -1) return IRIS_ERR;
-  if ((mq_ = msgget(key, IRIS_HUB_PERM | IPC_CREAT)) == -1) return IRIS_ERR;
-  return IRIS_OK;
+  if ((key = ftok(IRIS_HUB_MQ_PATH, IRIS_HUB_MQ_PID)) == -1) return IRIS_ERROR;
+  if ((mq_ = msgget(key, IRIS_HUB_PERM | IPC_CREAT)) == -1) return IRIS_ERROR;
+  return IRIS_SUCCESS;
 #endif
 }
 
@@ -76,20 +76,20 @@ int HubClient::CloseMQ() {
     CloseFIFO();
     Deregister();
   }
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int HubClient::SendMQ(Message& msg) {
 #if !USE_HUB
-  return IRIS_ERR;
+  return IRIS_ERROR;
 #else
   int iret = msgsnd(mq_, msg.buf(), IRIS_HUB_MQ_MSG_SIZE, 0);
   if (iret == -1) {
     _error("msgsnd err[%d]", iret);
     perror("msgsnd");
-    return IRIS_ERR;
+    return IRIS_ERROR;
   }
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 #endif
 }
 
@@ -100,15 +100,15 @@ int HubClient::OpenFIFO() {
   if (iret == -1) {
     _error("iret[%d]", iret);
     perror("mknod");
-    return IRIS_ERR;
+    return IRIS_ERROR;
   }
   fifo_ = open(path, O_RDWR);
   if (fifo_ == -1) {
     _error("path[%s]", path);
     perror("read");
-    return IRIS_ERR;
+    return IRIS_ERROR;
   }
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int HubClient::CloseFIFO() {
@@ -117,7 +117,7 @@ int HubClient::CloseFIFO() {
     _error("iret[%d]", iret);
     perror("close");
   }
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int HubClient::RecvFIFO(Message& msg) {
@@ -125,9 +125,9 @@ int HubClient::RecvFIFO(Message& msg) {
   if (ssret != IRIS_HUB_FIFO_MSG_SIZE) {
     _error("ssret[%zd]", ssret);
     perror("read");
-    return IRIS_ERR;
+    return IRIS_ERROR;
   }
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int HubClient::Register() {
@@ -135,24 +135,24 @@ int HubClient::Register() {
   msg.WritePID(pid_);
   msg.WriteInt(ndevs_);
   SendMQ(msg);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int HubClient::Deregister() {
   Message msg(IRIS_HUB_MQ_DEREGISTER);
   msg.WritePID(pid_);
   SendMQ(msg);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int HubClient::TaskInc(int dev, int i) {
-  if (!available_) return IRIS_OK;
+  if (!available_) return IRIS_SUCCESS;
   Message msg(IRIS_HUB_MQ_TASK_INC);
   msg.WritePID(pid_);
   msg.WriteInt(dev);
   msg.WriteInt(i);
   SendMQ(msg);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int HubClient::TaskDec(int dev, int i) {
@@ -175,7 +175,7 @@ int HubClient::TaskAll(size_t* ntasks, int ndevs) {
     ntasks[i] = msg.ReadULong();
     _trace("dev[%d] ntasks[%lu]", i, ntasks[i]);
   }
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 } /* namespace rt */

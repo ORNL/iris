@@ -31,7 +31,7 @@ int LoaderHost2CUDA::LoadFunctions() {
   LOADFUNC(iris_host2cuda_setarg);
   LOADFUNC(iris_host2cuda_setmem);
   LOADFUNC(iris_host2cuda_launch);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 } /* namespace rt */

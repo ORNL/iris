@@ -45,7 +45,7 @@ int LoaderHost2OpenCL::LoadFunctions() {
   LOADFUNC(iris_host2opencl_launch);
   LOADFUNC(iris_host2opencl_set_handle);
   LOADFUNC(iris_host2opencl_get_handle);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 } /* namespace rt */

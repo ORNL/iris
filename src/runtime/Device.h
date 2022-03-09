@@ -42,22 +42,22 @@ public:
   int RegisterCommand(int tag, command_handler handler);
   int RegisterHooks();
 
-  virtual int Compile(char* src) { return IRIS_OK; }
+  virtual int Compile(char* src) { return IRIS_SUCCESS; }
   virtual int Init() = 0;
-  virtual int BuildProgram(char* path) { return IRIS_OK; }
+  virtual int BuildProgram(char* path) { return IRIS_SUCCESS; }
   virtual int MemAlloc(void** mem, size_t size) = 0;
   virtual int MemFree(void* mem) = 0;
   virtual int MemH2D(Mem* mem, size_t off, size_t size, void* host) = 0;
   virtual int MemD2H(Mem* mem, size_t off, size_t size, void* host) = 0;
   virtual int KernelGet(void** kernel, const char* name) = 0;
-  virtual int KernelLaunchInit(Kernel* kernel) { return IRIS_OK; }
+  virtual int KernelLaunchInit(Kernel* kernel) { return IRIS_SUCCESS; }
   virtual int KernelSetArg(Kernel* kernel, int idx, size_t size, void* value) = 0;
   virtual int KernelSetMem(Kernel* kernel, int idx, Mem* mem, size_t off) = 0;
   virtual int KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws) = 0;
   virtual int Synchronize() = 0;
   virtual int AddCallback(Task* task) = 0;
-  virtual int Custom(int tag, char* params) { return IRIS_OK; }
-  virtual int RecreateContext() { return IRIS_ERR; }
+  virtual int Custom(int tag, char* params) { return IRIS_SUCCESS; }
+  virtual int RecreateContext() { return IRIS_ERROR; }
   virtual bool SupportJIT() { return true; }
   virtual const char* kernel_src() { return " "; }
   virtual const char* kernel_bin() { return " "; }

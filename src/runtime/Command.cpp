@@ -82,7 +82,7 @@ Command* Command::CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off,
   return cmd;
 }
 
-Command* Command::CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, size_t* params_off, int* params_info) {
+Command* Command::CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, size_t* params_off, int* params_info, size_t* memranges) {
   Command* cmd = Create(task, IRIS_CMD_KERNEL);
   cmd->kernel_ = kernel;
   cmd->dim_ = dim;

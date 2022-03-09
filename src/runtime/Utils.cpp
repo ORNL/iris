@@ -36,7 +36,7 @@ int Utils::ReadFile(char* path, char** string, size_t* len) {
   int fd = open((const char*) path, O_RDONLY);
   if (fd == -1) {
     *len = 0UL;
-    return IRIS_ERR;
+    return IRIS_ERROR;
   }
   off_t s = lseek(fd, 0, SEEK_END);
   *string = (char*) malloc(s);
@@ -45,20 +45,20 @@ int Utils::ReadFile(char* path, char** string, size_t* len) {
   ssize_t r = read(fd, *string, s);
   if (r != s) {
     _error("read[%zd] vs [%lu]", r, s);
-    return IRIS_ERR;
+    return IRIS_ERROR;
   }
   close(fd);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Utils::Mkdir(char* path) {
   struct stat st;
   if (stat(path, &st) == -1) {
     if (mkdir(path, 0700) == -1) {
-      return IRIS_ERR;
+      return IRIS_ERROR;
     }
   }
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 bool Utils::Exist(char* path) {

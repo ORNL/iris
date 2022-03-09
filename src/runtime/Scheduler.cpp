@@ -40,7 +40,7 @@ Scheduler::~Scheduler() {
 }
 
 void Scheduler::InitHubClient() {
-  hub_available_ = hub_client_->Init() == IRIS_OK;
+  hub_available_ = hub_client_->Init() == IRIS_SUCCESS;
 }
 
 void Scheduler::StartTask(Task* task, Worker* worker) {
@@ -63,10 +63,10 @@ void Scheduler::CompleteTask(Task* task, Worker* worker) {
 int Scheduler::RefreshNTasksOnDevs() {
   if (!hub_available_) {
     for (int i = 0; i < ndevs_; i++) ntasks_on_devs_[i] = workers_[i]->ntasks();
-    return IRIS_OK;
+    return IRIS_SUCCESS;
   }
   hub_client_->TaskAll(ntasks_on_devs_, ndevs_);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 size_t Scheduler::NTasksOnDev(int i) {

@@ -34,7 +34,7 @@ int LoaderOpenMP::LoadFunctions() {
   LOADFUNCSYM(iris_openmp_setmem,   iris_openmp_setmem);
   LOADFUNCSYM(iris_openmp_launch,   iris_openmp_launch);
 
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 } /* namespace rt */

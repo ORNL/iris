@@ -104,8 +104,8 @@ def parseFnParamsCore(text):
     stack = [ x for x in stack if x != '']
     return fn_name, stack
 #'(task0, "saxpy", target_dev, SIZE,           OUT_TASK(Z, int32_t *, sizeof(int32_t)*SIZE),           IN_TASK(X, int32_t *, sizeof(int32_t)*SIZE),           IN_TASK(Y, int32_t *, sizeof(i
-#nt32_t)*SIZE),           PARAM(A, int32_t),           PARAM(SIZE, int, brisbane_cpu),           PARAM(dspUsecPtr, int32_t*, (brisbane_cpu || brisbane_dsp)),           PARAM(dspCycPtr, int32_t*, brisb
-#ane_cpu || brisbane_dsp))\n'
+#nt32_t)*SIZE),           PARAM(A, int32_t),           PARAM(SIZE, int, iris_cpu),           PARAM(dspUsecPtr, int32_t*, (iris_cpu || iris_dsp)),           PARAM(dspCycPtr, int32_t*, brisb
+#ane_cpu || iris_dsp))\n'
 #["task0", "saxpy", "target_dev", "SIZE", { "fn" : "OUT_TASK", "params": [ "Z", "int32_t *", { "fn" : "*", "params": { { "fn" : "sizeof", "params": "int32_t" }, "SIZE" }}, 
 def preprocess_data(data):
     return data
@@ -144,22 +144,22 @@ def generateIrisInterfaceCode(args, input):
 extern "C" {
 #endif
 
-static int brisbane_kernel_idx = 0;
+static int iris_kernel_idx = 0;
 
         ''')
     lines.append('''
 #ifdef ENABLE_IRIS_HEXAGON_APIS
-#define brisbane_kernel_lock   brisbane_hexagon_lock
-#define brisbane_kernel_unlock brisbane_hexagon_unlock
-#define brisbane_kernel brisbane_hexagon_kernel
-#define brisbane_setarg brisbane_hexagon_setarg
-#define brisbane_setmem brisbane_hexagon_setmem
-#define brisbane_launch brisbane_hexagon_launch
+#define iris_kernel_lock   iris_hexagon_lock
+#define iris_kernel_unlock iris_hexagon_unlock
+#define iris_kernel iris_hexagon_kernel
+#define iris_setarg iris_hexagon_setarg
+#define iris_setmem iris_hexagon_setmem
+#define iris_launch iris_hexagon_launch
             ''')
     for k,v in data_hash.items():
-        lines.append("#define brisbane_kernel_"+k+" brisbanehxg_"+k)
+        lines.append("#define iris_kernel_"+k+" irishxg_"+k)
     lines.append('''
-#define HANDLE brisbanehxg_handle_stub(), 
+#define HANDLE irishxg_handle_stub(), 
 #define HANDLETYPE uint64_t,
 #endif //IRIS_HEXAGON
             ''')
@@ -176,31 +176,31 @@ static int brisbane_kernel_idx = 0;
             ''')
     lines.append('''
 #ifdef ENABLE_IRIS_OPENMP_APIS 
-#include "brisbane/brisbane_openmp.h"
-#define brisbane_kernel_lock   brisbane_openmp_lock
-#define brisbane_kernel_unlock brisbane_openmp_unlock
-#define brisbane_kernel brisbane_openmp_kernel
-#define brisbane_setarg brisbane_openmp_setarg
-#define brisbane_setmem brisbane_openmp_setmem
-#define brisbane_launch brisbane_openmp_launch
+#include "iris/iris_openmp.h"
+#define iris_kernel_lock   iris_openmp_lock
+#define iris_kernel_unlock iris_openmp_unlock
+#define iris_kernel iris_openmp_kernel
+#define iris_setarg iris_openmp_setarg
+#define iris_setmem iris_openmp_setmem
+#define iris_launch iris_openmp_launch
 #define HANDLE
 #define HANDLETYPE 
             ''')
     for k,v in data_hash.items():
-        lines.append("#define brisbane_kernel_"+k+" "+k)
+        lines.append("#define iris_kernel_"+k+" "+k)
     lines.append('''
 #endif //ENABLE_IRIS_OPENMP_APIS
             ''')
     lines.append('''
 #ifdef ENABLE_IRIS_HOST2OPENCL_APIS 
-#include "brisbane/brisbane_host2opencl.h"
-#define brisbane_kernel_lock   brisbane_host2opencl_lock
-#define brisbane_kernel_unlock brisbane_host2opencl_unlock
-#define brisbane_kernel brisbane_host2opencl_kernel
-#define brisbane_setarg brisbane_host2opencl_setarg
-#define brisbane_setmem brisbane_host2opencl_setmem
-#define brisbane_launch brisbane_host2opencl_launch
-#define HANDLE  brisbane_host2opencl_get_handle(), 
+#include "iris/iris_host2opencl.h"
+#define iris_kernel_lock   iris_host2opencl_lock
+#define iris_kernel_unlock iris_host2opencl_unlock
+#define iris_kernel iris_host2opencl_kernel
+#define iris_setarg iris_host2opencl_setarg
+#define iris_setmem iris_host2opencl_setmem
+#define iris_launch iris_host2opencl_launch
+#define HANDLE  iris_host2opencl_get_handle(), 
 #define HANDLETYPE void *,
             ''')
     lines.append("#ifdef HOST2OPENCL")
@@ -208,19 +208,19 @@ static int brisbane_kernel_idx = 0;
         lines.append("#define "+k+" HOST2OPENCL("+k+")")
     lines.append("#endif //HOST2OPENCL")
     for k,v in data_hash.items():
-        lines.append("#define brisbane_kernel_"+k+" "+k)
+        lines.append("#define iris_kernel_"+k+" "+k)
     lines.append('''
 #endif //ENABLE_IRIS_HOST2OPENCL_APIS
             ''')
     lines.append('''
 #ifdef ENABLE_IRIS_HOST2HIP_APIS 
-#include "brisbane/brisbane_host2hip.h"
-#define brisbane_kernel_lock   brisbane_host2hip_lock
-#define brisbane_kernel_unlock brisbane_host2hip_unlock
-#define brisbane_kernel brisbane_host2hip_kernel
-#define brisbane_setarg brisbane_host2hip_setarg
-#define brisbane_setmem brisbane_host2hip_setmem
-#define brisbane_launch brisbane_host2hip_launch
+#include "iris/iris_host2hip.h"
+#define iris_kernel_lock   iris_host2hip_lock
+#define iris_kernel_unlock iris_host2hip_unlock
+#define iris_kernel iris_host2hip_kernel
+#define iris_setarg iris_host2hip_setarg
+#define iris_setmem iris_host2hip_setmem
+#define iris_launch iris_host2hip_launch
 #define HANDLE 
 #define HANDLETYPE 
             ''')
@@ -229,19 +229,19 @@ static int brisbane_kernel_idx = 0;
         lines.append("#define "+k+" HOST2HIP("+k+")")
     lines.append("#endif //HOST2HIP")
     for k,v in data_hash.items():
-        lines.append("#define brisbane_kernel_"+k+" "+k)
+        lines.append("#define iris_kernel_"+k+" "+k)
     lines.append('''
 #endif //ENABLE_IRIS_HOST2HIP_APIS
             ''')
     lines.append('''
 #ifdef ENABLE_IRIS_HOST2CUDA_APIS 
-#include "brisbane/brisbane_host2cuda.h"
-#define brisbane_kernel_lock   brisbane_host2cuda_lock
-#define brisbane_kernel_unlock brisbane_host2cuda_unlock
-#define brisbane_kernel brisbane_host2cuda_kernel
-#define brisbane_setarg brisbane_host2cuda_setarg
-#define brisbane_setmem brisbane_host2cuda_setmem
-#define brisbane_launch brisbane_host2cuda_launch
+#include "iris/iris_host2cuda.h"
+#define iris_kernel_lock   iris_host2cuda_lock
+#define iris_kernel_unlock iris_host2cuda_unlock
+#define iris_kernel iris_host2cuda_kernel
+#define iris_setarg iris_host2cuda_setarg
+#define iris_setmem iris_host2cuda_setmem
+#define iris_launch iris_host2cuda_launch
 #define HANDLE 
 #define HANDLETYPE 
             ''')
@@ -250,7 +250,7 @@ static int brisbane_kernel_idx = 0;
         lines.append("#define "+k+" HOST2CUDA("+k+")")
     lines.append("#endif //HOST2CUDA")
     for k,v in data_hash.items():
-        lines.append("#define brisbane_kernel_"+k+" "+k)
+        lines.append("#define iris_kernel_"+k+" "+k)
     lines.append('''
 #endif //ENABLE_IRIS_HOST2CUDA_APIS
             ''')
@@ -280,7 +280,7 @@ def appendKernelSignature(lines, data_hash, k_hash):
     global valid_params
     for k,v in data_hash.items():
         kvar = getKernelParamVairable(k)
-        func_sig = "int brisbane_kernel_"+k
+        func_sig = "int iris_kernel_"+k
         params = []
         hexagon_params = []
         param_hash = {}
@@ -336,14 +336,14 @@ def appendStructure(lines, data_hash, k_hash):
                 if f_param == "IN_TASK" or f_param == "OUT_TASK" or f_param == "IN_OUT_TASK":
                     params.append("__global int "+fvar+"___size;")
         lines.append("\t"+"\n\t".join(params))
-        lines.append("} brisbane_"+kvar+";")
-        lines.append("static brisbane_"+kvar+" "+kvar+";")
+        lines.append("} iris_"+kvar+";")
+        lines.append("static iris_"+kvar+" "+kvar+";")
 
 def appendKernelSetArgMemParamFunctions(lines, kernel, data):
     global arguments_start_index
     global valid_params
     kvar = getKernelParamVairable(kernel)
-    lines.append("static int brisbane_"+kernel+"_setarg(int idx, size_t size, void* value) {")
+    lines.append("static int iris_"+kernel+"_setarg(int idx, size_t size, void* value) {")
     lines.append('''
   switch (idx) {
     ''')
@@ -361,12 +361,12 @@ def appendKernelSetArgMemParamFunctions(lines, kernel, data):
             lines.append("\t\t\tcase "+str(p_index)+": memcpy(&"+kvar+"."+fvar+", value, size); break;")
         p_index = p_index+1
     lines.append('''
-        default: return BRISBANE_ERR;
+        default: return IRIS_ERROR;
     }
-    return BRISBANE_OK;
+    return IRIS_SUCCESS;
 }
         ''')
-    lines.append("static int brisbane_"+kernel+"_setmem(int idx, void *mem, int size) {")
+    lines.append("static int iris_"+kernel+"_setmem(int idx, void *mem, int size) {")
     lines.append('''
   switch (idx) {
     ''')
@@ -387,33 +387,33 @@ def appendKernelSetArgMemParamFunctions(lines, kernel, data):
             lines.append("\t\t\tcase "+str(p_index)+": "+kvar+"."+fvar+" = ("+fdt+"*)mem; break;")
         p_index = p_index+1
     lines.append('''
-        default: return BRISBANE_ERR;
+        default: return IRIS_ERROR;
     }
-    return BRISBANE_OK;
+    return IRIS_SUCCESS;
 }
         ''')
 
 def appendKernelSetArgMemGlobalFunctions(lines, data_hash, k_hash):
     lines.append('''
-int brisbane_setarg(int idx, size_t size, void* value) {
-  switch (brisbane_kernel_idx) {
+int iris_setarg(int idx, size_t size, void* value) {
+  switch (iris_kernel_idx) {
     ''')
     for k,v in data_hash.items():
-        lines.append("\t\t\t case "+str(k_hash[k])+": return brisbane_"+k+"_setarg(idx, size, value);")
+        lines.append("\t\t\t case "+str(k_hash[k])+": return iris_"+k+"_setarg(idx, size, value);")
     lines.append('''
     }
-    return BRISBANE_ERR;
+    return IRIS_ERROR;
 }
         ''')
     lines.append('''
-int brisbane_setmem(int idx, void *mem, int size) {
-  switch (brisbane_kernel_idx) {
+int iris_setmem(int idx, void *mem, int size) {
+  switch (iris_kernel_idx) {
     ''')
     for k,v in data_hash.items():
-        lines.append("\t\t\t case "+str(k_hash[k])+": return brisbane_"+k+"_setmem(idx, mem, size);")
+        lines.append("\t\t\t case "+str(k_hash[k])+": return iris_"+k+"_setmem(idx, mem, size);")
     lines.append('''
     }
-    return BRISBANE_ERR;
+    return IRIS_ERROR;
 }
         ''')
 
@@ -421,21 +421,21 @@ def appendKernelLaunchFunction(lines, data_hash, k_hash):
     global arguments_start_index
     global valid_params
     lines.append('''
-int brisbane_kernel(const char* name) {
-    brisbane_kernel_lock();
+int iris_kernel(const char* name) {
+    iris_kernel_lock();
     ''')
     for k,v in data_hash.items():
         lines.append("\t if (strcmp(name, \""+k+"\") == 0) {")
-        lines.append("\t\t brisbane_kernel_idx = "+str(k_hash[k])+";")
-        lines.append("\t\t return BRISBANE_OK;")
+        lines.append("\t\t iris_kernel_idx = "+str(k_hash[k])+";")
+        lines.append("\t\t return IRIS_SUCCESS;")
         lines.append("\t }")
     lines.append('''
-    return BRISBANE_ERR;
+    return IRIS_ERROR;
 }
         ''')
     lines.append('''
-int brisbane_launch(int dim, size_t off, size_t ndr) {
-        switch(brisbane_kernel_idx) {
+int iris_launch(int dim, size_t off, size_t ndr) {
+        switch(iris_kernel_idx) {
         ''')
     def getPyExprString(l):
         if type(l) == list:
@@ -451,31 +451,31 @@ int brisbane_launch(int dim, size_t off, size_t ndr) {
         else:
             return l
     def InsertConditionalParameters(k, expr, f_details, params, lines):
-        res= { "brisbane_all" : 0xFFFFFFFF, 
-            "brisbane_cpu"    : 0x01, 
-            "brisbane_dsp"    : 0x02, 
-            "brisbane_fpga"   : 0x04, 
-            "brisbane_xfpga"  : 0x04, 
-            "brisbane_ifpga"  : 0x08, 
-            "brisbane_gpu"    : 0x0C,
+        res= { "iris_all" : 0xFFFFFFFF, 
+            "iris_cpu"    : 0x01, 
+            "iris_dsp"    : 0x02, 
+            "iris_fpga"   : 0x04, 
+            "iris_xfpga"  : 0x04, 
+            "iris_ifpga"  : 0x08, 
+            "iris_gpu"    : 0x0C,
         }
-        if not re.match(r'brisbane_', expr):
+        if not re.match(r'iris_', expr):
             params.append(getKernelParamVairable(k)+"."+f_details[0])
             return
         expr = re.sub('\|\|', ' | ', expr)
         expr = re.sub('\&\&', ' & ', expr)
         #print("EXPR: "+expr)
         expr_eval = eval(expr, res)
-        if (expr_eval & res['brisbane_cpu']) and (expr_eval & res['brisbane_dsp']):
+        if (expr_eval & res['iris_cpu']) and (expr_eval & res['iris_dsp']):
            params.append(getKernelParamVairable(k)+"."+f_details[0])
-        elif expr_eval & res['brisbane_dsp']:
+        elif expr_eval & res['iris_dsp']:
            if len(params) > 0:
                 lines.append("\t\t\t\t"+", \n\t\t\t\t".join(params)+",")
            lines.append("#ifdef ENABLE_IRIS_HEXAGON_APIS")
            lines.append("\t\t\t\t"+getKernelParamVairable(k)+"."+f_details[0]+",")
            lines.append("#endif")
            params.clear()
-        elif expr_eval & res['brisbane_cpu']:
+        elif expr_eval & res['iris_cpu']:
            if len(params) > 0:
                 lines.append("\t\t\t\t"+", \n\t\t\t\t".join(params)+",")
            lines.append("#ifndef ENABLE_IRIS_HEXAGON_APIS")
@@ -484,7 +484,7 @@ int brisbane_launch(int dim, size_t off, size_t ndr) {
            params.clear()
 
     for k,v in data_hash.items():
-        lines.append("\t\t\tcase "+str(k_hash[k])+": brisbane_kernel_"+k+"(HANDLE ")
+        lines.append("\t\t\tcase "+str(k_hash[k])+": iris_kernel_"+k+"(HANDLE ")
         params = []
         i = arguments_start_index
         one_param_exists = False
@@ -550,8 +550,8 @@ int brisbane_launch(int dim, size_t off, size_t ndr) {
         lines.append("\t\t\t\t\t break;")
     lines.append('''
         }
-        brisbane_kernel_unlock();
-        return BRISBANE_OK;
+        iris_kernel_unlock();
+        return IRIS_SUCCESS;
 }
         ''')
 

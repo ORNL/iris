@@ -4,10 +4,13 @@
 #include "Device.h"
 #include "LoaderOpenCL.h"
 #include "LoaderHost2OpenCL.h"
+#include "Timer.h"
 #include <string>
 
 namespace iris {
 namespace rt {
+
+class Timer;
 
 class DeviceOpenCL : public Device {
 public:
@@ -38,6 +41,7 @@ private:
 private:
   LoaderOpenCL* ld_;
   LoaderHost2OpenCL *host2opencl_ld_;
+  Timer* timer_;
   cl_device_id cldev_;
   cl_context clctx_;
   cl_command_queue clcmdq_;

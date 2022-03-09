@@ -20,15 +20,15 @@ Loader::~Loader() {
 }
 
 int Loader::Load() {
-  if (!library()) return IRIS_OK;
-  if (LoadHandle() != IRIS_OK) return IRIS_ERR;
+  if (!library()) return IRIS_SUCCESS;
+  if (LoadHandle() != IRIS_SUCCESS) return IRIS_ERROR;
   return LoadFunctions();
 }
 
 int Loader::LoadHandle() {
   if (library_precheck() && dlsym(RTLD_DEFAULT, library_precheck())) {
     handle_ = RTLD_DEFAULT;
-    return IRIS_OK;
+    return IRIS_SUCCESS;
   }
   handle_ = dlopen(library(), RTLD_GLOBAL | RTLD_NOW);
   if (handle_) {
@@ -39,9 +39,9 @@ int Loader::LoadHandle() {
 #endif
   } else {
     _trace("%s", dlerror());
-    return IRIS_ERR;
+    return IRIS_ERROR;
   }
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 } /* namespace rt */

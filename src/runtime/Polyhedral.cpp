@@ -23,7 +23,7 @@ int Polyhedral::LoadFunctions() {
 
   iris_poly_init();
 
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Polyhedral::Kernel(const char* name) {

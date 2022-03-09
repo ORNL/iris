@@ -44,12 +44,12 @@ ProfilerGoogleCharts::~ProfilerGoogleCharts() {
 int ProfilerGoogleCharts::Main() {
   Write(PROFILER_HEADER1);
   Write(PROFILER_HEADER2);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int ProfilerGoogleCharts::Exit() {
   Write(PROFILER_FOOTER);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int ProfilerGoogleCharts::CompleteTask(Task* task) {
@@ -60,7 +60,7 @@ int ProfilerGoogleCharts::CompleteTask(Task* task) {
   char s[256];
   sprintf(s, "[ '%s %d', '%s (%s)', %lf, %lf ],\n", dev->name(), dev->devno(), task->name(), policy_str(policy), (task->time_start() * 1.e+3) - first_task_, (task->time_end() * 1.e+3) - first_task_);
   Write(s);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 } /* namespace rt */

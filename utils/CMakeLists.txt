@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.0)
 
 # Sources(C) in sd_hexagon file without extension 
 #set(SDHEXAGON_SOURCES
@@ -110,7 +110,7 @@ initVar(APP_LDFLAGS, "")
 initVar(HEXAGON_FLAGS, "")
 initVar(HEXAGON_LDFLAGS, "")
 
-#set(COMMON_FLAGS "-Dbrisbanehxg_free_stub=brisbanehxg_free_stub_core -Dbrisbanehxg_alloc_stub=brisbanehxg_alloc_stub_core")
+#set(COMMON_FLAGS "-Dirishxg_free_stub=irishxg_free_stub_core -Dirishxg_alloc_stub=irishxg_alloc_stub_core")
 #set(COMMON_FLAGS "")
 #set(STUB_FLAG "")
 initVar(COMMON_FLAGS, "")
@@ -159,7 +159,7 @@ set(DSP_TAG cdsp)
 set(STUB_FLAG "CDSP_FLAG=1")
 set(AUTOVEC_FLAG "ENABLE_AUTOVEC=1")
 endif()
-set(STUB_LIB_NAME "brisbanehxg")
+set(STUB_LIB_NAME "irishxg")
 set(LINK_LIB_DSPRPC adsprpc)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wno-unused-parameter -Wno-unused-variable")
 if (USE_NDK)
@@ -188,20 +188,26 @@ set(HEXAGON_CORE_LIBDIR "${CMAKE_BINARY_DIR}/${HEXAGON_RELATIVE_STUB}/${HEXAGON_
 set(ANDROIDHXG      "${ANDROID_STUB_LIBDIR}/lib${STUB_LIB_NAME}.so")
 set(ANDROIDHXG_SKEL "${ANDROID_STUB_LIBDIR}/lib${STUB_LIB_NAME}_skel.so")
 
-set(HOST2XILINX_FLAGS "${HOST2XILINX_FLAGS} -I$ENV{XILINX_HLS}/include -I$ENV{XILINX_VITIS}/include -I$ENV{XILINX_XRT}/include/ -DENABLE_IRIS -fopenmp -O3 -g -fPIC ${COMMON_FLAGS} ${LOCAL_COMMON_FLAGS} -I. ")
-set(HOST2OPENCL_FLAGS "${HOST2OPENCL_FLAGS} -DENABLE_IRIS -fopenmp -O3 -g -fPIC ${COMMON_FLAGS} ${LOCAL_COMMON_FLAGS} -I.")
-set(HOST2CUDA_FLAGS "${HOST2CUDA_FLAGS} -DENABLE_IRIS -fopenmp -O3 -g -fPIC ${COMMON_FLAGS} ${LOCAL_COMMON_FLAGS} -I.")
-set(HOST2HIP_FLAGS "${HOST2HIP_FLAGS} -DENABLE_IRIS -fopenmp -O3 -g -fPIC ${COMMON_FLAGS} ${LOCAL_COMMON_FLAGS} -I.")
-set(HOST2ROC_FLAGS "${HOST2ROC_FLAGS} -DENABLE_IRIS -fopenmp -O3 -g -fPIC ${COMMON_FLAGS} ${LOCAL_COMMON_FLAGS} -I.")
-set(OPENMP_FLAGS "${OPENMP_FLAGS} -DENABLE_IRIS -fopenmp -O3 -g -fPIC ${COMMON_FLAGS} ${LOCAL_COMMON_FLAGS} -I.")
-set(HOST2XILINX_LDFLAGS "${HOST2XILINX_LDFLAGS} -fopenmp -g -fPIC")
-set(HOST2OPENCL_LDFLAGS "${HOST2OPENCL_LDFLAGS} -fopenmp -g -fPIC")
-set(HOST2CUDA_LDFLAGS "${HOST2CUDA_LDFLAGS} -fopenmp -g -fPIC")
-set(HOST2HIP_LDFLAGS "${HOST2HIP_LDFLAGS} -fopenmp -g -fPIC")
-set(OPENMP_LDFLAGS "${OPENMP_LDFLAGS} -fopenmp -g -fPIC")
-set(HEXAGON_FLAGS "${HEXAGON_FLAGS} -fPIC -g -O3 ${COMMON_FLAGS}  ${LOCAL_COMMON_FLAGS} -I$ENV{IRIS}/include/brisbane/hexagon")
+set(OPENMP_INC "")
+if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    set(OPENMP_INC "")
+else()
+    set(OPENMP_INC "-fopenmp")
+endif()
+set(HOST2XILINX_FLAGS "${HOST2XILINX_FLAGS} -I$ENV{XILINX_HLS}/include -I$ENV{XILINX_VITIS}/include -I$ENV{XILINX_XRT}/include/ -DENABLE_IRIS ${OPENMP_INC} -O3 -g -fPIC ${COMMON_FLAGS} ${LOCAL_COMMON_FLAGS} -I. ")
+set(HOST2OPENCL_FLAGS "${HOST2OPENCL_FLAGS} -DENABLE_IRIS ${OPENMP_INC} -O3 -g -fPIC ${COMMON_FLAGS} ${LOCAL_COMMON_FLAGS} -I.")
+set(HOST2CUDA_FLAGS "${HOST2CUDA_FLAGS} -DENABLE_IRIS ${OPENMP_INC} -O3 -g -fPIC ${COMMON_FLAGS} ${LOCAL_COMMON_FLAGS} -I.")
+set(HOST2HIP_FLAGS "${HOST2HIP_FLAGS} -DENABLE_IRIS ${OPENMP_INC} -O3 -g -fPIC ${COMMON_FLAGS} ${LOCAL_COMMON_FLAGS} -I.")
+set(HOST2ROC_FLAGS "${HOST2ROC_FLAGS} -DENABLE_IRIS ${OPENMP_INC} -O3 -g -fPIC ${COMMON_FLAGS} ${LOCAL_COMMON_FLAGS} -I.")
+set(OPENMP_FLAGS "${OPENMP_FLAGS} -DENABLE_IRIS ${OPENMP_INC} -O3 -g -fPIC ${COMMON_FLAGS} ${LOCAL_COMMON_FLAGS} -I.")
+set(HOST2XILINX_LDFLAGS "${HOST2XILINX_LDFLAGS} ${OPENMP_INC} -g -fPIC")
+set(HOST2OPENCL_LDFLAGS "${HOST2OPENCL_LDFLAGS} ${OPENMP_INC} -g -fPIC")
+set(HOST2CUDA_LDFLAGS "${HOST2CUDA_LDFLAGS} ${OPENMP_INC} -g -fPIC")
+set(HOST2HIP_LDFLAGS "${HOST2HIP_LDFLAGS} ${OPENMP_INC} -g -fPIC")
+set(OPENMP_LDFLAGS "${OPENMP_LDFLAGS} ${OPENMP_INC} -g -fPIC")
+set(HEXAGON_FLAGS "${HEXAGON_FLAGS} -fPIC -g -O3 ${COMMON_FLAGS}  ${LOCAL_COMMON_FLAGS} -I$ENV{IRIS}/include/iris/hexagon")
 set(HEXAGON_LDFLAGS "${HEXAGON_LDFLAGS} -g -L${ANDROID_STUB_LIBDIR}  -Wl,--no-as-needed")
-set(APP_LDFLAGS "${APP_LDFLAGS} -L$ENV{IRIS}/lib64 -L${ANDROID_STUB_LIBDIR}/")
+set(APP_LDFLAGS "${APP_LDFLAGS} -L$ENV{IRIS}/lib64 -L$ENV{IRIS}/lib -L${ANDROID_STUB_LIBDIR}/")
 set(APP_FLAGS "${APP_FLAGS} ${COMMON_FLAGS} -O3 -fPIC -g  ${LOCAL_COMMON_FLAGS} -I.")
 set(APP_FLAGS "${APP_FLAGS} -DENABLE_IRIS")
 set(SKEL_CSRCS_STR "")
@@ -232,22 +238,22 @@ function(hexagonTargets)
      COMMAND mkdir -p ${CMAKE_BINARY_DIR}/${HEXAGON_RELATIVE_STUB}/sd_host
      COMMAND mkdir -p ${CMAKE_BINARY_DIR}/${HEXAGON_RELATIVE_STUB}/sd_hexagon
      COMMAND cp -f ${HEXAGON_KERNEL_SOURCES}  ${CMAKE_BINARY_DIR}/${HEXAGON_RELATIVE_STUB}/sd_hexagon/. 
-     COMMAND rm -f ${CMAKE_BINARY_DIR}/${HEXAGON_RELATIVE_STUB}/brisbanehxg.idl
-     COMMAND cp -f ${PROJECT_SOURCE_DIR}/brisbanehxg.idl ${CMAKE_BINARY_DIR}/${HEXAGON_RELATIVE_STUB}/brisbanehxg.idl
+     COMMAND rm -f ${CMAKE_BINARY_DIR}/${HEXAGON_RELATIVE_STUB}/irishxg.idl
+     COMMAND cp -f ${PROJECT_SOURCE_DIR}/irishxg.idl ${CMAKE_BINARY_DIR}/${HEXAGON_RELATIVE_STUB}/irishxg.idl
      COMMAND rm -f ${CMAKE_BINARY_DIR}/${HEXAGON_RELATIVE_STUB}/Makefile
      COMMAND cp -f $ENV{IRIS}/utils/Makefile.hexagon ${CMAKE_BINARY_DIR}/${HEXAGON_RELATIVE_STUB}/Makefile
      )
    add_custom_command(
      OUTPUT ${IRIS_HEXAGON_INTERFACE_SOURCE}
      COMMAND rm -f ${IRIS_HEXAGON_INTERFACE_SOURCE}
-     COMMAND cp -f $ENV{IRIS}/include/brisbane/hexagon/iris_interface.h  ${IRIS_HEXAGON_INTERFACE_SOURCE}
+     COMMAND cp -f $ENV{IRIS}/include/iris/hexagon/iris_interface.h  ${IRIS_HEXAGON_INTERFACE_SOURCE}
      )
    add_custom_command(
      OUTPUT ${ANDROIDHXG}
      WORKING_DIRECTORY ${CMAKE_BINARY_DIR} 
      COMMAND cp -f $ENV{IRIS}/utils/android.min ${CMAKE_BINARY_DIR}/${HEXAGON_RELATIVE_STUB}/android.min
      COMMAND cp -f $ENV{IRIS}/utils/android_deps.min ${CMAKE_BINARY_DIR}/${HEXAGON_RELATIVE_STUB}/android_deps.min
-     COMMAND cp -f $ENV{IRIS}/include/brisbane/hexagon/stub_imp.h ${CMAKE_BINARY_DIR}/${HEXAGON_RELATIVE_STUB}/sd_host/stub.c
+     COMMAND cp -f $ENV{IRIS}/include/iris/hexagon/stub_imp.h ${CMAKE_BINARY_DIR}/${HEXAGON_RELATIVE_STUB}/sd_host/stub.c
      COMMAND make -C ${CMAKE_BINARY_DIR}/${HEXAGON_RELATIVE_STUB} tree_clean V=${STUB_TARGET} ${STUB_FLAG} DSP_TAG=${DSP_TAG} IRIS=$ENV{IRIS} VERBOSE=1 API_LEVEL=28 -f $ENV{IRIS}/utils/Makefile.hexagon
      COMMAND make -C ${CMAKE_BINARY_DIR}/${HEXAGON_RELATIVE_STUB} tree V=${STUB_TARGET} ${STUB_FLAG} DSP_TAG=${DSP_TAG} IRIS=$ENV{IRIS} VERBOSE=1 API_LEVEL=28  -f $ENV{IRIS}/utils/Makefile.hexagon
      BYPRODUCTS ${CMAKE_BINARY_DIR}/${STUB_TARGET}
@@ -255,7 +261,7 @@ function(hexagonTargets)
    add_custom_command(
      OUTPUT ${ANDROIDHXG_SKEL}
      WORKING_DIRECTORY ${CMAKE_BINARY_DIR} 
-     COMMAND cp -f $ENV{IRIS}/include/brisbane/hexagon/std_kernels.h ${CMAKE_BINARY_DIR}/${HEXAGON_RELATIVE_STUB}/sd_hexagon/std_kernels.c
+     COMMAND cp -f $ENV{IRIS}/include/iris/hexagon/std_kernels.h ${CMAKE_BINARY_DIR}/${HEXAGON_RELATIVE_STUB}/sd_hexagon/std_kernels.c
      COMMAND cp -f $ENV{IRIS}/utils/hexagon.min ${CMAKE_BINARY_DIR}/${HEXAGON_RELATIVE_STUB}/hexagon.min
      COMMAND cp -f $ENV{IRIS}/utils/hexagon_deps.min ${CMAKE_BINARY_DIR}/${HEXAGON_RELATIVE_STUB}/hexagon_deps.min
      COMMAND make -C ${CMAKE_BINARY_DIR}/${HEXAGON_RELATIVE_STUB} tree_clean V=${HEXAGON_TARGET} ${AUTOVEC_FLAG} IRIS=$ENV{IRIS} VERBOSE=1 API_LEVEL=28 ${SKEL_CSRCS_STR} -f $ENV{IRIS}/utils/Makefile.hexagon
@@ -564,7 +570,13 @@ if (HOST2ROC_KERNEL_SOURCES AND USE_HIP)
 addKernelRule(kernel.host2roc "${HOST2ROC_KERNEL_SOURCES}" ${HOST2ROC_FLAGS} ${HOST2ROC_LDFLAGS} "${HOST2ROC_LIBRARIES}")
 endif() #HOST2ROC_KERNEL_SOURCES
 
-install(FILES $ENV{IRIS}/lib64/libbrisbane.so DESTINATION ${LIB_INSTALL_PATH})
+if (EXISTS "$ENV{IRIS}/lib64/libiris.so")
+install(FILES $ENV{IRIS}/lib64/libiris.so DESTINATION ${LIB_INSTALL_PATH})
+endif()
+
+if (EXISTS "$ENV{IRIS}/lib/libiris.so")
+install(FILES $ENV{IRIS}/lib/libiris.so DESTINATION ${LIB_INSTALL_PATH})
+endif()
 
 #printf "0x%x\n" `adb shell cat /sys/devices/soc0/serial_number` > serial
 install_iris_files("${PROJECT_SOURCE_DIR}/src/*.cl" ${KERNEL_INSTALL_PATH})
@@ -584,10 +596,10 @@ add_dependencies(${APP_LIBRARY_NAME} irishxg)
 add_dependencies(${APP_LIBRARY_NAME} irishxg_skel)
 target_link_libraries(${APP_LIBRARY_NAME} ${STUB_LIB_NAME} ${LINK_LIB_DSPRPC})
 endif() #HEXAGON_KERNEL_SOURCES
-target_link_libraries(${APP_LIBRARY_NAME} brisbane log m)
+target_link_libraries(${APP_LIBRARY_NAME} iris log m)
 add_dependencies(${APP_LIBRARY_NAME} setup.android.source)
 else() # SNAPDRAGON
-target_link_libraries(${APP_LIBRARY_NAME} brisbane pthread dl m)
+target_link_libraries(${APP_LIBRARY_NAME} iris pthread dl m)
 add_dependencies(${APP_LIBRARY_NAME} setup.host)
 endif() #SNAPDRAGON
 if (USE_CUDA)
@@ -620,10 +632,10 @@ add_dependencies(${APP_EXECUTABLE} irishxg_skel)
 #message(STATUS "STUB LINK: ${STUB_LIB_NAME}")
 target_link_libraries(${APP_EXECUTABLE} ${STUB_LIB_NAME} ${LINK_LIB_DSPRPC})
 endif() #HEXAGON_KERNEL_SOURCES
-target_link_libraries(${APP_EXECUTABLE} brisbane log m)
+target_link_libraries(${APP_EXECUTABLE} iris log m)
 add_dependencies(${APP_EXECUTABLE} setup.android.source)
 else() # SNAPDRAGON
-target_link_libraries(${APP_EXECUTABLE} brisbane pthread dl m)
+target_link_libraries(${APP_EXECUTABLE} iris pthread dl m)
 add_dependencies(${APP_EXECUTABLE} setup.host)
 endif() #SNAPDRAGON
 if (USE_CUDA)

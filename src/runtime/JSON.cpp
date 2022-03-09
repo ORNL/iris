@@ -54,9 +54,9 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
   int r;
   char* src = NULL;
   size_t srclen = 0;
-  if (Utils::ReadFile((char*) path, &src, &srclen) == IRIS_ERR) {
+  if (Utils::ReadFile((char*) path, &src, &srclen) == IRIS_ERROR) {
     _error("no JSON file[%s]", path);
-    return IRIS_ERR;
+    return IRIS_ERROR;
   }
 
   jsmn_parser p;
@@ -65,7 +65,7 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
 
   r = jsmn_parse(&p, src, srclen, t, IRIS_JSON_MAX_TOK);
 
-  if (r < 0) return IRIS_ERR;
+  if (r < 0) return IRIS_ERROR;
 
   for (int i = 1; i < r; i++) {
     if (EQ(src, t + i, "inputs")) {
@@ -75,7 +75,7 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
     }
   }
   free(t);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int JSON::LoadInputs(char* src, void* tok, int i, int r) {
@@ -226,19 +226,19 @@ int JSON::RecordTask(Task* task) {
   memset(buf, 0, 256);
   sprintf(buf, "  \"target\": \"0x%x\"\n},\n", task->brs_policy());
   str_.append(buf);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int JSON::RecordH2D(Command* cmd, char* buf) {
   mems_.insert(cmd->mem());
   sprintf(buf, "  \"h2d\": [\"mem-%lu\", \"user-%d\", \"%zu\", \"%zu\"],\n", cmd->mem()->uid(), InputPointer(cmd->host()), cmd->off(0), cmd->size());
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int JSON::RecordD2H(Command* cmd, char* buf) {
   mems_.insert(cmd->mem());
   sprintf(buf, "  \"d2h\": [\"mem-%lu\", \"user-%d\", \"%zu\", \"%zu\"],\n", cmd->mem()->uid(), InputPointer(cmd->host()), cmd->off(0), cmd->size());
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int JSON::RecordKernel(Command* cmd, char* buf) {
@@ -277,7 +277,7 @@ int JSON::RecordKernel(Command* cmd, char* buf) {
 
   str.append("] ],\n");
   sprintf(buf, "%s", str.c_str());
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int JSON::RecordFlush() {
@@ -287,7 +287,7 @@ int JSON::RecordFlush() {
   Utils::Datetime(buf);
   sprintf(path, "graph-%s.json", buf);
   int fd = open((const char*) path, O_CREAT | O_WRONLY, 0644);
-  if (fd == -1) return IRIS_ERR;
+  if (fd == -1) return IRIS_ERROR;
   memset(buf, 0, 128);
   sprintf(buf, "{\"iris-graph\": {\n\"inputs\": [");
   write(fd, buf, strlen(buf));
@@ -312,7 +312,7 @@ int JSON::RecordFlush() {
   write(fd, buf, strlen(buf));
   close(fd);
   nptrs_ = 0;
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int JSON::InputPointer(void* p) {

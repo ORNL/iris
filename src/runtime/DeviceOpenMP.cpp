@@ -19,11 +19,11 @@ DeviceOpenMP::DeviceOpenMP(LoaderOpenMP* ld, int devno, int platform) : Device(d
   char* arg = 0;
   size_t size = 0;
   while (getdelim(&arg, &size, 0, fd) != -1) {
-    if (GetProcessorNameIntel(arg) == IRIS_OK) break;
-    if (GetProcessorNamePower(arg) == IRIS_OK) break;
-    if (GetProcessorNameAMD(arg) == IRIS_OK) break;
-    if (GetProcessorNameARM(arg) == IRIS_OK) break;
-    if (GetProcessorNameQualcomm(arg) == IRIS_OK) break;
+    if (GetProcessorNameIntel(arg) == IRIS_SUCCESS) break;
+    if (GetProcessorNamePower(arg) == IRIS_SUCCESS) break;
+    if (GetProcessorNameAMD(arg) == IRIS_SUCCESS) break;
+    if (GetProcessorNameARM(arg) == IRIS_SUCCESS) break;
+    if (GetProcessorNameQualcomm(arg) == IRIS_SUCCESS) break;
     strcpy(name_, "Unknown CPU"); break;
   }
   free(arg);
@@ -59,90 +59,90 @@ void DeviceOpenMP::TaskPre(Task *task) {
 
 int DeviceOpenMP::GetProcessorNameIntel(char* cpuinfo) {
   char* c1 = strstr(cpuinfo, "model name\t: ");
-  if (!c1) return IRIS_ERR;
+  if (!c1) return IRIS_ERROR;
   char* c2 = c1 + strlen("model name\t: ");
   char* c3 = strstr(c2, "GHz");
-  if (!c3) return IRIS_ERR;
+  if (!c3) return IRIS_ERROR;
   strncpy(name_, c2, c3 - c2 + 3);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int DeviceOpenMP::GetProcessorNamePower(char* cpuinfo) {
   char* c1 = strstr(cpuinfo, "cpu\t\t: ");
-  if (!c1) return IRIS_ERR;
+  if (!c1) return IRIS_ERROR;
   char* c2 = c1 + strlen("cpu\t\t: ");
   char* c3 = strstr(c2, "clock");
-  if (!c3) return IRIS_ERR;
+  if (!c3) return IRIS_ERROR;
   strncpy(name_, c2, c3 - c2 - 1);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int DeviceOpenMP::GetProcessorNameAMD(char* cpuinfo) {
   char* c1 = strstr(cpuinfo, "model name\t: ");
-  if (!c1) return IRIS_ERR;
+  if (!c1) return IRIS_ERROR;
   char* c2 = c1 + strlen("model name\t: ");
   char* c3 = strstr(c2, "\n");
-  if (!c3) return IRIS_ERR;
+  if (!c3) return IRIS_ERROR;
   strncpy(name_, c2, c3 - c2);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int DeviceOpenMP::GetProcessorNameARM(char* cpuinfo) {
   char* c1 = strstr(cpuinfo, "model name\t: ");
-  if (!c1) return IRIS_ERR;
+  if (!c1) return IRIS_ERROR;
   char* c2 = c1 + strlen("model name\t: ");
   char* c3 = strstr(c2, ")");
-  if (!c3) return IRIS_ERR;
+  if (!c3) return IRIS_ERROR;
   strncpy(name_, c2, c3 - c2 + 1);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int DeviceOpenMP::GetProcessorNameQualcomm(char* cpuinfo) {
   char* c1 = strstr(cpuinfo, ": ");
-  if (!c1) return IRIS_ERR;
+  if (!c1) return IRIS_ERROR;
   char* c2 = c1 + strlen(": ");
   char* c3 = strstr(c2, ")");
-  if (!c3) return IRIS_ERR;
+  if (!c3) return IRIS_ERROR;
   strncpy(name_, c2, c3 - c2 + 1);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int DeviceOpenMP::Init() {
   ld_->iris_openmp_init();
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int DeviceOpenMP::MemAlloc(void** mem, size_t size) {
   void** mpmem = mem;
   if (posix_memalign(mpmem, 0x1000, size) != 0) {
     _error("%s", "posix_memalign");
-    return IRIS_ERR;
+    return IRIS_ERROR;
   }
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int DeviceOpenMP::MemFree(void* mem) {
   void* mpmem = mem;
   if (mpmem && !is_shared_memory_buffers()) free(mpmem);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int DeviceOpenMP::MemH2D(Mem* mem, size_t off, size_t size, void* host) {
   void* mpmem = mem->arch(this, host);
   if (!is_shared_memory_buffers())
       memcpy((char*) mpmem + off, host, size);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int DeviceOpenMP::MemD2H(Mem* mem, size_t off, size_t size, void* host) {
   void* mpmem = mem->arch(this, host);
   if (!is_shared_memory_buffers())
       memcpy(host, (char*) mpmem + off, size);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int DeviceOpenMP::KernelGet(void** kernel, const char* name) {
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int DeviceOpenMP::KernelLaunchInit(Kernel* kernel) {
@@ -164,12 +164,12 @@ int DeviceOpenMP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws
 }
 
 int DeviceOpenMP::Synchronize() {
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int DeviceOpenMP::AddCallback(Task* task) {
   task->Complete();
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 } /* namespace rt */

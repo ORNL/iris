@@ -189,7 +189,7 @@ Task* Task::Create(Platform* platform, int type, const char* name) {
 
 int Task::Ok(){
   if (dev_) return dev_->ok();
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Task::ncmds_kernel() {

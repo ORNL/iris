@@ -31,7 +31,7 @@ int Kernel::SetArg(int idx, size_t size, void* value) {
   arg->mem = NULL;
   arg->off = 0;
   args_[idx] = arg;
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Kernel::SetMem(int idx, Mem* mem, size_t off, int mode) {
@@ -40,7 +40,7 @@ int Kernel::SetMem(int idx, Mem* mem, size_t off, int mode) {
   arg->off = off;
   arg->mode = mode;
   args_[idx] = arg;
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 std::map<int, KernelArg*>* Kernel::ExportArgs() {

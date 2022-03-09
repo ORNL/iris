@@ -27,7 +27,7 @@ DeviceHexagon::~DeviceHexagon() {
 
 int DeviceHexagon::Init() {
   ld_->iris_hexagon_init();
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int DeviceHexagon::MemAlloc(void** mem, size_t size) {
@@ -35,31 +35,31 @@ int DeviceHexagon::MemAlloc(void** mem, size_t size) {
   *hxgmem = ld_->iris_hexagon_rpcmem_alloc(RPCMEM_HEAP_ID_SYSTEM, RPCMEM_DEFAULT_FLAGS, (int) size);
   if (*hxgmem == 0) {
     _error("hxgmem[%p]", hxgmem);
-    return IRIS_ERR;
+    return IRIS_ERROR;
   }
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int DeviceHexagon::MemFree(void* mem) {
   void* hxgmem = mem;
   if (hxgmem) ld_->iris_hexagon_rpcmem_free(hxgmem);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int DeviceHexagon::MemH2D(Mem* mem, size_t off, size_t size, void* host) {
   void* hxgmem = mem->arch(this);
   memcpy((char*) hxgmem + off, host, size);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int DeviceHexagon::MemD2H(Mem* mem, size_t off, size_t size, void* host) {
   void* hxgmem = mem->arch(this);
   memcpy(host, (char*) hxgmem + off, size);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int DeviceHexagon::KernelGet(void** kernel, const char* name) {
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int DeviceHexagon::KernelLaunchInit(Kernel* kernel) {
@@ -81,12 +81,12 @@ int DeviceHexagon::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gw
 }
 
 int DeviceHexagon::Synchronize() {
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int DeviceHexagon::AddCallback(Task* task) {
   task->Complete();
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 } /* namespace rt */

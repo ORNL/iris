@@ -75,16 +75,16 @@ int Policies::Register(const char* lib, const char* name, void* params) {
   std::string namestr = std::string(name);
   if (policy_customs_.find(namestr) != policy_customs_.end()) {
     _error("existing policy name[%s]", name);
-    return IRIS_ERR;
+    return IRIS_ERROR;
   }
-  if (loader->Load() != IRIS_OK) {
+  if (loader->Load() != IRIS_SUCCESS) {
     _error("cannot load custom policy[%s]", name);
-    return IRIS_ERR;
+    return IRIS_ERROR;
   }
   loader->Init(params);
   _trace("lib[%s] name[%s]", lib, name);
   policy_customs_.insert(std::pair<std::string, LoaderPolicy*>(namestr, loader));
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 } /* namespace rt */

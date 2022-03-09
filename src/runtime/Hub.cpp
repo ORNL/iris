@@ -21,7 +21,7 @@ Hub::~Hub() {
 
 int Hub::OpenMQ() {
 #if !USE_HUB
-  return IRIS_ERR;
+  return IRIS_ERROR;
 #else
   char cmd[64];
   memset(cmd, 0, 64);
@@ -29,13 +29,13 @@ int Hub::OpenMQ() {
   if (system(cmd) == -1) perror(cmd);
   if ((key_ = ftok(IRIS_HUB_MQ_PATH, IRIS_HUB_MQ_PID)) == -1) {
     perror("ftok");
-    return IRIS_ERR;
+    return IRIS_ERROR;
   }
   if ((mq_ = msgget(key_, IRIS_HUB_PERM | IPC_CREAT)) == -1) {
     perror("msgget");
-    return IRIS_ERR;
+    return IRIS_ERROR;
   }
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 #endif
 }
 
@@ -44,7 +44,7 @@ int Hub::CloseMQ() {
   memset(cmd, 0, 64);
   sprintf(cmd, "rm -f %s %s*", IRIS_HUB_MQ_PATH, IRIS_HUB_FIFO_PATH);
   if (system(cmd) == -1) perror(cmd);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Hub::SendFIFO(Message& msg, int pid) {
@@ -54,14 +54,14 @@ int Hub::SendFIFO(Message& msg, int pid) {
     _error("ssret[%zd]", ssret);
     perror("write");
   }
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Hub::Run() {
 #if !USE_HUB
-  return IRIS_ERR;
+  return IRIS_ERROR;
 #else
-  running_ = OpenMQ() == IRIS_OK;
+  running_ = OpenMQ() == IRIS_SUCCESS;
   while (running_) {
     Message msg;
     if (msgrcv(mq_, msg.buf(), IRIS_HUB_MQ_MSG_SIZE, 0, 0) == -1) {
@@ -70,7 +70,7 @@ int Hub::Run() {
     }
     int header = msg.ReadHeader();
     int pid = msg.ReadPID();
-    int ret = IRIS_OK;
+    int ret = IRIS_SUCCESS;
     switch (header) {
       case IRIS_HUB_MQ_STOP:          ret = ExecuteStop(msg, pid);        break;
       case IRIS_HUB_MQ_STATUS:        ret = ExecuteStatus(msg, pid);      break;
@@ -80,9 +80,9 @@ int Hub::Run() {
       case IRIS_HUB_MQ_TASK_ALL:      ret = ExecuteTaskAll(msg, pid);     break;
       default: _error("not supported msg header[0x%x]", header);
     }
-    if (ret != IRIS_OK) _error("header[0x%x] ret[%d]", header, ret);
+    if (ret != IRIS_SUCCESS) _error("header[0x%x] ret[%d]", header, ret);
   }
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 #endif
 }
 
@@ -94,7 +94,7 @@ int Hub::ExecuteStop(Message& msg, int pid) {
   running_ = false;
   Message fmsg(IRIS_HUB_FIFO_STOP);
   SendFIFO(fmsg, pid);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Hub::ExecuteStatus(Message& msg, int pid) {
@@ -104,7 +104,7 @@ int Hub::ExecuteStatus(Message& msg, int pid) {
     fmsg.WriteULong(ntasks_[i]);
   }
   SendFIFO(fmsg, pid);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Hub::ExecuteRegister(Message& msg, int pid) {
@@ -117,7 +117,7 @@ int Hub::ExecuteRegister(Message& msg, int pid) {
   sprintf(path, "%s.%d", IRIS_HUB_FIFO_PATH, pid);
   int fd = open(path, O_RDWR);
   fifos_[pid] = fd;
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Hub::ExecuteDeregister(Message& msg, int pid) {
@@ -135,14 +135,14 @@ int Hub::ExecuteDeregister(Message& msg, int pid) {
     perror("remove");
   }
   fifos_.erase(pid);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Hub::ExecuteTaskInc(Message& msg, int pid) {
   int dev = msg.ReadInt();
   int i = msg.ReadInt();
   ntasks_[dev] += i;
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Hub::ExecuteTaskAll(Message& msg, int pid) {
@@ -150,7 +150,7 @@ int Hub::ExecuteTaskAll(Message& msg, int pid) {
   Message fmsg(IRIS_HUB_FIFO_TASK_ALL);
   fmsg.Write(ntasks_, ndevs * sizeof(size_t));
   SendFIFO(fmsg, pid);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 } /* namespace rt */

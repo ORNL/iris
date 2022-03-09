@@ -15,16 +15,6 @@ install(FILES
   gettime.h
   verify.h
   iris_macros.h
-  brisbane.h
-  brisbane.hpp
-  brisbane_errno.h
-  brisbane_hexagon.h
-  brisbane_hexagon_imp.h
-  brisbane_llvm.h
-  brisbane_openmp.h
-  brisbane_poly.h
-  brisbane_poly_types.h
-  brisbane_runtime.h
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/iris)
 
 install(FILES

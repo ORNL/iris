@@ -31,7 +31,7 @@ int LoaderHost2HIP::LoadFunctions() {
   LOADFUNC(iris_host2hip_setarg);
   LOADFUNC(iris_host2hip_setmem);
   LOADFUNC(iris_host2hip_launch);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 } /* namespace rt */

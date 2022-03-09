@@ -21,11 +21,11 @@ FilterTaskSplit::~FilterTaskSplit() {
 
 int FilterTaskSplit::Execute(Task* task) {
   Command* cmd_kernel = task->cmd_kernel();
-  if (!cmd_kernel) return IRIS_OK;
+  if (!cmd_kernel) return IRIS_SUCCESS;
   Kernel* kernel = cmd_kernel->kernel();
 
   int poly_available = polyhedral_->Kernel(kernel->name());
-  if (!poly_available) return IRIS_ERR;
+  if (!poly_available) return IRIS_ERROR;
   int nmems = 0;
   KernelArg* args = cmd_kernel->kernel_args();
   for (int idx = 0; idx < cmd_kernel->kernel_nargs(); idx++) {
@@ -105,7 +105,7 @@ int FilterTaskSplit::Execute(Task* task) {
   task->ClearCommands();
   delete[] plmems;
 
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 } /* namespace rt */

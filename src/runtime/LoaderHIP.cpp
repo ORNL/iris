@@ -31,7 +31,7 @@ int LoaderHIP::LoadFunctions() {
   LOADFUNC(hipMemcpyDtoH);
   LOADFUNC(hipModuleLaunchKernel);
   LOADFUNC(hipDeviceSynchronize);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 void LoaderHIP::Lock() {

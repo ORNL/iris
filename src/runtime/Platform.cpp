@@ -116,7 +116,7 @@ int Platform::Init(int* argc, char*** argv, int sync) {
   pthread_mutex_lock(&mutex_);
   if (init_) {
     pthread_mutex_unlock(&mutex_);
-    return IRIS_ERR;
+    return IRIS_ERROR;
   }
 
   gethostname(iris_log_prefix_, 256);
@@ -140,7 +140,7 @@ int Platform::Init(int* argc, char*** argv, int sync) {
 
   char* tmpdir = NULL;
   EnvironmentGet("TMPDIR", &tmpdir, NULL);
-  if (Utils::Mkdir(tmpdir) != IRIS_OK) {
+  if (Utils::Mkdir(tmpdir) != IRIS_SUCCESS) {
     _error("tmpdir[%s]", tmpdir);
   }
 
@@ -172,7 +172,7 @@ int Platform::Init(int* argc, char*** argv, int sync) {
   }
   if (ndevs_enabled_ > ndevs_) ndevs_enabled_ = ndevs_;
   polyhedral_ = new Polyhedral();
-  polyhedral_available_ = polyhedral_->Load() == IRIS_OK;
+  polyhedral_available_ = polyhedral_->Load() == IRIS_SUCCESS;
   if (polyhedral_available_)
     filter_task_split_ = new FilterTaskSplit(polyhedral_, this);
 
@@ -203,7 +203,7 @@ int Platform::Init(int* argc, char*** argv, int sync) {
 
   pthread_mutex_unlock(&mutex_);
 
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::Synchronize() {
@@ -236,7 +236,7 @@ int Platform::EnvironmentInit() {
   EnvironmentSet("kernel.host2opencl.intel","kernel.host2opencl.intel.so",false);
 
   EnvironmentSet("LOGO",            "off",                false);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::EnvironmentSet(const char* key, const char* value, bool overwrite) {
@@ -244,11 +244,11 @@ int Platform::EnvironmentSet(const char* key, const char* value, bool overwrite)
   std::string valstr = std::string(value);
   auto it = env_.find(keystr);
   if (it != env_.end()) {
-    if (!overwrite) return IRIS_ERR;
+    if (!overwrite) return IRIS_ERROR;
     env_.erase(it);
   }
   env_.insert(std::pair<std::string, std::string>(keystr, valstr));
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::EnvironmentGet(const char* key, char** value, size_t* vallen) {
@@ -260,7 +260,7 @@ int Platform::EnvironmentGet(const char* key, char** value, size_t* vallen) {
     auto it = env_.find(keystr);
     if (it == env_.end()) {
       if (vallen) *vallen = 0;
-      return IRIS_ERR;
+      return IRIS_ERROR;
     }
     val = it->second.c_str();
   }
@@ -268,7 +268,7 @@ int Platform::EnvironmentGet(const char* key, char** value, size_t* vallen) {
   if (*value == NULL) *value = (char*) malloc(strlen(val) + 1);
   strcpy(*value, val);
   if (vallen) *vallen = strlen(val) + 1;
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::SetDevsAvailable() {
@@ -276,7 +276,7 @@ int Platform::SetDevsAvailable() {
   if (!enabled) {
     for (int i = 0; i < IRIS_MAX_NDEVS; i++) devs_enabled_[i] = i;
     ndevs_enabled_ = IRIS_MAX_NDEVS;
-    return IRIS_OK;
+    return IRIS_SUCCESS;
   }
   _info("IRIS ENABLED DEVICES[%s]", enabled);
   const char* delim = " :;.,";
@@ -291,28 +291,28 @@ int Platform::SetDevsAvailable() {
   for (int i = 0; i < ndevs_enabled_; i++) {
     _debug("devs_available[%d]", devs_enabled_[i]);
   }
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::InitCUDA() {
   if (arch_available_ & iris_nvidia) {
     _trace("%s", "skipping CUDA architecture");
-    return IRIS_ERR;
+    return IRIS_ERROR;
   }
   loaderCUDA_ = new LoaderCUDA();
-  if (loaderCUDA_->Load() != IRIS_OK) {
+  if (loaderCUDA_->Load() != IRIS_SUCCESS) {
     _trace("%s", "skipping CUDA architecture");
-    return IRIS_ERR;
+    return IRIS_ERROR;
   }
   loaderHost2CUDA_ = new LoaderHost2CUDA();
-  if (loaderHost2CUDA_->Load() != IRIS_OK) {
+  if (loaderHost2CUDA_->Load() != IRIS_SUCCESS) {
     _trace("%s", "skipping Host2CUDA wrapper calls");
   }
   CUresult err = CUDA_SUCCESS;
   err = loaderCUDA_->cuInit(0);
   if (err != CUDA_SUCCESS) {
     _trace("skipping CUDA architecture CUDA_ERROR[%d]", err);
-    return IRIS_ERR;
+    return IRIS_ERROR;
   }
   int ndevs = 0;
   err = loaderCUDA_->cuDeviceGetCount(&ndevs);
@@ -323,7 +323,7 @@ int Platform::InitCUDA() {
     CUdevice dev;
     err = loaderCUDA_->cuDeviceGet(&dev, i);
     _cuerror(err);
-    devs_[ndevs_] = new DeviceCUDA(loaderCUDA_, dev, ndevs_, nplatforms_);
+    devs_[ndevs_] = new DeviceCUDA(loaderCUDA_, loaderHost2CUDA_, dev, ndevs_, nplatforms_);
     arch_available_ |= devs_[ndevs_]->type();
     ndevs_++;
   }
@@ -331,21 +331,21 @@ int Platform::InitCUDA() {
     strcpy(platform_names_[nplatforms_], "CUDA");
     nplatforms_++;
   }
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::InitHIP() {
   if (arch_available_ & iris_amd) {
     _trace("%s", "skipping HIP architecture");
-    return IRIS_ERR;
+    return IRIS_ERROR;
   }
   loaderHIP_ = new LoaderHIP();
-  if (loaderHIP_->Load() != IRIS_OK) {
+  if (loaderHIP_->Load() != IRIS_SUCCESS) {
     _trace("%s", "skipping HIP architecture");
-    return IRIS_ERR;
+    return IRIS_ERROR;
   }
   loaderHost2HIP_ = new LoaderHost2HIP();
-  if (loaderHost2HIP_->Load() != IRIS_OK) {
+  if (loaderHost2HIP_->Load() != IRIS_SUCCESS) {
     _trace("%s", "skipping Host2HIP wrapper calls");
   }
   hipError_t err = hipSuccess;
@@ -368,18 +368,18 @@ int Platform::InitHIP() {
     strcpy(platform_names_[nplatforms_], "HIP");
     nplatforms_++;
   }
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::InitLevelZero() {
   if (arch_available_ & iris_gpu_intel) {
     _trace("%s", "skipping LevelZero architecture");
-    return IRIS_ERR;
+    return IRIS_ERROR;
   }
   loaderLevelZero_ = new LoaderLevelZero();
-  if (loaderLevelZero_->Load() != IRIS_OK) {
+  if (loaderLevelZero_->Load() != IRIS_SUCCESS) {
     _trace("%s", "skipping LevelZero architecture");
-    return IRIS_ERR;
+    return IRIS_ERROR;
   }
 
   ze_result_t err = ZE_RESULT_SUCCESS;
@@ -392,7 +392,7 @@ int Platform::InitLevelZero() {
   _zeerror(err);
 
   _info("LevelZero driver count[%u]",  ndrivers);
-  if (ndrivers != 1) return IRIS_ERR;
+  if (ndrivers != 1) return IRIS_ERROR;
 
   err = loaderLevelZero_->zeDriverGet(&ndrivers, &driver);
   _zeerror(err);
@@ -421,18 +421,18 @@ int Platform::InitLevelZero() {
     strcpy(platform_names_[nplatforms_], "LevelZero");
     nplatforms_++;
   }
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::InitOpenMP() {
   if (arch_available_ & iris_cpu) {
     _trace("%s", "skipping OpenMP architecture");
-    return IRIS_ERR;
+    return IRIS_ERROR;
   }
   loaderOpenMP_ = new LoaderOpenMP();
-  if (loaderOpenMP_->Load() != IRIS_OK) {
+  if (loaderOpenMP_->Load() != IRIS_SUCCESS) {
     _trace("%s", "skipping OpenMP architecture");
-    return IRIS_ERR;
+    return IRIS_ERROR;
   }
   _trace("OpenMP platform[%d] ndevs[%d]", nplatforms_, 1);
   devs_[ndevs_] = new DeviceOpenMP(loaderOpenMP_, ndevs_, nplatforms_);
@@ -440,18 +440,18 @@ int Platform::InitOpenMP() {
   ndevs_++;
   strcpy(platform_names_[nplatforms_], "OpenMP");
   nplatforms_++;
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::InitHexagon() {
   if (arch_available_ & iris_hexagon) {
     _trace("%s", "skipping Hexagon architecture");
-    return IRIS_ERR;
+    return IRIS_ERROR;
   }
   loaderHexagon_ = new LoaderHexagon();
-  if (loaderHexagon_->Load() != IRIS_OK) {
+  if (loaderHexagon_->Load() != IRIS_SUCCESS) {
     _trace("%s", "skipping Hexagon architecture");
-    return IRIS_ERR;
+    return IRIS_ERROR;
   }
   _trace("Hexagon platform[%d] ndevs[%d]", nplatforms_, 1);
   devs_[ndevs_] = new DeviceHexagon(loaderHexagon_, ndevs_, nplatforms_);
@@ -459,14 +459,14 @@ int Platform::InitHexagon() {
   ndevs_++;
   strcpy(platform_names_[nplatforms_], "Hexagon");
   nplatforms_++;
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::InitOpenCL() {
   loaderOpenCL_ = new LoaderOpenCL();
-  if (loaderOpenCL_->Load() != IRIS_OK) {
+  if (loaderOpenCL_->Load() != IRIS_SUCCESS) {
     _trace("%s", "skipping OpenCL architecture");
-    return IRIS_ERR;
+    return IRIS_ERROR;
   }
   cl_platform_id cl_platforms[IRIS_MAX_NDEVS];
   cl_context cl_contexts[IRIS_MAX_NDEVS];
@@ -477,7 +477,7 @@ int Platform::InitOpenCL() {
 
   err = loaderOpenCL_->clGetPlatformIDs(nplatforms, cl_platforms, &nplatforms);
   _trace("OpenCL nplatforms[%u]", nplatforms);
-  if (!nplatforms) return IRIS_OK;
+  if (!nplatforms) return IRIS_SUCCESS;
   cl_uint ndevs = 0;
   char vendor[64];
   char platform_name[64];
@@ -516,7 +516,7 @@ int Platform::InitOpenCL() {
       if ((arch_available_ & iris_cpu) && (dev_type == CL_DEVICE_TYPE_CPU)) continue;
       std::string suffix = DeviceOpenCL::GetLoaderHost2OpenCLSuffix(loaderOpenCL_, cl_devices[j]);
       LoaderHost2OpenCL *loaderHost2OpenCL = new LoaderHost2OpenCL(suffix.c_str());
-      if (loaderHost2OpenCL->Load() != IRIS_OK) {
+      if (loaderHost2OpenCL->Load() != IRIS_SUCCESS) {
         _trace("%s", "skipping Host2OpenCL wrapper calls");
       }
       loaderHost2OpenCL_.push_back(loaderHost2OpenCL);
@@ -528,14 +528,14 @@ int Platform::InitOpenCL() {
     sprintf(platform_names_[nplatforms_], "OpenCL %s", vendor);
     nplatforms_++;
   }
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::InitDevices(bool sync) {
   if (!ndevs_) {
     dev_default_ = -1;
     ___error("%s", "NO AVAILABLE DEVICES!");
-    return IRIS_ERR;
+    return IRIS_ERROR;
   }
   char* c = getenv("IRIS_DEVICE_DEFAULT");
   if (c) dev_default_ = atoi(c);
@@ -550,58 +550,58 @@ int Platform::InitDevices(bool sync) {
   }
   if (sync) for (int i = 0; i < ndevs_; i++) tasks[i]->Wait();
   delete[] tasks;
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::PlatformCount(int* nplatforms) {
   if (nplatforms) *nplatforms = nplatforms_;
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::PlatformInfo(int platform, int param, void* value, size_t* size) {
-  if (platform >= nplatforms_) return IRIS_ERR;
+  if (platform >= nplatforms_) return IRIS_ERROR;
   switch (param) {
     case iris_name:
       if (size) *size = strlen(platform_names_[platform]);
       strcpy((char*) value, platform_names_[platform]);
       break;
-    default: return IRIS_ERR;
+    default: return IRIS_ERROR;
   }
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::PlatformBuildProgram(int model, char* path) {
   for (int i = 0; i < ndevs_; i++)
     if (devs_[i]->model() == model) devs_[i]->BuildProgram(path);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::DeviceCount(int* ndevs) {
   if (ndevs) *ndevs = ndevs_;
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::DeviceInfo(int device, int param, void* value, size_t* size) {
-  if (device >= ndevs_) return IRIS_ERR;
+  if (device >= ndevs_) return IRIS_ERROR;
   Device* dev = devs_[device];
   switch (param) {
     case iris_platform  : if (size) *size = sizeof(int);            *((int*) value) = dev->platform();      break;
     case iris_vendor    : if (size) *size = strlen(dev->vendor());  strcpy((char*) value, dev->vendor());   break;
     case iris_name      : if (size) *size = strlen(dev->name());    strcpy((char*) value, dev->name());     break;
     case iris_type      : if (size) *size = sizeof(int);            *((int*) value) = dev->type();          break;
-    default: return IRIS_ERR;
+    default: return IRIS_ERROR;
   }
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::DeviceSetDefault(int device) {
   dev_default_ = device;
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::DeviceGetDefault(int* device) {
   *device = dev_default_;
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::DeviceSynchronize(int ndevs, int* devices) {
@@ -629,28 +629,28 @@ int Platform::PolicyRegister(const char* lib, const char* name, void* params) {
 int Platform::RegisterCommand(int tag, int device, command_handler handler) {
   for (int i = 0; i < ndevs_; i++)
     if (devs_[i]->type() == device) devs_[i]->RegisterCommand(tag, handler);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::RegisterHooksTask(hook_task pre, hook_task post) {
   hook_task_pre_ = pre;
   hook_task_post_ = post;
   for (int i = 0; i < ndevs_; i++) devs_[i]->RegisterHooks();
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::RegisterHooksCommand(hook_command pre, hook_command post) {
   hook_command_pre_ = pre;
   hook_command_post_ = post;
   for (int i = 0; i < ndevs_; i++) devs_[i]->RegisterHooks();
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::KernelCreate(const char* name, iris_kernel* brs_kernel) {
   Kernel* kernel = new Kernel(name, this);
   if (brs_kernel) *brs_kernel = kernel->struct_obj();
   kernels_.insert(kernel);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::KernelGet(const char* name, iris_kernel* brs_kernel) {
@@ -658,7 +658,7 @@ int Platform::KernelGet(const char* name, iris_kernel* brs_kernel) {
     Kernel* kernel = *I;
     if (strcmp(kernel->name(), name) == 0) {
       if (brs_kernel) *brs_kernel = kernel->struct_obj();
-      return IRIS_OK;
+      return IRIS_SUCCESS;
     }
   }
   return KernelCreate(name, brs_kernel);
@@ -667,14 +667,14 @@ int Platform::KernelGet(const char* name, iris_kernel* brs_kernel) {
 int Platform::KernelSetArg(iris_kernel brs_kernel, int idx, size_t size, void* value) {
   Kernel* kernel = brs_kernel->class_obj;
   kernel->SetArg(idx, size, value);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::KernelSetMem(iris_kernel brs_kernel, int idx, iris_mem brs_mem, size_t off, size_t mode) {
   Kernel* kernel = brs_kernel->class_obj;
   Mem* mem = brs_mem->class_obj;
   kernel->SetMem(idx, mem, off, mode);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::KernelSetMap(iris_kernel brs_kernel, int idx, void* host, size_t mode) {
@@ -688,25 +688,25 @@ int Platform::KernelSetMap(iris_kernel brs_kernel, int idx, void* host, size_t m
     Mem* mem = present_table_->Get(host, &off);
     kernel->SetMem(idx, mem, off, mode);
   }
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::KernelRelease(iris_kernel brs_kernel) {
   Kernel* kernel = brs_kernel->class_obj;
   kernel->Release();
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::TaskCreate(const char* name, bool perm, iris_task* brs_task) {
   Task* task = Task::Create(this, perm ? IRIS_TASK_PERM : IRIS_TASK, name);
   *brs_task = task->struct_obj();
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::TaskDepend(iris_task brs_task, int ntasks, iris_task* brs_tasks) {
   Task* task = brs_task->class_obj;
   for (int i = 0; i < ntasks; i++) task->AddDepend(brs_tasks[i]->class_obj);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::TaskKernel(iris_task brs_task, iris_kernel brs_kernel, int dim, size_t* off, size_t* gws, size_t* lws) {
@@ -714,14 +714,14 @@ int Platform::TaskKernel(iris_task brs_task, iris_kernel brs_kernel, int dim, si
   Kernel* kernel = brs_kernel->class_obj;
   Command* cmd = Command::CreateKernel(task, kernel, dim, off, gws, lws);
   task->AddCommand(cmd);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::TaskCustom(iris_task brs_task, int tag, void* params, size_t params_size) {
   Task* task = brs_task->class_obj;
   Command* cmd = Command::CreateCustom(task, tag, params, params_size);
   task->AddCommand(cmd);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::TaskKernel(iris_task brs_task, const char* name, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, size_t* params_off, int* params_info, size_t* memranges) {
@@ -729,7 +729,7 @@ int Platform::TaskKernel(iris_task brs_task, const char* name, int dim, size_t* 
   Kernel* kernel = GetKernel(name);
   Command* cmd = Command::CreateKernel(task, kernel, dim, off, gws, lws, nparams, params, params_off, params_info, memranges);
   task->AddCommand(cmd);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::SetParamsMap(iris_task brs_task, int *params_map)
@@ -737,7 +737,7 @@ int Platform::SetParamsMap(iris_task brs_task, int *params_map)
   Task *task = brs_task->class_obj;
   Command *cmd_kernel = task->cmd_kernel();
   cmd_kernel->set_params_map(params_map);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::SetSharedMemoryModel(int flag)
@@ -745,22 +745,22 @@ int Platform::SetSharedMemoryModel(int flag)
     for (int i = 0; i < ndevs_; i++) {
         if (devs_[i]) devs_[i]->set_shared_memory_buffers((bool)flag);
     }
-    return IRIS_OK;
+    return IRIS_SUCCESS;
 }
 
 int Platform::TaskKernelSelector(iris_task brs_task, iris_selector_kernel func, void* params, size_t params_size) {
   Task* task = brs_task->class_obj;
   Command* cmd = task->cmd_kernel();
-  if (!cmd) return IRIS_ERR;
+  if (!cmd) return IRIS_ERROR;
   cmd->set_selector_kernel(func, params, params_size);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::TaskHost(iris_task brs_task, iris_host_task func, void* params) {
   Task* task = brs_task->class_obj;
   Command* cmd = Command::CreateHost(task, func, params);
   task->AddCommand(cmd);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::TaskMalloc(iris_task brs_task, iris_mem brs_mem) {
@@ -768,7 +768,7 @@ int Platform::TaskMalloc(iris_task brs_task, iris_mem brs_mem) {
   Mem* mem = brs_mem->class_obj;
   Command* cmd = Command::CreateMalloc(task, mem);
   task->AddCommand(cmd);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::TaskH2D(iris_task brs_task, iris_mem brs_mem, size_t off, size_t size, void* host) {
@@ -776,7 +776,7 @@ int Platform::TaskH2D(iris_task brs_task, iris_mem brs_mem, size_t off, size_t s
   Mem* mem = brs_mem->class_obj;
   Command* cmd = Command::CreateH2D(task, mem, off, size, host);
   task->AddCommand(cmd);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::TaskD2H(iris_task brs_task, iris_mem brs_mem, size_t off, size_t size, void* host) {
@@ -784,7 +784,7 @@ int Platform::TaskD2H(iris_task brs_task, iris_mem brs_mem, size_t off, size_t s
   Mem* mem = brs_mem->class_obj;
   Command* cmd = Command::CreateD2H(task, mem, off, size, host);
   task->AddCommand(cmd);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::TaskH2DFull(iris_task brs_task, iris_mem brs_mem, void* host) {
@@ -799,7 +799,7 @@ int Platform::TaskMap(iris_task brs_task, void* host, size_t size) {
   Task* task = brs_task->class_obj;
   Command* cmd = Command::CreateMap(task, host, size);
   task->AddCommand(cmd);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::TaskMapTo(iris_task brs_task, void* host, size_t size) {
@@ -808,7 +808,7 @@ int Platform::TaskMapTo(iris_task brs_task, void* host, size_t size) {
   Mem* mem = present_table_->Get(host, &off);
   Command* cmd = Command::CreateH2D(task, mem, off, size, host);
   task->AddCommand(cmd);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::TaskMapToFull(iris_task brs_task, void* host) {
@@ -818,7 +818,7 @@ int Platform::TaskMapToFull(iris_task brs_task, void* host) {
   size_t size = mem->size();
   Command* cmd = Command::CreateH2D(task, mem, off, size - off, host);
   task->AddCommand(cmd);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::TaskMapFrom(iris_task brs_task, void* host, size_t size) {
@@ -827,7 +827,7 @@ int Platform::TaskMapFrom(iris_task brs_task, void* host, size_t size) {
   Mem* mem = present_table_->Get(host, &off);
   Command* cmd = Command::CreateD2H(task, mem, off, size, host);
   task->AddCommand(cmd);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::TaskMapFromFull(iris_task brs_task, void* host) {
@@ -837,7 +837,7 @@ int Platform::TaskMapFromFull(iris_task brs_task, void* host) {
   size_t size = mem->size();
   Command* cmd = Command::CreateD2H(task, mem, off, size - off, host);
   task->AddCommand(cmd);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::TaskSubmit(iris_task brs_task, int brs_policy, const char* opt, int sync) {
@@ -849,17 +849,17 @@ int Platform::TaskSubmit(iris_task brs_task, int brs_policy, const char* opt, in
     scheduler_->Enqueue(task);
   } else workers_[0]->Enqueue(task);
   if (sync) task->Wait();
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::TaskWait(iris_task brs_task) {
   Task* task = brs_task->class_obj;
   task->Wait();
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::TaskWaitAll(int ntasks, iris_task* brs_tasks) {
-  int iret = IRIS_OK;
+  int iret = IRIS_SUCCESS;
   for (int i = 0; i < ntasks; i++) iret &= TaskWait(brs_tasks[i]);
   return iret;
 }
@@ -868,18 +868,18 @@ int Platform::TaskAddSubtask(iris_task brs_task, iris_task brs_subtask) {
   Task* task = brs_task->class_obj;
   Task* subtask = brs_subtask->class_obj;
   task->AddSubtask(subtask);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::TaskKernelCmdOnly(iris_task brs_task) {
   Task* task = brs_task->class_obj;
-  return (task->ncmds() == 1 && task->cmd_kernel()) ? IRIS_OK : IRIS_ERR;
+  return (task->ncmds() == 1 && task->cmd_kernel()) ? IRIS_SUCCESS : IRIS_ERROR;
 }
 
 int Platform::TaskRelease(iris_task brs_task) {
   Task* task = brs_task->class_obj;
   task->Release();
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::TaskReleaseMem(iris_task brs_task, iris_mem brs_mem) {
@@ -887,7 +887,7 @@ int Platform::TaskReleaseMem(iris_task brs_task, iris_mem brs_mem) {
   Mem* mem = brs_mem->class_obj;
   Command* cmd = Command::CreateReleaseMem(task, mem);
   task->AddCommand(cmd);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::TaskInfo(iris_task brs_task, int param, void* value, size_t* size) {
@@ -908,24 +908,24 @@ int Platform::TaskInfo(iris_task brs_task, int param, void* value, size_t* size)
       cmd_types[i] = task->cmd(i)->type();
     }    
   }
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::MemCreate(size_t size, iris_mem* brs_mem) {
   Mem* mem = new Mem(size, this);
   if (brs_mem) *brs_mem = mem->struct_obj();
   mems_.insert(mem);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::MemArch(iris_mem brs_mem, int device, void** arch) {
-  if (!arch) return IRIS_ERR;
+  if (!arch) return IRIS_ERROR;
   Mem* mem = brs_mem->class_obj;
   Device* dev = devs_[device];
   void* ret = mem->arch(dev);
-  if (!ret) return IRIS_ERR;
+  if (!ret) return IRIS_ERROR;
   *arch = ret;
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::MemMap(void* host, size_t size) {
@@ -933,38 +933,38 @@ int Platform::MemMap(void* host, size_t size) {
   mem->SetMap(host, size);
   mems_.insert(mem);
   present_table_->Add(host, size, mem);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::MemUnmap(void* host) {
   Mem* mem = present_table_->Remove(host);
   mem->Release();
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::MemReduce(iris_mem brs_mem, int mode, int type) {
   Mem* mem = brs_mem->class_obj;
   mem->Reduce(mode, type);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::MemRelease(iris_mem brs_mem) {
   Mem* mem = brs_mem->class_obj;
   mem->Release();
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::GraphCreate(iris_graph* brs_graph) {
   Graph* graph = Graph::Create(this);
   *brs_graph = graph->struct_obj();
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::GraphCreateJSON(const char* path, void** params, iris_graph* brs_graph) {
   Graph* graph = Graph::Create(this);
   *brs_graph = graph->struct_obj();
   json_->Load(graph, path, params);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::GraphTask(iris_graph brs_graph, iris_task brs_task, int brs_policy, const char* opt) {
@@ -972,7 +972,7 @@ int Platform::GraphTask(iris_graph brs_graph, iris_task brs_task, int brs_policy
   Task* task = brs_task->class_obj;
   task->set_target_perm(brs_policy, opt);
   graph->AddTask(task);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::GraphSubmit(iris_graph brs_graph, int brs_policy, int sync) {
@@ -987,43 +987,43 @@ int Platform::GraphSubmit(iris_graph brs_graph, int brs_policy, int sync) {
     else workers_[0]->Enqueue(task);
   }
   if (sync) graph->Wait();
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::GraphWait(iris_graph brs_graph) {
   Graph* graph = brs_graph->class_obj;
   graph->Wait();
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::GraphWaitAll(int ngraphs, iris_graph* brs_graphs) {
-  int iret = IRIS_OK;
+  int iret = IRIS_SUCCESS;
   for (int i = 0; i < ngraphs; i++) iret &= GraphWait(brs_graphs[i]);
   return iret;
 }
 
 int Platform::RecordStart() {
   recording_ = true;
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::RecordStop() {
   json_->RecordFlush();
   recording_ = false;
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::FilterSubmitExecute(Task* task) {
-  if (!polyhedral_available_) return IRIS_OK;
-  if (!task->cmd_kernel()) return IRIS_OK;
+  if (!polyhedral_available_) return IRIS_SUCCESS;
+  if (!task->cmd_kernel()) return IRIS_SUCCESS;
   if (task->brs_policy() & iris_all) {
-    if (filter_task_split_->Execute(task) != IRIS_OK) {
+    if (filter_task_split_->Execute(task) != IRIS_SUCCESS) {
       _trace("poly is not available kernel[%s] task[%lu]", task->cmd_kernel()->kernel()->name(), task->uid());
-      return IRIS_ERR;
+      return IRIS_ERROR;
     }
     _trace("poly is available kernel[%s] task[%lu]", task->cmd_kernel()->kernel()->name(), task->uid());
   }
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 Kernel* Platform::GetKernel(const char* name) {
@@ -1051,33 +1051,33 @@ Mem* Platform::GetMem(void* host, size_t* off) {
 
 int Platform::TimerNow(double* time) {
   *time = timer_->Now();
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::InitScheduler() {
   /*
   if (ndevs_ == 1) {
     _info("No scheduler ndevs[%d]", ndevs_);
-    return IRIS_OK;
+    return IRIS_SUCCESS;
   }
   */
   _info("Scheduler ndevs[%d] ndevs_enabled[%d]", ndevs_, ndevs_enabled_);
   scheduler_ = new Scheduler(this);
   scheduler_->Start();
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::InitWorkers() {
   if (!scheduler_) {
     workers_[0] = new Worker(devs_[0], this, true);
     workers_[0]->Start();
-    return IRIS_OK;
+    return IRIS_SUCCESS;
   }
   for (int i = 0; i < ndevs_; i++) {
     workers_[i] = new Worker(devs_[i], this);
     workers_[i]->Start();
   }
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int Platform::ShowKernelHistory() {
@@ -1093,7 +1093,7 @@ int Platform::ShowKernelHistory() {
     t_d2h += history->t_d2h();
   }
   _info("total kernel[%lf] h2d[%lf] d2h[%lf]", t_ker, t_h2d, t_d2h);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 Platform* Platform::singleton_ = NULL;
@@ -1110,7 +1110,7 @@ int Platform::Finalize() {
   pthread_mutex_lock(&mutex_);
   if (finalize_) {
     pthread_mutex_unlock(&mutex_);
-    return IRIS_ERR;
+    return IRIS_ERROR;
   }
   int ret_id = Synchronize();
   ShowKernelHistory();

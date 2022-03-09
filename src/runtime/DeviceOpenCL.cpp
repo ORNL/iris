@@ -49,6 +49,7 @@ DeviceOpenCL::DeviceOpenCL(LoaderOpenCL* ld, LoaderHost2OpenCL *host2opencl_ld, 
   cldev_ = cldev;
   clctx_ = clctx;
   clprog_ = NULL;
+  timer_ = new Timer();
   err_ = ld_->clGetDeviceInfo(cldev_, CL_DEVICE_VENDOR, sizeof(vendor_), vendor_, NULL);
   err_ = ld_->clGetDeviceInfo(cldev_, CL_DEVICE_NAME, sizeof(name_), name_, NULL);
   err_ = ld_->clGetDeviceInfo(cldev_, CL_DEVICE_TYPE, sizeof(cltype_), &cltype_, NULL);
@@ -88,23 +89,23 @@ int DeviceOpenCL::Init() {
   if (host2opencl_ld_->iris_host2opencl_set_handle)
       host2opencl_ld_->iris_host2opencl_set_handle(&clcmdq_);
   _clerror(err_);
-  if (err_ != CL_SUCCESS) return IRIS_ERR;
+  if (err_ != CL_SUCCESS) return IRIS_ERROR;
 
   cl_int status;
   char* src = NULL;
   size_t len = 0;
-  if (CreateProgram("spv", &src, &len) == IRIS_OK) {
+  if (CreateProgram("spv", &src, &len) == IRIS_SUCCESS) {
     if (type_ == iris_fpga) clprog_ = ld_->clCreateProgramWithBinary(clctx_, 1, &cldev_, (const size_t*) &len, (const unsigned char**) &src, &status, &err_);
     else clprog_ = ld_->clCreateProgramWithIL(clctx_, (const void*) src, len, &err_);
     _clerror(err_);
-    if (err_ != CL_SUCCESS) return IRIS_ERR;
-  } else if (CreateProgram("cl", &src, &len) == IRIS_OK) {
+    if (err_ != CL_SUCCESS) return IRIS_ERROR;
+  } else if (CreateProgram("cl", &src, &len) == IRIS_SUCCESS) {
     clprog_ = ld_->clCreateProgramWithSource(clctx_, 1, (const char**) &src, (const size_t*) &len, &err_);
     _clerror(err_);
-    if (err_ != CL_SUCCESS) return IRIS_ERR;
+    if (err_ != CL_SUCCESS) return IRIS_ERROR;
   } else {
     _error("dev[%d][%s] has no kernel file", devno_, name_);
-    return IRIS_ERR;
+    return IRIS_ERROR;
   }
   err_ = ld_->clBuildProgram(clprog_, 1, &cldev_, "", NULL, NULL);
   _clerror(err_);
@@ -119,7 +120,7 @@ int DeviceOpenCL::Init() {
     _error("status[%d]  log:%s", s, log);
     _error("srclen[%zu] src\n%s", len, src);
     if (src) free(src);
-    return IRIS_ERR;
+    return IRIS_ERROR;
   }
   size_t nkernels;
   ld_->clGetProgramInfo(clprog_, CL_PROGRAM_NUM_KERNELS, sizeof(nkernels), &nkernels, NULL);
@@ -129,7 +130,7 @@ int DeviceOpenCL::Init() {
   _trace("nkernels[%zu] kernel_names[%s]", nkernels, kernel_names);
   free(kernel_names);
   if (src) free(src);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int DeviceOpenCL::BuildProgram(char* path) {
@@ -140,36 +141,36 @@ int DeviceOpenCL::BuildProgram(char* path) {
 
   char* src = NULL;
   size_t srclen = 0;
-  if (Utils::ReadFile(path, &src, &srclen) == IRIS_ERR) {
+  if (Utils::ReadFile(path, &src, &srclen) == IRIS_ERROR) {
     _error("path[%s]", path);
-    return IRIS_ERR;
+    return IRIS_ERROR;
   }
   clprog_ = ld_->clCreateProgramWithSource(clctx_, 1, (const char**) &src, (const size_t*) &srclen, &err_);
   _clerror(err_);
-  if (err_ != CL_SUCCESS) return IRIS_ERR;
+  if (err_ != CL_SUCCESS) return IRIS_ERROR;
 
   err_ = ld_->clBuildProgram(clprog_, 1, &cldev_, "", NULL, NULL);
   _clerror(err_);
-  if (err_ != CL_SUCCESS) return IRIS_ERR;
+  if (err_ != CL_SUCCESS) return IRIS_ERROR;
 
   if (src) free(src);
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int DeviceOpenCL::MemAlloc(void** mem, size_t size) {
   cl_mem* clmem = (cl_mem*) mem;
   *clmem = ld_->clCreateBuffer(clctx_, CL_MEM_READ_WRITE, size, NULL, &err_);
   _clerror(err_);
-  if (err_ != CL_SUCCESS) return IRIS_ERR;
-  return IRIS_OK;
+  if (err_ != CL_SUCCESS) return IRIS_ERROR;
+  return IRIS_SUCCESS;
 }
 
 int DeviceOpenCL::MemFree(void* mem) {
   cl_mem clmem = (cl_mem) mem;
   err_ = ld_->clReleaseMemObject(clmem);
   _clerror(err_);
-  if (err_ != CL_SUCCESS) return IRIS_ERR;
-  return IRIS_OK;
+  if (err_ != CL_SUCCESS) return IRIS_ERROR;
+  return IRIS_SUCCESS;
 }
 
 int DeviceOpenCL::MemH2D(Mem* mem, size_t off, size_t size, void* host) {
@@ -177,8 +178,8 @@ int DeviceOpenCL::MemH2D(Mem* mem, size_t off, size_t size, void* host) {
   err_ = ld_->clEnqueueWriteBuffer(clcmdq_, clmem, CL_TRUE, off, size, host, 0, NULL, NULL);
   _clerror(err_);
   _trace("dev[%d][%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", devno_, name_, mem->uid(), clmem, off, size, host, q_);
-  if (err_ != CL_SUCCESS) return IRIS_ERR;
-  return IRIS_OK;
+  if (err_ != CL_SUCCESS) return IRIS_ERROR;
+  return IRIS_SUCCESS;
 }
 
 int DeviceOpenCL::MemD2H(Mem* mem, size_t off, size_t size, void* host) {
@@ -186,19 +187,19 @@ int DeviceOpenCL::MemD2H(Mem* mem, size_t off, size_t size, void* host) {
   err_ = ld_->clEnqueueReadBuffer(clcmdq_, clmem, CL_TRUE, off, size, host, 0, NULL, NULL);
   _clerror(err_);
   _trace("dev[%d][%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", devno_, name_, mem->uid(), clmem, off, size, host, q_);
-  if (err_ != CL_SUCCESS) return IRIS_ERR;
-  return IRIS_OK;
+  if (err_ != CL_SUCCESS) return IRIS_ERROR;
+  return IRIS_SUCCESS;
 }
 
 int DeviceOpenCL::KernelGet(void** kernel, const char* name) {
   if (host2opencl_ld_->iris_host2opencl_kernel) {
-        return IRIS_OK;
+        return IRIS_SUCCESS;
   }
   cl_kernel* clkernel = (cl_kernel*) kernel;
   *clkernel = ld_->clCreateKernel(clprog_, name, &err_);
   _clerror(err_);
-  if (err_ != CL_SUCCESS) return IRIS_ERR;
-  return IRIS_OK;
+  if (err_ != CL_SUCCESS) return IRIS_ERROR;
+  return IRIS_SUCCESS;
 }
 
 int DeviceOpenCL::KernelSetArg(Kernel* kernel, int idx, size_t size, void* value) {
@@ -208,9 +209,9 @@ int DeviceOpenCL::KernelSetArg(Kernel* kernel, int idx, size_t size, void* value
   else {
   err_ = ld_->clSetKernelArg(clkernel, (cl_uint) idx, size, value);
   _clerror(err_);
-  if (err_ != CL_SUCCESS) return IRIS_ERR;
+  if (err_ != CL_SUCCESS) return IRIS_ERROR;
   }
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int DeviceOpenCL::KernelSetMem(Kernel* kernel, int idx, Mem* mem, size_t off) {
@@ -221,15 +222,15 @@ int DeviceOpenCL::KernelSetMem(Kernel* kernel, int idx, Mem* mem, size_t off) {
   else {
   err_ = ld_->clSetKernelArg(clkernel, (cl_uint) idx, sizeof(clmem), (const void*) &clmem);
   _clerror(err_);
-  if (err_ != CL_SUCCESS) return IRIS_ERR;
+  if (err_ != CL_SUCCESS) return IRIS_ERROR;
   }
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int DeviceOpenCL::KernelLaunchInit(Kernel* kernel) {
     if (host2opencl_ld_->iris_host2opencl_kernel)
         host2opencl_ld_->iris_host2opencl_kernel(kernel->name());
-    return IRIS_OK;
+    return IRIS_SUCCESS;
 }
 
 int DeviceOpenCL::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws) {
@@ -237,29 +238,29 @@ int DeviceOpenCL::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws
   _trace("kernel[%s] dim[%d] gws[%zu,%zu,%zu] lws[%zu,%zu,%zu]", kernel->name(), dim, gws[0], gws[1], gws[2], lws ? lws[0] : 0, lws ? lws[1] : 0, lws ? lws[2] : 0);
   if (host2opencl_ld_->iris_host2opencl_launch) {
       host2opencl_ld_->iris_host2opencl_launch(dim, off[0], gws[0]);
-      return IRIS_OK; 
+      return IRIS_SUCCESS; 
   }
   err_ = ld_->clEnqueueNDRangeKernel(clcmdq_, clkernel, (cl_uint) dim, (const size_t*) off, (const size_t*) gws, (const size_t*) lws, 0, NULL, NULL);
   _clerror(err_);
-  if (err_ != CL_SUCCESS) return IRIS_ERR;
+  if (err_ != CL_SUCCESS) return IRIS_ERROR;
 #ifdef IRIS_SYNC_EXECUTION
 //  err_ = ld_->clFinish(clcmdq_);
   _clerror(err_);
-  if (err_ != CL_SUCCESS) return IRIS_ERR;
+  if (err_ != CL_SUCCESS) return IRIS_ERROR;
 #endif
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 int DeviceOpenCL::Synchronize() {
   err_ = ld_->clFinish(clcmdq_);
   _clerror(err_);
-  if (err_ != CL_SUCCESS) return IRIS_ERR;
-  return IRIS_OK;
+  if (err_ != CL_SUCCESS) return IRIS_ERROR;
+  return IRIS_SUCCESS;
 }
 
 int DeviceOpenCL::AddCallback(Task* task) {
   task->Complete();
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 void DeviceOpenCL::ExecuteKernel(Command* cmd) {
@@ -333,13 +334,13 @@ void DeviceOpenCL::ExecuteKernel(Command* cmd) {
 
 int DeviceOpenCL::CreateProgram(const char* suffix, char** src, size_t* srclen) {
   char* p = NULL;
-  if (Platform::GetPlatform()->EnvironmentGet(strcmp("spv", suffix) == 0 ? "KERNEL_BIN_SPV" : "KERNEL_SRC_SPV", &p, NULL) == IRIS_OK) {
+  if (Platform::GetPlatform()->EnvironmentGet(strcmp("spv", suffix) == 0 ? "KERNEL_BIN_SPV" : "KERNEL_SRC_SPV", &p, NULL) == IRIS_SUCCESS) {
     Utils::ReadFile(p, src, srclen);
   }
 
   if (*srclen > 0) {
     _trace("dev[%d][%s] kernels[%s]", devno_, name_, p);
-    return IRIS_OK;
+    return IRIS_SUCCESS;
   }
 
   char path[256];
@@ -351,13 +352,13 @@ int DeviceOpenCL::CreateProgram(const char* suffix, char** src, size_t* srclen) 
     type_ == iris_phi    ? "phi"    :
     type_ == iris_fpga   ? "fpga"   : "default",
     type_ == iris_fpga   ? fpga_bin_suffix_.c_str() : suffix);
-  if (Utils::ReadFile(path, src, srclen) == IRIS_ERR && type_ != iris_fpga) {
+  if (Utils::ReadFile(path, src, srclen) == IRIS_ERROR && type_ != iris_fpga) {
     sprintf(path, "kernel.%s", suffix);
     Utils::ReadFile(path, src, srclen);
   }
   if (*srclen > 0) {
     _trace("dev[%d][%s] kernels[%s]", devno_, name_, path);
-    return IRIS_OK;
+    return IRIS_SUCCESS;
   }
   if (strcmp("cl", suffix) == 0  && type_ != iris_fpga) {
       _trace("dev[%d][%s] has no kernel file [%s]. Hence, using the default kernel", devno_, name_, path);
@@ -368,9 +369,9 @@ int DeviceOpenCL::CreateProgram(const char* suffix, char** src, size_t* srclen) 
             }";
       *src = (char *)malloc(strlen(default_str)+1);
       memcpy(*src, default_str, strlen(default_str)+1);
-      return IRIS_OK;
+      return IRIS_SUCCESS;
   }
-  return IRIS_ERR;
+  return IRIS_ERROR;
 }
 
 int DeviceOpenCL::RecreateContext(){
@@ -378,7 +379,7 @@ int DeviceOpenCL::RecreateContext(){
   cl_int err;
   clctx_ = ld_->clCreateContext(NULL, 1, &cldev_, NULL, NULL, &err);
   Init();
-  return IRIS_OK;
+  return IRIS_SUCCESS;
 }
 
 } /* namespace rt */
