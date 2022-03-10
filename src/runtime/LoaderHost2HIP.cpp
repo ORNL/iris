@@ -20,7 +20,7 @@ LoaderHost2HIP::~LoaderHost2HIP() {
 
 const char* LoaderHost2HIP::library() {
   char* path = NULL;
-  Platform::GetPlatform()->EnvironmentGet("kernel.host2hip", &path, NULL);
+  Platform::GetPlatform()->EnvironmentGet("KERNEL_HOST2HIP", &path, NULL);
   return path;
 }
 

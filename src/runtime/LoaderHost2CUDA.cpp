@@ -20,7 +20,7 @@ LoaderHost2CUDA::~LoaderHost2CUDA() {
 
 const char* LoaderHost2CUDA::library() {
   char* path = NULL;
-  Platform::GetPlatform()->EnvironmentGet("kernel.host2cuda", &path, NULL);
+  Platform::GetPlatform()->EnvironmentGet("KERNEL_HOST2CUDA", &path, NULL);
   return path;
 }
 
