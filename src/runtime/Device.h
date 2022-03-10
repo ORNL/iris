@@ -64,6 +64,8 @@ public:
 
   void set_shared_memory_buffers(bool flag=true) { shared_memory_buffers_ = flag; }
   bool is_shared_memory_buffers() { return shared_memory_buffers_; }
+  void set_vendor_specific_kernel(bool flag=true) { is_vendor_specific_kernel_ = flag; }
+  bool is_vendor_specific_kernel() { return is_vendor_specific_kernel_; }
   int platform() { return platform_; }
   int devno() { return devno_; }
   int type() { return type_; }
@@ -99,6 +101,7 @@ protected:
   bool busy_;
   bool enable_;
   bool shared_memory_buffers_;
+  bool is_vendor_specific_kernel_;
 
   Worker* worker_;
   Timer* timer_;

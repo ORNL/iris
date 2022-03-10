@@ -155,6 +155,8 @@ int DeviceCUDA::MemD2H(Mem* mem, size_t off, size_t size, void* host) {
 }
 
 int DeviceCUDA::KernelGet(void** kernel, const char* name) {
+  if (is_vendor_specific_kernel() && host2cuda_ld_->iris_host2cuda_kernel) 
+        return IRIS_SUCCESS;
   CUfunction* cukernel = (CUfunction*) kernel;
   err_ = ld_->cuModuleGetFunction(cukernel, module_, name);
   _cuerror(err_);
@@ -180,7 +182,7 @@ int DeviceCUDA::KernelSetArg(Kernel* kernel, int idx, size_t size, void* value) 
     shared_mem_bytes_ += size;
   }
   if (max_arg_idx_ < idx) max_arg_idx_ = idx;
-  if (host2cuda_ld_->iris_host2cuda_setarg)
+  if (is_vendor_specific_kernel() && host2cuda_ld_->iris_host2cuda_setarg)
       host2cuda_ld_->iris_host2cuda_setarg(idx, size, value);
   return IRIS_SUCCESS;
 }
@@ -192,20 +194,22 @@ int DeviceCUDA::KernelSetMem(Kernel* kernel, int idx, Mem* mem, size_t off) {
     params_[idx] = mem->archs_off() + devno_;
   } else params_[idx] = *(mem->archs() + devno_);
   if (max_arg_idx_ < idx) max_arg_idx_ = idx;
-  if (host2cuda_ld_->iris_host2cuda_setmem) {
+  if (is_vendor_specific_kernel() && host2cuda_ld_->iris_host2cuda_setmem) {
       host2cuda_ld_->iris_host2cuda_setmem(idx, params_[idx]);
   }
   return IRIS_SUCCESS;
 }
 
 int DeviceCUDA::KernelLaunchInit(Kernel* kernel) {
+    set_vendor_specific_kernel(false);
     if (host2cuda_ld_->iris_host2cuda_kernel)
-        return host2cuda_ld_->iris_host2cuda_kernel(kernel->name());
+        if (host2cuda_ld_->iris_host2cuda_kernel(kernel->name()) == IRIS_SUCCESS) 
+            set_vendor_specific_kernel(true);
     return IRIS_SUCCESS;
 }
 
 int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws) {
-  if (host2cuda_ld_->iris_host2cuda_launch) {
+  if (is_vendor_specific_kernel() && host2cuda_ld_->iris_host2cuda_launch) {
       return host2cuda_ld_->iris_host2cuda_launch(dim, off[0], gws[0]);
   }
   CUfunction cukernel = (CUfunction) kernel->arch(this);

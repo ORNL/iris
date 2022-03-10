@@ -19,6 +19,7 @@ Device::Device(int devno, int platform) {
   busy_ = false;
   enable_ = false;
   shared_memory_buffers_ = false;
+  is_vendor_specific_kernel_ = false;
   nqueues_ = 32;
   q_ = 0;
   memset(vendor_, 0, sizeof(vendor_));
@@ -119,6 +120,7 @@ void Device::ExecuteKernel(Command* cmd) {
   int npolymems = cmd->npolymems();
   int max_idx = 0;
   int mem_idx = 0;
+  set_vendor_specific_kernel(false);
   KernelLaunchInit(kernel);
   KernelArg* args = cmd->kernel_args();
   for (int idx = 0; idx < cmd->kernel_nargs(); idx++) {
