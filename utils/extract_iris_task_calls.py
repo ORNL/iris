@@ -6,7 +6,7 @@ import os
 import tempfile
 
 arguments_start_index=7
-valid_params = { 'PARAM' : 1, 'IN_TASK' : 1, 'OUT_TASK' : 1, 'IN_OUT_TASK' : 1, 'VEC_PARAM' : 1 }
+valid_params = { 'PARAM' : 1, 'PARAM_CONST' : 1, 'IN_TASK' : 1, 'OUT_TASK' : 1, 'IN_OUT_TASK' : 1, 'VEC_PARAM' : 1 }
 def extractTaskCalls(args):
     file = args.input[0]
     f = tempfile.NamedTemporaryFile(delete=False)
@@ -359,6 +359,8 @@ def appendKernelSetArgMemParamFunctions(lines, kernel, data):
         fvar = f_details[0]
         if f_param=="PARAM":
             lines.append("\t\t\tcase "+str(p_index)+": memcpy(&"+kvar+"."+fvar+", value, size); break;")
+        elif f_param=="PARAM_CONST":
+            lines.append("\t\t\tcase "+str(p_index)+": memcpy(&"+kvar+"."+fvar+", value, size); break;")
         p_index = p_index+1
     lines.append('''
         default: return IRIS_ERROR;
@@ -495,6 +497,10 @@ int iris_launch(int dim, size_t off, size_t ndr) {
                 continue
             f_details = v[i]
             if f_param == 'PARAM' and len(f_details)>2:
+                expr = getPyExprString(f_details[2])
+                InsertConditionalParameters(k, expr, f_details, params, lines)
+                one_param_exists = True
+            elif f_param == 'PARAM_CONST' and len(f_details)>3:
                 expr = getPyExprString(f_details[2])
                 InsertConditionalParameters(k, expr, f_details, params, lines)
                 one_param_exists = True

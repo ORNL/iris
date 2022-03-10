@@ -103,7 +103,7 @@
         FOR_EACH(P_REPLACE_PARAMS, __VA_ARGS__)
 
 #define ITC_PARAM(NAME, DATA_TYPE ...)                                          
-#define ITC_PARAM_CONST(NAME, DATA_TYPE, VALUE ...)                             static DATA_TYPE IRIS_VAR(NAME) = VALUE;
+#define ITC_PARAM_CONST(NAME, DATA_TYPE, VALUE ...)                             static DATA_TYPE IRIS_VAR(NAME); IRIS_VAR(NAME) = VALUE;
 #define ITC_VEC_PARAM(NAME, DATA_TYPE ...)                                      
 #define ITC_IN_TASK(IRIS_NAME, DATA_TYPE ...)     
 #define ITC_OUT_TASK(IRIS_NAME, DATA_TYPE ...)    
@@ -149,7 +149,7 @@
 #define MEM_CREATE_OUT_TASK(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE ...)      if (__iris_ ## IRIS_NAME == NULL) iris_mem_create((SIZE), &__iris_ ## IRIS_NAME);
 #define MEM_CREATE_IN_OUT_TASK(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE ...)   if (__iris_ ## IRIS_NAME == NULL) iris_mem_create((SIZE), &__iris_ ## IRIS_NAME);
 #define MEM_CREATE_REPLACE_PARAMS(NAME)      CONCATENATE(MEM_CREATE_, NAME)
-#define IRIS_MEM_CREATE(...)    \
+#define IRIS_MEM_CREATE_INTERNAL(...)    \
         FOR_EACH(MEM_CREATE_REPLACE_PARAMS, __VA_ARGS__)
 
 #define MEM_REL_PARAM(NAME, DATA_TYPE ...)               
@@ -222,6 +222,8 @@
 #define IR_NULL_LWS           size_t *__st_lws = (size_t *)0
 #define IRIS_TASK_LWS(X)      PCONCATENATE(IR_, X)
 
+#define IRIS_TASK_CREATE_PARAMS(TASK_VAR)  iris_task TASK_VAR; iris_task_create(&TASK_VAR);
+#define IRIS_TASK_CREATE(...)   FOR_EACH(IRIS_TASK_CREATE_PARAMS, __VA_ARGS__)
 #define IRIS_MEMORY_PARAMS(NAME)  iris_mem  __iris_ ## NAME = NULL; 
 #define IRIS_MEMORY(...)   FOR_EACH(IRIS_MEMORY_PARAMS, __VA_ARGS__)
 #define IRIS_TASK_DEPENDENCY(TASK_VAR, ...)   { \
@@ -232,10 +234,28 @@
 #define IRIS_MEMORY_RELEASE(...)   FOR_EACH(IRIS_MEMORY_RELEASE_PARAMS, __VA_ARGS__)
 #define IRIS_TASK_RELEASE_PARAMS(NAME)  iris_task_release(NAME);
 #define IRIS_TASK_RELEASE(...)   FOR_EACH(IRIS_TASK_RELEASE_PARAMS, __VA_ARGS__)
+#define IRIS_H2D(TASK_VAR, IRIS_MEM_VAR, OFFSET, SIZE, HOST)   iris_task_h2d(TASK_VAR, IRIS_MEM_VAR, OFFSET, SIZE, HOST)
+#define IRIS_D2H(TASK_VAR, IRIS_MEM_VAR, OFFSET, SIZE, HOST)   iris_task_d2h(TASK_VAR, IRIS_MEM_VAR, OFFSET, SIZE, HOST)
+#define IRIS_MEM_CREATE(SIZE, IRIS_MEM_VAR)   iris_mem_create(SIZE, &IRIS_MEM_VAR)
+#define IRIS_TASK_SUBMIT(TASK_VAR, TARGET_DEVICE)  iris_task_submit(TASK_VAR, TARGET_DEVICE, NULL, 1);
+#define IRIS_TASK_NO_DT(TASK_VAR, TASK_NAME, TARGET_DEVICE, DIM, OFFSET, GWS, LWS, ...)  \
+    { \
+       IRIS_TASK_CONSTS(__VA_ARGS__); \
+       void* __task_params[] = { IRIS_TASK_PARAMS(__VA_ARGS__) }; \
+       int  __task_params_info[] = { IRIS_TASK_PARAMS_INFO(__VA_ARGS__) }; \
+       int  __task_params_device_map[] = { IRIS_TASK_PARAMS_MAP(__VA_ARGS__) }; \
+       IRIS_TASK_OFFSET(OFFSET); \
+       IRIS_TASK_GWS(GWS); \
+       IRIS_TASK_LWS(LWS); \
+       iris_task_kernel(TASK_VAR, TASK_NAME, DIM, __st_offset, \
+               __st_gws, __st_lws, sizeof(__task_params_info)/sizeof(int), \
+               __task_params, __task_params_info); \
+       iris_params_map(TASK_VAR, __task_params_device_map); \
+    }
 #define IRIS_TASK(TASK_VAR, TASK_NAME, TARGET_DEVICE, DIM, OFFSET, GWS, LWS, ...)  \
     iris_task TASK_VAR; \
     { \
-       IRIS_MEM_CREATE(__VA_ARGS__); \
+       IRIS_MEM_CREATE_INTERNAL(__VA_ARGS__); \
        IRIS_TASK_CONSTS(__VA_ARGS__); \
        void* __task_params[] = { IRIS_TASK_PARAMS(__VA_ARGS__) }; \
        int  __task_params_info[] = { IRIS_TASK_PARAMS_INFO(__VA_ARGS__) }; \
@@ -256,7 +276,7 @@
     iris_task TASK_VAR; \
     { \
        IRIS_MEM_DECLARE(__VA_ARGS__); \
-       IRIS_MEM_CREATE(__VA_ARGS__); \
+       IRIS_MEM_CREATE_INTERNAL(__VA_ARGS__); \
        IRIS_TASK_CONSTS(__VA_ARGS__); \
        void* __task_params[] = { IRIS_TASK_PARAMS(__VA_ARGS__) }; \
        int  __task_params_info[] = { IRIS_TASK_PARAMS_INFO(__VA_ARGS__) }; \
