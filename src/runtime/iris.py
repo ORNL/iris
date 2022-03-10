@@ -112,9 +112,9 @@ def kernel_setmem(kernel, idx, mem, mode):
 def kernel_release(kernel):
     return dll.iris_kernel_release(kernel)
 
-def task_create():
+def task_create(name = None):
     t = iris_task()
-    dll.iris_task_create(byref(t))
+    dll.iris_task_create_name(c_char_p(name), byref(t))
     return t
 
 def task_depend(task, ntasks, tasks):
