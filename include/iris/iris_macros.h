@@ -98,6 +98,7 @@
 #define P_IN_TASK(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE ...)    __iris_ ## IRIS_NAME,
 #define P_OUT_TASK(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE ...)   __iris_ ## IRIS_NAME,
 #define P_IN_OUT_TASK(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE ...)   __iris_ ## IRIS_NAME,
+#define P_DEPENDENCY(TASK_NAME, ...)   
 #define P_REPLACE_PARAMS(NAME)  CONCATENATE(P_, NAME)
 #define IRIS_TASK_PARAMS(...)    \
         FOR_EACH(P_REPLACE_PARAMS, __VA_ARGS__)
@@ -108,6 +109,7 @@
 #define ITC_IN_TASK(IRIS_NAME, DATA_TYPE ...)     
 #define ITC_OUT_TASK(IRIS_NAME, DATA_TYPE ...)    
 #define ITC_IN_OUT_TASK(IRIS_NAME, DATA_TYPE ...)     
+#define ITC_DEPENDENCY(TASK_NAME, ...)   
 #define ITC_REPLACE_PARAMS(NAME) CONCATENATE(ITC_, NAME)
 #define IRIS_TASK_CONSTS(...)     \
                 FOR_EACH(ITC_REPLACE_PARAMS, __VA_ARGS__)
@@ -118,6 +120,7 @@
 #define PI_IN_TASK(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE ...)   iris_r,
 #define PI_OUT_TASK(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE ...)  iris_w,
 #define PI_IN_OUT_TASK(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE ...)  iris_rw,
+#define PI_DEPENDENCY(TASK_NAME, ...)   
 #define PI_REPLACE_PARAMS(NAME)      CONCATENATE(PI_, NAME)
 #define IRIS_TASK_PARAMS_INFO(...)    \
         FOR_EACH(PI_REPLACE_PARAMS, __VA_ARGS__)
@@ -128,6 +131,7 @@
 #define PMI_IN_TASK(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE, ...)   PMI_CORE(__VA_ARGS__),
 #define PMI_OUT_TASK(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE, ...)  PMI_CORE(__VA_ARGS__),
 #define PMI_IN_OUT_TASK(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE, ...)  PMI_CORE(__VA_ARGS__),
+#define PMI_DEPENDENCY(TASK_NAME, ...)   
 #define PMI_REPLACE_PARAMS(NAME)      CONCATENATE(PMI_, NAME)
 #define IRIS_TASK_PARAMS_MAP(...)    \
         FOR_EACH(PMI_REPLACE_PARAMS, __VA_ARGS__)
@@ -138,6 +142,7 @@
 #define MEM_DECL_IN_TASK(IRIS_NAME, ...)     iris_mem  __iris_ ## IRIS_NAME = NULL; 
 #define MEM_DECL_OUT_TASK(IRIS_NAME, ...)    iris_mem  __iris_ ## IRIS_NAME = NULL; 
 #define MEM_DECL_IN_OUT_TASK(IRIS_NAME, ...) iris_mem  __iris_ ## IRIS_NAME = NULL; 
+#define MEM_DEPENDENCY(TASK_NAME, ...)   
 #define MEM_DECL_REPLACE_PARAMS(NAME)      CONCATENATE(MEM_DECL_, NAME)
 #define IRIS_MEM_DECLARE(...)    \
         FOR_EACH(MEM_DECL_REPLACE_PARAMS, __VA_ARGS__)
@@ -148,6 +153,7 @@
 #define MEM_CREATE_IN_TASK(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE ...)       if (__iris_ ## IRIS_NAME == NULL) iris_mem_create((SIZE), &__iris_ ## IRIS_NAME);
 #define MEM_CREATE_OUT_TASK(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE ...)      if (__iris_ ## IRIS_NAME == NULL) iris_mem_create((SIZE), &__iris_ ## IRIS_NAME);
 #define MEM_CREATE_IN_OUT_TASK(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE ...)   if (__iris_ ## IRIS_NAME == NULL) iris_mem_create((SIZE), &__iris_ ## IRIS_NAME);
+#define MEM_CREATE_DEPENDENCY(TASK_NAME, ...)   
 #define MEM_CREATE_REPLACE_PARAMS(NAME)      CONCATENATE(MEM_CREATE_, NAME)
 #define IRIS_MEM_CREATE_INTERNAL(...)    \
         FOR_EACH(MEM_CREATE_REPLACE_PARAMS, __VA_ARGS__)
@@ -158,6 +164,7 @@
 #define MEM_REL_IN_TASK(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE ...)     iris_mem_release(__iris_ ## IRIS_NAME);
 #define MEM_REL_OUT_TASK(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE ...)    iris_mem_release(__iris_ ## IRIS_NAME);
 #define MEM_REL_IN_OUT_TASK(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE ...) iris_mem_release(__iris_ ## IRIS_NAME);
+#define MEM_REL_DEPENDENCY(TASK_NAME, ...)   
 #define MEM_REL_REPLACE_PARAMS(NAME)      CONCATENATE(MEM_REL_, NAME)
 #define IRIS_MEM_RELEASE(...)    FOR_EACH(MEM_REL_REPLACE_PARAMS, __VA_ARGS__)
 
@@ -179,7 +186,7 @@
 #define HDP_VAR(NAME)                CONCATENATE(HDP_, NAME)
 #define IRIS_VAR(NAME)               __iris_ ## NAME
 #define H2D_TASK_CORE(PRM, NAME, SIZE, XP)      iris_task_h2d(PRM, IRIS_VAR(NAME), 0, (SIZE), XP);
-#define H2D_TASK(PRM, NAME, SIZE)           H2D_TASK_CORE(PRM, HDP_VAR(NAME), SIZE, HDPTR(NAME))
+#define H2D_TASK(PRM, NAME, SIZE)               H2D_TASK_CORE(PRM, HDP_VAR(NAME), SIZE, HDPTR(NAME))
 
 #define H2D_PARAM(NAME, DATA_TYPE ...)                                          HD_DUMMY
 #define H2D_PARAM_CONST(NAME, DATA_TYPE ...)                                    HD_DUMMY
@@ -187,6 +194,7 @@
 #define H2D_IN_TASK(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE ...)     H2D_TASK
 #define H2D_OUT_TASK(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE ...)    HD_DUMMY
 #define H2D_IN_OUT_TASK(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE ...) H2D_TASK
+#define H2D_DEPENDENCY(TASK_NAME, ...)                                          HD_DUMMY 
 #define H2D_REPLACE_PARAMS(PRM, NAME) CONCATENATE(H2D_, NAME)(PRM, NAME, HDSIZE(NAME))
 #define IRIS_ADD_H2D(TASK_VAR, ...)     \
     FOR_PEACH(TASK_VAR, H2D_REPLACE_PARAMS, __VA_ARGS__)
@@ -199,9 +207,32 @@
 #define D2H_IN_TASK(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE ...)     HD_DUMMY
 #define D2H_OUT_TASK(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE ...)    D2H_TASK
 #define D2H_IN_OUT_TASK(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE ...) D2H_TASK
+#define D2H_DEPENDENCY(TASK_NAME, ...)                                          HD_DUMMY
 #define D2H_REPLACE_PARAMS(PRM, NAME) CONCATENATE(D2H_, NAME)(PRM, NAME, HDSIZE(NAME))
 #define IRIS_ADD_D2H(TASK_VAR, ...)     \
     FOR_PEACH(TASK_VAR, D2H_REPLACE_PARAMS, __VA_ARGS__)
+
+#define TDEP_DECL_DUMMY(...)
+#define TDEP_DECL_EXTRACT(...)                         iris_task ___task = __VA_ARGS__;
+#define TDEP_DECL_PARAM(NAME, DATA_TYPE ...)           TDEP_DECL_DUMMY        
+#define TDEP_DECL_PARAM_CONST(NAME, DATA_TYPE ...)     TDEP_DECL_DUMMY
+#define TDEP_DECL_VEC_PARAM(NAME, DATA_TYPE ...)       TDEP_DECL_DUMMY
+#define TDEP_DECL_IN_TASK(IRIS_NAME,  ...)             TDEP_DECL_DUMMY
+#define TDEP_DECL_OUT_TASK(IRIS_NAME,  ...)            TDEP_DECL_DUMMY
+#define TDEP_DECL_IN_OUT_TASK(IRIS_NAME,  ...)         TDEP_DECL_DUMMY
+#define TDEP_DECL_DEPENDENCY(...)                      TDEP_DECL_EXTRACT 
+#define TDEP_DECL_REPLACE_PARAMS(TASK_VAR, NAME)       CONCATENATE(TDEP_DECL_, NAME)(TASK_VAR)
+#define IRIS_TASK_DEPENDENCY_DECLARE(TASK_VAR, ...)  FOR_PEACH(TASK_VAR, TDEP_DECL_REPLACE_PARAMS, __VA_ARGS__)
+
+#define TDEP_PARAM(NAME, DATA_TYPE ...)           
+#define TDEP_PARAM_CONST(NAME, DATA_TYPE ...)     
+#define TDEP_VEC_PARAM(NAME, DATA_TYPE ...)       
+#define TDEP_IN_TASK(IRIS_NAME,  ...)             
+#define TDEP_OUT_TASK(IRIS_NAME,  ...)            
+#define TDEP_IN_OUT_TASK(IRIS_NAME,  ...)         
+#define TDEP_DEPENDENCY(...)                      IRIS_TASK_DEPENDENCY(___task, __VA_ARGS__) 
+#define TDEP_REPLACE_PARAMS(NAME)       CONCATENATE(TDEP_, NAME)
+#define IRIS_TASK_DEPENDENCY_CORE(TASK_VAR, ...)  FOR_EACH(TDEP_REPLACE_PARAMS, __VA_ARGS__)
 
 #define IR_ARG_0(X)           (size_t) X,
 #define IR_ARG_1(X)           X
@@ -251,6 +282,8 @@
                __st_gws, __st_lws, sizeof(__task_params_info)/sizeof(int), \
                __task_params, __task_params_info); \
        iris_params_map(TASK_VAR, __task_params_device_map); \
+       IRIS_TASK_DEPENDENCY_DECLARE(TASK_VAR, __VA_ARGS__); \
+       IRIS_TASK_DEPENDENCY_CORE(TASK_VAR, __VA_ARGS__); \
     }
 #define IRIS_TASK(TASK_VAR, TASK_NAME, TARGET_DEVICE, DIM, OFFSET, GWS, LWS, ...)  \
     iris_task TASK_VAR; \
@@ -270,6 +303,8 @@
                __task_params, __task_params_info); \
        iris_params_map(TASK_VAR, __task_params_device_map); \
        IRIS_ADD_D2H(TASK_VAR, __VA_ARGS__); \
+       IRIS_TASK_DEPENDENCY_DECLARE(TASK_VAR, __VA_ARGS__); \
+       IRIS_TASK_DEPENDENCY_CORE(TASK_VAR, __VA_ARGS__); \
        iris_task_submit(TASK_VAR, TARGET_DEVICE, NULL, 1); \
     }
 #define IRIS_SINGLE_TASK(TASK_VAR, TASK_NAME, TARGET_DEVICE, DIM, OFFSET, GWS, LWS, ...)  \
@@ -291,6 +326,8 @@
                __task_params, __task_params_info); \
        iris_params_map(TASK_VAR, __task_params_device_map); \
        IRIS_ADD_D2H(TASK_VAR, __VA_ARGS__); \
+       IRIS_TASK_DEPENDENCY_DECLARE(TASK_VAR, __VA_ARGS__); \
+       IRIS_TASK_DEPENDENCY_CORE(TASK_VAR, __VA_ARGS__); \
        iris_task_submit(TASK_VAR, TARGET_DEVICE, NULL, 1); \
        iris_task_release(TASK_VAR); \
        IRIS_MEM_RELEASE(__VA_ARGS__); \
