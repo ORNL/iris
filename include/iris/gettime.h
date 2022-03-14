@@ -5,6 +5,10 @@
 #include "hexagon_cache.h" // for removing buffers from cache during simulation/profiling
 #define GetTime hexagon_sim_read_pcycles        // For Hexagon sim, use PCycles for profiling
 #else
+#include <stdlib.h>
+#ifndef __USE_BSD
+#define __USE_BSD
+#endif
 #include <sys/time.h>
 static unsigned long long GetTime( void )
 {
