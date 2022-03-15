@@ -105,6 +105,7 @@ public:
   int TaskInfo(iris_task brs_task, int param, void* value, size_t* size);
 
   int MemCreate(size_t size, iris_mem* brs_mem);
+  int MemSetIntermediate(iris_mem brs_mem, bool flag=true);
   int MemArch(iris_mem brs_mem, int device, void** arch);
   int MemMap(void* host, size_t size);
   int MemUnmap(void* host);

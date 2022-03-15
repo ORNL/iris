@@ -192,6 +192,7 @@ Command* Command::CreateH2D(Task* task, Mem* mem, size_t off, size_t size, void*
   cmd->size_ = size;
   cmd->host_ = host;
   cmd->exclusive_ = true;
+  mem->get_h2d_cmds().push_back(cmd);
   return cmd;
 }
 
@@ -202,6 +203,7 @@ Command* Command::CreateH2DNP(Task* task, Mem* mem, size_t off, size_t size, voi
   cmd->size_ = size;
   cmd->host_ = host;
   cmd->exclusive_ = false;
+  mem->get_h2dnp_cmds().push_back(cmd);
   return cmd;
 }
 
@@ -211,6 +213,7 @@ Command* Command::CreateD2H(Task* task, Mem* mem, size_t off, size_t size, void*
   cmd->off_[0] = off;
   cmd->size_ = size;
   cmd->host_ = host;
+  mem->get_d2h_cmds().push_back(cmd);
   return cmd;
 }
 

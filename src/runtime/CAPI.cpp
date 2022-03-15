@@ -141,6 +141,10 @@ int iris_mem_create(size_t size, iris_mem* mem) {
   return Platform::GetPlatform()->MemCreate(size, mem);
 }
 
+int iris_mem_intermediate(iris_mem mem, int flag) {
+  return Platform::GetPlatform()->MemSetIntermediate(mem, (bool)flag);
+}
+
 int iris_mem_release(iris_mem mem) {
   return Platform::GetPlatform()->MemRelease(mem);
 }

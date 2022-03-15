@@ -918,6 +918,12 @@ int Platform::MemCreate(size_t size, iris_mem* brs_mem) {
   return IRIS_SUCCESS;
 }
 
+int Platform::MemSetIntermediate(iris_mem brs_mem, bool flag) {
+  Mem* mem = brs_mem->class_obj;
+  mem->set_intermediate(true);
+  return IRIS_SUCCESS;
+}
+
 int Platform::MemArch(iris_mem brs_mem, int device, void** arch) {
   if (!arch) return IRIS_ERROR;
   Mem* mem = brs_mem->class_obj;

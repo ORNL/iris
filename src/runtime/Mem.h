@@ -6,11 +6,13 @@
 #include "MemRange.h"
 #include <pthread.h>
 #include <set>
+#include <vector>
 
 namespace iris {
 namespace rt {
 
 class Platform;
+class Command;
 
 class Mem: public Retainable<struct _iris_mem, Mem> {
 public:
@@ -29,6 +31,8 @@ public:
 
   void SetMap(void* host, size_t size);
 
+  void set_intermediate(bool flag=true) { intermediate_=true; }
+  bool is_intermediate() { return intermediate_; }
   size_t size() { return size_; }
   int mode() { return mode_; }
   int type() { return type_; }
@@ -42,8 +46,12 @@ public:
   void** archs() { return archs_; }
   void* arch(Device* dev, void *host=NULL);
   void** archs_off() { return archs_off_; }
+  std::vector<Command *> & get_h2d_cmds() { return h2d_cmds_; }
+  std::vector<Command *> & get_h2dnp_cmds() { return h2dnp_cmds_; }
+  std::vector<Command *> & get_d2h_cmds() { return d2h_cmds_; }
 
 private:
+  bool intermediate_;
   size_t size_;
   int mode_;
   Platform* platform_;
@@ -59,7 +67,9 @@ private:
   void* archs_[IRIS_MAX_NDEVS];
   void* archs_off_[IRIS_MAX_NDEVS];
   Device* archs_dev_[IRIS_MAX_NDEVS];
-
+  std::vector<Command *> h2d_cmds_;
+  std::vector<Command *> h2dnp_cmds_;
+  std::vector<Command *> d2h_cmds_;
   pthread_mutex_t mutex_;
 };
 

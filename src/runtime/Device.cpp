@@ -180,6 +180,23 @@ void Device::ExecuteH2D(Command* cmd) {
   if (exclusive) mem->SetOwner(off, size, this);
   else mem->AddOwner(off, size, this);
   timer_->Start(IRIS_TIMER_H2D);
+  bool is_mem_xfer_skipped = true;
+  //printf("DeviceH2D device no:%d\n", devno_);
+  // Decide whether memory transfer required or not
+  std::vector<Command *>  d2h_cmds_of_mem = mem->get_d2h_cmds();
+  if (d2h_cmds_of_mem.size() == 0 || ! mem->is_intermediate())
+      is_mem_xfer_skipped = false;
+  if (is_mem_xfer_skipped) for (Command *d2h_cmd : d2h_cmds_of_mem) {
+     //printf("DeviceH2D task:%p %p %p %p %d %d %d\n", cmd->task(), d2h_cmd->task(), cmd->task()->dev(), d2h_cmd->task()->dev(), cmd->task()->devno(), d2h_cmd->task()->devno(), devno_);
+     if (cmd->task() == d2h_cmd->task())
+         is_mem_xfer_skipped = false;
+     if (cmd->task()->dev() != d2h_cmd->task()->dev())
+         is_mem_xfer_skipped = false;
+  }
+  if (is_mem_xfer_skipped) {
+      _trace("Dev[%d][%s] MemH2D is skipped", devno_, name_);
+      return;
+  }
   errid_ = MemH2D(mem, off, size, host);
   if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
   double time = timer_->Stop(IRIS_TIMER_H2D);
@@ -206,6 +223,21 @@ void Device::ExecuteD2H(Command* cmd) {
   int expansion = mem->expansion();
   timer_->Start(IRIS_TIMER_D2H);
   errid_ = IRIS_SUCCESS;
+  bool is_mem_xfer_skipped = true;
+  // Decide whether memory transfer required or not
+  //printf("DeviceH2D device no:%d\n", devno_);
+  std::vector<Command *>  h2d_cmds_of_mem = mem->get_h2d_cmds();
+  if (h2d_cmds_of_mem.size() == 0 || ! mem->is_intermediate())
+      is_mem_xfer_skipped = false;
+  if (is_mem_xfer_skipped) for (Command *h2d_cmd : h2d_cmds_of_mem) {
+     //printf("DeviceD2H task:%p %p %p %p %d %d %d\n", cmd->task(), h2d_cmd->task(), cmd->task()->dev(), h2d_cmd->task()->dev(), cmd->task()->devno(), h2d_cmd->task()->devno(), devno_);
+     if (cmd->task()->dev() != h2d_cmd->task()->dev())
+         is_mem_xfer_skipped = false;
+  }
+  if (is_mem_xfer_skipped) {
+      _trace("Dev[%d][%s] MemD2H is skipped", devno_, name_);
+      return;
+  }
   if (mode & iris_reduction) {
     errid_ = MemD2H(mem, off, mem->size() * expansion, mem->host_inter());
     Reduction::GetInstance()->Reduce(mem, host, size);

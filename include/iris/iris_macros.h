@@ -261,13 +261,15 @@
     iris_task __iris_task_deps[] = { __VA_ARGS__ }; \
     iris_task_depend(TASK_VAR, FOR_EACH_NARG(__VA_ARGS__), __iris_task_deps); \
 }
+#define IRIS_MEMORY_INTERMEDIATE_PARAMS(NAME)  iris_mem_intermediate(__iris_ ## NAME, 1);
+#define IRIS_MEMORY_INTERMEDIATE(...)   FOR_EACH(IRIS_MEMORY_INTERMEDIATE_PARAMS, __VA_ARGS__)
 #define IRIS_MEMORY_RELEASE_PARAMS(NAME)  iris_mem_release(__iris_ ## NAME);
 #define IRIS_MEMORY_RELEASE(...)   FOR_EACH(IRIS_MEMORY_RELEASE_PARAMS, __VA_ARGS__)
 #define IRIS_TASK_RELEASE_PARAMS(NAME)  iris_task_release(NAME);
 #define IRIS_TASK_RELEASE(...)   FOR_EACH(IRIS_TASK_RELEASE_PARAMS, __VA_ARGS__)
 #define IRIS_H2D(TASK_VAR, IRIS_MEM_VAR, OFFSET, SIZE, HOST)   iris_task_h2d(TASK_VAR, IRIS_MEM_VAR, OFFSET, SIZE, HOST)
 #define IRIS_D2H(TASK_VAR, IRIS_MEM_VAR, OFFSET, SIZE, HOST)   iris_task_d2h(TASK_VAR, IRIS_MEM_VAR, OFFSET, SIZE, HOST)
-#define IRIS_MEM_CREATE(SIZE, IRIS_MEM_VAR)   iris_mem_create(SIZE, &IRIS_MEM_VAR)
+#define IRIS_MEM_CREATE(SIZE, IRIS_MEM_VAR)   iris_mem  IRIS_MEM_VAR = NULL; iris_mem_create(SIZE, &IRIS_MEM_VAR)
 #define IRIS_TASK_SUBMIT(TASK_VAR, TARGET_DEVICE)  iris_task_submit(TASK_VAR, TARGET_DEVICE, NULL, 1);
 #define IRIS_TASK_NO_DT(TASK_VAR, TASK_NAME, TARGET_DEVICE, DIM, OFFSET, GWS, LWS, ...)  \
     { \
@@ -288,7 +290,6 @@
 #define IRIS_TASK(TASK_VAR, TASK_NAME, TARGET_DEVICE, DIM, OFFSET, GWS, LWS, ...)  \
     iris_task TASK_VAR; \
     { \
-       IRIS_MEM_CREATE_INTERNAL(__VA_ARGS__); \
        IRIS_TASK_CONSTS(__VA_ARGS__); \
        void* __task_params[] = { IRIS_TASK_PARAMS(__VA_ARGS__) }; \
        int  __task_params_info[] = { IRIS_TASK_PARAMS_INFO(__VA_ARGS__) }; \

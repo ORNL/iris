@@ -129,6 +129,7 @@ extern int iris_params_map(iris_task task, int *params_map);
 extern int iris_task_info(iris_task task, int param, void* value, size_t* size);
 
 extern int iris_mem_create(size_t size, iris_mem* mem);
+extern int iris_mem_intermediate(iris_mem mem, int flag);
 extern int iris_mem_reduce(iris_mem mem, int mode, int type);
 extern int iris_mem_release(iris_mem mem);
 
