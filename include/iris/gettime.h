@@ -6,16 +6,11 @@
 #define GetTime hexagon_sim_read_pcycles        // For Hexagon sim, use PCycles for profiling
 #else
 #include <stdlib.h>
-#ifndef __USE_BSD
-#define __USE_BSD
-#endif
 #include <sys/time.h>
 static unsigned long long GetTime( void )
 {
     struct timeval tv;
-    struct timezone tz;
-
-    gettimeofday(&tv, &tz);
+    gettimeofday(&tv, NULL);
 
     return tv.tv_sec * 1000000ULL + tv.tv_usec;
 }
