@@ -117,6 +117,7 @@ extern int iris_task_kernel(iris_task task, const char* kernel, int dim, size_t*
 extern int iris_task_kernel_v2(iris_task task, const char* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, size_t* params_off, int* params_info);
 extern int iris_task_kernel_v3(iris_task task, const char* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, size_t* params_off, int* params_info, size_t* memranges);
 extern int iris_task_host(iris_task task, iris_host_task func, void* params);
+extern int iris_task_host(iris_task task, iris_host_task func, void* params);
 extern int iris_task_custom(iris_task task, int tag, void* params, size_t params_size);
 extern int iris_task_submit(iris_task task, int device, const char* opt, int sync);
 extern int iris_task_wait(iris_task task);
@@ -129,11 +130,19 @@ extern int iris_params_map(iris_task task, int *params_map);
 extern int iris_task_info(iris_task task, int param, void* value, size_t* size);
 
 extern int iris_mem_create(size_t size, iris_mem* mem);
+extern int iris_mem_arch(iris_mem mem, int device, void** arch);
 extern int iris_mem_intermediate(iris_mem mem, int flag);
 extern int iris_mem_reduce(iris_mem mem, int mode, int type);
 extern int iris_mem_release(iris_mem mem);
 
 extern int iris_timer_now(double* time);
+
+extern int iris_graph_create(iris_graph* graph);
+extern int iris_graph_create_json(const char* json, void** params, iris_graph* graph);
+extern int iris_graph_task(iris_graph graph, iris_task task, int device, const char* opt);
+extern int iris_graph_submit(iris_graph graph, int device, int sync);
+extern int iris_graph_wait(iris_graph graph);
+extern int iris_graph_wait_all(int ngraphs, iris_graph* graphs);
 
 #ifdef __cplusplus
 } /* end of extern "C" */

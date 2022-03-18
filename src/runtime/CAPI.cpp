@@ -65,6 +65,14 @@ int iris_task_create(iris_task* task) {
   return Platform::GetPlatform()->TaskCreate(NULL, false, task);
 }
 
+int iris_task_create_perm(iris_task* task) {
+  return Platform::GetPlatform()->TaskCreate(NULL, true, task);
+}
+
+int iris_task_create_name(const char* name, iris_task* task) {
+  return Platform::GetPlatform()->TaskCreate(name, false, task);
+}
+
 int iris_task_depend(iris_task task, int ntasks, iris_task* tasks) {
   return Platform::GetPlatform()->TaskDepend(task, ntasks, tasks);
 }
@@ -105,6 +113,10 @@ int iris_params_map(iris_task task, int *params_map) {
   return Platform::GetPlatform()->SetParamsMap(task, params_map);
 }
 
+int iris_task_host(iris_task task, iris_host_task func, void* params) {
+  return Platform::GetPlatform()->TaskHost(task, func, params);
+}
+
 int iris_task_custom(iris_task task, int tag, void* params, size_t params_size) {
   return Platform::GetPlatform()->TaskCustom(task, tag, params, params_size);
 }
@@ -141,6 +153,10 @@ int iris_mem_create(size_t size, iris_mem* mem) {
   return Platform::GetPlatform()->MemCreate(size, mem);
 }
 
+int iris_mem_arch(iris_mem mem, int device, void** arch) {
+  return Platform::GetPlatform()->MemArch(mem, device, arch);
+}
+
 int iris_mem_intermediate(iris_mem mem, int flag) {
   return Platform::GetPlatform()->MemSetIntermediate(mem, (bool)flag);
 }
@@ -168,5 +184,31 @@ int iris_register_hooks_command(hook_command pre, hook_command post) {
 int iris_kernel_create(const char* name, iris_kernel* kernel) {
   return Platform::GetPlatform()->KernelCreate(name, kernel);
 }
+
+int iris_graph_create(iris_graph* graph) {
+  return Platform::GetPlatform()->GraphCreate(graph);
+}
+
+int iris_graph_create_json(const char* json, void** params, iris_graph* graph) {
+  return Platform::GetPlatform()->GraphCreateJSON(json, params, graph);
+}
+
+int iris_graph_task(iris_graph graph, iris_task task, int device, const char* opt) {
+  return Platform::GetPlatform()->GraphTask(graph, task, device, opt);
+}
+
+int iris_graph_submit(iris_graph graph, int device, int sync) {
+  return Platform::GetPlatform()->GraphSubmit(graph, device, sync);
+}
+
+int iris_graph_wait(iris_graph graph) {
+  return Platform::GetPlatform()->GraphWait(graph);
+}
+
+int iris_graph_wait_all(int ngraphs, iris_graph* graphs) {
+  return Platform::GetPlatform()->GraphWaitAll(ngraphs, graphs);
+}
+
+
 
 
