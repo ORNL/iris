@@ -164,10 +164,11 @@ int DeviceHIP::KernelSetArg(Kernel* kernel, int idx, size_t size, void* value) {
 
 int DeviceHIP::KernelSetMem(Kernel* kernel, int idx, Mem* mem, size_t off) {
   mem->arch(this);
-  params_[idx] = *(mem->archs() + devno_);
+  void *dev_ptr = *(mem->archs() + devno_);
+  params_[idx] = mem->archs() + devno_;
   if (max_arg_idx_ < idx) max_arg_idx_ = idx;
   if (is_vendor_specific_kernel() && host2hip_ld_->iris_host2hip_setmem) {
-      host2hip_ld_->iris_host2hip_setmem(idx, params_[idx]);
+      host2hip_ld_->iris_host2hip_setmem(idx, dev_ptr);
   }
   return IRIS_SUCCESS;
 }
