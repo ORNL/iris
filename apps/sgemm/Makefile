@@ -15,4 +15,4 @@ sgemm: sgemm.c
 	$(CC) $(CFLAGS) -O3 -std=c99 -o $@ $^ $(LDFLAGS)
 
 clean:
-	rm -f sgemm
+	rm -f sgemm kernel.openmp.so
