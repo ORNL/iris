@@ -31,4 +31,4 @@ kernel.poly.so: kernel.cl.poly.c
 	$(CC) $(CFLAGS) -g -fPIC -shared -I. -o $@ $^
 
 clean:
-	rm -f saxpy-c saxpy-cpp saxpy-f90
+	rm -f saxpy-c saxpy-cpp saxpy-f90 kernel.openmp.so
