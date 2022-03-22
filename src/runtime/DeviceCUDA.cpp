@@ -189,13 +189,18 @@ int DeviceCUDA::KernelSetArg(Kernel* kernel, int idx, size_t size, void* value) 
 
 int DeviceCUDA::KernelSetMem(Kernel* kernel, int idx, Mem* mem, size_t off) {
   mem->arch(this);
+  void *dev_ptr = NULL;
   if (off) {
     *(mem->archs_off() + devno_) = (void*) ((CUdeviceptr) mem->arch(this) + off);
     params_[idx] = mem->archs_off() + devno_;
-  } else params_[idx] = mem->archs() + devno_;
+    dev_ptr = *(mem->archs_off() + devno_);
+  } else {
+      params_[idx] = mem->archs() + devno_;
+      dev_ptr = *(mem->archs() + devno_);
+  }
   if (max_arg_idx_ < idx) max_arg_idx_ = idx;
   if (is_vendor_specific_kernel() && host2cuda_ld_->iris_host2cuda_setmem) {
-      host2cuda_ld_->iris_host2cuda_setmem(idx, (void *)*(params_[idx]));
+      host2cuda_ld_->iris_host2cuda_setmem(idx, dev_ptr);
   }
   return IRIS_SUCCESS;
 }
