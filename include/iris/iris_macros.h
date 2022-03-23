@@ -22,11 +22,21 @@
 #define FOR_EACH_13(WHAT, X, ...) WHAT(X) FOR_EACH_12(WHAT, __VA_ARGS__)
 #define FOR_EACH_14(WHAT, X, ...) WHAT(X) FOR_EACH_13(WHAT, __VA_ARGS__)
 #define FOR_EACH_15(WHAT, X, ...) WHAT(X) FOR_EACH_14(WHAT, __VA_ARGS__)
+#define FOR_EACH_16(WHAT, X, ...) WHAT(X) FOR_EACH_15(WHAT, __VA_ARGS__)
+#define FOR_EACH_17(WHAT, X, ...) WHAT(X) FOR_EACH_16(WHAT, __VA_ARGS__)
+#define FOR_EACH_18(WHAT, X, ...) WHAT(X) FOR_EACH_17(WHAT, __VA_ARGS__)
+#define FOR_EACH_19(WHAT, X, ...) WHAT(X) FOR_EACH_18(WHAT, __VA_ARGS__)
+#define FOR_EACH_20(WHAT, X, ...) WHAT(X) FOR_EACH_19(WHAT, __VA_ARGS__)
+#define FOR_EACH_21(WHAT, X, ...) WHAT(X) FOR_EACH_20(WHAT, __VA_ARGS__)
+#define FOR_EACH_22(WHAT, X, ...) WHAT(X) FOR_EACH_21(WHAT, __VA_ARGS__)
+#define FOR_EACH_23(WHAT, X, ...) WHAT(X) FOR_EACH_22(WHAT, __VA_ARGS__)
+#define FOR_EACH_24(WHAT, X, ...) WHAT(X) FOR_EACH_23(WHAT, __VA_ARGS__)
+#define FOR_EACH_25(WHAT, X, ...) WHAT(X) FOR_EACH_24(WHAT, __VA_ARGS__)
 
 #define FOR_EACH_NARG(...) FOR_EACH_NARG_(__VA_ARGS__, FOR_EACH_RSEQ_N())
 #define FOR_EACH_NARG_(...) FOR_EACH_ARG_N(__VA_ARGS__) 
-#define FOR_EACH_ARG_N(_1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, N, ...) N 
-#define FOR_EACH_RSEQ_N() 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0
+#define FOR_EACH_ARG_N(_1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, _21, _22, _23, _24, _25, N, ...) N 
+#define FOR_EACH_RSEQ_N() 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0
 
 #define FOR_EACH_(N, WHAT, x, ...) CONCATENATE(FOR_EACH_, N)(WHAT, x, __VA_ARGS__)
 #define FOR_EACH(WHAT, x, ...)    FOR_EACH_(FOR_EACH_NARG(x, __VA_ARGS__), WHAT, x, __VA_ARGS__)
@@ -48,11 +58,21 @@
 #define FOR_PEACH_13(PRM, WHAT, X, ...) WHAT(PRM, X) FOR_PEACH_12(PRM, WHAT, __VA_ARGS__)
 #define FOR_PEACH_14(PRM, WHAT, X, ...) WHAT(PRM, X) FOR_PEACH_13(PRM, WHAT, __VA_ARGS__)
 #define FOR_PEACH_15(PRM, WHAT, X, ...) WHAT(PRM, X) FOR_PEACH_14(PRM, WHAT, __VA_ARGS__)
+#define FOR_PEACH_16(PRM, WHAT, X, ...) WHAT(PRM, X) FOR_PEACH_15(PRM, WHAT, __VA_ARGS__)
+#define FOR_PEACH_17(PRM, WHAT, X, ...) WHAT(PRM, X) FOR_PEACH_16(PRM, WHAT, __VA_ARGS__)
+#define FOR_PEACH_18(PRM, WHAT, X, ...) WHAT(PRM, X) FOR_PEACH_17(PRM, WHAT, __VA_ARGS__)
+#define FOR_PEACH_19(PRM, WHAT, X, ...) WHAT(PRM, X) FOR_PEACH_18(PRM, WHAT, __VA_ARGS__)
+#define FOR_PEACH_20(PRM, WHAT, X, ...) WHAT(PRM, X) FOR_PEACH_19(PRM, WHAT, __VA_ARGS__)
+#define FOR_PEACH_21(PRM, WHAT, X, ...) WHAT(PRM, X) FOR_PEACH_20(PRM, WHAT, __VA_ARGS__)
+#define FOR_PEACH_22(PRM, WHAT, X, ...) WHAT(PRM, X) FOR_PEACH_21(PRM, WHAT, __VA_ARGS__)
+#define FOR_PEACH_23(PRM, WHAT, X, ...) WHAT(PRM, X) FOR_PEACH_22(PRM, WHAT, __VA_ARGS__)
+#define FOR_PEACH_24(PRM, WHAT, X, ...) WHAT(PRM, X) FOR_PEACH_23(PRM, WHAT, __VA_ARGS__)
+#define FOR_PEACH_25(PRM, WHAT, X, ...) WHAT(PRM, X) FOR_PEACH_24(PRM, WHAT, __VA_ARGS__)
 
 #define FOR_PEACH_NARG(...) FOR_PEACH_NARG_(__VA_ARGS__, FOR_PEACH_RSEQ_N())
 #define FOR_PEACH_NARG_(...) FOR_PEACH_ARG_N(__VA_ARGS__) 
-#define FOR_PEACH_ARG_N(_1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, N, ...) N 
-#define FOR_PEACH_RSEQ_N() 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0
+#define FOR_PEACH_ARG_N(_1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, _21, _22, _23, _24, _25, N, ...) N 
+#define FOR_PEACH_RSEQ_N() 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0
 
 #define FOR_PEACH_(N, PRM, WHAT, x, ...) CONCATENATE(FOR_PEACH_, N)(PRM, WHAT, x, __VA_ARGS__)
 #define FOR_PEACH(PRM, WHAT, x, ...)    FOR_PEACH_(FOR_PEACH_NARG(x, __VA_ARGS__), PRM, WHAT, x, __VA_ARGS__)
@@ -126,7 +146,7 @@
         FOR_EACH(PI_REPLACE_PARAMS, __VA_ARGS__)
 
 #define PMI_PARAM(NAME, DATA_TYPE, ...)                             PMI_CORE(__VA_ARGS__),
-#define PMI_PARAM_CONST(NAME, DATA_TYPE, VALUE, ...)                             PMI_CORE(__VA_ARGS__),
+#define PMI_PARAM_CONST(NAME, DATA_TYPE, VALUE, ...)                PMI_CORE(__VA_ARGS__),
 #define PMI_VEC_PARAM(NAME, DATA_TYPE, ...)                         PMI_CORE(__VA_ARGS__),
 #define PMI_IN_TASK(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE, ...)   PMI_CORE(__VA_ARGS__),
 #define PMI_OUT_TASK(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE, ...)  PMI_CORE(__VA_ARGS__),
