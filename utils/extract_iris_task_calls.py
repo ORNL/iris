@@ -66,7 +66,6 @@ def parse_nested(text, left=r'[(]', right=r'[)]', sep=r','):
     return stack.pop()
 
 def parseFnParams(text):
-    text = re.sub(r'\s', '', text)
     fn_name, nstack = parseFnParamsCore(text)
     i = arguments_start_index
     nnstack = nstack[0:i]
@@ -108,6 +107,15 @@ def parseFnParamsCore(text):
 #ane_cpu || iris_dsp))\n'
 #["task0", "saxpy", "target_dev", "SIZE", { "fn" : "OUT_TASK", "params": [ "Z", "int32_t *", { "fn" : "*", "params": { { "fn" : "sizeof", "params": "int32_t" }, "SIZE" }}, 
 def preprocess_data(data):
+    if type(data) == list:
+        data = [ preprocess_data(x) for x in data ]
+    elif isinstance(data, dict):
+        dh = {}
+        for k,v in data.items():
+            dh[preprocess_data(k)] = preprocess_data(v)
+        data = dh
+    else:
+        data = re.sub(r'^\s*', '', data)
     return data
 
 def generateIrisInterfaceCode(args, input):
@@ -126,6 +134,7 @@ def generateIrisInterfaceCode(args, input):
         d = [parseFnParams(code)]
         kname = d[0][1]
         kname = re.sub(r'"', '', kname)
+        kname = re.sub(r'^\s*', '', kname)
         d[0][1] = kname
         data.append(d[0])
         data_hash[kname] = preprocess_data(d[0])
