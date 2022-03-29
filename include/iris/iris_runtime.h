@@ -8,6 +8,7 @@
 extern "C" {
 #endif
 
+#ifndef UNDEF_IRIS_MACROS
 #define IRIS_MAX_NPLATFORMS     32
 #define IRIS_MAX_NDEVS          (1 << 5) - 1
 
@@ -62,6 +63,8 @@ extern "C" {
 #define iris_ncmds_kernel       2
 #define iris_ncmds_memcpy       3
 #define iris_cmds               4
+
+#endif // UNDEF_IRIS_MACROS
 
 typedef struct _iris_task*  iris_task;
 typedef struct _iris_mem*   iris_mem;

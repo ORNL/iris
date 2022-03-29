@@ -7,10 +7,26 @@ import tempfile
 
 arguments_start_index=7
 valid_params = { 'PARAM' : 1, 'PARAM_CONST' : 1, 'IN_TASK' : 1, 'OUT_TASK' : 1, 'IN_OUT_TASK' : 1, 'VEC_PARAM' : 1 }
+
+def getPyExprString(l):
+    if type(l) == list:
+        p = []
+        for i in l:
+            if type(i) == list:
+                p.append(" ( ")
+                p.append(getPyExprString(i))
+                p.append(" ) ")
+            else:
+                p.append(i)
+        return " ".join(p)
+    else:
+        return l
+
 def extractTaskCalls(args):
     file = args.input[0]
     f = tempfile.NamedTemporaryFile(delete=False)
-    os.system(f"cpp {file} -o {f.name} {args.compile_options} -DUNDEF_IRIS_MACROS")
+    print(f"[Cmd] cpp {file} -Uiris_cpu -Uiris_dsp -o {f.name} {args.compile_options} -DUNDEF_IRIS_MACROS")
+    os.system(f"cpp {file} -Uiris_cpu -Uiris_dsp -o {f.name} {args.compile_options} -DUNDEF_IRIS_MACROS")
     fh = open(f.name, "r")
     lines = fh.readlines()
     single_line = " ".join(lines);
@@ -287,12 +303,44 @@ def getKernelParamVairable(k):
 
 def appendKernelSignature(lines, data_hash, k_hash):
     global valid_params
+    def InsertConditionalDeclarations(k, expr, fdt, params, lines):
+        res= { "iris_all" : 0xFFFFFFFF, 
+            "iris_cpu"    : 0x01, 
+            "iris_dsp"    : 0x02, 
+            "iris_fpga"   : 0x04, 
+            "iris_xfpga"  : 0x04, 
+            "iris_ifpga"  : 0x08, 
+            "iris_gpu"    : 0x0C,
+        }
+        if not re.match(r'.*iris_', expr):
+            params.append(fdt)
+            return
+        expr = re.sub('\|\|', ' | ', expr)
+        expr = re.sub('\&\&', ' & ', expr)
+        #print("EXPR: "+expr)
+        expr_eval = eval(expr, res)
+        if (expr_eval & res['iris_cpu']) and (expr_eval & res['iris_dsp']):
+           params.append(fdt)
+        elif expr_eval & res['iris_dsp']:
+           if len(params) > 0:
+                lines.append("\t\t\t\t"+", \n\t\t\t\t".join(params)+",")
+           lines.append("#ifdef ENABLE_IRIS_HEXAGON_APIS")
+           lines.append("\t\t\t\t"+fdt+",")
+           lines.append("#endif")
+           params.clear()
+        elif expr_eval & res['iris_cpu']:
+           if len(params) > 0:
+                lines.append("\t\t\t\t"+", \n\t\t\t\t".join(params)+",")
+           lines.append("#ifndef ENABLE_IRIS_HEXAGON_APIS")
+           lines.append("\t\t\t\t"+fdt+",")
+           lines.append("#endif")
+           params.clear()
+
     for k,v in data_hash.items():
         kvar = getKernelParamVairable(k)
-        func_sig = "int iris_kernel_"+k
+        func_sig = "int iris_kernel_"+k+"(HANDLETYPE"
         params = []
-        hexagon_params = []
-        param_hash = {}
+        lines.append(func_sig)
         i = arguments_start_index
         while (i<len(v)):
             f_param = v[i]
@@ -303,21 +351,60 @@ def appendKernelSignature(lines, data_hash, k_hash):
             i = i+1
             fvar = f_details[0]
             fdt = f_details[1]
-            if fvar not in param_hash:
-                param_hash[fvar] = True
-                if f_param == "VEC_PARAM":
-                    params.append(fdt+" *")
-                    hexagon_params.append(fdt+" *")
-                else:
-                    params.append(fdt)
-                    hexagon_params.append(fdt)
-                if f_param == "IN_TASK" or f_param == "OUT_TASK" or f_param == "IN_OUT_TASK":
-                    hexagon_params.append("int") # SIZE only for hexagon
+            if f_param == 'PARAM' and len(f_details)>2:
+                expr = getPyExprString(f_details[2])
+                InsertConditionalDeclarations(k, expr, fdt+f" /*{fvar}*/", params, lines)
+                one_param_exists = True
+            elif f_param == 'PARAM_CONST' and len(f_details)>3:
+                expr = getPyExprString(f_details[2])
+                InsertConditionalDeclarations(k, expr, fdt, params, lines)
+                one_param_exists = True
+            elif f_param == 'VEC_PARAM' and len(f_details)>2:
+                fdt  = fdt + f" * /*{fvar}*/"
+                expr = getPyExprString(f_details[2])
+                InsertConditionalDeclarations(k, expr, fdt, params, lines)
+                one_param_exists = True
+            elif f_param == 'IN_TASK':
+                expr = getPyExprString(f_details[-1])
+                InsertConditionalDeclarations(k, expr, fdt, params, lines)
+                if len(params) > 0:
+                     lines.append("\t\t\t\t"+", \n\t\t\t\t".join(params)+",")
+                lines.append("#ifdef ENABLE_IRIS_HEXAGON_APIS")
+                lines.append("\t\t\t\tint,")
+                lines.append("#endif")
+                params.clear()
+                one_param_exists = True
+            elif f_param == 'OUT_TASK':
+                expr = getPyExprString(f_details[-1])
+                InsertConditionalDeclarations(k, expr, fdt, params, lines)
+                if len(params) > 0:
+                     lines.append("\t\t\t\t"+", \n\t\t\t\t".join(params)+",")
+                lines.append("#ifdef ENABLE_IRIS_HEXAGON_APIS")
+                lines.append("\t\t\t\tint,")
+                lines.append("#endif")
+                params.clear()
+                one_param_exists = True
+            elif f_param == 'IN_OUT_TASK':
+                expr = getPyExprString(f_details[-1])
+                InsertConditionalDeclarations(k, expr, fdt, params, lines)
+                if len(params) > 0:
+                     lines.append("\t\t\t\t"+", \n\t\t\t\t".join(params)+",")
+                lines.append("#ifdef ENABLE_IRIS_HEXAGON_APIS")
+                lines.append("\t\t\t\tint,")
+                lines.append("#endif")
+                params.clear()
+                one_param_exists = True
+            else:
+                params.append(fdt+f" /*{fvar}*/")
+                one_param_exists = True
+        if len(params) > 0:
+             lines.append("\t\t\t\t"+", \n\t\t\t\t".join(params)+",")
         lines.append("#ifndef ENABLE_IRIS_HEXAGON_APIS")
-        lines.append(func_sig+"(HANDLETYPE "+", ".join(params)+", size_t, size_t);")
+        lines.append("size_t, size_t")
         lines.append("#else //ENABLE_IRIS_HEXAGON_APIS")
-        lines.append(func_sig+"(HANDLETYPE "+", ".join(hexagon_params)+", int, int);")
+        lines.append("int, int")
         lines.append("#endif //ENABLE_IRIS_HEXAGON_APIS")
+        lines.append(");")
 
 def appendStructure(lines, data_hash, k_hash):
     global valid_params
@@ -448,19 +535,6 @@ int iris_kernel(const char* name) {
 int iris_launch(int dim, size_t off, size_t ndr) {
         switch(iris_kernel_idx) {
         ''')
-    def getPyExprString(l):
-        if type(l) == list:
-            p = []
-            for i in l:
-                if type(i) == list:
-                    p.append(" ( ")
-                    p.append(getPyExprString(i))
-                    p.append(" ) ")
-                else:
-                    p.append(i)
-            return " ".join(p)
-        else:
-            return l
     def InsertConditionalParameters(k, expr, f_details, params, lines):
         res= { "iris_all" : 0xFFFFFFFF, 
             "iris_cpu"    : 0x01, 
@@ -470,7 +544,7 @@ int iris_launch(int dim, size_t off, size_t ndr) {
             "iris_ifpga"  : 0x08, 
             "iris_gpu"    : 0x0C,
         }
-        if not re.match(r'iris_', expr):
+        if not re.match(r'.*iris_', expr):
             params.append(getKernelParamVairable(k)+"."+f_details[0])
             return
         expr = re.sub('\|\|', ' | ', expr)
