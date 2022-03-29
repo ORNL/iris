@@ -216,7 +216,7 @@ class task:
   def h2d(self, mem, off, size, host):
     task_h2d(self.handle, mem.handle, off, size, host)
   def d2h(self, mem, off, size, host):
-    task_d2h(self.handle, meml.handle, off, size, host)
+    task_d2h(self.handle, mem.handle, off, size, host)
   def h2d_full(self, mem, host):
     task_h2d_full(self.handle, mem.handle, host)
   def d2h_full(self, mem, host):
