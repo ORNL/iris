@@ -30,6 +30,12 @@ install(FILES
 install(FILES
   hexagon/rpcmem.h
   hexagon/AEEStdDef.h
+  hexagon/stub.h
+  hexagon/stub_imp.h
+  hexagon/hvx_util.h
+  hexagon/q6cache.h
+  hexagon/std_kernels.h
+  hexagon/iris_interface.h
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/iris/hexagon)
 
 install(FILES
