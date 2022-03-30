@@ -348,6 +348,9 @@ function(extractIRISAPIs)
            )
     add_custom_target(iris_app_cpu_dsp_interface.h DEPENDS ${CMAKE_BINARY_DIR}/iris_app_cpu_dsp_interface.h)
 endfunction()
+if (EXTRACT_IRIS_KERNEL_SIGNATURES)
+extractIRISAPIs(${EXTRACT_IRIS_KERNEL_SIGNATURES})
+endif()
 if (NOT ANALYZE_IRIS_LIBRARY_SOURCES_ONLY)
 if (APP_SOURCES OR APP_LIB_SOURCES)
 extractIRISAPIs(${APP_SOURCES} ${APP_LIB_SOURCES})
@@ -390,7 +393,7 @@ add_custom_command(
   COMMAND nvcc -ptx ${CUDA_KERNEL_SOURCES} --output-directory ${CMAKE_BINARY_DIR}
   BYPRODUCTS ${CMAKE_BINARY_DIR}/kernel.ptx
   )
-add_custom_target(kernel.ptx DEPENDS ${CMAKE_BINARY_DIR}/kernel.ptx)
+add_custom_target(kernel.ptx ALL DEPENDS ${CMAKE_BINARY_DIR}/kernel.ptx)
 install(FILES ${CMAKE_BINARY_DIR}/kernel.ptx DESTINATION ${KERNEL_INSTALL_PATH})
 endif() # CUDA_KERNEL_SOURCES
 endif() # USE_CUDA
@@ -490,7 +493,7 @@ function(xilinx_compile)
            COMMAND v++ -l -t ${XILINX_TARGET} --temp_dir ${XTMP_DIR} --config ${XILINX_DESIGN_CONFIG} --platform ${XILINX_PLATFORM} -I. ${XILINX_LDFLAGS} ${all_connectivities} ${all_xos}  -o ${CMAKE_BINARY_DIR}/${XILINX_TARGET}/${XILINX_LANGUAGE}/${XILINX_XCLBIN}
            DEPENDS ${all_kernel_names}
            )
-    add_custom_target(${XILINX_XCLBIN} DEPENDS design.cfg ${CMAKE_BINARY_DIR}/${XILINX_TARGET}/${XILINX_LANGUAGE}/${XILINX_XCLBIN})
+    add_custom_target(${XILINX_XCLBIN} ALL DEPENDS design.cfg ${CMAKE_BINARY_DIR}/${XILINX_TARGET}/${XILINX_LANGUAGE}/${XILINX_XCLBIN})
     install(FILES ${CMAKE_BINARY_DIR}/${XILINX_TARGET}/${XILINX_LANGUAGE}/${XILINX_XCLBIN} DESTINATION ${LIB_INSTALL_PATH}/${XILINX_TARGET}/${XILINX_LANGUAGE})
     install(FILES ${CMAKE_BINARY_DIR}/${XILINX_TARGET}/${XILINX_LANGUAGE}/${XILINX_XCLBIN} DESTINATION ${LIB_INSTALL_PATH}/)
 endfunction()
@@ -499,13 +502,15 @@ add_custom_command(
   OUTPUT ${CMAKE_BINARY_DIR}/emconfig.json
   COMMAND emconfigutil --platform ${XILINX_PLATFORM} --nd 1
   )
-add_custom_target(emconfig.json DEPENDS ${CMAKE_BINARY_DIR}/emconfig.json)
+add_custom_target(emconfig.json ALL DEPENDS ${CMAKE_BINARY_DIR}/emconfig.json)
 install(FILES ${CMAKE_BINARY_DIR}/emconfig.json DESTINATION ${LIB_INSTALL_PATH}/)
 if (XILINX_OPENCL_SOURCES AND ${XILINX_LANGUAGE} STREQUAL "opencl")
 xilinx_compile(${XILINX_OPENCL_SOURCES})
+#add_dependencies(${XILINX_XCLBIN} emconfig.json)
 endif() # XILINX_OPENCL_SOURCES
 if (XILINX_KERNEL_SOURCES AND ${XILINX_LANGUAGE} STREQUAL "xilinx")
 xilinx_compile(${XILINX_KERNEL_SOURCES})
+#add_dependencies(${XILINX_XCLBIN} emconfig.json)
 endif() # XILINX_KERNEL_SOURCES
 endif() # USE_XILINX
 
