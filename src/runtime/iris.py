@@ -22,9 +22,11 @@ iris_depend     =       (1 << 19)
 iris_data       =       (1 << 20)
 iris_profile    =       (1 << 21)
 iris_random     =       (1 << 22)
-iris_any        =       (1 << 23)
-iris_all        =       (1 << 24)
-iris_custom     =       (1 << 25)
+iris_pending    =       (1 << 23)
+iris_any        =       (1 << 24)
+iris_all        =       (1 << 25)
+iris_custom     =       (1 << 26)
+
 
 iris_r          =   -1
 iris_w          =   -2
@@ -159,6 +161,11 @@ def task_host(task, func, params):
 def task_h2d(task, mem, off, size, host):
     return dll.iris_task_h2d(task, mem, c_size_t(off), c_size_t(size), host.ctypes.data_as(c_void_p))
 
+def task_params_map(task, params_map_list):
+    nparams = len(params_map_list)
+    c_params_map_list = (c_int * nparams)(*params_map_list)
+    return dll.iris_params_map(task, c_params_map_list)
+
 def task_d2h(task, mem, off, size, host):
     return dll.iris_task_d2h(task, mem, c_size_t(off), c_size_t(size), host.ctypes.data_as(c_void_p))
 
@@ -221,6 +228,8 @@ class task:
     self.handle = task_create()
   def h2d(self, mem, off, size, host):
     task_h2d(self.handle, mem.handle, off, size, host)
+  def params_map(self, params_map_list):
+    task_params_map(self.handle, params_map_list)
   def d2h(self, mem, off, size, host):
     task_d2h(self.handle, mem.handle, off, size, host)
   def h2d_full(self, mem, host):
