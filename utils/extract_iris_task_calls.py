@@ -6,7 +6,7 @@ import os
 import tempfile
 
 arguments_start_index=7
-valid_params = { 'PARAM' : 1, 'PARAM_CONST' : 1, 'IN_TASK' : 1, 'OUT_TASK' : 1, 'IN_OUT_TASK' : 1, 'VEC_PARAM' : 1 }
+valid_params = { 'PARAM' : 1, 'PARAM_CONST' : 1, 'IN_TASK' : 1, 'IN_TASK_OFFSET' : 1, 'OUT_TASK_OFFSET' : 1, 'OUT_TASK' : 1, 'IN_OUT_TASK' : 1, 'IN_OUT_TASK_OFFSET' : 1, 'VEC_PARAM' : 1 }
 
 def getPyExprString(l):
     if type(l) == list:
@@ -150,7 +150,7 @@ def generateIrisInterfaceCode(args, input):
         d = [parseFnParams(code)]
         kname = d[0][1]
         kname = re.sub(r'"', '', kname)
-        kname = re.sub(r'^\s*', '', kname)
+        kname = re.sub(r'\s*', '', kname)
         d[0][1] = kname
         data.append(d[0])
         data_hash[kname] = preprocess_data(d[0])
@@ -374,6 +374,16 @@ def appendKernelSignature(lines, data_hash, k_hash):
                 lines.append("#endif")
                 params.clear()
                 one_param_exists = True
+            elif f_param == 'IN_TASK_OFFSET':
+                expr = getPyExprString(f_details[-1])
+                InsertConditionalDeclarations(k, expr, fdt, params, lines)
+                if len(params) > 0:
+                     lines.append("\t\t\t\t"+", \n\t\t\t\t".join(params)+",")
+                lines.append("#ifdef ENABLE_IRIS_HEXAGON_APIS")
+                lines.append("\t\t\t\tint,")
+                lines.append("#endif")
+                params.clear()
+                one_param_exists = True
             elif f_param == 'OUT_TASK':
                 expr = getPyExprString(f_details[-1])
                 InsertConditionalDeclarations(k, expr, fdt, params, lines)
@@ -384,7 +394,27 @@ def appendKernelSignature(lines, data_hash, k_hash):
                 lines.append("#endif")
                 params.clear()
                 one_param_exists = True
+            elif f_param == 'OUT_TASK_OFFSET':
+                expr = getPyExprString(f_details[-1])
+                InsertConditionalDeclarations(k, expr, fdt, params, lines)
+                if len(params) > 0:
+                     lines.append("\t\t\t\t"+", \n\t\t\t\t".join(params)+",")
+                lines.append("#ifdef ENABLE_IRIS_HEXAGON_APIS")
+                lines.append("\t\t\t\tint,")
+                lines.append("#endif")
+                params.clear()
+                one_param_exists = True
             elif f_param == 'IN_OUT_TASK':
+                expr = getPyExprString(f_details[-1])
+                InsertConditionalDeclarations(k, expr, fdt, params, lines)
+                if len(params) > 0:
+                     lines.append("\t\t\t\t"+", \n\t\t\t\t".join(params)+",")
+                lines.append("#ifdef ENABLE_IRIS_HEXAGON_APIS")
+                lines.append("\t\t\t\tint,")
+                lines.append("#endif")
+                params.clear()
+                one_param_exists = True
+            elif f_param == 'IN_OUT_TASK_OFFSET':
                 expr = getPyExprString(f_details[-1])
                 InsertConditionalDeclarations(k, expr, fdt, params, lines)
                 if len(params) > 0:
@@ -429,7 +459,7 @@ def appendStructure(lines, data_hash, k_hash):
                     params.append("__global "+fdt+" *"+fvar+";")
                 else:
                     params.append("__global "+fdt+" "+fvar+";")
-                if f_param == "IN_TASK" or f_param == "OUT_TASK" or f_param == "IN_OUT_TASK":
+                if f_param == "IN_TASK" or f_param == "IN_TASK_OFFSET" or f_param == "OUT_TASK" or f_param == "OUT_TASK_OFFSET" or f_param == "IN_OUT_TASK" or f_param == "IN_OUT_TASK_OFFSET":
                     params.append("__global int "+fvar+"___size;")
         lines.append("\t"+"\n\t".join(params))
         lines.append("} iris_"+kvar+";")
@@ -479,7 +509,7 @@ def appendKernelSetArgMemParamFunctions(lines, kernel, data):
         i = i+1
         fvar = f_details[0]
         fdt = f_details[1]
-        if f_param=="IN_TASK" or f_param =="OUT_TASK" or f_param == "IN_OUT_TASK":
+        if f_param=="IN_TASK" or f_param=="IN_TASK_OFFSET" or f_param =="OUT_TASK" or f_param == "IN_OUT_TASK" or f_param =="OUT_TASK_OFFSET" or f_param == "IN_OUT_TASK_OFFSET":
             lines.append("\t\t\tcase "+str(p_index)+": "+kvar+"."+fvar+" = ("+fdt+")mem; "+kvar+"."+fvar+"___size = size; break;")
         elif f_param=="VEC_PARAM":
             lines.append("\t\t\tcase "+str(p_index)+": "+kvar+"."+fvar+" = ("+fdt+"*)mem; break;")
@@ -601,6 +631,16 @@ int iris_launch(int dim, size_t off, size_t ndr) {
                 lines.append("#endif")
                 params.clear()
                 one_param_exists = True
+            elif f_param == 'IN_TASK_OFFSET':
+                expr = getPyExprString(f_details[-1])
+                InsertConditionalParameters(k, expr, f_details, params, lines)
+                if len(params) > 0:
+                     lines.append("\t\t\t\t"+", \n\t\t\t\t".join(params)+",")
+                lines.append("#ifdef ENABLE_IRIS_HEXAGON_APIS")
+                lines.append("\t\t\t\t("+getKernelParamVairable(k)+"."+f_details[0]+"___size)/sizeof("+f_details[2]+"),")
+                lines.append("#endif")
+                params.clear()
+                one_param_exists = True
             elif f_param == 'OUT_TASK':
                 expr = getPyExprString(f_details[-1])
                 InsertConditionalParameters(k, expr, f_details, params, lines)
@@ -611,7 +651,27 @@ int iris_launch(int dim, size_t off, size_t ndr) {
                 lines.append("#endif")
                 params.clear()
                 one_param_exists = True
+            elif f_param == 'OUT_TASK_OFFSET':
+                expr = getPyExprString(f_details[-1])
+                InsertConditionalParameters(k, expr, f_details, params, lines)
+                if len(params) > 0:
+                     lines.append("\t\t\t\t"+", \n\t\t\t\t".join(params)+",")
+                lines.append("#ifdef ENABLE_IRIS_HEXAGON_APIS")
+                lines.append("\t\t\t\t("+getKernelParamVairable(k)+"."+f_details[0]+"___size)/sizeof("+f_details[2]+"),")
+                lines.append("#endif")
+                params.clear()
+                one_param_exists = True
             elif f_param == 'IN_OUT_TASK':
+                expr = getPyExprString(f_details[-1])
+                InsertConditionalParameters(k, expr, f_details, params, lines)
+                if len(params) > 0:
+                     lines.append("\t\t\t\t"+", \n\t\t\t\t".join(params)+",")
+                lines.append("#ifdef ENABLE_IRIS_HEXAGON_APIS")
+                lines.append("\t\t\t\t("+getKernelParamVairable(k)+"."+f_details[0]+"___size)/sizeof("+f_details[2]+"),")
+                lines.append("#endif")
+                params.clear()
+                one_param_exists = True
+            elif f_param == 'IN_OUT_TASK_OFFSET':
                 expr = getPyExprString(f_details[-1])
                 InsertConditionalParameters(k, expr, f_details, params, lines)
                 if len(params) > 0:
