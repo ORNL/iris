@@ -194,7 +194,7 @@ Command* Command::CreateH2D(Task* task, Mem* mem, size_t *off, size_t *host_size
   Command* cmd = Create(task, IRIS_CMD_H2D);
   cmd->mem_ = mem;
   cmd->dim_ = dim;
-  size_t size = 1;
+  size_t size = elem_size;
   for(int i=0; i<dim; i++) {
     cmd->off_[i] = off[i];
     cmd->gws_[i] = host_sizes[i];
@@ -237,7 +237,7 @@ Command* Command::CreateD2H(Task* task, Mem* mem, size_t *off, size_t *host_size
   Command* cmd = Create(task, IRIS_CMD_D2H);
   cmd->mem_ = mem;
   cmd->dim_ = dim;
-  size_t size = 1;
+  size_t size = elem_size;
   for(int i=0; i<dim; i++) {
     cmd->off_[i] = off[i];
     cmd->gws_[i] = host_sizes[i];
