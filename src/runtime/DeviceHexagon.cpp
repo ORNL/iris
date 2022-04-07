@@ -46,15 +46,25 @@ int DeviceHexagon::MemFree(void* mem) {
   return IRIS_SUCCESS;
 }
 
-int DeviceHexagon::MemH2D(Mem* mem, size_t off, size_t size, void* host) {
+int DeviceHexagon::MemH2D(Mem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host) {
   void* hxgmem = mem->arch(this);
-  memcpy((char*) hxgmem + off, host, size);
+  if (dim == 2 || dim == 3) {
+      Utils::MemCpy3D((uint8_t *)hxgmem, (uint8_t *)host, off, dev_sizes, host_sizes, elem_size, true);
+  }
+  else {
+      memcpy((char*) hxgmem + off[0], host, size);
+  }
   return IRIS_SUCCESS;
 }
 
-int DeviceHexagon::MemD2H(Mem* mem, size_t off, size_t size, void* host) {
+int DeviceHexagon::MemD2H(Mem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host) {
   void* hxgmem = mem->arch(this);
-  memcpy(host, (char*) hxgmem + off, size);
+  if (dim == 2 || dim == 3) {
+      Utils::MemCpy3D((uint8_t *)hxgmem, (uint8_t *)host, off, dev_sizes, host_sizes, elem_size, true);
+  }
+  else {
+      memcpy(host, (char*) hxgmem + off[0], size);
+  }
   return IRIS_SUCCESS;
 }
 

@@ -127,17 +127,29 @@ int DeviceOpenMP::MemFree(void* mem) {
   return IRIS_SUCCESS;
 }
 
-int DeviceOpenMP::MemH2D(Mem* mem, size_t off, size_t size, void* host) {
+int DeviceOpenMP::MemH2D(Mem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host) {
   void* mpmem = mem->arch(this, host);
-  if (!is_shared_memory_buffers())
-      memcpy((char*) mpmem + off, host, size);
+  if (!is_shared_memory_buffers()) {
+      if (dim == 2 || dim == 3) {
+          Utils::MemCpy3D((uint8_t *)mpmem, (uint8_t *)host, off, dev_sizes, host_sizes, elem_size, true);
+      }
+      else {
+          memcpy((char*) mpmem + off[0], host, size);
+      }
+  }
   return IRIS_SUCCESS;
 }
 
-int DeviceOpenMP::MemD2H(Mem* mem, size_t off, size_t size, void* host) {
+int DeviceOpenMP::MemD2H(Mem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host) {
   void* mpmem = mem->arch(this, host);
-  if (!is_shared_memory_buffers())
-      memcpy(host, (char*) mpmem + off, size);
+  if (!is_shared_memory_buffers()) {
+      if (dim == 2 || dim == 3) {
+          Utils::MemCpy3D((uint8_t *)mpmem, (uint8_t *)host, off, dev_sizes, host_sizes, elem_size, false);
+      }
+      else {
+          memcpy(host, (char*) mpmem + off[0], size);
+      }
+  }
   return IRIS_SUCCESS;
 }
 

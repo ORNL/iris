@@ -47,8 +47,8 @@ public:
   virtual int BuildProgram(char* path) { return IRIS_SUCCESS; }
   virtual int MemAlloc(void** mem, size_t size) = 0;
   virtual int MemFree(void* mem) = 0;
-  virtual int MemH2D(Mem* mem, size_t off, size_t size, void* host) = 0;
-  virtual int MemD2H(Mem* mem, size_t off, size_t size, void* host) = 0;
+  virtual int MemH2D(Mem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host) = 0;
+  virtual int MemD2H(Mem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host) = 0;
   virtual int KernelGet(void** kernel, const char* name) = 0;
   virtual int KernelLaunchInit(Kernel* kernel) { return IRIS_SUCCESS; }
   virtual int KernelSetArg(Kernel* kernel, int idx, size_t size, void* value) = 0;

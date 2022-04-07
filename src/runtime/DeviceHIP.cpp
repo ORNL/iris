@@ -112,19 +112,19 @@ int DeviceHIP::MemFree(void* mem) {
   return IRIS_SUCCESS;
 }
 
-int DeviceHIP::MemH2D(Mem* mem, size_t off, size_t size, void* host) {
+int DeviceHIP::MemH2D(Mem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host) {
   void* hipmem = mem->arch(this);
-  _trace("dev[%d][%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", devno_, name_, mem->uid(), hipmem, off, size, host, q_);
-  err_ = ld_->hipMemcpyHtoD((char*) hipmem + off, host, size);
+  _trace("dev[%d][%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", devno_, name_, mem->uid(), hipmem, off[0], size, host, q_);
+  err_ = ld_->hipMemcpyHtoD((char*) hipmem + off[0], host, size);
   _hiperror(err_);
   if (err_ != hipSuccess) return IRIS_ERROR;
   return IRIS_SUCCESS;
 }
 
-int DeviceHIP::MemD2H(Mem* mem, size_t off, size_t size, void* host) {
+int DeviceHIP::MemD2H(Mem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host) {
   void* hipmem = mem->arch(this);
-  _trace("dev[%d][%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", devno_, name_, mem->uid(), hipmem, off, size, host, q_);
-  err_ = ld_->hipMemcpyDtoH(host, (char*) hipmem + off, size);
+  _trace("dev[%d][%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", devno_, name_, mem->uid(), hipmem, off[0], size, host, q_);
+  err_ = ld_->hipMemcpyDtoH(host, (char*) hipmem + off[0], size);
   _hiperror(err_);
   if (err_ != hipSuccess) return IRIS_ERROR;
   return IRIS_SUCCESS;

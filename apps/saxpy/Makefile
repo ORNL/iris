@@ -1,6 +1,6 @@
 include ../makefile_defs.mk
 
-all: saxpy-c saxpy-cpp saxpy-f90 kernel.openmp.so
+all: saxpy-c saxpy-cpp kernel.openmp.so
 
 saxpy-c: saxpy.c
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)

@@ -173,20 +173,43 @@ int DeviceOpenCL::MemFree(void* mem) {
   return IRIS_SUCCESS;
 }
 
-int DeviceOpenCL::MemH2D(Mem* mem, size_t off, size_t size, void* host) {
+int DeviceOpenCL::MemH2D(Mem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host) {
   cl_mem clmem = (cl_mem) mem->arch(this);
-  err_ = ld_->clEnqueueWriteBuffer(clcmdq_, clmem, CL_TRUE, off, size, host, 0, NULL, NULL);
+  if (dim == 2 || dim ==3) {
+      size_t host_row_pitch = elem_size * host_sizes[0];
+      size_t host_slice_pitch   = host_sizes[1] * host_row_pitch;
+      size_t dev_row_pitch = elem_size * dev_sizes[0];
+      size_t dev_slice_pitch = dev_sizes[1] * dev_row_pitch;
+      size_t buffer_origin[3] = { 0, 0, 0};
+      size_t host_origin[3] = {off[0] * elem_size, off[1], off[2]};
+      size_t region[3] = { dev_sizes[0]*elem_size, dev_sizes[1], dev_sizes[2] };
+      err_ = ld_->clEnqueueWriteBufferRect(clcmdq_, clmem, CL_TRUE, buffer_origin, host_origin, region, dev_row_pitch, dev_slice_pitch, host_row_pitch, host_slice_pitch, host, 0, NULL, NULL);
+  }
+  else
+      err_ = ld_->clEnqueueWriteBuffer(clcmdq_, clmem, CL_TRUE, off[0], size, host, 0, NULL, NULL);
   _clerror(err_);
-  _trace("dev[%d][%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", devno_, name_, mem->uid(), clmem, off, size, host, q_);
+  _trace("dev[%d][%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", devno_, name_, mem->uid(), clmem, off[0], size, host, q_);
   if (err_ != CL_SUCCESS) return IRIS_ERROR;
   return IRIS_SUCCESS;
 }
 
-int DeviceOpenCL::MemD2H(Mem* mem, size_t off, size_t size, void* host) {
+int DeviceOpenCL::MemD2H(Mem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host) {
   cl_mem clmem = (cl_mem) mem->arch(this);
-  err_ = ld_->clEnqueueReadBuffer(clcmdq_, clmem, CL_TRUE, off, size, host, 0, NULL, NULL);
+  if (dim == 2 || dim ==3) {
+      size_t host_row_pitch = elem_size * host_sizes[0];
+      size_t host_slice_pitch   = host_sizes[1] * host_row_pitch;
+      size_t dev_row_pitch = elem_size * dev_sizes[0];
+      size_t dev_slice_pitch = dev_sizes[1] * dev_row_pitch;
+      size_t buffer_origin[3] = { 0, 0, 0};
+      size_t host_origin[3] = {off[0] * elem_size, off[1], off[2]};
+      size_t region[3] = { dev_sizes[0]*elem_size, dev_sizes[1], dev_sizes[2] };
+      err_ = ld_->clEnqueueReadBufferRect(clcmdq_, clmem, CL_TRUE, buffer_origin, host_origin, region, dev_row_pitch, dev_slice_pitch, host_row_pitch, host_slice_pitch, host, 0, NULL, NULL);
+  }
+  else {
+      err_ = ld_->clEnqueueReadBuffer(clcmdq_, clmem, CL_TRUE, off[0], size, host, 0, NULL, NULL);
+  }
   _clerror(err_);
-  _trace("dev[%d][%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", devno_, name_, mem->uid(), clmem, off, size, host, q_);
+  _trace("dev[%d][%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", devno_, name_, mem->uid(), clmem, off[0], size, host, q_);
   if (err_ != CL_SUCCESS) return IRIS_ERROR;
   return IRIS_SUCCESS;
 }
