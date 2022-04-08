@@ -106,9 +106,9 @@ int DeviceLevelZero::MemFree(void* mem) {
   return IRIS_SUCCESS;
 }
 
-int DeviceLevelZero::MemH2D(Mem* mem, size_t off, size_t size, void* host) {
-  void* dptr = (void*) ((char*) mem->arch(this) + off);
-  _trace("dptr[%p] offset[%lu] size[%lu] host[%p]", dptr, off, size, host);
+int DeviceLevelZero::MemH2D(Mem* mem, size_t *off, size_t *tile_sizes,  size_t *full_sizes, size_t elem_size, int dim, size_t size, void* host) {
+  void* dptr = (void*) ((char*) mem->arch(this) + off[0]);
+  _trace("dptr[%p] offset[%lu] size[%lu] host[%p]", dptr, off[0], size, host);
 
   ze_event_handle_t zeevt;
   ze_event_desc_t zeevt_desc = {};
@@ -139,9 +139,9 @@ int DeviceLevelZero::MemH2D(Mem* mem, size_t off, size_t size, void* host) {
   return IRIS_SUCCESS;
 }
 
-int DeviceLevelZero::MemD2H(Mem* mem, size_t off, size_t size, void* host) {
-  void* dptr = (void*) ((char*) mem->arch(this) + off);
-  _trace("dptr[%p] offset[%lu] size[%lu] host[%p]", dptr, off, size, host);
+int DeviceLevelZero::MemD2H(Mem* mem, size_t *off, size_t *tile_sizes,  size_t *full_sizes, size_t elem_size, int dim, size_t size, void* host) {
+  void* dptr = (void*) ((char*) mem->arch(this) + off[0]);
+  _trace("dptr[%p] offset[%lu] size[%lu] host[%p]", dptr, off[0], size, host);
 
   ze_event_handle_t zeevt;
   ze_event_desc_t zeevt_desc = {};

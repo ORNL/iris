@@ -4,7 +4,7 @@
 #include <iris/rt/Device.h>
 #include <iris/rt/Task.h>
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 class PolicyGWS: public Policy {
@@ -29,7 +29,7 @@ public:
 };
 
 } /* namespace runtime */
-} /* namespace brisbane */
+} /* namespace iris */
 
 REGISTER_CUSTOM_POLICY(PolicyGWS, custom_gws)
 

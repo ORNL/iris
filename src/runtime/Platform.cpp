@@ -776,6 +776,14 @@ int Platform::TaskMalloc(iris_task brs_task, iris_mem brs_mem) {
   return IRIS_SUCCESS;
 }
 
+int Platform::TaskH2D(iris_task brs_task, iris_mem brs_mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host) {
+  Task* task = brs_task->class_obj;
+  Mem* mem = brs_mem->class_obj;
+  Command* cmd = Command::CreateH2D(task, mem, off, host_sizes, dev_sizes, elem_size, dim, host);
+  task->AddCommand(cmd);
+  return IRIS_SUCCESS;
+}
+
 int Platform::TaskH2D(iris_task brs_task, iris_mem brs_mem, size_t off, size_t size, void* host) {
   Task* task = brs_task->class_obj;
   Mem* mem = brs_mem->class_obj;
@@ -788,6 +796,14 @@ int Platform::TaskD2H(iris_task brs_task, iris_mem brs_mem, size_t off, size_t s
   Task* task = brs_task->class_obj;
   Mem* mem = brs_mem->class_obj;
   Command* cmd = Command::CreateD2H(task, mem, off, size, host);
+  task->AddCommand(cmd);
+  return IRIS_SUCCESS;
+}
+
+int Platform::TaskD2H(iris_task brs_task, iris_mem brs_mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host) {
+  Task* task = brs_task->class_obj;
+  Mem* mem = brs_mem->class_obj;
+  Command* cmd = Command::CreateD2H(task, mem, off, host_sizes, dev_sizes, elem_size, dim, host);
   task->AddCommand(cmd);
   return IRIS_SUCCESS;
 }

@@ -22,9 +22,11 @@ iris_depend     =       (1 << 19)
 iris_data       =       (1 << 20)
 iris_profile    =       (1 << 21)
 iris_random     =       (1 << 22)
-iris_any        =       (1 << 23)
-iris_all        =       (1 << 24)
-iris_custom     =       (1 << 25)
+iris_pending    =       (1 << 23)
+iris_any        =       (1 << 24)
+iris_all        =       (1 << 25)
+iris_custom     =       (1 << 26)
+
 
 iris_r          =   -1
 iris_w          =   -2
@@ -120,25 +122,30 @@ def task_create(name = None):
 def task_depend(task, ntasks, tasks):
     return dll.iris_task_depend(task, c_int(ntasks), (iris_task * len(tasks))(*tasks))
 
-def task_kernel(task, kernel, dim, off, gws, lws, params, params_info):
+def task_kernel(task, kernel, dim, off, gws, lws, params, params_info, hold_params):
     coff = (c_size_t * dim)(*off)
     cgws = (c_size_t * dim)(*gws)
     clws = (c_size_t * dim)(*lws)
     nparams = len(params)
     cparams = (c_void_p * nparams)()
+    hold_params.clear()
     for i in range(nparams):
         if hasattr(params[i], 'handle') and isinstance(params[i].handle, iris_mem):
             cparams[i] = params[i].handle.class_obj
         elif isinstance(params[i], int) and params_info[i] == 4:
-          p = byref(c_int(params[i]))
-          cparams[i] = cast(p, c_void_p)
+            p = byref(c_int(params[i]))
+            hold_params.append(p)
+            cparams[i] = cast(p, c_void_p)
         elif isinstance(params[i], float) and params_info[i] == 4:
-          p = byref(c_float(params[i]))
-          cparams[i] = cast(p, c_void_p)
+            p = byref(c_float(params[i]))
+            cparams[i] = cast(p, c_void_p)
+            hold_params.append(p)
         elif isinstance(params[i], float) and params_info[i] == 8:
-          p = byref(c_double(params[i]))
-          cparams[i] = cast(p, c_void_p)
-        else: print("error")
+            p = byref(c_double(params[i]))
+            cparams[i] = cast(p, c_void_p)
+            hold_params.append(p)
+        else: 
+            print("error")
 
     cparams_info = (c_int * nparams)(*params_info)
     kernel_name = c_char_p(kernel) if sys.version_info[0] == 2 else c_char_p(bytes(kernel, 'ascii'))
@@ -153,6 +160,11 @@ def task_host(task, func, params):
 
 def task_h2d(task, mem, off, size, host):
     return dll.iris_task_h2d(task, mem, c_size_t(off), c_size_t(size), host.ctypes.data_as(c_void_p))
+
+def task_params_map(task, params_map_list):
+    nparams = len(params_map_list)
+    c_params_map_list = (c_int * nparams)(*params_map_list)
+    return dll.iris_params_map(task, c_params_map_list)
 
 def task_d2h(task, mem, off, size, host):
     return dll.iris_task_d2h(task, mem, c_size_t(off), c_size_t(size), host.ctypes.data_as(c_void_p))
@@ -212,17 +224,20 @@ class kernel:
 
 class task:
   def __init__(self):
+    self.params = []
     self.handle = task_create()
   def h2d(self, mem, off, size, host):
     task_h2d(self.handle, mem.handle, off, size, host)
+  def params_map(self, params_map_list):
+    task_params_map(self.handle, params_map_list)
   def d2h(self, mem, off, size, host):
-    task_d2h(self.handle, meml.handle, off, size, host)
+    task_d2h(self.handle, mem.handle, off, size, host)
   def h2d_full(self, mem, host):
     task_h2d_full(self.handle, mem.handle, host)
   def d2h_full(self, mem, host):
     task_d2h_full(self.handle, mem.handle, host)
   def kernel(self, kernel, dim, off, gws, lws, params, params_info):
-    task_kernel(self.handle, kernel, dim, off, gws, lws, params, params_info)
+    task_kernel(self.handle, kernel, dim, off, gws, lws, params, params_info, self.params)
   def host(self, func, params):
     task_host(self.handle, func, params)
   def submit(self, device, sync = 1):

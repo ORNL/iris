@@ -34,6 +34,11 @@ void Command::Clear(bool init) {
   polymems_ = NULL;
   npolymems_ = 0;
   params_map_ = NULL;
+  off_[0] = 0; off_[1] = 0; off_[2] = 0;
+  gws_[0] = 0; gws_[1] = 1; gws_[2] = 1;
+  lws_[0] = 0; lws_[1] = 1; lws_[2] = 1;
+  dim_ = 1;
+  elem_size_ = 0;
   if (init) {
     kernel_nargs_max_ = IRIS_CMD_KERNEL_NARGS_MAX;
     kernel_args_ = new KernelArg[kernel_nargs_max_];
@@ -201,8 +206,28 @@ Command* Command::CreateMalloc(Task* task, Mem* mem) {
   return cmd;
 }
 
+Command* Command::CreateH2D(Task* task, Mem* mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host) {
+  Command* cmd = Create(task, IRIS_CMD_H2D);
+  cmd->mem_ = mem;
+  cmd->dim_ = dim;
+  size_t size = elem_size;
+  for(int i=0; i<dim; i++) {
+    cmd->off_[i] = off[i];
+    cmd->gws_[i] = host_sizes[i];
+    cmd->lws_[i] = dev_sizes[i];
+    size *= host_sizes[i];
+  }
+  cmd->elem_size_ = elem_size;
+  cmd->size_ = size;
+  cmd->host_ = host;
+  cmd->exclusive_ = true;
+  mem->get_h2d_cmds().push_back(cmd);
+  return cmd;
+}
+
 Command* Command::CreateH2D(Task* task, Mem* mem, size_t off, size_t size, void* host) {
   Command* cmd = Create(task, IRIS_CMD_H2D);
+  cmd->dim_ = 1;
   cmd->mem_ = mem;
   cmd->off_[0] = off;
   cmd->size_ = size;
@@ -215,6 +240,7 @@ Command* Command::CreateH2D(Task* task, Mem* mem, size_t off, size_t size, void*
 Command* Command::CreateH2DNP(Task* task, Mem* mem, size_t off, size_t size, void* host) {
   Command* cmd = Create(task, IRIS_CMD_H2DNP);
   cmd->mem_ = mem;
+  cmd->dim_ = 1;
   cmd->off_[0] = off;
   cmd->size_ = size;
   cmd->host_ = host;
@@ -223,9 +249,28 @@ Command* Command::CreateH2DNP(Task* task, Mem* mem, size_t off, size_t size, voi
   return cmd;
 }
 
+Command* Command::CreateD2H(Task* task, Mem* mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host) {
+  Command* cmd = Create(task, IRIS_CMD_D2H);
+  cmd->mem_ = mem;
+  cmd->dim_ = dim;
+  size_t size = elem_size;
+  for(int i=0; i<dim; i++) {
+    cmd->off_[i] = off[i];
+    cmd->gws_[i] = host_sizes[i];
+    cmd->lws_[i] = dev_sizes[i];
+    size *= host_sizes[i];
+  }
+  cmd->elem_size_ = elem_size;
+  cmd->size_ = size;
+  cmd->host_ = host;
+  mem->get_d2h_cmds().push_back(cmd);
+  return cmd;
+}
+
 Command* Command::CreateD2H(Task* task, Mem* mem, size_t off, size_t size, void* host) {
   Command* cmd = Create(task, IRIS_CMD_D2H);
   cmd->mem_ = mem;
+  cmd->dim_ = 1;
   cmd->off_[0] = off;
   cmd->size_ = size;
   cmd->host_ = host;

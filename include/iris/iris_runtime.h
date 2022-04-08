@@ -8,6 +8,7 @@
 extern "C" {
 #endif
 
+#ifndef UNDEF_IRIS_MACROS
 #define IRIS_MAX_NPLATFORMS     32
 #define IRIS_MAX_NDEVS          (1 << 5) - 1
 
@@ -63,6 +64,8 @@ extern "C" {
 #define iris_ncmds_memcpy       3
 #define iris_cmds               4
 
+#endif // UNDEF_IRIS_MACROS
+
 typedef struct _iris_task*  iris_task;
 typedef struct _iris_mem*   iris_mem;
 typedef struct _iris_kernel*    iris_kernel;
@@ -110,7 +113,9 @@ extern int iris_task_create_perm(iris_task* task);
 extern int iris_task_create_name(const char* name, iris_task* task);
 extern int iris_task_depend(iris_task task, int ntasks, iris_task* tasks);
 extern int iris_task_h2d(iris_task task, iris_mem mem, size_t off, size_t size, void* host);
+extern int iris_task_h2d_offsets(iris_task task, iris_mem mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, void* host);
 extern int iris_task_d2h(iris_task task, iris_mem mem, size_t off, size_t size, void* host);
+extern int iris_task_d2h_offsets(iris_task task, iris_mem mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, void* host);
 extern int iris_task_h2d_full(iris_task task, iris_mem mem, void* host);
 extern int iris_task_d2h_full(iris_task task, iris_mem mem, void* host);
 extern int iris_task_kernel(iris_task task, const char* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, int* params_info);

@@ -51,6 +51,7 @@ public:
   size_t gws(int i) { return gws_[i]; }
   size_t* lws() { return lws_; }
   size_t lws(int i) { return lws_[i]; }
+  size_t elem_size() { return elem_size_; }
   Kernel* kernel() { return kernel_; }
   KernelArg* kernel_args() { return kernel_args_; }
   KernelArg* kernel_arg(int i) { return kernel_args_ + i; }
@@ -94,6 +95,7 @@ private:
   size_t off_[3];
   size_t gws_[3];
   size_t lws_[3];
+  size_t elem_size_;
   Kernel* kernel_;
   Mem* mem_;
   Task* task_;
@@ -125,7 +127,9 @@ public:
   static Command* CreateKernelPolyMem(Task* task, Command* cmd, size_t* off, size_t* gws, iris_poly_mem* polymems, int npolymems);
   static Command* CreateMalloc(Task* task, Mem* mem);
   static Command* CreateH2D(Task* task, Mem* mem, size_t off, size_t size, void* host);
+  static Command* CreateH2D(Task* task, Mem* mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host);
   static Command* CreateH2DNP(Task* task, Mem* mem, size_t off, size_t size, void* host);
+  static Command* CreateD2H(Task* task, Mem* mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host);
   static Command* CreateD2H(Task* task, Mem* mem, size_t off, size_t size, void* host);
   static Command* CreateMap(Task* task, void* host, size_t size);
   static Command* CreateMapTo(Task* task, void* host);

@@ -16,8 +16,8 @@ public:
   int Init();
   int MemAlloc(void** mem, size_t size);
   int MemFree(void* mem);
-  int MemH2D(Mem* mem, size_t off, size_t size, void* host);
-  int MemD2H(Mem* mem, size_t off, size_t size, void* host);
+  int MemH2D(Mem* mem, size_t *off, size_t *tile_sizes,  size_t *full_sizes, size_t elem_size, int dim, size_t size, void* host);
+  int MemD2H(Mem* mem, size_t *off, size_t *tile_sizes,  size_t *full_sizes, size_t elem_size, int dim, size_t size, void* host);
   int KernelGet(void** kernel, const char* name);
   int KernelSetArg(Kernel* kernel, int idx, size_t size, void* value);
   int KernelSetMem(Kernel* kernel, int idx, Mem* mem, size_t off);

@@ -30,6 +30,8 @@ int LoaderOpenCL::LoadFunctions() {
   LOADFUNC(clFinish);
   LOADFUNC(clEnqueueReadBuffer);
   LOADFUNC(clEnqueueWriteBuffer);
+  LOADFUNC(clEnqueueReadBufferRect);
+  LOADFUNC(clEnqueueWriteBufferRect);
   LOADFUNC(clEnqueueNDRangeKernel);
   LOADFUNC(clCreateCommandQueue);
   LOADFUNC(clSetEventCallback);

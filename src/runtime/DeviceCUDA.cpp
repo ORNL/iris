@@ -14,6 +14,73 @@
 namespace iris {
 namespace rt {
 
+int testMemcpy(LoaderCUDA *ld)
+{
+  int M = 60;
+  int N = 70;
+  int off_y = 0;
+  int off_x = 0;
+  int size_y = 60;
+  int size_x = 70;
+  int *xy = (int *)malloc(M * N * sizeof(int));
+  int *y = (int *)malloc(M * N * sizeof(int));
+  for(int i=0; i<M; i++) {
+    for(int j=0; j<N; j++) {
+        xy[i*N+j] = i*1000+j;
+        y[i*N+j] = 0;
+    }
+  }
+  CUresult err_;
+  CUdeviceptr d_xy;
+
+  //cudaMalloc(&d_xy, M*N*sizeof(int)); 
+  err_ = ld->cuMemAlloc(&d_xy, M*N*sizeof(int)); 
+  _cuerror(err_);
+
+  //cudaMemcpy(d_xy, xy, M*N*sizeof(int), cudaMemcpyHostToDevice);
+  //cudaMemcpy(y, d_xy, M*N*sizeof(int), cudaMemcpyDeviceToHost);
+#if 1
+  int width  = size_x;
+  int height = size_y;
+  int elem_size = sizeof(int);
+  CUDA_MEMCPY2D copyParam;
+  memset(&copyParam, 0, sizeof(copyParam));
+  copyParam.dstMemoryType = CU_MEMORYTYPE_DEVICE;
+  copyParam.dstDevice = d_xy;
+  copyParam.srcMemoryType = CU_MEMORYTYPE_HOST;
+  copyParam.srcHost = xy;
+  //copyParam.srcPitch = 0; //width * elem_size;
+  copyParam.WidthInBytes = width * elem_size;
+  copyParam.Height = height;
+  copyParam.srcXInBytes = N * elem_size;
+  copyParam.srcY = M;
+  copyParam.dstXInBytes = N * elem_size;
+  copyParam.dstY = M;
+  err_ = ld->cuMemcpy2D(&copyParam);
+  _cuerror(err_);
+#else
+  err_ = ld->cuMemcpyHtoD(d_xy, xy, M*N*sizeof(int));
+  _cuerror(err_);
+#endif
+
+  err_ = ld->cuMemcpyDtoH(y, d_xy, M*N*sizeof(int) );
+  _cuerror(err_);
+
+  int errors = 0;
+  for(int i=off_y; i<off_y+size_y; i++) {
+    for(int j=off_x; j<off_x+size_x; j++) {
+        if (xy[i*N+j] != y[i*N+j]) errors++;
+    }
+  }
+  printf("Max error: %d\n", errors);
+  for (int i=0; i<10; i++) {
+    printf("%d:%d ", xy[i], y[i]);
+  }
+  //cudaFree(d_xy);
+  ld->cuMemFree(d_xy);
+  free(xy);
+  free(y);
+}
 DeviceCUDA::DeviceCUDA(LoaderCUDA* ld, LoaderHost2CUDA *host2cuda_ld, CUdevice cudev, int devno, int platform) : Device(devno, platform) {
   ld_ = ld;
   host2cuda_ld_ = host2cuda_ld;
@@ -128,27 +195,82 @@ void DeviceCUDA::ClearGarbage() {
   ngarbage_ = 0;
 }
 
-int DeviceCUDA::MemH2D(Mem* mem, size_t off, size_t size, void* host) {
+void DeviceCUDA::MemCpy3D(CUdeviceptr dev, uint8_t *host, size_t *off, 
+        size_t *dev_sizes, size_t *host_sizes, 
+        size_t elem_size, bool host_2_dev)
+{
+    size_t host_row_pitch = elem_size * host_sizes[0];
+    size_t host_slice_pitch   = host_sizes[1] * host_row_pitch;
+    size_t dev_row_pitch = elem_size * dev_sizes[0];
+    size_t dev_slice_pitch = dev_sizes[1] * dev_row_pitch;
+    uint8_t *host_start = host + off[0]*elem_size + off[1] * host_row_pitch + off[2] * host_slice_pitch;
+    size_t dev_off[3] = {  0, 0, 0 };
+    CUdeviceptr dev_start = dev + dev_off[0] * elem_size + dev_off[1] * dev_row_pitch + dev_off[2] * dev_slice_pitch;
+    //printf("Host:%p Dest:%p\n", host_start, dev_start);
+    for(auto i=0; i<dev_sizes[2]; i++) {
+        uint8_t *z_host = host_start + i * host_slice_pitch;
+        CUdeviceptr z_dev = dev_start + i * dev_slice_pitch;
+        for(auto j=0; j<dev_sizes[1]; j++) {
+            uint8_t *y_host = z_host + j * host_row_pitch;
+            CUdeviceptr d_dev = z_dev + j * dev_row_pitch;
+            if (host_2_dev) {
+                //printf("(%d:%d) Host:%p Dest:%p Size:%d\n", i, j, y_host, d_dev, dev_sizes[0]);
+                err_ = ld_->cuMemcpyHtoD(d_dev, y_host, dev_sizes[0]*elem_size);
+                //_cuerror(err_);
+            }
+            else {
+                //printf("(%d:%d) Host:%p Dest:%p Size:%d\n", i, j, y_host, d_dev, dev_sizes[0]);
+                err_ = ld_->cuMemcpyDtoH(y_host, d_dev, dev_sizes[0]*elem_size);
+                //_cuerror(err_);
+            }
+        }
+    }
+}
+int DeviceCUDA::MemH2D(Mem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host) {
+  //testMemcpy(ld_);
   CUdeviceptr cumem = (CUdeviceptr) mem->arch(this);
-  _trace("dev[%d][%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", devno_, name_, mem->uid(), cumem, off, size, host, q_);
+  _trace("dev[%d][%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", devno_, name_, mem->uid(), cumem, off[0], size, host, q_);
+  if (dim == 2 || dim == 3) {
+      MemCpy3D(cumem, (uint8_t *)host, off, dev_sizes, host_sizes, elem_size, true);
+      /*
+      CUDA_MEMCPY2D copyParam;
+      memset(&copyParam, 0, sizeof(copyParam));
+      copyParam.dstMemoryType = CU_MEMORYTYPE_ARRAY;
+      copyParam.dstArray = cuArray;
+      copyParam.srcMemoryType = CU_MEMORYTYPE_HOST;
+      copyParam.srcHost = host;
+      copyParam.srcPitch = width * elem_size;
+      copyParam.WidthInBytes = copyParam.srcPitch;
+      copyParam.Height = height;
+      cuMemcpy2D(&copyParam);
+      //err_ = ld_->cudaMemcpy2DFromArray();
+      */
+  }
+  else {
 #ifdef IRIS_SYNC_EXECUTION
-  err_ = ld_->cuMemcpyHtoD(cumem + off, host, size);
+  err_ = ld_->cuMemcpyHtoD(cumem + off[0], host, size);
 #else
-  err_ = ld_->cuMemcpyHtoDAsync(cumem + off, host, size, streams_[q_]);
+  err_ = ld_->cuMemcpyHtoDAsync(cumem + off[0], host, size, streams_[q_]);
 #endif
+  }
   _cuerror(err_);
   if (err_ != CUDA_SUCCESS) return IRIS_ERROR;
   return IRIS_SUCCESS;
 }
 
-int DeviceCUDA::MemD2H(Mem* mem, size_t off, size_t size, void* host) {
+int DeviceCUDA::MemD2H(Mem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host) {
   CUdeviceptr cumem = (CUdeviceptr) mem->arch(this);
-  _trace("dev[%d][%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", devno_, name_, mem->uid(), cumem, off, size, host, q_);
+  _trace("dev[%d][%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", devno_, name_, mem->uid(), cumem, off[0], size, host, q_);
+  if (dim == 2 || dim == 3) {
+      MemCpy3D(cumem, (uint8_t *)host, off, dev_sizes, host_sizes, elem_size, false);
+  }
+  else {
 #ifdef IRIS_SYNC_EXECUTION
-  err_ = ld_->cuMemcpyDtoH(host, cumem + off, size);
+      err_ = ld_->cuMemcpyDtoH(host, cumem + off[0], size);
 #else
-  err_ = ld_->cuMemcpyDtoHAsync(host, cumem + off, size, streams_[q_]);
+      err_ = ld_->cuMemcpyDtoHAsync(host, cumem + off[0], size, streams_[q_]);
 #endif
+  }
   _cuerror(err_);
   if (err_ != CUDA_SUCCESS) return IRIS_ERROR;
   return IRIS_SUCCESS;

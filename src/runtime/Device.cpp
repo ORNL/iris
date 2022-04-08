@@ -187,6 +187,11 @@ void Device::ExecuteMalloc(Command* cmd) {
 void Device::ExecuteH2D(Command* cmd) {
   Mem* mem = cmd->mem();
   size_t off = cmd->off(0);
+  size_t *ptr_off = cmd->off();
+  size_t *gws = cmd->gws();
+  size_t *lws = cmd->lws();
+  size_t elem_size = cmd->elem_size();
+  int dim = cmd->dim();
   size_t size = cmd->size();
   bool exclusive = cmd->exclusive();
   void* host = cmd->host();
@@ -211,7 +216,7 @@ void Device::ExecuteH2D(Command* cmd) {
       _trace("Dev[%d][%s] MemH2D is skipped", devno_, name_);
       return;
   }
-  errid_ = MemH2D(mem, off, size, host);
+  errid_ = MemH2D(mem, ptr_off, gws, lws, elem_size, dim, size, host);
   if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
   cmd->set_time_end(timer_->Now());
   double time = timer_->Stop(IRIS_TIMER_H2D);
@@ -233,6 +238,11 @@ void Device::ExecuteH2DNP(Command* cmd) {
 void Device::ExecuteD2H(Command* cmd) {
   Mem* mem = cmd->mem();
   size_t off = cmd->off(0);
+  size_t *ptr_off = cmd->off();
+  size_t *gws = cmd->gws();
+  size_t *lws = cmd->lws();
+  size_t elem_size = cmd->elem_size();
+  int dim = cmd->dim();
   size_t size = cmd->size();
   void* host = cmd->host();
   int mode = mem->mode();
@@ -257,10 +267,9 @@ void Device::ExecuteD2H(Command* cmd) {
   }
 
   if (mode & iris_reduction) {
-    errid_ = MemD2H(mem, off, mem->size() * expansion, mem->host_inter());
+    errid_ = MemD2H(mem, ptr_off, gws, lws, elem_size, dim, mem->size() * expansion, mem->host_inter());
     Reduction::GetInstance()->Reduce(mem, host, size);
-  } else errid_ = MemD2H(mem, off, size, host);
-
+  } else errid_ = MemD2H(mem, ptr_off, gws, lws, elem_size, dim, size, host);
   if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
   cmd->set_time_end(timer_->Now());
   double time = timer_->Stop(IRIS_TIMER_D2H);

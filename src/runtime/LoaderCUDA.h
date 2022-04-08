@@ -37,6 +37,8 @@ public:
   CUresult (*cuTexRefSetFormat)(CUtexref hTexRef, CUarray_format fmt, int NumPackedComponents);
   CUresult (*cuMemAlloc)(CUdeviceptr* dptr, size_t bytesize);
   CUresult (*cuMemFree)(CUdeviceptr dptr);
+  CUresult (*cuMemcpy2D)(const CUDA_MEMCPY2D *pCopy);
+  CUresult (*cuMemcpy2DAsync)(const CUDA_MEMCPY2D *pCopy, CUstream hStream);
   CUresult (*cuMemcpyHtoD)(CUdeviceptr dstDevice, const void* srcHost, size_t ByteCount);
   CUresult (*cuMemcpyHtoDAsync)(CUdeviceptr dstDevice, const void* srcHost, size_t ByteCount, CUstream hStream);
   CUresult (*cuMemcpyDtoH)(void* dstHost, CUdeviceptr srcDevice, size_t ByteCount);
