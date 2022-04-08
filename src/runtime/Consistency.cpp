@@ -60,7 +60,7 @@ void Consistency::ResolveKernelWithPolymem(Task* task, Command* cmd, Mem* mem, K
     off = polymem->r0 < polymem->w0 ? polymem->r0 : polymem->w0;
     size = polymem->typesz * (polymem->r1 > polymem->w1 ? polymem->r1 - off + 1 : polymem->w1 - off + 1);
     off *= polymem->typesz;
-  } else _error("not supprt mode[%d]", arg->mode);
+  } else _error("not in supported mode[%d]", arg->mode);
 
   Device* owner = mem->Owner(off, size);
   if (!owner || mem->IsOwner(off, size, dev)) return;
@@ -99,7 +99,8 @@ void Consistency::ResolveKernelWithoutPolymem(Task* task, Command* cmd, Mem* mem
   task_d2h->Wait();
   //_todo("THERE task[%lu] dev[%d] owner[%d]", task_d2h->uid(), dev->devno(), owner->devno());
 
-  Command* h2d = Command::CreateH2DNP(task, mem, 0, mem->size(), mem->host_inter());
+  //Command* h2d = Command::CreateH2DNP(task, mem, 0, mem->size(), mem->host_inter());
+  Command* h2d = Command::CreateH2D(task, mem, 0, mem->size(), mem->host_inter());
   dev->ExecuteH2D(h2d);
 
   _trace("kernel[%s] mem[%lu] [%s][%d] -> [%s][%d]", kernel->name(), mem->uid(), owner->name(), owner->devno(), dev->name(), dev->devno());

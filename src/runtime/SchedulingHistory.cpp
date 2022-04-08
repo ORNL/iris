@@ -69,7 +69,6 @@ int SchedulingHistory::CompleteCommand(Command* command) {
   size_t ksize  = command->type_kernel() ? command->ws() : command->size();//
 
   sprintf(s, "%s,%s,%f,%f,%f,%zu,%s,%s #%i\n",command->name(),command->type_name(),command->time_start(),command->time_end(),command->time_duration(),ksize,policy_str(command->task()->brs_policy()),command->task()->dev()->name(),command->task()->dev()->devno());
-  //printf(s);
   Write(s);
   return IRIS_SUCCESS;
 }

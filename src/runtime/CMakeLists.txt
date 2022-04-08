@@ -66,6 +66,7 @@ set(IRIS_RUNTIME_SOURCES
   Reduction.cpp
   Retainable.cpp
   Scheduler.cpp
+  SchedulingHistory.cpp
   SigHandler.cpp
   Task.cpp
   Thread.cpp
