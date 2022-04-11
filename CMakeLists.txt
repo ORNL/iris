@@ -33,5 +33,19 @@ add_custom_command(
   COMMAND echo "echo \"IRIS: \$IRIS\"" >> ${CMAKE_BINARY_DIR}/setup.source
   COMMAND echo "echo \"*************************************************************\"" >> ${CMAKE_BINARY_DIR}/setup.source
   )
+add_custom_command(
+  OUTPUT ${CMAKE_BINARY_DIR}/setup.fish
+  WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+  COMMAND echo "set SCRIPT_FILE (status filename)" > ${CMAKE_BINARY_DIR}/setup.fish VERBATIM
+  COMMAND echo "set SCRIPT (python -c \"import os,sys; print(os.path.realpath(os.path.expanduser(sys.argv[1])))\" \$SCRIPT_FILE)" >> ${CMAKE_BINARY_DIR}/setup.fish VERBATIM
+  COMMAND echo "set -gx IRIS (dirname -- \$SCRIPT)" >> ${CMAKE_BINARY_DIR}/setup.fish
+  COMMAND echo "set -gx LD_LIBRARY_PATH . \$IRIS/lib \$IRIS/lib64 \$LD_LIBRARY_PATH" >> ${CMAKE_BINARY_DIR}/setup.fish
+  COMMAND echo "set -gx PYTHONPATH \$IRIS/include/iris \$PYTHONPATH" >> ${CMAKE_BINARY_DIR}/setup.fish
+  COMMAND echo "echo \"*********************** IRIS Environent *********************\"" >> ${CMAKE_BINARY_DIR}/setup.fish
+  COMMAND echo "echo \"IRIS: \$IRIS\"" >> ${CMAKE_BINARY_DIR}/setup.fish
+  COMMAND echo "echo \"*************************************************************\"" >> ${CMAKE_BINARY_DIR}/setup.fish
+  )
 add_custom_target(setup.source ALL DEPENDS ${CMAKE_BINARY_DIR}/setup.source)
+add_custom_target(setup.fish ALL DEPENDS ${CMAKE_BINARY_DIR}/setup.fish)
 install(FILES ${CMAKE_BINARY_DIR}/setup.source DESTINATION ${CMAKE_INSTALL_PREFIX})
+install(FILES ${CMAKE_BINARY_DIR}/setup.fish DESTINATION ${CMAKE_INSTALL_PREFIX})
