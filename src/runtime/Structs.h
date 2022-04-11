@@ -1,29 +1,29 @@
-#ifndef BRISBANE_SRC_RT_STRUCTS_H
-#define BRISBANE_SRC_RT_STRUCTS_H
+#ifndef IRIS_SRC_RT_STRUCTS_H
+#define IRIS_SRC_RT_STRUCTS_H
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 class Kernel;
 class Mem;
 class Task;
 class Graph;
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 
-struct _brisbane_task {
-  brisbane::rt::Task* class_obj;
+struct _iris_task {
+  iris::rt::Task* class_obj;
 };
 
-struct _brisbane_kernel {
-  brisbane::rt::Kernel* class_obj;
+struct _iris_kernel {
+  iris::rt::Kernel* class_obj;
 };
 
-struct _brisbane_mem {
-  brisbane::rt::Mem* class_obj;
+struct _iris_mem {
+  iris::rt::Mem* class_obj;
 };
 
-struct _brisbane_graph {
-  brisbane::rt::Graph* class_obj;
+struct _iris_graph {
+  iris::rt::Graph* class_obj;
 };
 
-#endif /* BRISBANE_SRC_RT_STRUCTS_H */
+#endif /* IRIS_SRC_RT_STRUCTS_H */

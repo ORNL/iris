@@ -1,13 +1,13 @@
-#ifndef BRISBANE_SRC_RT_MESSAGE_H
-#define BRISBANE_SRC_RT_MESSAGE_H
+#ifndef IRIS_SRC_RT_MESSAGE_H
+#define IRIS_SRC_RT_MESSAGE_H
 
 #include <stdint.h>
 #include <stdlib.h>
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
-#define BRISBANE_MSG_SIZE           512
+#define IRIS_MSG_SIZE           512
 
 class Message {
 public:
@@ -47,12 +47,12 @@ public:
   void Clear();
 
 private:
-  char buf_[BRISBANE_MSG_SIZE] __attribute__ ((aligned(0x10)));
+  char buf_[IRIS_MSG_SIZE] __attribute__ ((aligned(0x10)));
   size_t offset_;
 };
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 
 
-#endif /*BRISBANE_SRC_RT_MESSAGE_H */
+#endif /*IRIS_SRC_RT_MESSAGE_H */

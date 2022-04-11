@@ -3,7 +3,7 @@
 #include "Platform.h"
 #include <stdlib.h>
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 LoaderOpenMP::LoaderOpenMP() {
@@ -20,23 +20,23 @@ const char* LoaderOpenMP::library() {
 
 int LoaderOpenMP::LoadFunctions() {
   /*
-  LOADFUNC(brisbane_openmp_init);
-  LOADFUNC(brisbane_openmp_finalize);
-  LOADFUNC(brisbane_openmp_kernel);
-  LOADFUNC(brisbane_openmp_setarg);
-  LOADFUNC(brisbane_openmp_setmem);
-  LOADFUNC(brisbane_openmp_launch);
+  LOADFUNC(iris_openmp_init);
+  LOADFUNC(iris_openmp_finalize);
+  LOADFUNC(iris_openmp_kernel);
+  LOADFUNC(iris_openmp_setarg);
+  LOADFUNC(iris_openmp_setmem);
+  LOADFUNC(iris_openmp_launch);
   */
-  LOADFUNCSYM(brisbane_openmp_init,     iris_openmp_init);
-  LOADFUNCSYM(brisbane_openmp_finalize, iris_openmp_finalize);
-  LOADFUNCSYM(brisbane_openmp_kernel,   iris_openmp_kernel);
-  LOADFUNCSYM(brisbane_openmp_setarg,   iris_openmp_setarg);
-  LOADFUNCSYM(brisbane_openmp_setmem,   iris_openmp_setmem);
-  LOADFUNCSYM(brisbane_openmp_launch,   iris_openmp_launch);
+  LOADFUNCSYM(iris_openmp_init,     iris_openmp_init);
+  LOADFUNCSYM(iris_openmp_finalize, iris_openmp_finalize);
+  LOADFUNCSYM(iris_openmp_kernel,   iris_openmp_kernel);
+  LOADFUNCSYM(iris_openmp_setarg,   iris_openmp_setarg);
+  LOADFUNCSYM(iris_openmp_setmem,   iris_openmp_setmem);
+  LOADFUNCSYM(iris_openmp_launch,   iris_openmp_launch);
 
-  return BRISBANE_OK;
+  return IRIS_SUCCESS;
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 

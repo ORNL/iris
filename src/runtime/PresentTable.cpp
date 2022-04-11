@@ -2,7 +2,7 @@
 #include "Config.h"
 #include "Debug.h"
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 PresentTable::PresentTable() {
@@ -16,13 +16,13 @@ PresentTable::~PresentTable() {
 int PresentTable::Add(void* host, size_t size, Mem* mem) {
   if (entities_.find(host) != entities_.end()) {
     _error("%p", host);
-    return BRISBANE_ERR;
+    return IRIS_ERROR;
   }
   PresentTableEntity* entity = new PresentTableEntity;
   entity->size = size;
   entity->mem = mem;
   entities_[host] = entity;
-  return BRISBANE_OK;
+  return IRIS_SUCCESS;
 }
 
 Mem* PresentTable::Get(void* host, size_t* off) {
@@ -53,5 +53,5 @@ Mem* PresentTable::Remove(void* host) {
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 

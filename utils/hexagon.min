@@ -1,0 +1,46 @@
+# builds the static/dynamic skel
+ifeq (1,$(V_dynamic))
+BUILD_DLLS += libirishxg_skel
+BUILD_DLLS += irishxg_q
+else
+BUILD_LIBS += libirishxg_skel
+endif
+
+ifeq (1,$(ENABLE_AUTOVEC))
+COMMON_FLAGS = $(MHVX_DOUBLE_FLAG) $(AUTOVEC_FLAG) -Isd_hexagon/ -I$(IRIS)/include/iris/hexagon -I$(IRIS)/include  -DPROFILING_ON
+else
+COMMON_FLAGS =  -Isd_hexagon/ -I$(IRIS)/include/iris/hexagon -I$(IRIS)/include  -DPROFILING_ON
+endif
+#COMMON_FLAGS = -I$(IRIS)/include  -DPROFILING_ON
+#COMMON_FLAGS = $(MHVX_DOUBLE_FLAG) $(AUTOVEC_FLAG) -I$(IRIS)/include  -DPROFILING_ON
+
+# Auto-vectorization is enabled by default
+C_FLAGS += $(COMMON_FLAGS) 
+CC_FLAGS += $(COMMON_FLAGS)
+CPP_FLAGS += $(COMMON_FLAGS)
+#ASM_FLAGS += $(MHVX_DOUBLE_FLAG)
+
+# Use -O0 temporarily when trying to debug C code.
+#_OPT = -O0
+SKEL_DIR ?= .
+SKEL_CSRCS_RAW = $(wildcard $(SKEL_DIR)/sd_hexagon/*.c)
+SKEL_CSRCS ?= $(patsubst $(SKEL_DIR)/sd_hexagon/%.c, $(SKEL_DIR)/sd_hexagon/%, $(SKEL_CSRCS_RAW))
+
+libirishxg_skel_QAICIDLS = irishxg
+libirishxg_skel_C_SRCS += $V/irishxg_skel \
+                                $(SKEL_CSRCS)
+                                
+# Needs dspCV lib for worker pool
+libirishxg_skel_DLLS+=libdspCV_skel
+
+libirishxg_skel_LIBS+=libqprintf
+
+# Also build a stand-alone simulation environment executable unit test
+
+
+# copy final build products to the ship directory
+BUILD_COPIES = \
+   $(DLLS) \
+   $(EXES) \
+   $(LIBS) \
+   $(SHIP_DIR)/ ;

@@ -1,7 +1,7 @@
-#ifndef BRISBANE_SRC_RT_LOADER_H
-#define BRISBANE_SRC_RT_LOADER_H
+#ifndef IRIS_SRC_RT_LOADER_H
+#define IRIS_SRC_RT_LOADER_H
 
-#include <iris/brisbane.h>
+#include <iris/iris.h>
 #include <dlfcn.h>
 
 #define LOADFUNC(FUNC)          *(void**) (&FUNC) = dlsym(handle_, #FUNC);      \
@@ -12,7 +12,7 @@
 #define LOADFUNCEXT(FUNC)       *(void**) (&FUNC) = dlsym(handle_ext_, #FUNC);  \
                                 if (!FUNC) _error("%s", dlerror())
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 class Loader {
@@ -34,7 +34,7 @@ protected:
 };
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 
-#endif /* BRISBANE_SRC_RT_LOADER_H */
+#endif /* IRIS_SRC_RT_LOADER_H */
 

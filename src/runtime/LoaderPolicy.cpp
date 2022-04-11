@@ -2,7 +2,7 @@
 #include "Policy.h"
 #include "Debug.h"
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 LoaderPolicy::LoaderPolicy(const char* lib, const char* name) : Loader() {
@@ -29,9 +29,9 @@ int LoaderPolicy::LoadFunctions() {
   *(void**) (&instance_) = dlsym(handle_, func);
   if (!instance_) {
     _error("%s", dlerror());
-    return BRISBANE_ERR;
+    return IRIS_ERROR;
   }
-  return BRISBANE_OK;
+  return IRIS_SUCCESS;
 }
 
 void LoaderPolicy::Init(void* arg) {
@@ -39,5 +39,5 @@ void LoaderPolicy::Init(void* arg) {
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 

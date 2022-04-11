@@ -1,7 +1,7 @@
-#ifndef BRISBANE_SRC_RT_FILTER_H
-#define BRISBANE_SRC_RT_FILTER_H
+#ifndef IRIS_SRC_RT_FILTER_H
+#define IRIS_SRC_RT_FILTER_H
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 class Task;
@@ -15,7 +15,7 @@ public:
 };
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 
-#endif /* BRISBANE_SRC_RT_FILTER_H */
+#endif /* IRIS_SRC_RT_FILTER_H */
 

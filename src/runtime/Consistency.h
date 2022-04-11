@@ -1,10 +1,10 @@
-#ifndef BRISBANE_SRC_RT_CONSISTENCY_H
-#define BRISBANE_SRC_RT_CONSISTENCY_H
+#ifndef IRIS_SRC_RT_CONSISTENCY_H
+#define IRIS_SRC_RT_CONSISTENCY_H
 
-#include <iris/brisbane_poly_types.h>
+#include <iris/iris_poly_types.h>
 #include "Kernel.h"
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 class Command;
@@ -21,7 +21,7 @@ public:
 
 private:
   void ResolveKernel(Task* task, Command* cmd);
-  void ResolveKernelWithPolymem(Task* task, Command* cmd, Mem* mem, KernelArg* arg, brisbane_poly_mem* polymem);
+  void ResolveKernelWithPolymem(Task* task, Command* cmd, Mem* mem, KernelArg* arg, iris_poly_mem* polymem);
   void ResolveKernelWithoutPolymem(Task* task, Command* cmd, Mem* mem, KernelArg* arg);
   void ResolveD2H(Task* task, Command* cmd);
 
@@ -31,6 +31,6 @@ private:
 };
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 
-#endif /* BRISBANE_SRC_RT_CONSISTENCY_H */
+#endif /* IRIS_SRC_RT_CONSISTENCY_H */

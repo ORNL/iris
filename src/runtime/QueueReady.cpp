@@ -1,6 +1,6 @@
 #include "QueueReady.h"
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 QueueReady::QueueReady(unsigned long size) {
@@ -47,5 +47,5 @@ bool QueueReady::Empty() {
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 

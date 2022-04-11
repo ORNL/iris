@@ -3,7 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 Message::Message(long header) {
@@ -63,7 +63,7 @@ bool Message::WritePtr(void *ptr) {
 }
 
 bool Message::Write(const void* v, size_t size) {
-  if (offset_ + size >= BRISBANE_MSG_SIZE) return false;
+  if (offset_ + size >= IRIS_MSG_SIZE) return false;
   memcpy(buf_ + offset_, v, size);
   offset_ += size;
   return true;
@@ -128,4 +128,4 @@ void Message::Clear() {
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */

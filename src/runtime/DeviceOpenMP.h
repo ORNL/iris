@@ -1,10 +1,10 @@
-#ifndef BRISBANE_SRC_RT_DEVICE_OPENMP_H
-#define BRISBANE_SRC_RT_DEVICE_OPENMP_H
+#ifndef IRIS_SRC_RT_DEVICE_OPENMP_H
+#define IRIS_SRC_RT_DEVICE_OPENMP_H
 
 #include "Device.h"
 #include "LoaderOpenMP.h"
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 class DeviceOpenMP : public Device {
@@ -13,10 +13,11 @@ public:
   ~DeviceOpenMP();
 
   int Init();
+  void TaskPre(Task* task);
   int MemAlloc(void** mem, size_t size);
   int MemFree(void* mem);
-  int MemH2D(Mem* mem, size_t off, size_t size, void* host);
-  int MemD2H(Mem* mem, size_t off, size_t size, void* host);
+  int MemH2D(Mem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host);
+  int MemD2H(Mem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host);
   int KernelGet(void** kernel, const char* name);
   int KernelLaunchInit(Kernel* kernel);
   int KernelSetArg(Kernel* kernel, int idx, size_t size, void* value);
@@ -36,7 +37,7 @@ private:
 };
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 
-#endif /* BRISBANE_SRC_RT_DEVICE_OPENMP_H */
+#endif /* IRIS_SRC_RT_DEVICE_OPENMP_H */
 

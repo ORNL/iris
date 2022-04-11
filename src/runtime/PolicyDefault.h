@@ -1,9 +1,9 @@
-#ifndef BRISBANE_SRC_RT_POLICY_DEFAULT_H
-#define BRISBANE_SRC_RT_POLICY_DEFAULT_H
+#ifndef IRIS_SRC_RT_POLICY_DEFAULT_H
+#define IRIS_SRC_RT_POLICY_DEFAULT_H
 
 #include "Policy.h"
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 class PolicyDefault : public Policy {
@@ -16,6 +16,6 @@ public:
 };
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 
-#endif /* BRISBANE_SRC_RT_POLICY_DEFAULT_H */
+#endif /* IRIS_SRC_RT_POLICY_DEFAULT_H */

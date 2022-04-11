@@ -11,11 +11,79 @@
 #include "Timer.h"
 #include "Utils.h"
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
-DeviceCUDA::DeviceCUDA(LoaderCUDA* ld, CUdevice cudev, int devno, int platform) : Device(devno, platform) {
+int testMemcpy(LoaderCUDA *ld)
+{
+  int M = 60;
+  int N = 70;
+  int off_y = 0;
+  int off_x = 0;
+  int size_y = 60;
+  int size_x = 70;
+  int *xy = (int *)malloc(M * N * sizeof(int));
+  int *y = (int *)malloc(M * N * sizeof(int));
+  for(int i=0; i<M; i++) {
+    for(int j=0; j<N; j++) {
+        xy[i*N+j] = i*1000+j;
+        y[i*N+j] = 0;
+    }
+  }
+  CUresult err_;
+  CUdeviceptr d_xy;
+
+  //cudaMalloc(&d_xy, M*N*sizeof(int)); 
+  err_ = ld->cuMemAlloc(&d_xy, M*N*sizeof(int)); 
+  _cuerror(err_);
+
+  //cudaMemcpy(d_xy, xy, M*N*sizeof(int), cudaMemcpyHostToDevice);
+  //cudaMemcpy(y, d_xy, M*N*sizeof(int), cudaMemcpyDeviceToHost);
+#if 1
+  int width  = size_x;
+  int height = size_y;
+  int elem_size = sizeof(int);
+  CUDA_MEMCPY2D copyParam;
+  memset(&copyParam, 0, sizeof(copyParam));
+  copyParam.dstMemoryType = CU_MEMORYTYPE_DEVICE;
+  copyParam.dstDevice = d_xy;
+  copyParam.srcMemoryType = CU_MEMORYTYPE_HOST;
+  copyParam.srcHost = xy;
+  //copyParam.srcPitch = 0; //width * elem_size;
+  copyParam.WidthInBytes = width * elem_size;
+  copyParam.Height = height;
+  copyParam.srcXInBytes = N * elem_size;
+  copyParam.srcY = M;
+  copyParam.dstXInBytes = N * elem_size;
+  copyParam.dstY = M;
+  err_ = ld->cuMemcpy2D(&copyParam);
+  _cuerror(err_);
+#else
+  err_ = ld->cuMemcpyHtoD(d_xy, xy, M*N*sizeof(int));
+  _cuerror(err_);
+#endif
+
+  err_ = ld->cuMemcpyDtoH(y, d_xy, M*N*sizeof(int) );
+  _cuerror(err_);
+
+  int errors = 0;
+  for(int i=off_y; i<off_y+size_y; i++) {
+    for(int j=off_x; j<off_x+size_x; j++) {
+        if (xy[i*N+j] != y[i*N+j]) errors++;
+    }
+  }
+  printf("Max error: %d\n", errors);
+  for (int i=0; i<10; i++) {
+    printf("%d:%d ", xy[i], y[i]);
+  }
+  //cudaFree(d_xy);
+  ld->cuMemFree(d_xy);
+  free(xy);
+  free(y);
+}
+DeviceCUDA::DeviceCUDA(LoaderCUDA* ld, LoaderHost2CUDA *host2cuda_ld, CUdevice cudev, int devno, int platform) : Device(devno, platform) {
   ld_ = ld;
+  host2cuda_ld_ = host2cuda_ld;
   max_arg_idx_ = 0;
   ngarbage_ = 0;
   shared_mem_bytes_ = 0;
@@ -23,8 +91,8 @@ DeviceCUDA::DeviceCUDA(LoaderCUDA* ld, CUdevice cudev, int devno, int platform) 
   strcpy(vendor_, "NVIDIA Corporation");
   err_ = ld_->cuDeviceGetName(name_, sizeof(name_), dev_);
   _cuerror(err_);
-  type_ = brisbane_nvidia;
-  model_ = brisbane_cuda;
+  type_ = iris_nvidia;
+  model_ = iris_cuda;
   err_ = ld_->cuDriverGetVersion(&driver_version_);
   _cuerror(err_);
   sprintf(version_, "NVIDIA CUDA %d", driver_version_);
@@ -51,6 +119,9 @@ DeviceCUDA::DeviceCUDA(LoaderCUDA* ld, CUdevice cudev, int devno, int platform) 
 }
 
 DeviceCUDA::~DeviceCUDA() {
+    if (host2cuda_ld_->iris_host2cuda_finalize){
+        host2cuda_ld_->iris_host2cuda_finalize();
+    }
 }
 
 int DeviceCUDA::Compile(char* src) {
@@ -59,9 +130,9 @@ int DeviceCUDA::Compile(char* src) {
   sprintf(cmd, "nvcc -ptx %s -o %s", src, kernel_path_);
   if (system(cmd) != EXIT_SUCCESS) {
     _error("cmd[%s]", cmd);
-    return BRISBANE_ERR;
+    return IRIS_ERROR;
   }
-  return BRISBANE_OK;
+  return IRIS_SUCCESS;
 }
 
 int DeviceCUDA::Init() {
@@ -71,13 +142,16 @@ int DeviceCUDA::Init() {
     err_ = ld_->cuStreamCreate(streams_ + i, CU_STREAM_DEFAULT);
     _cuerror(err_);
   }
+  if (host2cuda_ld_->iris_host2cuda_init != NULL) {
+    host2cuda_ld_->iris_host2cuda_init();
+  }
 
   char* path = kernel_path_;
   char* src = NULL;
   size_t srclen = 0;
-  if (Utils::ReadFile(path, &src, &srclen) == BRISBANE_ERR) {
-    _error("dev[%d][%s] has no kernel file [%s]", devno_, name_, path);
-    return BRISBANE_OK;
+  if (Utils::ReadFile(path, &src, &srclen) == IRIS_ERROR) {
+    _trace("dev[%d][%s] has no kernel file [%s]", devno_, name_, path);
+    return IRIS_SUCCESS;
   }
   _trace("dev[%d][%s] kernels[%s]", devno_, name_, path);
   err_ = ld_->cuModuleLoad(&module_, path);
@@ -85,30 +159,30 @@ int DeviceCUDA::Init() {
     _cuerror(err_);
     _error("srclen[%zu] src\n%s", srclen, src);
     if (src) free(src);
-    return BRISBANE_ERR;
+    return IRIS_ERROR;
   }
   if (src) free(src);
-  return BRISBANE_OK;
+  return IRIS_SUCCESS;
 }
 
 int DeviceCUDA::MemAlloc(void** mem, size_t size) {
   CUdeviceptr* cumem = (CUdeviceptr*) mem;
   err_ = ld_->cuMemAlloc(cumem, size);
   _cuerror(err_);
-  if (err_ != CUDA_SUCCESS) return BRISBANE_ERR;
-  return BRISBANE_OK;
+  if (err_ != CUDA_SUCCESS) return IRIS_ERROR;
+  return IRIS_SUCCESS;
 }
 
 int DeviceCUDA::MemFree(void* mem) {
   CUdeviceptr cumem = (CUdeviceptr) mem;
-  if (ngarbage_ >= BRISBANE_MAX_GABAGES) _error("ngarbage[%d]", ngarbage_);
+  if (ngarbage_ >= IRIS_MAX_GABAGES) _error("ngarbage[%d]", ngarbage_);
   else garbage_[ngarbage_++] = cumem;
   /*
   _trace("dptr[%p]", cumem);
   err_ = ld_->cuMemFree(cumem);
   _cuerror(err_);
   */
-  return BRISBANE_OK;
+  return IRIS_SUCCESS;
 }
 
 void DeviceCUDA::ClearGarbage() {
@@ -121,37 +195,94 @@ void DeviceCUDA::ClearGarbage() {
   ngarbage_ = 0;
 }
 
-int DeviceCUDA::MemH2D(Mem* mem, size_t off, size_t size, void* host) {
+void DeviceCUDA::MemCpy3D(CUdeviceptr dev, uint8_t *host, size_t *off, 
+        size_t *dev_sizes, size_t *host_sizes, 
+        size_t elem_size, bool host_2_dev)
+{
+    size_t host_row_pitch = elem_size * host_sizes[0];
+    size_t host_slice_pitch   = host_sizes[1] * host_row_pitch;
+    size_t dev_row_pitch = elem_size * dev_sizes[0];
+    size_t dev_slice_pitch = dev_sizes[1] * dev_row_pitch;
+    uint8_t *host_start = host + off[0]*elem_size + off[1] * host_row_pitch + off[2] * host_slice_pitch;
+    size_t dev_off[3] = {  0, 0, 0 };
+    CUdeviceptr dev_start = dev + dev_off[0] * elem_size + dev_off[1] * dev_row_pitch + dev_off[2] * dev_slice_pitch;
+    //printf("Host:%p Dest:%p\n", host_start, dev_start);
+    for(auto i=0; i<dev_sizes[2]; i++) {
+        uint8_t *z_host = host_start + i * host_slice_pitch;
+        CUdeviceptr z_dev = dev_start + i * dev_slice_pitch;
+        for(auto j=0; j<dev_sizes[1]; j++) {
+            uint8_t *y_host = z_host + j * host_row_pitch;
+            CUdeviceptr d_dev = z_dev + j * dev_row_pitch;
+            if (host_2_dev) {
+                //printf("(%d:%d) Host:%p Dest:%p Size:%d\n", i, j, y_host, d_dev, dev_sizes[0]);
+                err_ = ld_->cuMemcpyHtoD(d_dev, y_host, dev_sizes[0]*elem_size);
+                //_cuerror(err_);
+            }
+            else {
+                //printf("(%d:%d) Host:%p Dest:%p Size:%d\n", i, j, y_host, d_dev, dev_sizes[0]);
+                err_ = ld_->cuMemcpyDtoH(y_host, d_dev, dev_sizes[0]*elem_size);
+                //_cuerror(err_);
+            }
+        }
+    }
+}
+int DeviceCUDA::MemH2D(Mem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host) {
+  //testMemcpy(ld_);
   CUdeviceptr cumem = (CUdeviceptr) mem->arch(this);
-  _trace("dev[%d][%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", devno_, name_, mem->uid(), cumem, off, size, host, q_);
-#ifdef BRISBANE_SYNC_EXECUTION
-  err_ = ld_->cuMemcpyHtoD(cumem + off, host, size);
+  _trace("dev[%d][%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", devno_, name_, mem->uid(), cumem, off[0], size, host, q_);
+  if (dim == 2 || dim == 3) {
+      MemCpy3D(cumem, (uint8_t *)host, off, dev_sizes, host_sizes, elem_size, true);
+      /*
+      CUDA_MEMCPY2D copyParam;
+      memset(&copyParam, 0, sizeof(copyParam));
+      copyParam.dstMemoryType = CU_MEMORYTYPE_ARRAY;
+      copyParam.dstArray = cuArray;
+      copyParam.srcMemoryType = CU_MEMORYTYPE_HOST;
+      copyParam.srcHost = host;
+      copyParam.srcPitch = width * elem_size;
+      copyParam.WidthInBytes = copyParam.srcPitch;
+      copyParam.Height = height;
+      cuMemcpy2D(&copyParam);
+      //err_ = ld_->cudaMemcpy2DFromArray();
+      */
+  }
+  else {
+#ifdef IRIS_SYNC_EXECUTION
+  err_ = ld_->cuMemcpyHtoD(cumem + off[0], host, size);
 #else
-  err_ = ld_->cuMemcpyHtoDAsync(cumem + off, host, size, streams_[q_]);
+  err_ = ld_->cuMemcpyHtoDAsync(cumem + off[0], host, size, streams_[q_]);
 #endif
+  }
   _cuerror(err_);
-  if (err_ != CUDA_SUCCESS) return BRISBANE_ERR;
-  return BRISBANE_OK;
+  if (err_ != CUDA_SUCCESS) return IRIS_ERROR;
+  return IRIS_SUCCESS;
 }
 
-int DeviceCUDA::MemD2H(Mem* mem, size_t off, size_t size, void* host) {
+int DeviceCUDA::MemD2H(Mem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host) {
   CUdeviceptr cumem = (CUdeviceptr) mem->arch(this);
-  _trace("dev[%d][%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", devno_, name_, mem->uid(), cumem, off, size, host, q_);
-#ifdef BRISBANE_SYNC_EXECUTION
-  err_ = ld_->cuMemcpyDtoH(host, cumem + off, size);
+  _trace("dev[%d][%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", devno_, name_, mem->uid(), cumem, off[0], size, host, q_);
+  if (dim == 2 || dim == 3) {
+      MemCpy3D(cumem, (uint8_t *)host, off, dev_sizes, host_sizes, elem_size, false);
+  }
+  else {
+#ifdef IRIS_SYNC_EXECUTION
+      err_ = ld_->cuMemcpyDtoH(host, cumem + off[0], size);
 #else
-  err_ = ld_->cuMemcpyDtoHAsync(host, cumem + off, size, streams_[q_]);
+      err_ = ld_->cuMemcpyDtoHAsync(host, cumem + off[0], size, streams_[q_]);
 #endif
+  }
   _cuerror(err_);
-  if (err_ != CUDA_SUCCESS) return BRISBANE_ERR;
-  return BRISBANE_OK;
+  if (err_ != CUDA_SUCCESS) return IRIS_ERROR;
+  return IRIS_SUCCESS;
 }
 
 int DeviceCUDA::KernelGet(void** kernel, const char* name) {
+  if (is_vendor_specific_kernel() && host2cuda_ld_->iris_host2cuda_kernel) 
+        return IRIS_SUCCESS;
   CUfunction* cukernel = (CUfunction*) kernel;
   err_ = ld_->cuModuleGetFunction(cukernel, module_, name);
   _cuerror(err_);
-  if (err_ != CUDA_SUCCESS) return BRISBANE_ERR;
+  if (err_ != CUDA_SUCCESS) return IRIS_ERROR;
 
   char name_off[256];
   memset(name_off, 0, sizeof(name_off));
@@ -162,7 +293,7 @@ int DeviceCUDA::KernelGet(void** kernel, const char* name) {
     kernels_offs_.insert(std::pair<CUfunction, CUfunction>(*cukernel, cukernel_off));
   }
 
-  return BRISBANE_OK;
+  return IRIS_SUCCESS;
 }
 
 int DeviceCUDA::KernelSetArg(Kernel* kernel, int idx, size_t size, void* value) {
@@ -173,20 +304,41 @@ int DeviceCUDA::KernelSetArg(Kernel* kernel, int idx, size_t size, void* value) 
     shared_mem_bytes_ += size;
   }
   if (max_arg_idx_ < idx) max_arg_idx_ = idx;
-  return BRISBANE_OK;
+  if (is_vendor_specific_kernel() && host2cuda_ld_->iris_host2cuda_setarg)
+      host2cuda_ld_->iris_host2cuda_setarg(idx, size, value);
+  return IRIS_SUCCESS;
 }
 
 int DeviceCUDA::KernelSetMem(Kernel* kernel, int idx, Mem* mem, size_t off) {
   mem->arch(this);
+  void *dev_ptr = NULL;
   if (off) {
     *(mem->archs_off() + devno_) = (void*) ((CUdeviceptr) mem->arch(this) + off);
     params_[idx] = mem->archs_off() + devno_;
-  } else params_[idx] = mem->archs() + devno_;
+    dev_ptr = *(mem->archs_off() + devno_);
+  } else {
+      params_[idx] = mem->archs() + devno_;
+      dev_ptr = *(mem->archs() + devno_);
+  }
   if (max_arg_idx_ < idx) max_arg_idx_ = idx;
-  return BRISBANE_OK;
+  if (is_vendor_specific_kernel() && host2cuda_ld_->iris_host2cuda_setmem) {
+      host2cuda_ld_->iris_host2cuda_setmem(idx, dev_ptr);
+  }
+  return IRIS_SUCCESS;
+}
+
+int DeviceCUDA::KernelLaunchInit(Kernel* kernel) {
+    set_vendor_specific_kernel(false);
+    if (host2cuda_ld_->iris_host2cuda_kernel)
+        if (host2cuda_ld_->iris_host2cuda_kernel(kernel->name()) == IRIS_SUCCESS) 
+            set_vendor_specific_kernel(true);
+    return IRIS_SUCCESS;
 }
 
 int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws) {
+  if (is_vendor_specific_kernel() && host2cuda_ld_->iris_host2cuda_launch) {
+      return host2cuda_ld_->iris_host2cuda_launch(dim, off[0], gws[0]);
+  }
   CUfunction cukernel = (CUfunction) kernel->arch(this);
   int block[3] = { lws ? (int) lws[0] : 1, lws ? (int) lws[1] : 1, lws ? (int) lws[2] : 1 };
   if (!lws) {
@@ -210,42 +362,42 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
     }
   }
   _trace("dev[%d] kernel[%s] dim[%d] grid[%d,%d,%d] block[%d,%d,%d] blockoff[%lu,%lu,%lu] max_arg_idx[%d] shared_mem_bytes[%u] q[%d]", devno_, kernel->name(), dim, grid[0], grid[1], grid[2], block[0], block[1], block[2], blockOff_x, blockOff_y, blockOff_z, max_arg_idx_, shared_mem_bytes_, q_);
-#ifdef BRISBANE_SYNC_EXECUTION
+#ifdef IRIS_SYNC_EXECUTION
   err_ = ld_->cuLaunchKernel(cukernel, grid[0], grid[1], grid[2], block[0], block[1], block[2], shared_mem_bytes_, 0, params_, NULL);
 //  err_ = ld_->cuStreamSynchronize(0);
 #else
   err_ = ld_->cuLaunchKernel(cukernel, grid[0], grid[1], grid[2], block[0], block[1], block[2], shared_mem_bytes_, streams_[q_], params_, NULL);
 #endif
   _cuerror(err_);
-  if (err_ != CUDA_SUCCESS) return BRISBANE_ERR;
-  for (int i = 0; i < BRISBANE_MAX_KERNEL_NARGS; i++) params_[i] = NULL;
+  if (err_ != CUDA_SUCCESS) return IRIS_ERROR;
+  for (int i = 0; i < IRIS_MAX_KERNEL_NARGS; i++) params_[i] = NULL;
   max_arg_idx_ = 0;
   shared_mem_bytes_ = 0;
-  return BRISBANE_OK;
+  return IRIS_SUCCESS;
 }
 
 int DeviceCUDA::Synchronize() {
   err_ = ld_->cuCtxSynchronize();
   _cuerror(err_);
-  if (err_ != CUDA_SUCCESS) return BRISBANE_ERR;
-  return BRISBANE_OK;
+  if (err_ != CUDA_SUCCESS) return IRIS_ERROR;
+  return IRIS_SUCCESS;
 }
 
 int DeviceCUDA::AddCallback(Task* task) {
   err_ = ld_->cuStreamAddCallback(streams_[q_], DeviceCUDA::Callback, task, 0);
   _cuerror(err_);
-  if (err_ != CUDA_SUCCESS) return BRISBANE_ERR;
-  return BRISBANE_OK;
+  if (err_ != CUDA_SUCCESS) return IRIS_ERROR;
+  return IRIS_SUCCESS;
 }
 
 int DeviceCUDA::Custom(int tag, char* params) {
   if (!cmd_handlers_.count(tag)) {
     _error("unknown tag[0x%x]", tag);
-    return BRISBANE_ERR;
+    return IRIS_ERROR;
   }
   command_handler handler = cmd_handlers_[tag];
   handler(params, this);
-  return BRISBANE_OK;
+  return IRIS_SUCCESS;
 }
 
 void DeviceCUDA::Callback(CUstream stream, CUresult status, void* data) {
@@ -258,5 +410,5 @@ void DeviceCUDA::TaskPre(Task* task) {
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 

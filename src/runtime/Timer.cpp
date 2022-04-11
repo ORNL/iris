@@ -1,11 +1,11 @@
 #include "Timer.h"
 #include <time.h>
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 Timer::Timer() {
-  for (int i = 0; i < BRISBANE_TIMER_MAX; i++) {
+  for (int i = 0; i < IRIS_TIMER_MAX; i++) {
     total_[i] = 0.0;
     total_ull_[i] = 0ULL;
   }
@@ -55,4 +55,4 @@ size_t Timer::Inc(int i, size_t s) {
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */

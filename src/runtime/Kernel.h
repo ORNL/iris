@@ -1,12 +1,12 @@
-#ifndef BRISBANE_SRC_RT_KERNEL_H
-#define BRISBANE_SRC_RT_KERNEL_H
+#ifndef IRIS_SRC_RT_KERNEL_H
+#define IRIS_SRC_RT_KERNEL_H
 
 #include "Config.h"
 #include "Retainable.h"
 #include "Platform.h"
 #include <map>
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 class History;
@@ -21,7 +21,7 @@ typedef struct _KernelArg {
   int mode;
 } KernelArg;
 
-class Kernel: public Retainable<struct _brisbane_kernel, Kernel> {
+class Kernel: public Retainable<struct _iris_kernel, Kernel> {
 public:
   Kernel(const char* name, Platform* platform);
   virtual ~Kernel();
@@ -41,14 +41,14 @@ public:
 private:
   char name_[256];
   std::map<int, KernelArg*> args_;
-  void* archs_[BRISBANE_MAX_NDEVS];
-  Device* archs_devs_[BRISBANE_MAX_NDEVS];
+  void* archs_[IRIS_MAX_NDEVS];
+  Device* archs_devs_[IRIS_MAX_NDEVS];
 
   Platform* platform_;
   History* history_;
 };
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 
-#endif /* BRISBANE_SRC_RT_KERNEL_H */
+#endif /* IRIS_SRC_RT_KERNEL_H */

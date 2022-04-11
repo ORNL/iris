@@ -1,10 +1,10 @@
-#ifndef BRISBANE_SRC_RT_LOADER_CUDA_H
-#define BRISBANE_SRC_RT_LOADER_CUDA_H
+#ifndef IRIS_SRC_RT_LOADER_CUDA_H
+#define IRIS_SRC_RT_LOADER_CUDA_H
 
 #include "Loader.h"
 #include <iris/cuda/cuda.h>
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 class LoaderCUDA : public Loader {
@@ -37,6 +37,8 @@ public:
   CUresult (*cuTexRefSetFormat)(CUtexref hTexRef, CUarray_format fmt, int NumPackedComponents);
   CUresult (*cuMemAlloc)(CUdeviceptr* dptr, size_t bytesize);
   CUresult (*cuMemFree)(CUdeviceptr dptr);
+  CUresult (*cuMemcpy2D)(const CUDA_MEMCPY2D *pCopy);
+  CUresult (*cuMemcpy2DAsync)(const CUDA_MEMCPY2D *pCopy, CUstream hStream);
   CUresult (*cuMemcpyHtoD)(CUdeviceptr dstDevice, const void* srcHost, size_t ByteCount);
   CUresult (*cuMemcpyHtoDAsync)(CUdeviceptr dstDevice, const void* srcHost, size_t ByteCount, CUstream hStream);
   CUresult (*cuMemcpyDtoH)(void* dstHost, CUdeviceptr srcDevice, size_t ByteCount);
@@ -46,7 +48,7 @@ public:
 };
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 
-#endif /* BRISBANE_SRC_RT_LOADER_CUDA_H */
+#endif /* IRIS_SRC_RT_LOADER_CUDA_H */
 

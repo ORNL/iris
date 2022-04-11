@@ -9,7 +9,7 @@
                           "google.charts.load('current', {packages:['timeline']});\n" \
                           "google.charts.setOnLoadCallback(drawChart);\n" \
                           "function drawChart() {\n" \
-                          "var container = document.getElementById('brisbane');\n" \
+                          "var container = document.getElementById('iris');\n" \
                           "var chart = new google.visualization.Timeline(container);\n" \
                           "var dataTable = new google.visualization.DataTable();\n"
 #define PROFILER_HEADER2  "dataTable.addColumn({ type: 'string', id: 'Device' });\n" \
@@ -26,9 +26,9 @@
                           "chart.draw(dataTable, options);\n" \
                           "}\n" \
                           "</script>\n" \
-                          "<div id='brisbane' style='height: 100%;'></div>\n"
+                          "<div id='iris' style='height: 100%;'></div>\n"
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 ProfilerGoogleCharts::ProfilerGoogleCharts(Platform* platform) : Profiler(platform) {
@@ -44,12 +44,12 @@ ProfilerGoogleCharts::~ProfilerGoogleCharts() {
 int ProfilerGoogleCharts::Main() {
   Write(PROFILER_HEADER1);
   Write(PROFILER_HEADER2);
-  return BRISBANE_OK;
+  return IRIS_SUCCESS;
 }
 
 int ProfilerGoogleCharts::Exit() {
   Write(PROFILER_FOOTER);
-  return BRISBANE_OK;
+  return IRIS_SUCCESS;
 }
 
 int ProfilerGoogleCharts::CompleteTask(Task* task) {
@@ -60,9 +60,9 @@ int ProfilerGoogleCharts::CompleteTask(Task* task) {
   char s[256];
   sprintf(s, "[ '%s %d', '%s (%s)', %lf, %lf ],\n", dev->name(), dev->devno(), task->name(), policy_str(policy), (task->time_start() * 1.e+3) - first_task_, (task->time_end() * 1.e+3) - first_task_);
   Write(s);
-  return BRISBANE_OK;
+  return IRIS_SUCCESS;
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 

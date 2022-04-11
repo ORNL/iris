@@ -8,7 +8,7 @@
 #include "Task.h"
 #include <alloca.h>
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 FilterTaskSplit::FilterTaskSplit(Polyhedral* polyhedral, Platform* platform) {
@@ -21,11 +21,11 @@ FilterTaskSplit::~FilterTaskSplit() {
 
 int FilterTaskSplit::Execute(Task* task) {
   Command* cmd_kernel = task->cmd_kernel();
-  if (!cmd_kernel) return BRISBANE_OK;
+  if (!cmd_kernel) return IRIS_SUCCESS;
   Kernel* kernel = cmd_kernel->kernel();
 
   int poly_available = polyhedral_->Kernel(kernel->name());
-  if (!poly_available) return BRISBANE_ERR;
+  if (!poly_available) return IRIS_ERROR;
   int nmems = 0;
   KernelArg* args = cmd_kernel->kernel_args();
   for (int idx = 0; idx < cmd_kernel->kernel_nargs(); idx++) {
@@ -47,7 +47,7 @@ int FilterTaskSplit::Execute(Task* task) {
 
   size_t new_gws[3] = { gws[0], gws[1], gws[2] };
 
-  brisbane_poly_mem* plmems = new brisbane_poly_mem[nmems];
+  iris_poly_mem* plmems = new iris_poly_mem[nmems];
   Mem** plmems_mem = (Mem**) alloca(sizeof(Mem*) * nmems);
   size_t chunk_size = gws[0] / (platform_->ndevs());
   _debug("gws[%lu] dim[%d] chunk_size[%lu]", gws[0], dim, chunk_size);
@@ -79,7 +79,7 @@ int FilterTaskSplit::Execute(Task* task) {
         Mem* mem = cmd->mem();
         for (int k = 0; k < nmems; k++) {
           if (plmems_mem[k] == mem) {
-            brisbane_poly_mem* plmem = plmems + k; 
+            iris_poly_mem* plmem = plmems + k; 
             if (plmem->r0 > plmem->r1) _error("invalid poly_mem r0[%lu] r1[%lu]", plmem->r0, plmem->r1);
             Command* sub_cmd = Command::CreateH2DNP(subtasks[i], mem, plmem->typesz * plmem->r0, plmem->typesz * (plmem->r1 - plmem->r0 + 1), (char*) cmd->host() + plmem->typesz * plmem->r0);
             subtasks[i]->AddCommand(sub_cmd);
@@ -89,7 +89,7 @@ int FilterTaskSplit::Execute(Task* task) {
         Mem* mem = cmd->mem();
         for (int k = 0; k < nmems; k++) {
           if (plmems_mem[k] == mem) {
-            brisbane_poly_mem* plmem = plmems + k; 
+            iris_poly_mem* plmem = plmems + k; 
             if (plmem->w0 > plmem->w1) _error("invalid poly_mem w0[%lu] w1[%lu]", plmem->w0, plmem->w1);
             Command* sub_cmd = Command::CreateD2H(subtasks[i], mem, plmem->typesz * plmem->w0, plmem->typesz * (plmem->w1 - plmem->w0 + 1), (char*) cmd->host() + plmem->typesz * plmem->w0);
             subtasks[i]->AddCommand(sub_cmd);
@@ -105,9 +105,9 @@ int FilterTaskSplit::Execute(Task* task) {
   task->ClearCommands();
   delete[] plmems;
 
-  return BRISBANE_OK;
+  return IRIS_SUCCESS;
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 

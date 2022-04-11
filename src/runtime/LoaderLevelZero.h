@@ -1,11 +1,11 @@
-#ifndef BRISBANE_SRC_RT_LOADER_LEVEL_ZERO_H
-#define BRISBANE_SRC_RT_LOADER_LEVEL_ZERO_H
+#ifndef IRIS_SRC_RT_LOADER_LEVEL_ZERO_H
+#define IRIS_SRC_RT_LOADER_LEVEL_ZERO_H
 
 #include "Loader.h"
 #include <iris/level_zero/ze_api.h>
 #include <pthread.h>
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 class LoaderLevelZero: public Loader {
@@ -251,7 +251,7 @@ private:
 };
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 
-#endif /* BRISBANE_SRC_RT_LOADER_LEVEL_ZERO_H */
+#endif /* IRIS_SRC_RT_LOADER_LEVEL_ZERO_H */
 

@@ -1,31 +1,38 @@
-#ifndef BRISBANE_SRC_RT_DEVICE_OPENCL_H
-#define BRISBANE_SRC_RT_DEVICE_OPENCL_H
+#ifndef IRIS_SRC_RT_DEVICE_OPENCL_H
+#define IRIS_SRC_RT_DEVICE_OPENCL_H
 
 #include "Device.h"
 #include "LoaderOpenCL.h"
+#include "LoaderHost2OpenCL.h"
+#include "Timer.h"
 #include <string>
 
-namespace brisbane {
+namespace iris {
 namespace rt {
+
+class Timer;
 
 class DeviceOpenCL : public Device {
 public:
-  DeviceOpenCL(LoaderOpenCL* ld, cl_device_id cldev, cl_context clctx, int devno, int platform);
+  DeviceOpenCL(LoaderOpenCL* ld, LoaderHost2OpenCL *host2opencl_ld, cl_device_id cldev, cl_context clctx, int devno, int platform);
   ~DeviceOpenCL();
 
   int Init();
   int BuildProgram(char* path);
   int MemAlloc(void** mem, size_t size);
   int MemFree(void* mem);
-  int MemH2D(Mem* mem, size_t off, size_t size, void* host);
-  int MemD2H(Mem* mem, size_t off, size_t size, void* host);
+  int MemH2D(Mem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host);
+  int MemD2H(Mem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host);
   int KernelGet(void** kernel, const char* name);
   int KernelSetArg(Kernel* kernel, int idx, size_t size, void* value);
   int KernelSetMem(Kernel* kernel, int idx, Mem* mem, size_t off);
   int KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws);
+  int KernelLaunchInit(Kernel* kernel);
   int Synchronize();
   int AddCallback(Task* task);
   int RecreateContext();
+  void ExecuteKernel(Command* cmd);
+  static std::string GetLoaderHost2OpenCLSuffix(LoaderOpenCL *ld, cl_device_id cldev);
   bool SupportJIT() { return false; }
 
 private:
@@ -33,6 +40,8 @@ private:
 
 private:
   LoaderOpenCL* ld_;
+  LoaderHost2OpenCL *host2opencl_ld_;
+  Timer* timer_;
   cl_device_id cldev_;
   cl_context clctx_;
   cl_command_queue clcmdq_;
@@ -44,7 +53,7 @@ private:
 };
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 
-#endif /* BRISBANE_SRC_RT_DEVICE_OPENCL_H */
+#endif /* IRIS_SRC_RT_DEVICE_OPENCL_H */
 

@@ -1,11 +1,11 @@
-#ifndef BRISBANE_SRC_RT_SCHEDULER_H
-#define BRISBANE_SRC_RT_SCHEDULER_H
+#ifndef IRIS_SRC_RT_SCHEDULER_H
+#define IRIS_SRC_RT_SCHEDULER_H
 
 #include "Config.h"
 #include "Thread.h"
 #include <pthread.h>
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 class Consistency;
@@ -57,7 +57,7 @@ private:
   Device** devs_;
   Worker** workers_;
   Consistency* consistency_;
-  size_t ntasks_on_devs_[BRISBANE_MAX_NDEVS];
+  size_t ntasks_on_devs_[IRIS_MAX_NDEVS];
   int ndevs_;
   HubClient* hub_client_;
   bool hub_available_;
@@ -69,6 +69,6 @@ private:
 };
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 
-#endif /* BRISBANE_SRC_RT_SCHEDULER_H */
+#endif /* IRIS_SRC_RT_SCHEDULER_H */

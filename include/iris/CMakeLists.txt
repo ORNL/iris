@@ -9,16 +9,12 @@ install(FILES
   iris_poly.h
   iris_poly_types.h
   iris_runtime.h
-  brisbane.h
-  brisbane.hpp
-  brisbane_errno.h
-  brisbane_hexagon.h
-  brisbane_hexagon_imp.h
-  brisbane_llvm.h
-  brisbane_openmp.h
-  brisbane_poly.h
-  brisbane_poly_types.h
-  brisbane_runtime.h
+  iris_host2opencl.h
+  iris_host2cuda.h
+  iris_host2hip.h
+  gettime.h
+  verify.h
+  iris_macros.h
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/iris)
 
 install(FILES
@@ -34,6 +30,12 @@ install(FILES
 install(FILES
   hexagon/rpcmem.h
   hexagon/AEEStdDef.h
+  hexagon/stub.h
+  hexagon/stub_imp.h
+  hexagon/hvx_util.h
+  hexagon/q6cache.h
+  hexagon/std_kernels.h
+  hexagon/iris_interface.h
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/iris/hexagon)
 
 install(FILES

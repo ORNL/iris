@@ -3,45 +3,45 @@
 #include "Loader.h"
 #include <dlfcn.h>
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 Polyhedral::Polyhedral() {
 }
 
 Polyhedral::~Polyhedral() {
-  if (handle_) brisbane_poly_finalize();
+  if (handle_) iris_poly_finalize();
 }
 
 int Polyhedral::LoadFunctions() {
-  LOADFUNC(brisbane_poly_init);
-  LOADFUNC(brisbane_poly_finalize);
-  LOADFUNC(brisbane_poly_kernel);
-  LOADFUNC(brisbane_poly_setarg);
-  LOADFUNC(brisbane_poly_launch);
-  LOADFUNC(brisbane_poly_getmem);
+  LOADFUNC(iris_poly_init);
+  LOADFUNC(iris_poly_finalize);
+  LOADFUNC(iris_poly_kernel);
+  LOADFUNC(iris_poly_setarg);
+  LOADFUNC(iris_poly_launch);
+  LOADFUNC(iris_poly_getmem);
 
-  brisbane_poly_init();
+  iris_poly_init();
 
-  return BRISBANE_OK;
+  return IRIS_SUCCESS;
 }
 
 int Polyhedral::Kernel(const char* name) {
-  return brisbane_poly_kernel(name);
+  return iris_poly_kernel(name);
 }
 
 int Polyhedral::SetArg(int idx, size_t size, void* value) {
-  return brisbane_poly_setarg(idx, size, value);
+  return iris_poly_setarg(idx, size, value);
 }
 
 int Polyhedral::Launch(int dim, size_t* wgo, size_t* wgs, size_t* gws, size_t* lws) {
-  return brisbane_poly_launch(dim, wgo, wgs, gws, lws);
+  return iris_poly_launch(dim, wgo, wgs, gws, lws);
 }
 
-int Polyhedral::GetMem(int idx, brisbane_poly_mem* plmem) {
-  return brisbane_poly_getmem(idx, plmem);
+int Polyhedral::GetMem(int idx, iris_poly_mem* plmem) {
+  return iris_poly_getmem(idx, plmem);
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 

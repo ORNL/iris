@@ -1,9 +1,9 @@
-#ifndef BRISBANE_SRC_RT_SIGHANDLER_H
-#define BRISBANE_SRC_RT_SIGHANDLER_H
+#ifndef IRIS_SRC_RT_SIGHANDLER_H
+#define IRIS_SRC_RT_SIGHANDLER_H
 
 #include <signal.h>
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 class SigHandler {
@@ -19,6 +19,6 @@ public:
 };
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 
-#endif /* BRISBANE_SRC_RT_SIGHANDLER_H */
+#endif /* IRIS_SRC_RT_SIGHANDLER_H */

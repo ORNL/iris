@@ -1,7 +1,7 @@
 #include "LoaderLevelZero.h"
 #include "Debug.h"
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 LoaderLevelZero::LoaderLevelZero() {
@@ -40,7 +40,7 @@ int LoaderLevelZero::LoadFunctions() {
   LOADFUNC(zeEventCreate);
   LOADFUNC(zeEventDestroy);
   LOADFUNC(zeEventHostSynchronize);
-  return BRISBANE_OK;
+  return IRIS_SUCCESS;
 }
 
 void LoaderLevelZero::Lock() {
@@ -52,5 +52,5 @@ void LoaderLevelZero::Unlock() {
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 

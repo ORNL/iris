@@ -1,9 +1,9 @@
-#ifndef BRISBANE_SRC_RT_LOADER_POLICY_H
-#define BRISBANE_SRC_RT_LOADER_POLICY_H
+#ifndef IRIS_SRC_RT_LOADER_POLICY_H
+#define IRIS_SRC_RT_LOADER_POLICY_H
 
 #include "Loader.h"
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 class Policy;
@@ -27,7 +27,7 @@ private:
 };
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 
-#endif /* BRISBANE_SRC_RT_LOADER_POLICY_H */
+#endif /* IRIS_SRC_RT_LOADER_POLICY_H */
 

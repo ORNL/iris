@@ -1,5 +1,5 @@
-#ifndef BRISBANE_SRC_RT_TASK_H
-#define BRISBANE_SRC_RT_TASK_H
+#ifndef IRIS_SRC_RT_TASK_H
+#define IRIS_SRC_RT_TASK_H
 
 #include "Retainable.h"
 #include "Command.h"
@@ -7,24 +7,24 @@
 #include <pthread.h>
 #include <vector>
 
-#define BRISBANE_COMPLETE   0x0
-#define BRISBANE_RUNNING    0x1
-#define BRISBANE_SUBMITTED  0x2
-#define BRISBANE_QUEUED     0x3
-#define BRISBANE_NONE       0x4
+#define IRIS_COMPLETE   0x0
+#define IRIS_RUNNING    0x1
+#define IRIS_SUBMITTED  0x2
+#define IRIS_QUEUED     0x3
+#define IRIS_NONE       0x4
 
-#define BRISBANE_TASK       0x0
-#define BRISBANE_TASK_PERM  0x1
-#define BRISBANE_MARKER     0x2
+#define IRIS_TASK       0x0
+#define IRIS_TASK_PERM  0x1
+#define IRIS_MARKER     0x2
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 class Scheduler;
 
-class Task: public Retainable<struct _brisbane_task, Task> {
+class Task: public Retainable<struct _iris_task, Task> {
 public:
-  Task(Platform* platform, int type = BRISBANE_TASK, const char* name = NULL);
+  Task(Platform* platform, int type = IRIS_TASK, const char* name = NULL);
   virtual ~Task();
 
   void AddCommand(Command* cmd);
@@ -52,7 +52,7 @@ public:
   bool user() { return user_; }
   bool system() { return system_; }
   void set_system() { system_ = true; }
-  bool marker() { return type_ == BRISBANE_MARKER; }
+  bool marker() { return type_ == IRIS_MARKER; }
   int status() { return status_; }
   Task* parent() { return parent_; }
   Command* cmd(int i) { return cmds_[i]; }
@@ -136,6 +136,6 @@ public:
 };
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 
-#endif /* BRISBANE_SRC_RT_TASK_H */
+#endif /* IRIS_SRC_RT_TASK_H */

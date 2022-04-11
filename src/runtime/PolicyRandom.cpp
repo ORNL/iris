@@ -4,7 +4,7 @@
 #include <time.h>
 #include <unistd.h>
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 PolicyRandom::PolicyRandom(Scheduler* scheduler) {
@@ -21,4 +21,4 @@ void PolicyRandom::GetDevices(Task* task, Device** devs, int* ndevs) {
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */

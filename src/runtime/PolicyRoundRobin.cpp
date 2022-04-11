@@ -8,7 +8,7 @@
 #include <unistd.h>
 #include <limits.h>
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 PolicyRoundRobin::PolicyRoundRobin(Scheduler* scheduler) {
@@ -21,7 +21,7 @@ PolicyRoundRobin::~PolicyRoundRobin() {
 
 void PolicyRoundRobin::GetDevices(Task* task, Device** devs, int* ndevs) {
   int policy = task->brs_policy();
-  if (policy == brisbane_roundrobin) return GetDevice(task, devs, ndevs);
+  if (policy == iris_roundrobin) return GetDevice(task, devs, ndevs);
   return GetDeviceType(task, devs, ndevs);
 }
 
@@ -46,5 +46,5 @@ void PolicyRoundRobin::GetDeviceType(Task* task, Device** devs, int* ndevs) {
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 

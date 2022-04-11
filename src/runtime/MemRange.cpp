@@ -1,7 +1,7 @@
 #include "MemRange.h"
 #include "Debug.h"
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 MemRange::MemRange(size_t off, size_t size, Device* dev) {
@@ -27,5 +27,5 @@ bool MemRange::Contain(size_t off, size_t size) {
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 

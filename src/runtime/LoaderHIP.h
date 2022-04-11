@@ -1,11 +1,11 @@
-#ifndef BRISBANE_SRC_RT_LOADER_HIP_H
-#define BRISBANE_SRC_RT_LOADER_HIP_H
+#ifndef IRIS_SRC_RT_LOADER_HIP_H
+#define IRIS_SRC_RT_LOADER_HIP_H
 
 #include "Loader.h"
 #include <iris/hip/hip_runtime.h>
 #include <pthread.h>
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 class LoaderHIP : public Loader {
@@ -44,7 +44,7 @@ private:
 };
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 
-#endif /* BRISBANE_SRC_RT_LOADER_HIP_H */
+#endif /* IRIS_SRC_RT_LOADER_HIP_H */
 

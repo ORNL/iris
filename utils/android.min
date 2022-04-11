@@ -1,0 +1,46 @@
+# stub library
+BUILD_DLLS += libirishxg
+
+DSP_TAG ?= cdsp
+C_FLAGS += -DDSP_TAG=$(DSP_TAG)  -I$(IRIS)/include -I$(IRIS)/include/iris/hexagon -Isd_host
+CC_FLAGS += -I$(IRIS)/include -I$(IRIS)/include/iris/hexagon -Isd_host
+libirishxg_QAICIDLS += irishxg 
+
+STUB_DIR ?= .
+STUB_CSRCS_RAW = $(wildcard $(STUB_DIR)/sd_host/*.c)
+STUB_CSRCS ?= $(patsubst $(STUB_DIR)/sd_host/%.c, $(STUB_DIR)/sd_host/%, $(STUB_CSRCS_RAW))
+
+libirishxg_C_SRCS += $V/irishxg_stub \
+                       $(STUB_CSRCS) \
+
+libirishxg_DLLS += libadsprpc
+libirishxg_LIBS += rpcmem
+libirishxg_LD_FLAGS += -llog
+
+ENABLE_EXE=0
+ifeq (1,$(ENABLE_EXE))
+# stand-alone benchmark executable
+BUILD_EXES+=irishxg
+irishxg_QAICIDLS += irishxg \
+
+BENCHMARK_CSRCS ?= \
+                    src/benchmark \
+                    src/sobel3x3_ref \
+                    
+irishxg_C_SRCS += $(BENCHMARK_CSRCS)
+
+irishxg_LIBS += rpcmem
+
+irishxg_DLLS += libadsprpc \
+                  libirishxg \
+                  
+irishxg_C_FLAGS += -Isd_host/ -I.
+irishxg_LD_FLAGS += -llog
+irishxg_DEFINES += VERIFY_PRINT_ERROR
+endif
+# copy final build products to the ship directory
+BUILD_COPIES = \
+   $(DLLS) \
+   $(EXES) \
+   $(LIBS) \
+   $(SHIP_DIR)/ ;

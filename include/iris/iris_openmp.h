@@ -17,6 +17,10 @@
 #define __local
 #define __restrict
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 static pthread_mutex_t iris_openmp_mutex;
 static int iris_openmp_kernel_idx;
 
@@ -35,6 +39,10 @@ static void iris_openmp_lock() {
 static void iris_openmp_unlock() {
   pthread_mutex_unlock(&iris_openmp_mutex);
 }
+
+#ifdef __cplusplus
+} /* end of extern "C" */
+#endif
 
 #endif /* IRIS_INCLUDE_IRIS_OPENMP_H */
 

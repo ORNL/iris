@@ -1,7 +1,7 @@
 #include "Thread.h"
 #include "Debug.h"
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 Thread::Thread() {
@@ -43,5 +43,5 @@ void* Thread::ThreadFunc(void* argp) {
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 

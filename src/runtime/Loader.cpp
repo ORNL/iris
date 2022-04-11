@@ -1,10 +1,12 @@
 #include "Loader.h"
 #include "Debug.h"
+#ifndef __APPLE__
 #include <link.h>
+#endif
 #include <dlfcn.h>
 #include <stdlib.h>
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 Loader::Loader() {
@@ -18,15 +20,15 @@ Loader::~Loader() {
 }
 
 int Loader::Load() {
-  if (!library()) return BRISBANE_OK;
-  if (LoadHandle() != BRISBANE_OK) return BRISBANE_ERR;
+  if (!library()) return IRIS_SUCCESS;
+  if (LoadHandle() != IRIS_SUCCESS) return IRIS_ERROR;
   return LoadFunctions();
 }
 
 int Loader::LoadHandle() {
   if (library_precheck() && dlsym(RTLD_DEFAULT, library_precheck())) {
     handle_ = RTLD_DEFAULT;
-    return BRISBANE_OK;
+    return IRIS_SUCCESS;
   }
   handle_ = dlopen(library(), RTLD_GLOBAL | RTLD_NOW);
   if (handle_) {
@@ -37,11 +39,11 @@ int Loader::LoadHandle() {
 #endif
   } else {
     _trace("%s", dlerror());
-    return BRISBANE_ERR;
+    return IRIS_ERROR;
   }
-  return BRISBANE_OK;
+  return IRIS_SUCCESS;
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 

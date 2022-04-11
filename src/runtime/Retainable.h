@@ -1,21 +1,21 @@
-#ifndef BRISBANE_SRC_RT_RETAINABLE_H
-#define BRISBANE_SRC_RT_RETAINABLE_H
+#ifndef IRIS_SRC_RT_RETAINABLE_H
+#define IRIS_SRC_RT_RETAINABLE_H
 
-#include <iris/brisbane.h>
+#include <iris/iris.h>
 #include "Structs.h"
 #include "Debug.h"
 #include <stddef.h>
 
-extern unsigned long brisbane_create_new_uid();
+extern unsigned long iris_create_new_uid();
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 template <typename struct_type, class class_type>
 class Retainable {
 public:
   Retainable() {
-    uid_ = brisbane_create_new_uid();
+    uid_ = iris_create_new_uid();
     struct_obj_.class_obj = (class_type*) this;
     ref_cnt_ = 1;
   }
@@ -44,7 +44,7 @@ private:
 };
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 
-#endif /* BRISBANE_SRC_RT_RETAINABLE_H */
+#endif /* IRIS_SRC_RT_RETAINABLE_H */
 

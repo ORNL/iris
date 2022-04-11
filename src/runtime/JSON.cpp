@@ -14,7 +14,7 @@
 #include <string.h>
 #include <unistd.h>
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 JSON::JSON(Platform* platform) {
@@ -54,18 +54,18 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
   int r;
   char* src = NULL;
   size_t srclen = 0;
-  if (Utils::ReadFile((char*) path, &src, &srclen) == BRISBANE_ERR) {
+  if (Utils::ReadFile((char*) path, &src, &srclen) == IRIS_ERROR) {
     _error("no JSON file[%s]", path);
-    return BRISBANE_ERR;
+    return IRIS_ERROR;
   }
 
   jsmn_parser p;
-  jsmntok_t *t = (jsmntok_t*) malloc(BRISBANE_JSON_MAX_TOK * sizeof(jsmntok_t));
+  jsmntok_t *t = (jsmntok_t*) malloc(IRIS_JSON_MAX_TOK * sizeof(jsmntok_t));
   jsmn_init(&p);
 
-  r = jsmn_parse(&p, src, srclen, t, BRISBANE_JSON_MAX_TOK);
+  r = jsmn_parse(&p, src, srclen, t, IRIS_JSON_MAX_TOK);
 
-  if (r < 0) return BRISBANE_ERR;
+  if (r < 0) return IRIS_ERROR;
 
   for (int i = 1; i < r; i++) {
     if (EQ(src, t + i, "inputs")) {
@@ -75,7 +75,7 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
     }
   }
   free(t);
-  return BRISBANE_OK;
+  return IRIS_SUCCESS;
 }
 
 int JSON::LoadInputs(char* src, void* tok, int i, int r) {
@@ -104,7 +104,7 @@ int JSON::LoadTasks(Graph* graph, void** params, char* src, void* tok, int i, in
 int JSON::LoadTask(Graph* graph, void** params, char* src, void* tok, int j, int r) {
   jsmntok_t* t = (jsmntok_t*) tok;
   char buf[256];
-  Task* task = Task::Create(platform_, BRISBANE_TASK_PERM, NULL);
+  Task* task = Task::Create(platform_, IRIS_TASK_PERM, NULL);
   tasks_[ntasks_++] = task;
   int l, k = 0;
   for (k = 1; k < r; k++) {
@@ -115,7 +115,7 @@ int JSON::LoadTask(Graph* graph, void** params, char* src, void* tok, int j, int
     } else if (EQ(src, t + j + k, "h2d")) {
       k++;
       STR(src, t + j + (++k), buf);
-      brisbane_mem mem = (brisbane_mem) GetInput(params, buf);
+      iris_mem mem = (iris_mem) GetInput(params, buf);
       STR(src, t + j + (++k), buf);
       void* host = GetInput(params, buf);
       STR(src, t + j + (++k), buf);
@@ -129,7 +129,7 @@ int JSON::LoadTask(Graph* graph, void** params, char* src, void* tok, int j, int
     } else if (EQ(src, t + j + k, "d2h")) {
       k++;
       STR(src, t + j + (++k), buf);
-      brisbane_mem mem = (brisbane_mem) GetInput(params, buf);
+      iris_mem mem = (iris_mem) GetInput(params, buf);
       STR(src, t + j + (++k), buf);
       void* host = GetInput(params, buf);
       STR(src, t + j + (++k), buf);
@@ -163,9 +163,9 @@ int JSON::LoadTask(Graph* graph, void** params, char* src, void* tok, int j, int
       int* kparams_info = (int*) malloc(sizeof(int) * t[j + k + 1].size);
       for (l = 0; l < t[j + k + 1].size; l++) {
         STR(src, t + j + k + 1 + l + 1, buf);
-        if (strcmp("rw", buf) == 0) kparams_info[l] = brisbane_rw;
-        else if (strcmp("r", buf) == 0) kparams_info[l] = brisbane_r;
-        else if (strcmp("w", buf) == 0) kparams_info[l] = brisbane_w;
+        if (strcmp("rw", buf) == 0) kparams_info[l] = iris_rw;
+        else if (strcmp("r", buf) == 0) kparams_info[l] = iris_r;
+        else if (strcmp("w", buf) == 0) kparams_info[l] = iris_w;
         else _check();
       }
       k += l + 1;
@@ -187,11 +187,11 @@ int JSON::LoadTask(Graph* graph, void** params, char* src, void* tok, int j, int
     } else if (EQ(src, t + j + k, "target")) {
       STR(src, t + j + (++k), buf);
       void* p_target = GetInput(params, buf);
-      int target = brisbane_default;
+      int target = iris_default;
       if (p_target) target = (*(int*) p_target);
-      else if (strcmp(buf, "cpu") == 0) target = brisbane_cpu;
-      else if (strcmp(buf, "gpu") == 0) target = brisbane_gpu;
-      else target = brisbane_default;
+      else if (strcmp(buf, "cpu") == 0) target = iris_cpu;
+      else if (strcmp(buf, "gpu") == 0) target = iris_gpu;
+      else target = iris_default;
       task->set_target_perm(target, NULL);  
       graph->AddTask(task);
       break;
@@ -208,9 +208,9 @@ int JSON::RecordTask(Task* task) {
   for (int i = 0; i < task->ncmds(); i++) {
     memset(buf, 0, 256);
     Command* cmd = task->cmd(i);
-    if (cmd->type() == BRISBANE_CMD_H2D) RecordH2D(cmd, buf);
-    else if (cmd->type() == BRISBANE_CMD_D2H) RecordD2H(cmd, buf);
-    else if (cmd->type() == BRISBANE_CMD_KERNEL) RecordKernel(cmd, buf);
+    if (cmd->type() == IRIS_CMD_H2D) RecordH2D(cmd, buf);
+    else if (cmd->type() == IRIS_CMD_D2H) RecordD2H(cmd, buf);
+    else if (cmd->type() == IRIS_CMD_KERNEL) RecordKernel(cmd, buf);
     else _todo("cmd[%d]", cmd->type());
     str_.append(buf);
   }
@@ -226,19 +226,19 @@ int JSON::RecordTask(Task* task) {
   memset(buf, 0, 256);
   sprintf(buf, "  \"target\": \"0x%x\"\n},\n", task->brs_policy());
   str_.append(buf);
-  return BRISBANE_OK;
+  return IRIS_SUCCESS;
 }
 
 int JSON::RecordH2D(Command* cmd, char* buf) {
   mems_.insert(cmd->mem());
   sprintf(buf, "  \"h2d\": [\"mem-%lu\", \"user-%d\", \"%zu\", \"%zu\"],\n", cmd->mem()->uid(), InputPointer(cmd->host()), cmd->off(0), cmd->size());
-  return BRISBANE_OK;
+  return IRIS_SUCCESS;
 }
 
 int JSON::RecordD2H(Command* cmd, char* buf) {
   mems_.insert(cmd->mem());
   sprintf(buf, "  \"d2h\": [\"mem-%lu\", \"user-%d\", \"%zu\", \"%zu\"],\n", cmd->mem()->uid(), InputPointer(cmd->host()), cmd->off(0), cmd->size());
-  return BRISBANE_OK;
+  return IRIS_SUCCESS;
 }
 
 int JSON::RecordKernel(Command* cmd, char* buf) {
@@ -266,9 +266,9 @@ int JSON::RecordKernel(Command* cmd, char* buf) {
   for (int i = 0; i < nargs; i++) {
     KernelArg* arg = cmd->kernel_arg(i);
     if (arg->mem) {
-      if (arg->mode == brisbane_r) str.append("\"r\"");
-      else if (arg->mode == brisbane_w) str.append("\"w\"");
-      else if (arg->mode == brisbane_rw) str.append("\"rw\"");
+      if (arg->mode == iris_r) str.append("\"r\"");
+      else if (arg->mode == iris_w) str.append("\"w\"");
+      else if (arg->mode == iris_rw) str.append("\"rw\"");
       else _error("not valid mode[%d]", arg->mode);
     } else {
     }
@@ -277,7 +277,7 @@ int JSON::RecordKernel(Command* cmd, char* buf) {
 
   str.append("] ],\n");
   sprintf(buf, "%s", str.c_str());
-  return BRISBANE_OK;
+  return IRIS_SUCCESS;
 }
 
 int JSON::RecordFlush() {
@@ -287,7 +287,7 @@ int JSON::RecordFlush() {
   Utils::Datetime(buf);
   sprintf(path, "graph-%s.json", buf);
   int fd = open((const char*) path, O_CREAT | O_WRONLY, 0644);
-  if (fd == -1) return BRISBANE_ERR;
+  if (fd == -1) return IRIS_ERROR;
   memset(buf, 0, 128);
   sprintf(buf, "{\"iris-graph\": {\n\"inputs\": [");
   write(fd, buf, strlen(buf));
@@ -312,7 +312,7 @@ int JSON::RecordFlush() {
   write(fd, buf, strlen(buf));
   close(fd);
   nptrs_ = 0;
-  return BRISBANE_OK;
+  return IRIS_SUCCESS;
 }
 
 int JSON::InputPointer(void* p) {
@@ -324,5 +324,5 @@ int JSON::InputPointer(void* p) {
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 

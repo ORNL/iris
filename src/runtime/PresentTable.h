@@ -1,10 +1,10 @@
-#ifndef BRISBANE_SRC_RT_PRESENT_TABLE_H
-#define BRISBANE_SRC_RT_PRESENT_TABLE_H
+#ifndef IRIS_SRC_RT_PRESENT_TABLE_H
+#define IRIS_SRC_RT_PRESENT_TABLE_H
 
 #include "Config.h"
 #include <map>
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 class Mem;
@@ -28,6 +28,6 @@ private:
 };
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 
-#endif /* BRISBANE_SRC_RT_PRESENT_TABLE_H */
+#endif /* IRIS_SRC_RT_PRESENT_TABLE_H */

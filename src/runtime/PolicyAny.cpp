@@ -6,7 +6,7 @@
 #include <unistd.h>
 #include <limits.h>
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 PolicyAny::PolicyAny(Scheduler* scheduler) {
@@ -36,5 +36,5 @@ void PolicyAny::GetDevices(Task* task, Device** devs, int* ndevs) {
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 

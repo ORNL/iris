@@ -10,7 +10,7 @@
 #include "Timer.h"
 #include "Utils.h"
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 Device::Device(int devno, int platform) {
@@ -18,6 +18,8 @@ Device::Device(int devno, int platform) {
   platform_ = platform;
   busy_ = false;
   enable_ = false;
+  shared_memory_buffers_ = false;
+  is_vendor_specific_kernel_ = false;
   nqueues_ = 32;
   q_ = 0;
   memset(vendor_, 0, sizeof(vendor_));
@@ -43,20 +45,20 @@ void Device::Execute(Task* task) {
     Command* cmd = task->cmd(i);
     if (hook_command_pre_) hook_command_pre_(cmd);
     switch (cmd->type()) {
-      case BRISBANE_CMD_INIT:         ExecuteInit(cmd);       break;
-      case BRISBANE_CMD_KERNEL:       ExecuteKernel(cmd);     break;
-      case BRISBANE_CMD_MALLOC:       ExecuteMalloc(cmd);     break;
-      case BRISBANE_CMD_H2D:          ExecuteH2D(cmd);        break;
-      case BRISBANE_CMD_H2DNP:        ExecuteH2DNP(cmd);      break;
-      case BRISBANE_CMD_D2H:          ExecuteD2H(cmd);        break;
-      case BRISBANE_CMD_MAP:          ExecuteMap(cmd);        break;
-      case BRISBANE_CMD_RELEASE_MEM:  ExecuteReleaseMem(cmd); break;
-      case BRISBANE_CMD_HOST:         ExecuteHost(cmd);       break;
-      case BRISBANE_CMD_CUSTOM:       ExecuteCustom(cmd);     break;
+      case IRIS_CMD_INIT:         ExecuteInit(cmd);       break;
+      case IRIS_CMD_KERNEL:       ExecuteKernel(cmd);     break;
+      case IRIS_CMD_MALLOC:       ExecuteMalloc(cmd);     break;
+      case IRIS_CMD_H2D:          ExecuteH2D(cmd);        break;
+      case IRIS_CMD_H2DNP:        ExecuteH2DNP(cmd);      break;
+      case IRIS_CMD_D2H:          ExecuteD2H(cmd);        break;
+      case IRIS_CMD_MAP:          ExecuteMap(cmd);        break;
+      case IRIS_CMD_RELEASE_MEM:  ExecuteReleaseMem(cmd); break;
+      case IRIS_CMD_HOST:         ExecuteHost(cmd);       break;
+      case IRIS_CMD_CUSTOM:       ExecuteCustom(cmd);     break;
       default: _error("cmd type[0x%x]", cmd->type());
     }
     if (hook_command_post_) hook_command_post_(cmd);
-#ifndef BRISBANE_SYNC_EXECUTION
+#ifndef IRIS_SYNC_EXECUTION
     if (cmd->last()) AddCallback(task);
 #endif
   }
@@ -64,14 +66,14 @@ void Device::Execute(Task* task) {
   if (hook_task_post_) hook_task_post_(task);
 //  if (++q_ >= nqueues_) q_ = 0;
   if (!task->system()) _trace("task[%lu] complete dev[%d][%s] time[%lf]", task->uid(), devno(), name(), task->time());
-#ifdef BRISBANE_SYNC_EXECUTION
+#ifdef IRIS_SYNC_EXECUTION
   task->Complete();
 #endif
   busy_ = false;
 }
 
 void Device::ExecuteInit(Command* cmd) {
-  timer_->Start(BRISBANE_TIMER_INIT);
+  timer_->Start(IRIS_TIMER_INIT);
   if (SupportJIT()) {
     char* tmpdir = NULL;
     char* src = NULL;
@@ -96,17 +98,17 @@ void Device::ExecuteInit(Command* cmd) {
         errid_ = Compile(src);
       } else strncpy(kernel_path_, bin, strlen(bin));
     }
-    if (errid_ != BRISBANE_OK) _error("iret[%d]", errid_);
+    if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
   }
   errid_ = Init();
-  if (errid_ != BRISBANE_OK) _error("iret[%d]", errid_);
-  double time = timer_->Stop(BRISBANE_TIMER_INIT);
+  if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
+  double time = timer_->Stop(IRIS_TIMER_INIT);
   cmd->SetTime(time);
   enable_ = true;
 }
 
 void Device::ExecuteKernel(Command* cmd) {
-  timer_->Start(BRISBANE_TIMER_KERNEL);
+  timer_->Start(IRIS_TIMER_KERNEL);
   Kernel* kernel = ExecuteSelectorKernel(cmd);
   int dim = cmd->dim();
   size_t* off = cmd->off();
@@ -114,10 +116,11 @@ void Device::ExecuteKernel(Command* cmd) {
   size_t gws0 = gws[0];
   size_t* lws = cmd->lws();
   bool reduction = false;
-  brisbane_poly_mem* polymems = cmd->polymems();
+  iris_poly_mem* polymems = cmd->polymems();
   int npolymems = cmd->npolymems();
   int max_idx = 0;
   int mem_idx = 0;
+  set_vendor_specific_kernel(false);
   KernelLaunchInit(kernel);
   KernelArg* args = cmd->kernel_args();
   for (int idx = 0; idx < cmd->kernel_nargs(); idx++) {
@@ -125,13 +128,13 @@ void Device::ExecuteKernel(Command* cmd) {
     KernelArg* arg = args + idx;
     Mem* mem = arg->mem;
     if (mem) {
-      if (arg->mode == brisbane_w || arg->mode == brisbane_rw) {
+      if (arg->mode == iris_w || arg->mode == iris_rw) {
         if (npolymems) {
-          brisbane_poly_mem* pm = polymems + mem_idx;
+          iris_poly_mem* pm = polymems + mem_idx;
           mem->SetOwner(pm->typesz * pm->w0, pm->typesz * (pm->w1 - pm->w0 + 1), this);
         } else mem->SetOwner(arg->mem_off, arg->mem_size, this);
       }
-      if (mem->mode() & brisbane_reduction) {
+      if (mem->mode() & iris_reduction) {
         lws = (size_t*) alloca(3 * sizeof(size_t));
         lws[0] = 1;
         lws[1] = 1;
@@ -157,7 +160,7 @@ void Device::ExecuteKernel(Command* cmd) {
   }
 #endif
   errid_ = KernelLaunch(kernel, dim, off, gws, lws[0] > 0 ? lws : NULL);
-  double time = timer_->Stop(BRISBANE_TIMER_KERNEL);
+  double time = timer_->Stop(IRIS_TIMER_KERNEL);
   cmd->SetTime(time);
   cmd->kernel()->history()->AddKernel(cmd, this, time);
 }
@@ -171,15 +174,37 @@ void Device::ExecuteMalloc(Command* cmd) {
 void Device::ExecuteH2D(Command* cmd) {
   Mem* mem = cmd->mem();
   size_t off = cmd->off(0);
+  size_t *ptr_off = cmd->off();
+  size_t *gws = cmd->gws();
+  size_t *lws = cmd->lws();
+  size_t elem_size = cmd->elem_size();
+  int dim = cmd->dim();
   size_t size = cmd->size();
   bool exclusive = cmd->exclusive();
   void* host = cmd->host();
   if (exclusive) mem->SetOwner(off, size, this);
   else mem->AddOwner(off, size, this);
-  timer_->Start(BRISBANE_TIMER_H2D);
-  errid_ = MemH2D(mem, off, size, host);
-  if (errid_ != BRISBANE_OK) _error("iret[%d]", errid_);
-  double time = timer_->Stop(BRISBANE_TIMER_H2D);
+  timer_->Start(IRIS_TIMER_H2D);
+  bool is_mem_xfer_skipped = true;
+  //printf("DeviceH2D device no:%d\n", devno_);
+  // Decide whether memory transfer required or not
+  std::vector<Command *>  d2h_cmds_of_mem = mem->get_d2h_cmds();
+  if (d2h_cmds_of_mem.size() == 0 || ! mem->is_intermediate())
+      is_mem_xfer_skipped = false;
+  if (is_mem_xfer_skipped) for (Command *d2h_cmd : d2h_cmds_of_mem) {
+     //printf("DeviceH2D task:%p %p %p %p %d %d %d\n", cmd->task(), d2h_cmd->task(), cmd->task()->dev(), d2h_cmd->task()->dev(), cmd->task()->devno(), d2h_cmd->task()->devno(), devno_);
+     if (cmd->task() == d2h_cmd->task())
+         is_mem_xfer_skipped = false;
+     if (cmd->task()->dev() != d2h_cmd->task()->dev())
+         is_mem_xfer_skipped = false;
+  }
+  if (is_mem_xfer_skipped) {
+      _trace("Dev[%d][%s] MemH2D is skipped", devno_, name_);
+      return;
+  }
+  errid_ = MemH2D(mem, ptr_off, gws, lws, elem_size, dim, size, host);
+  if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
+  double time = timer_->Stop(IRIS_TIMER_H2D);
   cmd->SetTime(time);
   Command* cmd_kernel = cmd->task()->cmd_kernel();
   if (cmd_kernel) cmd_kernel->kernel()->history()->AddH2D(cmd, this, time);
@@ -197,18 +222,38 @@ void Device::ExecuteH2DNP(Command* cmd) {
 void Device::ExecuteD2H(Command* cmd) {
   Mem* mem = cmd->mem();
   size_t off = cmd->off(0);
+  size_t *ptr_off = cmd->off();
+  size_t *gws = cmd->gws();
+  size_t *lws = cmd->lws();
+  size_t elem_size = cmd->elem_size();
+  int dim = cmd->dim();
   size_t size = cmd->size();
   void* host = cmd->host();
   int mode = mem->mode();
   int expansion = mem->expansion();
-  timer_->Start(BRISBANE_TIMER_D2H);
-  errid_ = BRISBANE_OK;
-  if (mode & brisbane_reduction) {
-    errid_ = MemD2H(mem, off, mem->size() * expansion, mem->host_inter());
+  timer_->Start(IRIS_TIMER_D2H);
+  errid_ = IRIS_SUCCESS;
+  bool is_mem_xfer_skipped = true;
+  // Decide whether memory transfer required or not
+  //printf("DeviceH2D device no:%d\n", devno_);
+  std::vector<Command *>  h2d_cmds_of_mem = mem->get_h2d_cmds();
+  if (h2d_cmds_of_mem.size() == 0 || ! mem->is_intermediate())
+      is_mem_xfer_skipped = false;
+  if (is_mem_xfer_skipped) for (Command *h2d_cmd : h2d_cmds_of_mem) {
+     //printf("DeviceD2H task:%p %p %p %p %d %d %d\n", cmd->task(), h2d_cmd->task(), cmd->task()->dev(), h2d_cmd->task()->dev(), cmd->task()->devno(), h2d_cmd->task()->devno(), devno_);
+     if (cmd->task()->dev() != h2d_cmd->task()->dev())
+         is_mem_xfer_skipped = false;
+  }
+  if (is_mem_xfer_skipped) {
+      _trace("Dev[%d][%s] MemD2H is skipped", devno_, name_);
+      return;
+  }
+  if (mode & iris_reduction) {
+    errid_ = MemD2H(mem, ptr_off, gws, lws, elem_size, dim, mem->size() * expansion, mem->host_inter());
     Reduction::GetInstance()->Reduce(mem, host, size);
-  } else errid_ = MemD2H(mem, off, size, host);
-  if (errid_ != BRISBANE_OK) _error("iret[%d]", errid_);
-  double time = timer_->Stop(BRISBANE_TIMER_D2H);
+  } else errid_ = MemD2H(mem, ptr_off, gws, lws, elem_size, dim, size, host);
+  if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
+  double time = timer_->Stop(IRIS_TIMER_D2H);
   cmd->SetTime(time);
   Command* cmd_kernel = cmd->task()->cmd_kernel();
   if (cmd_kernel) cmd_kernel->kernel()->history()->AddD2H(cmd, this, time);
@@ -226,7 +271,7 @@ void Device::ExecuteReleaseMem(Command* cmd) {
 }
 
 void Device::ExecuteHost(Command* cmd) {
-  brisbane_host_task func = cmd->func();
+  iris_host_task func = cmd->func();
   void* params = cmd->func_params();
   const int dev = devno_;
   _trace("dev[%d][%s] func[%p] params[%p]", devno_, name_, func, params);
@@ -242,7 +287,7 @@ void Device::ExecuteCustom(Command* cmd) {
 Kernel* Device::ExecuteSelectorKernel(Command* cmd) {
   Kernel* kernel = cmd->kernel();
   if (!cmd->selector_kernel()) return kernel;
-  brisbane_selector_kernel func = cmd->selector_kernel();
+  iris_selector_kernel func = cmd->selector_kernel();
   void* params = cmd->selector_kernel_params();
   char kernel_name[256];
   memset(kernel_name, 0, 256);
@@ -253,7 +298,7 @@ Kernel* Device::ExecuteSelectorKernel(Command* cmd) {
 
 int Device::RegisterCommand(int tag, command_handler handler) {
   cmd_handlers_[tag] = handler;
-  return BRISBANE_OK;
+  return IRIS_SUCCESS;
 }
 
 int Device::RegisterHooks() {
@@ -261,9 +306,9 @@ int Device::RegisterHooks() {
   hook_task_post_ = Platform::GetPlatform()->hook_task_post();
   hook_command_pre_ = Platform::GetPlatform()->hook_command_pre();
   hook_command_post_ = Platform::GetPlatform()->hook_command_post();
-  return BRISBANE_OK;
+  return IRIS_SUCCESS;
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 

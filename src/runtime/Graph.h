@@ -1,5 +1,5 @@
-#ifndef BRISBANE_SRC_RT_GRAPH_H
-#define BRISBANE_SRC_RT_GRAPH_H
+#ifndef IRIS_SRC_RT_GRAPH_H
+#define IRIS_SRC_RT_GRAPH_H
 
 #include "Retainable.h"
 #include "Command.h"
@@ -7,10 +7,10 @@
 #include <pthread.h>
 #include <vector>
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
-class Graph: public Retainable<struct _brisbane_graph, Graph> {
+class Graph: public Retainable<struct _iris_graph, Graph> {
 public:
   Graph(Platform* platform);
   virtual ~Graph();
@@ -42,6 +42,6 @@ public:
 };
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 
-#endif /* BRISBANE_SRC_RT_GRAPH_H */
+#endif /* IRIS_SRC_RT_GRAPH_H */
