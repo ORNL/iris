@@ -1,6 +1,7 @@
+#!/bin/bash
 if [ ! -n "$IRIS_INSTALL_ROOT" ]; then
 	IRIS_INSTALL_ROOT="$HOME/.local"
-fi 
+fi
 rm -rf build
 mkdir build
 cd build

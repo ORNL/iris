@@ -1,0 +1,39 @@
+stages:
+  - build
+  - test
+
+.excl_runner:
+  tags: [excl]
+
+before_script:
+  - module load cmake
+  - module load gnu
+
+variables:
+ IRIS_INSTALL_ROOT: $CI_PROJECT_DIR/install
+ IRIS_TESTING_PATH: code.ornl.gov/brisbane/iris-tests.git
+
+build-job:
+  extends: [.excl_runner]
+  stage: build
+  script:
+    - echo "Installing iris to $CI_PROJECT_DIR/install"
+    - bash build.sh
+
+test-job:
+  extends: [.excl_runner]
+  stage: test
+  allow_failure: true
+  script:
+    - echo "Installing iris to $CI_PROJECT_DIR/install"
+    - bash build.sh
+    - echo $CI_REPOSITORY_URL
+    - echo $CI_PROJECT_PATH
+    - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@${IRIS_TESTING_PATH}
+    - source $IRIS_INSTALL_ROOT/setup.source
+    - cd iris-tests
+    - mkdir build
+    - cd build
+    - cmake ..
+    - make --ignore-errors
+    - make test
