@@ -34,6 +34,7 @@ void Command::Clear(bool init) {
   polymems_ = NULL;
   npolymems_ = 0;
   params_map_ = NULL;
+  name_ = NULL;
   off_[0] = 0; off_[1] = 0; off_[2] = 0;
   gws_[0] = 0; gws_[1] = 1; gws_[2] = 1;
   lws_[0] = 0; lws_[1] = 1; lws_[2] = 1;
