@@ -26,7 +26,7 @@ test-job:
   allow_failure: true
   script:
     - echo "Installing iris to $CI_PROJECT_DIR/install"
-    - bash build.sh
+    - bash build-coverage.sh
     - echo $CI_REPOSITORY_URL
     - echo $CI_PROJECT_PATH
     - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@${IRIS_TESTING_PATH}
@@ -37,3 +37,16 @@ test-job:
     - cmake ..
     - make --ignore-errors
     - make test
+  after_script:
+    - module load cmake
+    - module load gnu
+    - module load python
+    - python3 -m venv .venv
+    - source .venv/bin/activate
+    - pip install gcovr==5.0 # There seems to be a bug for newer versions of gcovr.
+    - gcovr --xml-pretty --exclude-unreachable-branches --print-summary -o coverage.xml --gcov-ignore-parse-errors
+  coverage: /^\s*lines:\s*\d+.\d+\%/
+  artifacts:
+    when: always
+    reports:
+      cobertura: coverage.xml

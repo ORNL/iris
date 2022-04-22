@@ -11,6 +11,9 @@ if (CMAKE_VERSION VERSION_LESS "3.1")
 else()
   set(CMAKE_CXX_STANDARD 11)
 endif()
+if (COVERAGE)
+   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage")
+endif()
 
 set(IRIS_RUNTIME_SOURCES
   CAPI.cpp
