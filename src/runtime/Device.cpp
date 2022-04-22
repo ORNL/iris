@@ -88,6 +88,7 @@ void Device::ExecuteInit(Command* cmd) {
     Platform::GetPlatform()->EnvironmentGet(kernel_bin(), &bin, NULL);
     bool stat_src = Utils::Exist(src);
     bool stat_bin = Utils::Exist(bin);
+    errid_ = IRIS_SUCCESS;
     if (!stat_src && !stat_bin) {
       _error("NO KERNEL SRC[%s] NO KERNEL BIN[%s]", src, bin);
     } else if (!stat_src && stat_bin) {
