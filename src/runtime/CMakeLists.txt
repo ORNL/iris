@@ -82,16 +82,21 @@ set(IRIS_RUNTIME_HEADERS
   DeviceCUDA.h
   DeviceHexagon.h
   DeviceHIP.h
+  DeviceLevelZero.h
   DeviceOpenCL.h
   DeviceOpenMP.h
+  Filter.h
   FilterTaskSplit.h
   Graph.h
   History.h
   HubClient.h
+  Hub.h
+  jsmn.h
   JSON.h
   Kernel.h
   Loader.h
   LoaderHost2OpenCL.h
+  LoaderLevelZero.h
   LoaderHost2HIP.h
   LoaderHost2CUDA.h
   LoaderCUDA.h
@@ -111,8 +116,10 @@ set(IRIS_RUNTIME_HEADERS
   PolicyData.h
   PolicyDefault.h
   PolicyDevice.h
+  PolicyDepend.h
   PolicyProfile.h
   PolicyRandom.h
+  PolicyRoundRobin.h
   Polyhedral.h
   Pool.h
   PresentTable.h
@@ -124,6 +131,7 @@ set(IRIS_RUNTIME_HEADERS
   Reduction.h
   Retainable.h
   Scheduler.h
+  SchedulingHistory.h
   SigHandler.h
   Structs.h
   Task.h
