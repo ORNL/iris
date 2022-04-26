@@ -70,10 +70,18 @@ public:
   iris_host_task func() { return func_; }
   void* func_params() { return func_params_; }
   char* params() { return params_; }
-  double time() { return time_; }
   void set_params_map(int *pmap) { params_map_ = new int[kernel_nargs_]; memcpy(params_map_, pmap, sizeof(int)*kernel_nargs_); }
   int *get_params_map() { return params_map_; }
+  char* type_name() { return type_name_; }
+  char* name() { return name_; }
+  void set_name(char* name) { name_ = name; }
   double SetTime(double t);
+  double time() { return time_; }
+  void set_time_start(double d) { time_start_ = d; }
+  void set_time_end(double d) { time_end_ = d; }
+  double time_start() { return time_start_; }
+  double time_end() { return time_end_; }
+  double time_duration() { return time_end_-time_start_; }
 
 private:
   void Clear(bool init);
@@ -93,6 +101,8 @@ private:
   Task* task_;
   Platform* platform_;
   double time_;
+  double time_start_;
+  double time_end_;
   bool last_;
   bool exclusive_;
   KernelArg* kernel_args_;
@@ -106,6 +116,8 @@ private:
   iris_host_task func_;
   void* func_params_;
   char* params_;
+  char* type_name_;
+  char* name_;
 
 public:
   static Command* Create(Task* task, int type);

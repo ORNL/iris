@@ -31,7 +31,7 @@ Task::Task(Platform* platform, int type, const char* name) {
   system_ = false;
   arch_ = NULL;
   depends_ = NULL;
-  depends_max_ = 64;
+  depends_max_ = 1024;
   ndepends_ = 0;
   given_name_ = name != NULL;
   if (name) strcpy(name_, name);
@@ -59,7 +59,10 @@ double Task::TimeInc(double t) {
 }
 
 void Task::set_name(const char* name) {
-  if (name) strcpy(name_, name);
+  if (name) {
+    strcpy(name_, name);
+    given_name_ = true;
+  }
 }
 
 void Task::set_parent(Task* task) {
@@ -89,7 +92,10 @@ void Task::AddCommand(Command* cmd) {
   cmds_[ncmds_++] = cmd;
   if (cmd->type() == IRIS_CMD_KERNEL) {
     if (cmd_kernel_) _error("kernel[%s] is already set", cmd->kernel()->name());
-    //if (!given_name_) strcpy(name_, cmd->kernel()->name());
+    if (!given_name_) {
+      strcpy(name_, cmd->kernel()->name());
+      given_name_ = true;
+    }
     cmd_kernel_ = cmd;
   }
   if (!system_ &&

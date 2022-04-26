@@ -30,6 +30,7 @@
 #include "Profiler.h"
 #include "ProfilerDOT.h"
 #include "ProfilerGoogleCharts.h"
+#include "SchedulingHistory.h"
 #include "QueueTask.h"
 #include "Scheduler.h"
 #include "SigHandler.h"
@@ -71,6 +72,7 @@ Platform::Platform() {
   present_table_ = NULL;
   recording_ = false;
   enable_profiler_ = getenv("IRIS_PROFILE");
+  enable_scheduling_history_ = getenv("IRIS_HISTORY");
   nprofilers_ = 0;
   time_app_ = 0.0;
   time_init_ = 0.0;
@@ -105,6 +107,7 @@ Platform::~Platform() {
   if (null_kernel_) delete null_kernel_;
   if (enable_profiler_)
     for (int i = 0; i < nprofilers_; i++) delete profilers_[i];
+  if (scheduling_history_) delete scheduling_history_;
   if (sig_handler_) delete sig_handler_;
   if (json_) delete json_;
   if (pool_) delete pool_;
@@ -184,6 +187,8 @@ int Platform::Init(int* argc, char*** argv, int sync) {
     profilers_[nprofilers_++] = new ProfilerDOT(this);
     profilers_[nprofilers_++] = new ProfilerGoogleCharts(this);
   }
+  if (enable_scheduling_history_) scheduling_history_ = new SchedulingHistory(this);
+
 
   present_table_ = new PresentTable();
   queue_ = new QueueTask(this);
@@ -860,6 +865,9 @@ int Platform::TaskSubmit(iris_task brs_task, int brs_policy, const char* opt, in
   Task* task = brs_task->class_obj;
   task->Submit(brs_policy, opt, sync);
   if (recording_) json_->RecordTask(task);
+  if (enable_profiler_){
+    for (int i = 0; i < nprofilers_; i++) profilers_[i]->CompleteTask(task);
+  }
   if (scheduler_) {
     FilterSubmitExecute(task);
     scheduler_->Enqueue(task);
@@ -930,6 +938,8 @@ int Platform::TaskInfo(iris_task brs_task, int param, void* value, size_t* size)
 int Platform::MemCreate(size_t size, iris_mem* brs_mem) {
   Mem* mem = new Mem(size, this);
   if (brs_mem) *brs_mem = mem->struct_obj();
+  if (mem->size()==0) return IRIS_ERROR;
+
   mems_.insert(mem);
   return IRIS_SUCCESS;
 }
@@ -985,8 +995,8 @@ int Platform::GraphCreate(iris_graph* brs_graph) {
 int Platform::GraphCreateJSON(const char* path, void** params, iris_graph* brs_graph) {
   Graph* graph = Graph::Create(this);
   *brs_graph = graph->struct_obj();
-  json_->Load(graph, path, params);
-  return IRIS_SUCCESS;
+  int retcode = json_->Load(graph, path, params);
+  return retcode;
 }
 
 int Platform::GraphTask(iris_graph brs_graph, iris_task brs_task, int brs_policy, const char* opt) {
@@ -1144,7 +1154,8 @@ int Platform::Finalize() {
   _info("t18[%lf] t19[%lf] t20[%lf] t21[%lf]", timer()->Total(18), timer()->Total(19), timer()->Total(20), timer()->Total(21));
   finalize_ = true;
   pthread_mutex_unlock(&mutex_);
-  return ret_id;
+ if (scheduling_history_) delete scheduling_history_;
+   return ret_id;
 }
 
 } /* namespace rt */

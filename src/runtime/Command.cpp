@@ -34,6 +34,7 @@ void Command::Clear(bool init) {
   polymems_ = NULL;
   npolymems_ = 0;
   params_map_ = NULL;
+  name_ = NULL;
   off_[0] = 0; off_[1] = 0; off_[2] = 0;
   gws_[0] = 0; gws_[1] = 1; gws_[2] = 1;
   lws_[0] = 0; lws_[1] = 1; lws_[2] = 1;
@@ -51,6 +52,22 @@ void Command::Clear(bool init) {
 void Command::Set(Task* task, int type) {
   task_ = task;
   type_ = type;
+  switch(type){
+    case IRIS_CMD_INIT:        type_name_= const_cast<char*>("Init");    break;
+    case IRIS_CMD_KERNEL:      type_name_= const_cast<char*>("Kernel");  break;
+    case IRIS_CMD_MALLOC:      type_name_= const_cast<char*>("Malloc");  break;
+    case IRIS_CMD_H2D:         type_name_= const_cast<char*>("H2D");     break;
+    case IRIS_CMD_H2DNP:       type_name_= const_cast<char*>("H2DNP");   break;
+    case IRIS_CMD_D2H:         type_name_= const_cast<char*>("D2H");     break;
+    case IRIS_CMD_MAP:         type_name_= const_cast<char*>("Map");     break;
+    case IRIS_CMD_RELEASE_MEM: type_name_= const_cast<char*>("Release"); break;
+    case IRIS_CMD_HOST:        type_name_= const_cast<char*>("Host");    break;
+    case IRIS_CMD_CUSTOM:      type_name_= const_cast<char*>("Custom");  break;
+    default: _error("cmd type[0x%x]", type);
+  }
+  if (task->ncmds() == 0 && task->name()){ 
+    name_ = task->name();
+  }
   platform_ = task->platform();
 }
 

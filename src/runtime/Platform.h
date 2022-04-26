@@ -9,7 +9,9 @@
 #include <map>
 #include <mutex>
 #include <string>
+
 #include "Config.h"
+#include "SchedulingHistory.h"
 
 namespace iris {
 namespace rt {
@@ -39,6 +41,7 @@ class SigHandler;
 class Task;
 class Timer;
 class Worker;
+class SchedulingHistory;
 
 class Platform {
 private:
@@ -142,6 +145,8 @@ public:
   char* host() { return host_; }
   Profiler** profilers() { return profilers_; }
   int nprofilers() { return nprofilers_; }
+  bool enable_scheduling_history() { return enable_scheduling_history_; }
+  SchedulingHistory* scheduling_history() { return scheduling_history_; }
   double time_app() { return time_app_; }
   double time_init() { return time_init_; }
   bool enable_profiler() { return enable_profiler_; }
@@ -218,6 +223,9 @@ private:
   bool enable_profiler_;
   Profiler* profilers_[8];
   int nprofilers_;
+
+  bool enable_scheduling_history_;
+  SchedulingHistory* scheduling_history_;
 
   Kernel* null_kernel_;
 

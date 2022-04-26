@@ -41,9 +41,11 @@ void Device::Execute(Task* task) {
   busy_ = true;
   if (hook_task_pre_) hook_task_pre_(task);
   TaskPre(task);
+  task->set_time_start(timer_->Now());
   for (int i = 0; i < task->ncmds(); i++) {
     Command* cmd = task->cmd(i);
     if (hook_command_pre_) hook_command_pre_(cmd);
+    cmd->set_time_start(timer_->Now());
     switch (cmd->type()) {
       case IRIS_CMD_INIT:         ExecuteInit(cmd);       break;
       case IRIS_CMD_KERNEL:       ExecuteKernel(cmd);     break;
@@ -57,11 +59,13 @@ void Device::Execute(Task* task) {
       case IRIS_CMD_CUSTOM:       ExecuteCustom(cmd);     break;
       default: _error("cmd type[0x%x]", cmd->type());
     }
+    cmd->set_time_end(timer_->Now());
     if (hook_command_post_) hook_command_post_(cmd);
 #ifndef IRIS_SYNC_EXECUTION
     if (cmd->last()) AddCallback(task);
 #endif
   }
+  task->set_time_end(timer_->Now());
   TaskPost(task);
   if (hook_task_post_) hook_task_post_(task);
 //  if (++q_ >= nqueues_) q_ = 0;
@@ -74,6 +78,7 @@ void Device::Execute(Task* task) {
 
 void Device::ExecuteInit(Command* cmd) {
   timer_->Start(IRIS_TIMER_INIT);
+  cmd->set_time_start(timer_->Now());
   if (SupportJIT()) {
     char* tmpdir = NULL;
     char* src = NULL;
@@ -83,6 +88,7 @@ void Device::ExecuteInit(Command* cmd) {
     Platform::GetPlatform()->EnvironmentGet(kernel_bin(), &bin, NULL);
     bool stat_src = Utils::Exist(src);
     bool stat_bin = Utils::Exist(bin);
+    errid_ = IRIS_SUCCESS;
     if (!stat_src && !stat_bin) {
       _error("NO KERNEL SRC[%s] NO KERNEL BIN[%s]", src, bin);
     } else if (!stat_src && stat_bin) {
@@ -102,13 +108,16 @@ void Device::ExecuteInit(Command* cmd) {
   }
   errid_ = Init();
   if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
+  cmd->set_time_end(timer_->Now());
   double time = timer_->Stop(IRIS_TIMER_INIT);
   cmd->SetTime(time);
+  if (Platform::GetPlatform()->enable_scheduling_history()) Platform::GetPlatform()->scheduling_history()->AddKernel(cmd);
   enable_ = true;
 }
 
 void Device::ExecuteKernel(Command* cmd) {
   timer_->Start(IRIS_TIMER_KERNEL);
+  cmd->set_time_start(timer_->Now());
   Kernel* kernel = ExecuteSelectorKernel(cmd);
   int dim = cmd->dim();
   size_t* off = cmd->off();
@@ -160,14 +169,19 @@ void Device::ExecuteKernel(Command* cmd) {
   }
 #endif
   errid_ = KernelLaunch(kernel, dim, off, gws, lws[0] > 0 ? lws : NULL);
+  cmd->set_time_end(timer_->Now());
   double time = timer_->Stop(IRIS_TIMER_KERNEL);
   cmd->SetTime(time);
   cmd->kernel()->history()->AddKernel(cmd, this, time);
+  if (Platform::GetPlatform()->enable_scheduling_history()) Platform::GetPlatform()->scheduling_history()->AddKernel(cmd);
 }
 
 void Device::ExecuteMalloc(Command* cmd) {
+  cmd->set_time_start(timer_->Now());
   Mem* mem = cmd->mem();
   void* arch = mem->arch(this);
+  cmd->set_time_end(timer_->Now());
+  if (Platform::GetPlatform()->enable_scheduling_history()) Platform::GetPlatform()->scheduling_history()->AddH2D(cmd);
   _trace("dev[%d] malloc[%p]", devno_, arch);
 }
 
@@ -185,6 +199,7 @@ void Device::ExecuteH2D(Command* cmd) {
   if (exclusive) mem->SetOwner(off, size, this);
   else mem->AddOwner(off, size, this);
   timer_->Start(IRIS_TIMER_H2D);
+  cmd->set_time_start(timer_->Now());
   bool is_mem_xfer_skipped = true;
   //printf("DeviceH2D device no:%d\n", devno_);
   // Decide whether memory transfer required or not
@@ -204,11 +219,13 @@ void Device::ExecuteH2D(Command* cmd) {
   }
   errid_ = MemH2D(mem, ptr_off, gws, lws, elem_size, dim, size, host);
   if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
+  cmd->set_time_end(timer_->Now());
   double time = timer_->Stop(IRIS_TIMER_H2D);
   cmd->SetTime(time);
   Command* cmd_kernel = cmd->task()->cmd_kernel();
   if (cmd_kernel) cmd_kernel->kernel()->history()->AddH2D(cmd, this, time);
   else Platform::GetPlatform()->null_kernel()->history()->AddH2D(cmd, this, time);
+  if (Platform::GetPlatform()->enable_scheduling_history()) Platform::GetPlatform()->scheduling_history()->AddH2D(cmd);
 }
 
 void Device::ExecuteH2DNP(Command* cmd) {
@@ -232,6 +249,7 @@ void Device::ExecuteD2H(Command* cmd) {
   int mode = mem->mode();
   int expansion = mem->expansion();
   timer_->Start(IRIS_TIMER_D2H);
+  cmd->set_time_start(timer_->Now());
   errid_ = IRIS_SUCCESS;
   bool is_mem_xfer_skipped = true;
   // Decide whether memory transfer required or not
@@ -248,16 +266,19 @@ void Device::ExecuteD2H(Command* cmd) {
       _trace("Dev[%d][%s] MemD2H is skipped", devno_, name_);
       return;
   }
+
   if (mode & iris_reduction) {
     errid_ = MemD2H(mem, ptr_off, gws, lws, elem_size, dim, mem->size() * expansion, mem->host_inter());
     Reduction::GetInstance()->Reduce(mem, host, size);
   } else errid_ = MemD2H(mem, ptr_off, gws, lws, elem_size, dim, size, host);
   if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
+  cmd->set_time_end(timer_->Now());
   double time = timer_->Stop(IRIS_TIMER_D2H);
   cmd->SetTime(time);
   Command* cmd_kernel = cmd->task()->cmd_kernel();
   if (cmd_kernel) cmd_kernel->kernel()->history()->AddD2H(cmd, this, time);
   else Platform::GetPlatform()->null_kernel()->history()->AddD2H(cmd, this, time);
+  if (Platform::GetPlatform()->enable_scheduling_history()) Platform::GetPlatform()->scheduling_history()->AddD2H(cmd);
 }
 
 void Device::ExecuteMap(Command* cmd) {
