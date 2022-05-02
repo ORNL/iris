@@ -7,33 +7,54 @@ if [[ -z "$CONDA_PREFIX" ]] ; then
   exit
 fi
 
+# load system specific modules
 export SYSTEM=`hostname`
+if [[ "$SYSTEM" = oswald* ]] ; then
+  module load cmake/3.19.2 gnu/9.1.0 nvhpc/21.3
+  export SM=sm_60
+  export CUDA_PATH=/opt/nvidia/hpc_sdk/Linux_x86_64/21.3/cuda
+  #only update the path and library-path the first time!
+  if [[ $PATH != *$CUDA_PATH* ]]; then
+    export PATH=$CUDA_PATH/bin:$PATH
+    export LD_LIBRARY_PATH=$CUDA_PATH/lib64:$LD_LIBRARY_PATH
+  fi
 
-#start with a clean build of iris
-cd ../.. ; ./build.sh ; cd apps/dagger
-make clean
-if [ "$SYSTEM" = "leconte" ] ; then
+  export TARGETS="dagger_runner kernel.ptx"
+elif [[ "$SYSTEM" = leconte ]] ; then
    module load gnu/9.2.0 nvhpc/21.3
    export CUDA_PATH=/opt/nvidia/hpc_sdk/Linux_ppc64le/21.3/cuda
    if [[ $PATH != *$CUDA_PATH* ]]; then
       export PATH=$CUDA_PATH/bin:$PATH
       export LD_LIBRARY_PATH=$CUDA_PATH/lib64:$LD_LIBRARY_PATH
    fi
-  rm -f *.csv ; make dagger_runner kernel.ptx
-elif [ "$SYSTEM" = "explorer" ] ; then
-  rm -f *.csv ; make dagger_runner kernel.hip
-else 
-  rm -f *.csv ; make dagger_runner
+
+   export TARGETS="dagger_runner kernel.ptx"
+elif [[ "$SYSTEM" = explorer ]] ; then
+  export TARGETS="dagger_runner kernel.hip"
+else
+  export TARGETS="dagger_runner"
 fi
 
+#start with a clean build of iris
+cd ../.. ; ./build.sh ; export iris_build_status="$?" ; cd apps/dagger
+#and abort if iris didn't successfully install
+if [ $iris_build_status -ne 0 ]; then
+  exit
+fi
+
+#build app
+make clean
+rm -f *.csv ; echo "making targets: $TARGETS"; make $TARGETS
 #don't proceed if the target failed to build
-if ! [ -f dagger_runner ] ; then
+if [ "$?" -ne 0 ] ; then
   exit
 fi
 
 #ensure libiris.so is in the shared library path
+if [[ $PATH != *$HOME/.local/lib* ]]; then
   echo "ADDING $HOME/.local/lib64 to LD_LIBRARY_PATH"
-export LD_LIBRARY_PATH=$HOME/.local/lib64:$HOME/.local/lib:$LD_LIBRARY_PATH
+  export LD_LIBRARY_PATH=$HOME/.local/lib64:$HOME/.local/lib:$LD_LIBRARY_PATH
+fi
 
 #build linear-10 DAG
 ./dagger_generator.py --kernels="bigk" --duplicates="0" --buffers-per-kernel="bigk:w r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=10 --num-tasks=10 --min-width=1 --max-width=1

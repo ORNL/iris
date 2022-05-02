@@ -10,6 +10,7 @@
 #include <string.h>
 #include <signal.h>
 #include <cmath>
+#include <string>
 
 double t0, t1;
 
