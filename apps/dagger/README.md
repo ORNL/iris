@@ -3,6 +3,16 @@
 
 Dagger is a simple python program `./dagger_generator.py` which generates task-graphs of arbitary length and complexity.
 
+##Installation
+
+The generator and visualization tools use python. All packages are installed via the conda package manager.
+To create a working environment, it should be as simple as:
+
+```
+  conda env create -f dagger.yaml
+  conda activate dagger
+```
+
 ## Usage:
 
 ```
