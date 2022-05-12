@@ -80,7 +80,7 @@ Platform::Platform() {
   hook_task_post_ = NULL;
   hook_command_pre_ = NULL;
   hook_command_post_ = NULL;
-
+  scheduling_history_ = NULL;
   pthread_mutex_init(&mutex_, NULL);
 }
 
