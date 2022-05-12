@@ -86,8 +86,6 @@ int DeviceOpenCL::Init() {
   clcmdq_ = ld_->clCreateCommandQueue(clctx_, cldev_, 0, &err_);
   if (host2opencl_ld_->iris_host2opencl_init)
       host2opencl_ld_->iris_host2opencl_init();
-  if (host2opencl_ld_->iris_host2opencl_set_handle)
-      host2opencl_ld_->iris_host2opencl_set_handle(&clcmdq_);
   _clerror(err_);
   if (err_ != CL_SUCCESS) return IRIS_ERROR;
 
@@ -122,7 +120,7 @@ int DeviceOpenCL::Init() {
     if (src) free(src);
     return IRIS_ERROR;
   }
-  size_t nkernels;
+  size_t nkernels=0;
   ld_->clGetProgramInfo(clprog_, CL_PROGRAM_NUM_KERNELS, sizeof(nkernels), &nkernels, NULL);
   ld_->clGetProgramInfo(clprog_, CL_PROGRAM_KERNEL_NAMES, 0, NULL, &len);
   char* kernel_names = (char*) malloc(len + 1);
@@ -251,9 +249,11 @@ int DeviceOpenCL::KernelSetMem(Kernel* kernel, int idx, Mem* mem, size_t off) {
 
 int DeviceOpenCL::KernelLaunchInit(Kernel* kernel) {
     set_vendor_specific_kernel(false);
-    if (host2opencl_ld_->iris_host2opencl_kernel)
+    if (host2opencl_ld_->iris_host2opencl_kernel) {
+	host2opencl_ld_->iris_host2opencl_set_handle(&clcmdq_);
         if (host2opencl_ld_->iris_host2opencl_kernel(kernel->name()) == IRIS_SUCCESS)
             set_vendor_specific_kernel(true);
+    }
     return IRIS_SUCCESS;
 }
 
