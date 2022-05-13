@@ -4,7 +4,7 @@
 #include <malloc.h>
 
 size_t SIZE, UNIT;
-int VERBOSE;
+int VERBOSE = 1;
 int TARGET;
 double *A, *B, *C;
 double t0, t1, t2, t3;
@@ -41,7 +41,7 @@ int main(int argc, char** argv) {
 
   SIZE = argc > 1 ? atol(argv[1]) : 64;
   TARGET = argc > 2 ? atoi(argv[2]) : 0;
-  VERBOSE = argc > 3 ? atol(argv[3]) : 0;
+  VERBOSE = argc > 3 ? atol(argv[3]) : 1;
 
   int target_dev = TARGET == 0 ? iris_cpu : TARGET == 1 ? iris_gpu : TARGET == 2 ? iris_dsp : TARGET == 3 ? iris_nvidia : TARGET == 4 ? iris_amd : iris_fpga;
   printf("SIZE[%d] MATRIX_SIZE[%u]MB VERBOSE[%d] TARGET[%d]\n", SIZE, SIZE * SIZE * sizeof(double) / 1024 / 1024, VERBOSE, TARGET);
@@ -70,7 +70,7 @@ int main(int argc, char** argv) {
   iris_task_h2d(task, mem_A, 0, SIZE * SIZE * sizeof(double), A);
   iris_task_h2d(task, mem_B, 0, SIZE * SIZE * sizeof(double), B);
   size_t ijk_idx[2] = { SIZE, SIZE };
-  size_t lws_size = (SIZE > 32) ? 32 : SIZE;
+  size_t lws_size = (SIZE > 16 ) ? 16 : SIZE;
   size_t ijk_lws[2] = { lws_size, lws_size };
   void* params[3] = { mem_C, mem_A, mem_B };
   int pinfo[3] = { iris_w, iris_r, iris_r };
@@ -82,30 +82,33 @@ int main(int argc, char** argv) {
 
   if (VERBOSE) {
 
+  int print_size = (SIZE > 8) ? 8: SIZE;
   printf("[[ A ]]\n");
-  for (int i = 0; i < SIZE; i++) {
-    for (int j = 0; j < SIZE; j++) {
+  for (int i = 0; i < print_size; i++) {
+    for (int j = 0; j < print_size; j++) {
       printf("%5.0lf ", A[i * SIZE + j]);
     }
     printf("\n");
   }
 
   printf("[[ B ]]\n");
-  for (int i = 0; i < SIZE; i++) {
-    for (int j = 0; j < SIZE; j++) {
+  for (int i = 0; i < print_size; i++) {
+    for (int j = 0; j < print_size; j++) {
       printf("%5.0lf ", B[i * SIZE + j]);
     }
     printf("\n");
   }
 
   printf("[[ C ]]\n");
-  for (int i = 0; i < SIZE; i++) {
-    for (int j = 0; j < SIZE; j++) {
+  for (int i = 0; i < print_size; i++) {
+    for (int j = 0; j < print_size; j++) {
       printf("%5.0lf ", C[i * SIZE + j]);
     }
     printf("\n");
   }
 
+  int error_check = 0;
+  if (error_check) {
   printf("Checking errors\n");
   for (int i = 0; i < SIZE; i++) {
     for (int j = 0; j < SIZE; j++) {
@@ -115,6 +118,7 @@ int main(int argc, char** argv) {
       }
       if (sum != C[i * SIZE + j]) ERROR++;
     }
+  }
   }
 
   }
