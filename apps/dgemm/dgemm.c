@@ -6,13 +6,13 @@
 size_t SIZE, UNIT;
 int VERBOSE;
 int TARGET;
-float *A, *B, *C;
+double *A, *B, *C;
 double t0, t1, t2, t3;
 
 void ijk() {
   for (int i = 0; i < SIZE; i++) {
     for (int j = 0; j < SIZE; j++) {
-      float sum = 0.0;
+      double sum = 0.0;
       for (int k = 0; k < SIZE; k++) {
         sum += A[i * SIZE + k] * B[k * SIZE + j];
       }
@@ -24,7 +24,7 @@ void ijk() {
 void kij() {
   for (int k = 0; k < SIZE; k++) {
     for (int i = 0; i < SIZE; i++) {
-      float a = A[i * SIZE + k];
+      double a = A[i * SIZE + k];
       for (int j = 0; j < SIZE; j++) {
         C[i * SIZE + j] += a * B[k * SIZE + j];
       }
@@ -44,38 +44,38 @@ int main(int argc, char** argv) {
   VERBOSE = argc > 3 ? atol(argv[3]) : 0;
 
   int target_dev = TARGET == 0 ? iris_cpu : TARGET == 1 ? iris_gpu : TARGET == 2 ? iris_dsp : TARGET == 3 ? iris_nvidia : TARGET == 4 ? iris_amd : iris_fpga;
-  printf("SIZE[%d] MATRIX_SIZE[%u]MB VERBOSE[%d] TARGET[%d]\n", SIZE, SIZE * SIZE * sizeof(float) / 1024 / 1024, VERBOSE, TARGET);
+  printf("SIZE[%d] MATRIX_SIZE[%u]MB VERBOSE[%d] TARGET[%d]\n", SIZE, SIZE * SIZE * sizeof(double) / 1024 / 1024, VERBOSE, TARGET);
 
-  A = (float*) malloc(SIZE * SIZE * sizeof(float));
-  B = (float*) malloc(SIZE * SIZE * sizeof(float));
-  C = (float*) malloc(SIZE * SIZE * sizeof(float));
+  A = (double*) malloc(SIZE * SIZE * sizeof(double));
+  B = (double*) malloc(SIZE * SIZE * sizeof(double));
+  C = (double*) malloc(SIZE * SIZE * sizeof(double));
 
   for (int i = 0; i < SIZE * SIZE; i++) {
-    A[i] = (float)i+1;
-    B[i] = (float)((i+1) * 10);
-    C[i] = (float)0;
+    A[i] = (double)i+1;
+    B[i] = (double)((i+1) * 10);
+    C[i] = (double)0;
   }
 
   iris_mem mem_A;
   iris_mem mem_B;
   iris_mem mem_C;
-  iris_mem_create(SIZE * SIZE * sizeof(float), &mem_A);
-  iris_mem_create(SIZE * SIZE * sizeof(float), &mem_B);
-  iris_mem_create(SIZE * SIZE * sizeof(float), &mem_C);
+  iris_mem_create(SIZE * SIZE * sizeof(double), &mem_A);
+  iris_mem_create(SIZE * SIZE * sizeof(double), &mem_B);
+  iris_mem_create(SIZE * SIZE * sizeof(double), &mem_C);
 
   iris_timer_now(&t1);
 
   iris_task task;
   iris_task_create(&task);
-  iris_task_h2d(task, mem_A, 0, SIZE * SIZE * sizeof(float), A);
-  iris_task_h2d(task, mem_B, 0, SIZE * SIZE * sizeof(float), B);
+  iris_task_h2d(task, mem_A, 0, SIZE * SIZE * sizeof(double), A);
+  iris_task_h2d(task, mem_B, 0, SIZE * SIZE * sizeof(double), B);
   size_t ijk_idx[2] = { SIZE, SIZE };
   size_t lws_size = (SIZE > 32) ? 32 : SIZE;
   size_t ijk_lws[2] = { lws_size, lws_size };
   void* params[3] = { mem_C, mem_A, mem_B };
   int pinfo[3] = { iris_w, iris_r, iris_r };
   iris_task_kernel(task, "ijk", 2, NULL, ijk_idx, ijk_lws, 3, params, pinfo);
-  iris_task_d2h(task, mem_C, 0, SIZE * SIZE * sizeof(float), C);
+  iris_task_d2h(task, mem_C, 0, SIZE * SIZE * sizeof(double), C);
   iris_task_submit(task, target_dev, NULL, 1);
 
   iris_timer_now(&t2);
@@ -109,7 +109,7 @@ int main(int argc, char** argv) {
   printf("Checking errors\n");
   for (int i = 0; i < SIZE; i++) {
     for (int j = 0; j < SIZE; j++) {
-      float sum = 0.0;
+      double sum = 0.0;
       for (int k = 0; k < SIZE; k++) {
         sum += A[i * SIZE + k] * B[k * SIZE + j];
       }
