@@ -27,6 +27,7 @@ static int iris_host2hip_kernel_idx;
 
 void iris_host2hip_init() {
   pthread_mutex_init(&iris_host2hip_mutex, NULL);
+  iris_host2hip_init_core();
 }
 
 void iris_host2hip_finalize() {
