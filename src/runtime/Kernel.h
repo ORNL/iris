@@ -28,7 +28,7 @@ public:
 
   int SetArg(int idx, size_t size, void* value);
   int SetMem(int idx, Mem* mem, size_t off, int mode);
-  std::map<int, KernelArg*>* ExportArgs();
+  KernelArg* ExportArgs();
 
   char* name() { return name_; }
 

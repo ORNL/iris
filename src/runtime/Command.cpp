@@ -89,7 +89,7 @@ Command* Command::CreateInit(Task* task) {
 Command* Command::CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws) {
   Command* cmd = Create(task, IRIS_CMD_KERNEL);
   cmd->kernel_ = kernel;
-  //cmd->kernel_args_ = kernel->ExportArgs();
+  cmd->kernel_args_ = kernel->ExportArgs();
   cmd->dim_ = dim;
   for (int i = 0; i < dim; i++) {
     cmd->off_[i] = off ? off[i] : 0ULL;

@@ -2,6 +2,7 @@
 #include "Debug.h"
 #include "Device.h"
 #include "History.h"
+#include "Mem.h"
 #include <string.h>
 
 namespace iris {
@@ -29,36 +30,43 @@ int Kernel::SetArg(int idx, size_t size, void* value) {
   arg->size = size;
   if (value) memcpy(arg->value, value, size);
   arg->mem = NULL;
-  arg->off = 0;
+  arg->off = 0ULL;
   args_[idx] = arg;
   return IRIS_SUCCESS;
 }
 
 int Kernel::SetMem(int idx, Mem* mem, size_t off, int mode) {
   KernelArg* arg = new KernelArg;
+  if(!mem) {
+    _error("no mem[%p] for the kernel parameter %d", mem, idx);
+    return IRIS_ERROR;
+  }
   arg->mem = mem;
   arg->off = off;
   arg->mode = mode;
+  arg->mem_off = 0;
+  arg->mem_size = mem->size();
   args_[idx] = arg;
   return IRIS_SUCCESS;
 }
 
-std::map<int, KernelArg*>* Kernel::ExportArgs() {
-  std::map<int, KernelArg*>* new_args = new std::map<int, KernelArg*>();
+KernelArg* Kernel::ExportArgs() {
+  KernelArg* new_args = new KernelArg[args_.size()];
   for (std::map<int, KernelArg*>::iterator I = args_.begin(), E = args_.end(); I != E; ++I) {
+    KernelArg* new_arg = new_args + I->first;
     KernelArg* arg = I->second;
-    KernelArg* new_arg = new KernelArg;
     if (arg->mem) {
       new_arg->mem = arg->mem;
       new_arg->off = arg->off;
       new_arg->mode = arg->mode;
+      new_arg->mem_off = arg->mem_off;
+      new_arg->mem_size = arg->mem_size;
     } else {
       new_arg->size = arg->size; 
       memcpy(new_arg->value, arg->value, arg->size);
       new_arg->mem = NULL;
-      new_arg->off = 0;
+      new_arg->off = 0ULL;
     }
-    (*new_args)[I->first] = new_arg;
   }
   return new_args;
 }
