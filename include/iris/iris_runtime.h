@@ -42,6 +42,9 @@ extern "C" {
 #define iris_r                  -1
 #define iris_w                  -2
 #define iris_rw                 -3
+#define iris_xr                 -4
+#define iris_xw                 -5
+#define iris_xrw                -6
 
 #define iris_int                (1 << 0)
 #define iris_long               (1 << 1)
@@ -112,15 +115,18 @@ extern int iris_task_create(iris_task* task);
 extern int iris_task_create_perm(iris_task* task);
 extern int iris_task_create_name(const char* name, iris_task* task);
 extern int iris_task_depend(iris_task task, int ntasks, iris_task* tasks);
+extern int iris_task_malloc(iris_task task, iris_mem mem);
 extern int iris_task_h2d(iris_task task, iris_mem mem, size_t off, size_t size, void* host);
 extern int iris_task_h2d_offsets(iris_task task, iris_mem mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, void* host);
 extern int iris_task_d2h(iris_task task, iris_mem mem, size_t off, size_t size, void* host);
 extern int iris_task_d2h_offsets(iris_task task, iris_mem mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, void* host);
 extern int iris_task_h2d_full(iris_task task, iris_mem mem, void* host);
 extern int iris_task_d2h_full(iris_task task, iris_mem mem, void* host);
+extern int iris_task_kernel_object(iris_task task, iris_kernel kernel, int dim, size_t* off, size_t* gws, size_t* lws);
 extern int iris_task_kernel(iris_task task, const char* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, int* params_info);
 extern int iris_task_kernel_v2(iris_task task, const char* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, size_t* params_off, int* params_info);
 extern int iris_task_kernel_v3(iris_task task, const char* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, size_t* params_off, int* params_info, size_t* memranges);
+extern int iris_task_kernel_selector(iris_task task, iris_selector_kernel func, void* params, size_t params_size);
 extern int iris_task_host(iris_task task, iris_host_task func, void* params);
 extern int iris_task_host(iris_task task, iris_host_task func, void* params);
 extern int iris_task_custom(iris_task task, int tag, void* params, size_t params_size);
@@ -148,6 +154,11 @@ extern int iris_graph_task(iris_graph graph, iris_task task, int device, const c
 extern int iris_graph_submit(iris_graph graph, int device, int sync);
 extern int iris_graph_wait(iris_graph graph);
 extern int iris_graph_wait_all(int ngraphs, iris_graph* graphs);
+
+extern int iris_record_start();
+extern int iris_record_stop();
+
+extern int iris_timer_now(double* time);
 
 #ifdef __cplusplus
 } /* end of extern "C" */

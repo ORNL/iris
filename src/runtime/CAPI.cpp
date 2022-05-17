@@ -77,6 +77,10 @@ int iris_task_depend(iris_task task, int ntasks, iris_task* tasks) {
   return Platform::GetPlatform()->TaskDepend(task, ntasks, tasks);
 }
 
+int iris_task_malloc(iris_task task, iris_mem mem) {
+  return Platform::GetPlatform()->TaskMalloc(task, mem);
+}
+
 int iris_task_h2d(iris_task task, iris_mem mem, size_t off, size_t size, void* host) {
   return Platform::GetPlatform()->TaskH2D(task, mem, off, size, host);
 }
@@ -99,6 +103,10 @@ int iris_task_h2d_full(iris_task task, iris_mem mem, void* host) {
 
 int iris_task_d2h_full(iris_task task, iris_mem mem, void* host) {
   return Platform::GetPlatform()->TaskD2HFull(task, mem, host);
+}
+
+int iris_task_kernel_object(iris_task task, iris_kernel kernel, int dim, size_t* off, size_t* gws, size_t* lws) {
+  return Platform::GetPlatform()->TaskKernel(task, kernel, dim, off, gws, lws);
 }
 
 int iris_task_kernel(iris_task task, const char* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, int* params_info) {
@@ -173,10 +181,6 @@ int iris_mem_release(iris_mem mem) {
   return Platform::GetPlatform()->MemRelease(mem);
 }
 
-int iris_timer_now(double* time) {
-  return Platform::GetPlatform()->TimerNow(time);
-}
-
 int iris_register_command(int tag, int device, command_handler handler) {
   return Platform::GetPlatform()->RegisterCommand(tag, device, handler);
 }
@@ -191,6 +195,26 @@ int iris_register_hooks_command(hook_command pre, hook_command post) {
 
 int iris_kernel_create(const char* name, iris_kernel* kernel) {
   return Platform::GetPlatform()->KernelCreate(name, kernel);
+}
+
+int iris_kernel_get(const char* name, iris_kernel* kernel) {
+  return Platform::GetPlatform()->KernelGet(name, kernel);
+}
+
+int iris_kernel_setarg(iris_kernel kernel, int idx, size_t size, void* value) {
+  return Platform::GetPlatform()->KernelSetArg(kernel, idx, size, value);
+}
+
+int iris_kernel_setmem(iris_kernel kernel, int idx, iris_mem mem, size_t mode) {
+  return Platform::GetPlatform()->KernelSetMem(kernel, idx, mem, 0, mode);
+}
+
+int iris_kernel_setmem_off(iris_kernel kernel, int idx, iris_mem mem, size_t off, size_t mode) {
+  return Platform::GetPlatform()->KernelSetMem(kernel, idx, mem, off, mode);
+}
+
+int iris_kernel_release(iris_kernel kernel) {
+  return Platform::GetPlatform()->KernelRelease(kernel);
 }
 
 int iris_graph_create(iris_graph* graph) {
@@ -216,6 +240,19 @@ int iris_graph_wait(iris_graph graph) {
 int iris_graph_wait_all(int ngraphs, iris_graph* graphs) {
   return Platform::GetPlatform()->GraphWaitAll(ngraphs, graphs);
 }
+
+int iris_record_start() {
+  return Platform::GetPlatform()->RecordStart();
+}
+
+int iris_record_stop() {
+  return Platform::GetPlatform()->RecordStop();
+}
+
+int iris_timer_now(double* time) {
+  return Platform::GetPlatform()->TimerNow(time);
+}
+
 
 
 
