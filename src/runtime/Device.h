@@ -4,7 +4,9 @@
 #include "Config.h"
 #include <map>
 
+#ifndef IRIS_ASYNC_STREAMING
 #define IRIS_SYNC_EXECUTION
+#endif //IRIS_ASYNC_STREAMING
 
 namespace iris {
 namespace rt {

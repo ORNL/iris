@@ -15,6 +15,10 @@ if (COVERAGE)
    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage")
 endif()
 
+if (IRIS_ASYNC_STREAMING) 
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DIRIS_ASYNC_STREAMING")
+endif()
+
 set(IRIS_RUNTIME_SOURCES
   CAPI.cpp
   Command.cpp
