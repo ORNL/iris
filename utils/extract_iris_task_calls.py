@@ -186,6 +186,8 @@ static int iris_kernel_idx = 0;
     lines.append('''
 #define HANDLE irishxg_handle_stub(), 
 #define HANDLETYPE uint64_t,
+#define StreamType
+#define STREAM_VAR
 #endif //IRIS_HEXAGON
             ''')
     lines.append('''
@@ -210,6 +212,7 @@ static int iris_kernel_idx = 0;
 #define iris_launch iris_openmp_launch
 #define HANDLE
 #define HANDLETYPE 
+#define STREAM_VAR
             ''')
     for k,v in data_hash.items():
         lines.append("#define iris_kernel_"+k+" "+k)
@@ -227,6 +230,7 @@ static int iris_kernel_idx = 0;
 #define iris_launch iris_host2opencl_launch
 #define HANDLE  iris_host2opencl_get_handle(), 
 #define HANDLETYPE void *,
+#define STREAM_VAR
             ''')
     lines.append("#ifdef HOST2OPENCL")
     for k,v in data_hash.items():
@@ -248,6 +252,12 @@ static int iris_kernel_idx = 0;
 #define iris_launch iris_host2hip_launch
 #define HANDLE 
 #define HANDLETYPE 
+#ifndef IRIS_ENABLE_STREAMS
+#define STREAM_VAR
+#else
+#define StreamType hipStream_t
+#define STREAM_VAR stream,
+#endif
             ''')
     lines.append("#ifdef HOST2HIP")
     for k,v in data_hash.items():
@@ -269,6 +279,12 @@ static int iris_kernel_idx = 0;
 #define iris_launch iris_host2cuda_launch
 #define HANDLE 
 #define HANDLETYPE 
+#ifndef IRIS_ENABLE_STREAMS
+#define STREAM_VAR
+#else
+#define StreamType CUstream
+#define STREAM_VAR stream,
+#endif
             ''')
     lines.append("#ifdef HOST2CUDA")
     for k,v in data_hash.items():
@@ -562,7 +578,11 @@ int iris_kernel(const char* name) {
 }
         ''')
     lines.append('''
-int iris_launch(int dim, size_t off, size_t ndr) {
+int iris_launch(
+#ifdef IRIS_ENABLE_STREAMS
+        StreamType  stream,
+#endif
+        int dim, size_t off, size_t ndr) {
         switch(iris_kernel_idx) {
         ''')
     def InsertConditionalParameters(k, expr, f_details, params, lines):
@@ -599,7 +619,7 @@ int iris_launch(int dim, size_t off, size_t ndr) {
            params.clear()
 
     for k,v in data_hash.items():
-        lines.append("\t\t\tcase "+str(k_hash[k])+": iris_kernel_"+k+"(HANDLE ")
+        lines.append("\t\t\tcase "+str(k_hash[k])+": iris_kernel_"+k+"(HANDLE STREAM_VAR")
         params = []
         i = arguments_start_index
         one_param_exists = False

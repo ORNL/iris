@@ -337,7 +337,11 @@ int DeviceCUDA::KernelLaunchInit(Kernel* kernel) {
 
 int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws) {
   if (is_vendor_specific_kernel() && host2cuda_ld_->iris_host2cuda_launch) {
+#ifdef IRIS_SYNC_EXECUTION
       return host2cuda_ld_->iris_host2cuda_launch(dim, off[0], gws[0]);
+#else
+      return host2cuda_ld_->iris_host2cuda_launch(streams_[q_], dim, off[0], gws[0]);
+#endif
   }
   CUfunction cukernel = (CUfunction) kernel->arch(this);
   int block[3] = { lws ? (int) lws[0] : 1, lws ? (int) lws[1] : 1, lws ? (int) lws[2] : 1 };
