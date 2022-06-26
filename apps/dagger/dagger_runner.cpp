@@ -7,10 +7,11 @@
 #include <getopt.h>
 #include <map>
 #include <vector>
-#include <string.h>
+#include <string>
+#include <cstring>
 #include <signal.h>
 #include <cmath>
-#include <string>
+#include <limits>
 
 double t0, t1;
 
@@ -34,7 +35,8 @@ void ShowUsage(){
 }
 
 int main(int argc, char** argv) {
-
+  
+  printf("PWD= %s\n",argv[0]);
   size_t SIZE;
   int REPEATS;
   char* POLICY;
@@ -45,11 +47,8 @@ int main(int argc, char** argv) {
   double *A, *B;
   int retcode;
   int task_target = -1;//this is set by setting the scheduling-policy e.g. --scheduling-policy="roundrobin"
-  int memory_task_target = iris_data;//TODO: should really be iris_depend or iris_data?
+  int memory_task_target = iris_pending;
   int duplicates = 0;
-
-  bool SHOW_RESULTS = false;
-  bool VERIFY = false;
 
   std::map<std::string,bool> required_arguments_set = {
     {"kernels", false},
@@ -82,9 +81,6 @@ int main(int argc, char** argv) {
   };
 
   std::vector<kernel_parameters> kernels;
-
-//supported args:
-//--kernels="process" --kernel-split='100' --buffers-per-kernel="process: r r w rw" --concurrent-kernels="process:2" -kernel-dimensions="process:1" --size="1024" --repeats="1" --logfile="tmp.csv"
   int num_kernels = 0;
   int num_tasks = 0;
 
@@ -262,7 +258,7 @@ int main(int argc, char** argv) {
       case (int)'t':{//scheduling-policy
           //if the policy requested by the user doesn't exist, fail.
           if (scheduling_policy_lookup.find(optarg) != scheduling_policy_lookup.end()){
-            task_target = scheduling_policy_lookup[optarg];
+            task_target = scheduling_policy_lookup[optarg]; //using only device #1 and 2
             POLICY = optarg;
           }
           if (task_target != -1){
@@ -273,6 +269,7 @@ int main(int argc, char** argv) {
       case (int)'n':{//num-tasks
           num_tasks = strtol(optarg,NULL,10);
         } break;
+
       case (int)'p'://kernel-split
         break;
     };
@@ -329,6 +326,7 @@ int main(int argc, char** argv) {
     for(auto & kernel : kernels){
       //TODO: support concurrency here
       for(auto concurrent_device = 0; concurrent_device < duplicates; concurrent_device++){
+        int argument_index = 0;
         for(auto & buffer : kernel.buffers){
           //create and add the host-side buffer based on it's type
           std::string buf = std::string(buffer);
@@ -358,11 +356,14 @@ int main(int argc, char** argv) {
           }
           //and create device memory of the same size
           iris_mem x;
-          retcode = iris_mem_create( (int)pow(SIZE,kernel.dimensions)*sizeof(double), &x);
+          char buffer_name[80];
+          sprintf(buffer_name,"%s-%s-%d",kernel.name,buf.c_str(),argument_index);
+          retcode = iris_mem_create( (int)pow(SIZE,kernel.dimensions)*sizeof(double), &x);//, (char*)buffer_name);
           assert (retcode == IRIS_SUCCESS && "Failed to create IRIS memory buffer");
           dev_mem.push_back(x);
           //and update the count of buffers used
           num_buffers_used++;
+          argument_index++;
         }
       }
       sizecb.push_back(pow(SIZE,kernel.dimensions) * sizeof(double));
@@ -394,7 +395,7 @@ int main(int argc, char** argv) {
     }
     t0 = now();
 
-    iris_graph_submit(graph, iris_gpu, false);//iris_default in task-graph target is the only case that doesn't override the submission policy--so leave it as iris_gpu.
+    iris_graph_submit(graph, iris_gpu, true);//iris_default in task-graph target is the only case that doesn't override the submission policy--so leave it as iris_gpu.
     //**TODO**: deadlock ensues if we use synchronous mode with profiling enabled (BRISBANE_PROFILE=1 ./dagger_dgemm)
 
     retcode = iris_synchronize();
@@ -402,7 +403,39 @@ int main(int argc, char** argv) {
 
     t1 = now();
 
+    //NOTE: temporary code to verify code
+    for(auto & kernel : kernels){
+      //create and populate local memory
+      double* A = new double[(int)pow(SIZE,kernel.dimensions)];
+      double* B = new double[(int)pow(SIZE,kernel.dimensions)];
+      double* C = new double[(int)pow(SIZE,kernel.dimensions)];
+      for(int i = 0; i < pow(SIZE,kernel.dimensions); i++){
+        A[i] = i;
+        B[i] = i;
+      }
+      double* D;
+      //TODO: support concurrency here
+      for(auto concurrent_device = 0; concurrent_device < duplicates; concurrent_device++){
+        printf("Validation on results, set no. %i\n",concurrent_device);
+        D = host_mem[concurrent_device*kernel.buffers.size()];//json_inputs[ concurrent_device*3 + 3+ sizecb.size()];
+        for (size_t i = 0; i < SIZE; i++)
+          for (size_t j = 0; j < SIZE; j++){
+            double sum = 0.0;
+            for (size_t l = 0; l < SIZE; l++)
+              for (size_t k = 0; k < SIZE; k++) {
+                sum += A[i * SIZE + k] * B[k * SIZE + j];
+              }
+            C[i * SIZE + j] = sum;
+          }
+        //compare local C vs C computed in IRIS
+        for (size_t i = 0; i < SIZE*SIZE; i++)
+          assert(std::abs(C[i]-D[i]) <std::numeric_limits<double>::epsilon());
+          //printf("sequential = %f : iris = %f\n",C[i],D[i]);
+      }
+      
+    }
     //TODO: currently we only present FLOPs for ijk kernel but not DEVICE_CONCURRENCY! IT SHOULD BE MULTIPLIED BY THE TOTAL NUMBER OF TASKS!
+/*
     if (num_tasks != 0){
       //compute FLOPs
       printf("iteration took %i secs: %lf\n", t, t1 - t0);
@@ -430,7 +463,7 @@ int main(int argc, char** argv) {
         printf("GOPs = %f, GIOPs = %f, GFLOPs = %f\n",gops,giops,gflops);
       }
     }
-
+*/
     //clean up host memory
     for (auto & this_mem : host_mem){
       delete this_mem;

@@ -3,25 +3,26 @@
 
 #include "Queue.h"
 
+#include <queue>
+#include <mutex>
+
 namespace iris {
 namespace rt {
 
 class QueueReady : public Queue {
 public:
-  QueueReady(unsigned long size);
+  QueueReady();
   virtual ~QueueReady();
 
+  bool Peek(Task** task, int index);
   bool Enqueue(Task* task);
   bool Dequeue(Task** task);
   size_t Size();
   bool Empty();
 
 private:
-  unsigned long size_;
-  volatile Task** elements_;
-  volatile unsigned long idx_r_;
-  volatile unsigned long idx_w_;
-  volatile unsigned long idx_w_cas_;
+  std::deque<Task*> pqueue_, queue_;
+  mutable std::mutex mutex_;
 };
 
 } /* namespace rt */

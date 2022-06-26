@@ -6,15 +6,22 @@
 #include "Mem.h"
 #include "Scheduler.h"
 #include "Task.h"
+#include "Worker.h"
+#include "Thread.h"
+
+#include <cstring>
+#include <unistd.h>
 
 namespace iris {
 namespace rt {
 
 Consistency::Consistency(Scheduler* scheduler) {
   scheduler_ = scheduler;
+  pthread_mutex_init(&mutex_, NULL);
 }
 
 Consistency::~Consistency() {
+  pthread_mutex_destroy(&mutex_);
 }
 
 void Consistency::Resolve(Task* task) {
@@ -89,24 +96,35 @@ void Consistency::ResolveKernelWithoutPolymem(Task* task, Command* cmd, Mem* mem
   Device* owner = mem->Owner();
 
   if (!owner || dev == owner || mem->IsOwner(0, mem->size(), dev)) return;
-
+  pthread_mutex_lock(&mutex_);
+  //issue the first stage (d2h); get the data from the other device
+  char* tn = "Internal-D2H";
   Task* task_d2h = new Task(scheduler_->platform());
-  task_d2h->set_system();
   Command* d2h = Command::CreateD2H(task_d2h, mem, 0, mem->size(), mem->host_inter());
+  d2h->set_name(tn);
+  task_d2h->set_name(tn);
+  task_d2h->set_system();
   task_d2h->AddCommand(d2h);
-  scheduler_->SubmitTaskDirect(task_d2h, owner);
-  //_todo("HERE task[%lu] dev[%d] owner[%d]", task_d2h->uid(), dev->devno(), owner->devno());
+  task_d2h->set_internal_memory_transfer();
+  scheduler_->SubmitTaskDirect(task_d2h,owner);
   task_d2h->Wait();
-  //_todo("THERE task[%lu] dev[%d] owner[%d]", task_d2h->uid(), dev->devno(), owner->devno());
 
-  //Command* h2d = Command::CreateH2DNP(task, mem, 0, mem->size(), mem->host_inter());
+  tn = "Internal-H2D";
+  Task* task_h2d = new Task(scheduler_->platform());
   Command* h2d = Command::CreateH2D(task, mem, 0, mem->size(), mem->host_inter());
-  dev->ExecuteH2D(h2d);
+  h2d->set_name(tn);
+  task_h2d->set_name(tn);
+  task_h2d->set_system();
+  task_h2d->AddCommand(h2d);
+  task_h2d->set_internal_memory_transfer();
+  scheduler_->SubmitTaskDirect(task_h2d,dev);
+  task_h2d->Wait();
+  pthread_mutex_unlock(&mutex_);
 
   _trace("kernel[%s] mem[%lu] [%s][%d] -> [%s][%d]", kernel->name(), mem->uid(), owner->name(), owner->devno(), dev->name(), dev->devno());
 
   task_d2h->Release();
-  Command::Release(h2d);
+  task_h2d->Release();
 }
 
 void Consistency::ResolveD2H(Task* task, Command* cmd) {

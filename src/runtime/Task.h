@@ -12,6 +12,7 @@
 #define IRIS_SUBMITTED  0x2
 #define IRIS_QUEUED     0x3
 #define IRIS_NONE       0x4
+#define IRIS_PENDING    0x5
 
 #define IRIS_TASK       0x0
 #define IRIS_TASK_PERM  0x1
@@ -34,6 +35,7 @@ public:
   bool HasSubtasks();
 
   void AddDepend(Task* task);
+//  void RemoveDepend(Task* task);
 
   void Submit(int brs_policy, const char* opt, int sync);
 
@@ -87,6 +89,11 @@ public:
   Task* depend(int i) { return depends_[i]; }
   void* arch() { return arch_; }
   void set_arch(void* arch) { arch_ = arch; }
+  void set_pending();
+  bool pending() {return status_==IRIS_PENDING;}
+  void Dispatch();
+  bool is_internal_memory_transfer() { return internal_memory_transfer_;}
+  void set_internal_memory_transfer() { internal_memory_transfer_ = true;}
 
 private:
   void CompleteSub();
@@ -121,11 +128,13 @@ private:
   bool perm_;
   bool user_;
   bool system_;
+  bool internal_memory_transfer_;
 
   double time_;
   double time_start_;
   double time_end_;
 
+  pthread_mutex_t mutex_pending_;
   pthread_mutex_t mutex_executable_;
   pthread_mutex_t mutex_complete_;
   pthread_mutex_t mutex_subtasks_;

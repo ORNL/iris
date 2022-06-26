@@ -15,7 +15,7 @@ class QueueTask : public Queue {
 public:
   QueueTask(Platform* platform);
   ~QueueTask();
-
+  bool Peek(Task** task, int index);
   bool Enqueue(Task* task);
   bool Dequeue(Task** task);
   size_t Size();

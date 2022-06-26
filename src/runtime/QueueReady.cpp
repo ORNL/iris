@@ -1,49 +1,60 @@
 #include "QueueReady.h"
+#include "Task.h"
 
 namespace iris {
 namespace rt {
 
-QueueReady::QueueReady(unsigned long size) {
-  size_ = size;
-  idx_r_ = 0;
-  idx_w_ = 0;
-  idx_w_cas_ = 0;
-  elements_ = (volatile Task**)(new Task*[size_]);
+QueueReady::QueueReady() {
 }
 
 QueueReady::~QueueReady() {
-  delete[] elements_;
+}
+
+bool QueueReady::Peek(Task** task, int target_index){
+  std::lock_guard<std::mutex> lock(mutex_);
+  if (target_index <= pqueue_.size()){
+    *task = pqueue_[target_index];
+  }
+  else{
+    target_index -= pqueue_.size();
+    *task = queue_[target_index];
+  }
+  return true;
 }
 
 bool QueueReady::Enqueue(Task* task) {
-  while (true) {
-    unsigned long prev_idx_w = idx_w_cas_;
-    unsigned long next_idx_w = (prev_idx_w + 1) % this->size_;
-    if (next_idx_w == this->idx_r_) return false;
-    if (__sync_bool_compare_and_swap(&idx_w_cas_, prev_idx_w, next_idx_w)) {
-      this->elements_[prev_idx_w] = task;
-      while (!__sync_bool_compare_and_swap(&this->idx_w_, prev_idx_w, next_idx_w)) {}
-      break;
-    }
+  std::lock_guard<std::mutex> lock(mutex_);
+  //if the task to be enqueued is a memory transfer it should be prioritized
+  if (task->ncmds_memcpy() == task->ncmds()) {
+    pqueue_.push_back(task);
+  }
+  else{
+    queue_.push_back(task);
   }
   return true;
 }
 
 bool QueueReady::Dequeue(Task** task) {
-  if (idx_r_ == idx_w_) return false;
-  unsigned long next_idx_r = (idx_r_ + 1) % size_;
-  *task = (Task*) elements_[idx_r_];
-  idx_r_ = next_idx_r;
-  return true;
+  std::lock_guard<std::mutex> lock(mutex_);
+  if (!pqueue_.empty()){
+    *task = (Task*) pqueue_.front();
+    pqueue_.pop_front();
+    return true;
+  }
+  if (!queue_.empty()){
+    *task = (Task*) queue_.front();
+    queue_.pop_front();
+    return true;
+  }
+  return false;
 }
 
 size_t QueueReady::Size() {
-  if (idx_w_ >= idx_r_) return idx_w_ - idx_r_;
-  return size_ - idx_r_ + idx_w_;
+  return (size_t)(pqueue_.size() + queue_.size());
 }
 
 bool QueueReady::Empty() {
-  return Size() == 0UL;
+  return pqueue_.empty() && queue_.empty();
 }
 
 } /* namespace rt */

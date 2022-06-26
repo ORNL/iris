@@ -29,15 +29,16 @@ Task::Task(Platform* platform, int type, const char* name) {
   time_end_ = 0.0;
   user_ = false;
   system_ = false;
+  internal_memory_transfer_ = false;
   arch_ = NULL;
   depends_ = NULL;
   depends_max_ = 1024;
   ndepends_ = 0;
   given_name_ = name != NULL;
   if (name) strcpy(name_, name);
-//  else sprintf(name_, "task%ld", uid());
   status_ = IRIS_NONE;
 
+  pthread_mutex_init(&mutex_pending_, NULL);
   pthread_mutex_init(&mutex_executable_, NULL);
   pthread_mutex_init(&mutex_complete_, NULL);
   pthread_mutex_init(&mutex_subtasks_, NULL);
@@ -47,6 +48,7 @@ Task::Task(Platform* platform, int type, const char* name) {
 Task::~Task() {
   for (int i = 0; i < ncmds_; i++) delete cmds_[i];
   if (depends_) delete depends_;
+  pthread_mutex_destroy(&mutex_pending_);
   pthread_mutex_destroy(&mutex_executable_);
   pthread_mutex_destroy(&mutex_complete_);
   pthread_mutex_destroy(&mutex_subtasks_);
@@ -71,6 +73,7 @@ void Task::set_parent(Task* task) {
 
 void Task::set_brs_policy(int brs_policy) {
   brs_policy_ = brs_policy == iris_default ? platform_->device_default() : brs_policy;
+  if (brs_policy == iris_pending) status_ = IRIS_PENDING;
   if (!HasSubtasks()) return;
   for (std::vector<Task*>::iterator I = subtasks_.begin(), E = subtasks_.end(); I != E; ++I)
     (*I)->set_brs_policy(brs_policy);
@@ -111,9 +114,16 @@ void Task::ClearCommands() {
 
 bool Task::Dispatchable() {
   for (int i = 0; i < ndepends_; i++) {
-    if (depends_[i]->status() != IRIS_COMPLETE) return false;
+    if (depends_[i]->status() != IRIS_COMPLETE && depends_[i]->status() != IRIS_PENDING) return false;
   }
   return true;
+}
+
+void Task::Dispatch() {
+  pthread_mutex_lock(&mutex_pending_);
+  if (status_ == IRIS_PENDING) status_ = IRIS_NONE;
+  for (int i = 0; i < ndepends_; i++) if (depends_[i]->status() == IRIS_PENDING) depends_[i]->status_ = IRIS_NONE;
+  pthread_mutex_unlock(&mutex_pending_);
 }
 
 bool Task::Executable() {
@@ -125,6 +135,13 @@ bool Task::Executable() {
   }
   pthread_mutex_unlock(&mutex_executable_);
   return false;
+}
+
+void Task::set_pending() {
+  pthread_mutex_lock(&mutex_pending_);
+  if (brs_policy_ == iris_pending)
+    status_ = IRIS_PENDING;
+  pthread_mutex_unlock(&mutex_pending_);
 }
 
 void Task::Complete() {
@@ -178,13 +195,24 @@ void Task::AddDepend(Task* task) {
   task->Retain();
 }
 
+/*
+void Task::RemoveDepend(Task* task) {
+  for (int i = 0; i < ndepends_; i++) 
+    if (task == depends_[i]){
+      delete depends_[i];
+      ndepends_--;
+      task->Release();
+    }
+}
+*/
+
 void Task::Submit(int brs_policy, const char* opt, int sync) {
+  status_ = IRIS_NONE;
   set_brs_policy(brs_policy);
   set_opt(opt);
   sync_ = sync;
   if (cmd_last_) cmd_last_->set_last();
   user_ = true;
-  status_ = IRIS_NONE;
   Retain();
 }
 

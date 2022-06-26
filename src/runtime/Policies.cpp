@@ -59,6 +59,7 @@ Policy* Policies::GetPolicy(int brs_policy, char* opt) {
   if (brs_policy == iris_default) return policy_default_;
   if (brs_policy == iris_profile) return policy_profile_;
   if (brs_policy == iris_random)  return policy_random_;
+  if (brs_policy == iris_pending) return policy_data_;//to get to this point with the pending policy it can only be for D2H tranfers (so just default to data policy to minimize memory movement)
   if (brs_policy == iris_custom) {
     if (policy_customs_.find(std::string(opt)) != policy_customs_.end()) {
       Policy* policy = policy_customs_[opt]->policy();

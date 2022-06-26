@@ -11,6 +11,7 @@ class Command;
 class Mem;
 class Scheduler;
 class Task;
+class Worker;
 
 class Consistency {
 public:
@@ -27,6 +28,7 @@ private:
 
 private:
   Scheduler* scheduler_;
+  pthread_mutex_t mutex_;
 
 };
 

@@ -20,7 +20,7 @@ Worker::Worker(Device* dev, Platform* platform, bool single) {
   else consistency_ = NULL;
   single_ = single;
   if (single) queue_ = platform->queue();
-  else queue_ = new QueueReady(128);
+  else queue_ = new QueueReady();
   busy_ = false;
 }
 
@@ -34,6 +34,12 @@ void Worker::TaskComplete(Task* task) {
 }
 
 void Worker::Enqueue(Task* task) {
+  //if we're running an internal task (such as an internal memory movement for consistency) skip the queue.
+  if (task->is_internal_memory_transfer()) {
+    dev_->Synchronize();
+    Execute(task);
+    return;
+  }
   while (!queue_->Enqueue(task)) { }
   Invoke();
 }
@@ -62,7 +68,9 @@ void Worker::Run() {
     Sleep();
     if (!running_) break;
     Task* task = NULL;
-    while (queue_->Dequeue(&task)) Execute(task);
+    while (queue_->Dequeue(&task)){
+      Execute(task);
+    }
   }
 }
 
