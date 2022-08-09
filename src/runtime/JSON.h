@@ -2,9 +2,8 @@
 #define IRIS_SRC_RT_JSON_H
 
 #include <string>
+#include <vector>
 #include <set>
-
-#define IRIS_JSON_MAX_TOK (1024 * 1024)
 
 namespace iris {
 namespace rt {
@@ -37,19 +36,15 @@ private:
   int STR(const char* json, void* tok, char *s);
   int EQ(const char* json, void* tok, const char *s);
 
-  void* GetInput(void** params, char* c);
+  void* GetParameterInput(void** params, const char* string_to_lookup);
   int InputPointer(void* p);
 
 private:
   Platform* platform_;
-  char inputs_[32][64];
-  Task* tasks_[8192];
-  int ninputs_;
-  int ntasks_;
+  std::vector<const char*> inputs_;
+  std::vector<Task*> tasks_;
   Timer* timer_;
   std::string str_;
-  void* ptrs_[128];
-  int nptrs_;
   std::set<Mem*> mems_;
 };
 
