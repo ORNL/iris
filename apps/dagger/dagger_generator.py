@@ -30,6 +30,7 @@ _mean, _std_dev, _skips = None,None,None
 _seed = None
 _kernel_buffs = {}
 _concurrent_kernels = {}
+_dimensionality = {}
 
 def parse_args():
 
@@ -52,7 +53,7 @@ def parse_args():
 
     args = parser.parse_args()
 
-    global _kernels, _k_probs, _depth, _num_tasks, _min_width, _max_width, _mean, _std_dev, _skips, _seed, _sandwich, _concurrent_kernels, _duplicates
+    global _kernels, _k_probs, _depth, _num_tasks, _min_width, _max_width, _mean, _std_dev, _skips, _seed, _sandwich, _concurrent_kernels, _duplicates, _dimensionality
 
     _depth = args.depth
     _num_tasks = args.num_tasks
@@ -107,8 +108,11 @@ def parse_args():
            # \"process:2\" indicates that the kernel called \"process\" will only allow two unique sets of memory buffers in the generated DAG, effectively limiting concurrency by indicating a data dependency.")
 
     for i in args.kernel_dimensions.split(','):
-        print("TODO: ensure all kernels dimensions are provided---no kernel is missed")
-        print("TODO: Implement kernel_dimensions")
+        try:
+            kernel_name, kernel_dimensionality = i.split(':')
+            _dimensionality[kernel_name] = int(kernel_dimensionality)
+        except:
+            assert False, "Incorrect arguments given to --kernel-dimensions. Broken on {}".format(i)
     return
 
 def random_list(depth,total_num,width_min,width_max):
@@ -238,13 +242,20 @@ def gen_attr(tasks,kernel_names,kernel_probs):
         if mobs == []:
             assert False, "kernel {} hasn't been given any memory to work on! This can be rectified by setting --buffers-per-kernel.".format(kname)
         #TODO the dimensionality of each work group can also be set instead of a fixed "user-size":
-        #for i in _dims[kname]:
-        #    dims.append("user-size")
+        kernel_dimension = []
+        for i in range(0,_dimensionality[kname]):
+            kernel_dimension.append("user-size")
         #task_instance_name = tname
         #if ck != 0: #if we're supporting concurrent tasks, all but the first instance should have a unique name
         #    task_instance_name += '-' + str(ck)
         #TODO may need to undo the following:
-        task = {"name":tname,"kernel":[kname,["user-size"],mobs,mper],"depends":deps,"target":"user-target-data"}
+        parameters = []
+        for i,m in enumerate(mobs):
+          parameters.append({"type":"memory_object","name":m,"permission":mper[i]})
+        #for m in mper:
+        #  parameters.append({"type":"scalar","name":m})
+        task = {"name":tname,"commands":[{"kernel":{"name":kname,"global_size":kernel_dimension,"parameters":parameters}}],"depends":deps,"target":"user-target-data"}
+        #task = {"name":tname,"commands":[{"kernel":kname,["user-size"],mobs,mper]}],"depends":deps,"target":"user-target-data"}
         #was:
         #task = {"name":tname,"kernel":[kname,"user-size",["user-mem"],["rw"] ],"depends":deps,"target":"user-target"}
         dag.append(task)
@@ -277,12 +288,11 @@ def duplicate_for_concurrency(task_dag,edges):
             #this is a concurrent instance!
             x['name'] = "task"+str(y)
             #update the instance buffers used in this concurrent instance
-            new_instance_buffers = []
-            for z in x['kernel'][2]:
-                old_instance_buffer_name = re.findall(r'(.*instance)\d+$',z)
+            for zi, z in enumerate(x['commands'][0]['kernel']['parameters']):
+                old_instance_buffer_name = re.findall(r'(.*instance)\d+$',z['name'])
                 old_instance_buffer_name = old_instance_buffer_name[0]
-                new_instance_buffers.append(old_instance_buffer_name + str(c))
-            x['kernel'][2] = new_instance_buffers
+                nib = (old_instance_buffer_name + str(c))
+                x['commands'][0]['kernel']['parameters'][zi]['name'] = nib
             #*ASSUMPTION:* all new dependencies should share the same offset as elements in the chain
             new_dependencies = []
             for z in x['depends']:
@@ -314,7 +324,7 @@ def plot_dag(task_dag,edges,dag_path_plot):
 
     dag = nx.DiGraph()
         #hash the colours in the dag for each kernel name
-    unique_kernels = sorted(set([t['kernel'][0] for t in task_dag]))
+    unique_kernels = sorted(set([t['commands'][0]['kernel']['name'] for t in task_dag]))
     assert len(unique_kernels) < 9, "Can't colourize that many unique kernels -- maybe choose a bigger colour palette? <https://docs.bokeh.org/en/latest/docs/reference/palettes.html>"
     palette = brewer['Pastel1'][9]
     phash = {}
@@ -332,7 +342,7 @@ def plot_dag(task_dag,edges,dag_path_plot):
     #plot it
     pos = graphviz_layout(dag,prog='dot')
     #add colour
-    node_colours = ['{}'.format(phash[task_dag[int(n)]['kernel'][0]]) for n in dag]
+    node_colours = ['{}'.format(phash[task_dag[int(n)]['commands'][0]['kernel']['name']]) for n in dag]
 
     nx.draw(dag,pos=pos,labels=node_labels,font_size=8,node_color=node_colours)
     #nx.draw_networkx_edge_labels(dag,pos,edge_labels=edge_labels,label_pos=0.75,font_size=6)
@@ -379,16 +389,24 @@ def determine_and_prepend_iris_h2d_transfers(dag):
                 transfer = {}
                 transfer["name"] = "transferto-{}-buffer{}-instance{}".format(k,j,ck)
                 buffer_name = "devicemem-{}-buffer{}-instance{}".format(k,j,ck)
-                transfer["h2d"] = [buffer_name, "hostmem-{}-buffer{}-instance{}".format(k,j,ck), "0", "user-size-cb-{}".format(k)]
+                commands = {}
+                commands["h2d"] = {"name":"d2h-buffer{}-instance{}".format(j,ck),"device_memory":buffer_name,"host_memory":"hostmem-{}-buffer{}-instance{}".format(k,j,ck),"offset":"0","size":"user-size-cb-{}".format(k)}
+                #commands["h2d"] = buffer_name, "hostmem-{}-buffer{}-instance{}".format(k,j,ck), "0", "user-size-cb-{}".format(k)
+                transfer["commands"] = [commands]
+                #transfer["h2d"] = [buffer_name, "hostmem-{}-buffer{}-instance{}".format(k,j,ck), "0", "user-size-cb-{}".format(k)]
                 transfer["target"] = "user-target-control"
                 memory_instance_in_use = False
+                transfer["depends"] = []
                 #add as a dependency for this kernel
                 for m,t in enumerate(dag):
-                    if buffer_name in t['kernel'][2]:
-                        memory_instance_in_use = True
-                        #TODO: sort out concurrency
-                        if transfer["name"] not in dag[m]['depends']:
-                            dag[m]['depends'].append(transfer["name"])
+                    if 'kernel' not in t['commands'][0]:
+                        continue
+                    for p in t['commands'][0]['kernel']['parameters']:
+                      if buffer_name in p['name']:
+                          memory_instance_in_use = True
+                          #TODO: sort out concurrency
+                          if transfer["name"] not in dag[m]['depends']:
+                              dag[m]['depends'].append(transfer["name"])
                 #only include memory transfers for memory which is actually in use
                 if memory_instance_in_use == True:
                     transfers.append(transfer)
@@ -409,16 +427,21 @@ def determine_and_append_iris_d2h_transfers(dag):
                 transfer = {}
                 transfer["name"] = "transferfrom-{}-buffer{}-instance{}".format(k,j,ck)
                 buffer_name = "devicemem-{}-buffer{}-instance{}".format(k,j,ck)
-                transfer["d2h"] = [buffer_name, "hostmem-{}-buffer{}-instance{}".format(k,j,ck), "0", "user-size-cb-{}".format(k)]
+                commands = {}
+                commands["d2h"] = {"name":"d2h-buffer{}-instance{}".format(j,ck),"device_memory":buffer_name,"host_memory":"hostmem-{}-buffer{}-instance{}".format(k,j,ck),"offset":"0","size":"user-size-cb-{}".format(k)}
+                #commands["d2h"] = buffer_name, "hostmem-{}-buffer{}-instance{}".format(k,j,ck), "0", "user-size-cb-{}".format(k)
+                transfer["commands"] = [commands]
+                #transfer["d2h"] = [buffer_name, "hostmem-{}-buffer{}-instance{}".format(k,j,ck), "0", "user-size-cb-{}".format(k)]
+                transfer["depends"] = []
                 #add this dependency to the DAGs--depend on all kernels which use these buffers
                 memory_instance_in_use = False
                 for m,t in enumerate(dag):
-                    if 'kernel' in t and buffer_name in t['kernel'][2]:
-                        memory_instance_in_use = True
-                        if 'depends' not in transfer:
-                            transfer["depends"] = [t["name"]]
-                        else:
-                            transfer["depends"].append(t["name"])
+                    if 'kernel' not in t['commands'][0]:
+                        continue
+                    for p in t['commands'][0]['kernel']['parameters']:
+                      if buffer_name in p['name']:
+                          memory_instance_in_use = True
+                          transfer["depends"].append(t["name"])
                 transfer["target"] = "user-target-control"
                 if memory_instance_in_use == True:
                     transfers.append(transfer)
