@@ -2,6 +2,7 @@ option(BUILD_SHARED_LIBS "Build shared libs" ON)
 
 include_directories(${IRIS_INC_DIR})
 include_directories(${IRIS_BIN_DIR}/runtime)
+include_directories(${IRIS_BIN_DIR}/runtime/rapidjson)
 
 configure_file(Config.h.in Config.h)
 
