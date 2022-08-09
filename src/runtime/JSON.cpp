@@ -184,7 +184,6 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
             }
             //size_bytes (TODO: optional? or even valid?)
             //value (TODO: optional? or even valid?)
-            printf("parameter no:%i memory_object added.\n",l);
           }
           else{
             _error("malformed command kernel params in file[%s]", path);
