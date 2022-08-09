@@ -548,6 +548,7 @@ int Platform::InitDevices(bool sync) {
   Task** tasks = new Task*[ndevs_];
   for (int i = 0; i < ndevs_; i++) {
     tasks[i] = new Task(this);
+    tasks[i]->set_name("Initialize");
     tasks[i]->set_system();
     Command* cmd = Command::CreateInit(tasks[i]);
     tasks[i]->AddCommand(cmd);
@@ -610,14 +611,14 @@ int Platform::DeviceGetDefault(int* device) {
 }
 
 int Platform::DeviceSynchronize(int ndevs, int* devices) {
-  Task* task = new Task(this, IRIS_MARKER);
+  Task* task = new Task(this, IRIS_MARKER, "Marker");
   if (scheduler_) {
     for (int i = 0; i < ndevs; i++) {
       if (devices[i] >= ndevs_) {
         _error("devices[%d]", devices[i]);
         continue;
       }
-      Task* subtask = new Task(this, IRIS_MARKER);
+      Task* subtask = new Task(this, IRIS_MARKER, "Marker");
       subtask->set_devno(devices[i]);
       task->AddSubtask(subtask);
     }
@@ -1002,7 +1003,8 @@ int Platform::GraphCreateJSON(const char* path, void** params, iris_graph* brs_g
 int Platform::GraphTask(iris_graph brs_graph, iris_task brs_task, int brs_policy, const char* opt) {
   Graph* graph = brs_graph->class_obj;
   Task* task = brs_task->class_obj;
-  task->set_target_perm(brs_policy, opt);
+  task->set_brs_policy(brs_policy);
+  task->set_opt(opt);
   graph->AddTask(task);
   return IRIS_SUCCESS;
 }
@@ -1012,8 +1014,11 @@ int Platform::GraphSubmit(iris_graph brs_graph, int brs_policy, int sync) {
   std::vector<Task*>* tasks = graph->tasks();
   for (std::vector<Task*>::iterator I = tasks->begin(), E = tasks->end(); I != E; ++I) {
     Task* task = *I;
-    int policy = task->brs_policy_perm() == iris_default ? brs_policy : task->brs_policy_perm();
-    task->Submit(policy, task->opt(), sync);
+    //preference is to honour the policy embedded in the task-graph.
+    if (task->brs_policy() == iris_default) {
+      task->set_brs_policy(brs_policy);
+    }
+    task->Submit(task->brs_policy(), task->opt(), sync);
     if (recording_) json_->RecordTask(task);
     if (scheduler_) scheduler_->Enqueue(task);
     else workers_[0]->Enqueue(task);
