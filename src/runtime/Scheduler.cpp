@@ -134,6 +134,9 @@ void Scheduler::SubmitTask(Task* task) {
     ndevs = 1;
     devs[0] = devs_[dev_default];
   }
+  //if any dependencies were pending, time to process them now.
+  if (!task->Dispatchable()) task->DispatchDependencies();
+
   for (int i = 0; i < ndevs; i++) {
     devs[i]->worker()->Enqueue(task);
     if (hub_available_) hub_client_->TaskInc(devs[i]->devno(), 1);

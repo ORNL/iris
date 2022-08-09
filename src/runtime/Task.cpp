@@ -14,7 +14,6 @@ namespace rt {
 
 Task::Task(Platform* platform, int type, const char* name) {
   type_ = type;
-  perm_ = type == IRIS_TASK_PERM;
   ncmds_ = 0;
   cmd_kernel_ = NULL;
   cmd_last_ = NULL;
@@ -74,6 +73,7 @@ void Task::set_parent(Task* task) {
 void Task::set_brs_policy(int brs_policy) {
   brs_policy_ = brs_policy == iris_default ? platform_->device_default() : brs_policy;
   if (brs_policy == iris_pending) status_ = IRIS_PENDING;
+  if (brs_policy != iris_pending && status_ == IRIS_PENDING) status_ = IRIS_NONE;
   if (!HasSubtasks()) return;
   for (std::vector<Task*>::iterator I = subtasks_.begin(), E = subtasks_.end(); I != E; ++I)
     (*I)->set_brs_policy(brs_policy);
@@ -83,11 +83,6 @@ void Task::set_opt(const char* opt) {
   if (!opt) return;
   memset(opt_, 0, sizeof(opt_));
   strncpy(opt_, opt, strlen(opt));
-}
-
-void Task::set_target_perm(int brs_policy, const char* opt) {
-  brs_policy_perm_ = brs_policy;
-  set_opt(opt);
 }
 
 void Task::AddCommand(Command* cmd) {
@@ -113,13 +108,16 @@ void Task::ClearCommands() {
 }
 
 bool Task::Dispatchable() {
+  //if we, or the tasks we depend on are pending (or not-complete), we can't run.
+  if (status_ == IRIS_PENDING) return false;
   for (int i = 0; i < ndepends_; i++) {
-    if (depends_[i]->status() != IRIS_COMPLETE && depends_[i]->status() != IRIS_PENDING) return false;
+    if (depends_[i]->status() != IRIS_COMPLETE) return false;
   }
   return true;
 }
 
-void Task::Dispatch() {
+//dispatch all of this tasks pending dependencies on the assigned device.
+void Task::DispatchDependencies() {
   pthread_mutex_lock(&mutex_pending_);
   if (status_ == IRIS_PENDING) status_ = IRIS_NONE;
   for (int i = 0; i < ndepends_; i++) if (depends_[i]->status() == IRIS_PENDING) depends_[i]->status_ = IRIS_NONE;
@@ -128,7 +126,7 @@ void Task::Dispatch() {
 
 bool Task::Executable() {
   pthread_mutex_lock(&mutex_executable_);
-  if (status_ == IRIS_NONE || (perm_ && status_ == IRIS_COMPLETE)) {
+  if (status_ == IRIS_NONE) {
     status_ = IRIS_RUNNING;
     pthread_mutex_unlock(&mutex_executable_);
     return true;
@@ -155,8 +153,8 @@ void Task::Complete() {
     else if (scheduler_) scheduler_->Invoke();
   }
   for (int i = 0; i < ndepends_; i++)
-    if (depends_[i]->user() && !depends_[i]->perm()) depends_[i]->Release();
-  if (user_ && !perm_) Release();
+    if (depends_[i]->user()) depends_[i]->Release();
+  if (user_) Release();
 }
 
 void Task::CompleteSub() {
@@ -209,6 +207,14 @@ void Task::RemoveDepend(Task* task) {
 void Task::Submit(int brs_policy, const char* opt, int sync) {
   status_ = IRIS_NONE;
   set_brs_policy(brs_policy);
+  //if the submitted task is pending but it is a d2h transfer, then, default to a data movement minimization policy.
+  if (brs_policy == iris_pending && cmd_last_->type_d2h()){
+    set_brs_policy(iris_data);
+  }
+  //if we have a non-pending policy, dispatch all pending dependencies.
+  if (brs_policy != iris_pending){
+    this->DispatchDependencies();
+  }
   set_opt(opt);
   sync_ = sync;
   if (cmd_last_) cmd_last_->set_last();

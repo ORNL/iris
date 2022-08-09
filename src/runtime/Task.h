@@ -50,7 +50,6 @@ public:
   int type() { return type_; }
   char* name() { return name_; }
   void set_name(const char* name);
-  bool perm() { return perm_; }
   bool user() { return user_; }
   bool system() { return system_; }
   void set_system() { system_ = true; }
@@ -76,10 +75,8 @@ public:
   void set_parent(Task* task);
   void set_brs_policy(int brs_policy);
   void set_opt(const char* opt);
-  void set_target_perm(int brs_policy, const char* opt);
   char* opt() { return opt_; }
   int brs_policy() { return brs_policy_; }
-  int brs_policy_perm() { return brs_policy_perm_; }
   bool sync() { return sync_; }
   std::vector<Task*>* subtasks() { return &subtasks_; }
   Task* subtask(int i) { return subtasks_[i]; }
@@ -91,7 +88,7 @@ public:
   void set_arch(void* arch) { arch_ = arch; }
   void set_pending();
   bool pending() {return status_==IRIS_PENDING;}
-  void Dispatch();
+  void DispatchDependencies();
   bool is_internal_memory_transfer() { return internal_memory_transfer_;}
   void set_internal_memory_transfer() { internal_memory_transfer_ = true;}
 
@@ -119,13 +116,11 @@ private:
   int ndepends_;
 
   int brs_policy_;
-  int brs_policy_perm_;
   char opt_[64];
   bool sync_;
 
   int type_;
   int status_;
-  bool perm_;
   bool user_;
   bool system_;
   bool internal_memory_transfer_;
