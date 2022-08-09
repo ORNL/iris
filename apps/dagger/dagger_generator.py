@@ -96,7 +96,7 @@ def parse_args():
     #process concurrent-kernels
     if args.concurrent_kernels is None:
         for k in _kernels:
-            _concurrent_kernels[k] = 1
+            _concurrent_kernels[k] = 0
     else:
         for i in args.concurrent_kernels.split(','):
             try:
@@ -202,7 +202,6 @@ def repack_dag_with_missing_edges(neighs_down_top,neighs_top_down):
                 linked_neighs[e] = numpy.append(linked_neighs[e],t)
     return linked_neighs
 
-
 def gen_attr(tasks,kernel_names,kernel_probs):
     #TODO: how do handle memory transfers between each task? Insert h2d and d2h calls around each kernel -- but how should we treat this when multiple dependencies are scheduled on the same device, are they simple dropped in 1024dagger.c?
     #TODO: we should automate kernel arguments being set
@@ -221,7 +220,8 @@ def gen_attr(tasks,kernel_names,kernel_probs):
         tname = "task"+str(i)
 
         kname = bag_of_kernels.pop()
-        selected_memory = random.choices(range(0,_concurrent_kernels[kname]),k=1)
+        #selected_memory = random.choices(range(0,_concurrent_kernels[kname]),k=1)
+        selected_memory = [0]
         kinst = int(selected_memory[0])
 
         deps  = tasks[i]
@@ -381,13 +381,17 @@ def determine_and_prepend_iris_h2d_transfers(dag):
                 buffer_name = "devicemem-{}-buffer{}-instance{}".format(k,j,ck)
                 transfer["h2d"] = [buffer_name, "hostmem-{}-buffer{}-instance{}".format(k,j,ck), "0", "user-size-cb-{}".format(k)]
                 transfer["target"] = "user-target-control"
+                memory_instance_in_use = False
                 #add as a dependency for this kernel
                 for m,t in enumerate(dag):
                     if buffer_name in t['kernel'][2]:
+                        memory_instance_in_use = True
                         #TODO: sort out concurrency
                         if transfer["name"] not in dag[m]['depends']:
                             dag[m]['depends'].append(transfer["name"])
-                transfers.append(transfer)
+                #only include memory transfers for memory which is actually in use
+                if memory_instance_in_use == True:
+                    transfers.append(transfer)
 
     #prepend the h2d transfers
     for t in range(0, len(transfers)):
@@ -407,14 +411,17 @@ def determine_and_append_iris_d2h_transfers(dag):
                 buffer_name = "devicemem-{}-buffer{}-instance{}".format(k,j,ck)
                 transfer["d2h"] = [buffer_name, "hostmem-{}-buffer{}-instance{}".format(k,j,ck), "0", "user-size-cb-{}".format(k)]
                 #add this dependency to the DAGs--depend on all kernels which use these buffers
+                memory_instance_in_use = False
                 for m,t in enumerate(dag):
                     if 'kernel' in t and buffer_name in t['kernel'][2]:
+                        memory_instance_in_use = True
                         if 'depends' not in transfer:
                             transfer["depends"] = [t["name"]]
                         else:
                             transfer["depends"].append(t["name"])
-                transfer["target"] = "user-target-data"
-                transfers.append(transfer)
+                transfer["target"] = "user-target-control"
+                if memory_instance_in_use == True:
+                    transfers.append(transfer)
 
     #prepend the h2d transfers
     for t in range(0, len(transfers)):
@@ -448,9 +455,7 @@ if __name__ == '__main__':
     if _sandwich:
         neighs_down_top = repack_dag_with_missing_edges(neighs_down_top,neighs_top_down)
     task_dag = gen_attr(neighs_down_top,_kernels,_k_probs)
-
     edges = prune_edges_from_dependencies(task_dag,edges)
-
     task_dag,edges = duplicate_for_concurrency(task_dag,edges)
     #print("task_dag:")
     #print(task_dag)

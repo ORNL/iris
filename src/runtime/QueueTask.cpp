@@ -16,6 +16,28 @@ QueueTask::~QueueTask() {
   pthread_mutex_destroy(&mutex_);
 }
 
+bool QueueTask::Peek(Task** task, int target_index){
+  pthread_mutex_lock(&mutex_);
+  if (tasks_.empty()) {
+    pthread_mutex_unlock(&mutex_);
+    return false;
+  }
+  int i = 0;
+  for (std::list<Task*>::iterator I = tasks_.begin(), E = tasks_.end(); I != E; ++I) {
+    if (i == target_index){
+      Task* t = *I;
+      if (!t->Dispatchable()) continue;
+      if (t->marker() && I != tasks_.begin()) continue;
+      *task = t;
+      pthread_mutex_unlock(&mutex_);
+      return true;
+    }
+    i++;
+  }
+  pthread_mutex_unlock(&mutex_);
+  return false;
+}
+
 bool QueueTask::Dequeue(Task** task) {
   pthread_mutex_lock(&mutex_);
   if (tasks_.empty()) {
@@ -27,7 +49,6 @@ bool QueueTask::Dequeue(Task** task) {
     if (!t->Dispatchable()) continue;
     if (t->marker() && I != tasks_.begin()) continue;
     *task = t;
-    //todo: debug this!
     tasks_.erase(I);
     pthread_mutex_unlock(&mutex_);
     return true;
