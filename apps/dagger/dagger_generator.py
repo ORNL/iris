@@ -283,8 +283,8 @@ def duplicate_for_concurrency(task_dag,edges):
     #first sweep and generate the broad structure
     for c in range(1, _duplicates):#the maximum degree of concurrency indicates how many "parallel" DAGs to paste in
         y = original_chain_length*c
-        for chain in task_dag:
-            x = chain.copy()
+        for chain_index in range(0,original_chain_length):
+            x = copy.deepcopy(task_dag[chain_index])
             #this is a concurrent instance!
             x['name'] = "task"+str(y)
             #update the instance buffers used in this concurrent instance
@@ -296,7 +296,7 @@ def duplicate_for_concurrency(task_dag,edges):
             #*ASSUMPTION:* all new dependencies should share the same offset as elements in the chain
             new_dependencies = []
             for z in x['depends']:
-                dependency_no = original_chain_length+int(z.replace('task',''))
+                dependency_no = original_chain_length*c+int(z.replace('task',''))
                 new_dependencies.append("task"+str(dependency_no))
             x['depends'] = new_dependencies
             y += 1 #increment the new task name counter
@@ -305,7 +305,7 @@ def duplicate_for_concurrency(task_dag,edges):
             new_dag.append(x)
 
     #and update edges accordingly
-    for c in range(1, _duplicates):#the maximum degree of concurrency indicates how many "parallel" DAGs to paste in
+    for c in range(0, _duplicates):#the maximum degree of concurrency indicates how many "parallel" DAGs to paste in
         for entry in edges:
             new_edges.append((str(int(entry[0])+original_chain_length*c),str(int(entry[1])+original_chain_length*c)))
 
@@ -384,7 +384,7 @@ def determine_and_prepend_iris_h2d_transfers(dag):
     for i,k in enumerate(_kernels):
         for ck in range(0,_duplicates):
             for j,l in enumerate(_kernel_buffs[k]):
-                if l != 'r' and l != 'rw': #Only transfer memory that will be read on the device
+                if l == 'w': #Only transfer memory that will be read on the device
                     continue
                 transfer = {}
                 transfer["name"] = "transferto-{}-buffer{}-instance{}".format(k,j,ck)
@@ -402,7 +402,7 @@ def determine_and_prepend_iris_h2d_transfers(dag):
                     if 'kernel' not in t['commands'][0]:
                         continue
                     for p in t['commands'][0]['kernel']['parameters']:
-                      if buffer_name in p['name']:
+                      if buffer_name == p['name']:
                           memory_instance_in_use = True
                           #TODO: sort out concurrency
                           if transfer["name"] not in dag[m]['depends']:
@@ -422,7 +422,7 @@ def determine_and_append_iris_d2h_transfers(dag):
     for i,k in enumerate(_kernels):
         for ck in range(0,_duplicates):
             for j,l in enumerate(_kernel_buffs[k]):
-                if l != 'w' and l != 'rw': #Only transfer memory that will be read on the device
+                if l == 'r': #Only transfer memory that have been written on the device
                     continue
                 transfer = {}
                 transfer["name"] = "transferfrom-{}-buffer{}-instance{}".format(k,j,ck)
@@ -439,14 +439,14 @@ def determine_and_append_iris_d2h_transfers(dag):
                     if 'kernel' not in t['commands'][0]:
                         continue
                     for p in t['commands'][0]['kernel']['parameters']:
-                      if buffer_name in p['name']:
+                      if buffer_name == p['name']:
                           memory_instance_in_use = True
                           transfer["depends"].append(t["name"])
                 transfer["target"] = "user-target-control"
                 if memory_instance_in_use == True:
                     transfers.append(transfer)
 
-    #prepend the h2d transfers
+    #prepend the d2h transfers
     for t in range(0, len(transfers)):
         dag.append(transfers.pop(0))
     return dag
@@ -461,7 +461,6 @@ def get_task_to_json(dag,deps):
     for t in dag:
         t['depends']=list(dict.fromkeys(t['depends']))
         #print(t['depends'])
-
     f = open("graph.json", 'w')
     inputs = determine_iris_inputs()
     dag = determine_and_prepend_iris_h2d_transfers(dag)

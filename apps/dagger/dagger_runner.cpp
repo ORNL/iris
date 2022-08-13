@@ -406,39 +406,6 @@ int indexer = 0;
 
     t1 = now();
 
-    //NOTE: temporary code to verify code
-    for(auto & kernel : kernels){
-      //create and populate local memory
-      double* A = new double[(int)pow(SIZE,kernel.dimensions)];
-      double* B = new double[(int)pow(SIZE,kernel.dimensions)];
-      double* C = new double[(int)pow(SIZE,kernel.dimensions)];
-      for(int i = 0; i < pow(SIZE,kernel.dimensions); i++){
-        A[i] = i;
-        B[i] = i;
-        C[i] = i;
-      }
-      double* D;
-      //TODO: support concurrency here
-      for(auto concurrent_device = 0; concurrent_device < duplicates; concurrent_device++){
-        printf("Validation on results, set no. %i with size = %zu\n",concurrent_device,SIZE);
-        D = host_mem[concurrent_device*kernel.buffers.size()];//json_inputs[ concurrent_device*3 + 3+ sizecb.size()];
-        for (size_t z = 0; z < 50; z++){
-        for (size_t i = 0; i < SIZE; i++)
-          for (size_t j = 0; j < SIZE; j++){
-            double sum = 0.0;
-              for (size_t k = 0; k < SIZE; k++) {
-                sum += A[i * SIZE + k] * B[k * SIZE + j];
-              }
-            C[i * SIZE + j] += sum;
-          }
-        }
-        //compare local C vs C computed in IRIS
-        for (size_t i = 0; i < SIZE*SIZE; i++){
-          assert(std::abs(C[i]-D[i]) <std::numeric_limits<double>::epsilon());
-          //printf("sequential = %f : iris = %f\n",C[i],D[i]);
-        }
-      }
-    }
     //TODO: currently we only present FLOPs for ijk kernel but not DEVICE_CONCURRENCY! IT SHOULD BE MULTIPLIED BY THE TOTAL NUMBER OF TASKS!
 /*
     if (num_tasks != 0){
