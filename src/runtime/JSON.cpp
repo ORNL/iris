@@ -12,16 +12,23 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <ctype.h>
 #include "rapidjson/rapidjson.h"
 #include "rapidjson/document.h"
+#include "rapidjson/filewritestream.h"
+#include "rapidjson/writer.h"
 
 #include <csignal>
 namespace iris {
 namespace rt {
 
+rapidjson::Value iris_output_tasks_;
+rapidjson::Document iris_output_document_;
+
 JSON::JSON(Platform* platform){
   platform_ = platform;
   timer_ = new Timer();
+  iris_output_tasks_.SetObject();
 }
 
 JSON::~JSON() {
@@ -103,6 +110,9 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
     if (p_target) target = (*(int*) p_target);
     else if(strcmp(target_str, "cpu") == 0) target = iris_cpu;
     else if(strcmp(target_str, "gpu") == 0) target = iris_gpu;
+    else if(isdigit(target_str[0])){//the policy can also just be the actual device id!
+      target = atoi(target_str);
+    }
     task->set_brs_policy(target);
     //commands (populate each task with assigned commands)
     if(!iris_tasks_[i].HasMember("commands") or !iris_tasks_[i]["commands"].IsArray()){
@@ -333,10 +343,135 @@ void* JSON::GetParameterInput(void** params, const char* buf){
 }
 
 int JSON::RecordFlush() {
+  rapidjson::Value json_d(rapidjson::kObjectType);
+  rapidjson::Value iris_graph(rapidjson::kObjectType);
+  json_d.AddMember("iris-graph", iris_graph, iris_output_document_.GetAllocator());
+  raise(SIGINT);
+  //write inputs
+  /*
+  rapidjson::Value inputs(kArrayType);
+  for (std::set<Mem*>::iterator I = mems_.begin(); I != mems_.end(); ++I) {
+    sprintf(buf, "\"mem-%lu\", ", (*I)->uid());
+    write(fd, buf, strlen(buf));
+    memset(buf, 0, 128);
+  }
+  iris_graph.AddMember("inputs", inputs, iris_output_document.GetAllocator());
+
+  for (int i = 0; i < nptrs_; i++) {
+    if (nptrs_ > 1 && i < nptrs_ - 1) sprintf(buf, "\"user-%d\", ", i);
+    else if (i == nptrs_ - 1) sprintf(buf, "\"user-%d\"", i);
+    write(fd, buf, strlen(buf));
+    memset(buf, 0, 128);
+  }
+  */
+
+          // ...
+  //  
+  //  FILE* fp = fopen("output.json", "wb"); // non-Windows use "w"
+  //   
+  //   char writeBuffer[65536];
+  //   FileWriteStream os(fp, writeBuffer, sizeof(writeBuffer));
+  //    
+  //    Writer<FileWriteStream> writer(os);
+  //    d.Accept(writer);
+  //     
+  //     fclose(fp);
   return IRIS_SUCCESS;
 }
 
 int JSON::RecordTask(Task* task) {
+  if(task->ncmds() == 0) return IRIS_SUCCESS;//skip recording IRIS_MARKER tasks
+  rapidjson::Value _task(rapidjson::kObjectType);
+  //name
+  rapidjson::Value _name(rapidjson::StringRef(task->name()));
+  if(_name == ""){
+    char buffer[64];
+    int len = sprintf(buffer, "task-%i", task->uid()); // dynamically created string.
+    _name.SetString(buffer, len, iris_output_document_.GetAllocator());
+  }
+  _task.AddMember("name",_name,iris_output_document_.GetAllocator());
+  //command(s)
+  for (int i = 0; i < task->ncmds(); i++) {
+    Command* cmd = task->cmd(i);
+    if (cmd->type() == IRIS_CMD_H2D) {
+      //RecordH2D(cmd, buf);
+      printf("record h2d\n");
+      //mems_.insert(cmd->mem());
+      //sprintf(buf, "  \"h2d\": [\"mem-%lu\", \"user-%d\", \"%zu\", \"%zu\"],\n", cmd->mem()->uid(), InputPointer(cmd->host()), cmd->off(0), cmd->size());
+    }
+    else if (cmd->type() == IRIS_CMD_D2H) {
+      printf("record d2h\n");
+      //RecordD2H(cmd, buf);
+      //mems_.insert(cmd->mem());
+      //sprintf(buf, "  \"d2h\": [\"mem-%lu\", \"user-%d\", \"%zu\", \"%zu\"],\n", cmd->mem()->uid(), InputPointer(cmd->host()), cmd->off(0), cmd->size());
+    }
+    else if (cmd->type() == IRIS_CMD_KERNEL) {
+      printf("record kernel\n");
+      //RecordKernel(cmd, buf);
+      /*
+      std::string str;
+      char c[256];
+      sprintf(c, "  \"kernel\": [\"%s\", \"%zu\", [", cmd->kernel()->name(), cmd->gws(0));
+      str.append(c);
+      memset(c, 0, 256);
+      int nargs = cmd->kernel_nargs();
+      for (int i = 0; i < nargs; i++) {
+        KernelArg* arg = cmd->kernel_arg(i);
+        if (arg->mem) {
+          mems_.insert(arg->mem);
+          str.append("\"mem-");
+          str.append(std::to_string(arg->mem->uid()));
+          str.append("\"");
+        } else {
+        }
+        if (nargs > 1 && i < nargs - 1) str.append(", ");
+      }
+      str.append("], [");
+      for (int i = 0; i < nargs; i++) {
+        KernelArg* arg = cmd->kernel_arg(i);
+        if (arg->mem) {
+          if (arg->mode == iris_r) str.append("\"r\"");
+          else if (arg->mode == iris_w) str.append("\"w\"");
+          else if (arg->mode == iris_rw) str.append("\"rw\"");
+          else _error("not valid mode[%d]", arg->mode);
+        } else {
+        }
+        if (nargs > 1 && i < nargs - 1) str.append(", ");
+      }
+      str.append("] ],\n");
+      sprintf(buf, "%s", str.c_str());
+      */
+      }
+  }
+  //target
+  rapidjson::Value _target;
+  if (task->dev()) {
+    //TODO: handle passing device ids as the target directly (prioritizing it over a policy)
+    raise(SIGINT);
+  }
+  else {
+    char buffer[64];
+    //int len = sprintf(buffer, "0x%x", task->brs_policy());
+    int len = sprintf(buffer, "%i", task->brs_policy());
+    _target.SetString(rapidjson::StringRef(buffer), len, iris_output_document_.GetAllocator());
+  }
+  _task.AddMember("target",_target,iris_output_document_.GetAllocator());
+  //depends
+  rapidjson::Value _depends(rapidjson::kArrayType);
+  for (int i = 0; i < task->ndepends(); i++) {
+    rapidjson::Value depend(task->depend(i)->uid());
+    _depends.PushBack(depend, iris_output_document_.GetAllocator());
+  }
+  _task.AddMember("depends",_depends,iris_output_document_.GetAllocator());
+  //
+  //auto const& tmp = _task["name"].GetString();
+  //auto const& tmp = _task["target"].GetString();
+  for (rapidjson::SizeType i = 0; i < task->ndepends(); i++){
+    auto const& tmp = _task["depends"][i].GetString();
+    raise(SIGINT);
+  }
+  //TODO: discard empty tasks (tasks without any commands)
+  iris_output_tasks_.PushBack(_task, iris_output_document_.GetAllocator());
   return IRIS_SUCCESS;
 }
 

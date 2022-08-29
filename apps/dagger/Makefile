@@ -42,7 +42,7 @@ kernel.openmp.so: kernel.cl.openmp.c
 	$(CC) -g -fopenmp -fPIC -shared -I. -o $@ $^
 
 clean:
-	rm -f dagger_runner dagger dagger_dgemm dagger_coarse kernel.ptx kernel.spv kernel.hip kernel.openmp.so
+	rm -f dagger_runner dagger_test dagger dagger_dgemm dagger_coarse kernel.ptx kernel.spv kernel.hip kernel.openmp.so
 
 clean-results:
 	rm -f dagger_runner-*.csv timing_log_*.csv throughput-log-*.csv dagger_runner-*.html
