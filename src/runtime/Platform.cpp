@@ -217,7 +217,7 @@ int Platform::Synchronize() {
   for (int i = 0; i < ndevs_; i++) devices[i] = i;
   int ret = DeviceSynchronize(ndevs_, devices);
   delete devices;
-  return ret;
+  return ncommands_failed_;
 }
 
 int Platform::EnvironmentInit() {
