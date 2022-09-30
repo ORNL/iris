@@ -60,80 +60,50 @@ void DeviceOpenMP::TaskPre(Task *task) {
 
 int DeviceOpenMP::GetProcessorNameIntel(char* cpuinfo) {
   char* c1 = strstr(cpuinfo, "model name\t: ");
-  if (!c1){
-    worker_->platform()->IncrementErrorCount();
-    return IRIS_ERROR;
-  }
+  if (!c1) return IRIS_ERROR;
   char* c2 = c1 + strlen("model name\t: ");
   char* c3 = strstr(c2, "GHz");
-  if (!c3){
-    worker_->platform()->IncrementErrorCount();
-    return IRIS_ERROR;
-  }
+  if (!c3) return IRIS_ERROR;
   strncpy(name_, c2, c3 - c2 + 3);
   return IRIS_SUCCESS;
 }
 
 int DeviceOpenMP::GetProcessorNamePower(char* cpuinfo) {
   char* c1 = strstr(cpuinfo, "cpu\t\t: ");
-  if (!c1){
-    worker_->platform()->IncrementErrorCount();
-    return IRIS_ERROR;
-  }
+  if (!c1) return IRIS_ERROR;
   char* c2 = c1 + strlen("cpu\t\t: ");
   char* c3 = strstr(c2, "clock");
-  if (!c3){
-    worker_->platform()->IncrementErrorCount();
-    return IRIS_ERROR;
-  }
+  if (!c3) return IRIS_ERROR;
   strncpy(name_, c2, c3 - c2 - 1);
   return IRIS_SUCCESS;
 }
 
 int DeviceOpenMP::GetProcessorNameAMD(char* cpuinfo) {
   char* c1 = strstr(cpuinfo, "model name\t: ");
-  if (!c1){
-    worker_->platform()->IncrementErrorCount();
-    return IRIS_ERROR;
-  }
+  if (!c1) return IRIS_ERROR;
   char* c2 = c1 + strlen("model name\t: ");
   char* c3 = strstr(c2, "\n");
-  if (!c3){
-    worker_->platform()->IncrementErrorCount();
-    return IRIS_ERROR;
-  }
+  if (!c3) return IRIS_ERROR;
   strncpy(name_, c2, c3 - c2);
   return IRIS_SUCCESS;
 }
 
 int DeviceOpenMP::GetProcessorNameARM(char* cpuinfo) {
   char* c1 = strstr(cpuinfo, "model name\t: ");
-  if (!c1){
-    worker_->platform()->IncrementErrorCount();
-    return IRIS_ERROR;
-  }
+  if (!c1) return IRIS_ERROR;
   char* c2 = c1 + strlen("model name\t: ");
   char* c3 = strstr(c2, ")");
-  if (!c3){
-    worker_->platform()->IncrementErrorCount();
-    return IRIS_ERROR;
-  }
+  if (!c3) return IRIS_ERROR;
   strncpy(name_, c2, c3 - c2 + 1);
   return IRIS_SUCCESS;
 }
 
 int DeviceOpenMP::GetProcessorNameQualcomm(char* cpuinfo) {
   char* c1 = strstr(cpuinfo, ": ");
-  if (!c1){
-    worker_->platform()->IncrementErrorCount();
-    return IRIS_ERROR;
-  }
+  if (!c1) return IRIS_ERROR;
   char* c2 = c1 + strlen(": ");
   char* c3 = strstr(c2, ")");
-  if (!c3){
-    worker_->platform()->IncrementErrorCount();
-    return IRIS_ERROR;
-  }
+  if (!c3) return IRIS_ERROR;
   strncpy(name_, c2, c3 - c2 + 1);
   return IRIS_SUCCESS;
 }

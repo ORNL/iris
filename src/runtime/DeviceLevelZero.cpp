@@ -6,6 +6,7 @@
 #include "Task.h"
 #include "Timer.h"
 #include "Utils.h"
+#include "Worker.h"
 
 namespace iris {
 namespace rt {
@@ -38,11 +39,13 @@ int DeviceLevelZero::Compile(char* src) {
   sprintf(cmd, "clang -cc1 -finclude-default-header -triple spir %s -flto -emit-llvm-bc -o %s.bc", src, kernel_path_);
   if (system(cmd) != EXIT_SUCCESS) {
     _error("cmd[%s]", cmd);
+    worker_->platform()->IncrementErrorCount();
     return IRIS_ERROR;
   }
   sprintf(cmd, "llvm-spirv %s.bc -o %s", kernel_path_, kernel_path_);
   if (system(cmd) != EXIT_SUCCESS) {
     _error("cmd[%s]", cmd);
+    worker_->platform()->IncrementErrorCount();
     return IRIS_ERROR;
   }
   return IRIS_SUCCESS;
