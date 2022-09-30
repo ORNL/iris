@@ -10,6 +10,7 @@
 #include "Task.h"
 #include "Timer.h"
 #include "Utils.h"
+#include "Worker.h"
 
 namespace iris {
 namespace rt {
@@ -130,6 +131,7 @@ int DeviceCUDA::Compile(char* src) {
   sprintf(cmd, "nvcc -ptx %s -o %s", src, kernel_path_);
   if (system(cmd) != EXIT_SUCCESS) {
     _error("cmd[%s]", cmd);
+    worker_->platform()->IncrementErrorCount();
     return IRIS_ERROR;
   }
   return IRIS_SUCCESS;
@@ -159,6 +161,7 @@ int DeviceCUDA::Init() {
     _cuerror(err_);
     _error("srclen[%zu] src\n%s", srclen, src);
     if (src) free(src);
+    worker_->platform()->IncrementErrorCount();
     return IRIS_ERROR;
   }
   if (src) free(src);
@@ -169,7 +172,10 @@ int DeviceCUDA::MemAlloc(void** mem, size_t size) {
   CUdeviceptr* cumem = (CUdeviceptr*) mem;
   err_ = ld_->cuMemAlloc(cumem, size);
   _cuerror(err_);
-  if (err_ != CUDA_SUCCESS) return IRIS_ERROR;
+  if (err_ != CUDA_SUCCESS){
+    worker_->platform()->IncrementErrorCount();
+    return IRIS_ERROR;
+  }
   return IRIS_SUCCESS;
 }
 
@@ -254,7 +260,10 @@ int DeviceCUDA::MemH2D(Mem* mem, size_t *off, size_t *host_sizes,  size_t *dev_s
 #endif
   }
   _cuerror(err_);
-  if (err_ != CUDA_SUCCESS) return IRIS_ERROR;
+  if (err_ != CUDA_SUCCESS){
+   worker_->platform()->IncrementErrorCount();
+   return IRIS_ERROR;
+  }
   return IRIS_SUCCESS;
 }
 
@@ -272,7 +281,10 @@ int DeviceCUDA::MemD2H(Mem* mem, size_t *off, size_t *host_sizes,  size_t *dev_s
 #endif
   }
   _cuerror(err_);
-  if (err_ != CUDA_SUCCESS) return IRIS_ERROR;
+  if (err_ != CUDA_SUCCESS){
+   worker_->platform()->IncrementErrorCount();
+   return IRIS_ERROR;
+  }
   return IRIS_SUCCESS;
 }
 
@@ -282,8 +294,10 @@ int DeviceCUDA::KernelGet(void** kernel, const char* name) {
   CUfunction* cukernel = (CUfunction*) kernel;
   err_ = ld_->cuModuleGetFunction(cukernel, module_, name);
   _cuerror(err_);
-  if (err_ != CUDA_SUCCESS) return IRIS_ERROR;
-
+  if (err_ != CUDA_SUCCESS){
+   worker_->platform()->IncrementErrorCount();
+   return IRIS_ERROR;
+  }
   char name_off[256];
   memset(name_off, 0, sizeof(name_off));
   sprintf(name_off, "%s_with_offsets", name);
@@ -373,7 +387,10 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
   err_ = ld_->cuLaunchKernel(cukernel, grid[0], grid[1], grid[2], block[0], block[1], block[2], shared_mem_bytes_, streams_[q_], params_, NULL);
 #endif
   _cuerror(err_);
-  if (err_ != CUDA_SUCCESS) return IRIS_ERROR;
+  if (err_ != CUDA_SUCCESS){
+   worker_->platform()->IncrementErrorCount();
+   return IRIS_ERROR;
+  }
   for (int i = 0; i < IRIS_MAX_KERNEL_NARGS; i++) params_[i] = NULL;
   max_arg_idx_ = 0;
   shared_mem_bytes_ = 0;
@@ -383,20 +400,27 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
 int DeviceCUDA::Synchronize() {
   err_ = ld_->cuCtxSynchronize();
   _cuerror(err_);
-  if (err_ != CUDA_SUCCESS) return IRIS_ERROR;
+  if (err_ != CUDA_SUCCESS){
+   worker_->platform()->IncrementErrorCount();
+   return IRIS_ERROR;
+  }
   return IRIS_SUCCESS;
 }
 
 int DeviceCUDA::AddCallback(Task* task) {
   err_ = ld_->cuStreamAddCallback(streams_[q_], DeviceCUDA::Callback, task, 0);
   _cuerror(err_);
-  if (err_ != CUDA_SUCCESS) return IRIS_ERROR;
+  if (err_ != CUDA_SUCCESS){
+   worker_->platform()->IncrementErrorCount();
+   return IRIS_ERROR;
+  }
   return IRIS_SUCCESS;
 }
 
 int DeviceCUDA::Custom(int tag, char* params) {
   if (!cmd_handlers_.count(tag)) {
     _error("unknown tag[0x%x]", tag);
+    worker_->platform()->IncrementErrorCount();
     return IRIS_ERROR;
   }
   command_handler handler = cmd_handlers_[tag];

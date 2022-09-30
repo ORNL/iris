@@ -25,7 +25,7 @@ public:
   bool busy() { return busy_; }
   unsigned long ntasks();
   Device* device() { return dev_; }
-
+  Platform* platform() { return platform_; }
 private:
   void Execute(Task* task);
   virtual void Run();

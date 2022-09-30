@@ -3,6 +3,7 @@
 #include "Device.h"
 #include "History.h"
 #include "Mem.h"
+#include "Worker.h"
 #include <string.h>
 
 namespace iris {
@@ -39,6 +40,7 @@ int Kernel::SetMem(int idx, Mem* mem, size_t off, int mode) {
   KernelArg* arg = new KernelArg;
   if(!mem) {
     _error("no mem[%p] for the kernel parameter %d", mem, idx);
+    platform_->IncrementErrorCount();
     return IRIS_ERROR;
   }
   arg->mem = mem;

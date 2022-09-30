@@ -52,7 +52,7 @@ Platform::Platform() {
   ndevs_ = 0;
   ndevs_enabled_ = 0;
   dev_default_ = 0;
-  ncommands_failed_ = 0;
+  nfailures_ = 0;
 
   queue_ = NULL;
   pool_ = NULL;
@@ -217,7 +217,7 @@ int Platform::Synchronize() {
   for (int i = 0; i < ndevs_; i++) devices[i] = i;
   int ret = DeviceSynchronize(ndevs_, devices);
   delete devices;
-  return ncommands_failed_;
+  return nfailures_;
 }
 
 int Platform::EnvironmentInit() {
@@ -863,12 +863,12 @@ int Platform::TaskMapFromFull(iris_task brs_task, void* host) {
   return IRIS_SUCCESS;
 }
 
-void Platform::CommandIncrementErrorCount(){
-  ncommands_failed_++;
+void Platform::IncrementErrorCount(){
+  nfailures_++;
 }
 
-int Platform::CommandNumErrors(){
-  return ncommands_failed_;
+int Platform::NumErrors(){
+  return nfailures_;
 }
 
 int Platform::TaskSubmit(iris_task brs_task, int brs_policy, const char* opt, int sync) {
@@ -883,7 +883,7 @@ int Platform::TaskSubmit(iris_task brs_task, int brs_policy, const char* opt, in
     scheduler_->Enqueue(task);
   } else workers_[0]->Enqueue(task);
   if (sync) task->Wait();
-  return ncommands_failed_;
+  return nfailures_;
 }
 
 int Platform::TaskWait(iris_task brs_task) {

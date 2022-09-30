@@ -127,8 +127,8 @@ public:
   int RecordStart();
   int RecordStop();
 
-  void CommandIncrementErrorCount();
-  int CommandNumErrors();
+  void IncrementErrorCount();
+  int NumErrors();
 
   int TimerNow(double* time);
 
@@ -190,7 +190,7 @@ private:
   int dev_default_;
   int devs_enabled_[IRIS_MAX_NDEVS];
   int ndevs_enabled_;
-  int ncommands_failed_;
+  int nfailures_;
 
   std::vector<LoaderHost2OpenCL*> loaderHost2OpenCL_;
   LoaderHost2HIP * loaderHost2HIP_;

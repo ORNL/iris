@@ -5,6 +5,7 @@
 #include "Mem.h"
 #include "Task.h"
 #include "Utils.h"
+#include "Worker.h"
 #include <iris/hexagon/rpcmem.h>
 #include <dlfcn.h>
 #include <stdint.h>
@@ -35,6 +36,7 @@ int DeviceHexagon::MemAlloc(void** mem, size_t size) {
   *hxgmem = ld_->iris_hexagon_rpcmem_alloc(RPCMEM_HEAP_ID_SYSTEM, RPCMEM_DEFAULT_FLAGS, (int) size);
   if (*hxgmem == 0) {
     _error("hxgmem[%p]", hxgmem);
+    worker_->platform()->IncrementErrorCount();
     return IRIS_ERROR;
   }
   return IRIS_SUCCESS;

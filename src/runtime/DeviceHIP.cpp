@@ -8,6 +8,7 @@
 #include "Reduction.h"
 #include "Task.h"
 #include "Utils.h"
+#include "Worker.h"
 
 namespace iris {
 namespace rt {
@@ -41,6 +42,7 @@ int DeviceHIP::Compile(char* src) {
   sprintf(cmd, "hipcc --genco %s -o %s", src, kernel_path_);
   if (system(cmd) != EXIT_SUCCESS) {
     _error("cmd[%s]", cmd);
+    worker_->platform()->IncrementErrorCount();
     return IRIS_ERROR;
   }
   return IRIS_SUCCESS;
@@ -90,6 +92,7 @@ int DeviceHIP::Init() {
     _hiperror(err_);
     _error("srclen[%zu] src\n%s", srclen, src);
     if (src) free(src);
+    worker_->platform()->IncrementErrorCount();
     return IRIS_ERROR;
   }
   if (src) free(src);
@@ -100,7 +103,10 @@ int DeviceHIP::MemAlloc(void** mem, size_t size) {
   void** hipmem = mem;
   err_ = ld_->hipMalloc(hipmem, size);
   _hiperror(err_);
-  if (err_ != hipSuccess) return IRIS_ERROR;
+  if (err_ != hipSuccess){
+    worker_->platform()->IncrementErrorCount();
+    return IRIS_ERROR;
+  }
   return IRIS_SUCCESS;
 }
 
@@ -108,7 +114,10 @@ int DeviceHIP::MemFree(void* mem) {
   void* hipmem = mem;
   err_ = ld_->hipFree(hipmem);
   _hiperror(err_);
-  if (err_ != hipSuccess) return IRIS_ERROR;
+  if (err_ != hipSuccess){
+    worker_->platform()->IncrementErrorCount();
+    return IRIS_ERROR;
+  }
   return IRIS_SUCCESS;
 }
 
@@ -117,7 +126,10 @@ int DeviceHIP::MemH2D(Mem* mem, size_t *off, size_t *host_sizes,  size_t *dev_si
   _trace("dev[%d][%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", devno_, name_, mem->uid(), hipmem, off[0], size, host, q_);
   err_ = ld_->hipMemcpyHtoD((char*) hipmem + off[0], host, size);
   _hiperror(err_);
-  if (err_ != hipSuccess) return IRIS_ERROR;
+  if (err_ != hipSuccess){
+    worker_->platform()->IncrementErrorCount();
+    return IRIS_ERROR;
+  }
   return IRIS_SUCCESS;
 }
 
@@ -126,7 +138,11 @@ int DeviceHIP::MemD2H(Mem* mem, size_t *off, size_t *host_sizes,  size_t *dev_si
   _trace("dev[%d][%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", devno_, name_, mem->uid(), hipmem, off[0], size, host, q_);
   err_ = ld_->hipMemcpyDtoH(host, (char*) hipmem + off[0], size);
   _hiperror(err_);
-  if (err_ != hipSuccess) return IRIS_ERROR;
+  if (err_ != hipSuccess){
+    worker_->platform()->IncrementErrorCount();
+    return IRIS_ERROR;
+  }
+
   return IRIS_SUCCESS;
 }
 
@@ -136,7 +152,10 @@ int DeviceHIP::KernelGet(void** kernel, const char* name) {
   hipFunction_t* hipkernel = (hipFunction_t*) kernel;
   err_ = ld_->hipModuleGetFunction(hipkernel, module_, name);
   _hiperror(err_);
-  if (err_ != hipSuccess) return IRIS_ERROR;
+  if (err_ != hipSuccess){
+    worker_->platform()->IncrementErrorCount();
+    return IRIS_ERROR;
+  }
 
   char name_off[256];
   memset(name_off, 0, sizeof(name_off));
@@ -212,11 +231,17 @@ int DeviceHIP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, s
   _trace("dev[%d] kernel[%s] dim[%d] grid[%d,%d,%d] block[%d,%d,%d] shared_mem_bytes[%u] q[%d]", devno_, kernel->name(), dim, grid[0], grid[1], grid[2], block[0], block[1], block[2], shared_mem_bytes_, q_);
   err_ = ld_->hipModuleLaunchKernel(func, grid[0], grid[1], grid[2], block[0], block[1], block[2], shared_mem_bytes_, 0, params_, NULL);
   _hiperror(err_);
-  if (err_ != hipSuccess) return IRIS_ERROR;
+  if (err_ != hipSuccess){
+    worker_->platform()->IncrementErrorCount();
+    return IRIS_ERROR;
+  }
 #ifdef IRIS_SYNC_EXECUTION
   err_ = ld_->hipDeviceSynchronize();
   _hiperror(err_);
-  if (err_ != hipSuccess) return IRIS_ERROR;
+  if (err_ != hipSuccess){
+    worker_->platform()->IncrementErrorCount();
+    return IRIS_ERROR;
+  }
 #endif
   for (int i = 0; i < IRIS_MAX_KERNEL_NARGS; i++) params_[i] = NULL;
   max_arg_idx_ = 0;
@@ -227,7 +252,10 @@ int DeviceHIP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, s
 int DeviceHIP::Synchronize() {
   err_ = ld_->hipDeviceSynchronize();
   _hiperror(err_);
-  if (err_ != hipSuccess) return IRIS_ERROR;
+  if (err_ != hipSuccess){
+    worker_->platform()->IncrementErrorCount();
+    return IRIS_ERROR;
+  }
   return IRIS_SUCCESS;
 }
 
