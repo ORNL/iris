@@ -447,7 +447,6 @@ int DeviceOpenCL::CreateProgram(const char* suffix, char** src, size_t* srclen) 
       memcpy(*src, default_str, strlen(default_str)+1);
       return IRIS_SUCCESS;
   }
-  worker_->platform()->IncrementErrorCount();
   return IRIS_ERROR;
 }
 
