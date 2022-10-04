@@ -11,7 +11,7 @@ class Gantt():
     import pandas as pandas
     from bokeh import palettes
 
-    def _createGanttChart(self, timings, title=None, edgepalette=None, insidepalette=None, time_range=None, zoom=False, drop=[], outline=True):
+    def _createGanttChart(self, timings, title=None, edgepalette=None, insidepalette=None, time_range=None, zoom=False, drop=[], outline=True, inner_label=False):
         import numpy as np
         timings['taskname'] = np.where(~timings['taskname'].isnull(),timings['taskname'],timings['type'])
 
@@ -74,10 +74,9 @@ class Gantt():
                 used_labels.append(job['taskname'].values[0])
 
                 ax.barh((idx*0.5)+0.5, job['end'] - job['start'], left=job['start'], height=0.3, align='center', edgecolor=edgephash[job['taskname'].values[0]], color=insidephash[job['taskname'].values[0]], alpha=0.95,label=job['taskname'].values[0] if fresh_label else "__no_legend__")
-
-                #uncomment the following to have the kernel name directly onto the bars rather than as a label
-                #ax.barh((idx*0.5)+0.5, job['end'] - job['start'], left=job['start'], height=0.3, align='center', edgecolor=edgephash[job['taskname'].values[0]], color=insidephash[job['taskname'].values[0]], alpha=0.95)
-                #ax.text(job['start'] + (.05*(job['end']-job['start'])), (idx*0.5)+0.5 - 0.03125, job['taskname'].values[0], fontweight='bold', fontsize=8, alpha=0.75)
+                if inner_label:
+                    #uncomment the following to have the kernel name directly onto the bars rather than as a label
+                    ax.text(job['start'] + (.05*(job['end']-job['start'])), (idx*0.5)+0.5 - 0.03125, job['taskname'].values[0], fontweight='bold', fontsize=9, alpha=0.75, rotation=90)
 
         locsy, labelsy = self.plt.yticks(pos, proc_names)
         self.plt.ylabel('Accelerator', fontsize=10)
