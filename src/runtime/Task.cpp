@@ -1,3 +1,4 @@
+#include <string>
 #include "Task.h"
 #include "Debug.h"
 #include "Command.h"
@@ -79,6 +80,21 @@ void Task::set_brs_policy(int brs_policy) {
     (*I)->set_brs_policy(brs_policy);
 }
 
+char* Task::brs_policy_string() {
+  switch(brs_policy_){
+    case iris_all: return ("all");
+    case iris_any: return ("any");
+    case iris_data: return ("data");
+    case iris_default: return ("default");
+    case iris_depend: return ("depend");
+    case iris_profile: return ("profile");
+    case iris_random: return ("random");
+    case iris_roundrobin: return ("roundrobin");
+    case iris_pending: return ("pending");
+    default: return("unknown");
+  }
+}
+
 void Task::set_opt(const char* opt) {
   if (!opt) return;
   memset(opt_, 0, sizeof(opt_));
@@ -86,7 +102,7 @@ void Task::set_opt(const char* opt) {
 }
 
 void Task::AddCommand(Command* cmd) {
-  if (ncmds_ == 63) _error("ncmds[%d]", ncmds_);
+  if (ncmds_ >= 63) _error("ncmds[%d]", ncmds_);
   cmds_[ncmds_++] = cmd;
   if (cmd->type() == IRIS_CMD_KERNEL) {
     if (cmd_kernel_) _error("kernel[%s] is already set", cmd->kernel()->name());

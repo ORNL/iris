@@ -30,16 +30,20 @@ private:
   int LoadTasks(Graph* graph, void** params, char* src, void* tok, int i, int r);
   int LoadTask(Graph* graph, void** params, char* src, void* tok, int j, int r);
 
-  void* GetParameterInput(void** params, const char* string_to_lookup);
-  int InputPointer(void* p);
-
 private:
+  void* GetParameterInput(void** params, const char* string_to_lookup);
+  int UniqueUIDFromHostPointer(void*host_ptr);
+  const char* NameFromHostPointer(void*host_ptr);
+  const char* NameFromDeviceMem(Mem* dev_mem);
+
+
   Platform* platform_;
   std::vector<const char*> inputs_;
   std::vector<Task*> tasks_;
   Timer* timer_;
   std::string str_;
   std::set<Mem*> mems_;
+  std::set<void*> host_ptrs_;
 };
 
 } /* namespace rt */
