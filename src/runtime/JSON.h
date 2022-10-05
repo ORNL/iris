@@ -33,8 +33,8 @@ private:
 private:
   void* GetParameterInput(void** params, const char* string_to_lookup);
   int UniqueUIDFromHostPointer(void*host_ptr);
-  const char* NameFromHostPointer(void*host_ptr);
-  const char* NameFromDeviceMem(Mem* dev_mem);
+  const std::string NameFromHostPointer(void*host_ptr);
+  const std::string NameFromDeviceMem(Mem* dev_mem);
 
 
   Platform* platform_;

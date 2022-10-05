@@ -361,11 +361,16 @@ int JSON::RecordFlush() {
   //inputs
   rapidjson::Value inputs_(rapidjson::kArrayType);
   //host pointers
-  for(std::set<void*>::iterator iter = host_ptrs_.begin(); iter != host_ptrs_.end(); iter ++)
-    inputs_.PushBack(rapidjson::StringRef(NameFromHostPointer(*iter)),iris_output_document_.GetAllocator());
+  rapidjson::Value tmp;
+  for(std::set<void*>::iterator iter = host_ptrs_.begin(); iter != host_ptrs_.end(); iter ++){
+    tmp.SetString(NameFromHostPointer(*iter).c_str(),NameFromHostPointer(*iter).length(),iris_output_document_.GetAllocator());
+    inputs_.PushBack(tmp,iris_output_document_.GetAllocator());
+  }
   //device memory
-  for(std::set<Mem*>::iterator iter = mems_.begin(); iter != mems_.end(); iter ++)
-    inputs_.PushBack(rapidjson::StringRef(NameFromDeviceMem(*iter)),iris_output_document_.GetAllocator());
+  for(std::set<Mem*>::iterator iter = mems_.begin(); iter != mems_.end(); iter ++){
+    tmp.SetString(NameFromDeviceMem(*iter).c_str(),NameFromDeviceMem(*iter).length(),iris_output_document_.GetAllocator());
+    inputs_.PushBack(tmp,iris_output_document_.GetAllocator());
+  }
   iris_graph.AddMember("inputs",inputs_,iris_output_document_.GetAllocator());
   rapidjson::Value tasks_(rapidjson::kObjectType);
   tasks_.AddMember("tasks",iris_output_tasks_,iris_output_document_.GetAllocator());
@@ -383,8 +388,8 @@ int JSON::RecordFlush() {
   return IRIS_SUCCESS;
 }
 
-const char* JSON::NameFromHostPointer(void* host_ptr){
-  return std::string("hostmem-"+std::to_string(UniqueUIDFromHostPointer(host_ptr))).c_str();
+const std::string JSON::NameFromHostPointer(void* host_ptr){
+  return std::string("hostmem-"+std::to_string(UniqueUIDFromHostPointer(host_ptr)));
 }
 
 int JSON::UniqueUIDFromHostPointer(void* host_ptr){
@@ -398,9 +403,9 @@ int JSON::UniqueUIDFromHostPointer(void* host_ptr){
   }
 }
 
-const char* JSON::NameFromDeviceMem(Mem* dev_mem){
+const std::string JSON::NameFromDeviceMem(Mem* dev_mem){
   mems_.insert(dev_mem);
-  return std::string("devicemem-"+std::to_string(dev_mem->uid())).c_str();
+  return std::string("devicemem-"+std::to_string(dev_mem->uid()));
 }
 
 int JSON::RecordTask(Task* task) {
@@ -422,15 +427,18 @@ int JSON::RecordTask(Task* task) {
   }
   //command(s)
   rapidjson::Value _cmds(rapidjson::kArrayType);
+  rapidjson::Value tmp;//for calls to NameFromHostPointer and NameFromDeviceMem--where a simple StringRef goes out of scope and returns garbage collected junk.
   for (int i = 0; i < task->ncmds(); i++) {
     Command* cmd = task->cmd(i);
     if (cmd->type() == IRIS_CMD_H2D) {
       rapidjson::Value h2d_(rapidjson::kObjectType);
       if (cmd->name()) h2d_.AddMember("name",rapidjson::StringRef(cmd->name()),iris_output_document_.GetAllocator());
       //host_memory
-      h2d_.AddMember("host_memory",rapidjson::StringRef(NameFromHostPointer(cmd->host())),iris_output_document_.GetAllocator());
+      tmp.SetString(NameFromHostPointer(cmd->host()).c_str(),NameFromHostPointer(cmd->host()).length(),iris_output_document_.GetAllocator());
+      h2d_.AddMember("host_memory",tmp,iris_output_document_.GetAllocator());
       //device_memory
-      h2d_.AddMember("device_memory",rapidjson::StringRef(NameFromDeviceMem(cmd->mem())),iris_output_document_.GetAllocator());
+      tmp.SetString(NameFromDeviceMem(cmd->mem()).c_str(),iris_output_document_.GetAllocator());
+      h2d_.AddMember("device_memory",tmp,iris_output_document_.GetAllocator());
       h2d_.AddMember("offset",rapidjson::Value(cmd->off(0)),iris_output_document_.GetAllocator());
       h2d_.AddMember("size",rapidjson::Value(cmd->size()),iris_output_document_.GetAllocator());
       rapidjson::Value cmd_(rapidjson::kObjectType);
@@ -442,9 +450,11 @@ int JSON::RecordTask(Task* task) {
       rapidjson::Value d2h_(rapidjson::kObjectType);
       if (cmd->name()) d2h_.AddMember("name",rapidjson::StringRef(cmd->name()),iris_output_document_.GetAllocator());
       //host_memory
-      d2h_.AddMember("host_memory",rapidjson::StringRef(NameFromHostPointer(cmd->host())),iris_output_document_.GetAllocator());
+      tmp.SetString(NameFromHostPointer(cmd->host()).c_str(),iris_output_document_.GetAllocator());
+      d2h_.AddMember("host_memory",tmp,iris_output_document_.GetAllocator());
       //device_memory
-      d2h_.AddMember("device_memory",rapidjson::StringRef(NameFromDeviceMem(cmd->mem())),iris_output_document_.GetAllocator());
+      tmp.SetString(NameFromDeviceMem(cmd->mem()).c_str(),iris_output_document_.GetAllocator());
+      d2h_.AddMember("device_memory",tmp,iris_output_document_.GetAllocator());
       d2h_.AddMember("offset",rapidjson::Value(cmd->off(0)),iris_output_document_.GetAllocator());
       d2h_.AddMember("size",rapidjson::Value(cmd->size()),iris_output_document_.GetAllocator());
       rapidjson::Value cmd_(rapidjson::kObjectType);
@@ -476,7 +486,8 @@ int JSON::RecordTask(Task* task) {
         KernelArg* arg = cmd->kernel_arg(i);
         if(arg->mem){//memory
           param_.AddMember("type",rapidjson::StringRef("memory_object"),iris_output_document_.GetAllocator());
-          param_.AddMember("value",rapidjson::StringRef(NameFromDeviceMem(arg->mem)),iris_output_document_.GetAllocator());
+          tmp.SetString(NameFromDeviceMem(arg->mem).c_str(),iris_output_document_.GetAllocator());
+          param_.AddMember("value",tmp,iris_output_document_.GetAllocator());
           param_.AddMember("size_bytes",rapidjson::Value(arg->size),iris_output_document_.GetAllocator());
           //permissions
           if (arg->mode == iris_r) param_.AddMember("permissions",rapidjson::StringRef("r"),iris_output_document_.GetAllocator());
