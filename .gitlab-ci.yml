@@ -49,4 +49,6 @@ test-job:
   artifacts:
     when: always
     reports:
-      cobertura: coverage.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
