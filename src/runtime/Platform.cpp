@@ -227,10 +227,8 @@ int Platform::Synchronize() {
   int* devices = new int[ndevs_];
   for (int i = 0; i < ndevs_; i++) devices[i] = i;
   int ret = DeviceSynchronize(ndevs_, devices);
-==== BASE ====
-  delete devices;
+  delete [] devices;
   return ret;
-==== BASE ====
 }
 
 int Platform::EnvironmentInit() {
@@ -723,9 +721,8 @@ int Platform::DeviceSynchronize(int ndevs, int* devices) {
         _error("devices[%d]", devices[i]);
         continue;
       }
-==== BASE ====
-      Task* subtask = new Task(this, IRIS_MARKER);
-==== BASE ====
+      sprintf(sync_task, "Marker-%d", i);
+      Task* subtask = new Task(this, IRIS_MARKER, sync_task);
       subtask->set_devno(devices[i]);
       task->AddSubtask(subtask);
     }
