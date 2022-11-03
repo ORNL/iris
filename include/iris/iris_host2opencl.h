@@ -25,11 +25,11 @@ extern "C" {
 static pthread_mutex_t iris_host2opencl_mutex;
 static int iris_host2opencl_kernel_idx;
 static void *__host2opencl_queue;
-void iris_host2opencl_set_handle(void *queue) {
+void iris_host2opencl_set_queue(void *queue) {
     __host2opencl_queue = queue;
 }
 
-void *iris_host2opencl_get_handle() {
+void *iris_host2opencl_get_queue() {
     return __host2opencl_queue;
 }
 void iris_host2opencl_init() {
@@ -40,11 +40,11 @@ void iris_host2opencl_finalize() {
   pthread_mutex_destroy(&iris_host2opencl_mutex);
 }
 
-static void iris_host2opencl_lock() {
+void iris_host2opencl_lock() {
   pthread_mutex_lock(&iris_host2opencl_mutex);
 }
 
-static void iris_host2opencl_unlock() {
+void iris_host2opencl_unlock() {
   pthread_mutex_unlock(&iris_host2opencl_mutex);
 }
 

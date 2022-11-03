@@ -36,6 +36,7 @@ Scheduler::~Scheduler() {
   delete consistency_;
   delete policies_;
   delete hub_client_;
+  delete timer_;
   pthread_mutex_destroy(&mutex_);
 }
 
@@ -44,11 +45,11 @@ void Scheduler::InitHubClient() {
 }
 
 void Scheduler::StartTask(Task* task, Worker* worker) {
-  task->set_time_start(timer_->Now());
+  //task->set_time_start(timer_->Now());
 }
 
 void Scheduler::CompleteTask(Task* task, Worker* worker) {
-  task->set_time_end(timer_->Now());
+  //task->set_time_end(timer_->Now());
   Device* dev = worker->device();
   int devno = dev->devno();
   if (hub_available_) hub_client_->TaskDec(devno, 1);

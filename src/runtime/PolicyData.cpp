@@ -24,14 +24,26 @@ void PolicyData::GetDevices(Task* task, Device** devs, int* ndevs) {
     if (cmd->type() == IRIS_CMD_KERNEL) {
       KernelArg* args = cmd->kernel_args();
       for (int i = 0; i < cmd->kernel_nargs(); i++) {
-        Mem* mem = (args + i)->mem;
-        if (!mem || !mem->Owner()) continue;
-        total_size[mem->Owner()->devno()] += mem->size();
+        BaseMem* bmem = (BaseMem *)(args + i)->mem;
+        if (bmem->GetMemHandlerType() == IRIS_MEM) {
+            Mem* mem = (Mem *)(args + i)->mem;
+            if (!mem || !mem->Owner()) continue;
+            total_size[mem->Owner()->devno()] += mem->size();
+        }
+        else{
+           _error("iris_data policy not yet supported to dmem for task:%ld:%s", task->uid(), task->name());
+        }
       }
     } else if (cmd->type() == IRIS_CMD_H2D || cmd->type() == IRIS_CMD_D2H) {
-      Mem* mem = cmd->mem();
-      if (!mem || !mem->Owner()) continue;
-      total_size[mem->Owner()->devno()] += mem->size();
+        BaseMem* bmem = (BaseMem *)cmd->mem();
+        if (bmem->GetMemHandlerType() == IRIS_MEM) {
+            Mem* mem = (Mem *)cmd->mem();
+            if (!mem || !mem->Owner()) continue;
+            total_size[mem->Owner()->devno()] += mem->size();
+        }
+        else {
+            _error("iris_data policy not yet supported to dmem for task:%ld:%s", task->uid(), task->name());
+        }
     }
   }
   int target_dev = 0;

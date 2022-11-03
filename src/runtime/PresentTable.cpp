@@ -1,6 +1,7 @@
 #include "PresentTable.h"
 #include "Config.h"
 #include "Debug.h"
+#include "BaseMem.h"
 
 namespace iris {
 namespace rt {
@@ -13,7 +14,7 @@ PresentTable::~PresentTable() {
 
 }
 
-int PresentTable::Add(void* host, size_t size, Mem* mem) {
+int PresentTable::Add(void* host, size_t size, BaseMem* mem) {
   if (entities_.find(host) != entities_.end()) {
     _error("%p", host);
     return IRIS_ERROR;
@@ -25,7 +26,7 @@ int PresentTable::Add(void* host, size_t size, Mem* mem) {
   return IRIS_SUCCESS;
 }
 
-Mem* PresentTable::Get(void* host, size_t* off) {
+BaseMem* PresentTable::Get(void* host, size_t* off) {
   char* input = (char*) host;
   for (std::map<void*, PresentTableEntity*>::iterator I = entities_.begin(), E = entities_.end(); I != E; ++I) {
     char* s0 = (char*) I->first;
@@ -38,13 +39,13 @@ Mem* PresentTable::Get(void* host, size_t* off) {
   return NULL;
 }
 
-Mem* PresentTable::Remove(void* host) {
+BaseMem* PresentTable::Remove(void* host) {
   char* input = (char*) host;
   for (std::map<void*, PresentTableEntity*>::iterator I = entities_.begin(), E = entities_.end(); I != E; ++I) {
     char* s0 = (char*) I->first;
     char* s1 = (char*) s0 + I->second->size;
     if (input >= s0 && input < s1) {
-      Mem* ret = I->second->mem;
+      BaseMem* ret = I->second->mem;
       entities_.erase(I);
       return ret;
     }

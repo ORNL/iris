@@ -6,13 +6,19 @@
 namespace iris {
 namespace rt {
 
-LoaderHost2HIP::LoaderHost2HIP() {
+LoaderHost2HIP::LoaderHost2HIP() : Loader() {
     iris_host2hip_init = NULL;
+    iris_host2hip_init_handles = NULL;
+    iris_host2hip_finalize_handles = NULL;
     iris_host2hip_finalize = NULL;
     iris_host2hip_kernel = NULL;
     iris_host2hip_setarg = NULL;
     iris_host2hip_setmem = NULL;
     iris_host2hip_launch = NULL;
+    iris_host2hip_kernel_with_obj = NULL;
+    iris_host2hip_setarg_with_obj = NULL;
+    iris_host2hip_setmem_with_obj = NULL;
+    iris_host2hip_launch_with_obj = NULL;
 }
 
 LoaderHost2HIP::~LoaderHost2HIP() {
@@ -25,12 +31,19 @@ const char* LoaderHost2HIP::library() {
 }
 
 int LoaderHost2HIP::LoadFunctions() {
-  LOADFUNC(iris_host2hip_init);
-  LOADFUNC(iris_host2hip_finalize);
-  LOADFUNC(iris_host2hip_kernel);
-  LOADFUNC(iris_host2hip_setarg);
-  LOADFUNC(iris_host2hip_setmem);
-  LOADFUNC(iris_host2hip_launch);
+  Loader::LoadFunctions();
+  LOADFUNC_OPTIONAL(iris_host2hip_init);
+  LOADFUNC_OPTIONAL(iris_host2hip_init_handles);
+  LOADFUNC_OPTIONAL(iris_host2hip_finalize_handles);
+  LOADFUNC_OPTIONAL(iris_host2hip_finalize);
+  LOADFUNC_OPTIONAL(iris_host2hip_kernel);
+  LOADFUNC_OPTIONAL(iris_host2hip_setarg);
+  LOADFUNC_OPTIONAL(iris_host2hip_setmem);
+  LOADFUNC_OPTIONAL(iris_host2hip_launch);
+  LOADFUNC_OPTIONAL(iris_host2hip_kernel_with_obj);
+  LOADFUNC_OPTIONAL(iris_host2hip_setarg_with_obj);
+  LOADFUNC_OPTIONAL(iris_host2hip_setmem_with_obj);
+  LOADFUNC_OPTIONAL(iris_host2hip_launch_with_obj);
   return IRIS_SUCCESS;
 }
 

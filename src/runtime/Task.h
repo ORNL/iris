@@ -59,6 +59,7 @@ public:
   Command* cmd(int i) { return cmds_[i]; }
   Command* cmd_kernel() { return cmd_kernel_; }
   Command* cmd_last() { return cmd_last_; }
+  void TryReleaseTask();
   void set_dev(Device* dev) { dev_ = dev; }
   Platform* platform() { return platform_; }
   Device* dev() { return dev_; }
@@ -92,12 +93,12 @@ public:
   void DispatchDependencies();
   bool is_internal_memory_transfer() { return internal_memory_transfer_;}
   void set_internal_memory_transfer() { internal_memory_transfer_ = true;}
-
+  void print_incomplete_tasks();
 private:
   void CompleteSub();
 
 private:
-  char name_[64];
+  char name_[128];
   bool given_name_;
   Task* parent_;
   int ncmds_;

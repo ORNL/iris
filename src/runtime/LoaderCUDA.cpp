@@ -17,6 +17,12 @@ int LoaderCUDA::LoadFunctions() {
   LOADFUNC(cuDeviceGetAttribute);
   LOADFUNC(cuDeviceGetCount);
   LOADFUNC(cuDeviceGetName);
+  LOADFUNC(cuCtxGetCurrent);
+  LOADFUNC(cuCtxSetCurrent);
+  LOADFUNC(cuCtxEnablePeerAccess);
+  LOADFUNCEXT(cudaSetDevice);
+  LOADFUNCEXT(cudaDeviceCanAccessPeer);
+  LOADFUNCEXT(cudaDeviceEnablePeerAccess);
   LOADFUNCSYM(cuCtxCreate, cuCtxCreate_v2);
   LOADFUNC(cuCtxSynchronize);
   LOADFUNC(cuStreamAddCallback);
@@ -31,6 +37,13 @@ int LoaderCUDA::LoadFunctions() {
   LOADFUNC(cuTexRefSetFlags);
   LOADFUNC(cuTexRefSetFormat);
   LOADFUNC(cuMemcpy2D);
+  //LOADFUNC(cuMemset);
+  LOADFUNC(cuMemcpyDtoD);
+  LOADFUNCEXT(cudaMalloc);
+  LOADFUNCEXT(cudaMemcpy);
+  LOADFUNCEXT(cudaMemcpy2D);
+  LOADFUNCEXT(cudaMemset);
+  LOADFUNC(cuMemcpy2DUnaligned);
   LOADFUNC(cuMemcpy2DAsync);
   LOADFUNCSYM(cuMemAlloc, cuMemAlloc_v2);
   LOADFUNCSYM(cuMemFree, cuMemFree_v2);

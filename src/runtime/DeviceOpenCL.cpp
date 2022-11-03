@@ -5,6 +5,7 @@
 #include "Kernel.h"
 #include "LoaderOpenCL.h"
 #include "LoaderHost2OpenCL.h"
+#include "BaseMem.h"
 #include "Mem.h"
 #include "Platform.h"
 #include "Reduction.h"
@@ -44,8 +45,9 @@ std::string DeviceOpenCL::GetLoaderHost2OpenCLSuffix(LoaderOpenCL *ld, cl_device
             type == iris_fpga   ? fpga_bin_suffix   : "cl";
     return output_suffix;
 }
-DeviceOpenCL::DeviceOpenCL(LoaderOpenCL* ld, LoaderHost2OpenCL *host2opencl_ld, cl_device_id cldev, cl_context clctx, int devno, int platform) : Device(devno, platform) {
+DeviceOpenCL::DeviceOpenCL(LoaderOpenCL* ld, LoaderHost2OpenCL *host2opencl_ld, cl_device_id cldev, cl_context clctx, int devno, int ocldevno, int platform) : Device(devno, platform) {
   ld_ = ld;
+  ocldevno_ = ocldevno;
   host2opencl_ld_ = host2opencl_ld;
   cldev_ = cldev;
   clctx_ = clctx;
@@ -81,12 +83,16 @@ DeviceOpenCL::DeviceOpenCL(LoaderOpenCL* ld, LoaderHost2OpenCL *host2opencl_ld, 
 DeviceOpenCL::~DeviceOpenCL() {
     if (host2opencl_ld_->iris_host2opencl_finalize)
         host2opencl_ld_->iris_host2opencl_finalize();
+    if (host2opencl_ld_->iris_host2opencl_finalize_handles)
+        host2opencl_ld_->iris_host2opencl_finalize_handles(ocldevno_);
 }
 
 int DeviceOpenCL::Init() {
   clcmdq_ = ld_->clCreateCommandQueue(clctx_, cldev_, 0, &err_);
   if (host2opencl_ld_->iris_host2opencl_init)
       host2opencl_ld_->iris_host2opencl_init();
+  if (host2opencl_ld_->iris_host2opencl_init_handles)
+      host2opencl_ld_->iris_host2opencl_init_handles(ocldevno_);
   _clerror(err_);
   if (err_ != CL_SUCCESS){
     worker_->platform()->IncrementErrorCount();
@@ -174,9 +180,12 @@ int DeviceOpenCL::BuildProgram(char* path) {
   return IRIS_SUCCESS;
 }
 
-int DeviceOpenCL::MemAlloc(void** mem, size_t size) {
+int DeviceOpenCL::MemAlloc(void** mem, size_t size, bool reset) {
   cl_mem* clmem = (cl_mem*) mem;
   *clmem = ld_->clCreateBuffer(clctx_, CL_MEM_READ_WRITE, size, NULL, &err_);
+  if (reset) {
+    _error("OpenCL not supported with reset for size:%lu", size);
+  }
   _clerror(err_);
   if (err_ != CL_SUCCESS){
     worker_->platform()->IncrementErrorCount();
@@ -196,7 +205,7 @@ int DeviceOpenCL::MemFree(void* mem) {
   return IRIS_SUCCESS;
 }
 
-int DeviceOpenCL::MemH2D(Mem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host) {
+int DeviceOpenCL::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag) {
   cl_mem clmem = (cl_mem) mem->arch(this);
   if (dim == 2 || dim ==3) {
       size_t host_row_pitch = elem_size * host_sizes[0];
@@ -206,12 +215,34 @@ int DeviceOpenCL::MemH2D(Mem* mem, size_t *off, size_t *host_sizes,  size_t *dev
       size_t buffer_origin[3] = { 0, 0, 0};
       size_t host_origin[3] = {off[0] * elem_size, off[1], off[2]};
       size_t region[3] = { dev_sizes[0]*elem_size, dev_sizes[1], dev_sizes[2] };
+      _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu,%lu,%lu] host_sizes[%lu,%lu,%lu] dev_sizes[%lu,%lu,%lu] size[%lu] host[%p]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), clmem, off[0], off[1], off[2], host_sizes[0], host_sizes[1], host_sizes[2], dev_sizes[0], dev_sizes[1], dev_sizes[2], size, host);
       err_ = ld_->clEnqueueWriteBufferRect(clcmdq_, clmem, CL_TRUE, buffer_origin, host_origin, region, dev_row_pitch, dev_slice_pitch, host_row_pitch, host_slice_pitch, host, 0, NULL, NULL);
+#if 0
+      float *hostA = new float[dev_sizes[0] * dev_sizes[1]];
+      int SIZE = dev_sizes[0]*dev_sizes[1];
+      printf("dev[%d] OFF:(%d,%d,%d) DEV:(%d,%d,%d) HOST:(%d,%d,%d) ELEM:%d\n", devno_, off[0], off[1], off[2], dev_sizes[0], dev_sizes[1], dev_sizes[2], host_sizes[0], host_sizes[1], host_sizes[2], elem_size);
+      err_ = ld_->clEnqueueReadBuffer(clcmdq_, clmem, CL_TRUE, 0, dev_sizes[0]*dev_sizes[1]*elem_size, hostA, 0, NULL, NULL);
+      int print_size = (SIZE > 8) ? 8: SIZE;
+      printf("H2DOffset: dev:%d hostA=\n", devno_);
+      for(int i=0; i<print_size; i++) {
+          printf("%10.1lf ", hostA[i]);
+      }
+      printf("\n");
+#endif
   }
-  else
+  else {
+      _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), clmem, off[0], size, host, q_);
       err_ = ld_->clEnqueueWriteBuffer(clcmdq_, clmem, CL_TRUE, off[0], size, host, 0, NULL, NULL);
+#if 0
+      printf("H2D: Dev%d: ", devno_);
+      float *A = (float *) host;
+      for(int i=0; i<size/4; i++) {
+          printf("%10.1lf ", A[i]);
+      }
+      printf("\n");
+#endif
+  }
   _clerror(err_);
-  _trace("dev[%d][%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", devno_, name_, mem->uid(), clmem, off[0], size, host, q_);
   if (err_ != CL_SUCCESS){
     worker_->platform()->IncrementErrorCount();
     return IRIS_ERROR;
@@ -219,7 +250,7 @@ int DeviceOpenCL::MemH2D(Mem* mem, size_t *off, size_t *host_sizes,  size_t *dev
   return IRIS_SUCCESS;
 }
 
-int DeviceOpenCL::MemD2H(Mem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host) {
+int DeviceOpenCL::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag) {
   cl_mem clmem = (cl_mem) mem->arch(this);
   if (dim == 2 || dim ==3) {
       size_t host_row_pitch = elem_size * host_sizes[0];
@@ -229,13 +260,22 @@ int DeviceOpenCL::MemD2H(Mem* mem, size_t *off, size_t *host_sizes,  size_t *dev
       size_t buffer_origin[3] = { 0, 0, 0};
       size_t host_origin[3] = {off[0] * elem_size, off[1], off[2]};
       size_t region[3] = { dev_sizes[0]*elem_size, dev_sizes[1], dev_sizes[2] };
+      _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu,%lu,%lu] host_sizes[%lu,%lu,%lu] dev_sizes[%lu,%lu,%lu] size[%lu] host[%p]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), clmem, off[0], off[1], off[2], host_sizes[0], host_sizes[1], host_sizes[2], dev_sizes[0], dev_sizes[1], dev_sizes[2], size, host);
       err_ = ld_->clEnqueueReadBufferRect(clcmdq_, clmem, CL_TRUE, buffer_origin, host_origin, region, dev_row_pitch, dev_slice_pitch, host_row_pitch, host_slice_pitch, host, 0, NULL, NULL);
   }
   else {
+      _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), clmem, off[0], size, host, q_);
       err_ = ld_->clEnqueueReadBuffer(clcmdq_, clmem, CL_TRUE, off[0], size, host, 0, NULL, NULL);
+#if 0
+      printf("D2H: Dev:%d: ", devno_);
+      float *A = (float *) host;
+      for(int i=0; i<size/4; i++) {
+          printf("%10.1lf ", A[i]);
+      }
+      printf("\n");
+#endif
   }
   _clerror(err_);
-  _trace("dev[%d][%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", devno_, name_, mem->uid(), clmem, off[0], size, host, q_);
   if (err_ != CL_SUCCESS){
     worker_->platform()->IncrementErrorCount();
     return IRIS_ERROR;
@@ -243,10 +283,24 @@ int DeviceOpenCL::MemD2H(Mem* mem, size_t *off, size_t *host_sizes,  size_t *dev
   return IRIS_SUCCESS;
 }
 
-int DeviceOpenCL::KernelGet(void** kernel, const char* name) {
-  if (is_vendor_specific_kernel() && host2opencl_ld_->iris_host2opencl_kernel) 
-        return IRIS_SUCCESS;
-  cl_kernel* clkernel = (cl_kernel*) kernel;
+int DeviceOpenCL::KernelGet(Kernel *kernel, void** kernel_bin, const char* name) {
+  int kernel_idx = -1;
+  if (kernel->is_vendor_specific_kernel()) {
+      //_trace("dev[%d][%s] kernel[%s:%s] kernel-get", devno_, name_, kernel->name(), kernel->get_task_name());
+      if (host2opencl_ld_->iris_host2opencl_kernel_with_obj) {
+          //_trace("dev[%d][%s] kernel[%s:%s] kernel-get-1", devno_, name_, kernel->name(), kernel->get_task_name());
+          if (host2opencl_ld_->iris_host2opencl_kernel_with_obj(&kernel_idx, name)==IRIS_SUCCESS) {
+              //_trace("dev[%d][%s] kernel[%s:%s] kernel-get-2", devno_, name_, kernel->name(), kernel->get_task_name());
+              return IRIS_SUCCESS;
+          }
+      }
+  }
+  //_trace("dev[%d][%s] kernel[%s:%s] kernel-get-3", devno_, name_, kernel->name(), kernel->get_task_name());
+  if (kernel->is_vendor_specific_kernel() && 
+          host2opencl_ld_->iris_host2opencl_kernel)
+      return IRIS_SUCCESS;
+  //_trace("dev[%d][%s] kernel[%s:%s] kernel-get-4", devno_, name_, kernel->name(), kernel->get_task_name());
+  cl_kernel* clkernel = (cl_kernel*) kernel_bin;
   *clkernel = ld_->clCreateKernel(clprog_, name, &err_);
   _clerror(err_);
   if (err_ != CL_SUCCESS){
@@ -256,9 +310,17 @@ int DeviceOpenCL::KernelGet(void** kernel, const char* name) {
   return IRIS_SUCCESS;
 }
 
-int DeviceOpenCL::KernelSetArg(Kernel* kernel, int idx, size_t size, void* value) {
-  if (is_vendor_specific_kernel() && host2opencl_ld_->iris_host2opencl_setarg)
-      host2opencl_ld_->iris_host2opencl_setarg(idx, size, value);
+int DeviceOpenCL::KernelSetArg(Kernel* kernel, int idx, int kindex, size_t size, void* value) {
+  if (kernel->is_vendor_specific_kernel()) {
+      //_trace("dev[%d][%s] kernel[%s:%s] kernel-setarg-0", devno_, name_, kernel->name(), kernel->get_task_name());
+      if (host2opencl_ld_->iris_host2opencl_setarg_with_obj) {
+          //_trace("dev[%d][%s] kernel[%s:%s] kernel-setarg-1", devno_, name_, kernel->name(), kernel->get_task_name());
+          host2opencl_ld_->iris_host2opencl_setarg_with_obj(
+                  kernel->GetParamWrapperMemory(), kindex, size, value);
+      }
+  }
+  else if (kernel->is_vendor_specific_kernel() && host2opencl_ld_->iris_host2opencl_setarg)
+      host2opencl_ld_->iris_host2opencl_setarg(kindex, size, value);
   else {
     cl_kernel clkernel = (cl_kernel) kernel->arch(this);
     err_ = ld_->clSetKernelArg(clkernel, (cl_uint) idx, size, value);
@@ -271,11 +333,19 @@ int DeviceOpenCL::KernelSetArg(Kernel* kernel, int idx, size_t size, void* value
   return IRIS_SUCCESS;
 }
 
-int DeviceOpenCL::KernelSetMem(Kernel* kernel, int idx, Mem* mem, size_t off) {
+int DeviceOpenCL::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, size_t off) {
   cl_kernel clkernel = (cl_kernel) kernel->arch(this);
   cl_mem clmem = (cl_mem) mem->arch(this);
-  if (is_vendor_specific_kernel() && host2opencl_ld_->iris_host2opencl_setmem)
-      host2opencl_ld_->iris_host2opencl_setmem(idx, clmem);
+  if (kernel->is_vendor_specific_kernel()) {
+      //_trace("dev[%d][%s] kernel[%s:%s] kernel-setmem-0", devno_, name_, kernel->name(), kernel->get_task_name());
+      if (host2opencl_ld_->iris_host2opencl_setmem_with_obj) {
+          //_trace("dev[%d][%s] kernel[%s:%s] kernel-setmem-1", devno_, name_, kernel->name(), kernel->get_task_name());
+          host2opencl_ld_->iris_host2opencl_setmem_with_obj(
+                  kernel->GetParamWrapperMemory(), kindex, clmem);
+      }
+  }
+  else if (kernel->is_vendor_specific_kernel() && host2opencl_ld_->iris_host2opencl_setmem)
+      host2opencl_ld_->iris_host2opencl_setmem(kindex, clmem);
   else {
     err_ = ld_->clSetKernelArg(clkernel, (cl_uint) idx, sizeof(clmem), (const void*) &clmem);
     _clerror(err_);
@@ -288,20 +358,42 @@ int DeviceOpenCL::KernelSetMem(Kernel* kernel, int idx, Mem* mem, size_t off) {
 }
 
 int DeviceOpenCL::KernelLaunchInit(Kernel* kernel) {
-  set_vendor_specific_kernel(false);
-  if (host2opencl_ld_->iris_host2opencl_kernel) {
-    host2opencl_ld_->iris_host2opencl_set_handle(&clcmdq_);
-    if (host2opencl_ld_->iris_host2opencl_kernel(kernel->name()) == IRIS_SUCCESS)
-        set_vendor_specific_kernel(true);
-  }
-  return IRIS_SUCCESS;
+    kernel->set_vendor_specific_kernel(false);
+    //_trace("dev[%d][%s] kernel[%p:%s:%s] launchInit-0", devno_, name_, kernel, kernel->name(), kernel->get_task_name());
+    if (host2opencl_ld_->iris_host2opencl_kernel_with_obj) {
+        host2opencl_ld_->iris_host2opencl_set_queue_with_obj(
+                kernel->GetParamWrapperMemory(), &clcmdq_);
+        //_trace("dev[%d][%s] kernel[%s:%s] launchInit-1", devno_, name_, kernel->name(), kernel->get_task_name());
+        if (host2opencl_ld_->iris_host2opencl_kernel_with_obj(
+                    kernel->GetParamWrapperMemory(), kernel->name()) == IRIS_SUCCESS) {
+            //_trace("dev[%d][%s] kernel[%s:%s] launchInit-2", devno_, name_, kernel->name(), kernel->get_task_name());
+            if (host2opencl_ld_->SetKernelPtr(kernel->GetParamWrapperMemory(), kernel->name())==IRIS_SUCCESS) {
+                //_trace("dev[%d][%s] kernel[%s:%s] launchInit-3", devno_, name_, kernel->name(), kernel->get_task_name());
+                kernel->set_vendor_specific_kernel(true);
+            }
+        }
+    }
+    else if (host2opencl_ld_->iris_host2opencl_kernel) {
+        host2opencl_ld_->iris_host2opencl_set_queue(&clcmdq_);
+        if (host2opencl_ld_->iris_host2opencl_kernel(kernel->name()) == IRIS_SUCCESS) {
+            kernel->set_vendor_specific_kernel(true);
+        }
+    }
+    return IRIS_SUCCESS;
 }
 
 int DeviceOpenCL::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws) {
-  _trace("kernel[%s] dim[%d] gws[%zu,%zu,%zu] lws[%zu,%zu,%zu]", kernel->name(), dim, gws[0], gws[1], gws[2], lws ? lws[0] : 0, lws ? lws[1] : 0, lws ? lws[2] : 0);
-  if (is_vendor_specific_kernel() && host2opencl_ld_->iris_host2opencl_launch) {
-      host2opencl_ld_->iris_host2opencl_launch(dim, off[0], gws[0]);
-      return IRIS_SUCCESS; 
+  _trace("dev[%d][%s] kernel[%s:%s] dim[%d] gws[%zu,%zu,%zu] lws[%zu,%zu,%zu]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, gws[0], gws[1], gws[2], lws ? lws[0] : 0, lws ? lws[1] : 0, lws ? lws[2] : 0);
+  if (kernel->is_vendor_specific_kernel()) {
+      if (host2opencl_ld_->iris_host2opencl_launch_with_obj) {
+          host2opencl_ld_->iris_host2opencl_launch_with_obj(
+                  kernel->GetParamWrapperMemory(), ocldevno_, dim, off[0], gws[0]);
+          return IRIS_SUCCESS; 
+      }
+      else if (host2opencl_ld_->iris_host2opencl_launch) {
+          host2opencl_ld_->iris_host2opencl_launch(dim, off[0], gws[0]);
+          return IRIS_SUCCESS; 
+      }
   }
   cl_kernel clkernel = (cl_kernel) kernel->arch(this);
   err_ = ld_->clEnqueueNDRangeKernel(clcmdq_, clkernel, (cl_uint) dim, (const size_t*) off, (const size_t*) gws, (const size_t*) lws, 0, NULL, NULL);
@@ -342,14 +434,13 @@ void DeviceOpenCL::ExecuteKernel(Command* cmd) {
   int dim = cmd->dim();
   size_t* off = cmd->off();
   size_t* gws = cmd->gws();
-  size_t gws0 = gws[0];
   size_t* lws = cmd->lws();
-  bool reduction = false;
+  //bool reduction = false;
   iris_poly_mem* polymems = cmd->polymems();
   int npolymems = cmd->npolymems();
   int max_idx = 0;
   int mem_idx = 0;
-  set_vendor_specific_kernel(false);
+  kernel->set_vendor_specific_kernel(false);
   KernelLaunchInit(kernel);
   KernelArg* args = cmd->kernel_args();
   int *params_map = cmd->get_params_map();
@@ -360,8 +451,9 @@ void DeviceOpenCL::ExecuteKernel(Command* cmd) {
     if (params_map != NULL && 
         (params_map[idx] & iris_all) == 0 && 
         !(params_map[idx] & type_) ) continue;
-    Mem* mem = arg->mem;
-    if (mem) {
+    BaseMem* bmem = arg->mem;
+    if (bmem && bmem->GetMemHandlerType() == IRIS_MEM) {
+      Mem *mem = (Mem *)bmem;
       if (arg->mode == iris_w || arg->mode == iris_rw) {
         if (npolymems) {
           iris_poly_mem* pm = polymems + mem_idx;
@@ -378,24 +470,27 @@ void DeviceOpenCL::ExecuteKernel(Command* cmd) {
         size_t expansion = (gws[0] + lws[0] - 1) / lws[0];
         gws[0] = lws[0] * expansion;
         mem->Expand(expansion);
-        KernelSetMem(kernel, arg_idx, mem, arg->off);
-        KernelSetArg(kernel, arg_idx + 1, lws[0] * mem->type_size(), NULL);
-        reduction = true;
+        KernelSetMem(kernel, arg_idx, idx, mem, arg->off);
+        KernelSetArg(kernel, arg_idx + 1, idx, lws[0] * mem->type_size(), NULL);
+        //reduction = true;
         if (idx + 1 > max_idx) max_idx = idx + 1;
         idx++;
         arg_idx+=2;
       } else {
-          KernelSetMem(kernel, arg_idx, mem, arg->off);
-          arg_idx+=1;
+          KernelSetMem(kernel, arg_idx, idx, mem, arg->off); arg_idx+=1;
       }
       mem_idx++;
+    } else if (bmem) {
+        KernelSetMem(kernel, arg_idx, idx, bmem, arg->off); arg_idx+=1; 
+        mem_idx++;
     } else {
-        KernelSetArg(kernel, arg_idx, arg->size, arg->value);
+        KernelSetArg(kernel, arg_idx, idx, arg->size, arg->value);
         arg_idx+=1;
     }
   }
 #if 0
   if (reduction) {
+    size_t gws0 = gws[0];
     _trace("max_idx+1[%d] gws[%lu]", max_idx + 1, gws0);
     KernelSetArg(kernel, max_idx + 1, sizeof(size_t), &gws0);
   }
@@ -410,7 +505,7 @@ void DeviceOpenCL::ExecuteKernel(Command* cmd) {
 
 int DeviceOpenCL::CreateProgram(const char* suffix, char** src, size_t* srclen) {
   char* p = NULL;
-  if (Platform::GetPlatform()->EnvironmentGet(strcmp("spv", suffix) == 0 ? "KERNEL_BIN_SPV" : "KERNEL_SRC_SPV", &p, NULL) == IRIS_SUCCESS) {
+  if (Platform::GetPlatform()->GetFilePath(strcmp("spv", suffix) == 0 ? "KERNEL_BIN_SPV" : "KERNEL_SRC_SPV", &p, NULL) == IRIS_SUCCESS) {
     Utils::ReadFile(p, src, srclen);
   }
 

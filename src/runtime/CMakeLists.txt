@@ -20,6 +20,24 @@ if (IRIS_ASYNC_STREAMING)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DIRIS_ASYNC_STREAMING")
 endif()
 
+if (ENABLE_SINGLE_DEVICE_PER_CU) 
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DENABLE_SINGLE_DEVICE_PER_CU")
+endif()
+
+if (DISABLE_CONSISTENCY_CHECK) 
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDISABLE_CONSISTENCY_CHECK")
+endif()
+
+if (TRACE_DISABLE) 
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DTRACE_DISABLE")
+endif()
+if (INFO_DISABLE) 
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DINFO_DISABLE")
+endif()
+if (DEBUG_DISABLE) 
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDEBUG_DISABLE")
+endif()
+
 set(IRIS_RUNTIME_SOURCES
   CAPI.cpp
   Command.cpp
@@ -49,6 +67,8 @@ set(IRIS_RUNTIME_SOURCES
   LoaderOpenMP.cpp
   LoaderPolicy.cpp
   Message.cpp
+  DataMemRegion.cpp
+  DataMem.cpp
   Mem.cpp
   MemRange.cpp
   Platform.cpp
@@ -114,6 +134,9 @@ set(IRIS_RUNTIME_HEADERS
   LoaderOpenMP.h
   LoaderPolicy.h
   Message.h
+  DataMemRegion.h
+  DataMem.h
+  BaseMem.h
   Mem.h
   MemRange.h
   Platform.h

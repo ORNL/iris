@@ -1,7 +1,9 @@
 #ifndef IRIS_SRC_RT_DEVICE_H
 #define IRIS_SRC_RT_DEVICE_H
 
+#include "Debug.h"
 #include "Config.h"
+#include "Timer.h"
 #include <map>
 
 #ifndef IRIS_ASYNC_STREAMING
@@ -13,7 +15,10 @@ namespace rt {
 
 class Command;
 class Kernel;
+class BaseMem;
 class Mem;
+class DataMem;
+class DataMemRegion;
 class Task;
 class Timer;
 class Worker;
@@ -31,6 +36,16 @@ public:
   void ExecuteInit(Command* cmd);
   virtual void ExecuteKernel(Command* cmd);
   void ExecuteMalloc(Command* cmd);
+
+  template <typename DMemType>
+  void InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem);
+  void ExecuteMemIn(Task *task, Command* cmd);
+  //void ExecuteMemInExternal(Command *cmd);
+  void ExecuteMemInDMemIn(Task *task, Command* cmd, DataMem *mem);
+  void ExecuteMemInDMemRegionIn(Task *task, Command* cmd, DataMemRegion *mem);
+  void ExecuteMemOut(Task *task, Command* cmd);
+  void ExecuteMemFlushOut(Command* cmd);
+
   void ExecuteH2D(Command* cmd);
   void ExecuteH2DNP(Command* cmd);
   void ExecuteD2H(Command* cmd);
@@ -41,33 +56,37 @@ public:
 
   Kernel* ExecuteSelectorKernel(Command* cmd);
 
+  void GetPossibleDevices(int devno, int *nddevs, 
+          int &d2d_dev, int &cpu_dev, int &non_cpu_dev);
   int RegisterCommand(int tag, command_handler handler);
   int RegisterHooks();
 
+  virtual void ResetContext() { }
+  virtual bool IsContextChangeRequired() { return false; }
   virtual int Compile(char* src) { return IRIS_SUCCESS; }
   virtual int Init() = 0;
   virtual int BuildProgram(char* path) { return IRIS_SUCCESS; }
-  virtual int MemAlloc(void** mem, size_t size) = 0;
+  virtual int MemAlloc(void** mem, size_t size, bool reset=false) = 0;
   virtual int MemFree(void* mem) = 0;
-  virtual int MemH2D(Mem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host) = 0;
-  virtual int MemD2H(Mem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host) = 0;
-  virtual int KernelGet(void** kernel, const char* name) = 0;
+  virtual int MemD2D(Task *task, BaseMem *mem, void *dst, void *src, size_t size) { _error("Device:%d:%s doesn't support MemD2D", devno_, name()); return IRIS_ERROR; }
+  virtual int MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag="") = 0;
+  virtual int MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag="") = 0;
+  virtual int KernelGet(Kernel *kernel, void** kernel_bin, const char* name) = 0;
   virtual int KernelLaunchInit(Kernel* kernel) { return IRIS_SUCCESS; }
-  virtual int KernelSetArg(Kernel* kernel, int idx, size_t size, void* value) = 0;
-  virtual int KernelSetMem(Kernel* kernel, int idx, Mem* mem, size_t off) = 0;
+  virtual int KernelSetArg(Kernel* kernel, int idx, int kindex, size_t size, void* value) = 0;
+  virtual int KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, size_t off) = 0;
   virtual int KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws) = 0;
   virtual int Synchronize() = 0;
   virtual int AddCallback(Task* task) = 0;
   virtual int Custom(int tag, char* params) { return IRIS_SUCCESS; }
   virtual int RecreateContext() { return IRIS_ERROR; }
   virtual bool SupportJIT() { return true; }
+  virtual void SetPeerDevices(int *peers, int count) { }
   virtual const char* kernel_src() { return " "; }
   virtual const char* kernel_bin() { return " "; }
 
   void set_shared_memory_buffers(bool flag=true) { shared_memory_buffers_ = flag; }
-  bool is_shared_memory_buffers() { return shared_memory_buffers_; }
-  void set_vendor_specific_kernel(bool flag=true) { is_vendor_specific_kernel_ = flag; }
-  bool is_vendor_specific_kernel() { return is_vendor_specific_kernel_; }
+  bool is_shared_memory_buffers() { return shared_memory_buffers_ && can_share_host_memory_; }
   int platform() { return platform_; }
   int devno() { return devno_; }
   int type() { return type_; }
@@ -77,17 +96,19 @@ public:
   bool busy() { return busy_; }
   bool idle() { return !busy_; }
   bool enable() { return enable_; }
+  void enableD2D() { is_d2d_possible_ = true; }
+  bool isD2DEnabled() { return is_d2d_possible_; }
   int ok() { return errid_; }
   void set_worker(Worker* worker) { worker_ = worker; }
   Worker* worker() { return worker_; }
-
+  double Now() { return timer_->Now(); }
 protected:
   int devno_;
   int platform_;
   int type_;
   int model_;
-  char vendor_[64];
-  char name_[64];
+  char vendor_[128];
+  char name_[256];
   char version_[64];
   int driver_version_;
   size_t max_compute_units_;
@@ -103,7 +124,8 @@ protected:
   bool busy_;
   bool enable_;
   bool shared_memory_buffers_;
-  bool is_vendor_specific_kernel_;
+  bool can_share_host_memory_;
+  bool is_d2d_possible_;
 
   Worker* worker_;
   Timer* timer_;

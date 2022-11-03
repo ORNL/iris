@@ -4,6 +4,7 @@
 #include "History.h"
 #include "Kernel.h"
 #include "Mem.h"
+#include "DataMem.h"
 #include "Platform.h"
 #include "Reduction.h"
 #include "Task.h"
@@ -18,8 +19,9 @@ Device::Device(int devno, int platform) {
   platform_ = platform;
   busy_ = false;
   enable_ = false;
+  is_d2d_possible_ = false;
   shared_memory_buffers_ = false;
-  is_vendor_specific_kernel_ = false;
+  can_share_host_memory_ = false;
   nqueues_ = 32;
   q_ = 0;
   memset(vendor_, 0, sizeof(vendor_));
@@ -31,6 +33,7 @@ Device::Device(int devno, int platform) {
   hook_task_post_ = NULL;
   hook_command_pre_ = NULL;
   hook_command_post_ = NULL;
+  worker_ = NULL;
 }
 
 Device::~Device() {
@@ -42,17 +45,25 @@ void Device::Execute(Task* task) {
   if (hook_task_pre_) hook_task_pre_(task);
   TaskPre(task);
   task->set_time_start(timer_->Now());
+  //printf("================== Task:%s =====================\n", task->name());
+  _trace("task[%lu:%s] started execution on dev[%d][%s] time[%lf] start:[%lf]", task->uid(), task->name(), devno(), name(), task->time(), task->time_start());
+  if (task->cmd_kernel()) ExecuteMemIn(task, task->cmd_kernel());     
   for (int i = 0; i < task->ncmds(); i++) {
     Command* cmd = task->cmd(i);
     if (hook_command_pre_) hook_command_pre_(cmd);
     cmd->set_time_start(timer_->Now());
     switch (cmd->type()) {
       case IRIS_CMD_INIT:         ExecuteInit(cmd);       break;
-      case IRIS_CMD_KERNEL:       ExecuteKernel(cmd);     break;
+      case IRIS_CMD_KERNEL:       {
+                                      ExecuteKernel(cmd);     
+                                      ExecuteMemOut(task, task->cmd_kernel());
+                                      break;
+                                  }
       case IRIS_CMD_MALLOC:       ExecuteMalloc(cmd);     break;
       case IRIS_CMD_H2D:          ExecuteH2D(cmd);        break;
       case IRIS_CMD_H2DNP:        ExecuteH2DNP(cmd);      break;
       case IRIS_CMD_D2H:          ExecuteD2H(cmd);        break;
+      case IRIS_CMD_MEM_FLUSH:    ExecuteMemFlushOut(cmd);break;
       case IRIS_CMD_MAP:          ExecuteMap(cmd);        break;
       case IRIS_CMD_RELEASE_MEM:  ExecuteReleaseMem(cmd); break;
       case IRIS_CMD_HOST:         ExecuteHost(cmd);       break;
@@ -69,7 +80,7 @@ void Device::Execute(Task* task) {
   TaskPost(task);
   if (hook_task_post_) hook_task_post_(task);
 //  if (++q_ >= nqueues_) q_ = 0;
-  if (!task->system()) _trace("task[%lu] complete dev[%d][%s] time[%lf]", task->uid(), devno(), name(), task->time());
+  if (!task->system()) _trace("task[%lu:%s] complete dev[%d][%s] time[%lf] end:[%lf]", task->uid(), task->name(), devno(), name(), task->time(), task->time_end());
 #ifdef IRIS_SYNC_EXECUTION
   task->Complete();
 #endif
@@ -84,8 +95,8 @@ void Device::ExecuteInit(Command* cmd) {
     char* src = NULL;
     char* bin = NULL;
     Platform::GetPlatform()->EnvironmentGet("TMPDIR", &tmpdir, NULL);
-    Platform::GetPlatform()->EnvironmentGet(kernel_src(), &src, NULL);
-    Platform::GetPlatform()->EnvironmentGet(kernel_bin(), &bin, NULL);
+    Platform::GetPlatform()->GetFilePath(kernel_src(), &src, NULL);
+    Platform::GetPlatform()->GetFilePath(kernel_bin(), &bin, NULL);
     bool stat_src = Utils::Exist(src);
     bool stat_bin = Utils::Exist(bin);
     errid_ = IRIS_SUCCESS;
@@ -122,21 +133,31 @@ void Device::ExecuteKernel(Command* cmd) {
   int dim = cmd->dim();
   size_t* off = cmd->off();
   size_t* gws = cmd->gws();
-  size_t gws0 = gws[0];
+  //size_t gws0 = gws[0];
   size_t* lws = cmd->lws();
-  bool reduction = false;
+  //bool reduction = false;
   iris_poly_mem* polymems = cmd->polymems();
   int npolymems = cmd->npolymems();
   int max_idx = 0;
   int mem_idx = 0;
-  set_vendor_specific_kernel(false);
+  kernel->set_vendor_specific_kernel(false);
+  //double ltime_start = timer_->GetCurrentTime();
   KernelLaunchInit(kernel);
+  //double ltime = timer_->GetCurrentTime() - ltime_start;
   KernelArg* args = cmd->kernel_args();
+  int *params_map = cmd->get_params_map();
+  int arg_idx = 0;
+  //double atime_start = timer_->GetCurrentTime();
+  //double set_mem_time = 0.0f;
   for (int idx = 0; idx < cmd->kernel_nargs(); idx++) {
     if (idx > max_idx) max_idx = idx;
     KernelArg* arg = args + idx;
-    Mem* mem = arg->mem;
-    if (mem) {
+    BaseMem* bmem = (Mem*)arg->mem;
+    if (params_map != NULL && 
+        (params_map[idx] & iris_all) == 0 && 
+        !(params_map[idx] & type_) ) continue;
+    if (bmem && bmem->GetMemHandlerType() == IRIS_MEM) {
+      Mem *mem = (Mem *)bmem;
       if (arg->mode == iris_w || arg->mode == iris_rw) {
         if (npolymems) {
           iris_poly_mem* pm = polymems + mem_idx;
@@ -153,25 +174,35 @@ void Device::ExecuteKernel(Command* cmd) {
         size_t expansion = (gws[0] + lws[0] - 1) / lws[0];
         gws[0] = lws[0] * expansion;
         mem->Expand(expansion);
-        KernelSetMem(kernel, idx, mem, arg->off);
-        KernelSetArg(kernel, idx + 1, lws[0] * mem->type_size(), NULL);
-        reduction = true;
+        KernelSetMem(kernel, arg_idx, idx, mem, arg->off);
+        KernelSetArg(kernel, arg_idx+1, idx + 1, lws[0] * mem->type_size(), NULL);
+        //reduction = true;
         if (idx + 1 > max_idx) max_idx = idx + 1;
         idx++;
-      } else KernelSetMem(kernel, idx, mem, arg->off);
+        arg_idx+=2;
+      } else { KernelSetMem(kernel, arg_idx, idx, mem, arg->off); arg_idx+=1; }
       mem_idx++;
-    } else KernelSetArg(kernel, idx, arg->size, arg->value);
+    } else if (bmem) {
+        //double set_mem_time_start = timer_->GetCurrentTime();
+        KernelSetMem(kernel, arg_idx, idx, (DataMem *)bmem, arg->off); arg_idx+=1; 
+        //set_mem_time += timer_->GetCurrentTime() - set_mem_time_start;
+        mem_idx++;
+    } else { KernelSetArg(kernel, arg_idx, idx, arg->size, arg->value); arg_idx+=1; }
   }
+  //double atime = timer_->GetCurrentTime() - atime_start;
 #if 0
   if (reduction) {
     _trace("max_idx+1[%d] gws[%lu]", max_idx + 1, gws0);
     KernelSetArg(kernel, max_idx + 1, sizeof(size_t), &gws0);
   }
 #endif
+  //double ktime_start = timer_->GetCurrentTime();
   errid_ = KernelLaunch(kernel, dim, off, gws, lws[0] > 0 ? lws : NULL);
+  //double ktime = timer_->GetCurrentTime() - ktime_start;
   cmd->set_time_end(timer_->Now());
   double time = timer_->Stop(IRIS_TIMER_KERNEL);
   cmd->SetTime(time);
+  //printf("Task:%s time:%f ktime:%f init:%f atime:%f setmemtime:%f\n", cmd->task()->name(), time, ktime, ltime, atime, set_mem_time);
   cmd->kernel()->history()->AddKernel(cmd, this, time);
   if (Platform::GetPlatform()->enable_scheduling_history()) Platform::GetPlatform()->scheduling_history()->AddKernel(cmd);
 }
@@ -185,6 +216,293 @@ void Device::ExecuteMalloc(Command* cmd) {
   _trace("dev[%d] malloc[%p]", devno_, arch);
 }
 
+void Device::GetPossibleDevices(int devno, int *nddevs, int &d2d_dev, int &cpu_dev, int &non_cpu_dev)
+{
+    d2d_dev = -1;
+    cpu_dev = -1;
+    non_cpu_dev = -1;
+    for(int i=0; nddevs[i] != -1; i++) {
+        Device *target_dev = Platform::GetPlatform()->device(nddevs[i]);
+        if (d2d_dev == -1 && type() == target_dev->type() &&
+                isD2DEnabled() && target_dev->isD2DEnabled()) {
+            d2d_dev = nddevs[i];
+        }
+        if (cpu_dev == -1 && type() != iris_cpu && target_dev->type() == iris_cpu) {
+            cpu_dev = nddevs[i];
+        }
+        else if (non_cpu_dev == -1 && type() == iris_cpu && target_dev->type() != iris_cpu) {
+            non_cpu_dev = nddevs[i];
+        }
+    }   
+}
+
+void Device::ExecuteMemIn(Task *task, Command* cmd) {
+    int *params_map = cmd->get_params_map();
+    //int nargs = cmd->kernel_nargs();
+    for(pair<int, DataMem *> it : cmd->kernel()->data_mems_in()) {
+        int idx = it.first;
+        DataMem *mem = it.second;
+        if (params_map != NULL && 
+                (params_map[idx] & iris_all) == 0 && 
+                !(params_map[idx] & type_) ) continue;
+        ExecuteMemInDMemIn(task, cmd, mem);
+    }
+    for(pair<int, DataMemRegion *> it : cmd->kernel()->data_mem_regions_in()) {
+        int idx = it.first;
+        DataMemRegion *mem = it.second;
+        if (params_map != NULL && 
+                (params_map[idx] & iris_all) == 0 && 
+                !(params_map[idx] & type_) ) continue;
+        ExecuteMemInDMemRegionIn(task, cmd, mem);
+    }
+}
+
+template <typename DMemType>
+void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem)
+{
+    int nddevs[IRIS_MAX_NDEVS+1];
+    size_t *ptr_off = mem->local_off();
+    size_t *gws = mem->host_size();
+    size_t *lws = mem->dev_size();
+    size_t elem_size = mem->elem_size();
+    int dim = mem->dim();
+    size_t size = mem->size();
+    mem->dev_lock(devno_);
+    int cpu_dev = -1;
+    int non_cpu_dev = -1;
+    int d2d_dev = -1;
+    GetPossibleDevices(devno_, mem->get_non_dirty_devices(nddevs), 
+            d2d_dev, cpu_dev, non_cpu_dev);
+    bool h2d_enabled = false;
+    bool d2d_enabled = false;
+    bool d2o_enabled = false;
+    bool o2d_enabled = false;
+    bool d2h_h2d_enabled = false;
+    double h2dtime = 0.0f;
+    double d2htime = 0.0f;
+    double d2dtime = 0.0f;
+    double d2otime = 0.0f;
+    double o2dtime = 0.0f;
+    // Check if it is still dirty
+    if (!Platform::GetPlatform()->is_d2d_disabled() && d2d_dev >= 0) { 
+        // May be transfer directly from peer device is best 
+        // Do D2D communication
+        // Keep host data dirty as it is
+        _trace("explore D2D dev[%d][%s] task[%ld:%s] mem[%lu]", devno_, name_, task->uid(), task->name(), mem->uid());
+        Device *src_dev = Platform::GetPlatform()->device(d2d_dev);
+        void* dst_arch = mem->arch(this);
+        void* src_arch = mem->arch(src_dev);
+        double start = timer_->Now();
+        MemD2D(task, mem, dst_arch, src_arch, mem->size());
+        d2dtime = timer_->Now() - start;
+        d2d_enabled = true;
+    }
+    else if (cpu_dev >= 0) {
+        // You didn't find data in peer device, 
+        // but you found it in neighbouring CPU (OpenMP) device.
+        // Fetch it through H2D
+        _trace("explore Device(OpenMP)2Device (O2D) dev[%d][%s] task[%ld:%s] mem[%lu]", devno_, name_, task->uid(), task->name(), mem->uid());
+        Device *src_dev = Platform::GetPlatform()->device(cpu_dev);
+        void* src_arch = mem->arch(src_dev);
+        size_t off[3] = { 0 };
+        size_t host_sizes[3] = { mem->size() };
+        size_t dev_sizes[3] = { mem->size() };
+        // Though we use H2D command for transfer, 
+        // it is still a device to device transfer
+        // You do not need offsets as they correspond to host pointer
+        double start = timer_->Now();
+        MemH2D(task, mem, off, host_sizes, dev_sizes, 1, 1, mem->size(), src_arch, "OpenMP2DEV ");
+        o2dtime = timer_->Now() - start;
+        o2d_enabled = true;
+    }
+    else if (this->type() == iris_cpu && non_cpu_dev >= 0) {
+        // You found data in non-CPU/OpenMP device, but this device is CPU/OpenMP
+        // Use target D2H transfer 
+        //_trace("explore Device2Device(OpenMP) (D2O) dev[%d][%s] task[%ld:%s] mem[%lu]", devno_, name_, task->uid(), task->name(), mem->uid());
+        Device *src_dev = Platform::GetPlatform()->device(non_cpu_dev);
+        void* src_arch = mem->arch(this);
+        size_t off[3] = { 0 };
+        size_t host_sizes[3] = { mem->size() };
+        size_t dev_sizes[3] = { mem->size() };
+        // Though we use H2D command for transfer, 
+        // it is still a device to device transfer
+        // You do not need offsets as they correspond to host pointer
+        bool context_shift = src_dev->IsContextChangeRequired();
+        _trace("explore Device2Device(OpenMP) (D2O) dev[%d][%s] task[%ld:%s] mem[%lu] cs:%d", devno_, name_, task->uid(), task->name(), mem->uid(), context_shift);
+        double start = timer_->Now();
+        src_dev->MemD2H(task, mem, off, host_sizes, dev_sizes, 1, 1, mem->size(), src_arch, "DEV2OpenMP ");
+        if (context_shift) ResetContext();
+        d2otime = timer_->Now() - start;
+        d2o_enabled = true;
+    }
+    else if (!mem->is_host_dirty()) {
+        // If host is not dirty, it is best to transfer from host
+        // None of the devices having valid copy or D2D is not possible
+        _trace("explore Host2Device (H2D) dev[%d][%s] task[%ld:%s] mem[%lu]", devno_, name_, task->uid(), task->name(), mem->uid());
+        void* host = mem->host_memory(); // It should work even if host_ptr is null
+        double start = timer_->Now();
+        errid_ = MemH2D(task, mem, ptr_off, 
+                gws, lws, elem_size, dim, size, host);
+        if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
+        h2dtime = timer_->Now() - start;
+        h2d_enabled = true;
+    }
+    else {
+        // Host doesn't have fresh copy and peer2peer d2d is not possible
+        // Fresh copy should be in some other device memory
+        // do D2H and follewed by H2D
+        //_trace("explore D2H->H2D dev[%d][%s] task[%ld:%s] mem[%lu]", devno_, name_, task->uid(), task->name(), mem->uid());
+        void* host = mem->host_memory(); // It should work even if host_ptr is null
+        Device *src_dev = Platform::GetPlatform()->device(nddevs[0]);
+        // D2H should be issued from target src (remote) device
+        bool context_shift = src_dev->IsContextChangeRequired();
+        _trace("explore D2H->H2D dev[%d][%s] task[%ld:%s] mem[%lu] cs:%d", devno_, name_, task->uid(), task->name(), mem->uid(), context_shift);
+        double start = timer_->Now();
+        errid_ = src_dev->MemD2H(task, mem, ptr_off, 
+                gws, lws, elem_size, dim, size, host, "D2H->H2D(1) ");
+        d2htime = timer_->Now() - start;
+        if (context_shift) ResetContext();
+        if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
+        // H2D should be issued from this current device
+        start = timer_->Now();
+        errid_ = MemH2D(task, mem, ptr_off, 
+                gws, lws, elem_size, dim, size, host, "D2H->H2D(2) ");
+        h2dtime = timer_->Now() - start;
+        if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
+        mem->clear_host_dirty();
+        d2h_h2d_enabled = true;
+    }
+    mem->clear_dev_dirty(devno_ );
+    mem->dev_unlock(devno_);
+    if (h2d_enabled) cmd->kernel()->history()->AddH2D(cmd, this, h2dtime, size);
+    if (d2d_enabled) cmd->kernel()->history()->AddD2D(cmd, this, d2dtime, size);
+    if (d2o_enabled) cmd->kernel()->history()->AddD2O(cmd, this, d2otime, size);
+    if (o2d_enabled) cmd->kernel()->history()->AddO2D(cmd, this, o2dtime, size);
+    if (d2h_h2d_enabled) {
+        cmd->kernel()->history()->AddD2H_H2D(cmd, this, d2htime+h2dtime, size);
+        //cmd->kernel()->history()->AddD2H(cmd, this, d2htime);
+        //cmd->kernel()->history()->AddH2D(cmd, this, h2dtime);
+    }
+}
+void Device::ExecuteMemInDMemRegionIn(Task *task, Command* cmd, DataMemRegion *mem) {
+    if (mem->is_dev_dirty(devno_)) {
+        _trace("Initiating DMEM_REGION data transfer dev[%d:%s] task[%ld:%s] dmem_reg[%lu] dmem[%lu]", devno_, name_, task->uid(), task->name(), mem->uid(), mem->get_dmem()->uid());
+        InvokeDMemInDataTransfer<DataMemRegion>(task, cmd, mem);
+    }
+    else{
+        _trace("Skipped DMEM_REGION H2D data transfer dev[%d:%s] task[%ld:%s] dmem_reg[%lu] dmem[%lu] dptr[%p]", devno_, name_, task->uid(), task->name(), mem->uid(), mem->get_dmem()->uid(), mem->arch(devno_));
+    }
+}
+void Device::ExecuteMemInDMemIn(Task *task, Command* cmd, DataMem *mem) {
+    if (mem->is_regions_enabled()) {
+        int n_regions = mem->get_n_regions();
+        for (int i=0; i<n_regions; i++) {
+            DataMemRegion *rmem = (DataMemRegion *)mem->get_region(i);
+            if (rmem->is_dev_dirty(devno_)) {
+                _trace("Initiating DMEM_REGION region(%d) data transfer dev[%d:%s] task[%ld:%s] dmem_reg[%lu] dmem[%lu]", i, devno_, name_, task->uid(), task->name(), rmem->uid(), rmem->get_dmem()->uid());
+                InvokeDMemInDataTransfer<DataMemRegion>(task, cmd, rmem);
+            }
+            else {
+                _trace("Skipped DMEM_REGION region(%d) H2D data transfer dev[%d:%s] task[%ld:%s] dmem_reg[%lu] dmem[%lu] dptr[%p]", i, devno_, name_, task->uid(), task->name(), rmem->uid(), rmem->get_dmem()->uid(), rmem->arch(devno_));
+
+            }
+        }
+#if 0
+        size_t *off = mem->off();
+        size_t *host_sizes = mem->host_size();
+        size_t *dev_sizes = mem->dev_size();
+        size_t elem_size = mem->elem_size();
+        int dim = mem->dim();
+        size_t size = mem->size();
+        float *host = (float *) malloc(size);
+        errid_ = MemD2H(task, mem, off, 
+                host_sizes, dev_sizes, elem_size, dim, size, host);
+        printf("Regions Input: %ld:%s ", task->uid(), task->name());
+        for(int i=0; i<dev_sizes[1]; i++) {
+            int ai = off[1] + i;
+            for(int j=0; j<dev_sizes[0]; j++) {
+                int aj = off[0] + j;
+                printf("%10.1lf ", host[ai*host_sizes[1]+aj]);
+            }
+        }
+        printf("\n");
+#endif
+    }
+    else if (mem->is_dev_dirty(devno_)) {
+        InvokeDMemInDataTransfer<DataMem>(task, cmd, mem);
+    }
+    else{
+        _trace("Skipped DMEM H2D data transfer dev[%d:%s] task[%ld:%s] dmem[%lu] dptr[%p]", devno_, name_, task->uid(), task->name(), mem->uid(), mem->arch(devno_));
+    }
+}
+void Device::ExecuteMemOut(Task *task, Command* cmd) {
+    int *params_map = cmd->get_params_map();
+    //int nargs = cmd->kernel_nargs();
+    for(pair<int, DataMem *> it : cmd->kernel()->data_mems_out()) {
+        int idx = it.first;
+        DataMem *mem = it.second;
+        if (params_map != NULL && 
+                (params_map[idx] & iris_all) == 0 && 
+                !(params_map[idx] & type_) ) continue;
+        mem->set_dirty_except(devno_);
+        mem->set_host_dirty();
+    }
+    for(pair<int, DataMemRegion *> it : cmd->kernel()->data_mem_regions_out()) {
+        int idx = it.first;
+        DataMemRegion *mem = it.second;
+        if (params_map != NULL && 
+                (params_map[idx] & iris_all) == 0 && 
+                !(params_map[idx] & type_) ) continue;
+        mem->set_dirty_except(devno_);
+        mem->set_host_dirty();
+    }
+}
+void Device::ExecuteMemFlushOut(Command* cmd) {
+    int nddevs[IRIS_MAX_NDEVS+1];
+    BaseMem* bmem = (BaseMem *)cmd->mem();
+    if (bmem->GetMemHandlerType() != IRIS_DMEM) {
+        _error("Flush out is called for unssuported memory handler task:%ld:%s\n", cmd->task()->uid(), cmd->task()->name());
+        return;
+    }
+    DataMem* mem = (DataMem *)cmd->mem();
+    if (mem->is_host_dirty()) {
+        size_t *ptr_off = mem->off();
+        size_t *gws = mem->host_size();
+        size_t *lws = mem->dev_size();
+        size_t elem_size = mem->elem_size();
+        int dim = mem->dim();
+        size_t size = mem->size();
+        void* host = mem->host_memory(); // It should work even if host_ptr is null
+        double start = timer_->Now();
+        Task *task = cmd->task();
+        Device *src_dev = this;
+        if (mem->is_dev_dirty(devno_)) {
+            int cpu_dev = -1;
+            int non_cpu_dev = -1;
+            int d2d_dev = -1;
+            GetPossibleDevices(devno_, mem->get_non_dirty_devices(nddevs), 
+                    d2d_dev, cpu_dev, non_cpu_dev);
+            src_dev = Platform::GetPlatform()->device(nddevs[0]);
+            // D2H should be issued from target src (remote) device
+            bool context_shift = src_dev->IsContextChangeRequired();
+            errid_ = src_dev->MemD2H(task, mem, ptr_off, 
+                    gws, lws, elem_size, dim, size, host, "MemFlushOut ");
+            if (context_shift) ResetContext();
+        }
+        else {
+            errid_ = MemD2H(task, mem, ptr_off, 
+                    gws, lws, elem_size, dim, size, host, "MemFlushOut ");
+        }
+        if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
+        mem->clear_host_dirty();
+        double d2htime = timer_->Now() - start;
+        Command* cmd_kernel = cmd->task()->cmd_kernel();
+        if (cmd_kernel) cmd_kernel->kernel()->history()->AddD2H(cmd_kernel, src_dev, d2htime, size);
+    }
+    else {
+        _trace("MemFlushout is skipped as host already having valid data for task:%ld:%s\n", cmd->task()->uid(), cmd->task()->name());
+    }
+}
 void Device::ExecuteH2D(Command* cmd) {
   Mem* mem = cmd->mem();
   size_t off = cmd->off(0);
@@ -200,45 +518,35 @@ void Device::ExecuteH2D(Command* cmd) {
   else mem->AddOwner(off, size, this);
   timer_->Start(IRIS_TIMER_H2D);
   cmd->set_time_start(timer_->Now());
-  bool is_mem_xfer_skipped = true;
-  //printf("DeviceH2D device no:%d\n", devno_);
-  // Decide whether memory transfer required or not
-  std::vector<Command *>  d2h_cmds_of_mem = mem->get_d2h_cmds();
-  if (d2h_cmds_of_mem.size() == 0 || ! mem->is_intermediate())
-      is_mem_xfer_skipped = false;
-  if (is_mem_xfer_skipped) for (Command *d2h_cmd : d2h_cmds_of_mem) {
-     //printf("DeviceH2D task:%p %p %p %p %d %d %d\n", cmd->task(), d2h_cmd->task(), cmd->task()->dev(), d2h_cmd->task()->dev(), cmd->task()->devno(), d2h_cmd->task()->devno(), devno_);
-     if (cmd->task() == d2h_cmd->task())
-         is_mem_xfer_skipped = false;
-     if (cmd->task()->dev() != d2h_cmd->task()->dev())
-         is_mem_xfer_skipped = false;
-  }
-  if (is_mem_xfer_skipped) {
-      _trace("Dev[%d][%s] MemH2D is skipped", devno_, name_);
-      return;
-  }
-  errid_ = MemH2D(mem, ptr_off, gws, lws, elem_size, dim, size, host);
+  errid_ = MemH2D(cmd->task(), mem, ptr_off, gws, lws, elem_size, dim, size, host);
   if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
   cmd->set_time_end(timer_->Now());
   double time = timer_->Stop(IRIS_TIMER_H2D);
   cmd->SetTime(time);
   Command* cmd_kernel = cmd->task()->cmd_kernel();
-  if (cmd_kernel) cmd_kernel->kernel()->history()->AddH2D(cmd, this, time);
-  else Platform::GetPlatform()->null_kernel()->history()->AddH2D(cmd, this, time);
+  if (cmd_kernel) {
+      if  (cmd->is_internal_memory_transfer())
+          cmd_kernel->kernel()->history()->AddD2H_H2D(cmd, this, time, size, false);
+      else
+          cmd_kernel->kernel()->history()->AddH2D(cmd, this, time, size);
+  }
+  else {
+      Platform::GetPlatform()->null_kernel()->history()->AddH2D(cmd, this, time, size);
+  }
   if (Platform::GetPlatform()->enable_scheduling_history()) Platform::GetPlatform()->scheduling_history()->AddH2D(cmd);
 }
 
 void Device::ExecuteH2DNP(Command* cmd) {
-  Mem* mem = cmd->mem();
-  size_t off = cmd->off(0);
-  size_t size = cmd->size();
+  //Mem* mem = cmd->mem();
+  //size_t off = cmd->off(0);
+  //size_t size = cmd->size();
 //  if (mem->IsOwner(off, size, this)) return;
   return ExecuteH2D(cmd);
 }
 
 void Device::ExecuteD2H(Command* cmd) {
   Mem* mem = cmd->mem();
-  size_t off = cmd->off(0);
+  //size_t off = cmd->off(0);
   size_t *ptr_off = cmd->off();
   size_t *gws = cmd->gws();
   size_t *lws = cmd->lws();
@@ -251,39 +559,29 @@ void Device::ExecuteD2H(Command* cmd) {
   timer_->Start(IRIS_TIMER_D2H);
   cmd->set_time_start(timer_->Now());
   errid_ = IRIS_SUCCESS;
-  bool is_mem_xfer_skipped = true;
-  // Decide whether memory transfer required or not
-  //printf("DeviceH2D device no:%d\n", devno_);
-  std::vector<Command *>  h2d_cmds_of_mem = mem->get_h2d_cmds();
-  if (h2d_cmds_of_mem.size() == 0 || ! mem->is_intermediate())
-      is_mem_xfer_skipped = false;
-  if (is_mem_xfer_skipped) for (Command *h2d_cmd : h2d_cmds_of_mem) {
-     //printf("DeviceD2H task:%p %p %p %p %d %d %d\n", cmd->task(), h2d_cmd->task(), cmd->task()->dev(), h2d_cmd->task()->dev(), cmd->task()->devno(), h2d_cmd->task()->devno(), devno_);
-     if (cmd->task()->dev() != h2d_cmd->task()->dev())
-         is_mem_xfer_skipped = false;
-  }
-  if (is_mem_xfer_skipped) {
-      _trace("Dev[%d][%s] MemD2H is skipped", devno_, name_);
-      return;
-  }
 
   if (mode & iris_reduction) {
-    errid_ = MemD2H(mem, ptr_off, gws, lws, elem_size, dim, mem->size() * expansion, mem->host_inter());
+    errid_ = MemD2H(cmd->task(), mem, ptr_off, gws, lws, elem_size, dim, mem->size() * expansion, mem->host_inter());
     Reduction::GetInstance()->Reduce(mem, host, size);
-  } else errid_ = MemD2H(mem, ptr_off, gws, lws, elem_size, dim, size, host);
+  } else errid_ = MemD2H(cmd->task(), mem, ptr_off, gws, lws, elem_size, dim, size, host);
   if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
   cmd->set_time_end(timer_->Now());
   double time = timer_->Stop(IRIS_TIMER_D2H);
   cmd->SetTime(time);
   Command* cmd_kernel = cmd->task()->cmd_kernel();
-  if (cmd_kernel) cmd_kernel->kernel()->history()->AddD2H(cmd, this, time);
-  else Platform::GetPlatform()->null_kernel()->history()->AddD2H(cmd, this, time);
+  if (cmd_kernel) {
+      if (cmd->is_internal_memory_transfer())
+          cmd_kernel->kernel()->history()->AddD2H_H2D(cmd, this, time, size);
+      else
+          cmd_kernel->kernel()->history()->AddD2H(cmd, this, time, size);
+  }
+  else Platform::GetPlatform()->null_kernel()->history()->AddD2H(cmd, this, time, size);
   if (Platform::GetPlatform()->enable_scheduling_history()) Platform::GetPlatform()->scheduling_history()->AddD2H(cmd);
 }
 
 void Device::ExecuteMap(Command* cmd) {
-  void* host = cmd->host();
-  size_t size = cmd->size();
+  //void* host = cmd->host();
+  //size_t size = cmd->size();
 }
 
 void Device::ExecuteReleaseMem(Command* cmd) {

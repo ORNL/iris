@@ -9,17 +9,14 @@
 namespace iris {
 namespace rt {
 
-Mem::Mem(size_t size, Platform* platform) {
+Mem::Mem(size_t size, Platform* platform) : BaseMem(IRIS_MEM, platform->ndevs()) {
   size_ = size;
   mode_ = iris_normal;
   expansion_ = 1;
   platform_ = platform;
-  ndevs_ = platform->ndevs();
   host_inter_ = NULL;
   mapped_host_ = NULL;
   for (int i = 0; i < ndevs_; i++) {
-    archs_[i] = NULL;
-    archs_off_[i] = NULL;
     archs_dev_[i] = platform->device(i);
   }
   pthread_mutex_init(&mutex_, NULL);
@@ -31,16 +28,36 @@ Mem::~Mem() {
   }
   if (!host_inter_) free(host_inter_);
   pthread_mutex_destroy(&mutex_);
+  for (std::set<MemRange*>::iterator I = ranges_.begin(), E = ranges_.end(); I != E; ++I) {
+      MemRange *mr = *I;
+      delete mr;
+  }
 }
 
-void* Mem::arch(Device* dev, void *host) {
-  int devno = dev->devno();
-  if (archs_[devno] == NULL) 
+void** Mem::arch_ptr(int devno, void *host) {
+  arch(devno, host);
+  return &archs_[devno];
+}
+
+void** Mem::arch_ptr(Device *dev, void *host) {
+  arch(dev, host);
+  return &archs_[dev->devno()];
+}
+
+void* Mem::arch(int devno, void *host) {
+  if (archs_[devno] == NULL) {
+      Device *dev = archs_dev_[devno];
       if (host == NULL || !dev->is_shared_memory_buffers()) 
           dev->MemAlloc(archs_ + devno, expansion_ * size_);
       else
           archs_[devno] = host;
+  }
   return archs_[devno];
+}
+
+void* Mem::arch(Device* dev, void *host) {
+  int devno = dev->devno();
+  return arch(devno, host);
 }
 
 void* Mem::host_inter() {

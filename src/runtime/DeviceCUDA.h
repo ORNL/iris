@@ -18,17 +18,20 @@ public:
 
   int Compile(char* src);
   int Init();
-  int MemAlloc(void** mem, size_t size);
+  int MemAlloc(void** mem, size_t size, bool reset=false);
   int MemFree(void* mem);
+  void EnablePeerAccess();
+  void SetPeerDevices(int *peers, int count);
   void MemCpy3D(CUdeviceptr dev, uint8_t *host, size_t *off, 
           size_t *dev_sizes, size_t *host_sizes, 
           size_t elem_size, bool host_2_dev);
-  int MemH2D(Mem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host);
-  int MemD2H(Mem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host);
-  int KernelGet(void** kernel, const char* name);
+  int MemD2D(Task *task, BaseMem *mem, void *dst, void *src, size_t size);
+  int MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag="");
+  int MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag="");
+  int KernelGet(Kernel *kernel, void** kernel_bin, const char* name);
   int KernelLaunchInit(Kernel* kernel);
-  int KernelSetArg(Kernel* kernel, int idx, size_t size, void* value);
-  int KernelSetMem(Kernel* kernel, int idx, Mem* mem, size_t off);
+  int KernelSetArg(Kernel* kernel, int idx, int kindex, size_t size, void* value);
+  int KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, size_t off);
   int KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws);
   int Synchronize();
   int AddCallback(Task* task);
@@ -42,6 +45,9 @@ public:
   LoaderCUDA* ld() { return ld_; }
   LoaderHost2CUDA* host2cuda_ld() { return host2cuda_ld_; }
   CUmodule* module() { return &module_; }
+  int cudev() { return dev_; }
+  void ResetContext();
+  bool IsContextChangeRequired();
 
 private:
   static void Callback(CUstream stream, CUresult status, void* data);
@@ -51,6 +57,8 @@ private:
   LoaderCUDA* ld_;
   LoaderHost2CUDA* host2cuda_ld_;
   CUdevice dev_;
+  CUdevice peers_[IRIS_MAX_NDEVS];
+  int peers_count_;
   CUcontext ctx_;
   CUstream streams_[IRIS_MAX_DEVICE_NQUEUES];
   CUmodule module_;

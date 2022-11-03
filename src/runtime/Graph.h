@@ -22,13 +22,15 @@ public:
 
   Platform* platform() { return platform_; }
   std::vector<Task*>* tasks() { return &tasks_; }
+  int iris_tasks(iris_task *pv);
+  int tasks_count() { return tasks_.size(); }
 
 private:
   Platform* platform_;
   Scheduler* scheduler_;
   std::vector<Task*> tasks_;
 
-  Task* start_;
+  //Task* start_;
   Task* end_;
 
   int status_;

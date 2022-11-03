@@ -35,6 +35,7 @@ Task::Task(Platform* platform, int type, const char* name) {
   depends_max_ = 1024;
   ndepends_ = 0;
   given_name_ = name != NULL;
+  name_[0]='\0';
   if (name) strcpy(name_, name);
   status_ = IRIS_NONE;
 
@@ -43,16 +44,18 @@ Task::Task(Platform* platform, int type, const char* name) {
   pthread_mutex_init(&mutex_complete_, NULL);
   pthread_mutex_init(&mutex_subtasks_, NULL);
   pthread_cond_init(&complete_cond_, NULL);
+  brs_policy_ = iris_default;
 }
 
 Task::~Task() {
   for (int i = 0; i < ncmds_; i++) delete cmds_[i];
-  if (depends_) delete depends_;
+  if (depends_) delete [] depends_;
   pthread_mutex_destroy(&mutex_pending_);
   pthread_mutex_destroy(&mutex_executable_);
   pthread_mutex_destroy(&mutex_complete_);
   pthread_mutex_destroy(&mutex_subtasks_);
   pthread_cond_destroy(&complete_cond_);
+  subtasks_.clear();
 }
 
 double Task::TimeInc(double t) {
@@ -118,6 +121,17 @@ void Task::AddCommand(Command* cmd) {
     cmd_last_ = cmd;
 }
 
+void Task::print_incomplete_tasks()
+{
+  if (depends_ == NULL) return;
+  printf("Task Name: %ld:%s\n", uid(), name());
+  for (int i = 0; i < ndepends_; i++) {
+    if (depends_[i]->status() != IRIS_COMPLETE) {
+      printf("      Running dependent task: %d:%ld:%s Status:%d\n", i, depends_[i]->uid(), depends_[i]->name(), depends_[i]->status_);
+    } 
+  }
+}
+
 void Task::ClearCommands() {
   for (int i = 0; i < ncmds_; i++) delete cmds_[i];
   ncmds_ = 0;
@@ -126,6 +140,7 @@ void Task::ClearCommands() {
 bool Task::Dispatchable() {
   //if we, or the tasks we depend on are pending (or not-complete), we can't run.
   if (status_ == IRIS_PENDING) return false;
+  if (depends_ == NULL) return true;
   for (int i = 0; i < ndepends_; i++) {
     if (depends_[i]->status() != IRIS_COMPLETE) return false;
   }
@@ -161,6 +176,7 @@ void Task::set_pending() {
 void Task::Complete() {
   pthread_mutex_lock(&mutex_complete_);
   status_ = IRIS_COMPLETE;
+  if (user_) platform_->ProfileCompletedTask(this);
   pthread_cond_broadcast(&complete_cond_);
   pthread_mutex_unlock(&mutex_complete_);
   if (parent_) parent_->CompleteSub();
@@ -168,9 +184,17 @@ void Task::Complete() {
     if (dev_) dev_->worker()->TaskComplete(this);
     else if (scheduler_) scheduler_->Invoke();
   }
+  if (platform->release_task_flag() 
   for (int i = 0; i < ndepends_; i++)
     if (depends_[i]->user()) depends_[i]->Release();
   if (user_) Release();
+}
+
+void Task::TryReleaseTask()
+{
+    for (int i = 0; i < ndepends_; i++)
+        if (depends_[i]->user()) depends_[i]->Release();
+    if (user_) Release();
 }
 
 void Task::CompleteSub() {
@@ -204,6 +228,7 @@ void Task::AddDepend(Task* task) {
     depends_max_ *= 2;
     depends_ = new Task*[depends_max_];
     memcpy(depends_, old, ndepends_ * sizeof(Task*));
+    delete [] old;
   } 
   depends_[ndepends_++] = task;
   task->Retain();

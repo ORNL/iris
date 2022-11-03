@@ -2,7 +2,7 @@
 #include "Debug.h"
 #include "Kernel.h"
 #include "LoaderHexagon.h"
-#include "Mem.h"
+#include "BaseMem.h"
 #include "Task.h"
 #include "Utils.h"
 #include "Worker.h"
@@ -31,13 +31,16 @@ int DeviceHexagon::Init() {
   return IRIS_SUCCESS;
 }
 
-int DeviceHexagon::MemAlloc(void** mem, size_t size) {
+int DeviceHexagon::MemAlloc(void** mem, size_t size, bool reset) {
   void** hxgmem = mem;
   *hxgmem = ld_->iris_hexagon_rpcmem_alloc(RPCMEM_HEAP_ID_SYSTEM, RPCMEM_DEFAULT_FLAGS, (int) size);
   if (*hxgmem == 0) {
     _error("hxgmem[%p]", hxgmem);
     worker_->platform()->IncrementErrorCount();
     return IRIS_ERROR;
+  }
+  if (reset) {
+    _error("Hexagon not supported with reset for size:%lu", size);
   }
   return IRIS_SUCCESS;
 }
@@ -48,7 +51,7 @@ int DeviceHexagon::MemFree(void* mem) {
   return IRIS_SUCCESS;
 }
 
-int DeviceHexagon::MemH2D(Mem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host) {
+int DeviceHexagon::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag) {
   void* hxgmem = mem->arch(this);
   if (dim == 2 || dim == 3) {
       Utils::MemCpy3D((uint8_t *)hxgmem, (uint8_t *)host, off, dev_sizes, host_sizes, elem_size, true);
@@ -59,7 +62,7 @@ int DeviceHexagon::MemH2D(Mem* mem, size_t *off, size_t *host_sizes,  size_t *de
   return IRIS_SUCCESS;
 }
 
-int DeviceHexagon::MemD2H(Mem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host) {
+int DeviceHexagon::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag) {
   void* hxgmem = mem->arch(this);
   if (dim == 2 || dim == 3) {
       Utils::MemCpy3D((uint8_t *)hxgmem, (uint8_t *)host, off, dev_sizes, host_sizes, elem_size, true);
@@ -70,25 +73,41 @@ int DeviceHexagon::MemD2H(Mem* mem, size_t *off, size_t *host_sizes,  size_t *de
   return IRIS_SUCCESS;
 }
 
-int DeviceHexagon::KernelGet(void** kernel, const char* name) {
+int DeviceHexagon::KernelGet(Kernel *kernel, void** kernel_bin, const char* name) {
   return IRIS_SUCCESS;
 }
 
 int DeviceHexagon::KernelLaunchInit(Kernel* kernel) {
+  if (ld_->iris_hexagon_kernel_with_obj) {
+      if (ld_->iris_hexagon_kernel_with_obj(
+              kernel->GetParamWrapperMemory(), kernel->name())==IRIS_SUCCESS) {
+          ld_->SetKernelPtr(kernel->GetParamWrapperMemory(), kernel->name());
+          return IRIS_SUCCESS;
+      }
+  }
   return ld_->iris_hexagon_kernel(kernel->name());
 }
 
-int DeviceHexagon::KernelSetArg(Kernel* kernel, int idx, size_t size, void* value) {
-  return ld_->iris_hexagon_setarg(idx, size, value);
+int DeviceHexagon::KernelSetArg(Kernel* kernel, int idx, int kindex, size_t size, void* value) {
+  if (ld_->iris_hexagon_setarg_with_obj)
+      return ld_->iris_hexagon_setarg_with_obj(
+              kernel->GetParamWrapperMemory(), kindex, size, value);
+  return ld_->iris_hexagon_setarg(kindex, size, value);
 }
 
-int DeviceHexagon::KernelSetMem(Kernel* kernel, int idx, Mem* mem, size_t off) {
+int DeviceHexagon::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, size_t off) {
   void* hxgmem = mem->arch(this);
-  return ld_->iris_hexagon_setmem(idx, hxgmem, (int) mem->size());
+  if (ld_->iris_hexagon_setmem_with_obj)
+      return ld_->iris_hexagon_setmem_with_obj(
+              kernel->GetParamWrapperMemory(), kindex, hxgmem, (int) mem->size());
+  return ld_->iris_hexagon_setmem(kindex, hxgmem, (int) mem->size());
 }
 
 int DeviceHexagon::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws) {
   _trace("kernel[%s] dim[%d] off[%zu] gws[%zu]", kernel->name(), dim, off[0], gws[0]);
+  if (ld_->iris_hexagon_launch_with_obj)
+      return ld_->iris_hexagon_launch_with_obj(
+              kernel->GetParamWrapperMemory(), 0, dim, off[0], gws[0]);
   return ld_->iris_hexagon_launch(dim, off[0], gws[0]);
 }
 

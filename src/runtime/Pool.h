@@ -22,11 +22,13 @@ public:
 
 private:
   Platform* platform_;
+#if IRIS_POOL_ENABLED
   Task* tasks_[IRIS_POOL_MAX_TASK];
   Command* cmds_[IRIS_POOL_MAX_CMD];
-
   int tid_;
   int cid_;
+#endif
+
 };
 
 } /* namespace rt */

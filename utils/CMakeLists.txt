@@ -95,12 +95,25 @@ function(initVar var_name default_value)
     endif() #var_name
     #message(STATUS "var  (${var_name}) is set to ${default_value}")
 endfunction() # initVar
-
+initVar(APP_ENVNAME "IRIS_APP")
 initVar(OPENMP_FLAGS "")
 initVar(OPENMP_LDFLAGS "")
+initVar(CUDA_FLAGS "")
 initVar(HIP_FLAGS "")
 initVar(HOST2CUDA_FLAGS "")
 initVar(HOST2CUDA_LDFLAGS "")
+initVar(HOST2CUDA_COMP_FLAGS "")
+initVar(NVCC_CU cc70)
+if (ENABLE_OPENMP_NVCC)
+initVar(HOST2CUDA_COMP_COMPILER nvc++)
+set(OPENMP_GPU_FLAGS -mp=gpu -gpu=${NVCC_CU})
+set(OPENMP_GPU_LDFLAGS )
+else()
+initVar(HOST2CUDA_COMP_COMPILER clang++)
+set(OPENMP_GPU_FLAGS "-fopenmp -fopenmp-targets=nvptx64-nvidia-cuda")
+set(OPENMP_GPU_LDFLAGS "-fopenmp -fopenmp-targets=nvptx64-nvidia-cuda")
+endif()
+initVar(HOST2CUDA_COMP_LDFLAGS "")
 initVar(HOST2HIP_FLAGS "")
 initVar(HOST2HIP_LDFLAGS "")
 initVar(HOST2ROC_FLAGS "")
@@ -123,6 +136,12 @@ initVar(BIN_INSTALL_PATH ${CMAKE_INSTALL_PREFIX})
 initVar(KERNEL_INSTALL_PATH ${CMAKE_INSTALL_PREFIX})
 initVar(XILINX_FLAGS "")
 initVar(XILINX_LDFLAGS "-O3")
+
+if (IS_ABSOLUTE ${KERNEL_INSTALL_PATH})
+set(KERNEL_INSTALL_PATH_DIR ${KERNEL_INSTALL_PATH})
+else()
+set(KERNEL_INSTALL_PATH_DIR "\$${APP_ENVNAME}/${KERNEL_INSTALL_PATH}")
+endif()
 
 function(install_iris_files fpattern install_prefix)
     file(GLOB_RECURSE folder_files ${fpattern})
@@ -201,12 +220,14 @@ endif()
 set(HOST2XILINX_FLAGS "${HOST2XILINX_FLAGS} -I$ENV{XILINX_HLS}/include -I$ENV{XILINX_VITIS}/include -I$ENV{XILINX_XRT}/include/ -DENABLE_IRIS ${OPENMP_INC} -O3 -g -fPIC ${COMMON_FLAGS} ${LOCAL_COMMON_FLAGS} -I. ")
 set(HOST2OPENCL_FLAGS "${HOST2OPENCL_FLAGS} -DENABLE_IRIS ${OPENMP_INC} -O3 -g -fPIC ${COMMON_FLAGS} ${LOCAL_COMMON_FLAGS} -I.")
 set(HOST2CUDA_FLAGS "${HOST2CUDA_FLAGS} -DENABLE_IRIS ${OPENMP_INC} -O3 -g -fPIC ${COMMON_FLAGS} ${LOCAL_COMMON_FLAGS} -I.")
+set(HOST2CUDA_COMP_FLAGS "${HOST2CUDA_COMP_FLAGS} -DENABLE_IRIS ${OPENMP_INC} -O3 -g -fPIC ${COMMON_FLAGS} ${LOCAL_COMMON_FLAGS} -I.")
 set(HOST2HIP_FLAGS "${HOST2HIP_FLAGS} -DENABLE_IRIS ${OPENMP_INC} -O3 -g -fPIC ${COMMON_FLAGS} ${LOCAL_COMMON_FLAGS} -I.")
 set(HOST2ROC_FLAGS "${HOST2ROC_FLAGS} -DENABLE_IRIS ${OPENMP_INC} -O3 -g -fPIC ${COMMON_FLAGS} ${LOCAL_COMMON_FLAGS} -I.")
 set(OPENMP_FLAGS "${OPENMP_FLAGS} -DENABLE_IRIS ${OPENMP_INC} -O3 -g -fPIC ${COMMON_FLAGS} ${LOCAL_COMMON_FLAGS} -I.")
 set(HOST2XILINX_LDFLAGS "${HOST2XILINX_LDFLAGS} ${OPENMP_INC} -g -fPIC")
 set(HOST2OPENCL_LDFLAGS "${HOST2OPENCL_LDFLAGS} ${OPENMP_INC} -g -fPIC")
 set(HOST2CUDA_LDFLAGS "${HOST2CUDA_LDFLAGS} ${OPENMP_INC} -g -fPIC")
+set(HOST2CUDA_COMP_LDFLAGS "${HOST2CUDA_COMP_LDFLAGS} ${OPENMP_INC} -g -fPIC")
 set(HOST2HIP_LDFLAGS "${HOST2HIP_LDFLAGS} ${OPENMP_INC} -g -fPIC")
 set(OPENMP_LDFLAGS "${OPENMP_LDFLAGS} ${OPENMP_INC} -g -fPIC")
 set(HEXAGON_FLAGS "${HEXAGON_FLAGS} -fPIC -g -O3 ${COMMON_FLAGS}  ${LOCAL_COMMON_FLAGS} -I$ENV{IRIS}/include/iris/hexagon")
@@ -376,9 +397,38 @@ add_custom_target(setup.android.source ALL DEPENDS ${CMAKE_BINARY_DIR}/setup.and
 install(FILES ${CMAKE_BINARY_DIR}/setup.android.source DESTINATION ${CMAKE_INSTALL_PREFIX})
 else() #SNAPDRAGON
 add_custom_command(
+  OUTPUT ${CMAKE_BINARY_DIR}/setup.source
+  WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+  COMMAND echo "SCRIPT_FILE=\${BASH_SOURCE[0]}" > ${CMAKE_BINARY_DIR}/setup.source VERBATIM
+  COMMAND echo "PYTHON_EXE=python" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
+  COMMAND echo "version=\$(python -V 2>&1 | grep -Po '(?<=Python )(.+)')" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
+  COMMAND echo "if [[ -z \"\$version\" ]]" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
+  COMMAND echo "then" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
+  COMMAND echo "    PYTHON_EXE=python3" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
+  COMMAND echo "    version=\$(python3 -V 2>&1 | grep -Po '(?<=Python )(.+)')" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
+  COMMAND echo "    if [[ -z \"\$version\" ]]" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
+  COMMAND echo "    then" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
+  COMMAND echo "    echo \"No Python is detected! Cannot source\" " >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
+  COMMAND echo "    return" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
+  COMMAND echo "    fi" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
+  COMMAND echo "fi" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
+  COMMAND echo "SCRIPT=$(\$PYTHON_EXE -c \"import os,sys; print(os.path.realpath(os.path.expanduser(sys.argv[1])))\" \${SCRIPT_FILE})" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
+  COMMAND echo "export ${APP_ENVNAME}=$(dirname -- \${SCRIPT})" >> ${CMAKE_BINARY_DIR}/setup.source
+  COMMAND echo "export PATH=\$${APP_ENVNAME}/bin:\$PATH" >> ${CMAKE_BINARY_DIR}/setup.source
+  COMMAND echo "export IRIS_KERNEL_DIR=${KERNEL_INSTALL_PATH_DIR}" >> ${CMAKE_BINARY_DIR}/setup.source
+  COMMAND echo "export LD_LIBRARY_PATH=.:\$${APP_ENVNAME}/lib64:\$${APP_ENVNAME}/lib:\$LD_LIBRARY_PATH" >> ${CMAKE_BINARY_DIR}/setup.source
+  COMMAND echo "export PYTHONPATH=\$${APP_ENVNAME}/scripts:\$PYTHONPATH" >> ${CMAKE_BINARY_DIR}/setup.source
+  COMMAND echo "export PKG_CONFIG_PATH=\$${APP_ENVNAME}/lib64/pkg_config:\$${APP_ENVNAME}/lib/pkg_config:\$PKG_CONFIG_PATH" >> ${CMAKE_BINARY_DIR}/setup.source
+  COMMAND echo "echo \"*********************** ${APP_ENVNAME} Environent *********************\"" >> ${CMAKE_BINARY_DIR}/setup.source
+  COMMAND echo "echo \"${APP_ENVNAME}: \$${APP_ENVNAME}\"" >> ${CMAKE_BINARY_DIR}/setup.source
+  COMMAND echo "echo \"*************************************************************\"" >> ${CMAKE_BINARY_DIR}/setup.source
+  )
+add_custom_target(setup.source ALL DEPENDS ${CMAKE_BINARY_DIR}/setup.source)
+install(FILES ${CMAKE_BINARY_DIR}/setup.source DESTINATION ${CMAKE_INSTALL_PREFIX})
+add_custom_command(
   OUTPUT ${CMAKE_BINARY_DIR}/setup.host.source
   WORKING_DIRECTORY ${CMAKE_BINARY_DIR} 
-  COMMAND echo "export PATH=\\$$PWD:\\$$PATH" > ${CMAKE_BINARY_DIR}/setup.host.source 
+  COMMAND echo "export PATH=\\$$PWD/bin:\\$$PWD:\\$$PATH" > ${CMAKE_BINARY_DIR}/setup.host.source 
   COMMAND echo "export LD_LIBRARY_PATH=.:\\$$PWD:\\$$PWD/lib64:\\$$PWD/lib:\\$$LD_LIBRARY_PATH" >> ${CMAKE_BINARY_DIR}/setup.host.source 
   )
 add_custom_target(setup.host ALL DEPENDS ${CMAKE_BINARY_DIR}/setup.host.source)
@@ -390,7 +440,7 @@ if (CUDA_KERNEL_SOURCES)
 add_custom_command(
   OUTPUT ${CMAKE_BINARY_DIR}/kernel.ptx
   WORKING_DIRECTORY ${PROJECT_SOURCE_DIR} 
-  COMMAND nvcc -ptx ${CUDA_KERNEL_SOURCES} --output-directory ${CMAKE_BINARY_DIR}
+  COMMAND nvcc -ptx ${CUDA_KERNEL_SOURCES} ${CUDA_FLAGS} -o ${CMAKE_BINARY_DIR}/kernel.ptx --output-directory ${CMAKE_BINARY_DIR}
   BYPRODUCTS ${CMAKE_BINARY_DIR}/kernel.ptx
   )
 add_custom_target(kernel.ptx ALL DEPENDS ${CMAKE_BINARY_DIR}/kernel.ptx)
@@ -553,6 +603,60 @@ function(addKernelRule kernel_target kernel_sources flags ldflags libraries)
         endif()
 endfunction() #addKernelRule
 
+function(addKernelCUDARule kernel_target 
+                           kernel_sources 
+                           flags 
+                           ldflags 
+                           libraries 
+                           output_obj_files 
+                           output_rules)
+        set(flags_X ${flags})
+        set(ldflags_X ${ldflags})
+        string(REPLACE " " ";" flags_X ${flags_X})
+        string(REPLACE " " ";" ldflags_X ${ldflags_X})
+        set(local_output_obj_files )
+        foreach(cuda_source ${kernel_sources})
+            message(STATUS ${cuda_source})
+            string(REGEX REPLACE " $" "" first "${cuda_source}")
+            string(REGEX REPLACE "/" ".__" rule_name "${first}.iris")
+            string(REGEX REPLACE "\n$" "" rule_name "${rule_name}")
+            get_filename_component(SRC_PATH ${first} DIRECTORY)
+            if (SRC_PATH STREQUAL "")
+            set(SRC_PATH ".")
+            endif()
+            message(STATUS "\n Processing file: ${CMAKE_CURRENT_BINARY_DIR} ${first} in path:${SRC_PATH} rule:${rule_name}\n")
+            get_filename_component(SRC_DIR_PATH ${SRC_PATH} ABSOLUTE BASE_DIR ${PROJECT_SOURCE_DIR})
+            get_filename_component(SRC_FILE_PATH ${first} ABSOLUTE BASE_DIR ${PROJECT_SOURCE_DIR})
+            message(STATUS "\n ${SRC_DIR_PATH} ${SRC_FILE_PATH}\n")
+            set(output "${rule_name}.o")
+            add_custom_command(
+                    OUTPUT ${output}
+                    COMMAND ${HOST2CUDA_COMP_COMPILER} -O2 ${OPENMP_GPU_FLAGS} -c ${SRC_FILE_PATH} ${flags_X} -I$ENV{IRIS}/include -I${SRC_DIR_PATH} -o ${output}
+                    DEPENDS ${SRC_FILE_PATH} iris_app_cpu_dsp_interface.h
+                    VERBATIM
+            )
+            string(REGEX REPLACE "/" ".__" rule_name "${file_c}.iris")
+            string(REGEX REPLACE "\n$" "" rule_name "${rule_name}")
+            add_custom_target(${rule_name} DEPENDS ${output})
+            list(APPEND local_output_obj_files ${output})
+            list(APPEND output_rules ${rule_name})
+        endforeach()
+        set(libpaths)
+        foreach(libname ${libraries})
+        list(APPEND libpaths "-l${libname}")
+        endforeach()
+        message(STATUS "OBJ files: ${local_output_obj_files}")
+        set(output_obj_files ${local_output_obj_files} PARENT_SCOPE)
+        add_custom_command(
+                OUTPUT lib${kernel_target}.a
+                COMMAND llvm-ar rcs lib${kernel_target}.a ${local_output_obj_files} 
+                DEPENDS ${output_rules}
+                WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR} 
+                )
+        add_custom_target(${kernel_target} ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/lib${kernel_target}.a)
+        install(FILES ${CMAKE_CURRENT_BINARY_DIR}/lib${kernel_target}.a DESTINATION ${LIB_INSTALL_PATH})
+endfunction() #addKernelRule
+
 if (OPENMP_KERNEL_SOURCES)
 addKernelRule(kernel.openmp "${OPENMP_KERNEL_SOURCES}" ${OPENMP_FLAGS} ${OPENMP_LDFLAGS} "${OPENMP_LIBRARIES}")
 if (USE_NDK)
@@ -567,6 +671,23 @@ endif() #HOST2OPENCL_KERNEL_SOURCES
 if (HOST2XILINX_KERNEL_SOURCES AND USE_XILINX)
 addKernelRule(kernel.host2opencl.xilinx "${HOST2XILINX_KERNEL_SOURCES}" ${HOST2XILINX_FLAGS} ${HOST2XILINX_LDFLAGS} "${HOST2XILINX_LIBRARIES}")
 endif() #HOST2XILINX_KERNEL_SOURCES
+
+set(output_obj_files "")
+if (HOST2CUDA_COMP_KERNEL_SOURCES AND USE_CUDA)
+set(output_rules "")
+addKernelCUDARule(kernel.host2cudaComp 
+                 "${HOST2CUDA_COMP_KERNEL_SOURCES}" 
+                 "${HOST2CUDA_COMP_FLAGS}" 
+                 "${HOST2CUDA_COMP_LDFLAGS}" 
+                 "${HOST2CUDA_COMP_LIBRARIES}" 
+                 "${output_obj_files}"
+                 "${output_rules}")
+message(STATUS "Output obj files in CUDA: ${output_obj_files}")
+set(HOST2CUDA_LDFLAGS "${HOST2CUDA_LDFLAGS} ${OPENMP_GPU_LDFLAGS} ${output_obj_files} -L${CMAKE_CURRENT_BINARY_DIR}")
+set(HOST2CUDA_LIBRARIES  ${HOST2CUDA_LIBRARIES} )
+#set(HOST2CUDA_LIBRARIES  "${HOST2CUDA_LIBRARIES} -lkernel.host2cudaComp")
+endif() #HOST2CUDA_COMP_KERNEL_SOURCES
+message(STATUS "Output obj files in CUDA ALL: ${output_obj_files}")
 
 if (HOST2CUDA_KERNEL_SOURCES AND USE_CUDA)
 addKernelRule(kernel.host2cuda "${HOST2CUDA_KERNEL_SOURCES}" ${HOST2CUDA_FLAGS} ${HOST2CUDA_LDFLAGS} "${HOST2CUDA_LIBRARIES}")
@@ -688,6 +809,9 @@ endif()
 
 if (APP_SOURCES AND APP_LIBRARIES)
 target_link_libraries(${APP_EXECUTABLE} ${APP_LIBRARIES})
+endif()
+if (APP_LIB_SOURCES AND APP_LIBRARIES)
+target_link_libraries(${APP_LIBRARY_NAME} ${APP_LIBRARIES})
 endif()
 if (APP_SOURCES AND OPENMP_KERNEL_SOURCES)
 target_link_libraries(${APP_EXECUTABLE} kernel.openmp)

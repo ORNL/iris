@@ -7,11 +7,11 @@
 namespace iris {
 namespace rt {
 
-class Mem;
+class BaseMem;
 
 typedef struct _PresentTableEntity {
   size_t size;
-  Mem* mem;
+  BaseMem* mem;
 } PresentTableEntity;
 
 class PresentTable {
@@ -19,9 +19,9 @@ public:
   PresentTable();
   ~PresentTable();
 
-  int Add(void* host, size_t size, Mem* mem);
-  Mem* Get(void* host, size_t* off);
-  Mem* Remove(void* host);
+  int Add(void* host, size_t size, BaseMem* mem);
+  BaseMem* Get(void* host, size_t* off);
+  BaseMem* Remove(void* host);
 
 private:
   std::map<void*, PresentTableEntity*> entities_;

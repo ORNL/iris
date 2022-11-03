@@ -18,7 +18,7 @@
 namespace iris {
 namespace rt {
 
-SchedulingHistory::SchedulingHistory(Platform* platform) : Profiler(platform) {
+SchedulingHistory::SchedulingHistory(Platform* platform) : Profiler(platform, "SchedulingHistory") {
   OpenFD();
   Main();
 }

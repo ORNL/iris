@@ -2,6 +2,7 @@
 #include "Debug.h"
 #include "Scheduler.h"
 #include "Task.h"
+#include "Timer.h"
 
 namespace iris {
 namespace rt {
@@ -11,7 +12,7 @@ Graph::Graph(Platform* platform) {
   if (platform) scheduler_ = platform_->scheduler();
   status_ = IRIS_NONE;
 
-  end_ = Task::Create(platform_, IRIS_TASK_PERM, NULL);
+  end_ = Task::Create(platform_, IRIS_TASK_PERM, "Graph");
   tasks_.push_back(end_);
 
   pthread_mutex_init(&mutex_complete_, NULL);
@@ -31,6 +32,14 @@ void Graph::AddTask(Task* task) {
 
 void Graph::Submit() {
   status_ = IRIS_SUBMITTED;
+}
+
+int Graph::iris_tasks(iris_task *pv) { 
+    int index=0;
+    for(Task *task : tasks_) {
+      pv[index++] = task->struct_obj();
+    }
+    return index;
 }
 
 void Graph::Complete() {

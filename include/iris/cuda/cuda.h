@@ -60,6 +60,15 @@ typedef uint32_t cuuint32_t;
 typedef uint64_t cuuint64_t;
 #endif
 
+enum cudaMemcpyKind
+{
+    cudaMemcpyHostToHost          =   0,      /**< Host   -> Host */
+    cudaMemcpyHostToDevice        =   1,      /**< Host   -> Device */
+    cudaMemcpyDeviceToHost        =   2,      /**< Device -> Host */
+    cudaMemcpyDeviceToDevice      =   3,      /**< Device -> Device */
+    cudaMemcpyDefault             =   4       /**< Direction of the transfer is inferred from the pointer values. Requires unified virtual addressing */
+};
+
 /**
  * CUDA API versioning support
  */
@@ -6101,7 +6110,7 @@ CUresult CUDAAPI cuMemcpyAtoA(CUarray dstArray, size_t dstOffset, CUarray srcArr
  * ::cudaMemcpy2DFromArray
  */
 CUresult CUDAAPI cuMemcpy2D(const CUDA_MEMCPY2D *pCopy);
-
+CUresult cudaMemcpy2D ( void* dst, size_t dpitch, const void* src, size_t spitch, size_t width, size_t height, cudaMemcpyKind kind );
 /**
  * \brief Copies memory for 2D arrays
  *

@@ -14,18 +14,18 @@ class Timer;
 
 class DeviceOpenCL : public Device {
 public:
-  DeviceOpenCL(LoaderOpenCL* ld, LoaderHost2OpenCL *host2opencl_ld, cl_device_id cldev, cl_context clctx, int devno, int platform);
+  DeviceOpenCL(LoaderOpenCL* ld, LoaderHost2OpenCL *host2opencl_ld, cl_device_id cldev, cl_context clctx, int devno, int ocldevno, int platform);
   ~DeviceOpenCL();
 
   int Init();
   int BuildProgram(char* path);
-  int MemAlloc(void** mem, size_t size);
+  int MemAlloc(void** mem, size_t size, bool reset=false);
   int MemFree(void* mem);
-  int MemH2D(Mem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host);
-  int MemD2H(Mem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host);
-  int KernelGet(void** kernel, const char* name);
-  int KernelSetArg(Kernel* kernel, int idx, size_t size, void* value);
-  int KernelSetMem(Kernel* kernel, int idx, Mem* mem, size_t off);
+  int MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag="");
+  int MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag="");
+  int KernelGet(Kernel *kernel, void** kernel_bin, const char* name);
+  int KernelSetArg(Kernel* kernel, int idx, int kindex, size_t size, void* value);
+  int KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, size_t off);
   int KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws);
   int KernelLaunchInit(Kernel* kernel);
   int Synchronize();
@@ -49,6 +49,7 @@ private:
   cl_device_type cltype_;
   cl_bool compiler_available_;
   cl_int err_;
+  int ocldevno_;
   std::string fpga_bin_suffix_;
 };
 

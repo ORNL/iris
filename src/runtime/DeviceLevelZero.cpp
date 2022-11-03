@@ -2,7 +2,7 @@
 #include "Debug.h"
 #include "Command.h"
 #include "LoaderLevelZero.h"
-#include "Mem.h"
+#include "BaseMem.h"
 #include "Task.h"
 #include "Timer.h"
 #include "Utils.h"
@@ -27,14 +27,14 @@ DeviceLevelZero::DeviceLevelZero(LoaderLevelZero* ld, ze_device_handle_t zedev, 
   type_ = iris_gpu_intel;
   align_ = 0x1000;
 
-  _info("device[%d] platform[%d] device[%s] type[0x%x:%d] align[0x%x]", devno_, platform_, name_, type_, type_, align_);
+  _info("device[%d] platform[%d] device[%s] type[0x%x:%d] align[0x%lx]", devno_, platform_, name_, type_, type_, align_);
 }
 
 DeviceLevelZero::~DeviceLevelZero() {
 }
 
 int DeviceLevelZero::Compile(char* src) {
-  char cmd[256];
+  char cmd[1024];
   memset(cmd, 0, 256);
   sprintf(cmd, "clang -cc1 -finclude-default-header -triple spir %s -flto -emit-llvm-bc -o %s.bc", src, kernel_path_);
   if (system(cmd) != EXIT_SUCCESS) {
@@ -93,11 +93,14 @@ int DeviceLevelZero::Init() {
   return IRIS_SUCCESS;
 }
 
-int DeviceLevelZero::MemAlloc(void** mem, size_t size) {
+int DeviceLevelZero::MemAlloc(void** mem, size_t size, bool reset) {
   void** dptr = mem;
   ze_device_mem_alloc_desc_t desc = {};
   desc.stype = ZE_STRUCTURE_TYPE_DEVICE_MEM_ALLOC_DESC;
   err_ = ld_->zeMemAllocDevice(zectx_, &desc, size, align_, zedev_, dptr);
+  if (reset) {
+    _error("Levelzero not supported with reset for size:%lu", size);
+  }
   _zeerror(err_);
   return IRIS_SUCCESS;
 }
@@ -109,9 +112,9 @@ int DeviceLevelZero::MemFree(void* mem) {
   return IRIS_SUCCESS;
 }
 
-int DeviceLevelZero::MemH2D(Mem* mem, size_t *off, size_t *tile_sizes,  size_t *full_sizes, size_t elem_size, int dim, size_t size, void* host) {
+int DeviceLevelZero::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *tile_sizes,  size_t *full_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag) {
   void* dptr = (void*) ((char*) mem->arch(this) + off[0]);
-  _trace("dptr[%p] offset[%lu] size[%lu] host[%p]", dptr, off[0], size, host);
+  _trace("%sdptr[%p] offset[%lu] size[%lu] host[%p]", tag,  dptr, off[0], size, host);
 
   ze_event_handle_t zeevt;
   ze_event_desc_t zeevt_desc = {};
@@ -142,9 +145,9 @@ int DeviceLevelZero::MemH2D(Mem* mem, size_t *off, size_t *tile_sizes,  size_t *
   return IRIS_SUCCESS;
 }
 
-int DeviceLevelZero::MemD2H(Mem* mem, size_t *off, size_t *tile_sizes,  size_t *full_sizes, size_t elem_size, int dim, size_t size, void* host) {
+int DeviceLevelZero::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *tile_sizes,  size_t *full_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag) {
   void* dptr = (void*) ((char*) mem->arch(this) + off[0]);
-  _trace("dptr[%p] offset[%lu] size[%lu] host[%p]", dptr, off[0], size, host);
+  _trace("%sdptr[%p] offset[%lu] size[%lu] host[%p]", tag, dptr, off[0], size, host);
 
   ze_event_handle_t zeevt;
   ze_event_desc_t zeevt_desc = {};
@@ -167,8 +170,8 @@ int DeviceLevelZero::MemD2H(Mem* mem, size_t *off, size_t *tile_sizes,  size_t *
   return IRIS_SUCCESS;
 }
 
-int DeviceLevelZero::KernelGet(void** kernel, const char* name) {
-  ze_kernel_handle_t* zekernel = (ze_kernel_handle_t*) kernel;
+int DeviceLevelZero::KernelGet(Kernel *kernel, void** kernel_bin, const char* name) {
+  ze_kernel_handle_t* zekernel = (ze_kernel_handle_t*) kernel_bin;
   ze_kernel_desc_t kernel_desc = {};
   kernel_desc.stype = ZE_STRUCTURE_TYPE_KERNEL_DESC;
   kernel_desc.pKernelName = name;
@@ -177,14 +180,14 @@ int DeviceLevelZero::KernelGet(void** kernel, const char* name) {
   return IRIS_SUCCESS;
 }
 
-int DeviceLevelZero::KernelSetArg(Kernel* kernel, int idx, size_t size, void* value) {
+int DeviceLevelZero::KernelSetArg(Kernel* kernel, int idx, int kindex, size_t size, void* value) {
   ze_kernel_handle_t zekernel = (ze_kernel_handle_t) kernel->arch(this);
   err_ = ld_->zeKernelSetArgumentValue(zekernel, idx, size, value);
   _zeerror(err_);
   return IRIS_SUCCESS;
 }
 
-int DeviceLevelZero::KernelSetMem(Kernel* kernel, int idx, Mem* mem, size_t off) {
+int DeviceLevelZero::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, size_t off) {
   ze_kernel_handle_t zekernel = (ze_kernel_handle_t) kernel->arch(this);
   void* dptr = (void*) ((char*) mem->arch(this) + off);
   err_ = ld_->zeKernelSetArgumentValue(zekernel, idx, sizeof(dptr), &dptr);
