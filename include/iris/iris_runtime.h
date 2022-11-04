@@ -84,6 +84,7 @@ typedef int (*iris_selector_kernel)(iris_task task, void* params, char* kernel_n
 extern int iris_init(int* argc, char*** argv, int sync);
 extern int iris_finalize();
 extern int iris_synchronize();
+extern void iris_set_release_task_flag(bool flag);
 
 extern int iris_env_set(const char* key, const char* value);
 extern int iris_env_get(const char* key, char** value, size_t* vallen);

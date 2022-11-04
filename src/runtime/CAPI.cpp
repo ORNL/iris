@@ -16,6 +16,11 @@ int iris_init(int* argc, char*** argv, int sync) {
   return Platform::GetPlatform()->Init(argc, argv, sync);
 }
 
+void iris_set_release_task_flag(bool flag) {
+  Platform *platform = Platform::GetPlatform(); 
+  platform->set_release_task_flag(flag);
+}
+
 int iris_finalize() {
   Platform *platform = Platform::GetPlatform(); 
   int status = platform->Finalize();
