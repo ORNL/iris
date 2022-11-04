@@ -53,12 +53,12 @@ void Scheduler::CompleteTask(Task* task, Worker* worker) {
   Device* dev = worker->device();
   int devno = dev->devno();
   if (hub_available_) hub_client_->TaskDec(devno, 1);
-  if (enable_profiler_ & !task->system()) {
-    pthread_mutex_lock(&mutex_);
-    _todo("remove lock profile[%d]", enable_profiler_);
-    for (int i = 0; i < nprofilers_; i++) profilers_[i]->CompleteTask(task); 
-    pthread_mutex_unlock(&mutex_);
-  }
+  //if (enable_profiler_ & !task->system()) {
+    //pthread_mutex_lock(&mutex_);
+    //_todo("remove lock profile[%d]", enable_profiler_);
+    //for (int i = 0; i < nprofilers_; i++) profilers_[i]->CompleteTask(task); 
+    //pthread_mutex_unlock(&mutex_);
+  //}
 }
 
 int Scheduler::RefreshNTasksOnDevs() {

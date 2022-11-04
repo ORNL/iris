@@ -69,7 +69,7 @@ int ProfilerGoogleCharts::CompleteTask(Task* task) {
   if (dev != NULL) {
       char s[1024];
       sprintf(s, "[ '%s %d', '%s (%s)', %lf, %lf ],\n", dev->name(), dev->devno(), task->name(), policy_str(policy), (task->time_start() * 1.e+3) - first_task_, (task->time_end() * 1.e+3) - first_task_);
-      //printf("Task: %s %lf %lf\n", s, task->time_start()*1.e+3, task->time_end()*1.e+3);
+      //printf("Profiling Task: %s %lf %lf\n", s, task->time_start()*1.e+3, task->time_end()*1.e+3);
       pthread_mutex_lock(&chart_lock_);
       Write(s);
       pthread_mutex_unlock(&chart_lock_);
