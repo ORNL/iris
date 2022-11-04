@@ -95,9 +95,11 @@ void Scheduler::SubmitTaskDirect(Task* task, Device* dev) {
 
 void Scheduler::Submit(Task* task) {
   if (!ndevs_) {
-    if (!task->marker()) _error("%s", "no device");
+    if (!task->marker()) { 
+       _error("%s", "no device");
+       platform_->IncrementErrorCount();
+    }
     task->Complete();
-    platform_->IncrementErrorCount();
     return;
   }
   if (task->marker()) {

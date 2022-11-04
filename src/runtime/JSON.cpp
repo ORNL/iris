@@ -47,7 +47,7 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
   printf("RAPIDJSON source = %s\n",src);
   rapidjson::Document json_;
   json_.Parse(src);
-  printf("debug! length of file = %d\n",srclen);
+  printf("debug! length of file = %ld\n",srclen);
   if (!json_.IsObject()){
     _error("failed to create JSON from file[%s]", path);
     return IRIS_ERROR;
@@ -285,7 +285,7 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
         void* p_size = GetParameterInput(params, h2d_["size"].GetString());
         size_t size = p_size ? (*(size_t*) p_size) : atol(h2d_["size"].GetString());       
 
-        Command* cmd = Command::CreateH2D(task, dev_mem->class_obj, offset, size, host_mem);
+        Command* cmd = Command::CreateH2D(task, (Mem *)dev_mem->class_obj, offset, size, host_mem);
         //name (optional)
         if(h2d_.HasMember("name")){
           if(!h2d_["name"].IsString()){
@@ -325,7 +325,7 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
         void* p_size = GetParameterInput(params, d2h_["size"].GetString());
         size_t size = p_size ? (*(size_t*) p_size) : atol(d2h_["size"].GetString());
 
-        Command* cmd = Command::CreateD2H(task, dev_mem->class_obj, offset, size, host_mem);
+        Command* cmd = Command::CreateD2H(task, (Mem *)dev_mem->class_obj, offset, size, host_mem);
         //name (optional)
         if(d2h_.HasMember("name")){
           if(!d2h_["name"].IsString()){
@@ -347,7 +347,7 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
 }
 
 void* JSON::GetParameterInput(void** params, const char* buf){
-  for (int j = 0; j < inputs_.size(); j ++){
+  for (unsigned long j = 0; j < inputs_.size(); j ++){
     if (strcmp(inputs_[j],buf) == 0){
       return(params[j]);
     }
@@ -396,11 +396,12 @@ int JSON::UniqueUIDFromHostPointer(void* host_ptr){
   host_ptrs_.insert(host_ptr);
 
   std::set<void*>::iterator it = host_ptrs_.begin();
-  for (int i = 0; i < host_ptrs_.size(); i++) {
+  for (unsigned long int i = 0; i < host_ptrs_.size(); i++) {
      if(*it == host_ptr){
        return(i);
      }
   }
+  return 0;
 }
 
 const std::string JSON::NameFromDeviceMem(Mem* dev_mem){
@@ -415,7 +416,7 @@ int JSON::RecordTask(Task* task) {
   rapidjson::Value _name(rapidjson::StringRef(task->name()));
   if(_name == ""){
     char buffer[64];
-    int len = sprintf(buffer, "task-%i", task->uid()); // dynamically created string.
+    int len = sprintf(buffer, "task-%lu", task->uid()); // dynamically created string.
     _name.SetString(buffer, len, iris_output_document_.GetAllocator());
   }
   _task.AddMember("name",_name,iris_output_document_.GetAllocator());
@@ -486,7 +487,7 @@ int JSON::RecordTask(Task* task) {
         KernelArg* arg = cmd->kernel_arg(i);
         if(arg->mem){//memory
           param_.AddMember("type",rapidjson::StringRef("memory_object"),iris_output_document_.GetAllocator());
-          tmp.SetString(NameFromDeviceMem(arg->mem).c_str(),iris_output_document_.GetAllocator());
+          tmp.SetString(NameFromDeviceMem((Mem *)arg->mem).c_str(),iris_output_document_.GetAllocator());
           param_.AddMember("value",tmp,iris_output_document_.GetAllocator());
           param_.AddMember("size_bytes",rapidjson::Value(arg->size),iris_output_document_.GetAllocator());
           //permissions
@@ -520,7 +521,7 @@ int JSON::RecordTask(Task* task) {
     raise(SIGINT);
   }
   else {
-    char* tmp = task->brs_policy_string();
+    const char* tmp = task->brs_policy_string();
     if(strcmp(tmp, "unknown") == 0) raise(SIGINT);//debugging, we shouldn't ever hit this! TODO: delete this!
     _target.SetString(rapidjson::StringRef(task->brs_policy_string()), iris_output_document_.GetAllocator());
   }

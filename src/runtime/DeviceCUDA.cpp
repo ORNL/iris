@@ -165,7 +165,7 @@ int DeviceCUDA::Init() {
   ld_->cuCtxGetCurrent(&ctx);
   _trace("Init:: Context create dev:%d cctx:%p octx:%p self:%p thread:%p", devno_, ctx, ctx_, worker()->self(), worker()->thread());
   if (ctx != ctx_) {
-      _trace("Init:: Context wrong for CUDA resetting context switch dev[%ld][%s] worker:%ld self:%p thread:%p", devno(), name_, worker()->device()->devno(), worker()->self(), worker()->thread());
+      _trace("Init:: Context wrong for CUDA resetting context switch dev[%d][%s] worker:%d self:%p thread:%p", devno(), name_, worker()->device()->devno(), worker()->self(), worker()->thread());
       _trace("Init:: Context wrong for Kernel launch Context Switch: %p %p", ctx, ctx_);
   }
 #endif
@@ -533,7 +533,7 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
     ld_->cuCtxGetCurrent(&ctx);
     _trace("Getting Context for Kernel launch Context Switch: dev:%ld cctx:%p octx:%p self:%p thread:%p", devno_, ctx, ctx_, worker()->self(), worker()->thread());
     if (ctx != ctx_) {
-        _trace("Context wrong for CUDA resetting context switch dev[%ld][%s] worker:%ld self:%p thread:%p", devno(), name_, worker()->device()->devno(), worker()->self(), worker()->thread());
+        _trace("Context wrong for CUDA resetting context switch dev[%d][%s] worker:%d self:%p thread:%p", devno(), name_, worker()->device()->devno(), worker()->self(), worker()->thread());
         _trace("Context wrong for Kernel launch Context Switch: %p %p", ctx, ctx_);
     }
 #endif

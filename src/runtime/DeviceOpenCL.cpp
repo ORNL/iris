@@ -496,8 +496,11 @@ void DeviceOpenCL::ExecuteKernel(Command* cmd) {
   }
 #endif
   errid_ = KernelLaunch(kernel, dim, off, gws, lws[0] > 0 ? lws : NULL);
-  if (errid_ != IRIS_SUCCESS) {_error("iret[%d]", errid_); worker_->platform()->IncrementErrorCount();}
-  printf("OpenCL error count = %i",errid_);
+  if (errid_ != IRIS_SUCCESS) {
+    _error("iret[%d]", errid_); 
+    worker_->platform()->IncrementErrorCount();
+    printf("OpenCL error count = %i",errid_);
+  }
   double time = timer_->Stop(IRIS_TIMER_KERNEL);
   cmd->SetTime(time);
   cmd->kernel()->history()->AddKernel(cmd, this, time);

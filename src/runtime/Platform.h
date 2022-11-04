@@ -148,6 +148,8 @@ public:
 
   int ndevs() { return ndevs_; }
   int device_default() { return dev_default_; }
+  bool release_task_flag() { return release_task_flag_; }
+  void set_release_task_flag(bool flag) { release_task_flag_ = flag; }
   Device** devices() { return devs_; }
   Device* device(int devno) { return devs_[devno]; }
   Polyhedral* polyhedral() { return polyhedral_; }
@@ -247,6 +249,7 @@ private:
 
   bool enable_scheduling_history_;
   bool disable_d2d_;
+  bool release_task_flag_;
   SchedulingHistory* scheduling_history_;
 
   Kernel* null_kernel_;

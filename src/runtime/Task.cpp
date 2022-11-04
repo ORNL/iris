@@ -83,7 +83,7 @@ void Task::set_brs_policy(int brs_policy) {
     (*I)->set_brs_policy(brs_policy);
 }
 
-char* Task::brs_policy_string() {
+const char* Task::brs_policy_string() {
   switch(brs_policy_){
     case iris_all: return ("all");
     case iris_any: return ("any");
@@ -184,10 +184,11 @@ void Task::Complete() {
     if (dev_) dev_->worker()->TaskComplete(this);
     else if (scheduler_) scheduler_->Invoke();
   }
-  if (platform->release_task_flag() 
-  for (int i = 0; i < ndepends_; i++)
-    if (depends_[i]->user()) depends_[i]->Release();
-  if (user_) Release();
+  if (platform_->release_task_flag()) {
+      for (int i = 0; i < ndepends_; i++)
+          if (depends_[i]->user()) depends_[i]->Release();
+      if (user_) Release();
+  }
 }
 
 void Task::TryReleaseTask()
