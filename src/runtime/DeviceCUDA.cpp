@@ -299,7 +299,7 @@ int DeviceCUDA::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
 #ifndef TRACE_DISABLE
   CUcontext ctx;
   ld_->cuCtxGetCurrent(&ctx);
-  _trace("MemH2D:: Context create dev:%d cctx:%p octx:%p self:%p thread:%p", devno_, ctx, ctx_, worker()->self(), worker()->thread());
+  _trace("MemH2D:: Context create %sdev[%d][%s] task[%ld:%s] mem[%lu] cctx:%p octx:%p self:%p thread:%p", tag, devno_, name_, task->uid(), task->name(), mem->uid(), ctx, ctx_, worker()->self(), worker()->thread());
 #endif
   if (IsContextChangeRequired()) {
       _trace("CUDA context switch %sdev[%d][%s] task[%ld:%s] mem[%lu] self:%p thread:%p\n", tag, devno_, name_, task->uid(), task->name(), mem->uid(), worker()->self(), worker()->thread());
@@ -374,7 +374,7 @@ int DeviceCUDA::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
 #ifndef TRACE_DISABLE
   CUcontext ctx;
   ld_->cuCtxGetCurrent(&ctx);
-  _trace("MemD2H:: Context create dev:%d cctx:%p octx:%p self:%p thread:%p", devno_, ctx, ctx_, worker()->self(), worker()->thread());
+  _trace("MemD2H:: Context create %sdev[%d][%s] task[%ld:%s] mem[%lu] cctx:%p octx:%p self:%p thread:%p", tag, devno_, name_, task->uid(), task->name(), mem->uid(), ctx, ctx_, worker()->self(), worker()->thread());
 #endif
   CUdeviceptr cumem = (CUdeviceptr) mem->arch(this);
 #ifndef IRIS_SYNC_EXECUTION
