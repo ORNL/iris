@@ -180,6 +180,11 @@ int DeviceOpenCL::BuildProgram(char* path) {
   return IRIS_SUCCESS;
 }
 
+int DeviceOpenCL::ResetMemory(BaseMem *mem, uint8_t reset_value) {
+    _error("Reset memory is not implemented yet !");
+    return IRIS_ERROR;
+}
+
 int DeviceOpenCL::MemAlloc(void** mem, size_t size, bool reset) {
   cl_mem* clmem = (cl_mem*) mem;
   *clmem = ld_->clCreateBuffer(clctx_, CL_MEM_READ_WRITE, size, NULL, &err_);

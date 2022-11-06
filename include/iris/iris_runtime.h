@@ -3,9 +3,12 @@
 
 #include <iris/iris_errno.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
+#else
+typedef int8_t bool;
 #endif
 
 #ifndef UNDEF_IRIS_MACROS
@@ -117,6 +120,7 @@ extern int iris_task_create_perm(iris_task* task);
 extern int iris_task_create_name(const char* name, iris_task* task);
 extern int iris_task_depend(iris_task task, int ntasks, iris_task* tasks);
 extern int iris_task_malloc(iris_task task, iris_mem mem);
+extern int iris_task_cmd_reset_mem(iris_task task, iris_mem mem, uint8_t reset);
 extern int iris_task_h2d(iris_task task, iris_mem mem, size_t off, size_t size, void* host);
 extern int iris_task_h2d_offsets(iris_task task, iris_mem mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, void* host);
 extern int iris_task_d2h(iris_task task, iris_mem mem, size_t off, size_t size, void* host);

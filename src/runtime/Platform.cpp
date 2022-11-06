@@ -892,6 +892,15 @@ int Platform::TaskMemFlushOut(iris_task brs_task, iris_mem brs_mem) {
   return IRIS_SUCCESS;
 }
 
+int Platform::TaskMemResetInput(iris_task brs_task, iris_mem brs_mem, uint8_t reset) 
+{
+    Task* task = brs_task->class_obj;
+    BaseMem* mem = (BaseMem *)brs_mem->class_obj;
+    Command *cmd = Command::CreateMemResetInput(task, mem, reset);
+    task->AddMemResetCommand(cmd);
+    return IRIS_SUCCESS;
+}
+
 int Platform::TaskH2D(iris_task brs_task, iris_mem brs_mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host) {
   Task* task = brs_task->class_obj;
   Mem* mem = (Mem *)brs_mem->class_obj;

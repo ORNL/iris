@@ -104,6 +104,10 @@ void Task::set_opt(const char* opt) {
   strncpy(opt_, opt, strlen(opt));
 }
 
+void Task::AddMemResetCommand(Command* cmd) {
+  reset_mems_.push_back(cmd);
+}
+
 void Task::AddCommand(Command* cmd) {
   if (ncmds_ >= 63) _error("ncmds[%d]", ncmds_);
   cmds_[ncmds_++] = cmd;

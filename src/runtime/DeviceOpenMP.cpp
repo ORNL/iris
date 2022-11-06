@@ -119,6 +119,11 @@ int DeviceOpenMP::Init() {
   return IRIS_SUCCESS;
 }
 
+int DeviceOpenMP::ResetMemory(BaseMem *mem, uint8_t reset_value)
+{
+    memset(mem->arch(this), reset_value, mem->size());
+}
+
 int DeviceOpenMP::MemAlloc(void** mem, size_t size, bool reset) {
   void** mpmem = mem;
   if (posix_memalign(mpmem, 0x1000, size) != 0) {

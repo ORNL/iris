@@ -97,6 +97,10 @@ int iris_task_malloc(iris_task task, iris_mem mem) {
   return Platform::GetPlatform()->TaskMalloc(task, mem);
 }
 
+int iris_task_cmd_reset_mem(iris_task task, iris_mem mem, uint8_t reset) {
+  return Platform::GetPlatform()->TaskMemResetInput(task, mem, reset);
+}
+
 int iris_task_h2d(iris_task task, iris_mem mem, size_t off, size_t size, void* host) {
   return Platform::GetPlatform()->TaskH2D(task, mem, off, size, host);
 }

@@ -141,6 +141,16 @@ int DeviceHIP::Init() {
   return IRIS_SUCCESS;
 }
 
+int DeviceHIP::ResetMemory(BaseMem *mem, uint8_t reset_value) {
+    err_ = ld_->hipMemset(mem->arch(this), reset_value, mem->size());
+    _hiperror(err_);
+    if (err_ != hipSuccess) {
+       worker_->platform()->IncrementErrorCount();
+       return IRIS_ERROR;
+    }
+    return IRIS_SUCCESS;
+}
+
 int DeviceHIP::MemAlloc(void** mem, size_t size, bool reset) {
   void** hipmem = mem;
   err_ = ld_->hipMalloc(hipmem, size);

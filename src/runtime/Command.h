@@ -20,6 +20,7 @@
 #define IRIS_CMD_HOST           0x100b
 #define IRIS_CMD_MEM_FLUSH      0x100c
 #define IRIS_CMD_CUSTOM         0x100d
+#define IRIS_CMD_RESET_INPUT    0x100e
 
 #define IRIS_CMD_KERNEL_NARGS_MAX   16
 
@@ -83,6 +84,7 @@ public:
   char* type_name() { return type_name_; }
   const char* name() { return name_; }
   void set_name(const char* name) { name_ = name; }
+  uint8_t reset_value() { return reset_value_; }
   double SetTime(double t);
   double time() { return time_; }
   void set_time_start(double d) { time_start_ = d; }
@@ -128,6 +130,7 @@ private:
   const char* name_;
   int access_index_;
   bool internal_memory_transfer_;
+  uint8_t reset_value_;
 
 public:
   static Command* Create(Task* task, int type);
@@ -136,6 +139,7 @@ public:
   static Command* CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, size_t* params_off, int* params_info, size_t* memranges);
   static Command* CreateKernelPolyMem(Task* task, Command* cmd, size_t* off, size_t* gws, iris_poly_mem* polymems, int npolymems);
   static Command* CreateMalloc(Task* task, Mem* mem);
+  static Command* CreateMemResetInput(Task* task, BaseMem *mem, uint8_t reset_value=0);
   static Command* CreateMemIn(Task* task, DataMem* mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host);
   static Command* CreateH2D(Task* task, Mem* mem, size_t off, size_t size, void* host);
   static Command* CreateH2D(Task* task, Mem* mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host);

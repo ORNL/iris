@@ -207,6 +207,15 @@ int DeviceCUDA::Init() {
   return IRIS_SUCCESS;
 }
 
+int DeviceCUDA::ResetMemory(BaseMem *mem, uint8_t reset_value) {
+    err_ = ld_->cudaMemset(mem->arch(this), reset_value, mem->size());
+    _cuerror(err_);
+    if (err_ != CUDA_SUCCESS){
+       worker_->platform()->IncrementErrorCount();
+       return IRIS_ERROR;
+    }
+    return IRIS_SUCCESS;
+}
 int DeviceCUDA::MemAlloc(void** mem, size_t size, bool reset) {
   CUdeviceptr* cumem = (CUdeviceptr*) mem;
   //double mtime = timer_->Now();

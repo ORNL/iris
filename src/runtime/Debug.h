@@ -86,9 +86,9 @@ extern char iris_log_prefix_[];
 #define __SHORT_FILE__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 
 #ifdef _TRACE_ENABLE
-#define  _trace(fmt, ...) do { printf( BLUE "[T] %s [%s:%d:%s] " fmt RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, __VA_ARGS__); FFLUSH(stdout); } while (0)
-#define  _trace_debug(fmt, ...) do { printf( BRED "[T] Manual Debug %s [%s:%d:%s] " fmt RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, __VA_ARGS__); FFLUSH(stdout); } while (0)
-#define __trace(fmt, ...) do { printf(_BLUE "[T] %s [%s:%d:%s] " fmt RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, __VA_ARGS__); FFLUSH(stdout); } while (0)
+#define  _trace(fmt, ...) do { printf( BLUE "[T] %s [%s:%d:%s] " fmt RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, ##__VA_ARGS__); FFLUSH(stdout); } while (0)
+#define  _trace_debug(fmt, ...) do { printf( BRED "[T] Manual Debug %s [%s:%d:%s] " fmt RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, ##__VA_ARGS__); FFLUSH(stdout); } while (0)
+#define __trace(fmt, ...) do { printf(_BLUE "[T] %s [%s:%d:%s] " fmt RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, ##__VA_ARGS__); FFLUSH(stdout); } while (0)
 #else
 #define  _trace(fmt, ...) do { } while (0)
 #define __trace(fmt, ...) do { } while (0)
@@ -103,32 +103,32 @@ extern char iris_log_prefix_[];
 #endif
 
 #ifdef _DEBUG_ENABLE
-#define  _debug(fmt, ...) do { printf( CYAN "[D] %s [%s:%d:%s] " fmt RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, __VA_ARGS__); FFLUSH(stdout); } while (0)
-#define __debug(fmt, ...) do { printf(_CYAN "[D] %s [%s:%d:%s] " fmt RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, __VA_ARGS__); FFLUSH(stdout); } while (0)
+#define  _debug(fmt, ...) do { printf( CYAN "[D] %s [%s:%d:%s] " fmt RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, ##__VA_ARGS__); FFLUSH(stdout); } while (0)
+#define __debug(fmt, ...) do { printf(_CYAN "[D] %s [%s:%d:%s] " fmt RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, ##__VA_ARGS__); FFLUSH(stdout); } while (0)
 #else
 #define  _debug(fmt, ...) do { } while (0)
 #define __debug(fmt, ...) do { } while (0)
 #endif
 
 #ifdef _INFO_ENABLE
-#define  _info(fmt, ...) do { printf( YELLOW "[I] %s [%s:%d:%s] " fmt RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, __VA_ARGS__); FFLUSH(stdout); } while (0)
-#define __info(fmt, ...) do { printf(_YELLOW "[I] %s [%s:%d:%s] " fmt RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, __VA_ARGS__); FFLUSH(stdout); } while (0)
+#define  _info(fmt, ...) do { printf( YELLOW "[I] %s [%s:%d:%s] " fmt RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, ##__VA_ARGS__); FFLUSH(stdout); } while (0)
+#define __info(fmt, ...) do { printf(_YELLOW "[I] %s [%s:%d:%s] " fmt RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, ##__VA_ARGS__); FFLUSH(stdout); } while (0)
 #else
 #define  _info(fmt, ...) do { } while (0)
 #define __info(fmt, ...) do { } while (0)
 #endif
 
 #ifdef _ERROR_ENABLE
-#define  _error(fmt, ...) do { printf( RED "[E] %s [%s:%d:%s] " fmt RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, __VA_ARGS__); FFLUSH(stdout); } while (0)
-#define ___error(fmt, ...) do { printf(_RED "[E] %s [%s:%d:%s] " fmt RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, __VA_ARGS__); FFLUSH(stdout); } while (0) // MacOS
+#define  _error(fmt, ...) do { printf( RED "[E] %s [%s:%d:%s] " fmt RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, ##__VA_ARGS__); FFLUSH(stdout); } while (0)
+#define ___error(fmt, ...) do { printf(_RED "[E] %s [%s:%d:%s] " fmt RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, ##__VA_ARGS__); FFLUSH(stdout); } while (0) // MacOS
 #else
 #define  _error(fmt, ...) do { } while (0)
 #define ___error(fmt, ...) do { } while (0) // MacOS
 #endif
 
 #ifdef _TODO_ENABLE
-#define  _todo(fmt, ...) do { printf( GREEN "[TODO] %s [%s:%d:%s] " fmt RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, __VA_ARGS__); FFLUSH(stdout); } while (0)
-#define __todo(fmt, ...) do { printf(_GREEN "[TODO] %s [%s:%d:%s] " fmt RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, __VA_ARGS__); FFLUSH(stdout); } while (0)
+#define  _todo(fmt, ...) do { printf( GREEN "[TODO] %s [%s:%d:%s] " fmt RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, ##__VA_ARGS__); FFLUSH(stdout); } while (0)
+#define __todo(fmt, ...) do { printf(_GREEN "[TODO] %s [%s:%d:%s] " fmt RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, ##__VA_ARGS__); FFLUSH(stdout); } while (0)
 #else
 #define  _todo(fmt, ...) do { } while (0)
 #define __todo(fmt, ...) do { } while (0)

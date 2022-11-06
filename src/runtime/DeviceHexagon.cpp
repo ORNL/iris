@@ -31,6 +31,11 @@ int DeviceHexagon::Init() {
   return IRIS_SUCCESS;
 }
 
+int DeviceHexagon::ResetMemory(BaseMem *mem, uint8_t reset_value) {
+    _error("Reset memory is not implemented yet !");
+    return IRIS_ERROR;
+}
+
 int DeviceHexagon::MemAlloc(void** mem, size_t size, bool reset) {
   void** hxgmem = mem;
   *hxgmem = ld_->iris_hexagon_rpcmem_alloc(RPCMEM_HEAP_ID_SYSTEM, RPCMEM_DEFAULT_FLAGS, (int) size);

@@ -29,6 +29,7 @@ public:
   virtual ~Task();
 
   void AddCommand(Command* cmd);
+  void AddMemResetCommand(Command* cmd);
   void ClearCommands();
 
   void AddSubtask(Task* subtask);
@@ -90,6 +91,7 @@ public:
   void set_arch(void* arch) { arch_ = arch; }
   void set_pending();
   bool pending() {return status_==IRIS_PENDING;}
+  std::vector<Command *> & reset_mems() { return reset_mems_; }
   void DispatchDependencies();
   bool is_internal_memory_transfer() { return internal_memory_transfer_;}
   void set_internal_memory_transfer() { internal_memory_transfer_ = true;}
@@ -110,6 +112,7 @@ private:
   Platform* platform_;
   Scheduler* scheduler_;
   std::vector<Task*> subtasks_;
+  std::vector<Command *> reset_mems_;
   size_t subtasks_complete_;
   void* arch_;
 

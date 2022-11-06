@@ -18,6 +18,7 @@ public:
 
   int Compile(char* src);
   int Init();
+  int ResetMemory(BaseMem *mem, uint8_t reset_value);
   int MemAlloc(void** mem, size_t size, bool reset=false);
   int MemFree(void* mem);
   void EnablePeerAccess();

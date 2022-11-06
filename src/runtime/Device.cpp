@@ -47,6 +47,9 @@ void Device::Execute(Task* task) {
   task->set_time_start(timer_->Now());
   //printf("================== Task:%s =====================\n", task->name());
   _trace("task[%lu:%s] started execution on dev[%d][%s] time[%lf] start:[%lf]", task->uid(), task->name(), devno(), name(), task->time(), task->time_start());
+  for(Command *cmd : task->reset_mems()) {
+      ExecuteMemResetInput(task, cmd);
+  }
   if (task->cmd_kernel()) ExecuteMemIn(task, task->cmd_kernel());     
   for (int i = 0; i < task->ncmds(); i++) {
     Command* cmd = task->cmd(i);
@@ -64,6 +67,7 @@ void Device::Execute(Task* task) {
       case IRIS_CMD_H2DNP:        ExecuteH2DNP(cmd);      break;
       case IRIS_CMD_D2H:          ExecuteD2H(cmd);        break;
       case IRIS_CMD_MEM_FLUSH:    ExecuteMemFlushOut(cmd);break;
+      case IRIS_CMD_RESET_INPUT :                         break;
       case IRIS_CMD_MAP:          ExecuteMap(cmd);        break;
       case IRIS_CMD_RELEASE_MEM:  ExecuteReleaseMem(cmd); break;
       case IRIS_CMD_HOST:         ExecuteHost(cmd);       break;
@@ -234,6 +238,31 @@ void Device::GetPossibleDevices(int devno, int *nddevs, int &d2d_dev, int &cpu_d
             non_cpu_dev = nddevs[i];
         }
     }   
+}
+
+void Device::ExecuteMemResetInput(Task *task, Command* cmd) {
+    BaseMem* bmem = (BaseMem *)cmd->mem();
+    if (bmem->GetMemHandlerType() != IRIS_DMEM &&
+        bmem->GetMemHandlerType() != IRIS_DMEM_REGION) {
+        _error("Reset input is called for unssuported memory handler task:%ld:%s\n", cmd->task()->uid(), cmd->task()->name());
+        return;
+    }
+    if (bmem->GetMemHandlerType() == IRIS_DMEM) {
+    DataMem* mem = (DataMem *)cmd->mem();
+    mem->dev_lock(devno_);
+    ResetMemory(mem, cmd->reset_value());
+    mem->set_host_dirty();
+    mem->set_dirty_except(devno_);
+    mem->dev_unlock(devno_);
+    }
+    else if (bmem->GetMemHandlerType() == IRIS_DMEM_REGION) {
+    DataMemRegion* mem = (DataMemRegion *)cmd->mem();
+    mem->dev_lock(devno_);
+    ResetMemory(mem, cmd->reset_value());
+    mem->set_host_dirty();
+    mem->set_dirty_except(devno_);
+    mem->dev_unlock(devno_);
+    }
 }
 
 void Device::ExecuteMemIn(Task *task, Command* cmd) {

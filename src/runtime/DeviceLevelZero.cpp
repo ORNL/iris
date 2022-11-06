@@ -93,6 +93,11 @@ int DeviceLevelZero::Init() {
   return IRIS_SUCCESS;
 }
 
+int DeviceLevelZero::ResetMemory(BaseMem *mem, uint8_t reset_value)
+{
+    _error("Reset Memory is not implemented");
+    return IRIS_ERROR;
+}
 int DeviceLevelZero::MemAlloc(void** mem, size_t size, bool reset) {
   void** dptr = mem;
   ze_device_mem_alloc_desc_t desc = {};

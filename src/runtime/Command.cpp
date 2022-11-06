@@ -72,6 +72,7 @@ void Command::Set(Task* task, int type) {
     case IRIS_CMD_RELEASE_MEM: type_name_= const_cast<char*>("Release"); break;
     case IRIS_CMD_HOST:        type_name_= const_cast<char*>("Host");    break;
     case IRIS_CMD_CUSTOM:      type_name_= const_cast<char*>("Custom");  break;
+    case IRIS_CMD_RESET_INPUT: type_name_= const_cast<char*>("ResetMem");  break;
     default: _error("cmd type[0x%x]", type);
   }
   if (task->ncmds() == 0 && task->name()){ 
@@ -222,6 +223,13 @@ Command* Command::CreateMalloc(Task* task, Mem* mem) {
 Command* Command::CreateMemFlushOut(Task* task, DataMem* mem) {
   Command* cmd = Create(task, IRIS_CMD_MEM_FLUSH);
   cmd->mem_ = mem;
+  return cmd;
+}
+
+Command* Command::CreateMemResetInput(Task* task, BaseMem *mem, uint8_t reset_value) {
+  Command* cmd = Create(task, IRIS_CMD_RESET_INPUT);
+  cmd->mem_ = mem;
+  cmd->reset_value_ = reset_value;
   return cmd;
 }
 

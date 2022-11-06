@@ -39,6 +39,7 @@ public:
 
   template <typename DMemType>
   void InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem);
+  void ExecuteMemResetInput(Task *task, Command* cmd);
   void ExecuteMemIn(Task *task, Command* cmd);
   //void ExecuteMemInExternal(Command *cmd);
   void ExecuteMemInDMemIn(Task *task, Command* cmd, DataMem *mem);
@@ -61,6 +62,7 @@ public:
   int RegisterCommand(int tag, command_handler handler);
   int RegisterHooks();
 
+  virtual int ResetMemory(BaseMem *mem, uint8_t reset_value)=0;
   virtual void ResetContext() { }
   virtual bool IsContextChangeRequired() { return false; }
   virtual int Compile(char* src) { return IRIS_SUCCESS; }
