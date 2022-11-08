@@ -40,7 +40,7 @@ docs-job:
   stage: deploy_docs
   needs: [docs-job]
   script:
-    rsync -a docs/sphinx/source/_build/html ~/www/brisbane/iris
+    rsync -a --delete docs/sphinx/source/_build/html/ ~/www/brisbane/iris
 
 deploy_docs-job:
   extends: .deploy_docs_common
