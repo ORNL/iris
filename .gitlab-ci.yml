@@ -1,5 +1,7 @@
 stages:
   - build
+  - docs
+  - deploy_docs
   - test
 
 .excl_runner:
@@ -19,6 +21,36 @@ build-job:
   script:
     - echo "Installing iris to $CI_PROJECT_DIR/install"
     - bash build.sh
+
+docs-job:
+  tags: [devdocs]
+  stage: docs
+  script:
+    - source /auto/ciscratch/conda/etc/profile.d/conda.sh
+    - conda env create --force -p ./envs -f docs/sphinx/environment.yml
+    - conda activate ./envs
+    - cd docs/sphinx/source
+    - python -m sphinx -T -E -b html -d _build/doctrees -D language=en . _build/html
+  artifacts:
+    paths:
+      - docs/sphinx/source/_build/html
+
+.deploy_docs_common:
+  tags: [devdocs]
+  stage: deploy_docs
+  needs: [docs-job]
+  script:
+    rsync -a docs/sphinx/source/_build/html ~/www/brisbane/iris
+
+deploy_docs-job:
+  extends: .deploy_docs_common
+  only:
+    refs:
+      - ornl_main
+
+deploy_docs_manual-job:
+  extends: .deploy_docs_common
+  when: manual
 
 test-job:
   extends: [.excl_runner]
