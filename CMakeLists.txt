@@ -55,7 +55,17 @@ add_custom_command(
   OUTPUT ${CMAKE_BINARY_DIR}/setup.fish
   WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
   COMMAND echo "set SCRIPT_FILE (status filename)" > ${CMAKE_BINARY_DIR}/setup.fish VERBATIM
-  COMMAND echo "set SCRIPT (python -c \"import os,sys; print(os.path.realpath(os.path.expanduser(sys.argv[1])))\" \$SCRIPT_FILE)" >> ${CMAKE_BINARY_DIR}/setup.fish VERBATIM
+  COMMAND echo "set -l PYTHON_EXE python" >> ${CMAKE_BINARY_DIR}/setup.fish VERBATIM
+  COMMAND echo "set -l pyversion (python -V 2>&1 | grep -Po '(?<=Python )(.+)')" >> ${CMAKE_BINARY_DIR}/setup.fish VERBATIM
+  COMMAND echo "if  test -z \"\$pyversion\" " >> ${CMAKE_BINARY_DIR}/setup.fish VERBATIM
+  COMMAND echo "    set -l PYTHON_EXE python3" >> ${CMAKE_BINARY_DIR}/setup.fish VERBATIM
+  COMMAND echo "    set -l pyversion (python3 -V 2>&1 | grep -Po '(?<=Python )(.+)')" >> ${CMAKE_BINARY_DIR}/setup.fish VERBATIM
+  COMMAND echo "    if test -z \"\$pyversion\" ]]" >> ${CMAKE_BINARY_DIR}/setup.fish VERBATIM
+  COMMAND echo "    echo \"No Python is detected! Cannot source\" " >> ${CMAKE_BINARY_DIR}/setup.fish VERBATIM
+  COMMAND echo "    return" >> ${CMAKE_BINARY_DIR}/setup.fish VERBATIM
+  COMMAND echo "    end" >> ${CMAKE_BINARY_DIR}/setup.fish VERBATIM
+  COMMAND echo "end" >> ${CMAKE_BINARY_DIR}/setup.fish VERBATIM
+  COMMAND echo "set SCRIPT (\$PYTHON_EXE -c \"import os,sys; print(os.path.realpath(os.path.expanduser(sys.argv[1])))\" \$SCRIPT_FILE)" >> ${CMAKE_BINARY_DIR}/setup.fish VERBATIM
   COMMAND echo "set -gx IRIS (dirname -- \$SCRIPT)" >> ${CMAKE_BINARY_DIR}/setup.fish
   COMMAND echo "set -gx LD_LIBRARY_PATH . \$IRIS/lib \$IRIS/lib64 \$LD_LIBRARY_PATH" >> ${CMAKE_BINARY_DIR}/setup.fish
   COMMAND echo "set -gx PYTHONPATH \$IRIS/include/iris \$PYTHONPATH" >> ${CMAKE_BINARY_DIR}/setup.fish
