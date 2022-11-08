@@ -2,15 +2,19 @@
 #include "Debug.h"
 #include "Device.h"
 #include "History.h"
-#include "Mem.h"
+#include "BaseMem.h"
+#include "DataMem.h"
+#include "DataMemRegion.h"
 #include <string.h>
 
+using namespace std;
 namespace iris {
 namespace rt {
 
 Kernel::Kernel(const char* name, Platform* platform) {
   size_t len = strlen(name);
   strncpy(name_, name, len);
+  strcpy(task_name_, name);
   name_[len] = 0;
   platform_ = platform;
   history_ = new History(this);
@@ -18,9 +22,13 @@ Kernel::Kernel(const char* name, Platform* platform) {
     archs_[i] = NULL;
     archs_devs_[i] = NULL;
   }
+  set_vendor_specific_kernel(false);
 }
 
 Kernel::~Kernel() {
+  data_mems_in_.clear();
+  data_mem_regions_in_.clear();
+  delete history_;
   for (std::map<int, KernelArg*>::iterator I = args_.begin(), E = args_.end(); I != E; ++I)
     delete I->second;
 }
@@ -35,10 +43,11 @@ int Kernel::SetArg(int idx, size_t size, void* value) {
   return IRIS_SUCCESS;
 }
 
-int Kernel::SetMem(int idx, Mem* mem, size_t off, int mode) {
+int Kernel::SetMem(int idx, BaseMem* mem, size_t off, int mode) {
   KernelArg* arg = new KernelArg;
   if(!mem) {
     _error("no mem[%p] for the kernel parameter %d", mem, idx);
+    platform_->IncrementErrorCount();
     return IRIS_ERROR;
   }
   arg->mem = mem;
@@ -48,6 +57,29 @@ int Kernel::SetMem(int idx, Mem* mem, size_t off, int mode) {
   arg->mem_size = mem->size();
   args_[idx] = arg;
   return IRIS_SUCCESS;
+}
+
+void Kernel::add_dmem(DataMem *mem, int idx, int mode)
+{
+    if (mode == iris_r)
+        data_mems_in_.insert(make_pair(idx, mem));
+    else if (mode == iris_w) 
+        data_mems_out_.insert(make_pair(idx, mem));
+    else if (mode == iris_rw)  {
+        data_mems_in_.insert(make_pair(idx, mem));
+        data_mems_out_.insert(make_pair(idx, mem));
+    }
+}
+void  Kernel::add_dmem_region(DataMemRegion *mem, int idx, int mode)
+{
+    if (mode == iris_r)
+        data_mem_regions_in_.insert(make_pair(idx, mem));
+    else if (mode == iris_w) 
+        data_mem_regions_out_.insert(make_pair(idx, mem));
+    else if (mode == iris_rw)  {
+        data_mem_regions_in_.insert(make_pair(idx, mem));
+        data_mem_regions_out_.insert(make_pair(idx, mem));
+    }
 }
 
 KernelArg* Kernel::ExportArgs() {
@@ -73,7 +105,7 @@ KernelArg* Kernel::ExportArgs() {
 
 void* Kernel::arch(Device* dev) {
   int devno = dev->devno();
-  if (archs_[devno] == NULL) dev->KernelGet(archs_ + devno, (const char*) name_);
+  if (archs_[devno] == NULL) dev->KernelGet(this, archs_ + devno, (const char*) name_);
   return archs_[devno];
 }
 

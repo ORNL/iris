@@ -2,6 +2,7 @@
 #define IRIS_SRC_RT_COMMAND_H
 
 #include <iris/iris_poly_types.h>
+#include "BaseMem.h"
 #include "Kernel.h"
 #include <stddef.h>
 
@@ -17,14 +18,18 @@
 #define IRIS_CMD_MAP_FROM       0x1009
 #define IRIS_CMD_RELEASE_MEM    0x100a
 #define IRIS_CMD_HOST           0x100b
-#define IRIS_CMD_CUSTOM         0x100c
+#define IRIS_CMD_MEM_FLUSH      0x100c
+#define IRIS_CMD_CUSTOM         0x100d
+#define IRIS_CMD_RESET_INPUT    0x100e
 
 #define IRIS_CMD_KERNEL_NARGS_MAX   16
 
 namespace iris {
 namespace rt {
 
+class DataMem;
 class Mem;
+class DataMem;
 class Task;
 
 class Command {
@@ -40,6 +45,7 @@ public:
   bool type_h2d() { return type_ == IRIS_CMD_H2D; }
   bool type_h2dnp() { return type_ == IRIS_CMD_H2DNP; }
   bool type_d2h() { return type_ == IRIS_CMD_D2H; }
+  bool type_memflush() { return type_ == IRIS_CMD_MEM_FLUSH; }
   bool type_kernel() { return type_ == IRIS_CMD_KERNEL; }
   size_t size() { return size_; }
   void* host() { return host_; }
@@ -56,7 +62,8 @@ public:
   KernelArg* kernel_args() { return kernel_args_; }
   KernelArg* kernel_arg(int i) { return kernel_args_ + i; }
   int kernel_nargs() { return kernel_nargs_; }
-  Mem* mem() { return mem_; }
+  DataMem* datamem() { return (DataMem *)mem_; }
+  Mem* mem() { return (Mem *)mem_; }
   Task* task() { return task_; }
   bool last() { return last_; }
   void set_last() { last_ = true; }
@@ -67,14 +74,17 @@ public:
   void set_selector_kernel(iris_selector_kernel func, void* params, size_t params_size);
   void* selector_kernel_params() { return selector_kernel_params_; }
   iris_selector_kernel selector_kernel() { return selector_kernel_; }
+  bool is_internal_memory_transfer() { return internal_memory_transfer_;}
+  void set_internal_memory_transfer() { internal_memory_transfer_ = true;}
   iris_host_task func() { return func_; }
   void* func_params() { return func_params_; }
   char* params() { return params_; }
-  void set_params_map(int *pmap) { params_map_ = new int[kernel_nargs_]; memcpy(params_map_, pmap, sizeof(int)*kernel_nargs_); }
+  void set_params_map(int *pmap);
   int *get_params_map() { return params_map_; }
   char* type_name() { return type_name_; }
-  char* name() { return name_; }
-  void set_name(char* name) { name_ = name; }
+  const char* name() { return name_; }
+  void set_name(const char* name) { name_ = name; }
+  uint8_t reset_value() { return reset_value_; }
   double SetTime(double t);
   double time() { return time_; }
   void set_time_start(double d) { time_start_ = d; }
@@ -82,7 +92,7 @@ public:
   double time_start() { return time_start_; }
   double time_end() { return time_end_; }
   double time_duration() { return time_end_-time_start_; }
-
+  int get_access_index() { return access_index_; }
 private:
   void Clear(bool init);
 
@@ -97,7 +107,7 @@ private:
   size_t lws_[3];
   size_t elem_size_;
   Kernel* kernel_;
-  Mem* mem_;
+  BaseMem* mem_;
   Task* task_;
   Platform* platform_;
   double time_;
@@ -117,7 +127,10 @@ private:
   void* func_params_;
   char* params_;
   char* type_name_;
-  char* name_;
+  const char* name_;
+  int access_index_;
+  bool internal_memory_transfer_;
+  uint8_t reset_value_;
 
 public:
   static Command* Create(Task* task, int type);
@@ -126,11 +139,14 @@ public:
   static Command* CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, size_t* params_off, int* params_info, size_t* memranges);
   static Command* CreateKernelPolyMem(Task* task, Command* cmd, size_t* off, size_t* gws, iris_poly_mem* polymems, int npolymems);
   static Command* CreateMalloc(Task* task, Mem* mem);
+  static Command* CreateMemResetInput(Task* task, BaseMem *mem, uint8_t reset_value=0);
+  static Command* CreateMemIn(Task* task, DataMem* mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host);
   static Command* CreateH2D(Task* task, Mem* mem, size_t off, size_t size, void* host);
   static Command* CreateH2D(Task* task, Mem* mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host);
   static Command* CreateH2DNP(Task* task, Mem* mem, size_t off, size_t size, void* host);
   static Command* CreateD2H(Task* task, Mem* mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host);
   static Command* CreateD2H(Task* task, Mem* mem, size_t off, size_t size, void* host);
+  static Command* CreateMemFlushOut(Task* task, DataMem* mem);
   static Command* CreateMap(Task* task, void* host, size_t size);
   static Command* CreateMapTo(Task* task, void* host);
   static Command* CreateMapFrom(Task* task, void* host);

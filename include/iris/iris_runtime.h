@@ -3,9 +3,12 @@
 
 #include <iris/iris_errno.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
+#else
+typedef int8_t bool;
 #endif
 
 #ifndef UNDEF_IRIS_MACROS
@@ -84,6 +87,7 @@ typedef int (*iris_selector_kernel)(iris_task task, void* params, char* kernel_n
 extern int iris_init(int* argc, char*** argv, int sync);
 extern int iris_finalize();
 extern int iris_synchronize();
+extern void iris_set_release_task_flag(bool flag);
 
 extern int iris_env_set(const char* key, const char* value);
 extern int iris_env_get(const char* key, char** value, size_t* vallen);
@@ -116,10 +120,12 @@ extern int iris_task_create_perm(iris_task* task);
 extern int iris_task_create_name(const char* name, iris_task* task);
 extern int iris_task_depend(iris_task task, int ntasks, iris_task* tasks);
 extern int iris_task_malloc(iris_task task, iris_mem mem);
+extern int iris_task_cmd_reset_mem(iris_task task, iris_mem mem, uint8_t reset);
 extern int iris_task_h2d(iris_task task, iris_mem mem, size_t off, size_t size, void* host);
 extern int iris_task_h2d_offsets(iris_task task, iris_mem mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, void* host);
 extern int iris_task_d2h(iris_task task, iris_mem mem, size_t off, size_t size, void* host);
 extern int iris_task_d2h_offsets(iris_task task, iris_mem mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, void* host);
+extern int iris_task_dmem_flush_out(iris_task task, iris_mem mem);
 extern int iris_task_h2d_full(iris_task task, iris_mem mem, void* host);
 extern int iris_task_d2h_full(iris_task task, iris_mem mem, void* host);
 extern int iris_task_kernel_object(iris_task task, iris_kernel kernel, int dim, size_t* off, size_t* gws, size_t* lws);
@@ -131,6 +137,7 @@ extern int iris_task_host(iris_task task, iris_host_task func, void* params);
 extern int iris_task_host(iris_task task, iris_host_task func, void* params);
 extern int iris_task_custom(iris_task task, int tag, void* params, size_t params_size);
 extern int iris_task_submit(iris_task task, int device, const char* opt, int sync);
+extern int iris_task_set_policy(iris_task task, int device);
 extern int iris_task_wait(iris_task task);
 extern int iris_task_wait_all(int ntasks, iris_task* tasks);
 extern int iris_task_add_subtask(iris_task task, iris_task subtask);
@@ -141,14 +148,18 @@ extern int iris_params_map(iris_task task, int *params_map);
 extern int iris_task_info(iris_task task, int param, void* value, size_t* size);
 
 extern int iris_mem_create(size_t size, iris_mem* mem);
+extern int iris_data_mem_init_reset(iris_mem mem, int reset);
+extern int iris_data_mem_create(iris_mem* mem, void *host, size_t size);
+extern int iris_data_mem_update(iris_mem mem, void *host);
+extern int iris_data_mem_create_region(iris_mem* mem, iris_mem root_mem, int region);
+extern int iris_data_mem_enable_outer_dim_regions(iris_mem mem);
+extern int iris_data_mem_create_tile(iris_mem* mem, void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim);
 extern int iris_mem_arch(iris_mem mem, int device, void** arch);
-extern int iris_mem_intermediate(iris_mem mem, int flag);
 extern int iris_mem_reduce(iris_mem mem, int mode, int type);
 extern int iris_mem_release(iris_mem mem);
 
-extern int iris_timer_now(double* time);
-
 extern int iris_graph_create(iris_graph* graph);
+extern int iris_graph_free(iris_graph graph);
 extern int iris_graph_create_json(const char* json, void** params, iris_graph* graph);
 extern int iris_graph_task(iris_graph graph, iris_task task, int device, const char* opt);
 extern int iris_graph_submit(iris_graph graph, int device, int sync);
@@ -159,7 +170,43 @@ extern int iris_record_start();
 extern int iris_record_stop();
 
 extern int iris_timer_now(double* time);
+extern void iris_disable_consistency_check();
+extern void iris_enable_consistency_check();
 
+// Task internal members access
+extern char *iris_kernel_get_name(iris_kernel brs_kernel);
+extern char *iris_task_get_name(iris_task brs_task);
+extern void iris_task_set_name(iris_task brs_task, const char *name);
+extern int iris_task_get_dependency_count(iris_task brs_task);
+extern void iris_task_get_dependencies(iris_task brs_task, iris_task *tasks);
+extern unsigned long iris_task_get_uid(iris_task brs_task);
+extern unsigned long iris_kernel_get_uid(iris_kernel brs_kernel);
+extern iris_kernel iris_task_get_kernel(iris_task brs_task);
+extern int iris_task_is_cmd_kernel_exists(iris_task brs_task);
+extern void *iris_task_get_cmd_kernel(iris_task brs_task);
+
+// Memory member access
+extern size_t iris_mem_get_size(iris_mem mem);
+extern int iris_mem_get_type(iris_mem mem);
+extern int iris_mem_get_uid(iris_mem mem);
+extern int iris_mem_is_reset(iris_mem mem);
+extern iris_mem iris_get_dmem_for_region(iris_mem dmem_region_obj);
+
+// Command kernel member access
+extern int iris_cmd_kernel_get_nargs(void *cmd);
+extern int    iris_cmd_kernel_get_arg_is_mem(void *cmd, int index);
+extern size_t iris_cmd_kernel_get_arg_size(void *cmd, int index);
+extern void  *iris_cmd_kernel_get_arg_value(void *cmd, int index);
+extern iris_mem iris_cmd_kernel_get_arg_mem(void *cmd, int index);
+extern size_t iris_cmd_kernel_get_arg_mem_off(void *cmd, int index);
+extern size_t iris_cmd_kernel_get_arg_mem_size(void *cmd, int index);
+extern size_t iris_cmd_kernel_get_arg_off(void *cmd, int index);
+extern int    iris_cmd_kernel_get_arg_mode(void *cmd, int index);
+
+// Graph data 
+extern int iris_graph_get_tasks(iris_graph graph, iris_task *tasks);
+extern int iris_graph_tasks_count(iris_graph graph);
+extern int iris_graph_submit_with_time(iris_graph graph, double *time, int device, int sync);
 #ifdef __cplusplus
 } /* end of extern "C" */
 #endif

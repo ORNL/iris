@@ -20,6 +20,7 @@ public:
   ~Timer();
 
   double Now();
+  static double GetCurrentTime();
   size_t NowNS();
   double Start(int i);
   double Stop(int i);
@@ -33,7 +34,7 @@ private:
   double total_[IRIS_TIMER_MAX];
   size_t total_ull_[IRIS_TIMER_MAX];
 
-  double boot_;
+  static double boot_;
 };
 
 } /* namespace rt */

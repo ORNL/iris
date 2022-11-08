@@ -31,35 +31,49 @@
 namespace iris {
 namespace rt {
 
-ProfilerGoogleCharts::ProfilerGoogleCharts(Platform* platform) : Profiler(platform) {
+ProfilerGoogleCharts::ProfilerGoogleCharts(Platform* platform) : Profiler(platform, "GoogleChart") {
   first_task_ = 0.0;
-  OpenFD();
+  pthread_mutex_init(&chart_lock_, NULL);
+  char* path = NULL;
+  Platform::GetPlatform()->EnvironmentGet("GOOGLE_CHART", &path, NULL);
+  OpenFD(path);
   Main();
 }
 
 ProfilerGoogleCharts::~ProfilerGoogleCharts() {
   Exit();
+  pthread_mutex_destroy(&chart_lock_);
 }
 
 int ProfilerGoogleCharts::Main() {
+  pthread_mutex_lock(&chart_lock_);
   Write(PROFILER_HEADER1);
   Write(PROFILER_HEADER2);
+  pthread_mutex_unlock(&chart_lock_);
   return IRIS_SUCCESS;
 }
 
 int ProfilerGoogleCharts::Exit() {
+  pthread_mutex_lock(&chart_lock_);
   Write(PROFILER_FOOTER);
+  pthread_mutex_unlock(&chart_lock_);
   return IRIS_SUCCESS;
 }
 
 int ProfilerGoogleCharts::CompleteTask(Task* task) {
-  if (first_task_ == 0.0) first_task_ = task->time_start() * 1.e+3;
-  unsigned long tid = task->uid();
+  //if (first_task_ == 0.0) first_task_ = task->time_start() * 1.e+3;
+  //printf("First task time:%f\n", first_task_);
+  //unsigned long tid = task->uid();
   Device* dev = task->dev();
   int policy = task->brs_policy();
-  char s[256];
-  sprintf(s, "[ '%s %d', '%s (%s)', %lf, %lf ],\n", dev->name(), dev->devno(), task->name(), policy_str(policy), (task->time_start() * 1.e+3) - first_task_, (task->time_end() * 1.e+3) - first_task_);
-  Write(s);
+  if (dev != NULL) {
+      char s[1024];
+      sprintf(s, "[ '%s %d', '%s (%s)', %lf, %lf ],\n", dev->name(), dev->devno(), task->name(), policy_str(policy), (task->time_start() * 1.e+3) - first_task_, (task->time_end() * 1.e+3) - first_task_);
+      //printf("Profiling Task: %s %lf %lf\n", s, task->time_start()*1.e+3, task->time_end()*1.e+3);
+      pthread_mutex_lock(&chart_lock_);
+      Write(s);
+      pthread_mutex_unlock(&chart_lock_);
+  }
   return IRIS_SUCCESS;
 }
 

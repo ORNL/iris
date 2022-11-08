@@ -12,6 +12,7 @@
 #include <signal.h>
 #include <cmath>
 #include <limits>
+#include <ctype.h>
 
 double t0, t1;
 
@@ -27,7 +28,7 @@ void ShowUsage(){
   printf("\t\t --size=\"1024\"\n");
   printf("\t\t --repeats=\"100\"\n");
   printf("\t\t --logfile=\"log.csv\"\n");
-  printf("\t\t --scheduling-policy=\"roundrobin\"\t all options include (roundrobin, depend, profile, random, any, all, custom)\n");
+  printf("\t\t --scheduling-policy=\"roundrobin\"\t all options include (roundrobin, depend, profile, random, any, all, custom) or any integer [0-9] denoting the device id to run all tasks on\n");
   printf("\t\t --num-tasks=\"6\"\t (optional) only used for throughput computation\n");
   printf("\t\t --sandwich\t\t (optional) determines if there are the beginning and terminating nodes\n");
 
@@ -35,8 +36,7 @@ void ShowUsage(){
 }
 
 int main(int argc, char** argv) {
-  
-  printf("PWD= %s\n",argv[0]);
+
   size_t SIZE;
   int REPEATS;
   char* POLICY;
@@ -260,6 +260,8 @@ int main(int argc, char** argv) {
           if (scheduling_policy_lookup.find(optarg) != scheduling_policy_lookup.end()){
             task_target = scheduling_policy_lookup[optarg]; //using only device #1 and 2
             POLICY = optarg;
+          } else if (isdigit(optarg[0])){//we also support assigning individual device ids.
+            task_target = atoi(optarg);
           }
           if (task_target != -1){
             required_arguments_set["scheduling-policy"] = true;
@@ -371,8 +373,9 @@ int main(int argc, char** argv) {
     }
 
     //variable number of memory buffers can be provided into IRIS
-    void* json_inputs[3+sizecb.size()+num_buffers_used];
-    int indexer = 0;
+    //void* json_inputs[3+sizecb.size()+num_buffers_used];
+    void* json_inputs[4+num_buffers_used];
+int indexer = 0;
     printf("TODO: support SIZE per kernel -- as with sizecb\n");
     json_inputs[indexer] = &SIZE; indexer++;
     for(auto & bytes : sizecb){
@@ -403,37 +406,6 @@ int main(int argc, char** argv) {
 
     t1 = now();
 
-    //NOTE: temporary code to verify code
-    for(auto & kernel : kernels){
-      //create and populate local memory
-      double* A = new double[(int)pow(SIZE,kernel.dimensions)];
-      double* B = new double[(int)pow(SIZE,kernel.dimensions)];
-      double* C = new double[(int)pow(SIZE,kernel.dimensions)];
-      for(int i = 0; i < pow(SIZE,kernel.dimensions); i++){
-        A[i] = i;
-        B[i] = i;
-      }
-      double* D;
-      //TODO: support concurrency here
-      for(auto concurrent_device = 0; concurrent_device < duplicates; concurrent_device++){
-        printf("Validation on results, set no. %i\n",concurrent_device);
-        D = host_mem[concurrent_device*kernel.buffers.size()];//json_inputs[ concurrent_device*3 + 3+ sizecb.size()];
-        for (size_t i = 0; i < SIZE; i++)
-          for (size_t j = 0; j < SIZE; j++){
-            double sum = 0.0;
-            for (size_t l = 0; l < SIZE; l++)
-              for (size_t k = 0; k < SIZE; k++) {
-                sum += A[i * SIZE + k] * B[k * SIZE + j];
-              }
-            C[i * SIZE + j] = sum;
-          }
-        //compare local C vs C computed in IRIS
-        for (size_t i = 0; i < SIZE*SIZE; i++)
-          assert(std::abs(C[i]-D[i]) <std::numeric_limits<double>::epsilon());
-          //printf("sequential = %f : iris = %f\n",C[i],D[i]);
-      }
-      
-    }
     //TODO: currently we only present FLOPs for ijk kernel but not DEVICE_CONCURRENCY! IT SHOULD BE MULTIPLIED BY THE TOTAL NUMBER OF TASKS!
 /*
     if (num_tasks != 0){

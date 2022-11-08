@@ -12,7 +12,7 @@ QueueReady::~QueueReady() {
 
 bool QueueReady::Peek(Task** task, int target_index){
   std::lock_guard<std::mutex> lock(mutex_);
-  if (target_index <= pqueue_.size()){
+  if (target_index <= (int)pqueue_.size()){
     *task = pqueue_[target_index];
   }
   else{

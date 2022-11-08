@@ -30,7 +30,7 @@ int FilterTaskSplit::Execute(Task* task) {
   KernelArg* args = cmd_kernel->kernel_args();
   for (int idx = 0; idx < cmd_kernel->kernel_nargs(); idx++) {
     KernelArg* arg = args + idx;
-    Mem* mem = arg->mem;
+    Mem* mem = (Mem *)arg->mem;
     if (mem) nmems++;
     else polyhedral_->SetArg(idx, arg->size, arg->value); 
   }
@@ -65,7 +65,7 @@ int FilterTaskSplit::Execute(Task* task) {
     int mem_idx = 0;
     for (int idx = 0; idx < cmd_kernel->kernel_nargs(); idx++) {
       KernelArg* arg = args + idx;
-      Mem* mem = arg->mem;
+      Mem* mem = (Mem *)arg->mem;
       if (mem) {
         polyhedral_->GetMem(idx, plmems + mem_idx);
         _trace("kernel[%s] idx[%d] mem[%lu] typesz[%lu] read[%lu,%lu] write[%lu,%lu]", kernel->name(), idx, mem->uid(), plmems[mem_idx].typesz, plmems[mem_idx].r0, plmems[mem_idx].r1, plmems[mem_idx].w0, plmems[mem_idx].w1);
@@ -76,7 +76,7 @@ int FilterTaskSplit::Execute(Task* task) {
     for (int j = 0; j < task->ncmds(); j++) {
       Command* cmd = task->cmd(j);
       if (cmd->type_h2d()) {
-        Mem* mem = cmd->mem();
+        Mem* mem = (Mem *)cmd->mem();
         for (int k = 0; k < nmems; k++) {
           if (plmems_mem[k] == mem) {
             iris_poly_mem* plmem = plmems + k; 
@@ -86,7 +86,7 @@ int FilterTaskSplit::Execute(Task* task) {
           }
         }
       } else if (cmd->type_d2h()) {
-        Mem* mem = cmd->mem();
+        Mem* mem = (Mem *)cmd->mem();
         for (int k = 0; k < nmems; k++) {
           if (plmems_mem[k] == mem) {
             iris_poly_mem* plmem = plmems + k; 

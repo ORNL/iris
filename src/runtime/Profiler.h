@@ -1,6 +1,8 @@
 #ifndef IRIS_SRC_RT_PROFILER_H
 #define IRIS_SRC_RT_PROFILER_H
 
+#include <stdio.h>
+
 namespace iris {
 namespace rt {
 
@@ -10,7 +12,7 @@ class Task;
 
 class Profiler {
 public:
-  Profiler(Platform* platform);
+  Profiler(Platform* platform, const char *profiler_name);
   virtual ~Profiler();
 
   virtual int CompleteTask(Task* task) = 0;
@@ -20,7 +22,7 @@ protected:
   virtual int Exit() = 0;
   virtual const char* FileExtension() = 0;
 
-  int OpenFD();
+  int OpenFD(const char *path=NULL);
   int CloseFD();
   int Write(const char* s, int tab = 0);
 
@@ -35,6 +37,7 @@ protected:
 private:
   int fd_;
   char path_[256];
+  char profiler_name_[64];
   Message* msg_;
 };
 

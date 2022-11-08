@@ -4,6 +4,7 @@
 namespace iris {
 namespace rt {
 class Kernel;
+class BaseMem;
 class Mem;
 class Task;
 class Graph;
@@ -19,7 +20,7 @@ struct _iris_kernel {
 };
 
 struct _iris_mem {
-  iris::rt::Mem* class_obj;
+  iris::rt::BaseMem* class_obj;
 };
 
 struct _iris_graph {

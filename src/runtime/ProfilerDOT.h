@@ -2,6 +2,7 @@
 #define IRIS_SRC_RT_PROFILER_DOT_H
 
 #include "Profiler.h"
+#include "pthread.h"
 #include <set>
 
 namespace iris {
@@ -21,6 +22,7 @@ protected:
 
 private:
   std::set<unsigned long> tasks_exit_;
+  pthread_mutex_t   dot_lock_;
   bool no_task_;
 };
 

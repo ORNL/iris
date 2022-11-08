@@ -25,7 +25,7 @@ Worker::Worker(Device* dev, Platform* platform, bool single) {
 }
 
 Worker::~Worker() {
-  if (single_) delete queue_;
+  if (!single_) delete queue_;
 }
 
 void Worker::TaskComplete(Task* task) {
@@ -50,6 +50,7 @@ void Worker::Execute(Task* task) {
   if (task->marker()) {
     dev_->Synchronize();
     task->Complete();
+    //task->TryReleaseTask();
     return;
   }
   busy_ = true;
@@ -60,6 +61,7 @@ void Worker::Execute(Task* task) {
     if (scheduler_) scheduler_->CompleteTask(task, this);
     //task->Complete();
   }
+  //task->TryReleaseTask();
   busy_ = false;
 }
 

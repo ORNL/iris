@@ -1,6 +1,14 @@
 #include <iris/iris.h>
 #include "Debug.h"
 #include "Platform.h"
+#include "Consistency.h"
+#include "Scheduler.h"
+#include "Task.h"
+#include "Kernel.h"
+#include "BaseMem.h"
+#include "DataMem.h"
+#include "DataMemRegion.h"
+#include "Timer.h"
 
 using namespace iris::rt;
 
@@ -8,8 +16,16 @@ int iris_init(int* argc, char*** argv, int sync) {
   return Platform::GetPlatform()->Init(argc, argv, sync);
 }
 
+void iris_set_release_task_flag(bool flag) {
+  Platform *platform = Platform::GetPlatform(); 
+  platform->set_release_task_flag(flag);
+}
+
 int iris_finalize() {
-  return Platform::GetPlatform()->Finalize();
+  Platform *platform = Platform::GetPlatform(); 
+  int status = platform->Finalize();
+  delete platform;
+  return status;
 }
 
 int iris_synchronize() {
@@ -81,6 +97,10 @@ int iris_task_malloc(iris_task task, iris_mem mem) {
   return Platform::GetPlatform()->TaskMalloc(task, mem);
 }
 
+int iris_task_cmd_reset_mem(iris_task task, iris_mem mem, uint8_t reset) {
+  return Platform::GetPlatform()->TaskMemResetInput(task, mem, reset);
+}
+
 int iris_task_h2d(iris_task task, iris_mem mem, size_t off, size_t size, void* host) {
   return Platform::GetPlatform()->TaskH2D(task, mem, off, size, host);
 }
@@ -96,6 +116,11 @@ int iris_task_d2h(iris_task task, iris_mem mem, size_t off, size_t size, void* h
 int iris_task_d2h_offsets(iris_task task, iris_mem mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host) {
   return Platform::GetPlatform()->TaskD2H(task, mem, off, host_sizes, dev_sizes, elem_size, dim, host);
 }
+
+int iris_task_dmem_flush_out(iris_task task, iris_mem mem) {
+  return Platform::GetPlatform()->TaskMemFlushOut(task, mem);
+}
+
 
 int iris_task_h2d_full(iris_task task, iris_mem mem, void* host) {
   return Platform::GetPlatform()->TaskH2DFull(task, mem, host);
@@ -141,6 +166,10 @@ int iris_task_submit(iris_task task, int device, const char* opt, int sync) {
   return Platform::GetPlatform()->TaskSubmit(task, device, opt, sync);
 }
 
+int iris_task_set_policy(iris_task task, int device) {
+  return Platform::GetPlatform()->SetTaskPolicy(task, device);
+}
+
 int iris_task_wait(iris_task task) {
   return Platform::GetPlatform()->TaskWait(task);
 }
@@ -165,16 +194,136 @@ int iris_task_release_mem(iris_task task, iris_mem mem) {
   return Platform::GetPlatform()->TaskReleaseMem(task, mem);
 }
 
+void iris_task_set_name(iris_task brs_task, const char *name) {
+   Task *task = brs_task->class_obj;
+   task->set_name(name);
+}
+
+char *iris_kernel_get_name(iris_kernel brs_kernel) {
+    Kernel *k= brs_kernel->class_obj;
+    return k->name();
+}
+
+char *iris_task_get_name(iris_task brs_task) {
+    Task *task = brs_task->class_obj;
+    return task->name();
+}
+
+int iris_task_get_dependency_count(iris_task brs_task) {
+    Task *task = brs_task->class_obj;
+    return task->ndepends();
+}
+void iris_task_get_dependencies(iris_task brs_task, iris_task *tasks) {
+    Task *task = brs_task->class_obj;
+    for(int i=0; i<task->ndepends(); i++) {
+        tasks[i] = task->depend(i)->struct_obj();
+    }
+}
+int iris_cmd_kernel_get_nargs(void *cmd_p) {
+    Command *cmd = (Command *)cmd_p;
+    return cmd->kernel_nargs();
+}
+int iris_cmd_kernel_get_arg_is_mem(void *cmd_p, int index) {
+    Command *cmd = (Command *)cmd_p;
+    return (cmd->kernel_arg(index)->mem != NULL);
+}
+size_t iris_cmd_kernel_get_arg_size(void *cmd_p, int index) {
+    Command *cmd = (Command *)cmd_p;
+    return cmd->kernel_arg(index)->size;
+}
+void  *iris_cmd_kernel_get_arg_value(void *cmd_p, int index) {
+    Command *cmd = (Command *)cmd_p;
+    return cmd->kernel_arg(index)->value;
+}
+iris_mem iris_cmd_kernel_get_arg_mem(void *cmd_p, int index) {
+    Command *cmd = (Command *)cmd_p;
+    return cmd->kernel_arg(index)->mem->struct_obj();
+}
+size_t iris_cmd_kernel_get_arg_mem_off(void *cmd_p, int index) {
+    Command *cmd = (Command *)cmd_p;
+    return cmd->kernel_arg(index)->mem_off;
+}
+size_t iris_cmd_kernel_get_arg_mem_size(void *cmd_p, int index) {
+    Command *cmd = (Command *)cmd_p;
+    return cmd->kernel_arg(index)->mem_size;
+}
+size_t iris_cmd_kernel_get_arg_off(void *cmd_p, int index) {
+    Command *cmd = (Command *)cmd_p;
+    return cmd->kernel_arg(index)->off;
+}
+int    iris_cmd_kernel_get_arg_mode(void *cmd_p, int index) {
+    Command *cmd = (Command *)cmd_p;
+    return cmd->kernel_arg(index)->mode;
+}
+iris_kernel iris_task_get_kernel(iris_task brs_task)
+{
+    Task *task = brs_task->class_obj;
+    return task->cmd_kernel()->kernel()->struct_obj();
+}
+int iris_task_is_cmd_kernel_exists(iris_task brs_task)
+{
+    Task *task = brs_task->class_obj;
+    return task->cmd_kernel() != NULL;
+}
+
+void *iris_task_get_cmd_kernel(iris_task brs_task)
+{
+    Task *task = brs_task->class_obj;
+    return task->cmd_kernel();
+}
+
+unsigned long iris_kernel_get_uid(iris_kernel brs_kernel)
+{
+  return brs_kernel->class_obj->uid();
+}
+unsigned long iris_task_get_uid(iris_task brs_task) {
+  return brs_task->class_obj->uid();
+}
+
 int iris_mem_create(size_t size, iris_mem* mem) {
   return Platform::GetPlatform()->MemCreate(size, mem);
+}
+size_t iris_mem_get_size(iris_mem mem) {
+  return mem->class_obj->size();
+}
+
+int iris_mem_get_type(iris_mem mem) {
+  return mem->class_obj->GetMemHandlerType();
+}
+
+int iris_mem_get_uid(iris_mem mem) {
+  return mem->class_obj->uid();
+}
+
+int iris_mem_is_reset(iris_mem mem) {
+  return mem->class_obj->is_reset();
+}
+
+int iris_data_mem_init_reset(iris_mem mem, int reset) {
+  return Platform::GetPlatform()->DataMemInit(mem, (bool)reset);
+}
+int iris_data_mem_create_tile(iris_mem* mem, void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim) {
+  return Platform::GetPlatform()->DataMemCreate(mem, host, off, host_size, dev_size, elem_size, dim);
+}
+int iris_data_mem_create(iris_mem *mem, void *host, size_t size) {
+  return Platform::GetPlatform()->DataMemCreate(mem, host, size);
+}
+int iris_data_mem_update(iris_mem mem, void *host) {
+  return Platform::GetPlatform()->DataMemUpdate(mem, host);
+}
+int iris_data_mem_create_region(iris_mem *mem, iris_mem root_mem, int region) {
+  return Platform::GetPlatform()->DataMemCreate(mem, root_mem, region);
+}
+int iris_data_mem_enable_outer_dim_regions(iris_mem mem) {
+  return Platform::GetPlatform()->DataMemEnableOuterDimRegions(mem);
+}
+iris_mem iris_get_dmem_for_region(iris_mem brs_mem) {
+    DataMemRegion *obj = (DataMemRegion*)brs_mem->class_obj;
+    return obj->get_dmem()->struct_obj();
 }
 
 int iris_mem_arch(iris_mem mem, int device, void** arch) {
   return Platform::GetPlatform()->MemArch(mem, device, arch);
-}
-
-int iris_mem_intermediate(iris_mem mem, int flag) {
-  return Platform::GetPlatform()->MemSetIntermediate(mem, (bool)flag);
 }
 
 int iris_mem_release(iris_mem mem) {
@@ -237,8 +386,29 @@ int iris_graph_wait(iris_graph graph) {
   return Platform::GetPlatform()->GraphWait(graph);
 }
 
+int iris_graph_submit_with_time(iris_graph graph, double *time, int device, int sync)
+{
+    double st_time, end_time;
+    Platform::GetPlatform()->TimerNow(&st_time);
+    int status = Platform::GetPlatform()->GraphSubmit(graph, device, sync);
+    Platform::GetPlatform()->TimerNow(&end_time);
+    *time = end_time - st_time;
+    return status;
+}
 int iris_graph_wait_all(int ngraphs, iris_graph* graphs) {
   return Platform::GetPlatform()->GraphWaitAll(ngraphs, graphs);
+}
+
+int iris_graph_free(iris_graph brs_graph) {
+  return Platform::GetPlatform()->GraphFree(brs_graph);
+}
+
+void iris_disable_consistency_check() {
+  Platform::GetPlatform()->scheduler()->consistency()->Disable();
+}
+
+void iris_enable_consistency_check() {
+  Platform::GetPlatform()->scheduler()->consistency()->Enable();
 }
 
 int iris_record_start() {
@@ -253,7 +423,10 @@ int iris_timer_now(double* time) {
   return Platform::GetPlatform()->TimerNow(time);
 }
 
-
-
-
-
+int iris_graph_get_tasks(iris_graph graph, iris_task *tasks) {
+  return Platform::GetPlatform()->GetGraphTasks(graph, tasks);
+}
+int iris_graph_tasks_count(iris_graph graph)
+{
+    return Platform::GetPlatform()->GetGraphTasksCount(graph);
+}

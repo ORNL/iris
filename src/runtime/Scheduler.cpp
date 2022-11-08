@@ -36,6 +36,7 @@ Scheduler::~Scheduler() {
   delete consistency_;
   delete policies_;
   delete hub_client_;
+  delete timer_;
   pthread_mutex_destroy(&mutex_);
 }
 
@@ -44,20 +45,20 @@ void Scheduler::InitHubClient() {
 }
 
 void Scheduler::StartTask(Task* task, Worker* worker) {
-  task->set_time_start(timer_->Now());
+  //task->set_time_start(timer_->Now());
 }
 
 void Scheduler::CompleteTask(Task* task, Worker* worker) {
-  task->set_time_end(timer_->Now());
+  //task->set_time_end(timer_->Now());
   Device* dev = worker->device();
   int devno = dev->devno();
   if (hub_available_) hub_client_->TaskDec(devno, 1);
-  if (enable_profiler_ & !task->system()) {
-    pthread_mutex_lock(&mutex_);
-    _todo("remove lock profile[%d]", enable_profiler_);
-    for (int i = 0; i < nprofilers_; i++) profilers_[i]->CompleteTask(task); 
-    pthread_mutex_unlock(&mutex_);
-  }
+  //if (enable_profiler_ & !task->system()) {
+    //pthread_mutex_lock(&mutex_);
+    //_todo("remove lock profile[%d]", enable_profiler_);
+    //for (int i = 0; i < nprofilers_; i++) profilers_[i]->CompleteTask(task); 
+    //pthread_mutex_unlock(&mutex_);
+  //}
 }
 
 int Scheduler::RefreshNTasksOnDevs() {
@@ -94,7 +95,10 @@ void Scheduler::SubmitTaskDirect(Task* task, Device* dev) {
 
 void Scheduler::Submit(Task* task) {
   if (!ndevs_) {
-    if (!task->marker()) _error("%s", "no device");
+    if (!task->marker()) { 
+       _error("%s", "no device");
+       platform_->IncrementErrorCount();
+    }
     task->Complete();
     return;
   }
@@ -134,6 +138,9 @@ void Scheduler::SubmitTask(Task* task) {
     ndevs = 1;
     devs[0] = devs_[dev_default];
   }
+  //if any dependencies were pending, time to process them now.
+  if (!task->Dispatchable()) task->DispatchDependencies();
+
   for (int i = 0; i < ndevs; i++) {
     devs[i]->worker()->Enqueue(task);
     if (hub_available_) hub_client_->TaskInc(devs[i]->devno(), 1);

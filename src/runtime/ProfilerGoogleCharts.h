@@ -2,6 +2,7 @@
 #define IRIS_SRC_RT_PROFILER_GOOGLE_CHARTS_H
 
 #include "Profiler.h"
+#include "pthread.h"
 
 namespace iris {
 namespace rt {
@@ -19,6 +20,7 @@ protected:
   virtual const char* FileExtension() { return "html"; }
 
 private:
+  pthread_mutex_t   chart_lock_;
   double first_task_;
 };
 

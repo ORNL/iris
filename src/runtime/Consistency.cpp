@@ -18,6 +18,7 @@ namespace rt {
 Consistency::Consistency(Scheduler* scheduler) {
   scheduler_ = scheduler;
   pthread_mutex_init(&mutex_, NULL);
+  disable_ = false;
 }
 
 Consistency::~Consistency() {
@@ -26,6 +27,7 @@ Consistency::~Consistency() {
 
 void Consistency::Resolve(Task* task) {
   if (task->system()) return;
+  if (disable_) return;
   for (int i = 0; i < task->ncmds(); i++) {
     Command* cmd = task->cmd(i);
     switch (cmd->type()) {
@@ -37,15 +39,17 @@ void Consistency::Resolve(Task* task) {
 
 void Consistency::ResolveKernel(Task* task, Command* cmd) {
 //  if (task->parent()) return;
-  Device* dev = task->dev();
+  //Device* dev = task->dev();
   iris_poly_mem* polymems = cmd->polymems();
   int npolymems = cmd->npolymems();
   KernelArg* args = cmd->kernel_args();
   int mem_idx = 0;
   for (int i = 0; i < cmd->kernel_nargs(); i++) {
     KernelArg* arg = args + i;
-    Mem* mem = arg->mem;
-    if (!mem) continue;
+    BaseMem* bmem = (BaseMem *)arg->mem;
+    if (!bmem) continue;
+    if (bmem->GetMemHandlerType() != IRIS_MEM) continue;
+    Mem* mem = (Mem *)bmem;
     if (npolymems) ResolveKernelWithPolymem(task, cmd, mem, arg, polymems + mem_idx);
     else ResolveKernelWithoutPolymem(task, cmd, mem, arg);
     mem_idx++;
@@ -72,7 +76,8 @@ void Consistency::ResolveKernelWithPolymem(Task* task, Command* cmd, Mem* mem, K
   Device* owner = mem->Owner(off, size);
   if (!owner || mem->IsOwner(off, size, dev)) return;
 
-  Task* task_d2h = new Task(scheduler_->platform());
+  const char *d2h_tn = "Internal-D2H";
+  Task* task_d2h = new Task(scheduler_->platform(), IRIS_TASK, d2h_tn);
   task_d2h->set_system();
   Command* d2h = Command::CreateD2H(task, mem, off, size, (char*) mem->host_inter() + off);
   task_d2h->AddCommand(d2h);
@@ -98,22 +103,26 @@ void Consistency::ResolveKernelWithoutPolymem(Task* task, Command* cmd, Mem* mem
   if (!owner || dev == owner || mem->IsOwner(0, mem->size(), dev)) return;
   pthread_mutex_lock(&mutex_);
   //issue the first stage (d2h); get the data from the other device
-  char* tn = "Internal-D2H";
-  Task* task_d2h = new Task(scheduler_->platform());
-  Command* d2h = Command::CreateD2H(task_d2h, mem, 0, mem->size(), mem->host_inter());
-  d2h->set_name(tn);
-  task_d2h->set_name(tn);
+  const char* d2h_tn = "Internal-D2H";
+  Task* task_d2h = new Task(scheduler_->platform(), IRIS_TASK, d2h_tn);
+  Command* d2h = Command::CreateD2H(task, mem, 0, mem->size(), mem->host_inter());
+  d2h->set_name(d2h_tn);
+  task_d2h->set_name(d2h_tn);
   task_d2h->set_system();
   task_d2h->AddCommand(d2h);
   task_d2h->set_internal_memory_transfer();
+  d2h->set_internal_memory_transfer();
+  bool context_shift = owner->IsContextChangeRequired();
   scheduler_->SubmitTaskDirect(task_d2h,owner);
   task_d2h->Wait();
+  if (context_shift) dev->ResetContext();
 
-  tn = "Internal-H2D";
-  Task* task_h2d = new Task(scheduler_->platform());
+  const char *h2d_tn = "Internal-H2D";
+  Task* task_h2d = new Task(scheduler_->platform(), IRIS_TASK, h2d_tn);
   Command* h2d = Command::CreateH2D(task, mem, 0, mem->size(), mem->host_inter());
-  h2d->set_name(tn);
-  task_h2d->set_name(tn);
+  h2d->set_name(h2d_tn);
+  h2d->set_internal_memory_transfer();
+  task_h2d->set_name(h2d_tn);
   task_h2d->set_system();
   task_h2d->AddCommand(h2d);
   task_h2d->set_internal_memory_transfer();
@@ -129,10 +138,11 @@ void Consistency::ResolveKernelWithoutPolymem(Task* task, Command* cmd, Mem* mem
 
 void Consistency::ResolveD2H(Task* task, Command* cmd) {
   Device* dev = task->dev();
-  Mem* mem = cmd->mem();
+  Mem* mem = (Mem *)cmd->mem();
   Device* owner = mem->Owner();
   if (!owner || dev == owner || mem->IsOwner(0, mem->size(), dev)) return;
-  Task* task_d2h = new Task(scheduler_->platform());
+  const char *d2h_tn = "Internal-D2H";
+  Task* task_d2h = new Task(scheduler_->platform(), IRIS_TASK, d2h_tn);
   task_d2h->set_system();
   Command* d2h = Command::CreateD2H(task_d2h, mem, 0, mem->size(), mem->host_inter());
   task_d2h->AddCommand(d2h);

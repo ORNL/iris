@@ -13,10 +13,11 @@
 namespace iris {
 namespace rt {
 
-Profiler::Profiler(Platform* platform) {
+Profiler::Profiler(Platform* platform, const char *profiler_name) {
   platform_ = platform;
   fd_ = -1;
   msg_ = new Message();
+  strcpy(profiler_name_, profiler_name);
 }
 
 Profiler::~Profiler() {
@@ -24,11 +25,15 @@ Profiler::~Profiler() {
   if (msg_) delete msg_;
 }
 
-int Profiler::OpenFD() {
+int Profiler::OpenFD(const char *path) {
   time_t t = time(NULL);
-  char s[64];
-  strftime(s, 64, "%Y%m%d-%H%M%S", localtime(&t));
-  sprintf(path_, "%s-%s-%s.%s", platform_->app(), platform_->host(), s, FileExtension());
+  if (path != NULL) {
+      strcpy(path_, path);
+  } else {
+      char s[64];
+      strftime(s, 64, "%Y%m%d-%H%M%S", localtime(&t));
+      sprintf(path_, "%s-%s-%s.%s", platform_->app(), platform_->host(), s, FileExtension());
+  }
   fd_ = open(path_, O_CREAT | O_WRONLY, 0666);
   if (fd_ == -1) {
     _error("open profiler file[%s]", path_);
@@ -73,6 +78,7 @@ int Profiler::CloseFD() {
   Flush();
   if (fd_ != -1) {
     int iret = close(fd_);
+    _info("Profiler %s output in file: %s", profiler_name_,  path_);
     if (iret == -1) {
       _error("close profiler file[%s]", path_);
       perror("close");
@@ -100,6 +106,7 @@ const char* Profiler::policy_str(int policy) {
     case iris_pending:    return "pending";
     case iris_any:        return "any";
     case iris_custom:     return "custom";
+    default: break;
   }
   return policy & iris_all ? "all" : "?";
 }

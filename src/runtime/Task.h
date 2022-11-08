@@ -29,6 +29,7 @@ public:
   virtual ~Task();
 
   void AddCommand(Command* cmd);
+  void AddMemResetCommand(Command* cmd);
   void ClearCommands();
 
   void AddSubtask(Task* subtask);
@@ -50,7 +51,6 @@ public:
   int type() { return type_; }
   char* name() { return name_; }
   void set_name(const char* name);
-  bool perm() { return perm_; }
   bool user() { return user_; }
   bool system() { return system_; }
   void set_system() { system_ = true; }
@@ -60,6 +60,7 @@ public:
   Command* cmd(int i) { return cmds_[i]; }
   Command* cmd_kernel() { return cmd_kernel_; }
   Command* cmd_last() { return cmd_last_; }
+  void TryReleaseTask();
   void set_dev(Device* dev) { dev_ = dev; }
   Platform* platform() { return platform_; }
   Device* dev() { return dev_; }
@@ -76,10 +77,9 @@ public:
   void set_parent(Task* task);
   void set_brs_policy(int brs_policy);
   void set_opt(const char* opt);
-  void set_target_perm(int brs_policy, const char* opt);
   char* opt() { return opt_; }
   int brs_policy() { return brs_policy_; }
-  int brs_policy_perm() { return brs_policy_perm_; }
+  const char* brs_policy_string();
   bool sync() { return sync_; }
   std::vector<Task*>* subtasks() { return &subtasks_; }
   Task* subtask(int i) { return subtasks_[i]; }
@@ -91,15 +91,16 @@ public:
   void set_arch(void* arch) { arch_ = arch; }
   void set_pending();
   bool pending() {return status_==IRIS_PENDING;}
-  void Dispatch();
+  std::vector<Command *> & reset_mems() { return reset_mems_; }
+  void DispatchDependencies();
   bool is_internal_memory_transfer() { return internal_memory_transfer_;}
   void set_internal_memory_transfer() { internal_memory_transfer_ = true;}
-
+  void print_incomplete_tasks();
 private:
   void CompleteSub();
 
 private:
-  char name_[64];
+  char name_[128];
   bool given_name_;
   Task* parent_;
   int ncmds_;
@@ -111,6 +112,7 @@ private:
   Platform* platform_;
   Scheduler* scheduler_;
   std::vector<Task*> subtasks_;
+  std::vector<Command *> reset_mems_;
   size_t subtasks_complete_;
   void* arch_;
 
@@ -119,13 +121,11 @@ private:
   int ndepends_;
 
   int brs_policy_;
-  int brs_policy_perm_;
   char opt_[64];
   bool sync_;
 
   int type_;
   int status_;
-  bool perm_;
   bool user_;
   bool system_;
   bool internal_memory_transfer_;

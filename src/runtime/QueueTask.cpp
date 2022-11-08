@@ -61,12 +61,12 @@ bool QueueTask::Enqueue(Task* task) {
   pthread_mutex_lock(&mutex_);
   tasks_.push_back(task);
   if (enable_profiler_) {
-    if (last_sync_task_) task->AddDepend(last_sync_task_);
-    if (last_sync_task_ && task->sync()) last_sync_task_->Release();
-    if (task->sync()) {
-      last_sync_task_ = task;
-      last_sync_task_->Retain();
-    }
+    //if (last_sync_task_) task->AddDepend(last_sync_task_);
+    //if (last_sync_task_ && task->sync()) last_sync_task_->Release();
+    //if (task->sync()) {
+    //  last_sync_task_ = task;
+    //  last_sync_task_->Retain();
+    //}
   }
   pthread_mutex_unlock(&mutex_);
   return true;

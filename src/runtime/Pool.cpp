@@ -27,7 +27,8 @@ Task* Pool::GetTask() {
 #if IRIS_POOL_ENABLED
   return tasks_[tid_++];
 #else
-  return new Task(platform_, IRIS_TASK, NULL);
+  const char *pool_tn = "Pool";
+  return new Task(platform_, IRIS_TASK, pool_tn);
 #endif
 }
 

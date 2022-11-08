@@ -16,13 +16,14 @@ public:
   virtual void Stop();
   virtual void Sleep();
   virtual void Invoke();
+  pthread_t thread() { return thread_; }
+  pthread_t self() { return pthread_self(); }
 
 protected:
   virtual void Run() = 0;
 
 protected:
   static void* ThreadFunc(void* argp);
-
 protected:
   pthread_t thread_;
   volatile bool running_;

@@ -30,6 +30,7 @@ class LoaderLevelZero;
 class LoaderOpenCL;
 class LoaderOpenMP;
 class LoaderHexagon;
+class BaseMem;
 class Mem;
 class Polyhedral;
 class Pool;
@@ -46,6 +47,8 @@ class SchedulingHistory;
 class Platform {
 private:
   Platform();
+
+public:
   ~Platform();
 
 public:
@@ -56,6 +59,7 @@ public:
   int EnvironmentInit();
   int EnvironmentSet(const char* key, const char* value, bool overwrite);
   int EnvironmentGet(const char* key, char** value, size_t* vallen);
+  int GetFilePath(const char *key, char** value, size_t* vallen);
 
   int PlatformCount(int* nplatforms);
   int PlatformInfo(int platform, int param, void* value, size_t* size);
@@ -87,6 +91,8 @@ public:
   int TaskHost(iris_task task, iris_host_task func, void* params);
   int TaskCustom(iris_task task, int tag, void* params, size_t params_size);
   int TaskMalloc(iris_task brs_task, iris_mem brs_mem);
+  int TaskMemFlushOut(iris_task brs_task, iris_mem brs_mem);
+  int TaskMemResetInput(iris_task brs_task, iris_mem brs_mem, uint8_t reset);
   int TaskH2D(iris_task brs_task, iris_mem brs_mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host);
   int TaskH2D(iris_task brs_task, iris_mem brs_mem, size_t off, size_t size, void* host);
   int TaskD2H(iris_task brs_task, iris_mem brs_mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host);
@@ -98,6 +104,7 @@ public:
   int TaskMapToFull(iris_task brs_task, void* host);
   int TaskMapFrom(iris_task brs_task, void* host, size_t size);
   int TaskMapFromFull(iris_task brs_task, void* host);
+  int SetTaskPolicy(iris_task brs_task, int brs_policy);
   int TaskSubmit(iris_task brs_task, int brs_policy, const char* opt, int wait);
   int TaskWait(iris_task brs_task);
   int TaskWaitAll(int ntasks, iris_task* brs_tasks);
@@ -110,7 +117,12 @@ public:
   int TaskInfo(iris_task brs_task, int param, void* value, size_t* size);
 
   int MemCreate(size_t size, iris_mem* brs_mem);
-  int MemSetIntermediate(iris_mem brs_mem, bool flag=true);
+  int DataMemInit(iris_mem brs_mem, bool reset);
+  int DataMemUpdate(iris_mem brs_mem, void *host);
+  int DataMemCreate(iris_mem* brs_mem, void *host, size_t size);
+  int DataMemCreate(iris_mem* brs_mem, void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim);
+  int DataMemCreate(iris_mem* brs_mem, iris_mem root_mem, int region);
+  int DataMemEnableOuterDimRegions(iris_mem mem);
   int MemArch(iris_mem brs_mem, int device, void** arch);
   int MemMap(void* host, size_t size);
   int MemUnmap(void* host);
@@ -118,19 +130,27 @@ public:
   int MemRelease(iris_mem brs_mem);
 
   int GraphCreate(iris_graph* brs_graph);
+  int GraphFree(iris_graph brs_graph);
   int GraphCreateJSON(const char* json, void** params,  iris_graph* brs_graph);
   int GraphTask(iris_graph brs_graph, iris_task brs_task, int brs_policy, const char* opt);
   int GraphSubmit(iris_graph brs_graph, int brs_policy, int sync);
   int GraphWait(iris_graph brs_graph);
   int GraphWaitAll(int ngraphs, iris_graph* brs_graphs);
+  int GetGraphTasks(iris_graph graph, iris_task *tasks);
+  int GetGraphTasksCount(iris_graph graph);
 
   int RecordStart();
   int RecordStop();
+
+  void IncrementErrorCount();
+  int NumErrors();
 
   int TimerNow(double* time);
 
   int ndevs() { return ndevs_; }
   int device_default() { return dev_default_; }
+  bool release_task_flag() { return release_task_flag_; }
+  void set_release_task_flag(bool flag) { release_task_flag_ = flag; }
   Device** devices() { return devs_; }
   Device* device(int devno) { return devs_[devno]; }
   Polyhedral* polyhedral() { return polyhedral_; }
@@ -150,14 +170,17 @@ public:
   double time_app() { return time_app_; }
   double time_init() { return time_init_; }
   bool enable_profiler() { return enable_profiler_; }
+  void disable_d2d() { disable_d2d_ = true; }
+  void enable_d2d() { disable_d2d_ = false; }
+  bool is_d2d_disabled() { return disable_d2d_; }
+  void ProfileCompletedTask(Task *task); 
   hook_task hook_task_pre() { return hook_task_pre_; }
   hook_task hook_task_post() { return hook_task_post_; }
   hook_command hook_command_pre() { return hook_command_pre_; }
   hook_command hook_command_post() { return hook_command_post_; }
-
   Kernel* GetKernel(const char* name);
-  Mem* GetMem(iris_mem brs_mem);
-  Mem* GetMem(void* host, size_t* off);
+  BaseMem* GetMem(iris_mem brs_mem);
+  BaseMem* GetMem(void* host, size_t* off);
 
 private:
   int SetDevsAvailable();
@@ -187,6 +210,7 @@ private:
   int dev_default_;
   int devs_enabled_[IRIS_MAX_NDEVS];
   int ndevs_enabled_;
+  int nfailures_;
 
   std::vector<LoaderHost2OpenCL*> loaderHost2OpenCL_;
   LoaderHost2HIP * loaderHost2HIP_;
@@ -201,8 +225,8 @@ private:
 
   Queue* queue_;
 
-  std::set<Kernel*> kernels_;
-  std::set<Mem*> mems_;
+  std::map<std::string, std::vector<Kernel*> > kernels_;
+  std::set<BaseMem*> mems_;
   std::map<std::string, std::string> env_;
 
   PresentTable* present_table_;
@@ -225,6 +249,8 @@ private:
   int nprofilers_;
 
   bool enable_scheduling_history_;
+  bool disable_d2d_;
+  bool release_task_flag_;
   SchedulingHistory* scheduling_history_;
 
   Kernel* null_kernel_;

@@ -8,7 +8,7 @@ CXXFLAGS=-g  -std=c++11 -I$(IRIS)/include -L$(IRIS)/lib
 FFLAGS=-g -I$(IRIS)/include/iris
 LDFLAGS=-L$(IRIS)/lib64 -liris -lpthread -ldl
 
-all: dagger_runner
+all: dagger_runner dagger_test
 
 dagger: dagger.cpp timer.h
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS) 
@@ -18,6 +18,9 @@ dagger_dgemm: dagger_dgemm.cpp timer.h
 
 #the final implementation?
 dagger_runner: dagger_runner.cpp timer.h
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
+
+dagger_test: dagger_test_concurrent_linear_chains.cpp timer.h
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
 #dagger_coarse: dagger_coarse.cpp timer.h
@@ -39,7 +42,7 @@ kernel.openmp.so: kernel.cl.openmp.c
 	$(CC) -g -fopenmp -fPIC -shared -I. -o $@ $^
 
 clean:
-	rm -f dagger_runner dagger dagger_dgemm dagger_coarse kernel.ptx kernel.spv kernel.hip kernel.openmp.so
+	rm -f dagger_runner dagger_test dagger dagger_dgemm dagger_coarse kernel.ptx kernel.spv kernel.hip kernel.openmp.so
 
 clean-results:
 	rm -f dagger_runner-*.csv timing_log_*.csv throughput-log-*.csv dagger_runner-*.html

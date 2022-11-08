@@ -19,17 +19,18 @@ public:
   ~Consistency();
 
   void Resolve(Task* task);
+  void Disable() { disable_ = true; }
+  void Enable() { disable_ = false; }
 
 private:
   void ResolveKernel(Task* task, Command* cmd);
   void ResolveKernelWithPolymem(Task* task, Command* cmd, Mem* mem, KernelArg* arg, iris_poly_mem* polymem);
   void ResolveKernelWithoutPolymem(Task* task, Command* cmd, Mem* mem, KernelArg* arg);
   void ResolveD2H(Task* task, Command* cmd);
-
 private:
   Scheduler* scheduler_;
   pthread_mutex_t mutex_;
-
+  bool disable_;
 };
 
 } /* namespace rt */

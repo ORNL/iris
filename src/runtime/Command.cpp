@@ -5,6 +5,7 @@
 #include "Task.h"
 #include "Timer.h"
 #include "Mem.h"
+#include "DataMem.h"
 
 namespace iris {
 namespace rt {
@@ -22,10 +23,17 @@ Command::~Command() {
   if (kernel_args_) delete[] kernel_args_;
   if (npolymems_ && polymems_) delete polymems_;
   if (selector_kernel_params_) free(selector_kernel_params_);
+  if (params_map_) delete [] params_map_; 
+}
+
+void Command::set_params_map(int *pmap) { 
+    params_map_ = new int[kernel_nargs_]; 
+    memcpy(params_map_, pmap, sizeof(int)*kernel_nargs_); 
 }
 
 void Command::Clear(bool init) {
   time_ = 0.0;
+  internal_memory_transfer_ = false;
   kernel_args_ = NULL;
   kernel_nargs_ = 0;
   last_ = false;
@@ -59,10 +67,12 @@ void Command::Set(Task* task, int type) {
     case IRIS_CMD_H2D:         type_name_= const_cast<char*>("H2D");     break;
     case IRIS_CMD_H2DNP:       type_name_= const_cast<char*>("H2DNP");   break;
     case IRIS_CMD_D2H:         type_name_= const_cast<char*>("D2H");     break;
+    case IRIS_CMD_MEM_FLUSH:   type_name_= const_cast<char*>("MemFlush");     break;
     case IRIS_CMD_MAP:         type_name_= const_cast<char*>("Map");     break;
     case IRIS_CMD_RELEASE_MEM: type_name_= const_cast<char*>("Release"); break;
     case IRIS_CMD_HOST:        type_name_= const_cast<char*>("Host");    break;
     case IRIS_CMD_CUSTOM:      type_name_= const_cast<char*>("Custom");  break;
+    case IRIS_CMD_RESET_INPUT: type_name_= const_cast<char*>("ResetMem");  break;
     default: _error("cmd type[0x%x]", type);
   }
   if (task->ncmds() == 0 && task->name()){ 
@@ -89,6 +99,7 @@ Command* Command::CreateInit(Task* task) {
 Command* Command::CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws) {
   Command* cmd = Create(task, IRIS_CMD_KERNEL);
   cmd->kernel_ = kernel;
+  if (cmd->kernel_args_) delete[] cmd->kernel_args_;
   cmd->kernel_args_ = kernel->ExportArgs();
   cmd->dim_ = dim;
   for (int i = 0; i < dim; i++) {
@@ -137,12 +148,14 @@ Command* Command::CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off,
       continue;
     }
     size_t mem_off = 0ULL;
-    Mem* mem = cmd->platform_->GetMem((iris_mem) param);
+    BaseMem* mem = cmd->platform_->GetMem((iris_mem) param);
     if (!mem) mem = cmd->platform_->GetMem(param, &mem_off);
     if (!mem) {
-      _error("no mem[%p]", param);
+      _error("no mem[%p] task[%ld:%s]", param, task->uid(), task->name());
       continue;
     }
+    if (mem->GetMemHandlerType() == IRIS_DMEM) kernel->add_dmem((DataMem *)mem, i, param_info);
+    if (mem->GetMemHandlerType() == IRIS_DMEM_REGION) kernel->add_dmem_region((DataMemRegion *)mem, i, param_info);
     arg->mem = mem;
     arg->off = mem_off;
     if (params_off) arg->off = params_off[i];
@@ -207,6 +220,19 @@ Command* Command::CreateMalloc(Task* task, Mem* mem) {
   return cmd;
 }
 
+Command* Command::CreateMemFlushOut(Task* task, DataMem* mem) {
+  Command* cmd = Create(task, IRIS_CMD_MEM_FLUSH);
+  cmd->mem_ = mem;
+  return cmd;
+}
+
+Command* Command::CreateMemResetInput(Task* task, BaseMem *mem, uint8_t reset_value) {
+  Command* cmd = Create(task, IRIS_CMD_RESET_INPUT);
+  cmd->mem_ = mem;
+  cmd->reset_value_ = reset_value;
+  return cmd;
+}
+
 Command* Command::CreateH2D(Task* task, Mem* mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host) {
   Command* cmd = Create(task, IRIS_CMD_H2D);
   cmd->mem_ = mem;
@@ -216,13 +242,12 @@ Command* Command::CreateH2D(Task* task, Mem* mem, size_t *off, size_t *host_size
     cmd->off_[i] = off[i];
     cmd->gws_[i] = host_sizes[i];
     cmd->lws_[i] = dev_sizes[i];
-    size *= host_sizes[i];
+    size *= dev_sizes[i];
   }
   cmd->elem_size_ = elem_size;
   cmd->size_ = size;
   cmd->host_ = host;
   cmd->exclusive_ = true;
-  mem->get_h2d_cmds().push_back(cmd);
   return cmd;
 }
 
@@ -234,7 +259,6 @@ Command* Command::CreateH2D(Task* task, Mem* mem, size_t off, size_t size, void*
   cmd->size_ = size;
   cmd->host_ = host;
   cmd->exclusive_ = true;
-  mem->get_h2d_cmds().push_back(cmd);
   return cmd;
 }
 
@@ -246,7 +270,6 @@ Command* Command::CreateH2DNP(Task* task, Mem* mem, size_t off, size_t size, voi
   cmd->size_ = size;
   cmd->host_ = host;
   cmd->exclusive_ = false;
-  mem->get_h2dnp_cmds().push_back(cmd);
   return cmd;
 }
 
@@ -259,12 +282,12 @@ Command* Command::CreateD2H(Task* task, Mem* mem, size_t *off, size_t *host_size
     cmd->off_[i] = off[i];
     cmd->gws_[i] = host_sizes[i];
     cmd->lws_[i] = dev_sizes[i];
-    size *= host_sizes[i];
+    size *= dev_sizes[i];
   }
   cmd->elem_size_ = elem_size;
   cmd->size_ = size;
   cmd->host_ = host;
-  mem->get_d2h_cmds().push_back(cmd);
+  //mem->get_d2h_cmds().push_back(cmd);
   return cmd;
 }
 
@@ -275,7 +298,7 @@ Command* Command::CreateD2H(Task* task, Mem* mem, size_t off, size_t size, void*
   cmd->off_[0] = off;
   cmd->size_ = size;
   cmd->host_ = host;
-  mem->get_d2h_cmds().push_back(cmd);
+  //mem->get_d2h_cmds().push_back(cmd);
   return cmd;
 }
 

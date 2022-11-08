@@ -30,17 +30,9 @@ extern "C" __global__ void bigk(double* C, double* A, double* B) {
   size_t j = blockIdx.y * blockDim.y + threadIdx.y;
   size_t SIZE = gridDim.x * blockDim.x;
 
-  //logic to span over local area as separate threads
-  for (;i < SIZE;i++){
-    for (;j < SIZE;j++){
-
-      double sum = 0.0;
-      for (size_t l = 0; l < SIZE; l++)
-      for (size_t k = 0; k < SIZE; k++) {
-        sum += A[i * SIZE + k] * B[k * SIZE + j];
-      }
-      C[i * SIZE + j] = sum;
-
-    }
+  double sum = 0.0;
+  for (size_t k = 0; k < SIZE; k++) {
+    sum += A[i * SIZE + k] * B[k * SIZE + j];
   }
+  C[i * SIZE + j] += sum;
 }
