@@ -1,0 +1,12 @@
+name: IRIS-docs
+
+channels:
+  - conda-forge
+  - defaults
+
+dependencies:
+  - breathe=4.30.0
+  - pip
+  - pip:
+    - sphinxcontrib-contentui>=0.2.5
+
