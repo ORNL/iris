@@ -7,17 +7,16 @@ stages:
 .excl_runner:
   tags: [excl]
 
-before_script:
-  - module load cmake
-  - module load gnu
-
 variables:
- IRIS_INSTALL_ROOT: $CI_PROJECT_DIR/install
- IRIS_TESTING_PATH: code.ornl.gov/brisbane/iris-tests.git
+  IRIS_INSTALL_ROOT: $CI_PROJECT_DIR/install
+  IRIS_TESTING_PATH: code.ornl.gov/brisbane/iris-tests.git
 
 build-job:
   extends: [.excl_runner]
   stage: build
+  before_script:
+    - module load cmake
+    - module load gnu
   script:
     - echo "Installing iris to $CI_PROJECT_DIR/install"
     - bash build.sh
@@ -25,10 +24,11 @@ build-job:
 docs-job:
   tags: [devdocs]
   stage: docs
-  script:
+  before_script:
     - source /auto/ciscratch/conda/etc/profile.d/conda.sh
     - conda env create --force -p ./envs -f docs/sphinx/environment.yml
     - conda activate ./envs
+  script:
     - cd docs/sphinx/source
     - python -m sphinx -T -E -b html -d _build/doctrees -D language=en . _build/html
   artifacts:
@@ -56,6 +56,9 @@ test-job:
   extends: [.excl_runner]
   stage: test
   allow_failure: true
+  before_script:
+    - module load cmake
+    - module load gnu
   script:
     - echo "Installing iris to $CI_PROJECT_DIR/install"
     - bash build-coverage.sh
