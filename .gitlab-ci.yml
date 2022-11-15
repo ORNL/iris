@@ -3,6 +3,7 @@ stages:
   - docs
   - deploy_docs
   - test
+  - dagger
 
 .excl_runner:
   tags: [excl]
@@ -20,6 +21,9 @@ build-job:
   script:
     - echo "Installing iris to $CI_PROJECT_DIR/install"
     - bash build.sh
+  artifacts:
+    paths:
+      - $IRIS_INSTALL_ROOT
 
 docs-job:
   tags: [devdocs]
@@ -87,3 +91,18 @@ test-job:
       coverage_report:
         coverage_format: cobertura
         path: coverage.xml
+
+dagger-job:
+  extends: [.excl_runner]
+  stage: dagger
+  needs: [build-job]
+  before_script:
+    - module load cmake
+    - module load gnu
+    - source /auto/ciscratch/conda/etc/profile.d/conda.sh
+  script:
+    - cd apps/dagger
+    - conda env create --force -p ./envs -f dagger.yaml
+    - conda activate ./envs
+    - ./run-policy-evaluation.sh
+    - ./test_correctness.sh
