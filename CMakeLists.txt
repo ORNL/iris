@@ -62,7 +62,7 @@ add_custom_command(
   COMMAND echo "    set -l pyversion (python3 -V 2>&1 | grep -Po '(?<=Python )(.+)')" >> ${CMAKE_BINARY_DIR}/setup.fish VERBATIM
   COMMAND echo "    if test -z \"\$pyversion\" ]]" >> ${CMAKE_BINARY_DIR}/setup.fish VERBATIM
   COMMAND echo "    echo \"No Python is detected! Cannot source\" " >> ${CMAKE_BINARY_DIR}/setup.fish VERBATIM
-  COMMAND echo "    return" >> ${CMAKE_BINARY_DIR}/setup.fish VERBATIM
+  COMMAND echo "    exit" >> ${CMAKE_BINARY_DIR}/setup.fish VERBATIM
   COMMAND echo "    end" >> ${CMAKE_BINARY_DIR}/setup.fish VERBATIM
   COMMAND echo "end" >> ${CMAKE_BINARY_DIR}/setup.fish VERBATIM
   COMMAND echo "set SCRIPT (\$PYTHON_EXE -c \"import os,sys; print(os.path.realpath(os.path.expanduser(sys.argv[1])))\" \$SCRIPT_FILE)" >> ${CMAKE_BINARY_DIR}/setup.fish VERBATIM
