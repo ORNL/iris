@@ -418,7 +418,7 @@ int indexer = 0;
         C[i] = i;
       }
       //reproduce test computation on the host
-      for (size_t z = 0; z < 50; z++){
+      for (size_t z = 0; z < num_tasks; z++){
       for (size_t i = 0; i < SIZE; i++)
         for (size_t j = 0; j < SIZE; j++){
           double sum = 0.0;
