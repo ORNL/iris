@@ -120,7 +120,6 @@ Platform::~Platform() {
   if (null_kernel_) delete null_kernel_;
   if (enable_profiler_)
     for (int i = 0; i < nprofilers_; i++) delete profilers_[i];
-  if (scheduling_history_) delete scheduling_history_;
   if (sig_handler_) delete sig_handler_;
   if (json_) delete json_;
   if (pool_) delete pool_;
