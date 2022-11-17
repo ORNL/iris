@@ -25,6 +25,8 @@ elif [ "$SYSTEM" = "equinox" ] ; then
   rm -f *.csv ; make dagger_test kernel.ptx
 elif [ "$SYSTEM" = "explorer" ] ; then
   rm -f *.csv ; make dagger_test kernel.hip
+elif [ "$SYSTEM" = "zenith.ftpn.ornl.gov" ] ; then
+  rm -f *.csv ; make dagger_test kernel.hip kernel.ptx
 else 
   rm -f *.csv ; make dagger_test
 fi
