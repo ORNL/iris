@@ -28,7 +28,11 @@ elif [ "$SYSTEM" = "equinox" ] ; then
   rm -f *.csv ; make dagger_runner kernel.ptx
 elif [ "$SYSTEM" = "explorer" ] ; then
   rm -f *.csv ; make dagger_runner kernel.hip
-else 
+elif [ "$SYSTEM" = "zenith.ftpn.ornl.gov" ] ; then
+  module load nvhpc/22.11
+  export CUDA_PATH=/opt/nvidia/hpc_sdk/Linux_x86_64/22.11/cuda/
+  rm -f *.csv ; make dagger_runner kernel.hip; make dagger_runner kernel.ptx
+else
   rm -f *.csv ; make dagger_runner
 fi
 
