@@ -373,7 +373,6 @@ int main(int argc, char** argv) {
     }
 
     //variable number of memory buffers can be provided into IRIS
-    //void* json_inputs[3+sizecb.size()+num_buffers_used];
     void* json_inputs[4+num_buffers_used];
 int indexer = 0;
     printf("TODO: support SIZE per kernel -- as with sizecb\n");
