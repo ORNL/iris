@@ -1,35 +1,18 @@
 #!/bin/bash
+source ./setup.sh
 
-#if we don't have a conda env set, then load it.
-if [[ -z "$CONDA_PREFIX" ]] ; then
-  echo "Please ensure this script is run from a conda session (hint: conda activate iris)"
-  echo "Aborting..."
-  exit 1
-fi
-
-export SYSTEM=`hostname`
-export RESULTS_DIR=`pwd`/dagger-figures
-mkdir -p $RESULTS_DIR
-echo "Running DAGGER evaluation.... (result figures can be found in $RESULTS_DIR)"
-
-#start with a clean build of iris
-cd ../.. ; ./build.sh && [ $? -ne 0 ] &&  exit 1 ; cd apps/dagger
-make clean
 if [ "$SYSTEM" = "leconte" ] ; then
-   module load gnu/9.2.0 nvhpc/21.3
-   export CUDA_PATH=/opt/nvidia/hpc_sdk/Linux_ppc64le/21.3/cuda
-   if [[ $PATH != *$CUDA_PATH* ]]; then
-      export PATH=$CUDA_PATH/bin:$PATH
-      export LD_LIBRARY_PATH=$CUDA_PATH/lib64:$LD_LIBRARY_PATH
-   fi
   rm -f *.csv ; make dagger_runner kernel.ptx
 elif [ "$SYSTEM" = "equinox" ] ; then
-  export CUDA_PATH=/opt/nvidia/hpc_sdk/Linux_ppc64le/22.7/cuda
   rm -f *.csv ; make dagger_runner kernel.ptx
 elif [ "$SYSTEM" = "explorer" ] ; then
   rm -f *.csv ; make dagger_runner kernel.hip
-else 
-  rm -f *.csv ; make dagger_runner
+elif [ "$SYSTEM" = "radeon" ] ; then
+  rm -f *.csv ; make dagger_runner kernel.hip
+elif [ "$SYSTEM" = "zenith" ] ; then
+  rm -f *.csv ; make dagger_runner kernel.hip kernel.ptx
+else
+  echo "Unknown system." && exit 1
 fi
 
 # exit 1 if the last program run wasn't successful
@@ -37,12 +20,16 @@ fi
 
 #don't proceed if the target failed to build
 if ! [ -f dagger_runner ] ; then
-   exit 1
+   echo "No dagger_runner app! " && exit 1
 fi
 
+export RESULTS_DIR=`pwd`/dagger-figures
+mkdir -p $RESULTS_DIR
+echo "Running DAGGER evaluation.... (result figures can be found in $RESULTS_DIR)"
+
 #ensure libiris.so is in the shared library path
-  echo "ADDING $HOME/.local/lib64 to LD_LIBRARY_PATH"
-export LD_LIBRARY_PATH=$HOME/.local/lib64:$HOME/.local/lib:$LD_LIBRARY_PATH
+#  echo "ADDING $HOME/.local/lib64 to LD_LIBRARY_PATH"
+#export LD_LIBRARY_PATH=$HOME/.local/lib64:$HOME/.local/lib:$LD_LIBRARY_PATH
 
 #Only run DAGGER once to generate the payloads to test the systems (we want to compare the scheduling algorithms over different systems, and so we should fix the payloads over the whole experiment)
 #remove the dagger-payloads directory to regenerate payloads
@@ -149,7 +136,7 @@ do
   echo "Running IRIS with Policy: $POLICY"
   IRIS_HISTORY=1 ./dagger_runner --logfile="time.csv" --repeats=1 --scheduling-policy="$POLICY" --size=256  --kernels="ijk" --duplicates="0" --buffers-per-kernel="ijk:w r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=10 --num-tasks=10 --min-width=1 --max-width=1
   [ $? -ne 0 ] && echo "Linear 10 Failed with Policy: $POLICY" &&  exit 1
-  mv dagger_runner-$SYSTEM-*.csv $RESULTS_DIR/linear-10-$POLICY-$SYSTEM.csv
+  mv dagger_runner-$SYSTEM*.csv $RESULTS_DIR/linear-10-$POLICY-$SYSTEM.csv
 done
 
 # Parallel 2-by-10
@@ -166,7 +153,7 @@ do
   echo "Running IRIS with Policy: $POLICY"
   IRIS_HISTORY=1 ./dagger_runner --logfile="time.csv" --repeats=1 --scheduling-policy="$POLICY" --size=256  --kernels="ijk" --duplicates="2" --buffers-per-kernel="ijk:w r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=10 --num-tasks=10 --min-width=1 --max-width=1
   [ $? -ne 0 ] && echo "Parallel 2by10 Failed with Policy: $POLICY" &&  exit 1
-  mv dagger_runner-$SYSTEM-*.csv $RESULTS_DIR/parallel-2by10-$POLICY-$SYSTEM.csv
+  mv dagger_runner-$SYSTEM*.csv $RESULTS_DIR/parallel-2by10-$POLICY-$SYSTEM.csv
   [ $? -ne 0 ] &&  exit 1
 done
 
@@ -183,7 +170,7 @@ do
   echo "Running IRIS with Policy: $POLICY"
   IRIS_HISTORY=1 ./dagger_runner --logfile="time.csv" --repeats=1 --scheduling-policy="$POLICY" --size=256  --kernels="ijk" --duplicates="5" --buffers-per-kernel="ijk:w r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=100 --num-tasks=100 --min-width=1 --max-width=1
   [ $? -ne 0 ] && echo "Parallel 5by100 Failed with Policy: $POLICY" &&  exit 1
-  mv dagger_runner-$SYSTEM-*.csv $RESULTS_DIR/parallel-5by100-$POLICY-$SYSTEM.csv
+  mv dagger_runner-$SYSTEM*.csv $RESULTS_DIR/parallel-5by100-$POLICY-$SYSTEM.csv
   [ $? -ne 0 ] &&  exit 1
 done
 
@@ -201,7 +188,7 @@ do
   echo "Running IRIS with Policy: $POLICY"
   IRIS_HISTORY=1 ./dagger_runner --logfile="time.csv" --repeats=1 --scheduling-policy="$POLICY" --size=256 --kernels="ijk" --duplicates="0" --buffers-per-kernel="ijk:w r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=1 --num-tasks=10 --min-width=10 --max-width=10 --sandwich
   [ $? -ne 0 ] && echo "Diamond 10 Failed with Policy: $POLICY" &&  exit 1
-  mv dagger_runner-$SYSTEM-*.csv $RESULTS_DIR/diamond-10-$POLICY-$SYSTEM.csv
+  mv dagger_runner-$SYSTEM*.csv $RESULTS_DIR/diamond-10-$POLICY-$SYSTEM.csv
   [ $? -ne 0 ] &&  exit 1
 done
 
@@ -218,7 +205,7 @@ do
   echo "Running IRIS with Policy: $POLICY"
   IRIS_HISTORY=1 ./dagger_runner --logfile="time.csv" --repeats=1 --scheduling-policy="$POLICY" --size=256 --kernels="ijk" --duplicates="0" --buffers-per-kernel="ijk:w r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=1 --num-tasks=100 --min-width=100 --max-width=100 --sandwich
   [ $? -ne 0 ] && echo "Diamond 100 Failed with Policy: $POLICY" &&  exit 1
-  mv dagger_runner-$SYSTEM-*.csv $RESULTS_DIR/diamond-100-$POLICY-$SYSTEM.csv
+  mv dagger_runner-$SYSTEM*.csv $RESULTS_DIR/diamond-100-$POLICY-$SYSTEM.csv
   [ $? -ne 0 ] &&  exit 1
 done
 
@@ -235,7 +222,7 @@ do
   echo "Running IRIS with Policy: $POLICY"
   IRIS_HISTORY=1 ./dagger_runner --logfile="time.csv" --repeats=1 --scheduling-policy="$POLICY" --size=256 --kernels="ijk" --duplicates="0" --buffers-per-kernel="ijk:w r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=1 --num-tasks=1000 --min-width=1000 --max-width=1000 --sandwich
   [ $? -ne 0 ] && echo "Diamond 1000 Failed with Policy: $POLICY" &&  exit 1
-  mv dagger_runner-$SYSTEM-*.csv $RESULTS_DIR/diamond-1000-$POLICY-$SYSTEM.csv
+  mv dagger_runner-$SYSTEM*.csv $RESULTS_DIR/diamond-1000-$POLICY-$SYSTEM.csv
   [ $? -ne 0 ] &&  exit 1
 done
 
@@ -252,7 +239,7 @@ do
   echo "Running IRIS with Policy: $POLICY"
   IRIS_HISTORY=1 ./dagger_runner --logfile="time.csv" --repeats=1 --scheduling-policy="$POLICY" --size=256 --kernels="ijk" --duplicates="0" --buffers-per-kernel="ijk:w r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=25 --num-tasks=50 --min-width=1 --max-width=2 --sandwich
   [ $? -ne 0 ] && echo "Chainlink 25 Failed with Policy: $POLICY" &&  exit 1
-  mv dagger_runner-$SYSTEM-*.csv $RESULTS_DIR/chainlink-25-$POLICY-$SYSTEM.csv
+  mv dagger_runner-$SYSTEM*.csv $RESULTS_DIR/chainlink-25-$POLICY-$SYSTEM.csv
   [ $? -ne 0 ] &&  exit 1
 done
 
@@ -269,7 +256,7 @@ do
   echo "Running IRIS with Policy: $POLICY"
   IRIS_HISTORY=1 ./dagger_runner --logfile="time.csv" --repeats=1 --scheduling-policy="$POLICY" --size=256 --kernels="ijk" --duplicates="0" --buffers-per-kernel="ijk:w r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=25 --num-tasks=25 --min-width=1 --max-width=12 --sandwich
   [ $? -ne 0 ] && echo "Galaga 25 Failed with Policy: $POLICY" &&  exit 1
-  mv dagger_runner-$SYSTEM-*.csv $RESULTS_DIR/chainlink-25-$POLICY-$SYSTEM.csv
+  mv dagger_runner-$SYSTEM*.csv $RESULTS_DIR/chainlink-25-$POLICY-$SYSTEM.csv
   [ $? -ne 0 ] &&  exit 1
 done
 
@@ -286,7 +273,7 @@ do
   echo "Running IRIS with Policy: $POLICY"
   IRIS_HISTORY=1 ./dagger_runner --logfile="time.csv" --repeats=1 --scheduling-policy="$POLICY" --size=256 --kernels="ijk" --duplicates="0" --buffers-per-kernel="ijk:w r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=25 --num-tasks=25 --min-width=1 --max-width=12 --sandwich
   [ $? -ne 0 ] && echo "Tangled 25 Failed with Policy: $POLICY" &&  exit 1
-  mv dagger_runner-$SYSTEM-*.csv $RESULTS_DIR/tangled-25-$POLICY-$SYSTEM.csv
+  mv dagger_runner-$SYSTEM*.csv $RESULTS_DIR/tangled-25-$POLICY-$SYSTEM.csv
   [ $? -ne 0 ] &&  exit 1
 done
 
@@ -303,7 +290,7 @@ do
   echo "Running IRIS with Policy: $POLICY"
   IRIS_HISTORY=1 ./dagger_runner --logfile="time.csv" --repeats=1 --scheduling-policy="$POLICY" --size=256 --kernels="ijk" --duplicates="0" --buffers-per-kernel="ijk:w r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=25 --num-tasks=1000 --min-width=1 --max-width=50 --sandwich
   [ $? -ne 0 ] && echo "Brain 1000 Failed with Policy: $POLICY" &&  exit 1
-  mv dagger_runner-$SYSTEM-*.csv $RESULTS_DIR/brain-1000-$POLICY-$SYSTEM.csv
+  mv dagger_runner-$SYSTEM*.csv $RESULTS_DIR/brain-1000-$POLICY-$SYSTEM.csv
   [ $? -ne 0 ] &&  exit 1
 done
 
