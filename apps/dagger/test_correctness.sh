@@ -1,34 +1,18 @@
 #!/bin/bash
+source ./setup.sh
 
-#if we don't have a conda env set, then load it.
-if [[ -z "$CONDA_PREFIX" ]] ; then
-  echo "Please ensure this script is run from a conda session (hint: conda activate iris)"
-  echo "Aborting..."
-  exit
-fi
-
-export SYSTEM=`hostname`
-
-#start with a clean build of iris
-rm -f $HOME/.local/lib64/libiris.so ; rm -f $HOME/.local/lib/libiris.so ;
-cd ../.. ; ./build.sh; [ $? -ne 0 ] && exit ; cd apps/dagger
-make clean
 if [ "$SYSTEM" = "leconte" ] ; then
-   module load gnu/9.2.0 nvhpc/21.3
-   export CUDA_PATH=/opt/nvidia/hpc_sdk/Linux_ppc64le/21.3/cuda
-   if [[ $PATH != *$CUDA_PATH* ]]; then
-      export PATH=$CUDA_PATH/bin:$PATH
-      export LD_LIBRARY_PATH=$CUDA_PATH/lib64:$LD_LIBRARY_PATH
-   fi
   rm -f *.csv ; make dagger_test kernel.ptx
 elif [ "$SYSTEM" = "equinox" ] ; then
   rm -f *.csv ; make dagger_test kernel.ptx
 elif [ "$SYSTEM" = "explorer" ] ; then
   rm -f *.csv ; make dagger_test kernel.hip
-elif [ "$SYSTEM" = "zenith.ftpn.ornl.gov" ] ; then
+elif [ "$SYSTEM" = "radeon" ] ; then
+  rm -f *.csv ; make dagger_test kernel.hip
+elif [ "$SYSTEM" = "zenith" ] ; then
   rm -f *.csv ; make dagger_test kernel.hip kernel.ptx
-else 
-  rm -f *.csv ; make dagger_test
+else
+  echo "Unknown system." && exit
 fi
 
 #exit if the last program run wasn't successful

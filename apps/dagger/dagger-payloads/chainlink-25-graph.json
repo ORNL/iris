@@ -1,0 +1,1717 @@
+{
+  "iris-graph": {
+    "inputs": [
+      "user-size",
+      "user-size-cb-ijk",
+      "hostmem-ijk-buffer0-instance0",
+      "hostmem-ijk-buffer1-instance0",
+      "hostmem-ijk-buffer2-instance0",
+      "devicemem-ijk-buffer0-instance0",
+      "devicemem-ijk-buffer1-instance0",
+      "devicemem-ijk-buffer2-instance0",
+      "user-target-control",
+      "user-target-data"
+    ],
+    "graph": {
+      "tasks": [
+        {
+          "name": "transferto-ijk-buffer1-instance0",
+          "commands": [
+            {
+              "h2d": {
+                "name": "d2h-buffer1-instance0",
+                "device_memory": "devicemem-ijk-buffer1-instance0",
+                "host_memory": "hostmem-ijk-buffer1-instance0",
+                "offset": "0",
+                "size": "user-size-cb-ijk"
+              }
+            }
+          ],
+          "target": "user-target-control",
+          "depends": []
+        },
+        {
+          "name": "transferto-ijk-buffer2-instance0",
+          "commands": [
+            {
+              "h2d": {
+                "name": "d2h-buffer2-instance0",
+                "device_memory": "devicemem-ijk-buffer2-instance0",
+                "host_memory": "hostmem-ijk-buffer2-instance0",
+                "offset": "0",
+                "size": "user-size-cb-ijk"
+              }
+            }
+          ],
+          "target": "user-target-control",
+          "depends": []
+        },
+        {
+          "name": "task0",
+          "commands": [
+            {
+              "kernel": {
+                "name": "ijk",
+                "global_size": [
+                  "user-size",
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer0-instance0",
+                    "permission": "w"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer1-instance0",
+                    "permission": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer2-instance0",
+                    "permission": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "transferto-ijk-buffer1-instance0",
+            "transferto-ijk-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task1",
+          "commands": [
+            {
+              "kernel": {
+                "name": "ijk",
+                "global_size": [
+                  "user-size",
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer0-instance0",
+                    "permission": "w"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer1-instance0",
+                    "permission": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer2-instance0",
+                    "permission": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task0",
+            "transferto-ijk-buffer1-instance0",
+            "transferto-ijk-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task2",
+          "commands": [
+            {
+              "kernel": {
+                "name": "ijk",
+                "global_size": [
+                  "user-size",
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer0-instance0",
+                    "permission": "w"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer1-instance0",
+                    "permission": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer2-instance0",
+                    "permission": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task0",
+            "transferto-ijk-buffer1-instance0",
+            "transferto-ijk-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task3",
+          "commands": [
+            {
+              "kernel": {
+                "name": "ijk",
+                "global_size": [
+                  "user-size",
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer0-instance0",
+                    "permission": "w"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer1-instance0",
+                    "permission": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer2-instance0",
+                    "permission": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task2",
+            "task1",
+            "transferto-ijk-buffer1-instance0",
+            "transferto-ijk-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task4",
+          "commands": [
+            {
+              "kernel": {
+                "name": "ijk",
+                "global_size": [
+                  "user-size",
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer0-instance0",
+                    "permission": "w"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer1-instance0",
+                    "permission": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer2-instance0",
+                    "permission": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task3",
+            "transferto-ijk-buffer1-instance0",
+            "transferto-ijk-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task5",
+          "commands": [
+            {
+              "kernel": {
+                "name": "ijk",
+                "global_size": [
+                  "user-size",
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer0-instance0",
+                    "permission": "w"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer1-instance0",
+                    "permission": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer2-instance0",
+                    "permission": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task4",
+            "transferto-ijk-buffer1-instance0",
+            "transferto-ijk-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task6",
+          "commands": [
+            {
+              "kernel": {
+                "name": "ijk",
+                "global_size": [
+                  "user-size",
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer0-instance0",
+                    "permission": "w"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer1-instance0",
+                    "permission": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer2-instance0",
+                    "permission": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task4",
+            "transferto-ijk-buffer1-instance0",
+            "transferto-ijk-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task7",
+          "commands": [
+            {
+              "kernel": {
+                "name": "ijk",
+                "global_size": [
+                  "user-size",
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer0-instance0",
+                    "permission": "w"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer1-instance0",
+                    "permission": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer2-instance0",
+                    "permission": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task6",
+            "task5",
+            "transferto-ijk-buffer1-instance0",
+            "transferto-ijk-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task8",
+          "commands": [
+            {
+              "kernel": {
+                "name": "ijk",
+                "global_size": [
+                  "user-size",
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer0-instance0",
+                    "permission": "w"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer1-instance0",
+                    "permission": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer2-instance0",
+                    "permission": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task7",
+            "transferto-ijk-buffer1-instance0",
+            "transferto-ijk-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task9",
+          "commands": [
+            {
+              "kernel": {
+                "name": "ijk",
+                "global_size": [
+                  "user-size",
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer0-instance0",
+                    "permission": "w"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer1-instance0",
+                    "permission": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer2-instance0",
+                    "permission": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task8",
+            "transferto-ijk-buffer1-instance0",
+            "transferto-ijk-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task10",
+          "commands": [
+            {
+              "kernel": {
+                "name": "ijk",
+                "global_size": [
+                  "user-size",
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer0-instance0",
+                    "permission": "w"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer1-instance0",
+                    "permission": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer2-instance0",
+                    "permission": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task8",
+            "transferto-ijk-buffer1-instance0",
+            "transferto-ijk-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task11",
+          "commands": [
+            {
+              "kernel": {
+                "name": "ijk",
+                "global_size": [
+                  "user-size",
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer0-instance0",
+                    "permission": "w"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer1-instance0",
+                    "permission": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer2-instance0",
+                    "permission": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task10",
+            "transferto-ijk-buffer1-instance0",
+            "transferto-ijk-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task12",
+          "commands": [
+            {
+              "kernel": {
+                "name": "ijk",
+                "global_size": [
+                  "user-size",
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer0-instance0",
+                    "permission": "w"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer1-instance0",
+                    "permission": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer2-instance0",
+                    "permission": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task10",
+            "task9",
+            "transferto-ijk-buffer1-instance0",
+            "transferto-ijk-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task13",
+          "commands": [
+            {
+              "kernel": {
+                "name": "ijk",
+                "global_size": [
+                  "user-size",
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer0-instance0",
+                    "permission": "w"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer1-instance0",
+                    "permission": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer2-instance0",
+                    "permission": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task11",
+            "task12",
+            "transferto-ijk-buffer1-instance0",
+            "transferto-ijk-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task14",
+          "commands": [
+            {
+              "kernel": {
+                "name": "ijk",
+                "global_size": [
+                  "user-size",
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer0-instance0",
+                    "permission": "w"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer1-instance0",
+                    "permission": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer2-instance0",
+                    "permission": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task13",
+            "transferto-ijk-buffer1-instance0",
+            "transferto-ijk-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task15",
+          "commands": [
+            {
+              "kernel": {
+                "name": "ijk",
+                "global_size": [
+                  "user-size",
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer0-instance0",
+                    "permission": "w"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer1-instance0",
+                    "permission": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer2-instance0",
+                    "permission": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task14",
+            "transferto-ijk-buffer1-instance0",
+            "transferto-ijk-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task16",
+          "commands": [
+            {
+              "kernel": {
+                "name": "ijk",
+                "global_size": [
+                  "user-size",
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer0-instance0",
+                    "permission": "w"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer1-instance0",
+                    "permission": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer2-instance0",
+                    "permission": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task14",
+            "transferto-ijk-buffer1-instance0",
+            "transferto-ijk-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task17",
+          "commands": [
+            {
+              "kernel": {
+                "name": "ijk",
+                "global_size": [
+                  "user-size",
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer0-instance0",
+                    "permission": "w"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer1-instance0",
+                    "permission": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer2-instance0",
+                    "permission": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task16",
+            "task15",
+            "transferto-ijk-buffer1-instance0",
+            "transferto-ijk-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task18",
+          "commands": [
+            {
+              "kernel": {
+                "name": "ijk",
+                "global_size": [
+                  "user-size",
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer0-instance0",
+                    "permission": "w"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer1-instance0",
+                    "permission": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer2-instance0",
+                    "permission": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task15",
+            "transferto-ijk-buffer1-instance0",
+            "transferto-ijk-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task19",
+          "commands": [
+            {
+              "kernel": {
+                "name": "ijk",
+                "global_size": [
+                  "user-size",
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer0-instance0",
+                    "permission": "w"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer1-instance0",
+                    "permission": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer2-instance0",
+                    "permission": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task18",
+            "task17",
+            "transferto-ijk-buffer1-instance0",
+            "transferto-ijk-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task20",
+          "commands": [
+            {
+              "kernel": {
+                "name": "ijk",
+                "global_size": [
+                  "user-size",
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer0-instance0",
+                    "permission": "w"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer1-instance0",
+                    "permission": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer2-instance0",
+                    "permission": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task19",
+            "transferto-ijk-buffer1-instance0",
+            "transferto-ijk-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task21",
+          "commands": [
+            {
+              "kernel": {
+                "name": "ijk",
+                "global_size": [
+                  "user-size",
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer0-instance0",
+                    "permission": "w"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer1-instance0",
+                    "permission": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer2-instance0",
+                    "permission": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task20",
+            "transferto-ijk-buffer1-instance0",
+            "transferto-ijk-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task22",
+          "commands": [
+            {
+              "kernel": {
+                "name": "ijk",
+                "global_size": [
+                  "user-size",
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer0-instance0",
+                    "permission": "w"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer1-instance0",
+                    "permission": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer2-instance0",
+                    "permission": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task20",
+            "transferto-ijk-buffer1-instance0",
+            "transferto-ijk-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task23",
+          "commands": [
+            {
+              "kernel": {
+                "name": "ijk",
+                "global_size": [
+                  "user-size",
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer0-instance0",
+                    "permission": "w"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer1-instance0",
+                    "permission": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer2-instance0",
+                    "permission": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task22",
+            "task21",
+            "transferto-ijk-buffer1-instance0",
+            "transferto-ijk-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task24",
+          "commands": [
+            {
+              "kernel": {
+                "name": "ijk",
+                "global_size": [
+                  "user-size",
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer0-instance0",
+                    "permission": "w"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer1-instance0",
+                    "permission": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer2-instance0",
+                    "permission": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task21",
+            "transferto-ijk-buffer1-instance0",
+            "transferto-ijk-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task25",
+          "commands": [
+            {
+              "kernel": {
+                "name": "ijk",
+                "global_size": [
+                  "user-size",
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer0-instance0",
+                    "permission": "w"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer1-instance0",
+                    "permission": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer2-instance0",
+                    "permission": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task23",
+            "task24",
+            "transferto-ijk-buffer1-instance0",
+            "transferto-ijk-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task26",
+          "commands": [
+            {
+              "kernel": {
+                "name": "ijk",
+                "global_size": [
+                  "user-size",
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer0-instance0",
+                    "permission": "w"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer1-instance0",
+                    "permission": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer2-instance0",
+                    "permission": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task25",
+            "transferto-ijk-buffer1-instance0",
+            "transferto-ijk-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task27",
+          "commands": [
+            {
+              "kernel": {
+                "name": "ijk",
+                "global_size": [
+                  "user-size",
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer0-instance0",
+                    "permission": "w"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer1-instance0",
+                    "permission": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer2-instance0",
+                    "permission": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task26",
+            "transferto-ijk-buffer1-instance0",
+            "transferto-ijk-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task28",
+          "commands": [
+            {
+              "kernel": {
+                "name": "ijk",
+                "global_size": [
+                  "user-size",
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer0-instance0",
+                    "permission": "w"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer1-instance0",
+                    "permission": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer2-instance0",
+                    "permission": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task26",
+            "transferto-ijk-buffer1-instance0",
+            "transferto-ijk-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task29",
+          "commands": [
+            {
+              "kernel": {
+                "name": "ijk",
+                "global_size": [
+                  "user-size",
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer0-instance0",
+                    "permission": "w"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer1-instance0",
+                    "permission": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer2-instance0",
+                    "permission": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task27",
+            "task28",
+            "transferto-ijk-buffer1-instance0",
+            "transferto-ijk-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task30",
+          "commands": [
+            {
+              "kernel": {
+                "name": "ijk",
+                "global_size": [
+                  "user-size",
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer0-instance0",
+                    "permission": "w"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer1-instance0",
+                    "permission": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer2-instance0",
+                    "permission": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task29",
+            "transferto-ijk-buffer1-instance0",
+            "transferto-ijk-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task31",
+          "commands": [
+            {
+              "kernel": {
+                "name": "ijk",
+                "global_size": [
+                  "user-size",
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer0-instance0",
+                    "permission": "w"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer1-instance0",
+                    "permission": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer2-instance0",
+                    "permission": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task29",
+            "transferto-ijk-buffer1-instance0",
+            "transferto-ijk-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task32",
+          "commands": [
+            {
+              "kernel": {
+                "name": "ijk",
+                "global_size": [
+                  "user-size",
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer0-instance0",
+                    "permission": "w"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer1-instance0",
+                    "permission": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer2-instance0",
+                    "permission": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task30",
+            "task31",
+            "transferto-ijk-buffer1-instance0",
+            "transferto-ijk-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task33",
+          "commands": [
+            {
+              "kernel": {
+                "name": "ijk",
+                "global_size": [
+                  "user-size",
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer0-instance0",
+                    "permission": "w"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer1-instance0",
+                    "permission": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer2-instance0",
+                    "permission": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task30",
+            "transferto-ijk-buffer1-instance0",
+            "transferto-ijk-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task34",
+          "commands": [
+            {
+              "kernel": {
+                "name": "ijk",
+                "global_size": [
+                  "user-size",
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer0-instance0",
+                    "permission": "w"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer1-instance0",
+                    "permission": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer2-instance0",
+                    "permission": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task32",
+            "task33",
+            "transferto-ijk-buffer1-instance0",
+            "transferto-ijk-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task35",
+          "commands": [
+            {
+              "kernel": {
+                "name": "ijk",
+                "global_size": [
+                  "user-size",
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer0-instance0",
+                    "permission": "w"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer1-instance0",
+                    "permission": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer2-instance0",
+                    "permission": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task34",
+            "transferto-ijk-buffer1-instance0",
+            "transferto-ijk-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task36",
+          "commands": [
+            {
+              "kernel": {
+                "name": "ijk",
+                "global_size": [
+                  "user-size",
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer0-instance0",
+                    "permission": "w"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer1-instance0",
+                    "permission": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer2-instance0",
+                    "permission": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task35",
+            "transferto-ijk-buffer1-instance0",
+            "transferto-ijk-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task37",
+          "commands": [
+            {
+              "kernel": {
+                "name": "ijk",
+                "global_size": [
+                  "user-size",
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer0-instance0",
+                    "permission": "w"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer1-instance0",
+                    "permission": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer2-instance0",
+                    "permission": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task35",
+            "transferto-ijk-buffer1-instance0",
+            "transferto-ijk-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task38",
+          "commands": [
+            {
+              "kernel": {
+                "name": "ijk",
+                "global_size": [
+                  "user-size",
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer0-instance0",
+                    "permission": "w"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer1-instance0",
+                    "permission": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer2-instance0",
+                    "permission": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task36",
+            "task37",
+            "transferto-ijk-buffer1-instance0",
+            "transferto-ijk-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task39",
+          "commands": [
+            {
+              "kernel": {
+                "name": "ijk",
+                "global_size": [
+                  "user-size",
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer0-instance0",
+                    "permission": "w"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer1-instance0",
+                    "permission": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer2-instance0",
+                    "permission": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task37",
+            "task36",
+            "transferto-ijk-buffer1-instance0",
+            "transferto-ijk-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task40",
+          "commands": [
+            {
+              "kernel": {
+                "name": "ijk",
+                "global_size": [
+                  "user-size",
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer0-instance0",
+                    "permission": "w"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer1-instance0",
+                    "permission": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer2-instance0",
+                    "permission": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task38",
+            "transferto-ijk-buffer1-instance0",
+            "transferto-ijk-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task41",
+          "commands": [
+            {
+              "kernel": {
+                "name": "ijk",
+                "global_size": [
+                  "user-size",
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer0-instance0",
+                    "permission": "w"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer1-instance0",
+                    "permission": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer2-instance0",
+                    "permission": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task39",
+            "task38",
+            "transferto-ijk-buffer1-instance0",
+            "transferto-ijk-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task42",
+          "commands": [
+            {
+              "kernel": {
+                "name": "ijk",
+                "global_size": [
+                  "user-size",
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer0-instance0",
+                    "permission": "w"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer1-instance0",
+                    "permission": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "name": "devicemem-ijk-buffer2-instance0",
+                    "permission": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task41",
+            "task40",
+            "transferto-ijk-buffer1-instance0",
+            "transferto-ijk-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "transferfrom-ijk-buffer0-instance0",
+          "commands": [
+            {
+              "d2h": {
+                "name": "d2h-buffer0-instance0",
+                "device_memory": "devicemem-ijk-buffer0-instance0",
+                "host_memory": "hostmem-ijk-buffer0-instance0",
+                "offset": "0",
+                "size": "user-size-cb-ijk"
+              }
+            }
+          ],
+          "depends": [
+            "task0",
+            "task1",
+            "task2",
+            "task3",
+            "task4",
+            "task5",
+            "task6",
+            "task7",
+            "task8",
+            "task9",
+            "task10",
+            "task11",
+            "task12",
+            "task13",
+            "task14",
+            "task15",
+            "task16",
+            "task17",
+            "task18",
+            "task19",
+            "task20",
+            "task21",
+            "task22",
+            "task23",
+            "task24",
+            "task25",
+            "task26",
+            "task27",
+            "task28",
+            "task29",
+            "task30",
+            "task31",
+            "task32",
+            "task33",
+            "task34",
+            "task35",
+            "task36",
+            "task37",
+            "task38",
+            "task39",
+            "task40",
+            "task41",
+            "task42"
+          ],
+          "target": "user-target-control"
+        }
+      ]
+    }
+  }
+}
