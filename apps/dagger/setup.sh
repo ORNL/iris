@@ -1,7 +1,9 @@
 #!/bin/bash
+if [ ! -n "$IRIS_INSTALL_ROOT" ]; then
+	IRIS_INSTALL_ROOT="$HOME/.local"
+fi
 
 export IRIS_SRC_DIR=../..
-export IRIS_DIR=$IRIS_INSTALL_ROOT
 export WORKING_DIR=`pwd`
 export SYSTEM=`hostname`
 
@@ -17,7 +19,7 @@ export CC=/usr/bin/gcc
 export CXX=/usr/bin/g++
 
 #start with a clean build of iris
-rm -f $IRIS_DIR/lib64/libiris.so ; rm -f $IRIS_DIR/lib/libiris.so ;
+rm -f $IRIS_INSTALL_ROOT/lib64/libiris.so ; rm -f $IRIS_INSTALL_ROOT/lib/libiris.so ;
 cd $IRIS_SRC_DIR ; ./build.sh; [ $? -ne 0 ] && exit ; cd $WORKING_DIR ;
 make clean
 if [ "$SYSTEM" = "leconte" ] ; then
@@ -34,5 +36,5 @@ elif [ "$SYSTEM" = "zenith.ftpn.ornl.gov" ] ; then
   export SYSTEM="zenith"
 fi
 
-source $IRIS_DIR/setup.source
+source $IRIS_INSTALL_ROOT/setup.source
 
