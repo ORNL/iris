@@ -1,7 +1,7 @@
 #!/bin/bash
 
-export IRIS_SRC_DIR=/home/9bj/Documents/2022/iris-tmp
-export IRIS_DIR=~/.local
+export IRIS_SRC_DIR=../..
+export IRIS_DIR=$IRIS_INSTALL_ROOT
 export WORKING_DIR=`pwd`
 export SYSTEM=`hostname`
 
@@ -34,6 +34,5 @@ elif [ "$SYSTEM" = "zenith.ftpn.ornl.gov" ] ; then
   export SYSTEM="zenith"
 fi
 
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$IRIS_DIR/lib:$IRIS_DIR/lib64
-export PYTHONPATH=$PYTHONPATH:$IRIS_DIR/include
+source $IRIS_DIR/setup.source
 

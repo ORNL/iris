@@ -71,7 +71,7 @@ To plot this result:
 
   ./plotter.py ./linear-10-any.csv linear-10-any.pdf "Linear 10 dataset with ANY scheduling policy" "Init"
 
-###Reproducibility Artefact
+###Reproducibility Artifacts
 All results to evaluate IRIS' scheduling policies with some interesting DAGGER inputs is provided in a single executable script:
   `./run-policy-evaluation.sh`
 
