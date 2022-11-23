@@ -103,7 +103,7 @@ test-job:
 dagger-zenith-run-policy-evaluations:
   extends: [.dagger]
   script:
-    - sbatch --partition=gpu --nodelist=zenith .gitlab-ci-scripts/slurm-dagger-run-policy-evaluations.sh
+    - sbatch --wait --partition=gpu --nodelist=zenith .gitlab-ci-scripts/slurm-dagger-run-policy-evaluations.sh
 
   artifacts:
     when: always
