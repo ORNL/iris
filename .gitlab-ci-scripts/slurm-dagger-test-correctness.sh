@@ -43,6 +43,8 @@ conda activate ./envs
 
 env
 
+groups
+
 # Run command
 ./test_correctness.sh
 popd
