@@ -21,6 +21,7 @@ echo $SHELL
 echo --------------------------------------------------------------------------------
 
 cd $GIT_ROOT
+unset MODULEPATH_ROOT
 unset MODULEPATH
 source /etc/profile.d/lmod.sh
 echo $MODULEPATH
