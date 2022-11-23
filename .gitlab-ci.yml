@@ -108,6 +108,6 @@ dagger-zenith-run-policy-evaluations:
   artifacts:
     when: always
     paths:
-      - apps/dagger/*.csv
+      - apps/dagger/dagger-figures*.csv
       - slurm*.txt
       - errors.txt
