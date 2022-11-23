@@ -121,6 +121,7 @@ dagger-zenith-run-policy-evaluations:
     - sbatch --wait --partition=gpu --nodelist=zenith .gitlab-ci-scripts/slurm-dagger-run-policy-evaluations.sh
     - echo "Errors $(wc -l errors.txt)"
     - cat errors.txt
+    - if [ -s errors.txt ]; then exit 1; fi
 
 dagger-zenith-test-correctness:
   extends: [.dagger, .test-correctness-artifacts]
@@ -128,3 +129,4 @@ dagger-zenith-test-correctness:
     - sbatch --wait --partition=gpu --nodelist=zenith .gitlab-ci-scripts/slurm-dagger-test-correctness.sh
     - echo "Errors $(wc -l errors.txt)"
     - cat errors.txt
+    - if [ -s errors.txt ]; then exit 1; fi
