@@ -33,7 +33,7 @@ conda activate ./envs
 popd
 
 # Collect Output
-grep -e '[E]' slurm-test-out.txt > errors.txt
+grep -e '\[E\]' slurm-test-out.txt > errors.txt
 
 echo --------------------------------------------------------------------------------
 echo Finished: $(date)
