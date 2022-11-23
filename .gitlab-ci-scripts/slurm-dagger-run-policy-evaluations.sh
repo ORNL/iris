@@ -6,8 +6,6 @@
 #SBATCH --output=slurm-test-out.txt
 #SBATCH --error=slurm-test-err.txt
 #SBATCH --exclusive
-#SBATCH --partition=gpu
-#SBATCH --nodelist=zenith
 
 GIT_ROOT=$(git rev-parse --show-toplevel)
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
