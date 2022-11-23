@@ -98,10 +98,7 @@ test-job:
 .dagger:
   tags: [slurm]
   stage: dagger
-  needs: []
-  before_script:
-    - echo "Installing iris to $CI_PROJECT_DIR/install"
-    - bash build.sh
+  needs: [build-job]
 
 .run-policy-evaluations-artifacts:
   artifacts:
