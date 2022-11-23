@@ -9,7 +9,7 @@
 #SBATCH --partition=gpu
 #SBATCH --nodelist=zenith
 
-set -e
+set -ex
 
 GIT_ROOT=$(git rev-parse --show-toplevel)
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
