@@ -18,6 +18,7 @@ fi
 echo Started: $(date)
 echo Host: $(hostname)
 echo Path: $GIT_ROOT
+echo Groups: $(groups)
 echo --------------------------------------------------------------------------------
 
 cd $GIT_ROOT

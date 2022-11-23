@@ -18,10 +18,11 @@ fi
 echo Started: $(date)
 echo Host: $(hostname)
 echo Path: $GIT_ROOT
+echo Groups: $(groups)
 echo --------------------------------------------------------------------------------
 
 cd $GIT_ROOT
-
+ 
 ### Setup Environment
 
 ## Slurm/gitlab-runner specific setup
@@ -40,10 +41,6 @@ source $IRIS_INSTALL_ROOT/setup.source
 pushd apps/dagger
 conda env create --force -p ./envs -f dagger.yaml
 conda activate ./envs
-
-env
-
-groups
 
 # Run command
 ./test_correctness.sh
