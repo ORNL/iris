@@ -22,6 +22,7 @@ echo ---------------------------------------------------------------------------
 
 cd $GIT_ROOT
 source /etc/profile.d/lmod.sh
+echo $MODULEPATH
 source $CONDA_ROOT/etc/profile.d/conda.sh
 source /auto/software/iris/setup_system.source
 source $IRIS_INSTALL_ROOT/setup.source
