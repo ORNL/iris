@@ -17,18 +17,18 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 echo Started: $(date)
 echo Host: $(hostname)
 echo Path: $GIT_ROOT
+echo $SHELL
 echo --------------------------------------------------------------------------------
 
+which module
 cd $GIT_ROOT
 source $CONDA_ROOT/etc/profile.d/conda.sh
 source /auto/software/iris/setup_system.source
 source $IRIS_INSTALL_ROOT/setup.source
 # source /auto/ciscratch/conda/etc/profile.d/conda.sh
-which conda
 cd apps/dagger
 which conda
 conda env create --force -p ./envs -f dagger.yaml
-which conda
 conda activate ./envs
 ./run-policy-evaluation.sh
 
