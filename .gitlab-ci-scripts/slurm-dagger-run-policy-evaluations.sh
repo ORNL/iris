@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=gitlab-ci-dagger
+#SBATCH --job-name=policy-eval-gitlab-ci-dagger
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
