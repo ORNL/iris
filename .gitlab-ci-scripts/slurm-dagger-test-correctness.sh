@@ -41,6 +41,8 @@ pushd apps/dagger
 conda env create --force -p ./envs -f dagger.yaml
 conda activate ./envs
 
+env
+
 # Run command
 ./test_correctness.sh
 popd
