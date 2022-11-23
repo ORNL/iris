@@ -10,7 +10,8 @@ stages:
 
 variables:
   IRIS_INSTALL_ROOT: $CI_PROJECT_DIR/install
-  IRIS_TESTING_PATH: code.ornl.gov/brisbane/iris-tests.git
+  IRIS_TESTING_URL: code.ornl.gov/brisbane/iris-tests.git
+  CONDA_ROOT: /auto/ciscratch/conda
 
 build-job:
   extends: [.excl_runner]
@@ -30,7 +31,7 @@ docs-job:
   stage: docs
   needs: []
   before_script:
-    - source /auto/ciscratch/conda/etc/profile.d/conda.sh
+    - source $CONDA_ROOT/etc/profile.d/conda.sh
     - conda env create --force -p ./envs -f docs/sphinx/environment.yml
     - conda activate ./envs
   script:
@@ -70,7 +71,7 @@ test-job:
     - bash build-coverage.sh
     - echo $CI_REPOSITORY_URL
     - echo $CI_PROJECT_PATH
-    - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@${IRIS_TESTING_PATH}
+    - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@${IRIS_TESTING_URL}
     - source $IRIS_INSTALL_ROOT/setup.source
     - cd iris-tests
     - mkdir build
@@ -94,19 +95,19 @@ test-job:
         coverage_format: cobertura
         path: coverage.xml
 
-dagger-job:
-  extends: [.excl_runner]
+.dagger:
+  tags: [slurm]
   stage: dagger
   needs: [build-job]
-  before_script:
-    - module load cmake
-    - module load gnu
-    - source /auto/ciscratch/conda/etc/profile.d/conda.sh
-    - source $IRIS_INSTALL_ROOT/setup.source
-  script:
-    - cd apps/dagger
-    - conda env create --force -p ./envs -f dagger.yaml
-    - conda activate ./envs
-    - ./run-policy-evaluation.sh
-    - ./test_correctness.sh
 
+dagger-zenith-run-policy-evaluations:
+  extends: [.dagger]
+  script:
+    - sbatch --partition=gpu --nodelist=zenith .gitlab-ci-scripts/slurm-dagger-run-policy-evaluations.sh
+
+  artifacts:
+    when: always
+    paths:
+      - apps/dagger/*.csv
+      - slurm*.txt
+      - errors.txt
