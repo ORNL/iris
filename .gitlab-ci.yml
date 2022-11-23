@@ -119,8 +119,12 @@ dagger-zenith-run-policy-evaluations:
   extends: [.dagger, .run-policy-evaluations-artifacts]
   script:
     - sbatch --wait --partition=gpu --nodelist=zenith .gitlab-ci-scripts/slurm-dagger-run-policy-evaluations.sh
+    - echo Errors: $(wc -l errors.txt)
+    - cat errors.txt
 
 dagger-zenith-test-correctness:
   extends: [.dagger, .test-correctness-artifacts]
   script:
     - sbatch --wait --partition=gpu --nodelist=zenith .gitlab-ci-scripts/slurm-dagger-test-correctness.sh
+    - echo Errors: $(wc -l errors.txt)
+    - cat errors.txt
