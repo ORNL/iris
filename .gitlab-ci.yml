@@ -100,14 +100,27 @@ test-job:
   stage: dagger
   needs: [build-job]
 
-dagger-zenith-run-policy-evaluations:
-  extends: [.dagger]
-  script:
-    - sbatch --wait --partition=gpu --nodelist=zenith .gitlab-ci-scripts/slurm-dagger-run-policy-evaluations.sh
-
+.run-policy-evaluations-artifacts:
   artifacts:
     when: always
     paths:
       - apps/dagger/dagger-figures/*.csv
       - slurm*.txt
       - errors.txt
+
+.test-correctness-artifacts:
+  artifacts:
+    when: always
+    paths:
+      - slurm*.txt
+      - errors.txt
+
+dagger-zenith-run-policy-evaluations:
+  extends: [.dagger, .run-policy-evaluations-artifacts]
+  script:
+    - sbatch --wait --partition=gpu --nodelist=zenith .gitlab-ci-scripts/slurm-dagger-run-policy-evaluations.sh
+
+dagger-zenith-test-correctness:
+  extends: [.dagger, .test-correctness-artifacts]
+  script:
+    - sbatch --wait --partition=gpu --nodelist=zenith .gitlab-ci-scripts/slurm-dagger-test-correctness.sh
