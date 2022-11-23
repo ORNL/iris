@@ -20,7 +20,6 @@ echo Path: $GIT_ROOT
 echo $SHELL
 echo --------------------------------------------------------------------------------
 
-which module
 cd $GIT_ROOT
 source $CONDA_ROOT/etc/profile.d/conda.sh
 source /auto/software/iris/setup_system.source
