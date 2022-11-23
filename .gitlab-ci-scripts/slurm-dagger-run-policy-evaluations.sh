@@ -13,7 +13,6 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 echo Started: $(date)
 echo Host: $(hostname)
 echo Path: $GIT_ROOT
-echo $SHELL
 echo --------------------------------------------------------------------------------
 
 # Setup Environment
@@ -21,7 +20,6 @@ cd $GIT_ROOT
 unset MODULEPATH_ROOT
 unset MODULEPATH
 source /etc/profile.d/lmod.sh
-echo $MODULEPATH
 source $CONDA_ROOT/etc/profile.d/conda.sh
 source /auto/software/iris/setup_system.source
 source $IRIS_INSTALL_ROOT/setup.source
