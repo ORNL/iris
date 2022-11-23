@@ -37,7 +37,8 @@ conda activate ./envs
 
 grep -e '[E]' slurm-test-out.txt > errors.txt
 
-
 echo --------------------------------------------------------------------------------
 echo Finished: $(date)
 echo Errors: $(wc -l errors.txt)
+echo Results: 
+cat *.csv
