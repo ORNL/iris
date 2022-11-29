@@ -49,6 +49,15 @@ popd
 # Collect Output
 grep -e '\[E\]' slurm-test-out.txt > errors.txt
 
+# Validate Json
+pushd apps/dagger
+for f in dagger-payloads/*.json
+do
+   echo Validating Json Schema for file $f.
+   $GIT_ROOT/utils/validate_schema.py -i $f -s $GIT_ROOT/schema/dagger.schema.json || echo Json Validation failed for $f >> errors.txt
+done
+popd
+
 echo --------------------------------------------------------------------------------
 echo Finished: $(date)
 echo Errors: $(wc -l errors.txt)
