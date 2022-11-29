@@ -6,6 +6,7 @@ dependencies:
   - _libgcc_mutex=0.1=conda_forge
   - _openmp_mutex=4.5=2_gnu
   - atk-1.0=2.36.0=h3371d22_4
+  - attrs=22.1.0=pyh71513ae_1
   - bokeh=2.4.2=py39hf3d152e_1
   - brotli=1.0.9=h166bdaf_7
   - brotli-bin=1.0.9=h166bdaf_7
@@ -43,11 +44,14 @@ dependencies:
   - harfbuzz=4.2.1=hf9f4e7c_0
   - icu=70.1=h27087fc_0
   - idna=3.3=pyhd8ed1ab_0
+  - importlib-metadata=5.1.0=pyha770c72_0
+  - importlib_resources=5.10.0=pyhd8ed1ab_0
   - jbig=2.1=h7f98852_2003
   - jinja2=3.1.1=pyhd8ed1ab_0
   - jpeg=9e=h166bdaf_1
   - json-spec=0.10.1=pyhd8ed1ab_0
   - jsoncomment=0.4.2=pyhd8ed1ab_0
+  - jsonschema=4.17.1=pyhd8ed1ab_0
   - keyutils=1.6.1=h166bdaf_0
   - kiwisolver=1.4.2=py39hf939315_1
   - krb5=1.19.3=h3790be6_0
@@ -110,6 +114,7 @@ dependencies:
   - pillow=9.1.0=py39hae2aec6_2
   - pip=22.0.4=pyhd8ed1ab_0
   - pixman=0.40.0=h36c2ea0_0
+  - pkgutil-resolve-name=1.3.10=pyhd8ed1ab_0
   - pthread-stubs=0.4=h36c2ea0_1001
   - pybind11-abi=4=hd8ed1ab_3
   - pycosat=0.6.3=py39hb9d737c_1010
@@ -117,6 +122,7 @@ dependencies:
   - pygraphviz=1.9=py39ha206bd0_0
   - pyopenssl=22.0.0=pyhd8ed1ab_0
   - pyparsing=3.0.8=pyhd8ed1ab_0
+  - pyrsistent=0.18.0=py39heee7806_0
   - pysocks=1.7.1=py39hf3d152e_5
   - python=3.9.12=h9a8a25e_1_cpython
   - python-dateutil=2.8.2=pyhd8ed1ab_0
@@ -154,6 +160,7 @@ dependencies:
   - xz=5.2.5=h516909a_1
   - yaml=0.2.5=h7f98852_2
   - yaml-cpp=0.6.3=he1b5a44_4
+  - zipp=3.11.0=pyhd8ed1ab_0
   - zlib=1.2.11=h166bdaf_1014
   - zstd=1.5.2=ha95c52a_0
 prefix: /home/9bj/.anaconda3/envs/dagger
