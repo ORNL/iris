@@ -103,7 +103,7 @@ test-job-zenith:
   before_script:
     - source /auto/software/iris/setup_system.source
   script:
-    - echo "Installing iris to $CI_PROJECT_DIR/install"
+    - echo "Installing iris to $IRIS_INSTALL_ROOT"
     - bash build-coverage.sh
     - echo $CI_REPOSITORY_URL
     - echo $CI_PROJECT_PATH
