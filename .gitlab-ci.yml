@@ -101,6 +101,7 @@ test-job-zenith:
   stage: test
   allow_failure: true
   before_script:
+    - source /auto/ciscratch/conda/etc/profile.d/conda.sh
     - source /auto/software/iris/setup_system.source
   script:
     - echo "Installing iris to $IRIS_INSTALL_ROOT"
