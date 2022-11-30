@@ -1,4 +1,4 @@
-IRIS=$(HOME)/.local
+IRIS_INSTALL_ROOT?=$(HOME)/.local
 CC=gcc
 CXX=g++
 NVCC?=$(CUDA_PATH)/bin/nvcc
@@ -11,7 +11,7 @@ LDFLAGS=-L$(IRIS)/lib64 -liris -lpthread -ldl
 all: dagger_runner dagger_test
 
 dagger: dagger.cpp timer.h
-	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS) 
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
 dagger_dgemm: dagger_dgemm.cpp timer.h
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)

@@ -113,6 +113,7 @@ void Consistency::ResolveKernelWithoutPolymem(Task* task, Command* cmd, Mem* mem
   task_d2h->set_internal_memory_transfer();
   d2h->set_internal_memory_transfer();
   bool context_shift = owner->IsContextChangeRequired();
+  if (context_shift) owner->ResetContext();
   scheduler_->SubmitTaskDirect(task_d2h,owner);
   task_d2h->Wait();
   if (context_shift) dev->ResetContext();

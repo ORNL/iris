@@ -3,13 +3,15 @@ stages:
   - docs
   - deploy_docs
   - test
+  - dagger
 
 .excl_runner:
   tags: [excl]
 
 variables:
   IRIS_INSTALL_ROOT: $CI_PROJECT_DIR/install
-  IRIS_TESTING_PATH: code.ornl.gov/brisbane/iris-tests.git
+  IRIS_TESTING_URL: code.ornl.gov/brisbane/iris-tests.git
+  CONDA_ROOT: /auto/ciscratch/conda
 
 build-job:
   extends: [.excl_runner]
@@ -20,12 +22,16 @@ build-job:
   script:
     - echo "Installing iris to $CI_PROJECT_DIR/install"
     - bash build.sh
+  artifacts:
+    paths:
+      - $IRIS_INSTALL_ROOT
 
 docs-job:
   tags: [devdocs]
   stage: docs
+  needs: []
   before_script:
-    - source /auto/ciscratch/conda/etc/profile.d/conda.sh
+    - source $CONDA_ROOT/etc/profile.d/conda.sh
     - conda env create --force -p ./envs -f docs/sphinx/environment.yml
     - conda activate ./envs
   script:
@@ -54,6 +60,7 @@ deploy_docs_manual-job:
 
 test-job:
   extends: [.excl_runner]
+  needs: []
   stage: test
   allow_failure: true
   before_script:
@@ -64,7 +71,7 @@ test-job:
     - bash build-coverage.sh
     - echo $CI_REPOSITORY_URL
     - echo $CI_PROJECT_PATH
-    - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@${IRIS_TESTING_PATH}
+    - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@${IRIS_TESTING_URL}
     - source $IRIS_INSTALL_ROOT/setup.source
     - cd iris-tests
     - mkdir build
@@ -87,3 +94,39 @@ test-job:
       coverage_report:
         coverage_format: cobertura
         path: coverage.xml
+
+.dagger:
+  tags: [slurm]
+  stage: dagger
+  needs: [build-job]
+
+.run-policy-evaluations-artifacts:
+  artifacts:
+    when: always
+    paths:
+      - apps/dagger/dagger-figures/*.csv
+      - slurm*.txt
+      - errors.txt
+
+.test-correctness-artifacts:
+  artifacts:
+    when: always
+    paths:
+      - slurm*.txt
+      - errors.txt
+
+dagger-zenith-run-policy-evaluations:
+  extends: [.dagger, .run-policy-evaluations-artifacts]
+  script:
+    - sbatch --wait --partition=gpu --nodelist=zenith .gitlab-ci-scripts/slurm-dagger-run-policy-evaluations.sh
+    - echo "Errors $(wc -l errors.txt)"
+    - cat errors.txt
+    - if [ -s errors.txt ]; then exit 1; fi
+
+dagger-zenith-test-correctness:
+  extends: [.dagger, .test-correctness-artifacts]
+  script:
+    - sbatch --wait --partition=gpu --nodelist=zenith .gitlab-ci-scripts/slurm-dagger-test-correctness.sh
+    - echo "Errors $(wc -l errors.txt)"
+    - cat errors.txt
+    - if [ -s errors.txt ]; then exit 1; fi
