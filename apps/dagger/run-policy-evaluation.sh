@@ -209,22 +209,22 @@ do
   [ $? -ne 0 ] &&  exit 1
 done
 
-echo "*******************************************************************"
-echo "*                          Diamond 1000                           *"
-echo "*******************************************************************"
-#./dagger_generator.py --kernels="ijk" --kernel-split='100' --depth=1 --num-tasks=1000 --min-width=1000 --max-width=1000 --concurrent-kernels="ijk:3" --buffers-per-kernel="ijk:w r r" --kernel-dimensions="ijk:2" --sandwich
-#[ $? -ne 0 ] &&  exit 1
-#cp graph.json diamond-1000-graph.json
-#cp dag.png $RESULTS_DIR/diamond-1000-graph.png
-cp dagger-payloads/diamond-1000-graph.json graph.json ; cat graph.json
-for POLICY in roundrobin depend profile random any all
-do
-  echo "Running IRIS with Policy: $POLICY"
-  IRIS_HISTORY=1 ./dagger_runner --logfile="time.csv" --repeats=1 --scheduling-policy="$POLICY" --size=256 --kernels="ijk" --duplicates="0" --buffers-per-kernel="ijk:w r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=1 --num-tasks=1000 --min-width=1000 --max-width=1000 --sandwich
-  [ $? -ne 0 ] && echo "Diamond 1000 Failed with Policy: $POLICY" &&  exit 1
-  mv dagger_runner-$SYSTEM*.csv $RESULTS_DIR/diamond-1000-$POLICY-$SYSTEM.csv
-  [ $? -ne 0 ] &&  exit 1
-done
+#echo "*******************************************************************"
+#echo "*                          Diamond 1000                           *"
+#echo "*******************************************************************"
+##./dagger_generator.py --kernels="ijk" --kernel-split='100' --depth=1 --num-tasks=1000 --min-width=1000 --max-width=1000 --concurrent-kernels="ijk:3" --buffers-per-kernel="ijk:w r r" --kernel-dimensions="ijk:2" --sandwich
+##[ $? -ne 0 ] &&  exit 1
+##cp graph.json diamond-1000-graph.json
+##cp dag.png $RESULTS_DIR/diamond-1000-graph.png
+#cp dagger-payloads/diamond-1000-graph.json graph.json ; cat graph.json
+#for POLICY in roundrobin depend profile random any all
+#do
+#  echo "Running IRIS with Policy: $POLICY"
+#  IRIS_HISTORY=1 ./dagger_runner --logfile="time.csv" --repeats=1 --scheduling-policy="$POLICY" --size=256 --kernels="ijk" --duplicates="0" --buffers-per-kernel="ijk:w r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=1 --num-tasks=1000 --min-width=1000 --max-width=1000 --sandwich
+#  [ $? -ne 0 ] && echo "Diamond 1000 Failed with Policy: $POLICY" &&  exit 1
+#  mv dagger_runner-$SYSTEM*.csv $RESULTS_DIR/diamond-1000-$POLICY-$SYSTEM.csv
+#  [ $? -ne 0 ] &&  exit 1
+#done
 
 echo "*******************************************************************"
 echo "*                          Chainlink 25                           *"
