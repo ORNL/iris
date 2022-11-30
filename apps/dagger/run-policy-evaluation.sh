@@ -75,7 +75,7 @@ if ! [ -d dagger-payloads ] ; then
   ./dagger_generator.py --kernels="ijk" --kernel-split='100' --depth=1 --num-tasks=100 --min-width=100 --max-width=100 --buffers-per-kernel="ijk:w r r" --kernel-dimensions="ijk:2" --sandwich
   [ $? -ne 0 ] &&  exit 1
   cat graph.json
-  cp graph.json diamond-100-graph.json
+  cp graph.json dagger-payloads/diamond-100-graph.json
   cp dag.png $RESULTS_DIR/diamond-100-graph.png
   echo "*******************************************************************"
   echo "*                          Diamond 1000                           *"

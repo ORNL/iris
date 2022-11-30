@@ -1,0 +1,113 @@
+{
+    "$schema": "https://json-schema.org/draft-07/schema",
+    "$id": "https://github.com/ORNL/iris/schema/dagger.schema.json",
+    "title": "DAGGER JSON",
+    "description": "JSON output from DAGGER",
+    "type": "object",
+    "properties": {
+        "iris-graph": {
+            "description": "Iris Graph Object",
+            "type": "object",
+            "properties": {
+                "inputs": {
+                    "description": "Todo: input description",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "minItems": 1,
+                    "uniqueItems": true
+                },
+                "graph": {
+                    "description": "Graph of the Task DAG.",
+                    "type": "object",
+                    "properties": {
+                        "tasks": {
+                            "description": "Takes in the DAG",
+                            "type": "array",
+                            "items": {
+                                "description": "Array of task items",
+                                "type": "object",
+                                "properties": {
+                                    "name": {"description": "Name of the kernel.", "type": "string"},
+                                    "commands": {
+                                        "description": "Task commands", 
+                                        "type": "array", 
+                                        "items": {
+                                           "description": "Command items",
+                                           "type": "object" ,
+                                           "properties": {
+                                                "h2d": {
+                                                    "description": "Host to Device Transfer",
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "name": {"type": "string"},
+                                                        "device_memory": {"type": "string"},
+                                                        "host_memory": {"type": "string"},
+                                                        "offset": {"type": "string"},
+                                                        "size": {"type": "string"}
+                                                    },
+                                                    "required": ["name", "device_memory", "host_memory", "offset", "size"]
+                                                },
+                                                "d2h": {
+                                                    "description": "Device to Host Transfer",
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "name": {"type": "string"},
+                                                        "device_memory": {"type": "string"},
+                                                        "host_memory": {"type": "string"},
+                                                        "offset": {"type": "string"},
+                                                        "size": {"type": "string"}
+                                                    },
+                                                    "required": ["name", "device_memory", "host_memory", "offset", "size"]
+                                                },
+                                                "kernel": {
+                                                    "description": "Kernel task command",
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "name": {"type":"string"},
+                                                        "global_size": {"type":"array", "items": {"type": "string"}},
+                                                        "parameters": {
+                                                            "type":"array", "items": {
+                                                                "description": "Kernel Parameters",
+                                                                "type": "object",
+                                                                "properties": {
+                                                                    "type": {"type": "string"},
+                                                                    "name": {"type": "string"},
+                                                                    "permission": {"type": "string"}
+                                                                }
+                                                            }
+                                                        }
+                                                    },
+                                                    "required": []
+                                                }
+                                           },
+                                           "oneOf": [
+                                                {"required": ["h2d"]},
+                                                {"required": ["d2h"]},
+                                                {"required": ["kernel"]}
+                                           ]
+                                        }
+                                    },
+                                    "depends": {"description": "Dependency list of the task", "type": "array", "items": {"type": "string"}},
+                                    "policy": {"description": "Policy to use", "type": "string"},
+                                    "device": {"description": "Chosen device, Generated by Policy", "type": "array", "items": {"type": "string"}},
+                                    "target": {"description": "Todo: add description", "type": "string"}
+                                },
+                                "required": ["name", "commands", "depends", "target"]
+                            }
+                        }
+                    },
+                    "required": ["tasks"]
+                }
+            },
+            "required": [
+                "inputs",
+                "graph"
+            ]
+        }
+    },
+    "required": [
+        "iris-graph"
+    ]
+}
