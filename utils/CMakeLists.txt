@@ -580,10 +580,11 @@ endif() # USE_SPIR
 
 if (USE_HIP)
 if (HIP_KERNEL_SOURCES)
+string(REPLACE " " ";" hip_flags ${HIP_FLAGS})
 add_custom_command(
   OUTPUT ${CMAKE_BINARY_DIR}/kernel.hip
   WORKING_DIRECTORY ${PROJECT_SOURCE_DIR} 
-  COMMAND hipcc --genco ${HIP_FLAGS} -o ${CMAKE_BINARY_DIR}/kernel.hip ${HIP_KERNEL_SOURCES}
+  COMMAND hipcc --genco ${hip_flags} -o ${CMAKE_BINARY_DIR}/kernel.hip ${HIP_KERNEL_SOURCES}
   BYPRODUCTS ${CMAKE_BINARY_DIR}/kernel.hip
   )
 add_custom_target(kernel.hip DEPENDS ${CMAKE_BINARY_DIR}/kernel.hip)
