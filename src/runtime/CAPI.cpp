@@ -101,6 +101,17 @@ int iris_task_cmd_reset_mem(iris_task task, iris_mem mem, uint8_t reset) {
   return Platform::GetPlatform()->TaskMemResetInput(task, mem, reset);
 }
 
+int iris_task_get_metadata(iris_task brs_task, int index) {
+    Task* task = brs_task->class_obj;
+    return task->metadata(index);
+}
+
+int iris_task_set_metadata(iris_task brs_task, int index, int metadata) {
+    Task* task = brs_task->class_obj;
+    task->set_metadata(index, metadata);
+    return IRIS_SUCCESS;
+}
+
 int iris_task_h2d(iris_task task, iris_mem mem, size_t off, size_t size, void* host) {
   return Platform::GetPlatform()->TaskH2D(task, mem, off, size, host);
 }
@@ -401,6 +412,14 @@ int iris_graph_wait_all(int ngraphs, iris_graph* graphs) {
 
 int iris_graph_free(iris_graph brs_graph) {
   return Platform::GetPlatform()->GraphFree(brs_graph);
+}
+
+void iris_enable_d2d() {
+  Platform::GetPlatform()->enable_d2d();
+}
+
+void iris_disable_d2d() {
+  Platform::GetPlatform()->disable_d2d();
 }
 
 void iris_disable_consistency_check() {

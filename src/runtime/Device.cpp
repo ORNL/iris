@@ -527,6 +527,7 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
         double d2htime = timer_->Now() - start;
         Command* cmd_kernel = cmd->task()->cmd_kernel();
         if (cmd_kernel) cmd_kernel->kernel()->history()->AddD2H(cmd_kernel, src_dev, d2htime, size);
+        else Platform::GetPlatform()->null_kernel()->history()->AddD2H(cmd, this, d2htime, size);
     }
     else {
         _trace("MemFlushout is skipped as host already having valid data for task:%ld:%s\n", cmd->task()->uid(), cmd->task()->name());

@@ -32,6 +32,7 @@ Task::Task(Platform* platform, int type, const char* name) {
   internal_memory_transfer_ = false;
   arch_ = NULL;
   depends_ = NULL;
+  meta_data_[0] = meta_data_[1] = meta_data_[2] = meta_data_[3] = -1;
   depends_max_ = 1024;
   ndepends_ = 0;
   given_name_ = name != NULL;
@@ -226,6 +227,7 @@ bool Task::HasSubtasks() {
 }
 
 void Task::AddDepend(Task* task) {
+  if (task == NULL) return;
   if (depends_ == NULL) depends_ = new Task*[depends_max_];
   for (int i = 0; i < ndepends_; i++) if (task == depends_[i]) return;
   if (ndepends_ == depends_max_ - 1) {

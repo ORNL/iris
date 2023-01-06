@@ -814,7 +814,7 @@ int Platform::TaskCreate(const char* name, bool perm, iris_task* brs_task) {
 
 int Platform::TaskDepend(iris_task brs_task, int ntasks, iris_task* brs_tasks) {
   Task* task = brs_task->class_obj;
-  for (int i = 0; i < ntasks; i++) task->AddDepend(brs_tasks[i]->class_obj);
+  for (int i = 0; i < ntasks; i++) if (brs_tasks[i] != NULL) task->AddDepend(brs_tasks[i]->class_obj);
   return IRIS_SUCCESS;
 }
 
@@ -1325,12 +1325,19 @@ int Platform::ShowKernelHistory() {
   double t_d2o = 0.0f;
   double t_o2d = 0.0f;
   double t_d2h = 0.0f;
-  size_t total_size_h2d = 0.0f;
-  size_t total_size_d2d = 0.0f;
-  size_t total_size_d2h_h2d = 0.0f;
-  size_t total_size_d2o = 0.0f;
-  size_t total_size_o2d = 0.0f;
-  size_t total_size_d2h = 0.0f;
+  size_t total_c_ker = 0;
+  size_t total_c_h2d = 0;
+  size_t total_c_d2d = 0;
+  size_t total_c_d2h_h2d = 0;
+  size_t total_c_d2o = 0;
+  size_t total_c_o2d = 0;
+  size_t total_c_d2h = 0;
+  size_t total_size_h2d = 0;
+  size_t total_size_d2d = 0;
+  size_t total_size_d2h_h2d = 0;
+  size_t total_size_d2o = 0;
+  size_t total_size_o2d = 0;
+  size_t total_size_d2h = 0;
   for (std::map<std::string, std::vector<Kernel*> >::iterator I = kernels_.begin(), 
           E = kernels_.end(); I != E; ++I) {
       std::string name = I->first;
@@ -1382,20 +1389,33 @@ int Platform::ShowKernelHistory() {
       }
       _info("kernel[%s] k[%lf][%zu] h2d[%lf][%zu][%ld] o2d[%lf][%zu][%ld] d2o[%lf][%zu][%ld] d2h_h2d[%lf][%zu][%ld] d2d[%lf][%zu][%ld] d2h[%lf][%zu][%ld]", name.c_str(), k_ker, c_ker, k_h2d, c_h2d, size_h2d, k_o2d, c_o2d, size_o2d, k_d2o, c_d2o, size_d2o, k_d2h_h2d, c_d2h_h2d, size_d2h_h2d, k_d2d, c_d2d, size_d2d, k_d2h, c_d2h, size_d2h);
     t_ker += k_ker;
+    total_c_ker += c_ker;
     t_h2d += k_h2d;
     t_d2d += k_d2d;
     t_d2h_h2d += k_d2h_h2d;
     t_o2d += k_o2d;
     t_d2o += k_d2o;
     t_d2h += k_d2h;
-    total_size_h2d += size_h2d;
-    total_size_d2d += size_d2d;
+    total_c_h2d +=     c_h2d;
+    total_c_d2d +=     c_d2d;
+    total_c_d2h_h2d += c_d2h_h2d;
+    total_c_o2d +=     c_o2d;
+    total_c_d2o +=     c_d2o;
+    total_c_d2h +=     c_d2h;
+    total_size_h2d +=     size_h2d;
+    total_size_d2d +=     size_d2d;
     total_size_d2h_h2d += size_d2h_h2d;
-    total_size_o2d += size_o2d;
-    total_size_d2o += size_d2o;
-    total_size_d2h += size_d2h;
+    total_size_o2d +=     size_o2d;
+    total_size_d2o +=     size_d2o;
+    total_size_d2h +=     size_d2h; 
   }
-  _info("total kernel[%lf] h2d[%lf][%ld] o2d[%lf][%ld] d2o[%lf][%ld] d2h_h2d[%lf][%ld] d2d[%lf][%ld] d2h[%lf][%ld]", t_ker, t_h2d, total_size_h2d, t_o2d, total_size_o2d, t_d2o, total_size_d2o, t_d2h_h2d, total_size_d2h_h2d, t_d2d, total_size_d2d, t_d2h, total_size_d2h);
+  t_h2d          += null_kernel()->history()->t_h2d();
+  t_d2h          += null_kernel()->history()->t_d2h();
+  total_c_h2d    += null_kernel()->history()->c_h2d();
+  total_c_d2h    += null_kernel()->history()->c_d2h();
+  total_size_h2d += null_kernel()->history()->size_h2d();
+  total_size_d2h += null_kernel()->history()->size_d2h();
+  _info("total kernel k[%lf][%zu] h2d[%lf][%zu][%ld] o2d[%lf][%zu][%ld] d2o[%lf][%zu][%ld] d2h_h2d[%lf][%zu][%ld] d2d[%lf][%zu][%ld] d2h[%lf][%zu][%ld]", t_ker, total_c_ker, t_h2d, total_c_h2d, total_size_h2d, t_o2d, total_c_o2d, total_size_o2d, t_d2o, total_c_d2o, total_size_d2o, t_d2h_h2d, total_c_d2h_h2d, total_size_d2h_h2d, t_d2d, total_c_d2d, total_size_d2d, t_d2h, total_c_d2h, total_size_d2h);
   return IRIS_SUCCESS;
 }
 

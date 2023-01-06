@@ -195,6 +195,8 @@ extern int iris_task_create_name(const char* name, iris_task* task);
 extern int iris_task_depend(iris_task task, int ntasks, iris_task* tasks);
 extern int iris_task_malloc(iris_task task, iris_mem mem);
 extern int iris_task_cmd_reset_mem(iris_task task, iris_mem mem, uint8_t reset);
+extern int iris_task_get_metadata(iris_task brs_task, int index);
+extern int iris_task_set_metadata(iris_task brs_task, int index, int metadata);
 
 /**
  * Adds a H2D command to the target task.
@@ -317,6 +319,10 @@ extern int iris_record_stop();
  * @param time pointer of time
  */
 extern int iris_timer_now(double* time);
+
+// Enable/Disable methods
+extern void iris_enable_d2d();
+extern void iris_disable_d2d();
 extern void iris_disable_consistency_check();
 extern void iris_enable_consistency_check();
 

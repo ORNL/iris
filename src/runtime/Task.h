@@ -95,6 +95,8 @@ public:
   void DispatchDependencies();
   bool is_internal_memory_transfer() { return internal_memory_transfer_;}
   void set_internal_memory_transfer() { internal_memory_transfer_ = true;}
+  void set_metadata(int index, int data) { meta_data_[index] = data; }
+  int metadata(int index) { return meta_data_[index]; }
   void print_incomplete_tasks();
 private:
   void CompleteSub();
@@ -108,6 +110,7 @@ private:
   Command* cmd_kernel_;
   Command* cmd_last_;
   Device* dev_;
+  int meta_data_[4];
   int devno_;
   Platform* platform_;
   Scheduler* scheduler_;
