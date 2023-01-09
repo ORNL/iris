@@ -9,9 +9,11 @@
 #include <map>
 #include <mutex>
 #include <string>
+#include <memory>
 
 #include "Config.h"
 #include "SchedulingHistory.h"
+using namespace std;
 
 namespace iris {
 namespace rt {
@@ -267,7 +269,7 @@ private:
   double time_init_;
 
 private:
-  static Platform* singleton_;
+  static unique_ptr<Platform> singleton_;
   static std::once_flag flag_singleton_;
   static std::once_flag flag_finalize_;
 };

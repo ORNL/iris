@@ -1419,14 +1419,14 @@ int Platform::ShowKernelHistory() {
   return IRIS_SUCCESS;
 }
 
-Platform* Platform::singleton_ = NULL;
+unique_ptr<Platform> Platform::singleton_ = nullptr;
 std::once_flag Platform::flag_singleton_;
 std::once_flag Platform::flag_finalize_;
 
 Platform* Platform::GetPlatform() {
 //  if (singleton_ == NULL) singleton_ = new Platform();
-  std::call_once(flag_singleton_, []() { singleton_ = new Platform(); });
-  return singleton_;
+  std::call_once(flag_singleton_, []() { singleton_ = std::unique_ptr<Platform>(new Platform()); });
+  return singleton_.get();
 }
 int Platform::GetGraphTasksCount(iris_graph brs_graph) {
     Graph* graph = brs_graph->class_obj;

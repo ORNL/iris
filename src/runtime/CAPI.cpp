@@ -24,7 +24,7 @@ void iris_set_release_task_flag(bool flag) {
 int iris_finalize() {
   Platform *platform = Platform::GetPlatform(); 
   int status = platform->Finalize();
-  delete platform;
+  //delete platform;
   return status;
 }
 
