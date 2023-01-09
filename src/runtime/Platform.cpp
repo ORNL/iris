@@ -191,10 +191,6 @@ int Platform::Init(int* argc, char*** argv, int sync) {
   if (polyhedral_available_)
     filter_task_split_ = new FilterTaskSplit(polyhedral_, this);
 
-  iris_kernel null_brs_kernel;
-  KernelCreate("iris_null", &null_brs_kernel);
-  null_kernel_ = null_brs_kernel->class_obj;
-
   if (enable_profiler_) {
     profilers_[nprofilers_++] = new ProfilerDOT(this);
     profilers_[nprofilers_++] = new ProfilerGoogleCharts(this);
@@ -209,6 +205,10 @@ int Platform::Init(int* argc, char*** argv, int sync) {
   InitScheduler();
   InitWorkers();
   InitDevices(sync);
+
+  iris_kernel null_brs_kernel;
+  KernelCreate("iris_null", &null_brs_kernel);
+  null_kernel_ = null_brs_kernel->class_obj;
 
   _info("nplatforms[%d] ndevs[%d] ndevs_enabled[%d] scheduler[%d] hub[%d] polyhedral[%d] profile[%d]",
       nplatforms_, ndevs_, ndevs_enabled_, scheduler_ != NULL, scheduler_ ? scheduler_->hub_available() : 0,
