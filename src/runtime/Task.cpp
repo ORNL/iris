@@ -76,7 +76,7 @@ void Task::set_parent(Task* task) {
 }
 
 void Task::set_brs_policy(int brs_policy) {
-  brs_policy_ = brs_policy == iris_default ? platform_->device_default() : brs_policy;
+  brs_policy_ = brs_policy;// == iris_default ? platform_->device_default() : brs_policy;
   if (brs_policy == iris_pending) status_ = IRIS_PENDING;
   if (brs_policy != iris_pending && status_ == IRIS_PENDING) status_ = IRIS_NONE;
   if (!HasSubtasks()) return;
