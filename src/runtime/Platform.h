@@ -267,7 +267,7 @@ private:
   char host_[256];
   double time_app_;
   double time_init_;
-
+  char tmp_dir_[256];
 private:
   static unique_ptr<Platform> singleton_;
   static std::once_flag flag_singleton_;

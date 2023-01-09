@@ -50,6 +50,7 @@ char iris_log_prefix_[256];
 
 Platform::Platform() {
   init_ = false;
+  tmp_dir_[0] = '\0';
   disable_d2d_ = false;
   finalize_ = false;
   release_task_flag_ = true;
@@ -98,6 +99,12 @@ Platform::~Platform() {
   if (queue_) delete queue_;
   for(LoaderHost2OpenCL *ld : loaderHost2OpenCL_) {
       delete ld;
+  }
+  if (tmp_dir_[0] != '\0') {
+      char cmd[256];
+      //printf("Removing tmp_dir:%s\n", tmp_dir_);
+      sprintf(cmd, "rm -rf %s", tmp_dir_);
+      system(cmd);
   }
   /*
   for (std::set<Mem*>::iterator I = mems_.begin(), E = mems_.end(); I != E; ++I) {
@@ -234,9 +241,10 @@ int Platform::Synchronize() {
 int Platform::EnvironmentInit() {
   char tmp_dir_str[] = "/tmp/iris-XXXXXX";
   char *tmp_dir = mkdtemp(tmp_dir_str);
-  //printf("Temp directory:%s\n", tmp_dir);
+  strcpy(tmp_dir_, tmp_dir);
+  //printf("Temp directory:%s\n", tmp_dir_);
   EnvironmentSet("ARCHS",  "openmp:cuda:hip:levelzero:hexagon:opencl",  false);
-  EnvironmentSet("TMPDIR", tmp_dir,                                 false);
+  EnvironmentSet("TMPDIR", tmp_dir_,                                 false);
 
   EnvironmentSet("KERNEL_DIR",      "",                   false);
   EnvironmentSet("KERNEL_SRC_CUDA",     "kernel.cu",          false);
