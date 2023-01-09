@@ -232,8 +232,11 @@ int Platform::Synchronize() {
 }
 
 int Platform::EnvironmentInit() {
+  char tmp_dir_str[] = "/tmp/iris-XXXXXX";
+  char *tmp_dir = mkdtemp(tmp_dir_str);
+  //printf("Temp directory:%s\n", tmp_dir);
   EnvironmentSet("ARCHS",  "openmp:cuda:hip:levelzero:hexagon:opencl",  false);
-  EnvironmentSet("TMPDIR", "/tmp/iris",                                 false);
+  EnvironmentSet("TMPDIR", tmp_dir,                                 false);
 
   EnvironmentSet("KERNEL_DIR",      "",                   false);
   EnvironmentSet("KERNEL_SRC_CUDA",     "kernel.cu",          false);

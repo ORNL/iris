@@ -126,6 +126,7 @@ int DeviceCUDA::Compile(char* src) {
   char cmd[1024];
   memset(cmd, 0, 256);
   sprintf(cmd, "nvcc -ptx %s -o %s", src, kernel_path_);
+  //printf("Cmd: %s\n", cmd);
   if (system(cmd) != EXIT_SUCCESS) {
     _error("cmd[%s]", cmd);
     worker_->platform()->IncrementErrorCount();
