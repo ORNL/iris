@@ -90,6 +90,8 @@ test-job:
   coverage: /^\s*lines:\s*\d+.\d+\%/
   artifacts:
     when: always
+    paths:
+      - **/LastTest.log
     reports:
       coverage_report:
         coverage_format: cobertura
@@ -123,6 +125,8 @@ test-job-zenith:
   coverage: /^\s*lines:\s*\d+.\d+\%/
   artifacts:
     when: always
+    paths:
+      - **/LastTest.log
     reports:
       coverage_report:
         coverage_format: cobertura
