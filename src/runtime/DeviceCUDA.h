@@ -49,6 +49,7 @@ public:
   int cudev() { return dev_; }
   void ResetContext();
   bool IsContextChangeRequired();
+  void SetContextToCurrentThread();
 
 private:
   static void Callback(CUstream stream, CUresult status, void* data);

@@ -371,6 +371,12 @@ int DeviceCUDA::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
 bool DeviceCUDA::IsContextChangeRequired() {
     return (worker()->self() != worker()->thread());
 }
+void DeviceCUDA::SetContextToCurrentThread()
+{
+    if (IsContextChangeRequired()) {
+        ld_->cuCtxSetCurrent(ctx_);
+    }
+}
 void DeviceCUDA::ResetContext()
 {
     CUcontext ctx;

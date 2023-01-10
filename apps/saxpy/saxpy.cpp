@@ -12,10 +12,10 @@ int main(int argc, char** argv) {
   float A = 10;
   int ERROR = 0;
 
-  int nteams = 8;
-  int chunk_size = SIZE / nteams;
+  //int nteams = 8;
 
   SIZE = argc > 1 ? atol(argv[1]) : 8;
+  //size_t chunk_size = SIZE / nteams;
 
   X = (float*) malloc(SIZE * sizeof(float));
   Y = (float*) malloc(SIZE * sizeof(float));
@@ -33,6 +33,7 @@ int main(int argc, char** argv) {
   for (int i = 0; i < SIZE; i++) printf(" %2.0f.", Y[i]);
   printf("]\n");
 
+#if 0
   iris::Mem mem_X(SIZE * sizeof(float));
   iris::Mem mem_Y(SIZE * sizeof(float));
   iris::Mem mem_Z(SIZE * sizeof(float));
@@ -45,7 +46,18 @@ int main(int argc, char** argv) {
   task.kernel("saxpy", 1, NULL, &SIZE, NULL, 4, params0, pinfo0);
   task.d2h_full(&mem_Z, Z);
   task.submit(1, NULL, 1);
+#else
+  iris::DMem mem_X(X, SIZE * sizeof(float));
+  iris::DMem mem_Y(Y, SIZE * sizeof(float));
+  iris::DMem mem_Z(Z, SIZE * sizeof(float));
 
+  iris::Task task;
+  void* params0[4] = { &mem_Z, &A, &mem_X, &mem_Y };
+  int pinfo0[4] = { iris_w, sizeof(A), iris_r, iris_r };
+  task.kernel("saxpy", 1, NULL, &SIZE, NULL, 4, params0, pinfo0);
+  task.flush_out(mem_Z);
+  task.submit(1, NULL, 1);
+#endif
   for (int i = 0; i < SIZE; i++) {
     //printf("[%8d] %8.1f = %4.0f * %8.1f + %8.1f\n", i, Z[i], A, X[i], Y[i]);
     if (Z[i] != A * X[i] + Y[i]) ERROR++;
