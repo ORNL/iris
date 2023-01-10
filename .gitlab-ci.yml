@@ -91,7 +91,7 @@ test-job:
   artifacts:
     when: always
     paths:
-      - '**/LastTest.log'
+      - iris/iris-tests/build/Testing/Temporary/LastTest.log
     reports:
       coverage_report:
         coverage_format: cobertura
