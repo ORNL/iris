@@ -64,8 +64,8 @@ test-job:
   stage: test
   allow_failure: true
   before_script:
-    - module load cmake
     - module load gnu
+    - module load cmake
   script:
     - echo "Installing iris to $CI_PROJECT_DIR/install"
     - bash build-coverage.sh
