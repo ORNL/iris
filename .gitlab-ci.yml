@@ -91,7 +91,7 @@ test-job:
   artifacts:
     when: always
     paths:
-      - iris/iris-tests/build/Testing/Temporary/LastTest.log
+      - iris-tests/build/Testing/Temporary/LastTest.log
     reports:
       coverage_report:
         coverage_format: cobertura
@@ -126,7 +126,7 @@ test-job-zenith:
   artifacts:
     when: always
     paths:
-      - iris/iris-tests/build/Testing/Temporary/LastTest.log
+      - iris-tests/build/Testing/Temporary/LastTest.log
     reports:
       coverage_report:
         coverage_format: cobertura
