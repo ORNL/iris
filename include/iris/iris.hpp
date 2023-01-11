@@ -31,8 +31,15 @@ namespace iris {
             bool finalized_;
 
     };
+    class BaseMem {
+        public:
+            BaseMem() {} 
+            iris_mem mem() { return mem_; }
+        protected:
+            iris_mem mem_;
+    };
 
-    class Mem {
+    class Mem : public BaseMem {
         public:
             Mem(size_t size) {
                 iris_mem_create(size, &mem_);
@@ -41,13 +48,8 @@ namespace iris {
             ~Mem() {
                 iris_mem_release(mem_);
             }
-
-            iris_mem mem() { return mem_; }
-
-        private:
-            iris_mem mem_;
     };
-    class DMem {
+    class DMem : public BaseMem {
         public:
             DMem(void *host, size_t size) {
                 assert(iris_data_mem_create(&mem_, host, size) == IRIS_SUCCESS);
@@ -67,10 +69,6 @@ namespace iris {
             ~DMem() {
                 //iris_mem_release(mem_);
             }
-            iris_mem mem() { return mem_; }
-
-        private:
-            iris_mem mem_;
     };
     class DMemRegion {
         public:
@@ -137,7 +135,7 @@ namespace iris {
                     if (params_info[i] == iris_w ||
                             params_info[i] == iris_r ||
                             params_info[i] == iris_rw) {
-                        new_params[i] = ((Mem*) params[i])->mem();
+                        new_params[i] = ((BaseMem*) params[i])->mem();
                     } else new_params[i] = params[i];
                 }
                 int ret = iris_task_kernel(task_, kernel, dim, off, gws, lws, nparams, new_params, params_info);
