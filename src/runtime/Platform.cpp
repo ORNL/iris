@@ -1049,7 +1049,7 @@ int Platform::TaskKernelCmdOnly(iris_task brs_task) {
 
 int Platform::TaskRelease(iris_task brs_task) {
   Task* task = brs_task->class_obj;
-  task->Release();
+  delete task;
   return IRIS_SUCCESS;
 }
 
@@ -1211,6 +1211,32 @@ int Platform::SetTaskPolicy(iris_task brs_task, int brs_policy)
     Task* task = brs_task->class_obj;
     task->set_brs_policy(brs_policy);
     return IRIS_SUCCESS;
+}
+
+void Platform::set_release_task_flag(bool flag, iris_task brs_task)
+{
+    Task* task = brs_task->class_obj;
+    task->DisableRelease();
+}
+
+int Platform::GraphRelease(iris_graph brs_graph) {
+  Graph* graph = brs_graph->class_obj;
+  std::vector<Task*>* tasks = graph->tasks();
+  for (std::vector<Task*>::iterator I = tasks->begin(), E = tasks->end(); I != E; ++I) {
+    Task* task = *I;
+    delete task;
+  }
+  return IRIS_SUCCESS;
+}
+
+int Platform::GraphRetain(iris_graph brs_graph) {
+  Graph* graph = brs_graph->class_obj;
+  std::vector<Task*>* tasks = graph->tasks();
+  for (std::vector<Task*>::iterator I = tasks->begin(), E = tasks->end(); I != E; ++I) {
+    Task* task = *I;
+    task->DisableRelease();
+  }
+  return IRIS_SUCCESS;
 }
 
 int Platform::GraphSubmit(iris_graph brs_graph, int brs_policy, int sync) {

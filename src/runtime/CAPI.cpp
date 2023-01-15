@@ -16,6 +16,11 @@ int iris_init(int* argc, char*** argv, int sync) {
   return Platform::GetPlatform()->Init(argc, argv, sync);
 }
 
+void iris_task_set_release_flag(iris_task task, bool flag) {
+  Platform *platform = Platform::GetPlatform(); 
+  platform->set_release_task_flag(flag, task);
+}
+
 void iris_set_release_task_flag(bool flag) {
   Platform *platform = Platform::GetPlatform(); 
   platform->set_release_task_flag(flag);
@@ -387,6 +392,14 @@ int iris_graph_create_json(const char* json, void** params, iris_graph* graph) {
 
 int iris_graph_task(iris_graph graph, iris_task task, int device, const char* opt) {
   return Platform::GetPlatform()->GraphTask(graph, task, device, opt);
+}
+
+int iris_graph_retain(iris_graph graph) {
+  return Platform::GetPlatform()->GraphRetain(graph);
+}
+
+int iris_graph_release(iris_graph graph) {
+  return Platform::GetPlatform()->GraphRelease(graph);
 }
 
 int iris_graph_submit(iris_graph graph, int device, int sync) {
