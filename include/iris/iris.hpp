@@ -80,7 +80,7 @@ namespace iris {
 
     class Task {
         public:
-            Task(const char *name=NULL, bool retainable=false);
+            Task(const char *name=NULL, bool perm=false, bool retainable=false);
             virtual ~Task() { }
             int h2d(Mem* mem, size_t off, size_t size, void* host);
             int h2d_full(Mem* mem, void* host);
@@ -100,9 +100,9 @@ namespace iris {
         public:
             Graph(bool retainable=false);
             virtual ~Graph();
-            int AddTask(Task & task, int device, const char *opt);
-            int Submit(int device, int sync);
-            int Wait();
+            int add_task(Task & task, int device, const char *opt);
+            int submit(int device, int sync);
+            int wait();
             iris_graph graph() { return graph_; }
         private:
             bool retainable_;

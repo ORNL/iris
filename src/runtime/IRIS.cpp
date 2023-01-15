@@ -76,14 +76,14 @@ DMemRegion::DMemRegion(DMem *root_mem, int region) {
     assert(iris_data_mem_create_region(&mem_, root_mem->mem(), region) == IRIS_SUCCESS);
 #endif
 }
-Task::Task(const char *name, bool retainable) 
+Task::Task(const char *name, bool perm, bool retainable) 
 {
     retainable_ = retainable;
 #ifdef ENABLE_SMART_PTR_TASK
-    assert(PlatformIRIS::GetPlatform()->TaskCreate(name, false, &task_) == IRIS_SUCCESS);
+    assert(PlatformIRIS::GetPlatform()->TaskCreate(name, perm, &task_) == IRIS_SUCCESS);
     if (retainable) platform->set_release_task_flag(!retainable, task_);
 #else
-    iris_task_create_name(name, &task_);
+    assert(PlatformIRIS::GetPlatform()->TaskCreate(name, perm, &task_) == IRIS_SUCCESS);
     if (retainable) iris_task_set_retain_flag(!retainable, task_);
 #endif
 }
@@ -180,7 +180,7 @@ Graph::~Graph() {
     if (retainable_)
         iris_graph_release(graph_);
 }
-int Graph::AddTask(Task & task, int device, const char *opt) {
+int Graph::add_task(Task & task, int device, const char *opt) {
 #ifdef ENABLE_SMART_PTR_TASK
     _error("Graph::AddTask is not supported for smart pointer\n");
     return IRIS_ERROR;
@@ -188,9 +188,9 @@ int Graph::AddTask(Task & task, int device, const char *opt) {
     return iris_graph_task(graph_, task.task(), device, opt);
 #endif
 }
-int Graph::Submit(int device, int sync) {
+int Graph::submit(int device, int sync) {
     return iris_graph_submit(graph_, device, sync);
 }
-int Graph::Wait() {
+int Graph::wait() {
     return iris_graph_wait(graph_);
 }
