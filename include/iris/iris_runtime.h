@@ -107,7 +107,7 @@ extern int iris_synchronize();
   * If task need to be submitted again and again.
   */
 extern void iris_set_release_task_flag(bool flag);
-extern void iris_task_set_release_flag(bool flag, iris_task);
+extern void iris_task_set_retain_flag(bool flag, iris_task);
 
 /**
  * Sets an IRIS environment variable.

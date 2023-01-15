@@ -24,7 +24,9 @@ public:
   std::vector<Task*>* tasks() { return &tasks_; }
   int iris_tasks(iris_task *pv);
   int tasks_count() { return tasks_.size(); }
-
+  bool is_retainable() { return retain_tasks_; }
+  void enable_retainable() { retain_tasks_ = true; }
+  void disable_retainable() { retain_tasks_ = false; }
 private:
   Platform* platform_;
   Scheduler* scheduler_;
@@ -33,6 +35,7 @@ private:
   //Task* start_;
   Task* end_;
 
+  bool retain_tasks_;
   int status_;
   
   pthread_mutex_t mutex_complete_;

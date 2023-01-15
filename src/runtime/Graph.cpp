@@ -26,6 +26,7 @@ Graph::~Graph() {
 }
 
 void Graph::AddTask(Task* task) {
+  if (is_retainable()) task->DisableRelease();
   tasks_.push_back(task);
   end_->AddDepend(task);
 }

@@ -40,6 +40,7 @@ endif()
 
 set(IRIS_RUNTIME_SOURCES
   CAPI.cpp
+  IRIS.cpp
   Command.cpp
   Consistency.cpp
   Device.cpp

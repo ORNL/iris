@@ -1231,6 +1231,7 @@ int Platform::GraphRelease(iris_graph brs_graph) {
 
 int Platform::GraphRetain(iris_graph brs_graph) {
   Graph* graph = brs_graph->class_obj;
+  graph->enable_retainable();
   std::vector<Task*>* tasks = graph->tasks();
   for (std::vector<Task*>::iterator I = tasks->begin(), E = tasks->end(); I != E; ++I) {
     Task* task = *I;
