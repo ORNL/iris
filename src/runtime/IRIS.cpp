@@ -1,7 +1,9 @@
 #include <iris/iris.hpp>
 #include "Debug.h"
+#include "Structs.h"
 #include "Platform.h"
 #include "Timer.h"
+#include "Task.h"
 #include <assert.h>
 
 using namespace iris;
@@ -156,29 +158,48 @@ int Task::submit(int device, const char* opt, bool sync) {
     return iris_task_submit(task_, device, opt, sync ? 1 : 0);
 #endif
 }
-int Task::depends_on(int ntasks, Task **tasks) {
+void Task::depends_on(int ntasks, Task **tasks) {
 #ifdef ENABLE_SMART_PTR_TASK
     _error("Task::Depend is not supported for smart pointer\n");
-    return IRIS_ERROR;
 #else
-    iris_task *i_tasks = new iris_task[ntasks];
-    int n;
+    TaskIRIS *c_task = (TaskIRIS *)(task()->class_obj);
     for (int i=0; i<ntasks; i++) {
-        if (tasks[i] != NULL) i_tasks[n++] = tasks[i]->task();
+        if (tasks[i] != NULL)  {
+            TaskIRIS *i_task = (TaskIRIS*)(tasks[i]->task()->class_obj);
+            c_task->AddDepend(i_task);
+        }
     }
-    int status = iris_task_depend(task(), n, i_tasks);
-    delete [] i_tasks;
-    return status;
 #endif
+}
+void Task::depends_on(vector<Task *> tasks) {
+#ifdef ENABLE_SMART_PTR_TASK
+    _error("Task::Depend is not supported for smart pointer\n");
+#else
+    TaskIRIS *c_task = (TaskIRIS *)(task()->class_obj);
+    for (Task *d_task : tasks) {
+        TaskIRIS *i_task = (TaskIRIS*)(d_task->task()->class_obj);
+        c_task->AddDepend(i_task);
+    }
+#endif
+}
+void Task::depends_on(Task & d_task) {
+    TaskIRIS *c_task = (TaskIRIS *)(task()->class_obj);
+    TaskIRIS *i_task = (TaskIRIS*)(d_task.task()->class_obj);
+    c_task->AddDepend(i_task);
 }
 Graph::Graph(bool retainable) {
     retainable_ = retainable;
     iris_graph_create(&graph_);
     if (retainable) iris_graph_retain(graph_);
+    is_released_ = false;
 }
 Graph::~Graph() {
-    if (retainable_)
+    if (!is_released_)
         iris_graph_release(graph_);
+}
+void Graph::retainable() {
+    retainable_ = true;
+    iris_graph_retain(graph_);
 }
 int Graph::add_task(Task & task, int device, const char *opt) {
 #ifdef ENABLE_SMART_PTR_TASK
@@ -187,6 +208,10 @@ int Graph::add_task(Task & task, int device, const char *opt) {
 #else
     return iris_graph_task(graph_, task.task(), device, opt);
 #endif
+}
+int Graph::release() {
+    is_released_ = true;
+    return iris_graph_release(graph_);
 }
 int Graph::submit(int device, int sync) {
     return iris_graph_submit(graph_, device, sync);

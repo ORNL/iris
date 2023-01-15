@@ -3,6 +3,7 @@
 
 #include <iris/iris_runtime.h>
 #include <assert.h>
+#include <vector>
 #ifdef ENABLE_SMART_PTR
 #include <iris/RetainableBase.hpp>
 #include <memory>
@@ -89,7 +90,9 @@ namespace iris {
             int flush_out(DMem & mem);
             int kernel(const char* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, int* params_info);
             int submit(int device, const char* opt, bool sync);
-            int depends_on(int ntasks, Task **tasks);
+            void depends_on(int ntasks, Task **tasks);
+            void depends_on(std::vector<Task *> tasks);
+            void depends_on(Task & task);
             iris_task_type task() { return task_; }
         private:
             iris_task_type task_;
@@ -100,12 +103,15 @@ namespace iris {
         public:
             Graph(bool retainable=false);
             virtual ~Graph();
-            int add_task(Task & task, int device, const char *opt);
-            int submit(int device, int sync);
+            void retainable();
+            int add_task(Task & task, int device, const char *opt=NULL);
+            int submit(int device, int sync=false);
             int wait();
+            int release();
             iris_graph graph() { return graph_; }
         private:
             bool retainable_;
+            bool is_released_;
             iris_graph graph_;
     };
 } // namespace iris
