@@ -1,0 +1,348 @@
+{
+  "iris-graph": {
+    "inputs": [
+      "user-size",
+      "user-size-cb-bigk",
+      "hostmem-bigk-buffer0-instance0",
+      "hostmem-bigk-buffer1-instance0",
+      "hostmem-bigk-buffer2-instance0",
+      "hostmem-bigk-buffer0-instance1",
+      "hostmem-bigk-buffer1-instance1",
+      "hostmem-bigk-buffer2-instance1",
+      "devicemem-bigk-buffer0-instance0",
+      "devicemem-bigk-buffer1-instance0",
+      "devicemem-bigk-buffer2-instance0",
+      "devicemem-bigk-buffer0-instance1",
+      "devicemem-bigk-buffer1-instance1",
+      "devicemem-bigk-buffer2-instance1",
+      "user-target-control",
+      "user-target-data"
+    ],
+    "graph": {
+      "tasks": [
+        {
+          "name": "transferto-bigk-buffer1-instance0",
+          "h2d": [
+            "devicemem-bigk-buffer1-instance0",
+            "hostmem-bigk-buffer1-instance0",
+            "0",
+            "user-size-cb-bigk"
+          ],
+          "target": "user-target-control"
+        },
+        {
+          "name": "transferto-bigk-buffer2-instance0",
+          "h2d": [
+            "devicemem-bigk-buffer2-instance0",
+            "hostmem-bigk-buffer2-instance0",
+            "0",
+            "user-size-cb-bigk"
+          ],
+          "target": "user-target-control"
+        },
+        {
+          "name": "transferto-bigk-buffer1-instance1",
+          "h2d": [
+            "devicemem-bigk-buffer1-instance1",
+            "hostmem-bigk-buffer1-instance1",
+            "0",
+            "user-size-cb-bigk"
+          ],
+          "target": "user-target-control"
+        },
+        {
+          "name": "transferto-bigk-buffer2-instance1",
+          "h2d": [
+            "devicemem-bigk-buffer2-instance1",
+            "hostmem-bigk-buffer2-instance1",
+            "0",
+            "user-size-cb-bigk"
+          ],
+          "target": "user-target-control"
+        },
+        {
+          "name": "task0",
+          "kernel": [
+            "bigk",
+            [
+              "user-size"
+            ],
+            [
+              "devicemem-bigk-buffer0-instance0",
+              "devicemem-bigk-buffer1-instance0",
+              "devicemem-bigk-buffer2-instance0"
+            ],
+            [
+              "w",
+              "r",
+              "r"
+            ]
+          ],
+          "depends": [
+            "transferto-bigk-buffer1-instance0",
+            "transferto-bigk-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task1",
+          "kernel": [
+            "bigk",
+            [
+              "user-size"
+            ],
+            [
+              "devicemem-bigk-buffer0-instance0",
+              "devicemem-bigk-buffer1-instance0",
+              "devicemem-bigk-buffer2-instance0"
+            ],
+            [
+              "w",
+              "r",
+              "r"
+            ]
+          ],
+          "depends": [
+            "task0",
+            "transferto-bigk-buffer1-instance0",
+            "transferto-bigk-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task2",
+          "kernel": [
+            "bigk",
+            [
+              "user-size"
+            ],
+            [
+              "devicemem-bigk-buffer0-instance0",
+              "devicemem-bigk-buffer1-instance0",
+              "devicemem-bigk-buffer2-instance0"
+            ],
+            [
+              "w",
+              "r",
+              "r"
+            ]
+          ],
+          "depends": [
+            "task1",
+            "transferto-bigk-buffer1-instance0",
+            "transferto-bigk-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task3",
+          "kernel": [
+            "bigk",
+            [
+              "user-size"
+            ],
+            [
+              "devicemem-bigk-buffer0-instance0",
+              "devicemem-bigk-buffer1-instance0",
+              "devicemem-bigk-buffer2-instance0"
+            ],
+            [
+              "w",
+              "r",
+              "r"
+            ]
+          ],
+          "depends": [
+            "task2",
+            "transferto-bigk-buffer1-instance0",
+            "transferto-bigk-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task4",
+          "kernel": [
+            "bigk",
+            [
+              "user-size"
+            ],
+            [
+              "devicemem-bigk-buffer0-instance0",
+              "devicemem-bigk-buffer1-instance0",
+              "devicemem-bigk-buffer2-instance0"
+            ],
+            [
+              "w",
+              "r",
+              "r"
+            ]
+          ],
+          "depends": [
+            "task3",
+            "transferto-bigk-buffer1-instance0",
+            "transferto-bigk-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task5",
+          "kernel": [
+            "bigk",
+            [
+              "user-size"
+            ],
+            [
+              "devicemem-bigk-buffer0-instance1",
+              "devicemem-bigk-buffer1-instance1",
+              "devicemem-bigk-buffer2-instance1"
+            ],
+            [
+              "w",
+              "r",
+              "r"
+            ]
+          ],
+          "depends": [
+            "transferto-bigk-buffer1-instance1",
+            "transferto-bigk-buffer2-instance1"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task6",
+          "kernel": [
+            "bigk",
+            [
+              "user-size"
+            ],
+            [
+              "devicemem-bigk-buffer0-instance1",
+              "devicemem-bigk-buffer1-instance1",
+              "devicemem-bigk-buffer2-instance1"
+            ],
+            [
+              "w",
+              "r",
+              "r"
+            ]
+          ],
+          "depends": [
+            "task5",
+            "transferto-bigk-buffer1-instance1",
+            "transferto-bigk-buffer2-instance1"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task7",
+          "kernel": [
+            "bigk",
+            [
+              "user-size"
+            ],
+            [
+              "devicemem-bigk-buffer0-instance1",
+              "devicemem-bigk-buffer1-instance1",
+              "devicemem-bigk-buffer2-instance1"
+            ],
+            [
+              "w",
+              "r",
+              "r"
+            ]
+          ],
+          "depends": [
+            "task6",
+            "transferto-bigk-buffer1-instance1",
+            "transferto-bigk-buffer2-instance1"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task8",
+          "kernel": [
+            "bigk",
+            [
+              "user-size"
+            ],
+            [
+              "devicemem-bigk-buffer0-instance1",
+              "devicemem-bigk-buffer1-instance1",
+              "devicemem-bigk-buffer2-instance1"
+            ],
+            [
+              "w",
+              "r",
+              "r"
+            ]
+          ],
+          "depends": [
+            "task7",
+            "transferto-bigk-buffer1-instance1",
+            "transferto-bigk-buffer2-instance1"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task9",
+          "kernel": [
+            "bigk",
+            [
+              "user-size"
+            ],
+            [
+              "devicemem-bigk-buffer0-instance1",
+              "devicemem-bigk-buffer1-instance1",
+              "devicemem-bigk-buffer2-instance1"
+            ],
+            [
+              "w",
+              "r",
+              "r"
+            ]
+          ],
+          "depends": [
+            "task8",
+            "transferto-bigk-buffer1-instance1",
+            "transferto-bigk-buffer2-instance1"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "transferfrom-bigk-buffer0-instance0",
+          "d2h": [
+            "devicemem-bigk-buffer0-instance0",
+            "hostmem-bigk-buffer0-instance0",
+            "0",
+            "user-size-cb-bigk"
+          ],
+          "depends": [
+            "task0",
+            "task1",
+            "task2",
+            "task3",
+            "task4"
+          ],
+          "target": "user-target-control"
+        },
+        {
+          "name": "transferfrom-bigk-buffer0-instance1",
+          "d2h": [
+            "devicemem-bigk-buffer0-instance1",
+            "hostmem-bigk-buffer0-instance1",
+            "0",
+            "user-size-cb-bigk"
+          ],
+          "depends": [
+            "task5",
+            "task6",
+            "task7",
+            "task8",
+            "task9"
+          ],
+          "target": "user-target-control"
+        }
+      ]
+    }
+  }
+}

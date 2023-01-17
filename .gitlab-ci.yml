@@ -10,7 +10,6 @@ stages:
 
 variables:
   IRIS_INSTALL_ROOT: $CI_PROJECT_DIR/install
-  IRIS_TESTING_URL: code.ornl.gov/brisbane/iris-tests.git
   CONDA_ROOT: /auto/ciscratch/conda
 
 build-job:
@@ -72,9 +71,8 @@ test-job:
     - bash build-coverage.sh
     - echo $CI_REPOSITORY_URL
     - echo $CI_PROJECT_PATH
-    - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@${IRIS_TESTING_URL}
     - source $IRIS_INSTALL_ROOT/setup.source
-    - cd iris-tests
+    - cd tests
     - mkdir build
     - cd build
     - cmake ..
@@ -110,9 +108,8 @@ test-job-zenith:
     - bash build-coverage.sh
     - echo $CI_REPOSITORY_URL
     - echo $CI_PROJECT_PATH
-    - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@${IRIS_TESTING_URL}
     - source $IRIS_INSTALL_ROOT/setup.source
-    - cd iris-tests
+    - cd tests
     - mkdir build
     - cd build
     - cmake ..

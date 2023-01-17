@@ -1,0 +1,68 @@
+{
+  "iris-graph": {
+    "inputs": [ "user-size", "user-size-cb", "user-A", "user-B", "user-mem", "user-target" ],
+    "graph": {
+      "tasks": [
+      {
+        "name" : "task1",
+        "h2d": ["user-mem", "user-A", "0", "user-size-cb"],
+        "target": "user-target"
+      },
+      {
+        "name" : "task2",
+        "kernel": ["process", ["user-size"], ["user-mem"], ["rw"] ],
+        "depends": ["task1"],
+        "target": "user-target"
+      },
+      {
+        "name" : "task3",
+        "kernel": ["process", ["user-size"], ["user-mem"], ["rw"] ],
+        "depends": ["task2"],
+        "target": "user-target"
+      },
+      {
+        "name" : "task4",
+        "kernel": ["process", ["user-size"], ["user-mem"], ["rw"] ],
+        "depends": ["task3"],
+        "target": "user-target"
+      },
+      {
+        "name" : "task5",
+        "kernel": ["process", ["user-size"], ["user-mem"], ["rw"] ],
+        "depends": ["task4"],
+        "target": "user-target"
+      },
+      {
+        "name" : "task6",
+        "kernel": ["process", ["user-size"], ["user-mem"], ["rw"] ],
+        "depends": ["task5"],
+        "target": "user-target"
+      },
+      {
+        "name" : "task7",
+        "kernel": ["process", ["user-size"], ["user-mem"], ["rw"] ],
+        "depends": ["task6"],
+        "target": "user-target"
+      },
+      {
+        "name" : "task8",
+        "kernel": ["process", ["user-size"], ["user-mem"], ["rw"] ],
+        "depends": ["task7"],
+        "target": "user-target"
+      },
+      {
+        "name" : "task9",
+        "kernel": ["process", ["user-size"], ["user-mem"], ["rw"] ],
+        "depends": ["task8"],
+        "target": "user-target"
+      },
+      {
+        "d2h": ["user-mem", "user-B", "0", "user-size-cb"],
+        "depends": ["task9"],
+        "target": "user-target"
+      }
+      ]
+    }
+  }
+}
+

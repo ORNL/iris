@@ -1,0 +1,23 @@
+IRIS_INSTALL_ROOT ?= $(HOME)/.local
+IRIS=$(IRIS_INSTALL_ROOT)
+
+CC				:= gcc
+CXX				:= g++
+INCLUDE		+= -I$(IRIS)/include
+CFLAGS		+= ${INCLUDE} -g -std=gnu99
+CXXFLAGS	+= ${INCLUDE} -g -std=c++11
+LDFLAGS	  += -liris -lpthread -ldl
+LDINC     += -L${IRIS}/lib -L${IRIS}/lib64 
+
+ifeq (1, ${CPP})
+$(TEST):$(TEST).cpp
+	rm -f $(TEST)
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDINC) $(LDFLAGS)
+else
+$(TEST):$(TEST).c
+	rm -f $(TEST)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDINC) $(LDFLAGS) -Dfalse=0 -Dtrue=1
+endif
+
+clean:
+	rm -f $(TEST)
