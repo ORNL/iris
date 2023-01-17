@@ -94,6 +94,11 @@ typedef int (*iris_selector_kernel)(iris_task task, void* params, char* kernel_n
 extern int iris_init(int* argc, char*** argv, int sync);
 
 /**
+  * Return number of errors occurred in IRIS
+  */
+extern int iris_error_count();
+
+/**
  * Terminates the IRIS execution environment.
  */
 extern int iris_finalize();
