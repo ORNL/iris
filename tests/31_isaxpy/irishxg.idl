@@ -1,0 +1,34 @@
+/**=============================================================================
+Copyright (c) 2016, 2019 QUALCOMM Technologies Incorporated.
+All Rights Reserved Qualcomm Proprietary
+=============================================================================**/
+#ifndef BENCHMARK_IDL
+#define BENCHMARK_IDL
+
+#include "AEEStdDef.idl"
+#include "remote.idl"
+
+interface irishxg: remote_handle64{
+
+AEEResult setClocks(
+    in int32 powerLevel,            // sets the clocks for a given voltage level 
+    in int32 latency,               // latency tolerance for low-power states
+    in int32 dcvsEnable,             // flag for enabling DCVS
+	in boolean useNewPowerLevel     // True: (higher number is higher-power) False : (lower number is higher-power)
+	);
+
+
+AEEResult saxpy(
+    rout sequence<int32> Z,        // output buffer of 32-bit values
+    in sequence<int32> X,        // input buffer of 32-bit values
+    in sequence<int32> Y,        // input buffer of 32-bit values
+    in int32 A,             // const 
+    rout int32 dspUsec,            // profiling result in uSec
+    rout int32 dspCyc,             // profiling result in cycles
+    in int32 off, 
+    in int32 gws
+	);
+
+};
+
+#endif //BENCHMARK_IDL

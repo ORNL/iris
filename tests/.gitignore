@@ -1,0 +1,13 @@
+__pycache__/
+.tox/
+.vscode/settings.json
+*.egg-info
+output.csv
+output.txt
+*.zip
+.ipynb_checkpoints/
+out.*
+/test_output/
+/.vscode/
+/envs/
+report.xml
