@@ -42,7 +42,7 @@ int main(int argc, char** argv) {
   iris_task_kernel_object(task0, kernel0, 1, kernel_loop0_off, kernel_loop0_idx, NULL);
   iris_task_submit(task0, iris_gpu, NULL, true);
   iris_task_release(task0);
-  iris_kernel_release(kernel0);
+  //iris_kernel_release(kernel0); Kernel should not be release, because it is referenced by scheduling history and will be released during IRIS finalize 
 #if 0
 #pragma omp parallel for
   for (int i = 0; i < SIZE; i++) {
@@ -64,7 +64,7 @@ int main(int argc, char** argv) {
   iris_task_d2h_full(task1, mem_B, B);
   iris_task_submit(task1, iris_gpu, NULL, true);
   iris_task_release(task1);
-  iris_kernel_release(kernel1);
+  //iris_kernel_release(kernel1); Kernel should not be release, because it is referenced by scheduling history and will be released during IRIS finalize 
 #if 0
 #pragma omp parallel for
   for (int i = 0; i < SIZE; i++) {
