@@ -1490,9 +1490,9 @@ int Platform::Finalize() {
   _info("t14[%lf] t15[%lf] t16[%lf] t17[%lf]", timer()->Total(14), timer()->Total(15), timer()->Total(16), timer()->Total(17));
   _info("t18[%lf] t19[%lf] t20[%lf] t21[%lf]", timer()->Total(18), timer()->Total(19), timer()->Total(20), timer()->Total(21));
   finalize_ = true;
+  if (scheduling_history_) delete scheduling_history_;
   pthread_mutex_unlock(&mutex_);
- if (scheduling_history_) delete scheduling_history_;
-   return ret_id;
+  return ret_id;
 }
 
 } /* namespace rt */
