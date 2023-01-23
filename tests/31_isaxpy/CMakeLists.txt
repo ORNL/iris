@@ -19,7 +19,7 @@ set(OPENMP_KERNEL_SOURCES
    )
 
 set(HIP_KERNEL_SOURCES
-   src/kernel.hip.cpp
+   src/kernel.hip
    )
 
 set(CUDA_KERNEL_SOURCES
