@@ -4,9 +4,9 @@ IRIS=$(IRIS_INSTALL_ROOT)
 CC				:= gcc
 CXX				:= g++
 INCLUDE		+= -I$(IRIS)/include
-CFLAGS		+= ${INCLUDE} -g -std=gnu99
-CXXFLAGS	+= ${INCLUDE} -g -std=c++11
-LDFLAGS	  += -liris -lpthread -ldl
+CFLAGS		+= ${INCLUDE} -g -std=gnu99 ${EXT_INCLUDE}
+CXXFLAGS	+= ${INCLUDE} -g -std=c++11 ${EXT_INCLUDE}
+LDFLAGS	  += -liris -lpthread -ldl ${EXT_LDFLAGS}
 LDINC     += -L${IRIS}/lib -L${IRIS}/lib64 
 
 ifeq (1, ${CPP})

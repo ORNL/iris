@@ -1,4 +1,4 @@
-TEST=test33_graph
+TEST=test33_graph_cpp
 CPP=1
 include ../Makefile.tests
 
