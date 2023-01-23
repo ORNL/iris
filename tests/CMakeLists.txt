@@ -3,8 +3,6 @@ cmake_minimum_required(VERSION 3.0)
 project(IRIS-Tests)
 include(GNUInstallDirs)
 
-#find_package(CUDA)
-#find_package(CUDALibs)
 find_package(CUDAToolkit)
 if(CMAKE_SYSTEM_PROCESSOR STREQUAL "armv7-a")
   # Support for NVPACK
@@ -48,7 +46,6 @@ message(STATUS "CUDA Toolkit found")
 else()
 message(STATUS "CUDA Toolkit not found")
 endif()
-enable_testing()
 
 if(NOT DEFINED HIP_PATH)
     if(NOT DEFINED ENV{HIP_PATH})
@@ -66,9 +63,9 @@ else()
 message(STATUS "HIP not found")
 endif()
 message(STATUS "HIP_ROOT_DIR=${HIP_ROOT_DIR}")
-
 set(TEST_PROP "LD_LIBRARY_PATH=${LD_LIBRARY_PATH};PATH=${SYS_PATH}")
 
+enable_testing()
 # Format list(APPEND TEST_EXES "directory" "test1::test2")
 # Space is used for an empty test exe
 
@@ -146,7 +143,7 @@ foreach(i RANGE 0 ${count} 3)
    add_custom_target(
       ${dir}
       ALL
-      COMMAND make EXT_INCLUDE=${EXT_INCLUDE} EXT_LDFLAGS=${EXT_LDFLAGS}
+      COMMAND make EXT_INCLUDE="${EXT_INCLUDE}" EXT_LDFLAGS="${EXT_LDFLAGS}"
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${dir}
    )
    endif()
