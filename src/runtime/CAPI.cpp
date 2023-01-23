@@ -40,6 +40,10 @@ int iris_env_get(const char* key, char** value, size_t* vallen) {
   return Platform::GetPlatform()->EnvironmentGet(key, value, vallen);
 }
 
+int iris_error_count() {
+  return Platform::GetPlatform()->NumErrors();
+}
+
 int iris_platform_count(int* nplatforms) {
   return Platform::GetPlatform()->PlatformCount(nplatforms);
 }

@@ -26,6 +26,10 @@ int finalize() {
   return ret;
 }
 
+int error_count() {
+  return iris_error_count();
+}
+
 private:
 bool finalized_;
 
