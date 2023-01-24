@@ -5,5 +5,5 @@
 int main(int argc, char** argv) {
   iris_init(&argc, &argv, 1);
   iris_finalize();
-  return 0;
+  return iris_error_count();
 }

@@ -6,6 +6,7 @@ int main(int argc, char** argv) {
   size_t SIZE;
   int *A, *B;
 
+  //setenv("IRIS_ARCHS", "opencl", 1);
   iris_init(&argc, &argv, true);
 
   SIZE = argc > 1 ? atol(argv[1]) : 16;
@@ -30,19 +31,17 @@ int main(int argc, char** argv) {
 #pragma omp target data map(A, B)
   {
 
-  iris_kernel kernel0;
-  iris_kernel_create("loop0", &kernel0);
-  iris_kernel_setmem(kernel0, 0, mem_A, iris_rw);
 
   iris_task task0;
   iris_task_create(&task0);
   iris_task_h2d_full(task0, mem_A, A);
   size_t kernel_loop0_off[1] = { 0 };
   size_t kernel_loop0_idx[1] = { SIZE };
-  iris_task_kernel_object(task0, kernel0, 1, kernel_loop0_off, kernel_loop0_idx, NULL);
-  iris_task_submit(task0, iris_gpu, NULL, true);
+  void* loop0_params[1] = { mem_A };
+  int loop0_params_info[1] = { iris_rw };
+  iris_task_kernel(task0, "loop0", 1, kernel_loop0_off, kernel_loop0_idx, NULL, 1, loop0_params, loop0_params_info);
+  iris_task_submit(task0, iris_default, NULL, true);
   iris_task_release(task0);
-  //iris_kernel_release(kernel0); Kernel should not be release, because it is referenced by scheduling history and will be released during IRIS finalize 
 #if 0
 #pragma omp parallel for
   for (int i = 0; i < SIZE; i++) {
@@ -50,21 +49,21 @@ int main(int argc, char** argv) {
   }
 #endif
 
-  iris_kernel kernel1;
-  iris_kernel_create("loop1", &kernel1);
-  iris_kernel_setmem(kernel1, 0, mem_B, iris_rw);
-  iris_kernel_setmem(kernel1, 1, mem_A, iris_r);
-
   iris_task task1;
   iris_task_create(&task1);
+  iris_task_h2d_full(task1, mem_B, B);
+  void* loop1_params[2] = { mem_B, mem_A };
+  int loop1_params_info[2] = { iris_rw, iris_r };
   size_t kernel_loop1_off[1] = { 0 };
   size_t kernel_loop1_idx[1] = { SIZE };
-  iris_task_h2d_full(task1, mem_B, B);
-  iris_task_kernel_object(task1, kernel1, 1, kernel_loop1_off, kernel_loop1_idx, NULL);
+  iris_task_kernel(task1, "loop1", 1, kernel_loop1_off, kernel_loop1_idx, NULL, 2, loop1_params, loop1_params_info);
+  iris_task_submit(task1, iris_depend, NULL, true);
+  iris_task_d2h_full(task1, mem_A, A);
   iris_task_d2h_full(task1, mem_B, B);
-  iris_task_submit(task1, iris_gpu, NULL, true);
+  iris_task_submit(task1, iris_depend, NULL, true);
   iris_task_release(task1);
-  //iris_kernel_release(kernel1); Kernel should not be release, because it is referenced by scheduling history and will be released during IRIS finalize 
+  
+  iris_synchronize();
 #if 0
 #pragma omp parallel for
   for (int i = 0; i < SIZE; i++) {
@@ -84,6 +83,5 @@ int main(int argc, char** argv) {
   free(B);
 
   iris_finalize();
-
-  return 0;
+  return iris_error_count();
 }
