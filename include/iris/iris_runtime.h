@@ -130,6 +130,11 @@ extern int iris_env_set(const char* key, const char* value);
 extern int iris_env_get(const char* key, char** value, size_t* vallen);
 
 /**
+ * Gets the number of errors encountered during the IRIS environments history.
+ */
+extern int iris_error_count();
+
+/**
  * Returns the number of platforms.
  * @param nplatforms pointer to the number of platform
  */
