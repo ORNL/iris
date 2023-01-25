@@ -65,7 +65,6 @@ test-job:
   before_script:
     - module load cmake
     - module load gnu
-    - module load nvhpc
   script:
     - echo "Installing iris to $CI_PROJECT_DIR/install"
     - bash build-coverage.sh
