@@ -1,8 +1,8 @@
-#include <Policy.h>
-#include <Debug.h>
-#include <Device.h>
-#include <Scheduler.h>
-#include <Task.h>
+#include <iris/rt/Policy.h>
+#include <iris/rt/Debug.h>
+#include <iris/rt/Device.h>
+#include <iris/rt/Scheduler.h>
+#include <iris/rt/Task.h>
 
 namespace iris {
 namespace rt {

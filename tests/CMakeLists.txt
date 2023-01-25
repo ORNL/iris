@@ -70,9 +70,13 @@ enable_testing()
 # Space is used for an empty test exe
 
 list(APPEND TEST_EXES "01_init_finalize" "test01_init_finalize" "")
+if (CUDAToolkit_FOUND OR HIP_ROOT_DIR)
 list(APPEND TEST_EXES "02_task_depend" "test02_task_depend" "")
+endif()
 list(APPEND TEST_EXES "03_release" "test03_release" "")
+if (CUDAToolkit_FOUND OR HIP_ROOT_DIR)
 list(APPEND TEST_EXES "04_enclosing_targets" "test04_enclosing_targets" "")
+endif()
 #[DEBUG] Remove Snapdragon-specific test.
 #list(APPEND TEST_EXES "05_snapdragon" "test05_snapdragon" "")
 list(APPEND TEST_EXES "06_device" "test06_device" "")

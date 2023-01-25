@@ -543,8 +543,9 @@ int Platform::InitOpenMP() {
   //}
   loaderOpenMP_ = new LoaderOpenMP();
   if (loaderOpenMP_->Load() != IRIS_SUCCESS) {
-    _trace("%s", "skipping OpenMP architecture");
-    return IRIS_ERROR;
+      char filename[512];
+      EnvironmentGet("KERNEL_BIN_OPENMP", (char **)&filename, NULL);
+      _warning("%s", "couldn't find OpenMP architecture kernel library:%s", filename);
   }
   _trace("OpenMP platform[%d] ndevs[%d]", nplatforms_, 1);
   devs_[ndevs_] = new DeviceOpenMP(loaderOpenMP_, ndevs_, nplatforms_);
@@ -562,7 +563,9 @@ int Platform::InitHexagon() {
   //}
   loaderHexagon_ = new LoaderHexagon();
   if (loaderHexagon_->Load() != IRIS_SUCCESS) {
-    _trace("%s", "skipping Hexagon architecture");
+    char filename[512];
+    EnvironmentGet("KERNEL_BIN_HEXAGON", (char **)&filename, NULL);
+    _trace("%s", "couldn't find Hexagon architecture kernel library:%s, hence skipping", filename);
     return IRIS_ERROR;
   }
   _trace("Hexagon platform[%d] ndevs[%d]", nplatforms_, 1);

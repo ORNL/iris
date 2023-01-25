@@ -19,6 +19,7 @@
 #define _TODO_ENABLE
 #endif //NDEBUG
 
+#define _WARNING_ENABLE
 #define _ERROR_ENABLE
 #define _CLERROR_ENABLE
 #define _CUERROR_ENABLE
@@ -124,6 +125,14 @@ extern char iris_log_prefix_[];
 #else
 #define  _error(fmt, ...) do { } while (0)
 #define ___error(fmt, ...) do { } while (0) // MacOS
+#endif
+
+#ifdef _WARNING_ENABLE
+#define  _warning(fmt, ...) do { printf( YELLOW "[W] %s [%s:%d:%s] " fmt RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, ##__VA_ARGS__); FFLUSH(stdout); } while (0)
+#define ___warning(fmt, ...) do { printf(_YELLOW "[W] %s [%s:%d:%s] " fmt RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, ##__VA_ARGS__); FFLUSH(stdout); } while (0) // MacOS
+#else
+#define  _warning(fmt, ...) do { } while (0)
+#define ___warning(fmt, ...) do { } while (0) // MacOS
 #endif
 
 #ifdef _TODO_ENABLE
