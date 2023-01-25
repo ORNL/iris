@@ -1,5 +1,7 @@
 TEST=test16_task_host
 
+all: $(TEST) kernel.openmp.so 
+
 include ../Makefile.tests
 
 kernel.ptx: kernel.cu
@@ -9,4 +11,4 @@ kernel.hip: kernel.hip.cpp
 	hipcc --genco -o $@ $^
 
 kernel.openmp.so: kernel.cl.openmp.h
-	gcc -g -fopenmp -fPIC -shared -I. -o $@ kernel.cl.openmp.c
+	gcc -g -fopenmp -fPIC -shared -I. $(CFLAGS) -o $@ kernel.cl.openmp.c
