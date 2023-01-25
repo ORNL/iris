@@ -128,8 +128,8 @@ extern char iris_log_prefix_[];
 #endif
 
 #ifdef _WARNING_ENABLE
-#define  _warning(fmt, ...) do { printf( YELLOW "[W] %s [%s:%d:%s] " fmt RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, ##__VA_ARGS__); FFLUSH(stdout); } while (0)
-#define ___warning(fmt, ...) do { printf(_YELLOW "[W] %s [%s:%d:%s] " fmt RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, ##__VA_ARGS__); FFLUSH(stdout); } while (0) // MacOS
+#define  _warning(fmt, ...) do { printf( CYAN "[W] %s [%s:%d:%s] " fmt RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, ##__VA_ARGS__); FFLUSH(stdout); } while (0)
+#define ___warning(fmt, ...) do { printf(_CYAN "[W] %s [%s:%d:%s] " fmt RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, ##__VA_ARGS__); FFLUSH(stdout); } while (0) // MacOS
 #else
 #define  _warning(fmt, ...) do { } while (0)
 #define ___warning(fmt, ...) do { } while (0) // MacOS
