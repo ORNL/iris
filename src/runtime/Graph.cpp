@@ -9,6 +9,7 @@ namespace rt {
 
 Graph::Graph(Platform* platform) {
   platform_ = platform;
+  retain_tasks_ = false;
   if (platform) scheduler_ = platform_->scheduler();
   status_ = IRIS_NONE;
 

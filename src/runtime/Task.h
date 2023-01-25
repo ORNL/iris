@@ -52,6 +52,7 @@ public:
   char* name() { return name_; }
   void set_name(const char* name);
   bool user() { return user_; }
+  void set_user(bool flag=true) { user_ = flag; }
   bool system() { return system_; }
   void set_system() { system_ = true; }
   bool marker() { return type_ == IRIS_MARKER; }

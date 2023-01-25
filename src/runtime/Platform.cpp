@@ -543,9 +543,10 @@ int Platform::InitOpenMP() {
   //}
   loaderOpenMP_ = new LoaderOpenMP();
   if (loaderOpenMP_->Load() != IRIS_SUCCESS) {
-      char filename[512];
-      EnvironmentGet("KERNEL_BIN_OPENMP", (char **)&filename, NULL);
+      char *filename = (char *)malloc(512);
+      EnvironmentGet("KERNEL_BIN_OPENMP", &filename, NULL);
       _warning("couldn't find OpenMP architecture kernel library:%s", filename);
+      free(filename);
   }
   _trace("OpenMP platform[%d] ndevs[%d]", nplatforms_, 1);
   devs_[ndevs_] = new DeviceOpenMP(loaderOpenMP_, ndevs_, nplatforms_);
@@ -563,9 +564,10 @@ int Platform::InitHexagon() {
   //}
   loaderHexagon_ = new LoaderHexagon();
   if (loaderHexagon_->Load() != IRIS_SUCCESS) {
-    char filename[512];
-    EnvironmentGet("KERNEL_BIN_HEXAGON", (char **)&filename, NULL);
+    char *filename = (char *)malloc(512);
+    EnvironmentGet("KERNEL_BIN_HEXAGON", &filename, NULL);
     _trace("couldn't find Hexagon architecture kernel library:%s, hence skipping", filename);
+    free(filename);
     return IRIS_ERROR;
   }
   _trace("Hexagon platform[%d] ndevs[%d]", nplatforms_, 1);
@@ -738,6 +740,7 @@ int Platform::DeviceSynchronize(int ndevs, int* devices) {
       sprintf(sync_task, "Marker-%d", i);
       Task* subtask = new Task(this, IRIS_MARKER, sync_task);
       subtask->set_devno(devices[i]);
+      subtask->set_user(true);
       task->AddSubtask(subtask);
     }
     scheduler_->Enqueue(task);

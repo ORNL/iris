@@ -56,8 +56,9 @@ void Worker::Execute(Task* task) {
   busy_ = true;
   if (scheduler_) scheduler_->StartTask(task, this);
   if (consistency_) consistency_->Resolve(task);
+  bool task_cmd_last = task->cmd_last();
   dev_->Execute(task);
-  if (!task->cmd_last()) {
+  if (!task_cmd_last) {
     if (scheduler_) scheduler_->CompleteTask(task, this);
     //task->Complete();
   }

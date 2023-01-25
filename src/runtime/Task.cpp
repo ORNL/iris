@@ -179,6 +179,7 @@ void Task::set_pending() {
 }
 
 void Task::Complete() {
+  bool is_user_task = user_;
   pthread_mutex_lock(&mutex_complete_);
   status_ = IRIS_COMPLETE;
   if (user_) platform_->ProfileCompletedTask(this);
@@ -189,10 +190,11 @@ void Task::Complete() {
     if (dev_) dev_->worker()->TaskComplete(this);
     else if (scheduler_) scheduler_->Invoke();
   }
+  if (!is_user_task) return;
   if (platform_->release_task_flag()) {
       for (int i = 0; i < ndepends_; i++)
           if (depends_[i]->user()) depends_[i]->Release();
-      if (user_) Release();
+      if (is_user_task) Release();
   }
 }
 
