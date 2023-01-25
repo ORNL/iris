@@ -215,11 +215,7 @@ int DeviceOpenMP::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_siz
 
 int DeviceOpenMP::KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bool report_error) {
   int status = IRIS_ERROR;
-  if (ld_->iris_openmp_kernel_with_obj)
-      status = ld_->iris_openmp_kernel_with_obj(kernel->GetParamWrapperMemory(), kernel->name());
-  else if (ld_->iris_openmp_kernel)
-      status = ld_->iris_openmp_kernel(kernel->name());
-  if (status == IRIS_ERROR) {
+  if (!ld_->IsFunctionExists(name)) {
       if (report_error) {
           _error("Missing function for OpenMP kernel:%s", kernel->name());
           worker_->platform()->IncrementErrorCount();

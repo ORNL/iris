@@ -30,6 +30,7 @@ public:
   virtual int LoadFunctions();
   void (*iris_set_kernel_ptr_with_obj)(void *obj, __iris_kernel_ptr ptr);
   c_string_array (*iris_get_kernel_names)();
+  bool IsFunctionExists(const char *name);
   int SetKernelPtr(void *obj, char *kernel_name);
   int LoadExtHandle(const char *libname);
 private:
