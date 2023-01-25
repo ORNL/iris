@@ -33,6 +33,7 @@ int cmd_handler_nv(void* params, void* device) {
 }
 
 int main(int argc, char** argv) {
+  setenv("IRIS_ARCHS", "cuda", 1);
   iris_init(&argc, &argv, true);
 
   iris_register_command(0xdeadcafe, iris_nvidia, cmd_handler_nv);
@@ -60,7 +61,7 @@ int main(int argc, char** argv) {
   iris_task task;
   iris_task_create(&task);
   iris_task_custom(task, 0xdeadcafe, params, params_size);
-  iris_task_submit(task, iris_nvidia, NULL, true);
+  iris_task_submit(task, iris_cuda, NULL, true);
 
   iris_finalize();
 
