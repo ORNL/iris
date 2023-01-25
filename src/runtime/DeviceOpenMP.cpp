@@ -211,7 +211,14 @@ int DeviceOpenMP::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_siz
   return IRIS_SUCCESS;
 }
 
-int DeviceOpenMP::KernelGet(Kernel *kernel, void** kernel_bin, const char* name) {
+int DeviceOpenMP::KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bool report_error) {
+  int status;
+  if (ld_->iris_openmp_kernel_with_obj)
+      status = ld_->iris_openmp_kernel_with_obj(kernel->GetParamWrapperMemory(), kernel->name());
+  else
+      status = ld_->iris_openmp_kernel(kernel->name());
+  if (status == IRIS_ERROR)
+      return IRIS_ERROR;
   return IRIS_SUCCESS;
 }
 

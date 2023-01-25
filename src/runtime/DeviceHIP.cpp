@@ -303,7 +303,7 @@ int DeviceHIP::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,
   return IRIS_SUCCESS;
 }
 
-int DeviceHIP::KernelGet(Kernel *kernel, void** kernel_bin, const char* name) {
+int DeviceHIP::KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bool report_error) {
   int kernel_idx = -1;
   if (kernel->is_vendor_specific_kernel() && 
           host2hip_ld_->iris_host2hip_kernel_with_obj &&
@@ -313,9 +313,9 @@ int DeviceHIP::KernelGet(Kernel *kernel, void** kernel_bin, const char* name) {
       return IRIS_SUCCESS;
   hipFunction_t* hipkernel = (hipFunction_t*) kernel_bin;
   err_ = ld_->hipModuleGetFunction(hipkernel, module_, name);
-  _hiperror(err_);
+  if (report_error) _hiperror(err_);
   if (err_ != hipSuccess){
-    worker_->platform()->IncrementErrorCount();
+    if (report_error) worker_->platform()->IncrementErrorCount();
     return IRIS_ERROR;
   }
 

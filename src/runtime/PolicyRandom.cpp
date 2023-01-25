@@ -16,7 +16,12 @@ PolicyRandom::~PolicyRandom() {
 }
 
 void PolicyRandom::GetDevices(Task* task, Device** devs, int* ndevs) {
-  devs[0] = devs_[rand() % ndevs_];
+  int selected = 0;
+  for(int i=0; i<ndevs_; i++) {
+      selected = rand() % ndevs_;
+      if (IsKernelSupported(task, devs_[selected])) break;
+  }
+  devs[0] = devs_[selected];
   *ndevs = 1;
 }
 

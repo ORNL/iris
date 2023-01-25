@@ -103,9 +103,9 @@ KernelArg* Kernel::ExportArgs() {
   return new_args;
 }
 
-void* Kernel::arch(Device* dev) {
+void* Kernel::arch(Device* dev, bool report_error) {
   int devno = dev->devno();
-  if (archs_[devno] == NULL) dev->KernelGet(this, archs_ + devno, (const char*) name_);
+  if (archs_[devno] == NULL) dev->KernelGet(this, archs_ + devno, (const char*) name_, false);
   return archs_[devno];
 }
 

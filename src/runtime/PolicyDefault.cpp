@@ -13,7 +13,11 @@ PolicyDefault::~PolicyDefault() {
 }
 
 void PolicyDefault::GetDevices(Task* task, Device** devs, int* ndevs) {
-  devs[0] = devs_[0];
+  int selected = 0;
+  for(selected=0; selected<ndevs_; selected++) {
+      if (IsKernelSupported(task, devs_[selected])) break;
+  }
+  devs[0] = devs_[selected];
   *ndevs = 1;
 }
 

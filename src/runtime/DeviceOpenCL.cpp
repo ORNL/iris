@@ -288,7 +288,7 @@ int DeviceOpenCL::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_siz
   return IRIS_SUCCESS;
 }
 
-int DeviceOpenCL::KernelGet(Kernel *kernel, void** kernel_bin, const char* name) {
+int DeviceOpenCL::KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bool report_error) {
   int kernel_idx = -1;
   if (kernel->is_vendor_specific_kernel()) {
       //_trace("dev[%d][%s] kernel[%s:%s] kernel-get", devno_, name_, kernel->name(), kernel->get_task_name());
@@ -307,9 +307,9 @@ int DeviceOpenCL::KernelGet(Kernel *kernel, void** kernel_bin, const char* name)
   //_trace("dev[%d][%s] kernel[%s:%s] kernel-get-4", devno_, name_, kernel->name(), kernel->get_task_name());
   cl_kernel* clkernel = (cl_kernel*) kernel_bin;
   *clkernel = ld_->clCreateKernel(clprog_, name, &err_);
-  _clerror(err_);
+  if (report_error) _clerror(err_);
   if (err_ != CL_SUCCESS){
-    worker_->platform()->IncrementErrorCount();
+    if (report_error) worker_->platform()->IncrementErrorCount();
     return IRIS_ERROR;
   }
   return IRIS_SUCCESS;

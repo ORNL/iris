@@ -354,10 +354,10 @@ int Platform::SetDevsAvailable() {
 }
 
 int Platform::InitCUDA() {
-  if (arch_available_ & iris_nvidia) {
-    _trace("%s", "skipping CUDA architecture");
-    return IRIS_ERROR;
-  }
+  //if (arch_available_ & iris_nvidia) {
+  //  _trace("%s", "skipping CUDA architecture");
+  //  return IRIS_ERROR;
+  //}
   loaderCUDA_ = new LoaderCUDA();
   if (loaderCUDA_->LoadExtHandle("libcudart.so") != IRIS_SUCCESS) {
     _trace("%s", "skipping CUDA RT architecture");
@@ -422,10 +422,10 @@ int Platform::InitCUDA() {
 }
 
 int Platform::InitHIP() {
-  if (arch_available_ & iris_amd) {
-    _trace("%s", "skipping HIP architecture");
-    return IRIS_ERROR;
-  }
+  //if (arch_available_ & iris_amd) {
+  //  _trace("%s", "skipping HIP architecture");
+  //  return IRIS_ERROR;
+  //}
   loaderHIP_ = new LoaderHIP();
   if (loaderHIP_->Load() != IRIS_SUCCESS) {
     _trace("%s", "skipping HIP architecture");
@@ -484,10 +484,10 @@ int Platform::InitHIP() {
 }
 
 int Platform::InitLevelZero() {
-  if (arch_available_ & iris_gpu_intel) {
-    _trace("%s", "skipping LevelZero architecture");
-    return IRIS_ERROR;
-  }
+  //if (arch_available_ & iris_gpu_intel) {
+  //  _trace("%s", "skipping LevelZero architecture");
+  //  return IRIS_ERROR;
+  //}
   loaderLevelZero_ = new LoaderLevelZero();
   if (loaderLevelZero_->Load() != IRIS_SUCCESS) {
     _trace("%s", "skipping LevelZero architecture");
@@ -537,10 +537,10 @@ int Platform::InitLevelZero() {
 }
 
 int Platform::InitOpenMP() {
-  if (arch_available_ & iris_cpu) {
-    _trace("%s", "skipping OpenMP architecture");
-    return IRIS_ERROR;
-  }
+  //if (arch_available_ & iris_cpu) {
+  //  _trace("%s", "skipping OpenMP architecture");
+  //  return IRIS_ERROR;
+  //}
   loaderOpenMP_ = new LoaderOpenMP();
   if (loaderOpenMP_->Load() != IRIS_SUCCESS) {
     _trace("%s", "skipping OpenMP architecture");
@@ -556,10 +556,10 @@ int Platform::InitOpenMP() {
 }
 
 int Platform::InitHexagon() {
-  if (arch_available_ & iris_hexagon) {
-    _trace("%s", "skipping Hexagon architecture");
-    return IRIS_ERROR;
-  }
+  //if (arch_available_ & iris_hexagon) {
+  //  _trace("%s", "skipping Hexagon architecture");
+  //  return IRIS_ERROR;
+  //}
   loaderHexagon_ = new LoaderHexagon();
   if (loaderHexagon_->Load() != IRIS_SUCCESS) {
     _trace("%s", "skipping Hexagon architecture");
@@ -601,14 +601,14 @@ int Platform::InitOpenCL() {
     _clerror(err);
     _trace("OpenCL platform[%s] from [%s]", platform_name, vendor);
 
-    if ((arch_available_ & iris_nvidia) && strstr(vendor, "NVIDIA") != NULL) {
-      _trace("skipping platform[%d] [%s %s] ndevs[%u]", nplatforms_, vendor, platform_name, ndevs);
-      continue;
-    }
-    if ((arch_available_ & iris_amd) && strstr(vendor, "Advanced Micro Devices") != NULL) {
-      _trace("skipping platform[%d] [%s %s] ndevs[%u]", nplatforms_, vendor, platform_name, ndevs);
-      continue;
-    }
+    //if ((arch_available_ & iris_nvidia) && strstr(vendor, "NVIDIA") != NULL) {
+    //  _trace("skipping platform[%d] [%s %s] ndevs[%u]", nplatforms_, vendor, platform_name, ndevs);
+    //  continue;
+    //}
+    //if ((arch_available_ & iris_amd) && strstr(vendor, "Advanced Micro Devices") != NULL) {
+    //  _trace("skipping platform[%d] [%s %s] ndevs[%u]", nplatforms_, vendor, platform_name, ndevs);
+    //  continue;
+    //}
     err = loaderOpenCL_->clGetDeviceIDs(cl_platforms[i], CL_DEVICE_TYPE_ALL, 0, NULL, &ndevs);
     if (!ndevs) {
       _trace("skipping platform[%d] [%s %s] ndevs[%u]", nplatforms_, vendor, platform_name, ndevs);

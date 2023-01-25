@@ -73,7 +73,7 @@ public:
   virtual int MemD2D(Task *task, BaseMem *mem, void *dst, void *src, size_t size) { _error("Device:%d:%s doesn't support MemD2D", devno_, name()); return IRIS_ERROR; }
   virtual int MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag="") = 0;
   virtual int MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag="") = 0;
-  virtual int KernelGet(Kernel *kernel, void** kernel_bin, const char* name) = 0;
+  virtual int KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bool report_error=true) = 0;
   virtual int KernelLaunchInit(Kernel* kernel) { return IRIS_SUCCESS; }
   virtual int KernelSetArg(Kernel* kernel, int idx, int kindex, size_t size, void* value) = 0;
   virtual int KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, size_t off) = 0;

@@ -455,7 +455,7 @@ int DeviceCUDA::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
   return IRIS_SUCCESS;
 }
 
-int DeviceCUDA::KernelGet(Kernel *kernel, void** kernel_bin, const char* name) {
+int DeviceCUDA::KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bool report_error) {
   int kernel_idx=-1;
   if (kernel->is_vendor_specific_kernel() && 
           host2cuda_ld_->iris_host2cuda_kernel_with_obj &&
@@ -465,10 +465,12 @@ int DeviceCUDA::KernelGet(Kernel *kernel, void** kernel_bin, const char* name) {
       return IRIS_SUCCESS;
   CUfunction* cukernel = (CUfunction*) kernel_bin;
   err_ = ld_->cuModuleGetFunction(cukernel, module_, name);
-  _cuerror(err_);
+  if (report_error) _cuerror(err_);
   if (err_ != CUDA_SUCCESS) {
-      _error("CUDA kernel:%s not found !", name);
-      worker_->platform()->IncrementErrorCount();
+      if (report_error) {
+          _error("CUDA kernel:%s not found !", name);
+          worker_->platform()->IncrementErrorCount();
+      }
       return IRIS_ERROR;
   }
   char name_off[256];

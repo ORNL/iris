@@ -78,7 +78,7 @@ int DeviceHexagon::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_si
   return IRIS_SUCCESS;
 }
 
-int DeviceHexagon::KernelGet(Kernel *kernel, void** kernel_bin, const char* name) {
+int DeviceHexagon::KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bool report_error) {
   return IRIS_SUCCESS;
 }
 

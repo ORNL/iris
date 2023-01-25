@@ -18,6 +18,7 @@ public:
   virtual ~Policy();
 
   virtual void Init(void* arg) {}
+  virtual bool IsKernelSupported(Task *task, Device *dev);
   virtual void GetDevices(Task* task, Device** devs, int* ndevs) = 0;
   void SetScheduler(Scheduler* scheduler);
 

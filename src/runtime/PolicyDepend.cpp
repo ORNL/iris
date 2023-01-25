@@ -27,10 +27,18 @@ void PolicyDepend::GetDevices(Task* task, Device** devs, int* ndevs) {
         break;
       }
     }
-    if (!found) {
+    if (!found && IsKernelSupported(task, dev)) {
       devs[ntargets] = dev;
       *ndevs = ++ntargets;
     }
+  }
+  if (ndepends == 0) {
+      int selected = 0;
+      for(selected=0; selected<ndevs_; selected++) {
+          if (IsKernelSupported(task, devs_[selected])) break;
+      }
+      devs[0] = devs_[selected];
+      *ndevs = 1;
   }
 }
 
