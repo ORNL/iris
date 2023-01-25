@@ -17,6 +17,7 @@ void PolicyDefault::GetDevices(Task* task, Device** devs, int* ndevs) {
   for(selected=0; selected<ndevs_; selected++) {
       if (IsKernelSupported(task, devs_[selected])) break;
   }
+  if (selected == ndevs_) selected = 0;
   devs[0] = devs_[selected];
   *ndevs = 1;
 }
