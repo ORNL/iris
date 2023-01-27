@@ -391,7 +391,7 @@ static int iris_kernel_idx = -1;
     appendKernelSignature(args, lines, data_hash, k_hash)
     sig_lines = []
     appendKernelSignatureHeaderFile(args, sig_lines, header_data_hash)
-    lines = lines + sig_lines
+    #lines = lines + sig_lines
     k_sig_lines = [''' 
 #ifdef __cplusplus
 extern "C" {
