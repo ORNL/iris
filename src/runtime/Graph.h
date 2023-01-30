@@ -9,7 +9,7 @@
 
 namespace iris {
 namespace rt {
-
+class BaseMem;
 class Graph: public Retainable<struct _iris_graph, Graph> {
 public:
   Graph(Platform* platform);
@@ -22,6 +22,7 @@ public:
 
   Platform* platform() { return platform_; }
   std::vector<Task*>* tasks() { return &tasks_; }
+  std::vector<Task*> & tasks_list() { return tasks_; }
   int iris_tasks(iris_task *pv);
   int tasks_count() { return tasks_.size(); }
   bool is_retainable() { return retain_tasks_; }
@@ -44,6 +45,28 @@ private:
 public:
   static Graph* Create(Platform* platform);
   Task* end() { return end_; }
+};
+
+class GraphMetadata {
+public:
+    GraphMetadata(Graph *graph) : graph_(graph) {
+        map_task_inputs_outputs();
+    }
+    void get_dependency_graph();
+    void map_task_inputs_outputs();
+    void get_2d_comm_adj_matrix(size_t *comm_task_adj_matrix=NULL);
+private:
+    uint32_t *dep_adj_matrix_;
+    uint32_t *dep_adj_list_;
+    size_t *comm_task_adj_matrix_;
+    Graph *graph_;
+    map<unsigned long, unsigned long> task_uid_2_index_hash_;
+    map<unsigned long, Task *> task_uid_hash_;
+    map<unsigned long, BaseMem *> mem_index_hash_;
+    map<unsigned long, unsigned long> mem_regions_2_dmem_hash_;
+    map<unsigned long, vector<unsigned long>> output_tasks_map_;
+    map<unsigned long, vector<unsigned long>> task_inputs_map_;
+    map<unsigned long, vector<unsigned long>> task_outputs_map_;
 };
 
 } /* namespace rt */

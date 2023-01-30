@@ -377,6 +377,22 @@ extern int    iris_cmd_kernel_get_arg_mode(void *cmd, int index);
 extern int iris_graph_get_tasks(iris_graph graph, iris_task *tasks);
 extern int iris_graph_tasks_count(iris_graph graph);
 extern int iris_graph_submit_with_time(iris_graph graph, double *time, int device, int sync);
+extern int iris_get_graph_2d_comm_adj_matrix(iris_graph brs_graph, size_t *size_data);
+extern void iris_free_array(void *ptr);
+extern int8_t *iris_allocate_array_int8_t(int SIZE, int8_t init);
+extern int16_t *iris_allocate_array_int16_t(int SIZE, int16_t init);
+extern int32_t *iris_allocate_array_int32_t(int SIZE, int32_t init);
+extern int64_t *iris_allocate_array_int64_t(int SIZE, int64_t init);
+extern size_t *iris_allocate_array_size_t(int SIZE, size_t init);
+extern float *iris_allocate_array_float(int SIZE, float init);
+extern double *iris_allocate_array_double(int SIZE, double init);
+extern int8_t *iris_allocate_random_array_int8_t(int SIZE);
+extern int16_t *iris_allocate_random_array_int16_t(int SIZE);
+extern int32_t *iris_allocate_random_array_int32_t(int SIZE);
+extern int64_t *iris_allocate_random_array_int64_t(int SIZE);
+extern size_t *iris_allocate_random_array_size_t(int SIZE);
+extern float *iris_allocate_random_array_float(int SIZE);
+extern double *iris_allocate_random_array_double(int SIZE);
 #ifdef __cplusplus
 } /* end of extern "C" */
 #endif

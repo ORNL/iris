@@ -886,90 +886,23 @@ class graph:
                         mem_serial_index = mem_serial_index_hash[mem_index]
                         dep_graph[index+1][0][mem_serial_index] += size
         return dep_graph
+
     def get_2d_cost_communication_matrix(self, pdf=False):
         ntasks, tasks = self.get_tasks()
-        dep_graph = np.zeros((len(tasks)+1, len(tasks)+1), np.int64)
-        task_index_hash = {}
-        task_input_mems = []
-        task_output_mems = []
-        mem_index_hash = {}
-        mem_regions_2_dmem_hash = {}
-        mem_dmem_2_regions = {}
-        for index, each_task in enumerate(tasks):
-            task_index_hash[each_task.uid()] = index
-            inputs = each_task.get_input_mems()
-            outputs = each_task.get_output_mems()
-            task_input_mems.append([])
-            task_output_mems.append([])
-            for inp in inputs:
-                if inp.uid() not in mem_index_hash:
-                    mem_index_hash[inp.uid()] = {'mem': inp, 'inputs':[], 'outputs':[]}
-                mem_index_hash[inp.uid()]['inputs'].append(each_task.uid())
-                task_input_mems[index].append(inp.uid())
-            for outp in outputs:
-                if outp.uid() not in mem_index_hash:
-                    mem_index_hash[outp.uid()] = {'mem': outp, 'inputs':[], 'outputs':[]}
-                mem_index_hash[outp.uid()]['outputs'].append(each_task.uid())
-                task_output_mems[index].append(outp.uid())
-                if outp.type == IRIS_DMEM_REGION:
-                    if outp.uid() not in mem_regions_2_dmem_hash:
-                        mem_regions_2_dmem_hash[outp.uid()] = outp.mem.uid()
-                    if outp.mem.uid() not in mem_dmem_2_regions:
-                        mem_dmem_2_regions[outp.mem.uid()] = []
-                    mem_dmem_2_regions[outp.mem.uid()].append(outp.uid())
-        task_outputs = np.zeros(len(tasks))
-        for index, each_task in enumerate(tasks):
-            n_depends, dep_tasks = each_task.get_depends()
-            for d_task in dep_tasks:
-                d_index = task_index_hash[d_task.uid()]
-                task_outputs[d_index] += 1
-        for index, each_task in enumerate(tasks):
-            lst1 = task_input_mems[index]
-            n_depends, dep_tasks = each_task.get_depends()
-            if index == 0:
-                # End Task
-                dep_tasks = []
-                for d_index, n_outs in enumerate(task_outputs):
-                    if n_outs == 1:
-                        dep_tasks.append(tasks[d_index])
-            added_mems = []
-            for d_task in dep_tasks:
-                d_index = task_index_hash[d_task.uid()]
-                lst2 = task_output_mems[d_index]
-                mem_list = lst2
-                if len(lst1) > 0:
-                    mem_list = list(set(lst1) & set(lst2))
-                added_mems = mem_list
-                size = 0
-                for mem_index in mem_list:
-                    size += mem_index_hash[mem_index]['mem'].size()
-                for mem_index in lst2:
-                    if mem_index in mem_regions_2_dmem_hash:
-                        dmem_index = mem_regions_2_dmem_hash[mem_index]
-                        if dmem_index in lst1:
-                            size += mem_index_hash[mem_index]['mem'].size()
-                            added_mems.append(dmem_index)
-                dep_graph[index+1][d_index+1] = dep_graph[index+1][d_index+1] + size
-            size = 0
-            for mem_index in lst1:
-                if mem_index not in added_mems:
-                    mem_obj = mem_index_hash[mem_index]['mem']
-                    if mem_index in mem_regions_2_dmem_hash:
-                        dmem_index = mem_regions_2_dmem_hash[mem_index]
-                        dmem_obj = mem_index_hash[dmem_index]['mem']
-                        if not dmem_obj.is_reset():
-                            size += mem_obj.size()
-                    elif not mem_obj.is_reset():
-                        size += mem_obj.size()
-            dep_graph[index+1][0] = dep_graph[index+1][0] + size
+        SIZE = ntasks+1
+        comm_2d_ptr = dll.call_ret_ptr(dll.iris_allocate_array_size_t, np.int32(SIZE*SIZE), np.int64(0))
+        comm_2d = dll.convert_c_pointer_to_numpy(comm_2d_ptr, (SIZE, SIZE), ctypes.c_size_t)
+        dll.call_ret_ptr(dll.iris_get_graph_2d_comm_adj_matrix, self.handle, comm_2d)
+        print(comm_2d)
         if pdf:
             task_names = self.get_task_names()
             task_uids =  self.get_task_uids()
             import pandas as pd
-            df = pd.DataFrame(dep_graph, columns=task_names)
+            df = pd.DataFrame(comm_2d, columns=task_names)
             df['task_name'] = task_names
             df['task_uid'] = task_uids
-            df['parent_count'] = dep_graph.sum(axis=1)
-            df['child_count'] = dep_graph.sum(axis=0)
+            df['parent_count'] = comm_2d.sum(axis=1)
+            df['child_count'] = comm_2d.sum(axis=0)
             return df
-        return dep_graph
+        return comm_2d
+

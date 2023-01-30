@@ -3,7 +3,9 @@
 #include "Platform.h"
 #include "Consistency.h"
 #include "Scheduler.h"
+#include "Graph.h"
 #include "Task.h"
+#include "Utils.h"
 #include "Kernel.h"
 #include "BaseMem.h"
 #include "DataMem.h"
@@ -466,4 +468,70 @@ int iris_graph_get_tasks(iris_graph graph, iris_task *tasks) {
 int iris_graph_tasks_count(iris_graph graph)
 {
     return Platform::GetPlatform()->GetGraphTasksCount(graph);
+}
+int iris_get_graph_2d_comm_adj_matrix(iris_graph brs_graph, size_t *size_data)
+{
+    Graph* graph = brs_graph->class_obj;
+    GraphMetadata gm(graph);
+    gm.get_2d_comm_adj_matrix(size_data);
+}
+void iris_free_array(void *ptr)
+{
+    free(ptr);
+}
+int8_t *iris_allocate_array_int8_t(int SIZE, int8_t init)
+{
+    return Utils::AllocateArray<int8_t>(SIZE, init);
+}
+int16_t *iris_allocate_array_int16_t(int SIZE, int16_t init)
+{
+    return Utils::AllocateArray<int16_t>(SIZE, init);
+}
+int32_t *iris_allocate_array_int32_t(int SIZE, int32_t init)
+{
+    return Utils::AllocateArray<int32_t>(SIZE, init);
+}
+int64_t *iris_allocate_array_int64(int SIZE, int64_t init)
+{
+    return Utils::AllocateArray<int64_t>(SIZE, init);
+}
+size_t *iris_allocate_array_size_t(int SIZE, size_t init)
+{
+    return Utils::AllocateArray<size_t>(SIZE, init);
+}
+float *iris_allocate_array_float(int SIZE, float init)
+{
+    return Utils::AllocateArray<float>(SIZE, init);
+}
+double *iris_allocate_array_double(int SIZE, double init)
+{
+    return Utils::AllocateArray<double>(SIZE, init);
+}
+int8_t *iris_allocate_random_array_int8_t(int SIZE)
+{
+    return Utils::AllocateRandomArray<int8_t>(SIZE);
+}
+int16_t *iris_allocate_random_array_int16_t(int SIZE)
+{
+    return Utils::AllocateRandomArray<int16_t>(SIZE);
+}
+int32_t *iris_allocate_random_array_int32_t(int SIZE)
+{
+    return Utils::AllocateRandomArray<int32_t>(SIZE);
+}
+int64_t *iris_allocate_random_array_int64_t(int SIZE)
+{
+    return Utils::AllocateRandomArray<int64_t>(SIZE);
+}
+size_t *iris_allocate_random_array_size_t(int SIZE)
+{
+    return Utils::AllocateRandomArray<size_t>(SIZE);
+}
+float *iris_allocate_random_array_float(int SIZE)
+{
+    return Utils::AllocateRandomArray<float>(SIZE);
+}
+double *iris_allocate_random_array_double(int SIZE)
+{
+    return Utils::AllocateRandomArray<double>(SIZE);
 }
