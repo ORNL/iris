@@ -41,7 +41,112 @@ class library(CDLL):
             fn_name = self.__getitem__(fn_name)
         fn_name(*conv_args)
 
-dll = library("libiris.so")
+class IRIS(library):
+    def __init__(self):
+        super(IRIS, self).__init__("libiris.so")
+    def get_numpy_size(self, size):
+        if type(size) != np.ndarray:
+            size = np.array(size)
+        return size
+    def alloc_random_size_t(self, size, init=np.int64(0)):
+        size = self.get_numpy_size(size)
+        total_size = size.prod()
+        c_ptr = dll.call_ret_ptr(dll.iris_allocate_random_array_size_t, np.int32(total_size), init)
+        np_data = dll.convert_c_pointer_to_numpy(c_ptr, size, ctypes.c_size_t)
+        return np_data, c_ptr
+        
+    def alloc_random_float(self, size, init=np.float32(0.0)):
+        size = self.get_numpy_size(size)
+        total_size = size.prod()
+        c_ptr = dll.call_ret_ptr(dll.iris_allocate_random_array_float, np.int32(total_size), init)
+        np_data = dll.convert_c_pointer_to_numpy(c_ptr, size, ctypes.c_float)
+        return np_data, c_ptr
+        
+    def alloc_random_double(self, size, init=np.float64(0.0)):
+        size = self.get_numpy_size(size)
+        total_size = size.prod()
+        c_ptr = dll.call_ret_ptr(dll.iris_allocate_random_array_double, np.int32(total_size), init)
+        np_data = dll.convert_c_pointer_to_numpy(c_ptr, size, ctypes.c_double)
+        return np_data, c_ptr
+        
+    def alloc_random_int64(self, size, init=np.int64(0)):
+        size = self.get_numpy_size(size)
+        total_size = size.prod()
+        c_ptr = dll.call_ret_ptr(dll.iris_allocate_random_array_int64_t, np.int32(total_size), init)
+        np_data = dll.convert_c_pointer_to_numpy(c_ptr, size, ctypes.c_int64)
+        return np_data, c_ptr
+        
+    def alloc_random_int32(self, size, init=np.int32(0)):
+        size = self.get_numpy_size(size)
+        total_size = size.prod()
+        c_ptr = dll.call_ret_ptr(dll.iris_allocate_random_array_int32_t, np.int32(total_size), init)
+        np_data = dll.convert_c_pointer_to_numpy(c_ptr, size, ctypes.c_int32)
+        return np_data, c_ptr
+
+    def alloc_random_int16(self, size, init=np.int16(0)):
+        size = self.get_numpy_size(size)
+        total_size = size.prod()
+        c_ptr = dll.call_ret_ptr(dll.iris_allocate_random_array_int16_t, np.int32(total_size), init)
+        np_data = dll.convert_c_pointer_to_numpy(c_ptr, size, ctypes.c_short)
+        return np_data, c_ptr
+
+    def alloc_random_int8(self, size, init=np.int8(0)):
+        size = self.get_numpy_size(size)
+        total_size = size.prod()
+        c_ptr = dll.call_ret_ptr(dll.iris_allocate_random_array_int8_t, np.int32(total_size), init)
+        np_data = dll.convert_c_pointer_to_numpy(c_ptr, size, ctypes.c_byte)
+        return np_data, c_ptr
+        
+    def alloc_size_t(self, size, init=np.int64(0)):
+        size = self.get_numpy_size(size)
+        total_size = size.prod()
+        c_ptr = dll.call_ret_ptr(dll.iris_allocate_array_size_t, np.int32(total_size), init)
+        np_data = dll.convert_c_pointer_to_numpy(c_ptr, size, ctypes.c_size_t)
+        return np_data, c_ptr
+        
+    def alloc_float(self, size, init=np.float32(0.0)):
+        size = self.get_numpy_size(size)
+        total_size = size.prod()
+        c_ptr = dll.call_ret_ptr(dll.iris_allocate_array_float, np.int32(total_size), init)
+        np_data = dll.convert_c_pointer_to_numpy(c_ptr, size, ctypes.c_float)
+        return np_data, c_ptr
+        
+    def alloc_double(self, size, init=np.float64(0.0)):
+        size = self.get_numpy_size(size)
+        total_size = size.prod()
+        c_ptr = dll.call_ret_ptr(dll.iris_allocate_array_double, np.int32(total_size), init)
+        np_data = dll.convert_c_pointer_to_numpy(c_ptr, size, ctypes.c_double)
+        return np_data, c_ptr
+        
+    def alloc_int64(self, size, init=np.int64(0)):
+        size = self.get_numpy_size(size)
+        total_size = size.prod()
+        c_ptr = dll.call_ret_ptr(dll.iris_allocate_array_int64_t, np.int32(total_size), init)
+        np_data = dll.convert_c_pointer_to_numpy(c_ptr, size, ctypes.c_int64)
+        return np_data, c_ptr
+        
+    def alloc_int32(self, size, init=np.int32(0)):
+        size = self.get_numpy_size(size)
+        total_size = size.prod()
+        c_ptr = dll.call_ret_ptr(dll.iris_allocate_array_int32_t, np.int32(total_size), init)
+        np_data = dll.convert_c_pointer_to_numpy(c_ptr, size, ctypes.c_int32)
+        return np_data, c_ptr
+        
+    def alloc_int16(self, size, init=np.int16(0)):
+        size = self.get_numpy_size(size)
+        total_size = size.prod()
+        c_ptr = dll.call_ret_ptr(dll.iris_allocate_array_int16_t, np.int32(total_size), init)
+        np_data = dll.convert_c_pointer_to_numpy(c_ptr, size, ctypes.c_short)
+        return np_data, c_ptr
+
+    def alloc_int8(self, size, init=np.int8(0)):
+        size = self.get_numpy_size(size)
+        total_size = size.prod()
+        c_ptr = dll.call_ret_ptr(dll.iris_allocate_array_int8_t, np.int32(total_size), init)
+        np_data = dll.convert_c_pointer_to_numpy(c_ptr, size, ctypes.c_byte)
+        return np_data, c_ptr
+        
+dll = IRIS()
 
 def call(fn_name, *args):
     dll.call(fn_name, *args)
@@ -890,8 +995,7 @@ class graph:
     def get_2d_cost_communication_matrix(self, pdf=False):
         ntasks, tasks = self.get_tasks()
         SIZE = ntasks+1
-        comm_2d_ptr = dll.call_ret_ptr(dll.iris_allocate_array_size_t, np.int32(SIZE*SIZE), np.int64(0))
-        comm_2d = dll.convert_c_pointer_to_numpy(comm_2d_ptr, (SIZE, SIZE), ctypes.c_size_t)
+        comm_2d, comm_2d_ptr = dll.alloc_size_t((SIZE,SIZE))
         dll.call_ret_ptr(dll.iris_get_graph_2d_comm_adj_matrix, self.handle, comm_2d)
         print(comm_2d)
         if pdf:

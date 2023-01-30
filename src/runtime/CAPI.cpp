@@ -474,6 +474,7 @@ int iris_get_graph_2d_comm_adj_matrix(iris_graph brs_graph, size_t *size_data)
     Graph* graph = brs_graph->class_obj;
     GraphMetadata gm(graph);
     gm.get_2d_comm_adj_matrix(size_data);
+    return IRIS_SUCCESS;
 }
 void iris_free_array(void *ptr)
 {
@@ -491,7 +492,7 @@ int32_t *iris_allocate_array_int32_t(int SIZE, int32_t init)
 {
     return Utils::AllocateArray<int32_t>(SIZE, init);
 }
-int64_t *iris_allocate_array_int64(int SIZE, int64_t init)
+int64_t *iris_allocate_array_int64_t(int SIZE, int64_t init)
 {
     return Utils::AllocateArray<int64_t>(SIZE, init);
 }
