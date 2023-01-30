@@ -5,11 +5,15 @@
 #include "DataMem.h"
 #include "DataMemRegion.h"
 #include "Scheduler.h"
+#include "Platform.h"
+#include "Device.h"
+#include "Command.h"
 #include "Task.h"
 #include "Timer.h"
 #include "Utils.h"
 #include <vector>
 #include <set>
+#define GET2D_INDEX(NCOL, I, J)  ((I)*(NCOL)+(J))
 
 using namespace std;
 namespace iris {
@@ -66,7 +70,103 @@ void Graph::Wait() {
 Graph* Graph::Create(Platform* platform) {
   return new Graph(platform);
 }
-#define GET2D_INDEX(NCOL, I, J)  ((I)*(NCOL)+(J))
+void GraphMetadata::calibrate_compute_cost_adj_matrix(double *comp_task_adj_matrix)
+{
+    vector<int> unique_devices;
+    map<int, vector<int>> model_2_devices;
+    Platform *platform = Platform::GetPlatform();
+    int ndevs = platform->ndevs();
+    for(int i=0; i<ndevs; i++) {
+        Device *dev = platform->device(i);
+        int model = dev->model();
+        if (model_2_devices.find(model) == model_2_devices.end()) {
+            model_2_devices.insert(make_pair(model, vector<int>()));
+            unique_devices.push_back(model);
+        }
+        model_2_devices[model].push_back(i);
+    }
+    vector<Task *> & tasks = graph_->tasks_list();
+    int ntasks = tasks.size()+1;
+    if (comp_task_adj_matrix == NULL) {
+        comp_task_adj_matrix_ = (double *)calloc(ntasks*ndevs, sizeof(size_t));
+        comp_task_adj_matrix = comp_task_adj_matrix_;
+    }
+    map<string, uint64_t> kernel_map;
+    map<vector<uint64_t>, double> knobs_to_makespan;
+    for(unsigned long index=0; index<tasks.size(); index++) {
+        Task *task = tasks[index];
+        vector<uint64_t> knobs;
+        if (task->cmd_kernel() != NULL)  {
+            string kname = task->cmd_kernel()->kernel()->name();
+            if (kernel_map.find(kname) == kernel_map.end()) {
+                size_t size = kernel_map.size();
+                //printf("Inserting kname: %s in map size:%lu\n", kname.c_str(), size);
+                kernel_map[kname] = (int)size;
+            }
+            knobs.push_back(kernel_map[kname]);
+            for(int i=0; i<task->cmd_kernel()->kernel_nargs(); i++) {
+                KernelArg* arg = task->cmd_kernel()->kernel_arg(i);
+                if (arg->mem != NULL) continue;
+                void *value = arg->value;
+                uint64_t data64 = 0;
+                switch(arg->size) {
+                    case 1:  {
+                        uint8_t data = *((uint8_t *)value);
+                        data64 = (uint64_t) data;
+                        break;
+                             }
+                    case 2:  {
+                        uint16_t data = *((uint16_t *)value);
+                        data64 = (uint64_t) data;
+                        break;
+                             }
+                    case 4:  {
+                        uint32_t data = *((uint32_t *)value);
+                        data64 = (uint64_t) data;
+                        break;
+                             }
+                    case 8:  {
+                        data64 = *((uint64_t *)value);
+                        break;
+                             }
+                    default: _error("Size:%d not yet handled", arg->size);
+                }
+                knobs.push_back(data64);
+            }
+        }
+        for(int dev_index : unique_devices) {
+            int dev_no = model_2_devices[dev_index][0];
+            vector<uint64_t > dknobs = knobs;
+            dknobs.push_back(dev_index);
+            double time_duration = 0.0f, dtime;
+            if (knobs_to_makespan.find(dknobs) == knobs_to_makespan.end()) {
+                vector<double> multi_time;
+                if (task->cmd_kernel() != NULL) {
+                    string kname = task->cmd_kernel()->kernel()->name();
+                    Utils::PrintVectorFull<uint64_t>(dknobs, "Exploring new set of Knobs:");
+                    for(int i=0; i<iterations_; i++) {
+                        printf("Running for iteration:%d kname:%s\n", i, kname.c_str());
+                        platform->TaskSubmit(task, dev_no, NULL, 1);
+                        dtime = task->cmd_kernel()->time_duration();
+                        multi_time.push_back(dtime);
+                    }
+                }
+                for(double dtime : multi_time) {
+                    time_duration += dtime;
+                }
+                time_duration = time_duration / iterations_;
+                knobs_to_makespan.insert(make_pair(dknobs, time_duration));
+            }
+            else {
+                time_duration = knobs_to_makespan[dknobs];
+            }
+            for(int dev_no : model_2_devices[dev_index]) {
+                comp_task_adj_matrix[GET2D_INDEX(ndevs, index+1, dev_no)] = time_duration;
+            }
+        }
+    }   
+    Utils::PrintMatrixLimited<double>(comp_task_adj_matrix, ntasks, ndevs, "Task Computation data(C++)");
+}
 void GraphMetadata::map_task_inputs_outputs()
 {
     vector<Task *> & tasks = graph_->tasks_list();
@@ -278,7 +378,7 @@ void GraphMetadata::get_2d_comm_adj_matrix(size_t *comm_task_adj_matrix)
             comm_task_adj_matrix[GET2D_INDEX(ntasks, index+1, 0)] += size;
         }
     }
-    Utils::PrintMatrixLimited<size_t>(comm_task_adj_matrix, ntasks, ntasks, "Task Communication data");
+    Utils::PrintMatrixLimited<size_t>(comm_task_adj_matrix, ntasks, ntasks, "Task Communication data(C++)");
 }
 
 } /* namespace rt */

@@ -49,16 +49,20 @@ public:
 
 class GraphMetadata {
 public:
-    GraphMetadata(Graph *graph) : graph_(graph) {
+    GraphMetadata(Graph *graph, int iterations=3) : graph_(graph), iterations_(iterations) {
         map_task_inputs_outputs();
+        iterations_ = 3;
     }
     void get_dependency_graph();
     void map_task_inputs_outputs();
     void get_2d_comm_adj_matrix(size_t *comm_task_adj_matrix=NULL);
+    void calibrate_compute_cost_adj_matrix(double *comp_task_adj_matrix=NULL);
 private:
+    int iterations_;
     uint32_t *dep_adj_matrix_;
     uint32_t *dep_adj_list_;
     size_t *comm_task_adj_matrix_;
+    double *comp_task_adj_matrix_;
     Graph *graph_;
     map<unsigned long, unsigned long> task_uid_2_index_hash_;
     map<unsigned long, Task *> task_uid_hash_;

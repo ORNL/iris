@@ -244,6 +244,13 @@ def device_info(device, param):
     dll.iris_device_info(c_int(device), c_int(param), s, None)
     return s.value
 
+def all_device_info():
+    dev_names = []
+    for i in range(device_count()):
+        dev = device_info(i, iris_name)
+        dev_names.append(dev)
+    return dev_names
+
 def mem_create(size):
     m = iris_mem()
     dll.iris_mem_create(c_size_t(size), byref(m))
@@ -833,6 +840,10 @@ class graph:
         self.handle = graph_create()
         for each_task in tasks:
             self.add_task(each_task, device, opt)
+    def retain(self):
+        dll.iris_graph_retain(self.handle)
+    def release(self):
+        dll.iris_graph_release(self.handle)
     def free(self):
         dll.iris_graph_free(self.handle)
     def wait(self):
@@ -997,7 +1008,7 @@ class graph:
         SIZE = ntasks+1
         comm_2d, comm_2d_ptr = dll.alloc_size_t((SIZE,SIZE))
         dll.call_ret_ptr(dll.iris_get_graph_2d_comm_adj_matrix, self.handle, comm_2d)
-        print(comm_2d)
+        print("Communication cost matrix", comm_2d)
         if pdf:
             task_names = self.get_task_names()
             task_uids =  self.get_task_uids()
@@ -1009,4 +1020,22 @@ class graph:
             df['child_count'] = comm_2d.sum(axis=0)
             return df
         return comm_2d
+
+    def calibrate_compute_cost_adj_matrix(self, pdf=False):
+        ntasks, tasks = self.get_tasks()
+        ndevs = device_count()
+        dev_names = all_device_info()
+        SIZE = ntasks+1
+        comp_2d, comp_2d_ptr = dll.alloc_double((SIZE,ndevs))
+        dll.call_ret_ptr(dll.iris_calibrate_compute_cost_adj_matrix, self.handle, comp_2d)
+        print("Computation cost matrix", comp_2d)
+        if pdf:
+            task_names = self.get_task_names()
+            task_uids =  self.get_task_uids()
+            import pandas as pd
+            df = pd.DataFrame(comp_2d, columns=dev_names)
+            df['task_name'] = task_names
+            df['task_uid'] = task_uids
+            return df
+        return comp_2d
 

@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <iostream>
 #include <iomanip>
+#include <vector>
 using namespace std;
 namespace iris {
     namespace rt {
@@ -39,12 +40,32 @@ namespace iris {
                     return A;
                 }
                 template<class DType>
+                static void PrintVectorLimited(vector<DType> & A, const char *description, int limit=8)
+                    {
+                        printf("%s (%d)\n", description, A.size());
+                        int print_cols = A.size()>limit?limit:A.size();
+                        for (int j = 0; j < print_cols; j++) {
+                            cout << setw(6) << A[j] << " ";
+                        }
+                        cout << endl;
+                    }
+                template<class DType>
+                static void PrintVectorFull(vector<DType> &A, const char *description)
+                    {
+                        printf("%s (%d)\n", description, A.size());
+                        for (int j = 0; j < A.size(); j++) {
+                            cout << setw(6) << A[j] << " ";
+                        }
+                        cout << endl;
+                    }
+
+                template<class DType>
                 static void PrintArrayLimited(DType *A, int N, const char *description, int limit=8)
                     {
                         printf("%s data:%p (%d)\n", description, A, N);
                         int print_cols = N>limit?limit:N;
                         for (int j = 0; j < print_cols; j++) {
-                            cout << setw(6) << A[j];
+                            cout << setw(6) << A[j] << " ";
                         }
                         cout << endl;
                     }
@@ -53,7 +74,7 @@ namespace iris {
                     {
                         printf("%s data:%p (%d)\n", description, A, N);
                         for (int j = 0; j < N; j++) {
-                            cout << setw(6) << A[j];
+                            cout << setw(6) << A[j] << " ";
                         }
                         cout << endl;
                     }
@@ -66,7 +87,7 @@ namespace iris {
                         int print_cols = N>limit?limit:N;
                         for(int i=0; i<print_rows; i++) {
                             for (int j = 0; j < print_cols; j++) {
-                                cout << setw(6) << A[i*N+j];
+                                cout << setw(6) << A[i*N+j] << " ";
                             }
                             cout << endl;
                         }
@@ -77,7 +98,7 @@ namespace iris {
                         printf("%s data:%p (%d, %d)\n", description, A, M, N);
                         for(int i=0; i<M; i++) {
                             for (int j = 0; j < N; j++) {
-                                cout << setw(6) << A[i*N+j];
+                                cout << setw(6) << A[i*N+j] << " ";
                             }
                             cout << endl;
                         }

@@ -1029,6 +1029,17 @@ int Platform::TaskSubmit(iris_task brs_task, int brs_policy, const char* opt, in
   return nfailures_;
 }
 
+int Platform::TaskSubmit(Task *task, int brs_policy, const char* opt, int sync) {
+  task->Submit(brs_policy, opt, sync);
+  if (recording_) json_->RecordTask(task);
+  if (scheduler_) {
+    FilterSubmitExecute(task);
+    scheduler_->Enqueue(task);
+  } else workers_[0]->Enqueue(task);
+  if (sync) task->Wait();
+  return nfailures_;
+}
+
 int Platform::TaskWait(iris_task brs_task) {
   Task* task = brs_task->class_obj;
   task->Wait();

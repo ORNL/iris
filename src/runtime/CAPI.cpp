@@ -476,6 +476,13 @@ int iris_get_graph_2d_comm_adj_matrix(iris_graph brs_graph, size_t *size_data)
     gm.get_2d_comm_adj_matrix(size_data);
     return IRIS_SUCCESS;
 }
+int iris_calibrate_compute_cost_adj_matrix(iris_graph brs_graph, double *comp_data)
+{
+    Graph* graph = brs_graph->class_obj;
+    GraphMetadata gm(graph);
+    gm.calibrate_compute_cost_adj_matrix(comp_data);
+    return IRIS_SUCCESS;
+}
 void iris_free_array(void *ptr)
 {
     free(ptr);

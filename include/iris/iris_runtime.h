@@ -378,6 +378,7 @@ extern int iris_graph_get_tasks(iris_graph graph, iris_task *tasks);
 extern int iris_graph_tasks_count(iris_graph graph);
 extern int iris_graph_submit_with_time(iris_graph graph, double *time, int device, int sync);
 extern int iris_get_graph_2d_comm_adj_matrix(iris_graph brs_graph, size_t *size_data);
+extern int iris_calibrate_compute_cost_adj_matrix(iris_graph brs_graph, double *comp_data);
 extern void iris_free_array(void *ptr);
 extern int8_t *iris_allocate_array_int8_t(int SIZE, int8_t init);
 extern int16_t *iris_allocate_array_int16_t(int SIZE, int16_t init);

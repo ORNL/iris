@@ -108,6 +108,7 @@ public:
   int TaskMapFromFull(iris_task brs_task, void* host);
   int SetTaskPolicy(iris_task brs_task, int brs_policy);
   int TaskSubmit(iris_task brs_task, int brs_policy, const char* opt, int wait);
+  int TaskSubmit(Task *task, int brs_policy, const char* opt, int wait);
   int TaskWait(iris_task brs_task);
   int TaskWaitAll(int ntasks, iris_task* brs_tasks);
   int TaskAddSubtask(iris_task brs_task, iris_task brs_subtask);
