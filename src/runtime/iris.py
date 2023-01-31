@@ -881,30 +881,12 @@ class graph:
         ntasks, tasks = self.get_tasks()
         task_uids = [0] + [ task.uid() for task in tasks]
         return task_uids
-    def get_dependency_graph(self, pdf=False):
+    def get_dependency_matrix(self, pdf=False):
         ntasks, tasks = self.get_tasks()
-        dep_graph = np.zeros((len(tasks)+1, len(tasks)+1), np.int8)
-        task_index_hash = {}
-        for index, each_task in enumerate(tasks):
-            task_index_hash[each_task.uid()] = index
-        task_outputs = np.zeros(len(tasks))
-        for index, each_task in enumerate(tasks):
-            n_depends, dep_tasks = each_task.get_depends()
-            for d_task in dep_tasks:
-                d_index = task_index_hash[d_task.uid()]
-                task_outputs[d_index] += 1
-        for index, each_task in enumerate(tasks):
-            n_depends, dep_tasks = each_task.get_depends()
-            if n_depends == 0:
-                dep_graph[index+1][0] += 1
-            if index == 0:
-                dep_tasks = []
-                for d_index, n_outs in enumerate(task_outputs):
-                    if n_outs == 1:
-                        dep_tasks.append(tasks[d_index])
-            for d_task in dep_tasks:
-                d_index = task_index_hash[d_task.uid()]
-                dep_graph[index+1][d_index+1] = 1
+        SIZE = ntasks+1
+        dep_graph, dep_graph_2d_ptr = dll.alloc_size_t((SIZE,SIZE))
+        dll.call_ret_ptr(dll.iris_get_graph_dependency_adj_matrix, self.handle, dep_graph)
+        print("Dependency matrix", dep_graph)
         if pdf:
             task_names = self.get_task_names()
             task_uids =  self.get_task_uids()

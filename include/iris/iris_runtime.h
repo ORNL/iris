@@ -377,6 +377,8 @@ extern int    iris_cmd_kernel_get_arg_mode(void *cmd, int index);
 extern int iris_graph_get_tasks(iris_graph graph, iris_task *tasks);
 extern int iris_graph_tasks_count(iris_graph graph);
 extern int iris_graph_submit_with_time(iris_graph graph, double *time, int device, int sync);
+extern int iris_get_graph_dependency_adj_list(iris_graph brs_graph, int8_t *dep_matrix);
+extern int iris_get_graph_dependency_adj_matrix(iris_graph brs_graph, int8_t *dep_matrix);
 extern int iris_get_graph_2d_comm_adj_matrix(iris_graph brs_graph, size_t *size_data);
 extern int iris_calibrate_compute_cost_adj_matrix(iris_graph brs_graph, double *comp_data);
 extern void iris_free_array(void *ptr);
@@ -395,6 +397,17 @@ extern size_t *iris_allocate_random_array_size_t(int SIZE);
 extern float *iris_allocate_random_array_float(int SIZE);
 extern double *iris_allocate_random_array_double(int SIZE);
 extern void iris_print_matrix_full_double(double *data, int M, int N, const char *description);
+extern void iris_print_matrix_limited_double(double *data, int M, int N, const char *description, int limit);
+extern void iris_print_matrix_full_float(float *data, int M, int N, const char *description);
+extern void iris_print_matrix_limited_float(float *data, int M, int N, const char *description, int limit);
+extern void iris_print_matrix_full_int64_t(int64_t *data, int M, int N, const char *description);
+extern void iris_print_matrix_limited_int64_t(int64_t *data, int M, int N, const char *description, int limit);
+extern void iris_print_matrix_full_int32_t(int32_t *data, int M, int N, const char *description);
+extern void iris_print_matrix_limited_int32_t(int32_t *data, int M, int N, const char *description, int limit);
+extern void iris_print_matrix_full_int16_t(int16_t *data, int M, int N, const char *description);
+extern void iris_print_matrix_limited_int16_t(int16_t *data, int M, int N, const char *description, int limit);
+extern void iris_print_matrix_full_int8_t(int8_t *data, int M, int N, const char *description);
+extern void iris_print_matrix_limited_int8_t(int8_t *data, int M, int N, const char *description, int limit);
 #ifdef __cplusplus
 } /* end of extern "C" */
 #endif

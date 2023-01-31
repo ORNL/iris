@@ -143,7 +143,7 @@ void GraphMetadata::calibrate_compute_cost_adj_matrix(double *comp_task_adj_matr
                 vector<double> multi_time;
                 if (task->cmd_kernel() != NULL) {
                     string kname = task->cmd_kernel()->kernel()->name();
-                    Utils::PrintVectorFull<uint64_t>(dknobs, "Exploring new set of Knobs:");
+                    //Utils::PrintVectorFull<uint64_t>(dknobs, "Exploring new set of Knobs:");
                     for(int i=0; i<iterations_; i++) {
                         printf("Running for iteration:%d kname:%s devno:%d\n", i, kname.c_str(), dev_no);
                         int ndepends = task->ndepends();
@@ -168,7 +168,7 @@ void GraphMetadata::calibrate_compute_cost_adj_matrix(double *comp_task_adj_matr
             }
         }
     }   
-    Utils::PrintMatrixLimited<double>(comp_task_adj_matrix, ntasks, ndevs, "Task Computation data(C++)");
+    //Utils::PrintMatrixLimited<double>(comp_task_adj_matrix, ntasks, ndevs, "Task Computation data(C++)");
 }
 void GraphMetadata::map_task_inputs_outputs()
 {
@@ -282,26 +282,40 @@ void GraphMetadata::map_task_inputs_outputs()
         //printf("%s:%d Task:%s:%lu ndepends:%lu in:%lu out:%lu\n", __func__, __LINE__, task->name(), task->uid(), task->ndepends(), task_inputs_map_[uid].size(), task_outputs_map_[uid].size());
     }
 }
-void GraphMetadata::get_dependency_graph() {
+void GraphMetadata::get_dependency_matrix(int8_t *dep_matrix, bool adj_matrix) {
   vector<Task *> & tasks = graph_->tasks_list();
   int ntasks = tasks.size()+1;
-  dep_adj_matrix_ = (uint32_t *)calloc(ntasks*ntasks, sizeof(uint32_t));
-  dep_adj_list_   = (uint32_t *)calloc(ntasks*(ntasks+1), sizeof(uint32_t));
+  if (dep_matrix == NULL && adj_matrix) {
+      dep_adj_matrix_ = (int8_t *)calloc(ntasks*ntasks, sizeof(int8_t));
+      dep_matrix = dep_adj_matrix_;
+  }
+  if (dep_matrix == NULL && !adj_matrix) {
+      dep_adj_list_   = (int8_t *)calloc(ntasks*(ntasks+1), sizeof(int8_t));
+      dep_matrix = dep_adj_list_;
+  }
   for(int t=0; t<tasks.size(); t++) {
       Task *task = tasks[t];
       for(int i=0; i<task->ndepends(); i++) {
           Task *dtask = task->depend(i);
           unsigned long did = task_uid_2_index_hash_[dtask->uid()];
-          dep_adj_list_[GET2D_INDEX(ntasks+1, t+1, 0)]++;
-          int adj_list_index = dep_adj_list_[GET2D_INDEX(ntasks+1, t+1, 0)];
-          dep_adj_list_[GET2D_INDEX(ntasks+1, t+1, adj_list_index)] = did;
-          dep_adj_matrix_[GET2D_INDEX(ntasks, t+1, did+1)] = 1;
+          if (! adj_matrix) {
+              dep_matrix[GET2D_INDEX(ntasks+1, t+1, 0)]++;
+              int adj_list_index = dep_matrix[GET2D_INDEX(ntasks+1, t+1, 0)];
+              dep_matrix[GET2D_INDEX(ntasks+1, t+1, adj_list_index)] = did; 
+          }
+          else {
+              dep_matrix[GET2D_INDEX(ntasks, t+1, did+1)] = 1; 
+          }
       }
       if (task->ndepends() == 0) {
-          dep_adj_list_[GET2D_INDEX(ntasks+1, t+1, 0)]++;
-          int adj_list_index = dep_adj_list_[GET2D_INDEX(ntasks+1, t+1, 0)];
-          dep_adj_list_[GET2D_INDEX(ntasks+1, t+1, adj_list_index)] = 0;
-          dep_adj_matrix_[GET2D_INDEX(ntasks, t+1, 0)] = 1;
+          if (! adj_matrix) {
+              dep_matrix[GET2D_INDEX(ntasks+1, t+1, 0)]++;
+              int adj_list_index = dep_matrix[GET2D_INDEX(ntasks+1, t+1, 0)];
+              dep_matrix[GET2D_INDEX(ntasks+1, t+1, adj_list_index)] = 0;
+          }
+          else {
+              dep_adj_matrix_[GET2D_INDEX(ntasks, t+1, 0)] = 1;
+          }
       }
   }
 }
