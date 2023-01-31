@@ -23,7 +23,8 @@ static void* run(void* argp) {
       iris_task_h2d_full(task, mem, host);
     }
     iris_task_submit(task, iris_gpu, NULL, 1);
-    iris_task_release(task);
+    //iris_task_release(task);
+    //printf("Error count:%d\n", iris_error_count());
   }
 
   free(host);
@@ -44,6 +45,7 @@ int main(int argc, char** argv) {
   for (i = 0; i < nthreads; i++) {
     pthread_join(t[i], NULL);
   }
- 
-  return 0;
+  //printf("Joined all threads\n");
+  printf("End errors:%d\n", iris_error_count());
+  return iris_error_count();
 }
