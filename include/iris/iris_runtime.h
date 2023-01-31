@@ -394,6 +394,7 @@ extern int64_t *iris_allocate_random_array_int64_t(int SIZE);
 extern size_t *iris_allocate_random_array_size_t(int SIZE);
 extern float *iris_allocate_random_array_float(int SIZE);
 extern double *iris_allocate_random_array_double(int SIZE);
+extern void iris_print_matrix_full_double(double *data, int M, int N, const char *description);
 #ifdef __cplusplus
 } /* end of extern "C" */
 #endif

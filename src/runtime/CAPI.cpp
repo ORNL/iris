@@ -543,3 +543,11 @@ double *iris_allocate_random_array_double(int SIZE)
 {
     return Utils::AllocateRandomArray<double>(SIZE);
 }
+void iris_print_matrix_limited_double(double *data, int M, int N, const char *description) 
+{
+    return Utils::PrintMatrixLimited<double>(data, M, N, description);
+}
+void iris_print_matrix_full_double(double *data, int M, int N, const char *description) 
+{
+    Utils::PrintMatrixFull<double>(data, M, N, description);
+}
