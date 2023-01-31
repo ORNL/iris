@@ -146,8 +146,11 @@ void GraphMetadata::calibrate_compute_cost_adj_matrix(double *comp_task_adj_matr
                     Utils::PrintVectorFull<uint64_t>(dknobs, "Exploring new set of Knobs:");
                     for(int i=0; i<iterations_; i++) {
                         printf("Running for iteration:%d kname:%s devno:%d\n", i, kname.c_str(), dev_no);
+                        int ndepends = task->ndepends();
+                        task->set_ndepends(0);
                         platform->TaskSubmit(task, dev_no, NULL, 1);
                         dtime = task->cmd_kernel()->time_duration();
+                        task->set_ndepends(ndepends);
                         multi_time.push_back(dtime);
                     }
                 }

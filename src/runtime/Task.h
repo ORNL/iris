@@ -86,6 +86,7 @@ public:
   Task* subtask(int i) { return subtasks_[i]; }
   bool is_subtask() { return parent_ != NULL; }
   int ndepends() { return ndepends_; }
+  void set_ndepends(int n) { ndepends_ = n; }
   Task** depends() { return depends_; }
   Task* depend(int i) { return depends_[i]; }
   void* arch() { return arch_; }
