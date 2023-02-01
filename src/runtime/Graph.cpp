@@ -314,7 +314,7 @@ void GraphMetadata::get_dependency_matrix(int8_t *dep_matrix, bool adj_matrix) {
               dep_matrix[GET2D_INDEX(ntasks+1, t+1, adj_list_index)] = 0;
           }
           else {
-              dep_adj_matrix[GET2D_INDEX(ntasks, t+1, 0)] = 1;
+              dep_matrix[GET2D_INDEX(ntasks, t+1, 0)] = 1;
           }
       }
   }
