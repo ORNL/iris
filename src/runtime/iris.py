@@ -884,7 +884,7 @@ class graph:
     def get_dependency_matrix(self, pdf=False):
         ntasks, tasks = self.get_tasks()
         SIZE = ntasks+1
-        dep_graph, dep_graph_2d_ptr = dll.alloc_size_t((SIZE,SIZE))
+        dep_graph, dep_graph_2d_ptr = dll.alloc_int8((SIZE,SIZE))
         dll.call_ret_ptr(dll.iris_get_graph_dependency_adj_matrix, self.handle, dep_graph)
         print("Dependency matrix", dep_graph)
         if pdf:
