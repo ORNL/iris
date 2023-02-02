@@ -153,6 +153,7 @@ public:
   int TimerNow(double* time);
 
   int ndevs() { return ndevs_; }
+  int nplatforms() { return nplatforms_; }
   int device_default() { return dev_default_; }
   bool release_task_flag() { return release_task_flag_; }
   void set_release_task_flag(bool flag) { release_task_flag_ = flag; }

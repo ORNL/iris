@@ -70,12 +70,13 @@ void Graph::Wait() {
 Graph* Graph::Create(Platform* platform) {
   return new Graph(platform);
 }
-void GraphMetadata::calibrate_compute_cost_adj_matrix(double *comp_task_adj_matrix)
+void GraphMetadata::calibrate_compute_cost_adj_matrix(double *comp_task_adj_matrix, bool only_device_type)
 {
     vector<int> unique_devices;
     map<int, vector<int>> model_2_devices;
     Platform *platform = Platform::GetPlatform();
     int ndevs = platform->ndevs();
+    int nplatforms = platform->nplatforms();
     for(int i=0; i<ndevs; i++) {
         Device *dev = platform->device(i);
         int model = dev->model();
@@ -163,8 +164,13 @@ void GraphMetadata::calibrate_compute_cost_adj_matrix(double *comp_task_adj_matr
             else {
                 time_duration = knobs_to_makespan[dknobs];
             }
-            for(int dev_no : model_2_devices[dev_index]) {
-                comp_task_adj_matrix[GET2D_INDEX(ndevs, index+1, dev_no)] = time_duration;
+            if (only_device_type) {
+                comp_task_adj_matrix[GET2D_INDEX(nplatforms, index+1, dev_index)] = time_duration;
+            }
+            else {
+                for(int dev_no : model_2_devices[dev_index]) {
+                    comp_task_adj_matrix[GET2D_INDEX(ndevs, index+1, dev_no)] = time_duration;
+                }
             }
         }
     }   

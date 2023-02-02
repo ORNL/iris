@@ -234,6 +234,13 @@ def platform_info(platform, param):
     dll.iris_platform_info(c_int(platform), c_int(param), s, None)
     return s.value
 
+def all_platform_info():
+    platform_names = []
+    for i in range(platform_count()):
+        plt = platform_info(i, iris_name)
+        platform_names.append(plt)
+    return platform_names
+
 def device_count():
     i = c_int()
     dll.iris_device_count(byref(i))
@@ -1003,19 +1010,27 @@ class graph:
             return df
         return comm_2d
 
-    def calibrate_compute_cost_adj_matrix(self, pdf=False):
+    def calibrate_compute_cost_adj_matrix(self, pdf=False, only_device_type=False):
         ntasks, tasks = self.get_tasks()
         ndevs = device_count()
         dev_names = all_device_info()
         SIZE = ntasks+1
-        comp_2d, comp_2d_ptr = dll.alloc_double((SIZE,ndevs))
-        dll.call_ret_ptr(dll.iris_calibrate_compute_cost_adj_matrix, self.handle, comp_2d)
+        cols = ndevs
+        col_names = dev_names
+        if only_device_type:
+            cols = platform_count()
+            col_names = all_platform_info()
+        comp_2d, comp_2d_ptr = dll.alloc_double((SIZE, cols))
+        if only_device_type:
+            dll.call_ret_ptr(dll.iris_calibrate_compute_cost_adj_matrix_only_for_types, self.handle, comp_2d)
+        else:
+            dll.call_ret_ptr(dll.iris_calibrate_compute_cost_adj_matrix, self.handle, comp_2d)
         print("Computation cost matrix", comp_2d)
         if pdf:
             task_names = self.get_task_names()
             task_uids =  self.get_task_uids()
             import pandas as pd
-            df = pd.DataFrame(comp_2d, columns=dev_names)
+            df = pd.DataFrame(comp_2d, columns=col_names)
             df['task_name'] = task_names
             df['task_uid'] = task_uids
             return df

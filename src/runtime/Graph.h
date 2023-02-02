@@ -59,7 +59,7 @@ public:
     void map_task_inputs_outputs();
     void get_dependency_matrix(int8_t *dep_matrix=NULL, bool adj_matrix=true);
     void get_2d_comm_adj_matrix(size_t *comm_task_adj_matrix=NULL);
-    void calibrate_compute_cost_adj_matrix(double *comp_task_adj_matrix=NULL);
+    void calibrate_compute_cost_adj_matrix(double *comp_task_adj_matrix=NULL, bool only_device_type=false);
 private:
     int iterations_;
     int8_t *dep_adj_matrix_;
