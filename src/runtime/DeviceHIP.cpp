@@ -393,7 +393,7 @@ int DeviceHIP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, s
   hipFunction_t func = (hipFunction_t) kernel->arch(this);
   int block[3] = { lws ? (int) lws[0] : 1, lws ? (int) lws[1] : 1, lws ? (int) lws[2] : 1 };
   if (!lws) {
-    while (max_compute_units_ * block[0] < gws[0]) block[0] <<= 1;
+    if (max_compute_units_ != 0) while (max_compute_units_ * block[0] < gws[0]) block[0] <<= 1;
     while (block[0] > max_block_dims_[0] && max_block_dims_[0] !=0) block[0] >>= 1;
   }
   int grid[3] = { (int) (gws[0] / block[0]), (int) (gws[1] / block[1]), (int) (gws[2] / block[2]) };
