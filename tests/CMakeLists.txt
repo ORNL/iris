@@ -166,5 +166,7 @@ foreach(i RANGE 0 ${count} 3)
       if (CUDAToolkit_FOUND OR HIP_ROOT_DIR)
         set_property(TEST ${exe} PROPERTY ENVIRONMENT ${TEST_PROP})
       endif()
+      #some tests use .so resources that are local (in the same directory), i.e. 07_policy_register, so add it to the LD_LIBRARY_PATH
+      set_property(TEST ${exe} PROPERTY ENVIRONMENT "LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${CMAKE_CURRENT_SOURCE_DIR}/${dir}")
    ENDFOREACH()
 ENDFOREACH()

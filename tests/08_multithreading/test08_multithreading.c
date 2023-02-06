@@ -12,7 +12,7 @@ static int run(void* argp) {
 pthread_t t[256];
 
 int main(int argc, char** argv) {
-  setenv("IRIS_ARCHS", "opencl", 1);
+  //setenv("IRIS_ARCHS", "opencl", 1);
   int i;
   int nthreads = argc > 1 ? atoi(argv[1]) : 10;
   printf("nthreads[%d]\n", nthreads);
