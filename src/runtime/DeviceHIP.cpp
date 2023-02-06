@@ -86,7 +86,7 @@ void DeviceHIP::SetPeerDevices(int *peers, int count)
     peers_count_ = count;
 }
 int DeviceHIP::Init() {
-  int tb, mc, bx, by, bz, dx, dy, dz, ck; //, ae;
+  int tb=0, mc=0, bx=0, by=0, bz=0, dx=0, dy=0, dz=0, ck=0; //, ae;
   err_ = ld_->hipSetDevice(ordinal_);
   err_ = ld_->hipCtxCreate(&ctx_, hipDeviceScheduleAuto, ordinal_);
   EnablePeerAccess();
@@ -187,10 +187,11 @@ void DeviceHIP::ResetContext()
     ld_->hipCtxSetCurrent(ctx_);
 }
 int DeviceHIP::MemD2D(Task *task, BaseMem *mem, void *dst, void *src, size_t size) {
-if (IsContextChangeRequired()) {
-    _trace("HIP context switch dev[%d][%s] task[%ld:%s] mem[%lu] self:%p thread:%p\n", devno_, name_, task->uid(), task->name(), mem->uid(), worker()->self(), worker()->thread());
-    ld_->hipCtxSetCurrent(ctx_);
-}
+  atleast_one_command_ = true;
+  if (IsContextChangeRequired()) {
+      _trace("HIP context switch dev[%d][%s] task[%ld:%s] mem[%lu] self:%p thread:%p\n", devno_, name_, task->uid(), task->name(), mem->uid(), worker()->self(), worker()->thread());
+      ld_->hipCtxSetCurrent(ctx_);
+  }
 #ifndef IRIS_SYNC_EXECUTION
   q_ = task->uid() % nqueues_; 
   err_ = ld_->hipMemcpyDtoDAsync(dst, src, size, streams_[q_]);
@@ -203,6 +204,7 @@ if (IsContextChangeRequired()) {
   return IRIS_SUCCESS;
 }
 int DeviceHIP::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag) {
+  atleast_one_command_ = true;
   if (IsContextChangeRequired()) {
       _trace("HIP context switch dev[%d][%s] task[%ld:%s] mem[%lu] self:%p thread:%p\n", devno_, name_, task->uid(), task->name(), mem->uid(), worker()->self(), worker()->thread());
       ld_->hipCtxSetCurrent(ctx_);
@@ -250,6 +252,7 @@ int DeviceHIP::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,
 }
 
 int DeviceHIP::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag) {
+  atleast_one_command_ = true;
   if (IsContextChangeRequired()) {
       _trace("HIP context switch dev[%d][%s] task[%ld:%s] mem[%lu] self:%p thread:%p\n", devno_, name_, task->uid(), task->name(), mem->uid(), worker()->self(), worker()->thread());
       ld_->hipCtxSetCurrent(ctx_);
@@ -375,6 +378,7 @@ int DeviceHIP::KernelLaunchInit(Kernel* kernel) {
 
 
 int DeviceHIP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws) {
+  atleast_one_command_ = true;
   if (kernel->is_vendor_specific_kernel() && host2hip_ld_->iris_host2hip_launch_with_obj) {
       _trace("dev[%d][%s] kernel[%s:%s] dim[%d] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, q_);
       int status = host2hip_ld_->iris_host2hip_launch_with_obj(kernel->GetParamWrapperMemory(), ordinal_, dim, off[0], gws[0]);
@@ -435,6 +439,7 @@ int DeviceHIP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, s
 }
 
 int DeviceHIP::Synchronize() {
+  if (! atleast_one_command_) return IRIS_SUCCESS;
   err_ = ld_->hipDeviceSynchronize();
   _hiperror(err_);
   if (err_ != hipSuccess){

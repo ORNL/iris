@@ -54,6 +54,7 @@ private:
   void* params_[IRIS_MAX_KERNEL_NARGS];
   int max_arg_idx_;
   std::map<hipFunction_t, hipFunction_t> kernels_offs_;
+  bool atleast_one_command_;
 };
 
 } /* namespace rt */
