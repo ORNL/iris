@@ -38,7 +38,7 @@ public:
   char* name() { return name_; }
   bool is_vendor_specific_kernel() { return is_vendor_specific_kernel_; }
   void set_vendor_specific_kernel(bool flag=true) { is_vendor_specific_kernel_ = flag; }
-  void set_task_name(char *name) { strcpy(task_name_, name); }
+  void set_task_name(const char *name) { strcpy(task_name_, name); }
   char *get_task_name() { return task_name_; }
   Platform* platform() { return platform_; }
   History* history() { return history_; }

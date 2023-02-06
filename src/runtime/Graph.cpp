@@ -148,8 +148,14 @@ void GraphMetadata::calibrate_compute_cost_adj_matrix(double *comp_task_adj_matr
                     for(int i=0; i<iterations_; i++) {
                         printf("Running for iteration:%d kname:%s devno:%d\n", i, kname.c_str(), dev_no);
                         int ndepends = task->ndepends();
+                        string tname = task->name();
+                        string prev_tname = tname;
+                        tname = tname + "-i" + std::to_string(i)+"-d"+std::to_string(dev_no);
                         task->set_ndepends(0);
+                        task->set_name(tname.c_str());
+                        task->cmd_kernel()->kernel()->set_task_name(tname.c_str());
                         platform->TaskSubmit(task, dev_no, NULL, 1);
+                        task->set_name(prev_tname.c_str());
                         dtime = task->cmd_kernel()->time_duration();
                         task->set_ndepends(ndepends);
                         multi_time.push_back(dtime);
