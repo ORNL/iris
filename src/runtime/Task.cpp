@@ -57,7 +57,6 @@ Task::~Task() {
   pthread_mutex_destroy(&mutex_subtasks_);
   pthread_cond_destroy(&complete_cond_);
   subtasks_.clear();
-  _trace("released task:%lu:%s released", uid(), name());
 }
 
 double Task::TimeInc(double t) {

@@ -5,7 +5,6 @@
 #include "Structs.h"
 #include "Debug.h"
 #include <stddef.h>
-#include "Platform.h"
 
 extern unsigned long iris_create_new_uid();
 
@@ -35,21 +34,12 @@ public:
     while (!__sync_bool_compare_and_swap(&ref_cnt_, i, i + 1));
   }
 
-  void ForceRelease() {
-      Platform *platform = Platform::GetPlatform();
-      if (!platform->IsObjectExists(this)) return;
-      if (!platform->IsObjectExists(struct_obj())) return;
-      platform->UntrackObject(this);
-      platform->UntrackObject(struct_obj());
-      delete this;
-  }
   void Release() {
     int i;
     do i = ref_cnt_;
     while (!__sync_bool_compare_and_swap(&ref_cnt_, i, i - 1));
-    if (i == 1 && is_release_) ForceRelease();
+    if (i == 1 && is_release_) delete this;
   }
-  int ref_cnt() { return ref_cnt_; }
 
 private:
   unsigned long uid_;

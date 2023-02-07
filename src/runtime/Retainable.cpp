@@ -1,5 +1,3 @@
-#include "Retainable.h"
-
 unsigned long iris_create_new_uid() {
   static unsigned long uid = 0UL;
   unsigned long new_uid;
