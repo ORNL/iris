@@ -144,6 +144,18 @@ public:
   int GetGraphTasks(iris_graph graph, iris_task *tasks);
   int GetGraphTasksCount(iris_graph graph);
 
+  bool IsObjectExists(void *p) { 
+    if (allocated_objects_.find(p) == allocated_objects_.end()) return false;
+    return true;
+  }
+  void UntrackObject(void *p) {
+    if (IsObjectExists(p))
+        allocated_objects_.erase(p);
+  }
+  void TrackObject(void *p) {
+    allocated_objects_.insert(p);
+  }
+
   int RecordStart();
   int RecordStop();
 
@@ -277,6 +289,7 @@ private:
   static unique_ptr<Platform> singleton_;
   static std::once_flag flag_singleton_;
   static std::once_flag flag_finalize_;
+  set<void *> allocated_objects_;
 };
 
 } /* namespace rt */

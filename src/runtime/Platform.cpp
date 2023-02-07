@@ -212,6 +212,7 @@ int Platform::Init(int* argc, char*** argv, int sync) {
   iris_kernel null_brs_kernel;
   KernelCreate("iris_null", &null_brs_kernel);
   null_kernel_ = null_brs_kernel->class_obj;
+  TrackObject(null_brs_kernel);
 
   InitScheduler();
   InitWorkers();
@@ -664,6 +665,8 @@ int Platform::InitDevices(bool sync) {
   for (int i = 0; i < ndevs_; i++) {
     sprintf(task_name, "Initialize-%d", i);
     tasks[i] = new Task(this, IRIS_TASK, task_name);
+    TrackObject(tasks[i]);
+    TrackObject(tasks[i]->struct_obj());
     tasks[i]->set_system();
     Command* cmd = Command::CreateInit(tasks[i]);
     tasks[i]->AddCommand(cmd);
@@ -671,7 +674,8 @@ int Platform::InitDevices(bool sync) {
   }
   if (sync) for (int i = 0; i < ndevs_; i++) tasks[i]->Wait();
   for (int i = 0; i < ndevs_; i++) {
-    delete tasks[i];
+    if (!IsObjectExists(tasks[i])) continue;
+    tasks[i]->ForceRelease();
   }
   delete[] tasks;
   return IRIS_SUCCESS;
@@ -730,6 +734,8 @@ int Platform::DeviceGetDefault(int* device) {
 
 int Platform::DeviceSynchronize(int ndevs, int* devices) {
   Task* task = new Task(this, IRIS_MARKER, "Marker");
+  TrackObject(task);
+  TrackObject(task->struct_obj());
   if (scheduler_) {
     char sync_task[128];
     for (int i = 0; i < ndevs; i++) {
@@ -742,6 +748,8 @@ int Platform::DeviceSynchronize(int ndevs, int* devices) {
       subtask->set_devno(devices[i]);
       subtask->set_user(true);
       task->AddSubtask(subtask);
+      TrackObject(subtask);
+      TrackObject(subtask->struct_obj());
     }
     scheduler_->Enqueue(task);
   } else workers_[0]->Enqueue(task);
@@ -776,6 +784,8 @@ int Platform::RegisterHooksCommand(hook_command pre, hook_command post) {
 int Platform::KernelCreate(const char* name, iris_kernel* brs_kernel) {
   Kernel* kernel = new Kernel(name, this);
   if (brs_kernel) *brs_kernel = kernel->struct_obj();
+  TrackObject(kernel);
+  if (brs_kernel) TrackObject(*brs_kernel);
   std::string name_string = name;
   if (kernels_.find(name_string) != kernels_.end()) {
       std::vector<Kernel *> vec;
@@ -818,14 +828,18 @@ int Platform::KernelSetMap(iris_kernel brs_kernel, int idx, void* host, size_t m
 }
 
 int Platform::KernelRelease(iris_kernel brs_kernel) {
+  if (!IsObjectExists(brs_kernel)) return IRIS_SUCCESS;
   Kernel* kernel = brs_kernel->class_obj;
-  kernel->Release();
+  if (!IsObjectExists(kernel)) return IRIS_SUCCESS;
+  kernel->ForceRelease();
   return IRIS_SUCCESS;
 }
 
 int Platform::TaskCreate(const char* name, bool perm, iris_task* brs_task) {
   Task* task = Task::Create(this, perm ? IRIS_TASK_PERM : IRIS_TASK, name);
   *brs_task = task->struct_obj();
+  TrackObject(task);
+  TrackObject(*brs_task);
   return IRIS_SUCCESS;
 }
 
@@ -1065,8 +1079,10 @@ int Platform::TaskKernelCmdOnly(iris_task brs_task) {
 }
 
 int Platform::TaskRelease(iris_task brs_task) {
+  if (!IsObjectExists(brs_task)) return IRIS_SUCCESS;
   Task* task = brs_task->class_obj;
-  delete task;
+  if (!IsObjectExists(task)) return IRIS_SUCCESS;
+  task->ForceRelease();
   return IRIS_SUCCESS;
 }
 
@@ -1198,18 +1214,22 @@ int Platform::MemRelease(iris_mem brs_mem) {
 int Platform::GraphCreate(iris_graph* brs_graph) {
   Graph* graph = Graph::Create(this);
   *brs_graph = graph->struct_obj();
+  TrackObject(graph);
+  TrackObject(*brs_graph);
   return IRIS_SUCCESS;
 }
 
 int Platform::GraphFree(iris_graph brs_graph) {
   Graph* graph = brs_graph->class_obj;
-  delete graph;
+  graph->Release();
   return IRIS_SUCCESS;
 }
 
 int Platform::GraphCreateJSON(const char* path, void** params, iris_graph* brs_graph) {
   Graph* graph = Graph::Create(this);
   *brs_graph = graph->struct_obj();
+  TrackObject(graph);
+  TrackObject(*brs_graph);
   int retcode = json_->Load(graph, path, params);
   return retcode;
 }
@@ -1237,12 +1257,9 @@ void Platform::set_release_task_flag(bool flag, iris_task brs_task)
 }
 
 int Platform::GraphRelease(iris_graph brs_graph) {
+  if (!IsObjectExists(brs_graph)) return IRIS_SUCCESS;
   Graph* graph = brs_graph->class_obj;
-  std::vector<Task*>* tasks = graph->tasks();
-  for (std::vector<Task*>::iterator I = tasks->begin(), E = tasks->end(); I != E; ++I) {
-    Task* task = *I;
-    delete task;
-  }
+  graph->ForceRelease();
   return IRIS_SUCCESS;
 }
 
