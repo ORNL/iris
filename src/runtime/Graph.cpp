@@ -35,7 +35,7 @@ Graph::Graph(Platform* platform) {
 Graph::~Graph() {
   pthread_mutex_destroy(&mutex_complete_);
   pthread_cond_destroy(&complete_cond_);
-  if (end_) delete end_;
+  //if (end_) delete end_;
 }
 
 void Graph::AddTask(Task* task) {

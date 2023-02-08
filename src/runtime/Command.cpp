@@ -32,6 +32,19 @@ void Command::set_params_map(int *pmap) {
 }
 
 void Command::Clear(bool init) {
+  host_ = NULL;
+  params_map_ = NULL;
+  kernel_ = NULL;
+  task_ = NULL;
+  mem_ = NULL;
+  platform_ = NULL;
+  kernel_args_ = NULL;
+  polymems_ = NULL;
+  func_params_ = NULL;
+  params_ = NULL;
+  type_name_ = NULL;
+  name_ = NULL;
+  selector_kernel_params_ = NULL;
   time_ = 0.0;
   internal_memory_transfer_ = false;
   kernel_args_ = NULL;
