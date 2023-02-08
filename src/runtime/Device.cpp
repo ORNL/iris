@@ -109,12 +109,14 @@ void Device::ExecuteInit(Command* cmd) {
     } else if (!stat_src && stat_bin) {
       strncpy(kernel_path_, bin, strlen(bin));
     } else if (stat_src && !stat_bin) {
+      Platform::GetPlatform()->EnvironmentGet(kernel_bin(), &bin, NULL);
       sprintf(kernel_path_, "%s/%s-%d", tmpdir, bin, devno_);
       errid_ = Compile(src);
     } else {
       long mtime_src = Utils::Mtime(src);
       long mtime_bin = Utils::Mtime(bin);
       if (mtime_src > mtime_bin) {
+        Platform::GetPlatform()->EnvironmentGet(kernel_bin(), &bin, NULL);
         sprintf(kernel_path_, "%s/%s-%d", tmpdir, bin, devno_);
         errid_ = Compile(src);
       } else strncpy(kernel_path_, bin, strlen(bin));
@@ -266,6 +268,7 @@ void Device::ExecuteMemResetInput(Task *task, Command* cmd) {
 }
 
 void Device::ExecuteMemIn(Task *task, Command* cmd) {
+    if (cmd == NULL || cmd->kernel() == NULL) return;
     int *params_map = cmd->get_params_map();
     //int nargs = cmd->kernel_nargs();
     for(pair<int, DataMem *> it : cmd->kernel()->data_mems_in()) {
@@ -465,6 +468,7 @@ void Device::ExecuteMemInDMemIn(Task *task, Command* cmd, DataMem *mem) {
     }
 }
 void Device::ExecuteMemOut(Task *task, Command* cmd) {
+    if (cmd == NULL || cmd->kernel() == NULL) return;
     int *params_map = cmd->get_params_map();
     //int nargs = cmd->kernel_nargs();
     for(pair<int, DataMem *> it : cmd->kernel()->data_mems_out()) {
