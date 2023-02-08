@@ -145,13 +145,13 @@ int main(int argc, char** argv) {
             for (auto & kernel : kernels){
               if (strcmp(kernel.name,key_str) == 0){//found it!
                 //now split up the string of buffers...
-                char* buffer_type = strtok(val_str," ");
+                char* buffer_type = strtok(val_str,"-");
                 while(buffer_type){
                   //if the buffer type isn't an empty string, then add it!
-                  if (strcmp(buffer_type," ") != 0 and strlen(buffer_type) != 0){
+                  if (strcmp(buffer_type,"-") != 0 and strlen(buffer_type) != 0){
                     kernel.buffers.push_back(buffer_type);
                   }
-                  buffer_type = strtok(NULL," ");
+                  buffer_type = strtok(NULL,"-");
                 }
                 //check to make sure at least one buffer was specified for this kernel
                 if (kernel.buffers.size() != 0){
@@ -425,7 +425,6 @@ int main(int argc, char** argv) {
         for (size_t i = 0; i < SIZE; i++)
           for (size_t j = 0; j < SIZE; j++){
             double sum = 0.0;
-            for (size_t l = 0; l < SIZE; l++)
               for (size_t k = 0; k < SIZE; k++) {
                 sum += A[i * SIZE + k] * B[k * SIZE + j];
               }
@@ -479,10 +478,7 @@ int main(int argc, char** argv) {
     }
   }
 
-    iris_finalize();
-    
-    return(EXIT_SUCCESS);
-
-  return 0;
+   iris_finalize();
+   return iris_error_count();
 }
 
