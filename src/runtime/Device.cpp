@@ -146,8 +146,9 @@ void Device::ExecuteKernel(Command* cmd) {
   int npolymems = cmd->npolymems();
   int max_idx = 0;
   int mem_idx = 0;
-  kernel->set_vendor_specific_kernel(false);
   //double ltime_start = timer_->GetCurrentTime();
+  if (!kernel->vendor_specific_kernel_check_flag())
+      CheckVendorSpecificKernel(kernel);
   KernelLaunchInit(kernel);
   //double ltime = timer_->GetCurrentTime() - ltime_start;
   KernelArg* args = cmd->kernel_args();

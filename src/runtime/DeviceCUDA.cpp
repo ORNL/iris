@@ -456,6 +456,8 @@ int DeviceCUDA::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
 }
 
 int DeviceCUDA::KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bool report_error) {
+  if (!kernel->vendor_specific_kernel_check_flag())
+      CheckVendorSpecificKernel(kernel);
   int kernel_idx=-1;
   if (kernel->is_vendor_specific_kernel() && 
           host2cuda_ld_->iris_host2cuda_kernel_with_obj &&
@@ -525,7 +527,7 @@ int DeviceCUDA::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, 
   return IRIS_SUCCESS;
 }
 
-int DeviceCUDA::KernelLaunchInit(Kernel* kernel) {
+void DeviceCUDA::CheckVendorSpecificKernel(Kernel* kernel) {
     kernel->set_vendor_specific_kernel(false);
     if (host2cuda_ld_->iris_host2cuda_kernel_with_obj) {
         int status = host2cuda_ld_->iris_host2cuda_kernel_with_obj(
@@ -542,6 +544,9 @@ int DeviceCUDA::KernelLaunchInit(Kernel* kernel) {
             kernel->set_vendor_specific_kernel(true);
         }
     }
+    kernel->set_vendor_specific_kernel_check(true);
+}
+int DeviceCUDA::KernelLaunchInit(Kernel* kernel) {
     return IRIS_SUCCESS;
 }
 

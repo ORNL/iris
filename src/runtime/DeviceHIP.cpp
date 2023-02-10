@@ -308,6 +308,8 @@ int DeviceHIP::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,
 }
 
 int DeviceHIP::KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bool report_error) {
+  if (!kernel->vendor_specific_kernel_check_flag())
+      CheckVendorSpecificKernel(kernel);
   int kernel_idx = -1;
   if (kernel->is_vendor_specific_kernel() && 
           host2hip_ld_->iris_host2hip_kernel_with_obj &&
@@ -361,19 +363,23 @@ int DeviceHIP::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, s
   return IRIS_SUCCESS;
 }
 
+void DeviceHIP::CheckVendorSpecificKernel(Kernel *kernel) {
+  kernel->set_vendor_specific_kernel(false);
+  if (host2hip_ld_->iris_host2hip_kernel_with_obj) {
+      if (host2hip_ld_->iris_host2hip_kernel_with_obj(kernel->GetParamWrapperMemory(), kernel->name()) == IRIS_SUCCESS) {
+          if (host2hip_ld_->SetKernelPtr(kernel->GetParamWrapperMemory(), kernel->name())==IRIS_SUCCESS)
+              kernel->set_vendor_specific_kernel(true);
+      }
+  }
+  else if (host2hip_ld_->iris_host2hip_kernel) {
+      if (host2hip_ld_->iris_host2hip_kernel(kernel->name()) == IRIS_SUCCESS) {
+          kernel->set_vendor_specific_kernel(true);
+      }
+  }
+  kernel->set_vendor_specific_kernel_check(true);
+}
+
 int DeviceHIP::KernelLaunchInit(Kernel* kernel) {
-    kernel->set_vendor_specific_kernel(false);
-    if (host2hip_ld_->iris_host2hip_kernel_with_obj) {
-        if (host2hip_ld_->iris_host2hip_kernel_with_obj(kernel->GetParamWrapperMemory(), kernel->name()) == IRIS_SUCCESS) {
-            if (host2hip_ld_->SetKernelPtr(kernel->GetParamWrapperMemory(), kernel->name())==IRIS_SUCCESS)
-                kernel->set_vendor_specific_kernel(true);
-        }
-    }
-    else if (host2hip_ld_->iris_host2hip_kernel) {
-        if (host2hip_ld_->iris_host2hip_kernel(kernel->name()) == IRIS_SUCCESS) {
-            kernel->set_vendor_specific_kernel(true);
-        }
-    }
     return IRIS_SUCCESS;
 }
 

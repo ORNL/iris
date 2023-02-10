@@ -36,6 +36,8 @@ public:
   void* GetParamWrapperMemory() { return (void *)param_wrapper_mem_; }
 
   char* name() { return name_; }
+  bool vendor_specific_kernel_check_flag() { return vendor_specific_kernel_check_flag_; }
+  void set_vendor_specific_kernel_check(bool flag=true) { vendor_specific_kernel_check_flag_ = flag; }
   bool is_vendor_specific_kernel() { return is_vendor_specific_kernel_; }
   void set_vendor_specific_kernel(bool flag=true) { is_vendor_specific_kernel_ = flag; }
   void set_task_name(const char *name) { strcpy(task_name_, name); }
@@ -61,6 +63,7 @@ private:
   Platform* platform_;
   History* history_;
   bool is_vendor_specific_kernel_;
+  bool vendor_specific_kernel_check_flag_;
   std::map<int, DataMem *> data_mems_in_;
   std::map<int, DataMemRegion *> data_mem_regions_in_;
   std::map<int, DataMem *> data_mems_out_;

@@ -289,6 +289,8 @@ int DeviceOpenCL::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_siz
 }
 
 int DeviceOpenCL::KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bool report_error) {
+  if (!kernel->vendor_specific_kernel_check_flag())
+      CheckVendorSpecificKernel(kernel);
   int kernel_idx = -1;
   if (kernel->is_vendor_specific_kernel()) {
       //_trace("dev[%d][%s] kernel[%s:%s] kernel-get", devno_, name_, kernel->name(), kernel->get_task_name());
@@ -362,7 +364,7 @@ int DeviceOpenCL::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem
   return IRIS_SUCCESS;
 }
 
-int DeviceOpenCL::KernelLaunchInit(Kernel* kernel) {
+void DeviceOpenCL::CheckVendorSpecificKernel(Kernel *kernel) {
     kernel->set_vendor_specific_kernel(false);
     //_trace("dev[%d][%s] kernel[%p:%s:%s] launchInit-0", devno_, name_, kernel, kernel->name(), kernel->get_task_name());
     if (host2opencl_ld_->iris_host2opencl_kernel_with_obj) {
@@ -384,6 +386,9 @@ int DeviceOpenCL::KernelLaunchInit(Kernel* kernel) {
             kernel->set_vendor_specific_kernel(true);
         }
     }
+    kernel->set_vendor_specific_kernel_check(true);
+}
+int DeviceOpenCL::KernelLaunchInit(Kernel* kernel) {
     return IRIS_SUCCESS;
 }
 
@@ -446,6 +451,8 @@ void DeviceOpenCL::ExecuteKernel(Command* cmd) {
   int max_idx = 0;
   int mem_idx = 0;
   kernel->set_vendor_specific_kernel(false);
+  if (!kernel->vendor_specific_kernel_check_flag())
+      CheckVendorSpecificKernel(kernel);
   KernelLaunchInit(kernel);
   KernelArg* args = cmd->kernel_args();
   int *params_map = cmd->get_params_map();

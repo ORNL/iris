@@ -29,6 +29,7 @@ public:
   int KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, size_t off);
   int KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws);
   int KernelLaunchInit(Kernel* kernel);
+  void CheckVendorSpecificKernel(Kernel *kernel);
   int Synchronize();
   int AddCallback(Task* task);
   int RecreateContext();

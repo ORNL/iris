@@ -30,6 +30,7 @@ public:
   int MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag="");
   int MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag="");
   int KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bool report_error=true);
+  void CheckVendorSpecificKernel(Kernel* kernel);
   int KernelLaunchInit(Kernel* kernel);
   int KernelSetArg(Kernel* kernel, int idx, int kindex, size_t size, void* value);
   int KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, size_t off);

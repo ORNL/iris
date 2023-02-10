@@ -23,6 +23,7 @@ Kernel::Kernel(const char* name, Platform* platform) {
     archs_devs_[i] = NULL;
   }
   set_vendor_specific_kernel(false);
+  set_vendor_specific_kernel_check(false);
 }
 
 Kernel::~Kernel() {
