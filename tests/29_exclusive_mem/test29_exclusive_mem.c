@@ -87,5 +87,5 @@ int main(int argc, char** argv) {
   free(C);
   free(tasks);
 
-  return 0;
+  return iris_error_count();
 }

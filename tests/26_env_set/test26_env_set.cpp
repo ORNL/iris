@@ -74,6 +74,6 @@ int main(int argc, char** argv) {
 
   free(A);
 
-  return 0;
+  return iris_error_count();
 }
 

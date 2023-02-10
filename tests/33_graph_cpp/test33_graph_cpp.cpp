@@ -48,6 +48,6 @@ int main(int argc, char** argv) {
 
   platform.finalize();
 
-  return 0;
+  return platform.error_count();
 }
 
