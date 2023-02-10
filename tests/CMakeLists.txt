@@ -97,6 +97,7 @@ list(APPEND TEST_EXES "15_graph" "test15_graph" "")
 #list(APPEND TEST_EXES "16_task_host" "test16_task_host" "")
 list(APPEND TEST_EXES "17_json" "test17_json" "")
 list(APPEND TEST_EXES "18_record" "test18_record" "")
+list(APPEND TEST_EXES "19_replay" "test19_replay" "")
 #[DEBUG] Remove test20 due to dependency to cublas.
 if (CUDAToolkit_FOUND)
 list(APPEND TEST_EXES "20_cublas" "test20_cublas" "")

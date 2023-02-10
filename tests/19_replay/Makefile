@@ -1,4 +1,4 @@
-TEST=test18_record
+TEST=test19_replay
 
 all: $(TEST) kernel.openmp.so 
 
