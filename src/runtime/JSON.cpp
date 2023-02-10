@@ -42,6 +42,7 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
   size_t srclen = 0;
   if (Utils::ReadFile((char*) path, &src, &srclen) == IRIS_ERROR) {
     _error("no JSON file[%s]", path);
+    platform_->IncrementErrorCount();
     return IRIS_ERROR;
   }
   printf("RAPIDJSON source = %s\n",src);
@@ -50,10 +51,12 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
   printf("debug! length of file = %ld\n",srclen);
   if (!json_.IsObject()){
     _error("failed to create JSON from file[%s]", path);
+    platform_->IncrementErrorCount();
     return IRIS_ERROR;
   }
   if(!json_.HasMember("iris-graph")){
     _error("malformed JSON in file[%s]", path);
+    platform_->IncrementErrorCount();
     return IRIS_ERROR;
   }
   const rapidjson::Value& iris_graph_ = json_["iris-graph"];
@@ -61,6 +64,7 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
   //load inputs
   if(!iris_graph_.HasMember("inputs") or !iris_graph_["inputs"].IsArray()){
     _error("malformed inputs in file[%s]", path);
+    platform_->IncrementErrorCount();
     return IRIS_ERROR;
   }
   const rapidjson::Value& iris_inputs_ = iris_graph_["inputs"];
@@ -71,6 +75,7 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
   //load tasks
   if(!iris_graph_.HasMember("graph") or !iris_graph_["graph"].HasMember("tasks") or !iris_graph_["graph"]["tasks"].IsArray()){
     _error("malformed tasks in file[%s]", path);
+    platform_->IncrementErrorCount();
     return IRIS_ERROR;
   }
   const rapidjson::Value& iris_tasks_ = iris_graph_["graph"]["tasks"];
@@ -80,17 +85,20 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
     //name
     if(!iris_tasks_[i].HasMember("name") or !iris_tasks_[i]["name"].IsString()){
       _error("malformed task name in file[%s]", path);
+      platform_->IncrementErrorCount();
       return IRIS_ERROR;
     }
     task->set_name(iris_tasks_[i]["name"].GetString());
     //depends
     if(!iris_tasks_[i].HasMember("depends") or !iris_tasks_[i]["depends"].IsArray()){
       _error("malformed task depends in file[%s]", path);
+      platform_->IncrementErrorCount();
       return IRIS_ERROR;
     }
     for (rapidjson::SizeType j = 0; j < iris_tasks_[i]["depends"].Size(); j++){
       if(!iris_tasks_[i]["depends"][j].IsString()){
         _error("malformed task depends in file[%s]", path);
+        platform_->IncrementErrorCount();
         return IRIS_ERROR;
       }
       const char* dependency_name = iris_tasks_[i]["depends"][j].GetString();
@@ -104,6 +112,7 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
     //target
     if(!iris_tasks_[i].HasMember("target") or !iris_tasks_[i]["target"].IsString()){
       _error("malformed task target in file[%s]", path);
+      platform_->IncrementErrorCount();
       return IRIS_ERROR;
     }
     int target = iris_default;
@@ -130,6 +139,7 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
     //commands (populate each task with assigned commands)
     if(!iris_tasks_[i].HasMember("commands") or !iris_tasks_[i]["commands"].IsArray()){
       _error("malformed task commands in file[%s]", path);
+      platform_->IncrementErrorCount();
       return IRIS_ERROR;
     }
     for (rapidjson::SizeType j = 0; j < iris_tasks_[i]["commands"].Size(); j++){
@@ -138,13 +148,15 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
         //name
         if(!kernel_.HasMember("name") or !kernel_["name"].IsString()){
             _error("malformed command kernel name in file[%s]", path);
-            return IRIS_ERROR;
+             platform_->IncrementErrorCount();
+             return IRIS_ERROR;
         }
         const char* name = kernel_["name"].GetString();
         Kernel* kernel = platform_->GetKernel(name);
         //global_size
         if(!kernel_.HasMember("global_size") or !kernel_["global_size"].IsArray()){
             _error("malformed command kernel global_size in file[%s]", path);
+            platform_->IncrementErrorCount();
             return IRIS_ERROR;
         }
         int dim = kernel_["global_size"].Size();
@@ -160,6 +172,7 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
         //nkparams
         if(!kernel_.HasMember("parameters") or !kernel_["parameters"].IsArray()){
             _error("malformed command kernel params in file[%s]", path);
+            platform_->IncrementErrorCount();
             return IRIS_ERROR;
         }
         int nkparams = kernel_["parameters"].Size();
@@ -169,6 +182,7 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
           const rapidjson::Value& param_ = kernel_["parameters"][l];
           if (!param_.HasMember("type")){
             _error("malformed command kernel params type in file[%s]", path);
+            platform_->IncrementErrorCount();
             return IRIS_ERROR;
           }
           //parameters (scalar)
@@ -176,6 +190,7 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
             //name
             if (!param_.HasMember("name")){
               _error("malformed command kernel parameters scalar name in file[%s]", path);
+              platform_->IncrementErrorCount();
               return IRIS_ERROR;
             }
             kparams[l] = GetParameterInput(params,param_["name"].GetString());
@@ -189,12 +204,14 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
             //name
             if (!param_.HasMember("name")){
               _error("malformed command kernel parameters memory name in file[%s]", path);
+              platform_->IncrementErrorCount();
               return IRIS_ERROR;
             }
             kparams[l] = GetParameterInput(params,param_["name"].GetString());
             //permissions---for the memory object
             if (!param_.HasMember("permission")){
               _error("malformed command kernel parameters memory permission in file[%s]", path);
+              platform_->IncrementErrorCount();
               return IRIS_ERROR;
             }
             const char* permission = param_["permission"].GetString();
@@ -203,6 +220,7 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
             else if (strcmp("w", permission) == 0) kparams_info[l] = iris_w;
             else {
               _error("malformed command kernel parameters memory permission in file[%s]", path);
+              platform_->IncrementErrorCount();
               return IRIS_ERROR;
             }
             //size_bytes (TODO: optional? or even valid?)
@@ -210,6 +228,7 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
           }
           else{
             _error("malformed command kernel params in file[%s]", path);
+            platform_->IncrementErrorCount();
             return IRIS_ERROR;
           }
         }
@@ -218,6 +237,7 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
         if(kernel_.HasMember("local_size")) {
           if(!kernel_["local_size"].IsArray()){
             _error("malformed command kernel local_size in file[%s]", path);
+            platform_->IncrementErrorCount();
             return IRIS_ERROR;
           }
           dim = kernel_["local_size"].Size();
@@ -236,6 +256,7 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
         if(kernel_.HasMember("offset")) {
           if(!kernel_["offset"].IsArray()){
             _error("malformed command kernel offset in file[%s]", path);
+            platform_->IncrementErrorCount();
             return IRIS_ERROR;
           }
           dim = kernel_["offset"].Size();
@@ -261,18 +282,21 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
         //host_memory
         if(!h2d_.HasMember("host_memory") or !h2d_["host_memory"].IsString()){
           _error("malformed command h2d host_memory in file[%s]", path);
+          platform_->IncrementErrorCount();
           return IRIS_ERROR;
         }
         void* host_mem = GetParameterInput(params, h2d_["host_memory"].GetString());
         //device_memory
         if(!h2d_.HasMember("device_memory") or !h2d_["device_memory"].IsString()){
           _error("malformed command h2d device_memory in file[%s]", path);
+          platform_->IncrementErrorCount();
           return IRIS_ERROR;
         }
         iris_mem dev_mem = (iris_mem) GetParameterInput(params, h2d_["device_memory"].GetString());
         //offset
         if(!h2d_.HasMember("offset") or !h2d_["offset"].IsString()){
           _error("malformed command h2d offset in file[%s]", path);
+          platform_->IncrementErrorCount();
           return IRIS_ERROR;
         }
         void* p_off = GetParameterInput(params, h2d_["offset"].GetString());
@@ -280,6 +304,7 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
         //size
         if(!h2d_.HasMember("size") or !h2d_["size"].IsString()){
           _error("malformed command h2d size in file[%s]", path);
+          platform_->IncrementErrorCount();
           return IRIS_ERROR;
         }
         void* p_size = GetParameterInput(params, h2d_["size"].GetString());
@@ -290,6 +315,7 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
         if(h2d_.HasMember("name")){
           if(!h2d_["name"].IsString()){
             _error("malformed command h2d name in file[%s]", path);
+            platform_->IncrementErrorCount();
             return IRIS_ERROR;
           }
           cmd->set_name(const_cast<char*>(h2d_["name"].GetString()));
@@ -301,18 +327,21 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
         //host_memory
         if(!d2h_.HasMember("host_memory") or !d2h_["host_memory"].IsString()){
           _error("malformed command d2h host_memory in file[%s]", path);
+          platform_->IncrementErrorCount();
           return IRIS_ERROR;
         }
         void* host_mem = GetParameterInput(params, d2h_["host_memory"].GetString());
         //device_memory
         if(!d2h_.HasMember("device_memory") or !d2h_["device_memory"].IsString()){
           _error("malformed command d2h device_memory in file[%s]", path);
+          platform_->IncrementErrorCount();
           return IRIS_ERROR;
         }
         iris_mem dev_mem = (iris_mem) GetParameterInput(params, d2h_["device_memory"].GetString());
         //offset
         if(!d2h_.HasMember("offset") or !d2h_["offset"].IsString()){
           _error("malformed command d2h offset in file[%s]", path);
+          platform_->IncrementErrorCount();
           return IRIS_ERROR;
         }
         void* p_off = GetParameterInput(params, d2h_["offset"].GetString());
@@ -320,6 +349,7 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
         //size
         if(!d2h_.HasMember("size") or !d2h_["size"].IsString()){
           _error("malformed command d2h size in file[%s]", path);
+          platform_->IncrementErrorCount();
           return IRIS_ERROR;
         }
         void* p_size = GetParameterInput(params, d2h_["size"].GetString());
@@ -330,6 +360,7 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
         if(d2h_.HasMember("name")){
           if(!d2h_["name"].IsString()){
             _error("malformed command d2h name in file[%s]", path);
+            platform_->IncrementErrorCount();
             return IRIS_ERROR;
           }
           cmd->set_name(const_cast<char*>(d2h_["name"].GetString()));
@@ -338,6 +369,7 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
       }
       else {
         _error("malformed command in file[%s]", path);
+        platform_->IncrementErrorCount();
         return IRIS_ERROR;
       }
     }
