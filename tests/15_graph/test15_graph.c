@@ -60,6 +60,6 @@ int main(int argc, char** argv) {
   iris_graph_release(graph);
   iris_finalize();
 
-  return 0;
+  return iris_error_count();
 }
 
