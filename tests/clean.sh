@@ -23,6 +23,9 @@ rm                                                        \
   ./18_record/test18_record                               \
   ./18_record/*.json                                      \
   ./18_record/*.so                                        \
+  ./19_replay/test19_replay                               \
+  ./19_replay/*.json                                      \
+  ./19_replay/*.so                                        \
   ./20_cublas/test20_cublas                               \
   ./21_task_malloc/test21_task_malloc                     \
   ./23_multigraph/test23_multigraph                       \
