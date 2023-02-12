@@ -109,11 +109,8 @@ if (CUDAToolkit_FOUND)
 list(APPEND TEST_EXES "25_random_tasks" "test25_random_tasks" "")
 endif()
 list(APPEND TEST_EXES "26_env_set" "test26_env_set" "")
-#[FIXME] Temporarily disabled due to a deadlock issue.
-if (CUDAToolkit_FOUND)
 list(APPEND TEST_EXES "27_deadlock2" "test27_deadlock2" "")
 list(APPEND TEST_EXES "28_json2" "test28_json2" "")
-endif()
 #[DEBUG] Remove this test since exclusive memory has been removed.
 #list(APPEND TEST_EXES "29_exclusive_mem" "test29_exclusive_mem" "")
 if (CUDAToolkit_FOUND)
