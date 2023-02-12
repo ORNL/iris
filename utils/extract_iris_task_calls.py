@@ -104,12 +104,23 @@ def extractTaskCalls(args):
         \) #close parenthesis
         )
         ''',single_line,flags=regex.VERBOSE)
+    result5 = regex.findall(r'''IRIS_TASK_APIS_CPP
+        (?<rec> #capturing group rec
+        \( #open parenthesis
+        (?: #non-capturing group
+        [^()]++ #anyting but parenthesis one or more times without backtracking
+        | #or
+        (?&rec) #recursive substitute of group rec
+        )*
+        \) #close parenthesis
+        )
+        ''',single_line,flags=regex.VERBOSE)
     def add_code(result, code=0):
         result_out = [ '('+str(code)+', '+r[1:] for r in result ]
         return result_out
     fh.close()
     os.unlink(f.name)
-    return add_code(result0)+add_code(result1)+add_code(result2)+add_code(result3)+add_code(result4, 1)
+    return add_code(result0)+add_code(result1)+add_code(result2)+add_code(result3)+add_code(result4, 1)+add_code(result5, 2)
 
 def writeExtracts(code, args):
     fh = open(args.output, "w")
@@ -207,6 +218,20 @@ def generateIrisInterfaceCode(args, input):
             data_hash[kname] = preprocess_data(d[0])
             header_data_hash[core_api_name] = (0, data_hash[kname])
             header_data_hash[task_api_name] = (1, data_hash[kname])
+        elif code == 2:
+            (cpp_api_name, core_api_name, task_api_name) = d[0][0], d[0][1], d[0][2]
+            cpp_api_name  = remove_spaces(cpp_api_name)
+            core_api_name = remove_spaces(core_api_name)
+            task_api_name = remove_spaces(task_api_name)
+            d = [['task0'] + d[0][3:]]
+            kname = remove_spaces(d[0][1])
+            d[0][1] = kname
+            data.append(d[0])
+            data_hash[kname] = preprocess_data(d[0])
+            header_data_hash[core_api_name] = (0, data_hash[kname])
+            header_data_hash[task_api_name] = (1, data_hash[kname])
+            header_data_hash[(cpp_api_name, core_api_name)] =  (2, data_hash[kname])
+            header_data_hash[(cpp_api_name, task_api_name)] =  (3, data_hash[kname])
     k_hash = {}
     k_index = 0
     for k,v in data_hash.items():
@@ -392,17 +417,8 @@ static int iris_kernel_idx = -1;
     sig_lines = []
     appendKernelSignatureHeaderFile(args, sig_lines, header_data_hash)
     #lines = lines + sig_lines
-    k_sig_lines = [''' 
-#ifdef __cplusplus
-extern "C" {
-#endif
-    ''']
+    k_sig_lines = [ ]
     k_sig_lines += sig_lines
-    k_sig_lines.append('''
-#ifdef __cplusplus
-}
-#endif
-    ''')
     writeLinesToFiles(k_sig_lines, args.signature_file)
     appendStructure(args, lines, data_hash, k_hash)
     if args.thread_safe == 1:
@@ -496,9 +512,15 @@ def appendKernelSignatureHeaderFile(args, lines, data_hash):
         for each_hdr in hdr_list:
             each_hdr_str = remove_spaces(each_hdr)
             lines.append(f"#include \"{each_hdr_str}\"")
-    for k,(hdr_type, v) in data_hash.items():
-        kvar = getKernelParamVairable(k)
-        func_sig = "int "+k+"("
+    for k, (hdr_type, v) in data_hash.items():
+        func_name = k
+        if hdr_type == 2 or hdr_type == 3:
+            func_name = k[0]
+            lines.append("#ifdef __cplusplus")
+        kvar = getKernelParamVairable(func_name)
+        func_sig = "int "+func_name+"("
+        if hdr_type == 0 or hdr_type == 1:
+            func_sig = "extern \"C\" int "+func_name+"("
         params = []
         lines.append(func_sig)
         arguments_start_index = find_start_index(v)
@@ -514,52 +536,52 @@ def appendKernelSignatureHeaderFile(args, lines, data_hash):
             fdt = f_details[1]
             if f_param == 'PARAM' and len(f_details)>2:
                 expr = getPyExprString(f_details[2])
-                InsertConditionalDeclarationsWithVariable(k, expr, fdt, fvar, params, lines)
+                InsertConditionalDeclarationsWithVariable(func_name, expr, fdt, fvar, params, lines)
                 one_param_exists = True
             elif f_param == 'PARAM_CONST' and len(f_details)>3:
                 expr = getPyExprString(f_details[2])
-                InsertConditionalDeclarationsWithVariable(k, expr, fdt, fvar, params, lines)
+                InsertConditionalDeclarationsWithVariable(func_name, expr, fdt, fvar, params, lines)
                 one_param_exists = True
             elif f_param == 'VEC_PARAM' and len(f_details)>2:
                 fdt  = fdt + f" * "
                 expr = getPyExprString(f_details[2])
-                InsertConditionalDeclarationsWithVariable(k, expr, fdt, fvar, params, lines)
+                InsertConditionalDeclarationsWithVariable(func_name, expr, fdt, fvar, params, lines)
                 one_param_exists = True
             elif f_param == 'IN_TASK':
-                if hdr_type == 1:
+                if hdr_type == 1 or hdr_type == 3:
                     fdt  = 'iris_mem' 
                 expr = getPyExprString(f_details[-1])
-                InsertConditionalDeclarationsWithVariable(k, expr, fdt, fvar, params, lines)
+                InsertConditionalDeclarationsWithVariable(func_name, expr, fdt, fvar, params, lines)
                 one_param_exists = True
             elif f_param == 'IN_TASK_OFFSET':
-                if hdr_type == 1:
+                if hdr_type == 1 or hdr_type == 3:
                     fdt  = 'iris_mem' 
                 expr = getPyExprString(f_details[-1])
-                InsertConditionalDeclarationsWithVariable(k, expr, fdt, fvar, params, lines)
+                InsertConditionalDeclarationsWithVariable(func_name, expr, fdt, fvar, params, lines)
                 one_param_exists = True
             elif f_param == 'OUT_TASK':
-                if hdr_type == 1:
+                if hdr_type == 1 or hdr_type == 3:
                     fdt  = 'iris_mem' 
                 expr = getPyExprString(f_details[-1])
-                InsertConditionalDeclarationsWithVariable(k, expr, fdt, fvar, params, lines)
+                InsertConditionalDeclarationsWithVariable(func_name, expr, fdt, fvar, params, lines)
                 one_param_exists = True
             elif f_param == 'OUT_TASK_OFFSET':
-                if hdr_type == 1:
+                if hdr_type == 1 or hdr_type == 3:
                     fdt  = 'iris_mem' 
                 expr = getPyExprString(f_details[-1])
-                InsertConditionalDeclarationsWithVariable(k, expr, fdt, fvar, params, lines)
+                InsertConditionalDeclarationsWithVariable(func_name, expr, fdt, fvar, params, lines)
                 one_param_exists = True
             elif f_param == 'IN_OUT_TASK':
-                if hdr_type == 1:
+                if hdr_type == 1 or hdr_type == 3:
                     fdt  = 'iris_mem' 
                 expr = getPyExprString(f_details[-1])
-                InsertConditionalDeclarationsWithVariable(k, expr, fdt, fvar, params, lines)
+                InsertConditionalDeclarationsWithVariable(func_name, expr, fdt, fvar, params, lines)
                 one_param_exists = True
             elif f_param == 'IN_OUT_TASK_OFFSET':
-                if hdr_type == 1:
+                if hdr_type == 1 or hdr_type == 3:
                     fdt  = 'iris_mem' 
                 expr = getPyExprString(f_details[-1])
-                InsertConditionalDeclarationsWithVariable(k, expr, fdt, fvar, params, lines)
+                InsertConditionalDeclarationsWithVariable(func_name, expr, fdt, fvar, params, lines)
                 one_param_exists = True
             else:
                 params.append(fdt+f" "+" "+fvar)
@@ -567,6 +589,8 @@ def appendKernelSignatureHeaderFile(args, lines, data_hash):
         if len(params) > 0:
              lines.append("\t\t\t\t"+", \n\t\t\t\t".join(params)+",")
         lines.append(");")
+        if hdr_type == 2 or hdr_type == 3:
+            lines.append("#endif // __cplusplus")
 
 def appendKernelSignature(args, lines, data_hash, k_hash):
     global valid_params, global_res
