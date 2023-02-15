@@ -67,6 +67,11 @@ int Loader::LoadFunctions() {
     return IRIS_SUCCESS;
 }
 
+void *Loader::GetFunctionPtr(const char *kernel_name) {
+    void *kptr = dlsym(handle_, kernel_name);
+    return kptr;
+}
+
 bool Loader::IsFunctionExists(const char *kernel_name) {
     __iris_kernel_ptr kptr;
     kptr = (__iris_kernel_ptr) dlsym(handle_, kernel_name);

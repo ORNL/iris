@@ -466,10 +466,14 @@ int DeviceCUDA::KernelGet(Kernel *kernel, void** kernel_bin, const char* name, b
   int kernel_idx=-1;
   if (kernel->is_vendor_specific_kernel() && 
           host2cuda_ld_->iris_host2cuda_kernel_with_obj &&
-      host2cuda_ld_->iris_host2cuda_kernel_with_obj(&kernel_idx, name) == IRIS_SUCCESS) 
+      host2cuda_ld_->iris_host2cuda_kernel_with_obj(&kernel_idx, name) == IRIS_SUCCESS)  {
+          *kernel_bin = host2cuda_ld_->GetFunctionPtr(name);
           return IRIS_SUCCESS;
-  if (kernel->is_vendor_specific_kernel() && host2cuda_ld_->iris_host2cuda_kernel) 
+  }
+  if (kernel->is_vendor_specific_kernel() && host2cuda_ld_->iris_host2cuda_kernel) {
+      *kernel_bin = host2cuda_ld_->GetFunctionPtr(name);
       return IRIS_SUCCESS;
+  }
   CUfunction* cukernel = (CUfunction*) kernel_bin;
   err_ = ld_->cuModuleGetFunction(cukernel, module_, name);
   if (report_error) _cuerror(err_);

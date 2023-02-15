@@ -298,6 +298,7 @@ int DeviceOpenCL::KernelGet(Kernel *kernel, void** kernel_bin, const char* name,
           //_trace("dev[%d][%s] kernel[%s:%s] kernel-get-1", devno_, name_, kernel->name(), kernel->get_task_name());
           if (host2opencl_ld_->iris_host2opencl_kernel_with_obj(&kernel_idx, name)==IRIS_SUCCESS) {
               //_trace("dev[%d][%s] kernel[%s:%s] kernel-get-2", devno_, name_, kernel->name(), kernel->get_task_name());
+              *kernel_bin = host2opencl_ld_->GetFunctionPtr(name);
               return IRIS_SUCCESS;
           }
       }

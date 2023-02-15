@@ -318,10 +318,14 @@ int DeviceHIP::KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bo
   int kernel_idx = -1;
   if (kernel->is_vendor_specific_kernel() && 
           host2hip_ld_->iris_host2hip_kernel_with_obj &&
-        host2hip_ld_->iris_host2hip_kernel_with_obj(&kernel_idx, name)==IRIS_SUCCESS)
+        host2hip_ld_->iris_host2hip_kernel_with_obj(&kernel_idx, name)==IRIS_SUCCESS) {
+      *kernel_bin = host2hip_ld_->GetFunctionPtr(name);
       return IRIS_SUCCESS;
-  if (kernel->is_vendor_specific_kernel() && host2hip_ld_->iris_host2hip_kernel)
+  }
+  if (kernel->is_vendor_specific_kernel() && host2hip_ld_->iris_host2hip_kernel) {
+      *kernel_bin = host2hip_ld_->GetFunctionPtr(name);
       return IRIS_SUCCESS;
+  }
   hipFunction_t* hipkernel = (hipFunction_t*) kernel_bin;
   err_ = ld_->hipModuleGetFunction(hipkernel, module_, name);
   if (report_error) _hiperror(err_);

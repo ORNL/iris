@@ -223,6 +223,7 @@ int DeviceOpenMP::KernelGet(Kernel *kernel, void** kernel_bin, const char* name,
       }
       return IRIS_ERROR;
   }
+  *kernel_bin = ld_->GetFunctionPtr(name);
   return IRIS_SUCCESS;
 }
 
