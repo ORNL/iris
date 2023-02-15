@@ -35,8 +35,9 @@ public:
 
   void ExecuteInit(Command* cmd);
   virtual void ExecuteKernel(Command* cmd);
+  virtual void RegisterPin(void *host, size_t size) { }
   void ExecuteMalloc(Command* cmd);
-
+  void RegisterHost(BaseMem *mem);
   template <typename DMemType>
   void InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem);
   void ExecuteMemResetInput(Task *task, Command* cmd);

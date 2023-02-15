@@ -113,6 +113,11 @@ DeviceCUDA::DeviceCUDA(LoaderCUDA* ld, LoaderHost2CUDA *host2cuda_ld, CUdevice c
   _info("device[%d] platform[%d] vendor[%s] device[%s] type[%d] version[%s] max_compute_units[%zu] max_work_group_size_[%zu] max_work_item_sizes[%zu,%zu,%zu] max_block_dims[%d,%d,%d] concurrent_kernels[%d] async_engines[%d]", devno_, platform_, vendor_, name_, type_, version_, max_compute_units_, max_work_group_size_, max_work_item_sizes_[0], max_work_item_sizes_[1], max_work_item_sizes_[2], max_block_dims_[0], max_block_dims_[1], max_block_dims_[2], ck, ae);
 }
 
+void DeviceCUDA::RegisterPin(void *host, size_t size)
+{
+    ld_->cudaHostRegister(host, size, cudaHostRegisterDefault);
+}
+
 DeviceCUDA::~DeviceCUDA() {
     if (host2cuda_ld_->iris_host2cuda_finalize){
         host2cuda_ld_->iris_host2cuda_finalize();

@@ -46,6 +46,7 @@ public:
   //CUresult (*cuMemset)(CUdeviceptr dptr, int init, size_t bytesize);
   CUresult (*cuMemFree)(CUdeviceptr dptr);
   CUresult (*cuMemcpy2D)(const CUDA_MEMCPY2D *pCopy);
+  CUresult (*cudaHostRegister)(void *ptr, size_t size, unsigned int flags);
   CUresult (*cudaMemset)(void *devPtr, int value, size_t count);
   CUresult (*cudaMemcpy)( void* dst, const void* src, size_t count, cudaMemcpyKind kind );
   CUresult (*cudaMemcpy2D)( void* dst, size_t dpitch, const void* src, size_t spitch, size_t width, size_t height, cudaMemcpyKind kind );

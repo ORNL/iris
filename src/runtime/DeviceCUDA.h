@@ -21,6 +21,7 @@ public:
   int ResetMemory(BaseMem *mem, uint8_t reset_value);
   int MemAlloc(void** mem, size_t size, bool reset=false);
   int MemFree(void* mem);
+  void RegisterPin(void *host, size_t size);
   void EnablePeerAccess();
   void SetPeerDevices(int *peers, int count);
   void MemCpy3D(CUdeviceptr dev, uint8_t *host, size_t *off, 

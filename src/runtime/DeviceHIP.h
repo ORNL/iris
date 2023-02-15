@@ -18,6 +18,7 @@ public:
   int Compile(char* src);
   int Init();
   int ResetMemory(BaseMem *mem, uint8_t reset_value);
+  void RegisterPin(void *host, size_t size);
   int MemAlloc(void** mem, size_t size, bool reset);
   int MemFree(void* mem);
   int MemD2D(Task *task, BaseMem *mem, void *dst, void *src, size_t size);

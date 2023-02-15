@@ -152,6 +152,11 @@ int DeviceHIP::ResetMemory(BaseMem *mem, uint8_t reset_value) {
     return IRIS_SUCCESS;
 }
 
+void DeviceHIP::RegisterPin(void *host, size_t size)
+{
+    ld_->hipHostRegister(host, size, hipHostRegisterDefault);
+}
+
 int DeviceHIP::MemAlloc(void** mem, size_t size, bool reset) {
   void** hipmem = mem;
   err_ = ld_->hipMalloc(hipmem, size);

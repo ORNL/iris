@@ -416,6 +416,7 @@ int Platform::InitCUDA() {
   }
   if (ndevs) {
     strcpy(platform_names_[nplatforms_], "CUDA");
+    first_dev_of_type_[nplatforms_] = devs_[ndevs_-mdevs];
     nplatforms_++;
   }
   return IRIS_SUCCESS;
@@ -478,6 +479,7 @@ int Platform::InitHIP() {
   }
   if (ndevs) {
     strcpy(platform_names_[nplatforms_], "HIP");
+    first_dev_of_type_[nplatforms_] = devs_[ndevs_-mdevs];
     nplatforms_++;
   }
   return IRIS_SUCCESS;
@@ -524,13 +526,15 @@ int Platform::InitLevelZero() {
   err = loaderLevelZero_->zeContextCreate(driver, &zectx_desc, &zectx);
   _zeerror(err);
 
+  int mdevs = 0;
   for (uint32_t i = 0; i < ndevs; i++) {
     devs_[ndevs_] = new DeviceLevelZero(loaderLevelZero_, devs[i], zectx, driver, ndevs_, nplatforms_);
     arch_available_ |= devs_[ndevs_]->type();
-    ndevs_++;
+    ndevs_++; mdevs++;
   }
   if (ndevs) {
     strcpy(platform_names_[nplatforms_], "LevelZero");
+    first_dev_of_type_[nplatforms_] = devs_[ndevs_-mdevs];
     nplatforms_++;
   }
   return IRIS_SUCCESS;
@@ -553,6 +557,7 @@ int Platform::InitOpenMP() {
   arch_available_ |= devs_[ndevs_]->type();
   ndevs_++;
   strcpy(platform_names_[nplatforms_], "OpenMP");
+  first_dev_of_type_[nplatforms_] = devs_[ndevs_-1];
   nplatforms_++;
   return IRIS_SUCCESS;
 }
@@ -575,6 +580,7 @@ int Platform::InitHexagon() {
   arch_available_ |= devs_[ndevs_]->type();
   ndevs_++;
   strcpy(platform_names_[nplatforms_], "Hexagon");
+  first_dev_of_type_[nplatforms_] = devs_[ndevs_-1];
   nplatforms_++;
   return IRIS_SUCCESS;
 }
@@ -627,6 +633,7 @@ int Platform::InitOpenCL() {
       _trace("skipping platform[%d] [%s %s] ndevs[%u]", nplatforms_, vendor, platform_name, ndevs);
       continue;
     }
+    int mdevs = 0;
     for (cl_uint j = 0; j < ndevs; j++) {
       cl_device_type dev_type;
       err = loaderOpenCL_->clGetDeviceInfo(cl_devices[j], CL_DEVICE_TYPE, sizeof(dev_type), &dev_type, NULL);
@@ -641,10 +648,12 @@ int Platform::InitOpenCL() {
       devs_[ndevs_] = new DeviceOpenCL(loaderOpenCL_, loaderHost2OpenCL, cl_devices[j], cl_contexts[i], ndevs_, ocldevno, nplatforms_);
       arch_available_ |= devs_[ndevs_]->type();
       ndevs_++;
+      mdevs++;
       ocldevno++;
     }
     _trace("adding platform[%d] [%s %s] ndevs[%u]", nplatforms_, vendor, platform_name, ndevs);
     sprintf(platform_names_[nplatforms_], "OpenCL %s", vendor);
+    first_dev_of_type_[nplatforms_] = devs_[ndevs_-mdevs];
     nplatforms_++;
   }
   return IRIS_SUCCESS;
@@ -1112,6 +1121,23 @@ int Platform::DataMemInit(iris_mem brs_mem, bool reset) {
 int Platform::DataMemUpdate(iris_mem brs_mem, void *host) {
   DataMem *mem = (DataMem *) brs_mem->class_obj;
   mem->UpdateHost(host);
+  return IRIS_SUCCESS;
+}
+
+int Platform::RegisterPin(void *host, size_t size) {
+  for (int i=0; i<nplatforms_; i++) {
+    first_dev_of_type_[i]->RegisterPin(host, size);
+  }  
+  return IRIS_SUCCESS;
+}
+
+int Platform::DataMemRegisterPin(iris_mem brs_mem) {
+  DataMem *mem = (DataMem *) brs_mem->class_obj;
+  void *host = mem->host_memory();
+  size_t size =mem->size();
+  for (int i=0; i<nplatforms_; i++) {
+    first_dev_of_type_[i]->RegisterPin(host, size);
+  }  
   return IRIS_SUCCESS;
 }
 

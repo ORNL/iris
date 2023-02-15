@@ -18,6 +18,24 @@ typedef enum hipMemcpyKind {
     hipMemcpyDefault =
         4  ///< Runtime will automatically determine copy-kind based on virtual addresses.
 } hipMemcpyKind;
+
+//Flags that can be used with hipHostRegister.
+/** Memory is Mapped and Portable.*/
+#define hipHostRegisterDefault 0x0
+
+/** Memory is considered registered by all contexts.*/
+#define hipHostRegisterPortable 0x1
+
+/** Map the allocation into the address space for the current device. The device pointer
+ * can be obtained with #hipHostGetDevicePointer.*/
+#define hipHostRegisterMapped  0x2
+
+ /** Not supported.*/
+#define hipHostRegisterIoMemory 0x4
+
+ /** Coarse Grained host memory lock.*/
+#define hipExtHostRegisterCoarseGrained 0x8
+
 typedef enum hipDeviceAttribute_t {
     hipDeviceAttributeMaxThreadsPerBlock,       ///< Maximum number of threads per block.
     hipDeviceAttributeMaxBlockDimX,             ///< Maximum x-dimension of a block.

@@ -122,6 +122,8 @@ public:
   int MemCreate(size_t size, iris_mem* brs_mem);
   int DataMemInit(iris_mem brs_mem, bool reset);
   int DataMemUpdate(iris_mem brs_mem, void *host);
+  int RegisterPin(void *host, size_t size);
+  int DataMemRegisterPin(iris_mem brs_mem);
   int DataMemCreate(iris_mem* brs_mem, void *host, size_t size);
   int DataMemCreate(iris_mem* brs_mem, void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim);
   int DataMemCreate(iris_mem* brs_mem, iris_mem root_mem, int region);
@@ -213,6 +215,7 @@ private:
   char platform_names_[IRIS_MAX_NPLATFORMS][64];
   int nplatforms_;
   Device* devs_[IRIS_MAX_NDEVS];
+  Device *first_dev_of_type_[IRIS_MAX_NDEVS];
   int ndevs_;
   int dev_default_;
   int devs_enabled_[IRIS_MAX_NDEVS];

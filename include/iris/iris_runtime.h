@@ -307,9 +307,11 @@ extern int iris_task_release_mem(iris_task task, iris_mem mem);
 extern int iris_params_map(iris_task task, int *params_map);
 extern int iris_task_info(iris_task task, int param, void* value, size_t* size);
 
+extern int iris_register_pin_memory(void *host, size_t size);
 extern int iris_mem_create(size_t size, iris_mem* mem);
 extern int iris_data_mem_init_reset(iris_mem mem, int reset);
 extern int iris_data_mem_create(iris_mem* mem, void *host, size_t size);
+extern int iris_data_mem_pin(iris_mem mem);
 extern int iris_data_mem_update(iris_mem mem, void *host);
 extern int iris_data_mem_create_region(iris_mem* mem, iris_mem root_mem, int region);
 extern int iris_data_mem_enable_outer_dim_regions(iris_mem mem);
