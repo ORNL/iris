@@ -49,6 +49,7 @@ public:
   map<int, DataMemRegion *> & data_mem_regions_in() { return data_mem_regions_in_; }
   map<int, DataMemRegion *> & data_mem_regions_out() { return data_mem_regions_out_; }
   void** archs() { return archs_; }
+  size_t nargs() { return args_.size(); }
   void* arch(Device* dev, bool report_error=true);
   void add_dmem(DataMem *mem, int idx, int mode);
   void add_dmem_region(DataMemRegion *mem, int idx, int mode);
