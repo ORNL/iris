@@ -21,6 +21,7 @@ Command::Command(Task* task, int type) {
 
 Command::~Command() {
   if (kernel_args_) delete[] kernel_args_;
+  if (kernel_) kernel_->Release();
   if (npolymems_ && polymems_) delete polymems_;
   if (selector_kernel_params_) free(selector_kernel_params_);
   if (params_map_) delete [] params_map_; 

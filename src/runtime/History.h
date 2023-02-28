@@ -16,7 +16,7 @@ class Task;
 
 class History {
 public:
-  History(Kernel* kernel);
+  History(Platform* platform);
   ~History();
 
   void AddKernel(Command* cmd, Device* dev, double time);
@@ -56,7 +56,6 @@ private:
   size_t total(size_t* s);
 
 private:
-  Kernel* kernel_;
   Platform* platform_;
   int ndevs_;
 

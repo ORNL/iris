@@ -17,7 +17,7 @@ Kernel::Kernel(const char* name, Platform* platform) {
   strcpy(task_name_, name);
   name_[len] = 0;
   platform_ = platform;
-  history_ = new History(this);
+  history_ = platform->CreateHistory(name);
   for (int i = 0; i < IRIS_MAX_NDEVS; i++) {
     archs_[i] = NULL;
     archs_devs_[i] = NULL;
@@ -29,9 +29,10 @@ Kernel::Kernel(const char* name, Platform* platform) {
 Kernel::~Kernel() {
   data_mems_in_.clear();
   data_mem_regions_in_.clear();
-  delete history_;
+  history_ = nullptr;
   for (std::map<int, KernelArg*>::iterator I = args_.begin(), E = args_.end(); I != E; ++I)
     delete I->second;
+  _trace(" kernel:%lu:%s is destroyed", uid(), name_);
 }
 
 int Kernel::SetArg(int idx, size_t size, void* value) {

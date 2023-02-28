@@ -130,7 +130,7 @@ Platform::~Platform() {
   if (sig_handler_) delete sig_handler_;
   if (json_) delete json_;
   if (pool_) delete pool_;
-
+  kernel_history_.clear();
   pthread_mutex_destroy(&mutex_);
 }
 
@@ -1011,6 +1011,16 @@ int Platform::TaskMapFromFull(iris_task brs_task, void* host) {
   return IRIS_SUCCESS;
 }
 
+shared_ptr<History> Platform::CreateHistory(string kname)
+{
+    if (kernel_history_.find(kname) == kernel_history_.end()) {
+        std::vector<shared_ptr<History> > vec;
+        kernel_history_.insert(std::pair<std::string, std::vector<shared_ptr<History>> >(kname, vec));
+    }
+    shared_ptr<History> history = make_shared<History>(this);
+    kernel_history_[kname].push_back(history);
+    return history;
+}
 void Platform::ProfileCompletedTask(Task *task)
 {
     if (enable_profiler_){
@@ -1029,6 +1039,7 @@ int Platform::NumErrors(){
 int Platform::TaskSubmit(iris_task brs_task, int brs_policy, const char* opt, int sync) {
   Task* task = brs_task->class_obj;
   task->Submit(brs_policy, opt, sync);
+  _trace(" successfully submitted task:%lu:%s", task->uid(), task->name());
   if (recording_) json_->RecordTask(task);
   if (scheduler_) {
     FilterSubmitExecute(task);
@@ -1040,6 +1051,7 @@ int Platform::TaskSubmit(iris_task brs_task, int brs_policy, const char* opt, in
 
 int Platform::TaskSubmit(Task *task, int brs_policy, const char* opt, int sync) {
   task->Submit(brs_policy, opt, sync);
+  _trace(" successfully submitted task:%lu:%s", task->uid(), task->name());
   if (recording_) json_->RecordTask(task);
   if (scheduler_) {
     FilterSubmitExecute(task);
@@ -1399,105 +1411,201 @@ int Platform::InitWorkers() {
 }
 
 int Platform::ShowKernelHistory() {
-  double t_ker = 0.0f;
-  double t_h2d = 0.0f;
-  double t_d2d = 0.0f;
-  double t_d2h_h2d = 0.0f;
-  double t_d2o = 0.0f;
-  double t_o2d = 0.0f;
-  double t_d2h = 0.0f;
-  size_t total_c_ker = 0;
-  size_t total_c_h2d = 0;
-  size_t total_c_d2d = 0;
-  size_t total_c_d2h_h2d = 0;
-  size_t total_c_d2o = 0;
-  size_t total_c_o2d = 0;
-  size_t total_c_d2h = 0;
-  size_t total_size_h2d = 0;
-  size_t total_size_d2d = 0;
-  size_t total_size_d2h_h2d = 0;
-  size_t total_size_d2o = 0;
-  size_t total_size_o2d = 0;
-  size_t total_size_d2h = 0;
-  for (std::map<std::string, std::vector<Kernel*> >::iterator I = kernels_.begin(), 
-          E = kernels_.end(); I != E; ++I) {
-      std::string name = I->first;
-      std::vector<Kernel*> & kernel_vector = I->second;
-      double k_ker = 0.0f;
-      double k_h2d = 0.0f;
-      double k_d2d = 0.0f;
-      double k_d2h_h2d = 0.0f;
-      double k_o2d = 0.0f;
-      double k_d2o = 0.0f;
-      double k_d2h = 0.0f;
-      size_t c_ker = 0;
-      size_t c_d2d = 0;
-      size_t c_d2h_h2d = 0;
-      size_t c_d2o = 0;
-      size_t c_o2d = 0;
-      size_t c_h2d = 0;
-      size_t c_d2h = 0;
-      size_t size_d2d = 0;
-      size_t size_d2h_h2d = 0;
-      size_t size_d2o = 0;
-      size_t size_o2d = 0;
-      size_t size_h2d = 0;
-      size_t size_d2h = 0;
-      for(std::vector<Kernel *>::iterator kI = kernel_vector.begin(), kE = kernel_vector.end(); kI != kE; ++kI) {
-          Kernel *kernel = *kI;
-          History* history = kernel->history();
-          k_ker += history->t_kernel();
-          k_h2d += history->t_h2d();
-          k_d2d += history->t_d2d();
-          k_d2h_h2d += history->t_d2h_h2d();
-          k_d2o += history->t_d2o();
-          k_o2d += history->t_o2d();
-          k_d2h += history->t_d2h();
-          c_ker += history->c_kernel();
-          c_h2d += history->c_h2d();
-          c_d2d += history->c_d2d();
-          c_d2h_h2d += history->c_d2h_h2d();
-          c_d2o += history->c_d2o();
-          c_o2d += history->c_o2d();
-          c_d2h += history->c_d2h();
-          size_h2d += history->size_h2d();
-          size_d2d += history->size_d2d();
-          size_d2h_h2d += history->size_d2h_h2d();
-          size_d2o += history->size_d2o();
-          size_o2d += history->size_o2d();
-          size_d2h += history->size_d2h();
-          //printf("Name:%s kname:%s time:%f acc:%f\n", name.c_str(), kernel->get_task_name(), history->t_kernel(), k_ker);
-      }
-      _info("kernel[%s] k[%lf][%zu] h2d[%lf][%zu][%ld] o2d[%lf][%zu][%ld] d2o[%lf][%zu][%ld] d2h_h2d[%lf][%zu][%ld] d2d[%lf][%zu][%ld] d2h[%lf][%zu][%ld]", name.c_str(), k_ker, c_ker, k_h2d, c_h2d, size_h2d, k_o2d, c_o2d, size_o2d, k_d2o, c_d2o, size_d2o, k_d2h_h2d, c_d2h_h2d, size_d2h_h2d, k_d2d, c_d2d, size_d2d, k_d2h, c_d2h, size_d2h);
-    t_ker += k_ker;
-    total_c_ker += c_ker;
-    t_h2d += k_h2d;
-    t_d2d += k_d2d;
-    t_d2h_h2d += k_d2h_h2d;
-    t_o2d += k_o2d;
-    t_d2o += k_d2o;
-    t_d2h += k_d2h;
-    total_c_h2d +=     c_h2d;
-    total_c_d2d +=     c_d2d;
-    total_c_d2h_h2d += c_d2h_h2d;
-    total_c_o2d +=     c_o2d;
-    total_c_d2o +=     c_d2o;
-    total_c_d2h +=     c_d2h;
-    total_size_h2d +=     size_h2d;
-    total_size_d2d +=     size_d2d;
-    total_size_d2h_h2d += size_d2h_h2d;
-    total_size_o2d +=     size_o2d;
-    total_size_d2o +=     size_d2o;
-    total_size_d2h +=     size_d2h; 
-  }
-  t_h2d          += null_kernel()->history()->t_h2d();
-  t_d2h          += null_kernel()->history()->t_d2h();
-  total_c_h2d    += null_kernel()->history()->c_h2d();
-  total_c_d2h    += null_kernel()->history()->c_d2h();
-  total_size_h2d += null_kernel()->history()->size_h2d();
-  total_size_d2h += null_kernel()->history()->size_d2h();
-  _info("total kernel k[%lf][%zu] h2d[%lf][%zu][%ld] o2d[%lf][%zu][%ld] d2o[%lf][%zu][%ld] d2h_h2d[%lf][%zu][%ld] d2d[%lf][%zu][%ld] d2h[%lf][%zu][%ld]", t_ker, total_c_ker, t_h2d, total_c_h2d, total_size_h2d, t_o2d, total_c_o2d, total_size_o2d, t_d2o, total_c_d2o, total_size_d2o, t_d2h_h2d, total_c_d2h_h2d, total_size_d2h_h2d, t_d2d, total_c_d2d, total_size_d2d, t_d2h, total_c_d2h, total_size_d2h);
-  return IRIS_SUCCESS;
+#if 0
+    double t_ker = 0.0f;
+    double t_h2d = 0.0f;
+    double t_d2d = 0.0f;
+    double t_d2h_h2d = 0.0f;
+    double t_d2o = 0.0f;
+    double t_o2d = 0.0f;
+    double t_d2h = 0.0f;
+    size_t total_c_ker = 0;
+    size_t total_c_h2d = 0;
+    size_t total_c_d2d = 0;
+    size_t total_c_d2h_h2d = 0;
+    size_t total_c_d2o = 0;
+    size_t total_c_o2d = 0;
+    size_t total_c_d2h = 0;
+    size_t total_size_h2d = 0;
+    size_t total_size_d2d = 0;
+    size_t total_size_d2h_h2d = 0;
+    size_t total_size_d2o = 0;
+    size_t total_size_o2d = 0;
+    size_t total_size_d2h = 0;
+    for (std::map<std::string, std::vector<Kernel*> >::iterator I = kernels_.begin(), 
+            E = kernels_.end(); I != E; ++I) {
+        std::string name = I->first;
+        std::vector<Kernel*> & kernel_vector = I->second;
+        double k_ker = 0.0f;
+        double k_h2d = 0.0f;
+        double k_d2d = 0.0f;
+        double k_d2h_h2d = 0.0f;
+        double k_o2d = 0.0f;
+        double k_d2o = 0.0f;
+        double k_d2h = 0.0f;
+        size_t c_ker = 0;
+        size_t c_d2d = 0;
+        size_t c_d2h_h2d = 0;
+        size_t c_d2o = 0;
+        size_t c_o2d = 0;
+        size_t c_h2d = 0;
+        size_t c_d2h = 0;
+        size_t size_d2d = 0;
+        size_t size_d2h_h2d = 0;
+        size_t size_d2o = 0;
+        size_t size_o2d = 0;
+        size_t size_h2d = 0;
+        size_t size_d2h = 0;
+        for(std::vector<Kernel *>::iterator kI = kernel_vector.begin(), kE = kernel_vector.end(); kI != kE; ++kI) {
+            Kernel *kernel = *kI;
+            shared_ptr<History> history = kernel->history();
+            k_ker += history->t_kernel();
+            k_h2d += history->t_h2d();
+            k_d2d += history->t_d2d();
+            k_d2h_h2d += history->t_d2h_h2d();
+            k_d2o += history->t_d2o();
+            k_o2d += history->t_o2d();
+            k_d2h += history->t_d2h();
+            c_ker += history->c_kernel();
+            c_h2d += history->c_h2d();
+            c_d2d += history->c_d2d();
+            c_d2h_h2d += history->c_d2h_h2d();
+            c_d2o += history->c_d2o();
+            c_o2d += history->c_o2d();
+            c_d2h += history->c_d2h();
+            size_h2d += history->size_h2d();
+            size_d2d += history->size_d2d();
+            size_d2h_h2d += history->size_d2h_h2d();
+            size_d2o += history->size_d2o();
+            size_o2d += history->size_o2d();
+            size_d2h += history->size_d2h();
+            //printf("Name:%s kname:%s time:%f acc:%f\n", name.c_str(), kernel->get_task_name(), history->t_kernel(), k_ker);
+        }
+        _info("kernel[%s] k[%lf][%zu] h2d[%lf][%zu][%ld] o2d[%lf][%zu][%ld] d2o[%lf][%zu][%ld] d2h_h2d[%lf][%zu][%ld] d2d[%lf][%zu][%ld] d2h[%lf][%zu][%ld]", name.c_str(), k_ker, c_ker, k_h2d, c_h2d, size_h2d, k_o2d, c_o2d, size_o2d, k_d2o, c_d2o, size_d2o, k_d2h_h2d, c_d2h_h2d, size_d2h_h2d, k_d2d, c_d2d, size_d2d, k_d2h, c_d2h, size_d2h);
+        t_ker += k_ker;
+        total_c_ker += c_ker;
+        t_h2d += k_h2d;
+        t_d2d += k_d2d;
+        t_d2h_h2d += k_d2h_h2d;
+        t_o2d += k_o2d;
+        t_d2o += k_d2o;
+        t_d2h += k_d2h;
+        total_c_h2d +=     c_h2d;
+        total_c_d2d +=     c_d2d;
+        total_c_d2h_h2d += c_d2h_h2d;
+        total_c_o2d +=     c_o2d;
+        total_c_d2o +=     c_d2o;
+        total_c_d2h +=     c_d2h;
+        total_size_h2d +=     size_h2d;
+        total_size_d2d +=     size_d2d;
+        total_size_d2h_h2d += size_d2h_h2d;
+        total_size_o2d +=     size_o2d;
+        total_size_d2o +=     size_d2o;
+        total_size_d2h +=     size_d2h; 
+    }
+    t_h2d          += null_kernel()->history()->t_h2d();
+    t_d2h          += null_kernel()->history()->t_d2h();
+    total_c_h2d    += null_kernel()->history()->c_h2d();
+    total_c_d2h    += null_kernel()->history()->c_d2h();
+    total_size_h2d += null_kernel()->history()->size_h2d();
+    total_size_d2h += null_kernel()->history()->size_d2h();
+    _info("total kernel k[%lf][%zu] h2d[%lf][%zu][%ld] o2d[%lf][%zu][%ld] d2o[%lf][%zu][%ld] d2h_h2d[%lf][%zu][%ld] d2d[%lf][%zu][%ld] d2h[%lf][%zu][%ld]", t_ker, total_c_ker, t_h2d, total_c_h2d, total_size_h2d, t_o2d, total_c_o2d, total_size_o2d, t_d2o, total_c_d2o, total_size_d2o, t_d2h_h2d, total_c_d2h_h2d, total_size_d2h_h2d, t_d2d, total_c_d2d, total_size_d2d, t_d2h, total_c_d2h, total_size_d2h);
+    return IRIS_SUCCESS;
+#else
+    double t_ker = 0.0f;
+    double t_h2d = 0.0f;
+    double t_d2d = 0.0f;
+    double t_d2h_h2d = 0.0f;
+    double t_d2o = 0.0f;
+    double t_o2d = 0.0f;
+    double t_d2h = 0.0f;
+    size_t total_c_ker = 0;
+    size_t total_c_h2d = 0;
+    size_t total_c_d2d = 0;
+    size_t total_c_d2h_h2d = 0;
+    size_t total_c_d2o = 0;
+    size_t total_c_o2d = 0;
+    size_t total_c_d2h = 0;
+    size_t total_size_h2d = 0;
+    size_t total_size_d2d = 0;
+    size_t total_size_d2h_h2d = 0;
+    size_t total_size_d2o = 0;
+    size_t total_size_o2d = 0;
+    size_t total_size_d2h = 0;
+    for (std::map<std::string, vector<shared_ptr<History> > >::iterator I = kernel_history_.begin(), 
+            E = kernel_history_.end(); I != E; ++I) {
+        std::string name = I->first;
+        std::vector<shared_ptr<History>> & history_vector = I->second;
+        double k_ker = 0.0f;
+        double k_h2d = 0.0f;
+        double k_d2d = 0.0f;
+        double k_d2h_h2d = 0.0f;
+        double k_o2d = 0.0f;
+        double k_d2o = 0.0f;
+        double k_d2h = 0.0f;
+        size_t c_ker = 0;
+        size_t c_d2d = 0;
+        size_t c_d2h_h2d = 0;
+        size_t c_d2o = 0;
+        size_t c_o2d = 0;
+        size_t c_h2d = 0;
+        size_t c_d2h = 0;
+        size_t size_d2d = 0;
+        size_t size_d2h_h2d = 0;
+        size_t size_d2o = 0;
+        size_t size_o2d = 0;
+        size_t size_h2d = 0;
+        size_t size_d2h = 0;
+        for(std::vector<shared_ptr<History> >::iterator kI = history_vector.begin(), kE = history_vector.end(); kI != kE; ++kI) {
+            shared_ptr<History> history = *kI;
+            k_ker += history->t_kernel();
+            k_h2d += history->t_h2d();
+            k_d2d += history->t_d2d();
+            k_d2h_h2d += history->t_d2h_h2d();
+            k_d2o += history->t_d2o();
+            k_o2d += history->t_o2d();
+            k_d2h += history->t_d2h();
+            c_ker += history->c_kernel();
+            c_h2d += history->c_h2d();
+            c_d2d += history->c_d2d();
+            c_d2h_h2d += history->c_d2h_h2d();
+            c_d2o += history->c_d2o();
+            c_o2d += history->c_o2d();
+            c_d2h += history->c_d2h();
+            size_h2d += history->size_h2d();
+            size_d2d += history->size_d2d();
+            size_d2h_h2d += history->size_d2h_h2d();
+            size_d2o += history->size_d2o();
+            size_o2d += history->size_o2d();
+            size_d2h += history->size_d2h();
+            //printf("Name:%s kname:%s time:%f acc:%f\n", name.c_str(), kernel->get_task_name(), history->t_kernel(), k_ker);
+        }
+        _info("kernel[%s] k[%lf][%zu] h2d[%lf][%zu][%ld] o2d[%lf][%zu][%ld] d2o[%lf][%zu][%ld] d2h_h2d[%lf][%zu][%ld] d2d[%lf][%zu][%ld] d2h[%lf][%zu][%ld]", name.c_str(), k_ker, c_ker, k_h2d, c_h2d, size_h2d, k_o2d, c_o2d, size_o2d, k_d2o, c_d2o, size_d2o, k_d2h_h2d, c_d2h_h2d, size_d2h_h2d, k_d2d, c_d2d, size_d2d, k_d2h, c_d2h, size_d2h);
+        t_ker += k_ker;
+        total_c_ker += c_ker;
+        t_h2d += k_h2d;
+        t_d2d += k_d2d;
+        t_d2h_h2d += k_d2h_h2d;
+        t_o2d += k_o2d;
+        t_d2o += k_d2o;
+        t_d2h += k_d2h;
+        total_c_h2d +=     c_h2d;
+        total_c_d2d +=     c_d2d;
+        total_c_d2h_h2d += c_d2h_h2d;
+        total_c_o2d +=     c_o2d;
+        total_c_d2o +=     c_d2o;
+        total_c_d2h +=     c_d2h;
+        total_size_h2d +=     size_h2d;
+        total_size_d2d +=     size_d2d;
+        total_size_d2h_h2d += size_d2h_h2d;
+        total_size_o2d +=     size_o2d;
+        total_size_d2o +=     size_d2o;
+        total_size_d2h +=     size_d2h; 
+    }
+    _info("total kernel k[%lf][%zu] h2d[%lf][%zu][%ld] o2d[%lf][%zu][%ld] d2o[%lf][%zu][%ld] d2h_h2d[%lf][%zu][%ld] d2d[%lf][%zu][%ld] d2h[%lf][%zu][%ld]", t_ker, total_c_ker, t_h2d, total_c_h2d, total_size_h2d, t_o2d, total_c_o2d, total_size_o2d, t_d2o, total_c_d2o, total_size_d2o, t_d2h_h2d, total_c_d2h_h2d, total_size_d2h_h2d, t_d2d, total_c_d2d, total_size_d2d, t_d2h, total_c_d2h, total_size_d2h);
+    return IRIS_SUCCESS;
+
+#endif
 }
 
 unique_ptr<Platform> Platform::singleton_ = nullptr;

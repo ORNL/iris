@@ -2,6 +2,7 @@
 #include "Debug.h"
 #include <stdlib.h>
 #include <time.h>
+#include "Task.h"
 #include <unistd.h>
 
 namespace iris {
@@ -17,12 +18,14 @@ PolicyRandom::~PolicyRandom() {
 
 void PolicyRandom::GetDevices(Task* task, Device** devs, int* ndevs) {
   int selected = 0;
+  int supported = 0;
+  devs[0] = devs_[0];
   for(int i=0; i<ndevs_; i++) {
-      selected = rand() % ndevs_;
-      if (IsKernelSupported(task, devs_[selected])) break;
+      if (IsKernelSupported(task, devs_[i])) 
+          devs[supported++] = devs_[i];
   }
-  if (selected == ndevs_) selected = 0;
-  devs[0] = devs_[selected];
+  if (supported > 0)
+      devs[0] = devs[rand() % supported];
   *ndevs = 1;
 }
 

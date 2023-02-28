@@ -71,7 +71,9 @@ void Worker::Run() {
     Sleep();
     if (!running_) break;
     Task* task = NULL;
+    _trace("Device:%d:%s Queue size:%lu", dev_->devno(), dev_->name(), queue_->Size());
     while (queue_->Dequeue(&task)){
+      _trace("Device:%d:%s Qsize:%lu dequeued task:%lu:%s", dev_->devno(), dev_->name(), queue_->Size(), task->uid(), task->name());
       Execute(task);
     }
   }
