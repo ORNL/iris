@@ -36,7 +36,7 @@ int main(int argc, char** argv) {
 #else
   iris_task_create(&task2);
 #endif
-  iris_task_kernel(task2, "process", 1, NULL, &SIZE, NULL, 1, params, params_info);
+  iris_task_kernel(task2, "process_task", 1, NULL, &SIZE, NULL, 1, params, params_info);
   for (int i = 0; i < LOOP; i++) iris_task_submit(task2, iris_gpu, NULL, true);
 
   iris_task task3;
@@ -48,6 +48,8 @@ int main(int argc, char** argv) {
 
   iris_finalize();
 
+
+  printf("Number of errors:%d\n", iris_error_count());
   return iris_error_count();
 }
 
