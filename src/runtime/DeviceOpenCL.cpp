@@ -550,7 +550,7 @@ int DeviceOpenCL::CreateProgram(const char* suffix, char** src, size_t* srclen) 
   if (strcmp("cl", suffix) == 0  && type_ != iris_fpga) {
       _trace("dev[%d][%s] has no kernel file [%s]. Hence, using the default kernel", devno_, name_, path);
       char default_str[] = "\
-            __kernel void process(__global int *out, int A) {\
+            __kernel void ____process(__global int *out, int A) {\
                 size_t id = get_global_id(0);\
                     out[id] = A;\
             }";
