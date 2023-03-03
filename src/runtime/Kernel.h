@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <map>
 #include <vector>
+#include <memory>
 
 using namespace std;
 namespace iris {
@@ -43,12 +44,13 @@ public:
   void set_task_name(const char *name) { strcpy(task_name_, name); }
   char *get_task_name() { return task_name_; }
   Platform* platform() { return platform_; }
-  History* history() { return history_; }
+  shared_ptr<History> history() { return history_; }
   map<int, DataMem *> & data_mems_in() { return data_mems_in_; }
   map<int, DataMem *> & data_mems_out() { return data_mems_out_; }
   map<int, DataMemRegion *> & data_mem_regions_in() { return data_mem_regions_in_; }
   map<int, DataMemRegion *> & data_mem_regions_out() { return data_mem_regions_out_; }
   void** archs() { return archs_; }
+  size_t nargs() { return args_.size(); }
   void* arch(Device* dev, bool report_error=true);
   void add_dmem(DataMem *mem, int idx, int mode);
   void add_dmem_region(DataMemRegion *mem, int idx, int mode);
@@ -61,7 +63,7 @@ private:
   Device* archs_devs_[IRIS_MAX_NDEVS];
   uint8_t param_wrapper_mem_[8*128];
   Platform* platform_;
-  History* history_;
+  shared_ptr<History> history_;
   bool is_vendor_specific_kernel_;
   bool vendor_specific_kernel_check_flag_;
   std::map<int, DataMem *> data_mems_in_;

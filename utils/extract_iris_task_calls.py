@@ -526,7 +526,7 @@ def appendKernelSignatureHeaderFile(args, lines, data_hash):
         arguments_start_index = find_start_index(v)
         i = arguments_start_index
         while (i<len(v)):
-            f_param = v[i]
+            f_param = remove_spaces(v[i])
             i = i+1
             if f_param not in valid_params:
                 continue
@@ -606,7 +606,7 @@ def appendKernelSignature(args, lines, data_hash, k_hash):
         arguments_start_index = find_start_index(v)
         i = arguments_start_index
         while (i<len(v)):
-            f_param = v[i]
+            f_param = remove_spaces(v[i])
             i = i+1
             if f_param not in valid_params:
                 continue
@@ -759,7 +759,7 @@ def appendStructure(args, lines, data_hash, k_hash):
         arguments_start_index = find_start_index(v)
         i = arguments_start_index
         while (i<len(v)):
-            f_param = v[i]
+            f_param = remove_spaces(v[i])
             i = i+1
             if f_param not in valid_params:
                 continue
@@ -791,7 +791,7 @@ def appendKernelSetArgMemParamFunctions(args, lines, kernel, data):
     arguments_start_index = find_start_index(data)
     i = arguments_start_index
     while (i<len(data)):
-        f_param = data[i]
+        f_param = remove_spaces(data[i])
         i = i+1
         if f_param not in valid_params:
             continue
@@ -816,7 +816,7 @@ def appendKernelSetArgMemParamFunctions(args, lines, kernel, data):
     p_index = 0
     i = arguments_start_index
     while (i<len(data)):
-        f_param = data[i]
+        f_param = remove_spaces(data[i])
         i = i+1
         if f_param not in valid_params:
             continue
@@ -958,7 +958,7 @@ int iris_kernel(const char* name) {
             i = arguments_start_index
             one_param_exists = False
             while (i<len(v)):
-                f_param = v[i]
+                f_param = remove_spaces(v[i])
                 i = i+1
                 if f_param not in valid_params:
                     continue

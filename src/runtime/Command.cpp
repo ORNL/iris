@@ -21,6 +21,7 @@ Command::Command(Task* task, int type) {
 
 Command::~Command() {
   if (kernel_args_) delete[] kernel_args_;
+  if (kernel_) kernel_->Release();
   if (npolymems_ && polymems_) delete polymems_;
   if (selector_kernel_params_) free(selector_kernel_params_);
   if (params_map_) delete [] params_map_; 
@@ -114,6 +115,8 @@ Command* Command::CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off,
   cmd->kernel_ = kernel;
   if (cmd->kernel_args_) delete[] cmd->kernel_args_;
   cmd->kernel_args_ = kernel->ExportArgs();
+  cmd->kernel_nargs_max_ = kernel->nargs();
+  cmd->kernel_nargs_ = kernel->nargs();
   cmd->dim_ = dim;
   for (int i = 0; i < dim; i++) {
     cmd->off_[i] = off ? off[i] : 0ULL;

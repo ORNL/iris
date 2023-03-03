@@ -151,6 +151,7 @@ foreach(i RANGE 0 ${count} 3)
    endif()
 
    string(REPLACE "::" ";" exe_list ${exes})
+   message(STATUS "**LD_LIBRARY_PATH** : ${LD_LIBRARY_PATH}")
    FOREACH(exe ${exe_list})
       if(${exe} STREQUAL " ") # Space is used for an empty test.
          continue()

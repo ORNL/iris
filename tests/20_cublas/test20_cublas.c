@@ -49,6 +49,7 @@ int cublas0(void* param, const int* dev) {
 }
 
 int main(int argc, char** argv) {
+  //setenv("IRIS_ARCHS", "cuda", 1);
   iris_init(&argc, &argv, 1);
 
   size_t SIZE, nbytes;
@@ -80,7 +81,7 @@ int main(int argc, char** argv) {
   iris_task_h2d_full(task0, memA, A);
   iris_task_h2d_full(task0, memB, B);
   iris_task_h2d_full(task0, memC, C);
-  iris_task_submit(task0, 0, NULL, 1);
+  iris_task_submit(task0, iris_cuda, NULL, 1);
 
   cublas0_params task1_params;
   task1_params.SIZE = SIZE;
@@ -91,12 +92,14 @@ int main(int argc, char** argv) {
   iris_task task1;
   iris_task_create(&task1);
   iris_task_host(task1, cublas0, &task1_params);
-  iris_task_submit(task1, 0, NULL, 1);
+  iris_task_depend(task1, 1, &task0);
+  iris_task_submit(task1, iris_cuda, NULL, 1);
 
   iris_task task9;
   iris_task_create(&task9);
   iris_task_d2h_full(task9, memC, C);
-  iris_task_submit(task9, 0, NULL, 1);
+  iris_task_depend(task9, 1, &task1);
+  iris_task_submit(task9, iris_cuda, NULL, 1);
 
   for (int i = 0; i < SIZE * SIZE; i++) {
     printf("%10.1lf", C[i]);

@@ -19,6 +19,7 @@ namespace iris {
 namespace rt {
 
 class Device;
+class History;
 class Filter;
 class Graph;
 class JSON;
@@ -190,6 +191,7 @@ public:
   Kernel* GetKernel(const char* name);
   BaseMem* GetMem(iris_mem brs_mem);
   BaseMem* GetMem(void* host, size_t* off);
+  shared_ptr<History> CreateHistory(string kname);
 
 private:
   int SetDevsAvailable();
@@ -236,6 +238,7 @@ private:
   Queue* queue_;
 
   std::map<std::string, std::vector<Kernel*> > kernels_;
+  std::map<std::string, vector<shared_ptr<History> > > kernel_history_;
   std::set<BaseMem*> mems_;
   std::map<std::string, std::string> env_;
 
