@@ -72,7 +72,7 @@ void Device::Execute(Task* task) {
       case IRIS_CMD_RELEASE_MEM:  ExecuteReleaseMem(cmd); break;
       case IRIS_CMD_HOST:         ExecuteHost(cmd);       break;
       case IRIS_CMD_CUSTOM:       ExecuteCustom(cmd);     break;
-      default: _error("cmd type[0x%x]", cmd->type());
+      default: {_error("cmd type[0x%x]", cmd->type());  printf("TODO: determine why name (%s) is set, but type isn't\n",cmd->type_name());};
     }
     cmd->set_time_end(timer_->Now());
     if (hook_command_post_) hook_command_post_(cmd);
