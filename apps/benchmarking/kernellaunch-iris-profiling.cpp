@@ -41,13 +41,15 @@ void Compute(int loop) {
   int pinfo[4] = { iris_w, sizeof(A), iris_r, iris_r };
   for (int i = 0; i < loop; i++) {
     iris_task task;
-    err = iris_task_create(&task);
+    char tname[256];
+    sprintf(tname, "saxpy_task_loop_%d_i_%d", loop, i);
+    err = iris_task_create_name(tname, &task);
     if (err == IRIS_ERROR) printf("[%s:%d]\n", __FILE__, __LINE__);
     err = iris_task_kernel(task, "saxpy", 1, NULL, &gws, &gws, 4, params, pinfo);
     if (err == IRIS_ERROR) printf("[%s:%d]\n", __FILE__, __LINE__);
     err = iris_task_submit(task, 0, NULL, 0);
     if (err == IRIS_ERROR) printf("[%s:%d]\n", __FILE__, __LINE__);
-    err = iris_task_release(task);
+    //err = iris_task_release(task);
     if (err == IRIS_ERROR) printf("[%s:%d]\n", __FILE__, __LINE__);
   }
   err = iris_synchronize();

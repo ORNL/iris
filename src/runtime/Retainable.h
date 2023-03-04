@@ -38,7 +38,7 @@ public:
     int i;
     do i = ref_cnt_;
     while (!__sync_bool_compare_and_swap(&ref_cnt_, i, i - 1));
-    if (i == 1 && is_release_) delete this;
+    if (ref_cnt_ <= 1 && is_release_) delete this;
   }
 
 private:
