@@ -25,7 +25,10 @@ bool QueueReady::Peek(Task** task, int target_index){
 bool QueueReady::Enqueue(Task* task) {
   std::lock_guard<std::mutex> lock(mutex_);
   //if the task to be enqueued is a memory transfer it should be prioritized
-  if (task->ncmds_memcpy() == task->ncmds()) {
+  if (task->marker()) {
+    queue_.push_back(task);
+  }
+  else if (task->ncmds_memcpy() == task->ncmds()) {
     pqueue_.push_back(task);
   }
   else{

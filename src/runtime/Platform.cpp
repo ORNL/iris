@@ -1087,7 +1087,10 @@ int Platform::TaskKernelCmdOnly(iris_task brs_task) {
 
 int Platform::TaskRelease(iris_task brs_task) {
   Task* task = brs_task->class_obj;
-  delete task;
+  if (!task->IsRelease() || !release_task_flag())
+      task->ForceRelease();
+  else 
+      task->Release();
   return IRIS_SUCCESS;
 }
 

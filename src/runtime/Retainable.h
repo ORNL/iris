@@ -34,6 +34,10 @@ public:
     while (!__sync_bool_compare_and_swap(&ref_cnt_, i, i + 1));
   }
 
+  void ForceRelease() {
+    delete this;
+  }
+
   void Release() {
     int i;
     do i = ref_cnt_;

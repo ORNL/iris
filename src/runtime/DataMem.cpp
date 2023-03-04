@@ -21,6 +21,7 @@ void DataMem::Init(Platform *platform, void *host_ptr, size_t size)
     regions_ = NULL;
     host_dirty_flag_ = false;
     for (int i = 0; i < ndevs_; i++) {
+        archs_[i] = NULL;
         archs_dev_[i] = platform->device(i);
         dirty_flag_[i] = true;
         pthread_mutex_init(&dev_mutex_[i], NULL);
