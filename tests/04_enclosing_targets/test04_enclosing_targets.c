@@ -51,6 +51,7 @@ int main(int argc, char** argv) {
 
   iris_task task1;
   iris_task_create(&task1);
+  iris_task_retain(task1, true);
   iris_task_h2d_full(task1, mem_B, B);
   void* loop1_params[2] = { mem_B, mem_A };
   int loop1_params_info[2] = { iris_rw, iris_r };
