@@ -54,6 +54,7 @@ public:
     while (!__sync_bool_compare_and_swap(&ref_cnt_, i, i - 1));
     if (ref_cnt_ <= 1 && is_release_) ForceRelease();
   }
+  int ref_cnt() { return ref_cnt_; }
 
 private:
   unsigned long uid_;

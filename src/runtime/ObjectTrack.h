@@ -46,6 +46,9 @@ namespace iris {
                     }
 #endif
                 }
+                void Clear() {
+                    allocated_objects_.clear();
+                }
 
             private:
                 int freed_objects;

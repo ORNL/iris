@@ -235,6 +235,7 @@ int Platform::Synchronize() {
   for (int i = 0; i < ndevs_; i++) devices[i] = i;
   int ret = DeviceSynchronize(ndevs_, devices);
   delete [] devices;
+  track().Clear();
   return ret;
 }
 
@@ -1087,11 +1088,15 @@ int Platform::TaskKernelCmdOnly(iris_task brs_task) {
 }
 
 int Platform::TaskRelease(iris_task brs_task) {
-  Task* task = brs_task->class_obj;
-  if (!task->IsRelease() || !release_task_flag())
-      task->ForceRelease();
-  else 
-      task->Release();
+    if (track().IsObjectExists(brs_task)) {
+        Task* task = brs_task->class_obj;
+        if (track().IsObjectExists(task)) {
+            if (!task->IsRelease())
+                task->ForceRelease();
+            else 
+                task->Release();
+        }
+    }
   return IRIS_SUCCESS;
 }
 
@@ -1280,21 +1285,23 @@ void Platform::set_release_task_flag(bool flag, iris_task brs_task)
 
 int Platform::GraphRelease(iris_graph brs_graph) {
   Graph* graph = brs_graph->class_obj;
-  std::vector<Task*>* tasks = graph->tasks();
-  for (std::vector<Task*>::iterator I = tasks->begin(), E = tasks->end(); I != E; ++I) {
-    Task* task = *I;
-    delete task;
-  }
+  graph->ForceRelease();
   return IRIS_SUCCESS;
 }
 
-int Platform::GraphRetain(iris_graph brs_graph) {
+int Platform::GraphRetain(iris_graph brs_graph, bool flag) {
   Graph* graph = brs_graph->class_obj;
-  graph->enable_retainable();
+  if (flag)
+      graph->enable_retainable();
+  else
+      graph->disable_retainable();
   std::vector<Task*>* tasks = graph->tasks();
   for (std::vector<Task*>::iterator I = tasks->begin(), E = tasks->end(); I != E; ++I) {
     Task* task = *I;
-    task->DisableRelease();
+    if (flag)
+        task->DisableRelease();
+    else
+        task->EnableRelease();
   }
   return IRIS_SUCCESS;
 }

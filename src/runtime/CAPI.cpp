@@ -23,14 +23,9 @@ int iris_error_count() {
   return platform->NumErrors();
 }
 
-void iris_task_set_retain_flag(bool flag, iris_task task) {
+void iris_task_retain(iris_task task, bool flag) {
   Platform *platform = Platform::GetPlatform(); 
   platform->set_release_task_flag(!flag, task);
-}
-
-void iris_set_release_task_flag(bool flag) {
-  Platform *platform = Platform::GetPlatform(); 
-  platform->set_release_task_flag(flag);
 }
 
 int iris_finalize() {
@@ -407,8 +402,8 @@ int iris_graph_task(iris_graph graph, iris_task task, int device, const char* op
   return Platform::GetPlatform()->GraphTask(graph, task, device, opt);
 }
 
-int iris_graph_retain(iris_graph graph) {
-  return Platform::GetPlatform()->GraphRetain(graph);
+int iris_graph_retain(iris_graph graph, bool flag) {
+  return Platform::GetPlatform()->GraphRetain(graph, flag);
 }
 
 int iris_graph_release(iris_graph graph) {

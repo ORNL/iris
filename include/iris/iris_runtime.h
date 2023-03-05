@@ -111,8 +111,7 @@ extern int iris_synchronize();
 /**
   * If task need to be submitted again and again.
   */
-extern void iris_set_release_task_flag(bool flag);
-extern void iris_task_set_retain_flag(bool flag, iris_task);
+extern void iris_task_retain(iris_task task, bool flag);
 
 /**
  * Sets an IRIS environment variable.
@@ -324,7 +323,7 @@ extern int iris_graph_create(iris_graph* graph);
 extern int iris_graph_free(iris_graph graph);
 extern int iris_graph_create_json(const char* json, void** params, iris_graph* graph);
 extern int iris_graph_task(iris_graph graph, iris_task task, int device, const char* opt);
-extern int iris_graph_retain(iris_graph graph);
+extern int iris_graph_retain(iris_graph graph, bool flag);
 extern int iris_graph_release(iris_graph graph);
 extern int iris_graph_submit(iris_graph graph, int device, int sync);
 extern int iris_graph_wait(iris_graph graph);

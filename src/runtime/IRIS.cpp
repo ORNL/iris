@@ -86,7 +86,7 @@ Task::Task(const char *name, bool perm, bool retainable)
     if (retainable) platform->set_release_task_flag(!retainable, task_);
 #else
     assert(PlatformIRIS::GetPlatform()->TaskCreate(name, perm, &task_) == IRIS_SUCCESS);
-    if (retainable) iris_task_set_retain_flag(!retainable, task_);
+    if (retainable) iris_task_retain(task_, !retainable);
 #endif
 }
 int Task::h2d(Mem* mem, size_t off, size_t size, void* host) {
@@ -190,7 +190,7 @@ void Task::depends_on(Task & d_task) {
 Graph::Graph(bool retainable) {
     retainable_ = retainable;
     iris_graph_create(&graph_);
-    if (retainable) iris_graph_retain(graph_);
+    if (retainable) iris_graph_retain(graph_, retainable);
     is_released_ = false;
 }
 Graph::~Graph() {
@@ -199,7 +199,7 @@ Graph::~Graph() {
 }
 void Graph::retainable() {
     retainable_ = true;
-    iris_graph_retain(graph_);
+    iris_graph_retain(graph_, true);
 }
 int Graph::add_task(Task & task, int device, const char *opt) {
 #ifdef ENABLE_SMART_PTR_TASK

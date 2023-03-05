@@ -30,12 +30,28 @@ Graph::Graph(Platform* platform) {
 
   pthread_mutex_init(&mutex_complete_, NULL);
   pthread_cond_init(&complete_cond_, NULL);
+  platform_->track().TrackObject(this);
+  platform_->track().TrackObject(struct_obj());
 }
 
 Graph::~Graph() {
+  platform_->track().UntrackObject(this);
+  platform_->track().UntrackObject(struct_obj());
   pthread_mutex_destroy(&mutex_complete_);
   pthread_cond_destroy(&complete_cond_);
   //if (end_) delete end_;
+#if 0
+  vector<Task *> & tasks = tasks_list();
+  Platform *platform = Platform::GetPlatform();
+  for (std::vector<Task*>::iterator I = tasks.begin(), E = tasks.end(); I != E; ++I) {
+    Task* task = *I;
+    if (!platform->track().IsObjectExists(task)) continue;
+    _trace("destruct Task:%lu:%s ref_cnt:%d", task->uid(), task->name(), task->ref_cnt());
+    if (!task->IsRelease())
+        task->ForceRelease();
+  }
+#endif
+  _trace("graph released");
 }
 
 void Graph::AddTask(Task* task) {

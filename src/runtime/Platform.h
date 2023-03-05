@@ -141,8 +141,8 @@ public:
   int GraphCreateJSON(const char* json, void** params,  iris_graph* brs_graph);
   int GraphTask(iris_graph brs_graph, iris_task brs_task, int brs_policy, const char* opt);
   int GraphSubmit(iris_graph brs_graph, int brs_policy, int sync);
+  int GraphRetain(iris_graph brs_graph, bool flag);
   int GraphRelease(iris_graph brs_graph);
-  int GraphRetain(iris_graph brs_graph);
   int GraphWait(iris_graph brs_graph);
   int GraphWaitAll(int ngraphs, iris_graph* brs_graphs);
   int GetGraphTasks(iris_graph graph, iris_task *tasks);
@@ -160,7 +160,7 @@ public:
   int nplatforms() { return nplatforms_; }
   int device_default() { return dev_default_; }
   bool release_task_flag() { return release_task_flag_; }
-  void set_release_task_flag(bool flag) { release_task_flag_ = flag; }
+  //void set_release_task_flag(bool flag) { release_task_flag_ = flag; }
   void set_release_task_flag(bool flag, iris_task task);
   Device** devices() { return devs_; }
   Device* device(int devno) { return devs_[devno]; }
