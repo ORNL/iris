@@ -141,6 +141,7 @@ set(IRIS_RUNTIME_HEADERS
   Mem.h
   MemRange.h
   Platform.h
+  ObjectTrack.h
   Policies.h
   Policy.h
   PolicyAll.h
