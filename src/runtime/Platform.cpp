@@ -680,7 +680,8 @@ int Platform::InitDevices(bool sync) {
   }
   if (sync) for (int i = 0; i < ndevs_; i++) tasks[i]->Wait();
   for (int i = 0; i < ndevs_; i++) {
-    delete tasks[i];
+    //delete tasks[i];
+    tasks[i]->Release();
   }
   delete[] tasks;
   return IRIS_SUCCESS;

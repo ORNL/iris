@@ -13,6 +13,7 @@
 
 #include "Config.h"
 #include "SchedulingHistory.h"
+#include "ObjectTrack.h"
 using namespace std;
 
 namespace iris {
@@ -174,6 +175,7 @@ public:
   char* app() { return app_; }
   char* host() { return host_; }
   Profiler** profilers() { return profilers_; }
+  ObjectTrack & track() { return object_track_; }
   int nprofilers() { return nprofilers_; }
   bool enable_scheduling_history() { return enable_scheduling_history_; }
   SchedulingHistory* scheduling_history() { return scheduling_history_; }
@@ -241,6 +243,7 @@ private:
   std::map<std::string, vector<shared_ptr<History> > > kernel_history_;
   std::set<BaseMem*> mems_;
   std::map<std::string, std::string> env_;
+  ObjectTrack object_track_;
 
   PresentTable* present_table_;
   Pool* pool_;

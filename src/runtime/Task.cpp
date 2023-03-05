@@ -46,6 +46,8 @@ Task::Task(Platform* platform, int type, const char* name) {
   pthread_mutex_init(&mutex_subtasks_, NULL);
   pthread_cond_init(&complete_cond_, NULL);
   brs_policy_ = iris_default;
+  platform_->track().TrackObject(this);
+  platform_->track().TrackObject(struct_obj());
 }
 
 Task::~Task() {
@@ -57,6 +59,8 @@ Task::~Task() {
   pthread_mutex_destroy(&mutex_subtasks_);
   pthread_cond_destroy(&complete_cond_);
   subtasks_.clear();
+  platform_->track().UntrackObject(this);
+  platform_->track().UntrackObject(struct_obj());
   _trace("released task:%lu:%s released", uid(), name());
 }
 
@@ -148,7 +152,7 @@ bool Task::Dispatchable() {
   if (status_ == IRIS_PENDING) return false;
   if (depends_ == NULL) return true;
   for (int i = 0; i < ndepends_; i++) {
-    if (depends_[i]->status() != IRIS_COMPLETE) return false;
+    if (platform_->track().IsObjectExists(depends_[i]) && depends_[i]->status() != IRIS_COMPLETE) return false;
   }
   return true;
 }
@@ -157,7 +161,8 @@ bool Task::Dispatchable() {
 void Task::DispatchDependencies() {
   pthread_mutex_lock(&mutex_pending_);
   if (status_ == IRIS_PENDING) status_ = IRIS_NONE;
-  for (int i = 0; i < ndepends_; i++) if (depends_[i]->status() == IRIS_PENDING) depends_[i]->status_ = IRIS_NONE;
+  for (int i = 0; i < ndepends_; i++) 
+      if (platform_->track().IsObjectExists(depends_[i]) && depends_[i]->status() == IRIS_PENDING) depends_[i]->status_ = IRIS_NONE;
   pthread_mutex_unlock(&mutex_pending_);
 }
 
