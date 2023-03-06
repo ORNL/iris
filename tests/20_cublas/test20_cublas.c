@@ -112,5 +112,6 @@ int main(int argc, char** argv) {
 
   iris_finalize();
 
+  printf("Errors:%d\n", iris_error_count());
   return iris_error_count();
 }

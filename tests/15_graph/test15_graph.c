@@ -47,7 +47,7 @@ int main(int argc, char** argv) {
   iris_graph_task(graph, task3, iris_data, NULL);
 
   for (int i = 0; i < SIZE; i++) A[i] = i;
-  iris_graph_retain(graph);
+  iris_graph_retain(graph, true);
   iris_graph_submit(graph, iris_cpu, false);
   iris_graph_wait(graph);
   for (int i = 0; i < SIZE; i++) printf("[%3d] %3d\n", i, B[i]);
