@@ -64,5 +64,6 @@ int main(int argc, char** argv) {
   }
 
   iris_finalize();
+  printf("Nerrors:%d\n", nerrors+iris_error_count());
   return nerrors+iris_error_count();
 }

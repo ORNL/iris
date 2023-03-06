@@ -61,8 +61,6 @@ Task::~Task() {
   pthread_mutex_destroy(&mutex_subtasks_);
   pthread_cond_destroy(&complete_cond_);
   subtasks_.clear();
-  platform_->track().UntrackObject(this);
-  platform_->track().UntrackObject(struct_obj());
   _trace("released task:%lu:%s released", uid(), name());
 }
 
@@ -138,7 +136,7 @@ void Task::print_incomplete_tasks()
   if (depends_ == NULL) return;
   printf("Task Name: %ld:%s\n", uid(), name());
   for (int i = 0; i < ndepends_; i++) {
-    printf("      Running dependent task: %d:%ld:%s Status:%d\n", i, depends_[i]->uid(), depends_[i]->name(), depends_[i]->status_);
+    printf("      Running dependent task: %d:%ld:%s Status:%d object exists:%d\n", i, depends_[i]->uid(), depends_[i]->name(), depends_[i]->status_, platform_->track().IsObjectExists(depends_[i]));
   }
 }
 

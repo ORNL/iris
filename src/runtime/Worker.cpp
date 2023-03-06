@@ -30,9 +30,9 @@ Worker::~Worker() {
 }
 
 void Worker::TaskComplete(Task* task) {
-  _trace("now invoke scheduler after task:%lu:%s qsize:%lu\n", task->uid(), task->name(), queue_->Size());
+  //_trace("now invoke scheduler after task:%lu:%s qsize:%lu\n", task->uid(), task->name(), queue_->Size());
   if (scheduler_) scheduler_->Invoke();
-  _trace("now invoke worker after task:%lu:%s\n qsize:%lu\n", task->uid(), task->name(), queue_->Size());
+  //_trace("now invoke worker after task:%lu:%s\n qsize:%lu\n", task->uid(), task->name(), queue_->Size());
   Invoke();
 }
 
@@ -82,7 +82,7 @@ void Worker::Run() {
     while (running_ && queue_->Dequeue(&task)){
       _trace("Device:%d:%s Qsize:%lu dequeued task:%lu:%s", dev_->devno(), dev_->name(), queue_->Size(), task->uid(), task->name());
       Execute(task);
-      _trace("Completed task Device:%d:%s Qsize:%lu dequeued task:%lu:%s", dev_->devno(), dev_->name(), queue_->Size(), task->uid(), task->name());
+      _trace("Completed task Device:%d:%s Qsize:%lu dequeued", dev_->devno(), dev_->name(), queue_->Size());
     }
   }
 }
