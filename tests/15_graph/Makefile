@@ -8,4 +8,4 @@ kernel.ptx: kernel.cu
 	nvcc -ptx $^
 
 kernel.openmp.so: kernel.cl.openmp.c
-	gcc -g -fopenmp -fPIC -shared -I. $(CFLAGS) -o $@ $^
+	$(CC) -g -fopenmp -fPIC -shared -I. $(CFLAGS) -o $@ $^

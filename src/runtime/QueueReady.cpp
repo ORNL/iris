@@ -27,15 +27,15 @@ bool QueueReady::Enqueue(Task* task) {
   //if the task to be enqueued is a memory transfer it should be prioritized
   if (task->marker()) {
     queue_.push_back(task);
-    _trace("Pushed marker task:%lu:%s to queue pq:%lu q:%lu\n", task->uid(), task->name(), pqueue_.size(), queue_.size());
+    _trace("Pushed marker task:%lu:%s to queue pq:%lu q:%lu", task->uid(), task->name(), pqueue_.size(), queue_.size());
   }
   else if (task->ncmds_memcpy() == task->ncmds()) {
     pqueue_.push_back(task);
-    _trace("Pushed task:%lu:%s to pqueue pq:%lu q:%lu\n", task->uid(), task->name(), pqueue_.size(), queue_.size());
+    _trace("Pushed task:%lu:%s to pqueue pq:%lu q:%lu", task->uid(), task->name(), pqueue_.size(), queue_.size());
   }
   else{
     queue_.push_back(task);
-    _trace("Pushed task:%lu:%s to queue pq:%lu q:%lu\n", task->uid(), task->name(), pqueue_.size(), queue_.size());
+    _trace("Pushed task:%lu:%s to queue pq:%lu q:%lu", task->uid(), task->name(), pqueue_.size(), queue_.size());
   }
   return true;
 }
@@ -44,13 +44,13 @@ bool QueueReady::Dequeue(Task** task) {
   std::lock_guard<std::mutex> lock(mutex_);
   if (!pqueue_.empty()){
     *task = (Task*) pqueue_.front();
-    _trace("Popped task:%lu:%s to pqueue pq:%lu q:%lu\n", (*task)->uid(), (*task)->name(), pqueue_.size(), queue_.size());
+    _trace("Popped task:%lu:%s to pqueue pq:%lu q:%lu", (*task)->uid(), (*task)->name(), pqueue_.size(), queue_.size());
     pqueue_.pop_front();
     return true;
   }
   if (!queue_.empty()){
     *task = (Task*) queue_.front();
-    _trace("Popped task:%lu:%s to queue pq:%lu q:%lu\n", (*task)->uid(), (*task)->name(), pqueue_.size(), queue_.size());
+    _trace("Popped task:%lu:%s to queue pq:%lu q:%lu", (*task)->uid(), (*task)->name(), pqueue_.size(), queue_.size());
     queue_.pop_front();
     return true;
   }

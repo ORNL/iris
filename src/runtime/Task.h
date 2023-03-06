@@ -122,6 +122,7 @@ private:
   void* arch_;
 
   Task** depends_;
+  unsigned long* depends_uids_;
   int depends_max_;
   int ndepends_;
 

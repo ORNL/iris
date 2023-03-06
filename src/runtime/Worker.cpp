@@ -25,14 +25,19 @@ Worker::Worker(Device* dev, Platform* platform, bool single) {
 }
 
 Worker::~Worker() {
-  _trace("Worker is destroyed\n");
+  _trace("Worker is destroyed");
+  if (sleeping_) {
+      running_ = false;
+      Invoke();
+      while(running_);
+  }
   if (!single_) delete queue_;
 }
 
 void Worker::TaskComplete(Task* task) {
-  //_trace("now invoke scheduler after task:%lu:%s qsize:%lu\n", task->uid(), task->name(), queue_->Size());
+  //_trace("now invoke scheduler after task:%lu:%s qsize:%lu", task->uid(), task->name(), queue_->Size());
   if (scheduler_) scheduler_->Invoke();
-  //_trace("now invoke worker after task:%lu:%s\n qsize:%lu\n", task->uid(), task->name(), queue_->Size());
+  //_trace("now invoke worker after task:%lu:%s qsize:%lu", task->uid(), task->name(), queue_->Size());
   Invoke();
 }
 
@@ -43,9 +48,9 @@ void Worker::Enqueue(Task* task) {
     Execute(task);
     return;
   }
-  _trace("Enqueuing task:%lu:%s\n", task->uid(), task->name());
+  _trace("Enqueuing task:%lu:%s", task->uid(), task->name());
   while (!queue_->Enqueue(task)) { }
-  _trace("Invoking worker for task:%lu:%s qsize:%lu\n", task->uid(), task->name(), queue_->Size());
+  _trace("Invoking worker for task:%lu:%s qsize:%lu", task->uid(), task->name(), queue_->Size());
   Invoke();
 }
 
@@ -73,9 +78,11 @@ void Worker::Execute(Task* task) {
 
 void Worker::Run() {
   while (true) {
-    _trace("Worker entering into sleep mode\n");
+    _trace("Worker entering into sleep mode");
+    //printf("1Device:%d:%s Queue size:%lu\n", dev_->devno(), dev_->name(), queue_->Size());
     Sleep();
-    _trace("Worker thread invoked now \n");
+    _trace("Worker thread invoked now");
+    //printf("2Device:%d:%s Queue size:%lu\n", dev_->devno(), dev_->name(), queue_->Size());
     if (!running_) break;
     Task* task = NULL;
     _trace("Device:%d:%s Queue size:%lu", dev_->devno(), dev_->name(), queue_->Size());

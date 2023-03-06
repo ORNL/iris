@@ -33,7 +33,8 @@ typedef int8_t bool;
 #define iris_pending            (1 << 23)
 #define iris_any                (1 << 24)
 #define iris_all                (1 << 25)
-#define iris_custom             (1 << 26)
+#define iris_ocl                (1 << 26)
+#define iris_custom             (1 << 27)
 
 #define iris_cuda               1
 //#define iris_hexagon            2

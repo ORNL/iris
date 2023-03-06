@@ -27,6 +27,7 @@ protected:
 protected:
   pthread_t thread_;
   volatile bool running_;
+  volatile bool sleeping_;
   sem_t sem_;
 };
 
