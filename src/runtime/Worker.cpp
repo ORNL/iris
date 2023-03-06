@@ -75,7 +75,7 @@ void Worker::Run() {
   while (true) {
     _trace("Worker entering into sleep mode\n");
     Sleep();
-    _trace("Came out from sleep Device:%d:%s Queue size:%lu", dev_->devno(), dev_->name(), queue_->Size());
+    _trace("Worker thread invoked now \n");
     if (!running_) break;
     Task* task = NULL;
     _trace("Device:%d:%s Queue size:%lu", dev_->devno(), dev_->name(), queue_->Size());
