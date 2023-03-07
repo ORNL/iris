@@ -375,10 +375,8 @@ void DeviceOpenCL::CheckVendorSpecificKernel(Kernel *kernel) {
         if (host2opencl_ld_->iris_host2opencl_kernel_with_obj(
                     kernel->GetParamWrapperMemory(), kernel->name()) == IRIS_SUCCESS) {
             //_trace("dev[%d][%s] kernel[%s:%s] launchInit-2", devno_, name_, kernel->name(), kernel->get_task_name());
-            if (host2opencl_ld_->SetKernelPtr(kernel->GetParamWrapperMemory(), kernel->name())==IRIS_SUCCESS) {
                 //_trace("dev[%d][%s] kernel[%s:%s] launchInit-3", devno_, name_, kernel->name(), kernel->get_task_name());
-                kernel->set_vendor_specific_kernel(true);
-            }
+            kernel->set_vendor_specific_kernel(true);
         }
     }
     else if (host2opencl_ld_->iris_host2opencl_kernel) {
@@ -397,6 +395,7 @@ int DeviceOpenCL::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws
   _trace("dev[%d][%s] kernel[%s:%s] dim[%d] gws[%zu,%zu,%zu] lws[%zu,%zu,%zu]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, gws[0], gws[1], gws[2], lws ? lws[0] : 0, lws ? lws[1] : 0, lws ? lws[2] : 0);
   if (kernel->is_vendor_specific_kernel()) {
       if (host2opencl_ld_->iris_host2opencl_launch_with_obj) {
+          host2opencl_ld_->SetKernelPtr(kernel->GetParamWrapperMemory(), kernel->name());
           host2opencl_ld_->iris_host2opencl_launch_with_obj(
                   kernel->GetParamWrapperMemory(), ocldevno_, dim, off[0], gws[0]);
           return IRIS_SUCCESS; 

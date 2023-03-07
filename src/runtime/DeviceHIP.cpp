@@ -376,8 +376,7 @@ void DeviceHIP::CheckVendorSpecificKernel(Kernel *kernel) {
   kernel->set_vendor_specific_kernel(false);
   if (host2hip_ld_->iris_host2hip_kernel_with_obj) {
       if (host2hip_ld_->iris_host2hip_kernel_with_obj(kernel->GetParamWrapperMemory(), kernel->name()) == IRIS_SUCCESS) {
-          if (host2hip_ld_->SetKernelPtr(kernel->GetParamWrapperMemory(), kernel->name())==IRIS_SUCCESS)
-              kernel->set_vendor_specific_kernel(true);
+          kernel->set_vendor_specific_kernel(true);
       }
   }
   else if (host2hip_ld_->iris_host2hip_kernel) {
@@ -397,6 +396,7 @@ int DeviceHIP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, s
   atleast_one_command_ = true;
   if (kernel->is_vendor_specific_kernel() && host2hip_ld_->iris_host2hip_launch_with_obj) {
       _trace("dev[%d][%s] kernel[%s:%s] dim[%d] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, q_);
+      host2hip_ld_->SetKernelPtr(kernel->GetParamWrapperMemory(), kernel->name());
       int status = host2hip_ld_->iris_host2hip_launch_with_obj(kernel->GetParamWrapperMemory(), ordinal_, dim, off[0], gws[0]);
       err_ = ld_->hipDeviceSynchronize();
       _hiperror(err_);

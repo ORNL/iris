@@ -542,8 +542,7 @@ void DeviceCUDA::CheckVendorSpecificKernel(Kernel* kernel) {
         int status = host2cuda_ld_->iris_host2cuda_kernel_with_obj(
                 kernel->GetParamWrapperMemory(), kernel->name());
         if (status == IRIS_SUCCESS) {
-            if (host2cuda_ld_->SetKernelPtr(kernel->GetParamWrapperMemory(), kernel->name())==IRIS_SUCCESS)
-                kernel->set_vendor_specific_kernel(true);
+            kernel->set_vendor_specific_kernel(true);
         }
     }
     else if (host2cuda_ld_->iris_host2cuda_kernel) {
@@ -575,6 +574,7 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
   if (kernel->is_vendor_specific_kernel()) {
      if(host2cuda_ld_->iris_host2cuda_launch_with_obj) {
          _trace("dev[%d][%s] kernel[%s:%s] dim[%d] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, q_);
+         host2cuda_ld_->SetKernelPtr(kernel->GetParamWrapperMemory(), kernel->name());
          int status = host2cuda_ld_->iris_host2cuda_launch_with_obj(
 #ifndef IRIS_SYNC_EXECUTION
                  streams_[q_], 
