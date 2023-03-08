@@ -14,6 +14,7 @@ namespace iris {
 namespace rt {
 
 Task::Task(Platform* platform, int type, const char* name) {
+  //printf("Creating task:%lu:%s ptr:%p\n", uid(), name, this);
   type_ = type;
   ncmds_ = 0;
   cmd_kernel_ = NULL;
@@ -49,6 +50,7 @@ Task::Task(Platform* platform, int type, const char* name) {
 }
 
 Task::~Task() {
+  //printf("released task:%lu:%s released ptr:%p \n", uid(), name(), this );
   for (int i = 0; i < ncmds_; i++) delete cmds_[i];
   if (depends_) delete [] depends_;
   pthread_mutex_destroy(&mutex_pending_);
@@ -145,11 +147,13 @@ void Task::ClearCommands() {
 
 bool Task::Dispatchable() {
   //if we, or the tasks we depend on are pending (or not-complete), we can't run.
+  _trace("Checking task:%lu:%s dispatchable", uid(), name());
   if (status_ == IRIS_PENDING) return false;
   if (depends_ == NULL) return true;
   for (int i = 0; i < ndepends_; i++) {
     if (depends_[i]->status() != IRIS_COMPLETE) return false;
   }
+  _trace("Task task:%lu:%s is ready to run", uid(), name());
   return true;
 }
 
@@ -180,6 +184,7 @@ void Task::set_pending() {
 }
 
 void Task::Complete() {
+  _trace(" task:%lu:%s is completed", uid(), name());
   bool is_user_task = user_;
   pthread_mutex_lock(&mutex_complete_);
   status_ = IRIS_COMPLETE;
@@ -192,6 +197,7 @@ void Task::Complete() {
     else if (scheduler_) scheduler_->Invoke();
   }
   if (!is_user_task) return;
+  _trace(" trying to release task:%lu:%s", uid(), name());
   if (platform_->release_task_flag()) {
       for (int i = 0; i < ndepends_; i++)
           if (depends_[i]->user()) depends_[i]->Release();
@@ -213,10 +219,12 @@ void Task::CompleteSub() {
 }
 
 void Task::Wait() {
+  _trace(" task:%lu:%s is waiting", uid(), name());
   pthread_mutex_lock(&mutex_complete_);
   if (status_ != IRIS_COMPLETE)
     pthread_cond_wait(&complete_cond_, &mutex_complete_);
   pthread_mutex_unlock(&mutex_complete_);
+  _trace(" task:%lu:%s dependency is clear", uid(), name());
 }
 
 void Task::AddSubtask(Task* subtask) {
