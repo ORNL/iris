@@ -21,9 +21,9 @@ Kernel::Kernel(const char* name, Platform* platform) {
   for (int i = 0; i < IRIS_MAX_NDEVS; i++) {
     archs_[i] = NULL;
     archs_devs_[i] = NULL;
+    set_vendor_specific_kernel(i, false);
+    vendor_specific_kernel_check_flag_[i] = false;
   }
-  set_vendor_specific_kernel(false);
-  set_vendor_specific_kernel_check(false);
 }
 
 Kernel::~Kernel() {
