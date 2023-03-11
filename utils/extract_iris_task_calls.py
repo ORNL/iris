@@ -524,6 +524,8 @@ def appendKernelSignatureHeaderFile(args, lines, data_hash):
         params = []
         if hdr_type == 1 or hdr_type == 3:
             params.append("iris_task task")
+        else:
+            params.append("int target_dev")
         lines.append(func_sig)
         arguments_start_index = find_start_index(v)
         i = arguments_start_index
