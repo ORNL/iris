@@ -234,7 +234,6 @@ int DeviceOpenMP::KernelLaunchInit(Kernel* kernel) {
       status = ld_->iris_openmp_kernel_with_obj(kernel->GetParamWrapperMemory(), kernel->name());
   else if (ld_->iris_openmp_kernel)
       status = ld_->iris_openmp_kernel(kernel->name());
-  ld_->SetKernelPtr(kernel->GetParamWrapperMemory(), kernel->name());
   if (status == IRIS_ERROR) {
       _error("Missing iris_openmp_kernel/iris_openmp_kernel_with_obj for OpenMP kernel:%s", kernel->name());
       worker_->platform()->IncrementErrorCount();
@@ -265,6 +264,7 @@ int DeviceOpenMP::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem
 
 int DeviceOpenMP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws) {
   _trace("dev[%d] kernel[%s:%s] dim[%d] off[%lu] gws[%lu]", devno_, kernel->name(), kernel->get_task_name(), dim, off[0], gws[0]);
+  ld_->SetKernelPtr(kernel->GetParamWrapperMemory(), kernel->name());
   if (ld_->iris_openmp_launch_with_obj)
     return ld_->iris_openmp_launch_with_obj(kernel->GetParamWrapperMemory(), 0, dim, off[0], gws[0]);
   if (ld_->iris_openmp_launch)
