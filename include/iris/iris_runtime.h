@@ -354,6 +354,7 @@ extern void iris_task_get_dependencies(iris_task brs_task, iris_task *tasks);
 extern unsigned long iris_task_get_uid(iris_task brs_task);
 extern unsigned long iris_kernel_get_uid(iris_kernel brs_kernel);
 extern iris_kernel iris_task_get_kernel(iris_task brs_task);
+extern int iris_task_disable_consistency(iris_task brs_task);
 extern int iris_task_is_cmd_kernel_exists(iris_task brs_task);
 extern void *iris_task_get_cmd_kernel(iris_task brs_task);
 

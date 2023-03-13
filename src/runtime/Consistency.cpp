@@ -28,6 +28,7 @@ Consistency::~Consistency() {
 void Consistency::Resolve(Task* task) {
   if (task->system()) return;
   if (disable_) return;
+  if (task->disable_consistency()) return;
   for (int i = 0; i < task->ncmds(); i++) {
     Command* cmd = task->cmd(i);
     switch (cmd->type()) {

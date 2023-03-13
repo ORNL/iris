@@ -17,6 +17,7 @@ Task::Task(Platform* platform, int type, const char* name) {
   //printf("Creating task:%lu:%s ptr:%p\n", uid(), name, this);
   type_ = type;
   ncmds_ = 0;
+  disable_consistency_ = false;
   cmd_kernel_ = NULL;
   cmd_last_ = NULL;
   platform_ = platform;
