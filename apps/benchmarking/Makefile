@@ -49,17 +49,10 @@ kernellaunch-iris: kernellaunch-iris.cpp
 kernellaunch-iris-profiling: kernellaunch-iris-profiling.cpp
 	$(CXX) $(CFLAGS) $(CXX_FLAGS) -I$(IRIS)/include -DNDEBUG -o $@ $^ $(IRIS_LDFLAGS) $(LD_FLAGS)
 
-latency: latency-cuda latency-iris
-
-latency-cuda: latency-cuda.cpp
-	$(CXX) $(CUDA_CFLAGS) -o $@ $^ $(CUDA_LDFLAGS)
-
-latency-iris: latency-iris.cpp
+compute-performance-iris-profiling: flops-dgemm-iris-profiling.cpp
 	$(CXX) -I$(IRIS)/include -o $@ $^ $(IRIS_LDFLAGS)
 
-throughput: throughput-iris
-
-throughput-iris: throughput-iris.cpp
+memory-performance-iris-profiling: membench-iris-profiling.cpp
 	$(CXX) -I$(IRIS)/include -o $@ $^ $(IRIS_LDFLAGS)
 
 kernel.ptx: kernel.cu
@@ -68,8 +61,11 @@ kernel.ptx: kernel.cu
 kernel.hip: kernel.hip.cpp
 	$(HIPCC) --genco $(HIPCC_FLAGS) -o $@ $^
 
+kernel.openmp.so: kernel.openmp.c
+	$(CC) $(CFLAGS) -g -std=c99 -fopenmp -fPIC -shared -I. -o $@ $^
+
 clean:
-	rm -f emptytask-iris kernellaunch-cuda kernellaunch-hip kernellaunch-opencl kernellaunch-iris kernellaunch-cuda-profiling kernellaunch-hip-profiling kernellaunch-opencl-profiling kernellaunch-iris-profiling latency-cuda latency-iris kernel.ptx kernel.hip
+	rm -f emptytask-iris kernellaunch-cuda kernellaunch-hip kernellaunch-opencl kernellaunch-iris kernellaunch-cuda-profiling kernellaunch-hip-profiling kernellaunch-opencl-profiling kernellaunch-iris-profiling compute-performance-iris-profiling kernel.ptx kernel.hip
 
 clean-results:
 	rm -f kernellaunch-*.csv

@@ -4,7 +4,7 @@ source ./setup.sh
 export WORKING_DIR=`pwd`
 
 make clean
-rm -f *.csv ; make kernellaunch-hip-profiling kernellaunch-iris-profiling kernel.hip
+make kernellaunch-hip-profiling kernellaunch-iris-profiling kernel.hip
 
 #exit if the last program run wasn't successful
 [ $? -ne 0 ] && exit

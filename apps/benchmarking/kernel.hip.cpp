@@ -75,3 +75,23 @@ extern "C" __global__ void mem10(int l, float* m1, float* m2, float* m3, float* 
   }
 }
 
+extern "C" __global__ void ijk(double* C, double* A, double* B) {
+  size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  size_t j = blockIdx.y * blockDim.y + threadIdx.y;
+  size_t SIZE = gridDim.x * blockDim.x;
+
+  double sum = 0.0;
+  for (size_t k = 0; k < SIZE; k++) {
+    sum += A[i * SIZE + k] * B[k * SIZE + j];
+  }
+  C[i * SIZE + j] = sum;
+}
+
+extern "C" __global__ void nothing(int* A) {
+}
+
+extern "C" __global__ void add_id(int* A) {
+  size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  A[i] = A[i] + i;
+}
+

@@ -8,7 +8,7 @@ if [ "$SYSTEM" = "leconte" ] ; then
   echo "OpenCL is not supported on Leconte." && exit
 fi
 
-rm -f *.csv ; make kernellaunch-opencl-profiling kernellaunch-iris-profiling
+make kernellaunch-opencl-profiling kernellaunch-iris-profiling
 
 #exit if the last program run wasn't successful
 [ $? -ne 0 ] && exit
