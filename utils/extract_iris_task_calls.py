@@ -40,8 +40,8 @@ def getPyExprString(l):
 def extractTaskCalls(args):
     file = args.input[0]
     f = tempfile.NamedTemporaryFile(delete=False)
-    print(f"[Cmd] gcc -E {file} -Uiris_cpu -Uiris_dsp -o {f.name} {args.compile_options} -DUNDEF_IRIS_MACROS")
-    os.system(f"gcc -E {file} -Uiris_cpu -Uiris_dsp -o {f.name} {args.compile_options} -DUNDEF_IRIS_MACROS")
+    print(f"[Cmd] gcc -E {file} -Uiris_cpu -Uiris_dsp -o {f.name} {args.compile_options} -DUNDEF_IRIS_MACROS -DEXTRACT_MACROS")
+    os.system(f"gcc -E {file} -Uiris_cpu -Uiris_dsp -o {f.name} {args.compile_options} -DUNDEF_IRIS_MACROS -DEXTRACT_MACROS")
     if not os.path.exists(f.name):
         return ""
     fh = open(f.name, "r")
