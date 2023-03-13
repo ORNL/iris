@@ -387,7 +387,7 @@ void DeviceHIP::CheckVendorSpecificKernel(Kernel *kernel) {
           kernel->set_vendor_specific_kernel(devno_, true);
       }
   }
-  kernel->set_vendor_specific_kernel_check(true);
+  kernel->set_vendor_specific_kernel_check(devno_, true);
 }
 
 int DeviceHIP::KernelLaunchInit(Kernel* kernel) {
