@@ -242,7 +242,7 @@ private:
 
   std::map<std::string, std::vector<Kernel*> > kernels_;
   std::map<std::string, vector<shared_ptr<History> > > kernel_history_;
-  std::set<BaseMem*> mems_;
+  //std::set<BaseMem*> mems_;
   std::map<std::string, std::string> env_;
   ObjectTrack object_track_;
 

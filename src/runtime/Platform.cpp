@@ -1174,7 +1174,7 @@ int Platform::DataMemCreate(iris_mem* brs_mem, void *host, size_t size) {
   //if (brs_mem) *brs_mem = mem->struct_obj();
   if (mem->size()==0) return IRIS_ERROR;
 
-  mems_.insert(mem);
+  //mems_.insert(mem);
   return IRIS_SUCCESS;
 }
 
@@ -1184,7 +1184,7 @@ int Platform::DataMemCreate(iris_mem* brs_mem, void *host, size_t *off, size_t *
   //if (brs_mem) *brs_mem = mem->struct_obj();
   if (mem->size()==0) return IRIS_ERROR;
 
-  mems_.insert(mem);
+  //mems_.insert(mem);
   return IRIS_SUCCESS;
 }
 
@@ -1193,7 +1193,7 @@ int Platform::DataMemCreate(iris_mem* brs_mem, iris_mem root_mem, int region) {
   DataMemRegion *mem= root->get_region(region);
   if (brs_mem) mem->SetStructObject(brs_mem);
   //if (brs_mem) *brs_mem = mem->struct_obj();
-  mems_.insert(mem);
+  //mems_.insert(mem);
   if (mem->size()==0) {
       return IRIS_ERROR;
   }
@@ -1212,7 +1212,7 @@ int Platform::MemCreate(size_t size, iris_mem* brs_mem) {
   if (brs_mem) mem->SetStructObject(brs_mem);
   if (mem->size()==0) return IRIS_ERROR;
 
-  mems_.insert(mem);
+  //mems_.insert(mem);
   return IRIS_SUCCESS;
 }
 
@@ -1229,7 +1229,7 @@ int Platform::MemArch(iris_mem brs_mem, int device, void** arch) {
 int Platform::MemMap(void* host, size_t size) {
   Mem* mem = new Mem(size, this);
   mem->SetMap(host, size);
-  mems_.insert(mem);
+  //mems_.insert(mem);
   present_table_->Add(host, size, mem);
   return IRIS_SUCCESS;
 }
@@ -1390,11 +1390,14 @@ Kernel* Platform::GetKernel(const char* name) {
 
 BaseMem* Platform::GetMem(iris_mem brs_mem) {
   //todo: mutex lock
+  return brs_mem.class_obj;
+#if 0
   for (std::set<BaseMem*>::iterator I = mems_.begin(), E = mems_.end(); I != E; ++I) {
     BaseMem* mem = *I;
     if (mem == brs_mem.class_obj) return mem;
   }
   return NULL;
+#endif
 }
 
 BaseMem* Platform::GetMem(void* host, size_t* off) {
