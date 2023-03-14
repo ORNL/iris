@@ -88,6 +88,7 @@ public:
   int KernelRelease(iris_kernel brs_kernel);
 
   int TaskCreate(const char* name, bool perm, iris_task* brs_task);
+  int TaskDepend(iris_task brs_task, int ntasks, iris_task** brs_tasks);
   int TaskDepend(iris_task brs_task, int ntasks, iris_task* brs_tasks);
   int TaskKernel(iris_task brs_task, iris_kernel brs_kernel, int dim, size_t* off, size_t* gws, size_t* lws);
   int TaskKernel(iris_task task, const char* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, size_t* params_off, int* params_info, size_t* memranges);

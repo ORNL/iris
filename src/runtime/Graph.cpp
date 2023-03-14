@@ -475,7 +475,8 @@ void GraphMetadata::get_3d_comm_data()
                 BaseMem *mem = mem_index_hash_[mid];
                 //printf("Common mem:%lu mid:%lu\n", mem->uid(), mid);
                 size += mem->size();
-                results.push_back({d_index+1, index+1, mid, mem->size()});
+                CommData3D data = {d_index+1, index+1, mid, mem->size()};
+                results.push_back(data);
                 all_covered_mem.insert(mid);
             }
             //_info("partial updating %lu-> %lu size:%lu\n", index+1, d_index+1, size);
@@ -490,7 +491,8 @@ void GraphMetadata::get_3d_comm_data()
                     all_covered_mem.insert(dmem_index);
                     all_covered_mem.insert(mid);
                     size += mem->size();
-                    results.push_back({d_index+1, index+1, mid, mem->size()});
+                    CommData3D data = {d_index+1, index+1, mid, mem->size()};
+                    results.push_back(data);
                 }
             }
             //_info("updating %lu-> %lu size:%lu\n", index+1, d_index+1, size);
@@ -501,7 +503,8 @@ void GraphMetadata::get_3d_comm_data()
             if (all_covered_mem.find(mid) == all_covered_mem.end()) {
                 BaseMem *mem = mem_index_hash_[mid];
                 size += mem->size();
-                results.push_back({0, index+1, mid, mem->size()});
+                CommData3D data = {0, index+1, mid, mem->size()};
+                results.push_back(data);
             }
         }
     }

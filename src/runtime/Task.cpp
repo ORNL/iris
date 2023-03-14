@@ -250,7 +250,6 @@ bool Task::HasSubtasks() {
 // comparing the actual parent task uid.
 void Task::AddDepend(Task* task, unsigned long uid) {
   if (task == NULL) return;
-  unsigned long uid=0;
   if (!platform_->track().IsObjectExists(task) || task->uid() != uid) 
       return;
   if (depends_ == NULL) {

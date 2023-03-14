@@ -32,7 +32,7 @@ public:
     is_release_ = true;
     pthread_mutex_init(&delete_lock_, NULL);
   }
-  void SetStructObject(struct_type obj)
+  void SetStructObject(struct_type *obj)
   {
       struct_obj_ = obj;
       struct_obj_->class_obj = (class_type*) this;

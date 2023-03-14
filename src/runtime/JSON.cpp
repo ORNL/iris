@@ -104,7 +104,7 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
       const char* dependency_name = iris_tasks_[i]["depends"][j].GetString();
       for (const auto& prior_task: tasks_){
         if (strcmp(dependency_name,prior_task->name()) == 0){
-          task->AddDepend(prior_task);
+          task->AddDepend(prior_task, prior_task->uid());
           //break;
         }
       }
@@ -292,7 +292,7 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
           platform_->IncrementErrorCount();
           return IRIS_ERROR;
         }
-        iris_mem dev_mem = (iris_mem) GetParameterInput(params, h2d_["device_memory"].GetString());
+        iris_mem *dev_mem = (iris_mem *) GetParameterInput(params, h2d_["device_memory"].GetString());
         //offset
         if(!h2d_.HasMember("offset") or !h2d_["offset"].IsString()){
           _error("malformed command h2d offset in file[%s]", path);
@@ -310,7 +310,7 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
         void* p_size = GetParameterInput(params, h2d_["size"].GetString());
         size_t size = p_size ? (*(size_t*) p_size) : atol(h2d_["size"].GetString());       
 
-        Command* cmd = Command::CreateH2D(task, (Mem *)dev_mem.class_obj, offset, size, host_mem);
+        Command* cmd = Command::CreateH2D(task, (Mem *)dev_mem->class_obj, offset, size, host_mem);
         //name (optional)
         if(h2d_.HasMember("name")){
           if(!h2d_["name"].IsString()){
@@ -337,7 +337,7 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
           platform_->IncrementErrorCount();
           return IRIS_ERROR;
         }
-        iris_mem dev_mem = (iris_mem) GetParameterInput(params, d2h_["device_memory"].GetString());
+        iris_mem *dev_mem = (iris_mem*) GetParameterInput(params, d2h_["device_memory"].GetString());
         //offset
         if(!d2h_.HasMember("offset") or !d2h_["offset"].IsString()){
           _error("malformed command d2h offset in file[%s]", path);
@@ -355,7 +355,7 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
         void* p_size = GetParameterInput(params, d2h_["size"].GetString());
         size_t size = p_size ? (*(size_t*) p_size) : atol(d2h_["size"].GetString());
 
-        Command* cmd = Command::CreateD2H(task, (Mem *)dev_mem.class_obj, offset, size, host_mem);
+        Command* cmd = Command::CreateD2H(task, (Mem *)dev_mem->class_obj, offset, size, host_mem);
         //name (optional)
         if(d2h_.HasMember("name")){
           if(!d2h_["name"].IsString()){
