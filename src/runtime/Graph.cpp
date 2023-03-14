@@ -54,10 +54,10 @@ Graph::~Graph() {
   _trace("graph released");
 }
 
-void Graph::AddTask(Task* task) {
+void Graph::AddTask(Task* task, unsigned long uid) {
   if (is_retainable()) task->DisableRelease();
   tasks_.push_back(task);
-  end_->AddDepend(task);
+  end_->AddDepend(task, uid);
 }
 
 void Graph::Submit() {
@@ -67,7 +67,7 @@ void Graph::Submit() {
 int Graph::iris_tasks(iris_task *pv) { 
     int index=0;
     for(Task *task : tasks_) {
-      pv[index++] = task->struct_obj();
+      pv[index++] = *(task->struct_obj());
     }
     return index;
 }

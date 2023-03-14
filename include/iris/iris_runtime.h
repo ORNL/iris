@@ -6,6 +6,53 @@
 #include <stdint.h>
 
 #ifdef __cplusplus
+namespace iris {
+namespace rt {
+class Kernel;
+class BaseMem;
+class Mem;
+class Task;
+class Graph;
+} /* namespace rt */
+} /* namespace iris */
+#endif
+
+struct _iris_task {
+#ifdef __cplusplus
+  iris::rt::Task* class_obj;
+#else
+  void *class_obj;
+#endif
+  unsigned long uid;
+};
+
+struct _iris_kernel {
+#ifdef __cplusplus
+  iris::rt::Kernel* class_obj;
+#else
+  void *class_obj;
+#endif
+  unsigned long uid;
+};
+
+struct _iris_mem {
+#ifdef __cplusplus
+    iris::rt::BaseMem* class_obj;
+#else
+  void *class_obj;
+#endif
+  unsigned long uid;
+};
+
+struct _iris_graph {
+#ifdef __cplusplus
+    iris::rt::Graph* class_obj;
+#else
+  void *class_obj;
+#endif
+  unsigned long uid;
+};
+#ifdef __cplusplus
 extern "C" {
 #else
 typedef int8_t bool;
@@ -73,10 +120,10 @@ typedef int8_t bool;
 
 #endif // UNDEF_IRIS_MACROS
 
-typedef struct _iris_task*  iris_task;
-typedef struct _iris_mem*   iris_mem;
-typedef struct _iris_kernel*    iris_kernel;
-typedef struct _iris_graph*     iris_graph;
+typedef struct _iris_task      iris_task;
+typedef struct _iris_mem       iris_mem;
+typedef struct _iris_kernel    iris_kernel;
+typedef struct _iris_graph     iris_graph;
 
 typedef int (*iris_host_task)(void* params, const int* device);
 typedef int (*command_handler)(void* params, void* device);

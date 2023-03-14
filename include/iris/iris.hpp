@@ -54,6 +54,7 @@ namespace iris {
             BaseMem() {} 
             virtual ~BaseMem() {} 
             iris_mem_type mem() { return mem_; }
+            iris_mem_type *mem_ptr() { return &mem_; }
         protected:
             iris_mem_type mem_;
     };

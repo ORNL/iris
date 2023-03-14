@@ -786,7 +786,8 @@ int Platform::RegisterHooksCommand(hook_command pre, hook_command post) {
 
 int Platform::KernelCreate(const char* name, iris_kernel* brs_kernel) {
   Kernel* kernel = new Kernel(name, this);
-  if (brs_kernel) *brs_kernel = kernel->struct_obj();
+  if (brs_kernel) kernel->SetStructObject(brs_kernel);
+  //if (brs_kernel) *brs_kernel = kernel->struct_obj();
   std::string name_string = name;
   if (kernels_.find(name_string) != kernels_.end()) {
       std::vector<Kernel *> vec;
@@ -836,13 +837,14 @@ int Platform::KernelRelease(iris_kernel brs_kernel) {
 
 int Platform::TaskCreate(const char* name, bool perm, iris_task* brs_task) {
   Task* task = Task::Create(this, perm ? IRIS_TASK_PERM : IRIS_TASK, name);
-  *brs_task = task->struct_obj();
+  if (brs_task) task->SetStructObject(brs_task);
+  //*brs_task = task->struct_obj();
   return IRIS_SUCCESS;
 }
 
 int Platform::TaskDepend(iris_task brs_task, int ntasks, iris_task* brs_tasks) {
   Task* task = brs_task->class_obj;
-  for (int i = 0; i < ntasks; i++) if (brs_tasks[i] != NULL) task->AddDepend(brs_tasks[i]->class_obj);
+  for (int i = 0; i < ntasks; i++) if (brs_tasks[i] != NULL) task->AddDepend(brs_tasks[i]->class_obj, brs_tasks[i]->uid);
   return IRIS_SUCCESS;
 }
 
@@ -1164,7 +1166,8 @@ int Platform::DataMemRegisterPin(iris_mem brs_mem) {
 
 int Platform::DataMemCreate(iris_mem* brs_mem, void *host, size_t size) {
   DataMem* mem = new DataMem(this, host, size);
-  if (brs_mem) *brs_mem = mem->struct_obj();
+  if (brs_mem) mem->SetStructObject(brs_mem);
+  //if (brs_mem) *brs_mem = mem->struct_obj();
   if (mem->size()==0) return IRIS_ERROR;
 
   mems_.insert(mem);
@@ -1173,7 +1176,8 @@ int Platform::DataMemCreate(iris_mem* brs_mem, void *host, size_t size) {
 
 int Platform::DataMemCreate(iris_mem* brs_mem, void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim) {
   DataMem* mem = new DataMem(this, host, off, host_size, dev_size, elem_size, dim);
-  if (brs_mem) *brs_mem = mem->struct_obj();
+  if (brs_mem) mem->SetStructObject(brs_mem);
+  //if (brs_mem) *brs_mem = mem->struct_obj();
   if (mem->size()==0) return IRIS_ERROR;
 
   mems_.insert(mem);
@@ -1183,7 +1187,8 @@ int Platform::DataMemCreate(iris_mem* brs_mem, void *host, size_t *off, size_t *
 int Platform::DataMemCreate(iris_mem* brs_mem, iris_mem root_mem, int region) {
   DataMem *root = (DataMem *) root_mem->class_obj;
   DataMemRegion *mem= root->get_region(region);
-  if (brs_mem) *brs_mem = mem->struct_obj();
+  if (brs_mem) mem->SetStructObject(brs_mem);
+  //if (brs_mem) *brs_mem = mem->struct_obj();
   mems_.insert(mem);
   if (mem->size()==0) {
       return IRIS_ERROR;
@@ -1199,7 +1204,8 @@ int Platform::DataMemEnableOuterDimRegions(iris_mem brs_mem) {
 
 int Platform::MemCreate(size_t size, iris_mem* brs_mem) {
   Mem* mem = new Mem(size, this);
-  if (brs_mem) *brs_mem = mem->struct_obj();
+  //if (brs_mem) *brs_mem = mem->struct_obj();
+  if (brs_mem) mem->SetStructObject(brs_mem);
   if (mem->size()==0) return IRIS_ERROR;
 
   mems_.insert(mem);
@@ -1256,7 +1262,8 @@ int Platform::GraphFree(iris_graph brs_graph) {
 
 int Platform::GraphCreateJSON(const char* path, void** params, iris_graph* brs_graph) {
   Graph* graph = Graph::Create(this);
-  *brs_graph = graph->struct_obj();
+  if (brs_graph) graph->SetStructObject(brs_graph);
+  //*brs_graph = graph->struct_obj();
   int retcode = json_->Load(graph, path, params);
   return retcode;
 }
@@ -1266,7 +1273,7 @@ int Platform::GraphTask(iris_graph brs_graph, iris_task brs_task, int brs_policy
   Task* task = brs_task->class_obj;
   task->set_brs_policy(brs_policy);
   task->set_opt(opt);
-  graph->AddTask(task);
+  graph->AddTask(task, brs_task.uid);
   return IRIS_SUCCESS;
 }
 
@@ -1381,7 +1388,7 @@ BaseMem* Platform::GetMem(iris_mem brs_mem) {
   //todo: mutex lock
   for (std::set<BaseMem*>::iterator I = mems_.begin(), E = mems_.end(); I != E; ++I) {
     BaseMem* mem = *I;
-    if (mem->struct_obj() == brs_mem) return mem;
+    if (mem == brs_mem.class_obj) return mem;
   }
   return NULL;
 }

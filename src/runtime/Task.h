@@ -35,7 +35,7 @@ public:
   void AddSubtask(Task* subtask);
   bool HasSubtasks();
 
-  void AddDepend(Task* task);
+  void AddDepend(Task* task, unsigned long uid);
 //  void RemoveDepend(Task* task);
 
   void Submit(int brs_policy, const char* opt, int sync);

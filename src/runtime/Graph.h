@@ -15,7 +15,7 @@ public:
   Graph(Platform* platform);
   virtual ~Graph();
 
-  void AddTask(Task* task);
+  void AddTask(Task* task, unsigned long uid);
   void Submit();
   void Complete();
   void Wait();

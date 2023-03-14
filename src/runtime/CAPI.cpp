@@ -109,12 +109,12 @@ int iris_task_cmd_reset_mem(iris_task task, iris_mem mem, uint8_t reset) {
 }
 
 int iris_task_get_metadata(iris_task brs_task, int index) {
-    Task* task = brs_task->class_obj;
+    Task* task = brs_task.class_obj;
     return task->metadata(index);
 }
 
 int iris_task_set_metadata(iris_task brs_task, int index, int metadata) {
-    Task* task = brs_task->class_obj;
+    Task* task = brs_task.class_obj;
     task->set_metadata(index, metadata);
     return IRIS_SUCCESS;
 }
@@ -213,28 +213,28 @@ int iris_task_release_mem(iris_task task, iris_mem mem) {
 }
 
 void iris_task_set_name(iris_task brs_task, const char *name) {
-   Task *task = brs_task->class_obj;
+   Task *task = brs_task.class_obj;
    task->set_name(name);
 }
 
 char *iris_kernel_get_name(iris_kernel brs_kernel) {
-    Kernel *k= brs_kernel->class_obj;
+    Kernel *k= brs_kernel.class_obj;
     return k->name();
 }
 
 char *iris_task_get_name(iris_task brs_task) {
-    Task *task = brs_task->class_obj;
+    Task *task = brs_task.class_obj;
     return task->name();
 }
 
 int iris_task_get_dependency_count(iris_task brs_task) {
-    Task *task = brs_task->class_obj;
+    Task *task = brs_task.class_obj;
     return task->ndepends();
 }
 void iris_task_get_dependencies(iris_task brs_task, iris_task *tasks) {
-    Task *task = brs_task->class_obj;
+    Task *task = brs_task.class_obj;
     for(int i=0; i<task->ndepends(); i++) {
-        tasks[i] = task->depend(i)->struct_obj();
+        tasks[i] = *(task->depend(i)->struct_obj());
     }
 }
 int iris_cmd_kernel_get_nargs(void *cmd_p) {
@@ -255,7 +255,7 @@ void  *iris_cmd_kernel_get_arg_value(void *cmd_p, int index) {
 }
 iris_mem iris_cmd_kernel_get_arg_mem(void *cmd_p, int index) {
     Command *cmd = (Command *)cmd_p;
-    return cmd->kernel_arg(index)->mem->struct_obj();
+    return *(cmd->kernel_arg(index)->mem->struct_obj());
 }
 size_t iris_cmd_kernel_get_arg_mem_off(void *cmd_p, int index) {
     Command *cmd = (Command *)cmd_p;
@@ -275,46 +275,46 @@ int    iris_cmd_kernel_get_arg_mode(void *cmd_p, int index) {
 }
 iris_kernel iris_task_get_kernel(iris_task brs_task)
 {
-    Task *task = brs_task->class_obj;
-    return task->cmd_kernel()->kernel()->struct_obj();
+    Task *task = brs_task.class_obj;
+    return *(task->cmd_kernel()->kernel()->struct_obj());
 }
 int iris_task_is_cmd_kernel_exists(iris_task brs_task)
 {
-    Task *task = brs_task->class_obj;
+    Task *task = brs_task.class_obj;
     return task->cmd_kernel() != NULL;
 }
 
 void *iris_task_get_cmd_kernel(iris_task brs_task)
 {
-    Task *task = brs_task->class_obj;
+    Task *task = brs_task.class_obj;
     return task->cmd_kernel();
 }
 
 unsigned long iris_kernel_get_uid(iris_kernel brs_kernel)
 {
-  return brs_kernel->class_obj->uid();
+  return brs_kernel.class_obj->uid();
 }
 unsigned long iris_task_get_uid(iris_task brs_task) {
-  return brs_task->class_obj->uid();
+  return brs_task.class_obj->uid();
 }
 
 int iris_mem_create(size_t size, iris_mem* mem) {
   return Platform::GetPlatform()->MemCreate(size, mem);
 }
 size_t iris_mem_get_size(iris_mem mem) {
-  return mem->class_obj->size();
+  return mem.class_obj->size();
 }
 
 int iris_mem_get_type(iris_mem mem) {
-  return mem->class_obj->GetMemHandlerType();
+  return mem.class_obj->GetMemHandlerType();
 }
 
 int iris_mem_get_uid(iris_mem mem) {
-  return mem->class_obj->uid();
+  return mem.class_obj->uid();
 }
 
 int iris_mem_is_reset(iris_mem mem) {
-  return mem->class_obj->is_reset();
+  return mem.class_obj->is_reset();
 }
 
 int iris_data_mem_init_reset(iris_mem mem, int reset) {
@@ -342,8 +342,8 @@ int iris_data_mem_enable_outer_dim_regions(iris_mem mem) {
   return Platform::GetPlatform()->DataMemEnableOuterDimRegions(mem);
 }
 iris_mem iris_get_dmem_for_region(iris_mem brs_mem) {
-    DataMemRegion *obj = (DataMemRegion*)brs_mem->class_obj;
-    return obj->get_dmem()->struct_obj();
+    DataMemRegion *obj = (DataMemRegion*)brs_mem.class_obj;
+    return *(obj->get_dmem()->struct_obj());
 }
 
 int iris_mem_arch(iris_mem mem, int device, void** arch) {
@@ -472,35 +472,35 @@ int iris_graph_tasks_count(iris_graph graph)
 }
 int iris_get_graph_dependency_adj_matrix(iris_graph brs_graph, int8_t *dep_matrix)
 {
-    Graph* graph = brs_graph->class_obj;
+    Graph* graph = brs_graph.class_obj;
     GraphMetadata gm(graph);
     gm.get_dependency_matrix(dep_matrix, true);
     return IRIS_SUCCESS;
 }
 int iris_get_graph_dependency_adj_list(iris_graph brs_graph, int8_t *dep_matrix)
 {
-    Graph* graph = brs_graph->class_obj;
+    Graph* graph = brs_graph.class_obj;
     GraphMetadata gm(graph);
     gm.get_dependency_matrix(dep_matrix, false);
     return IRIS_SUCCESS;
 }
 int iris_get_graph_2d_comm_adj_matrix(iris_graph brs_graph, size_t *size_data)
 {
-    Graph* graph = brs_graph->class_obj;
+    Graph* graph = brs_graph.class_obj;
     GraphMetadata gm(graph);
     gm.get_2d_comm_adj_matrix(size_data);
     return IRIS_SUCCESS;
 }
 int iris_calibrate_compute_cost_adj_matrix_only_for_types(iris_graph brs_graph, double *comp_data)
 {
-    Graph* graph = brs_graph->class_obj;
+    Graph* graph = brs_graph.class_obj;
     GraphMetadata gm(graph);
     gm.calibrate_compute_cost_adj_matrix(comp_data, true);
     return IRIS_SUCCESS;
 }
 int iris_calibrate_compute_cost_adj_matrix(iris_graph brs_graph, double *comp_data)
 {
-    Graph* graph = brs_graph->class_obj;
+    Graph* graph = brs_graph.class_obj;
     GraphMetadata gm(graph);
     gm.calibrate_compute_cost_adj_matrix(comp_data);
     return IRIS_SUCCESS;

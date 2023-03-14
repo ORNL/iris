@@ -243,11 +243,14 @@ bool Task::HasSubtasks() {
   return !subtasks_.empty();
 }
 
-void Task::AddDepend(Task* task) {
+// Note: It is possible that the parent task might have been already completed and released. 
+// If it is released, it might have been allocated for some other task. 
+// Hence, validate the parent task not only from whether object exists or not, but also by
+// comparing the actual parent task uid.
+void Task::AddDepend(Task* task, unsigned long uid) {
   if (task == NULL) return;
   unsigned long uid=0;
-  uid = task->uid();
-  if (!platform_->track().IsObjectExists(task)) 
+  if (!platform_->track().IsObjectExists(task) || task->uid() != uid) 
       return;
   if (depends_ == NULL) {
       depends_ = new Task*[depends_max_];

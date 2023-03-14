@@ -164,7 +164,7 @@ Command* Command::CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off,
       continue;
     }
     size_t mem_off = 0ULL;
-    BaseMem* mem = cmd->platform_->GetMem((iris_mem) param);
+    BaseMem* mem = cmd->platform_->GetMem(*((iris_mem*) param));
     if (!mem) mem = cmd->platform_->GetMem(param, &mem_off);
     if (!mem) {
       _error("no mem[%p] task[%ld:%s]", param, task->uid(), task->name());

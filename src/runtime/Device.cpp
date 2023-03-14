@@ -646,7 +646,7 @@ Kernel* Device::ExecuteSelectorKernel(Command* cmd) {
   char kernel_name[256];
   memset(kernel_name, 0, 256);
   strcpy(kernel_name, kernel->name());
-  func(cmd->task()->struct_obj(), params, kernel_name);
+  func(*(cmd->task()->struct_obj()), params, kernel_name);
   return Platform::GetPlatform()->GetKernel(kernel_name);
 }
 
