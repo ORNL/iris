@@ -1097,7 +1097,7 @@ int Platform::TaskKernelCmdOnly(iris_task brs_task) {
 
 int Platform::TaskRelease(iris_task brs_task) {
     Task* task = brs_task.class_obj;
-    if (track().IsObjectExists(task)) {
+    if (track().IsObjectExists(task, brs_task.uid)) {
         if (!task->IsRelease())
             task->ForceRelease();
         else 

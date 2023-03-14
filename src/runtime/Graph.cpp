@@ -31,8 +31,7 @@ Graph::Graph(Platform* platform) {
 
   pthread_mutex_init(&mutex_complete_, NULL);
   pthread_cond_init(&complete_cond_, NULL);
-  platform_->track().TrackObject(this);
-  platform_->track().TrackObject(struct_obj());
+  platform_->track().TrackObject(this, uid());
 }
 
 shared_ptr<GraphMetadata> Graph::get_metadata(int iterations)

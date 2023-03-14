@@ -18,25 +18,26 @@ namespace iris {
                 ~ObjectTrack() {
                     pthread_mutex_destroy(&track_lock_);
                 }
-                bool IsObjectExists(void *p) { 
+                bool IsObjectExists(void *p, unsigned long uid) { 
                     bool flag = false;
                     if (allocated_objects_.find(p) != allocated_objects_.end()) 
                         flag = allocated_objects_[p];
+                        flag = flag & (allocated_objects_[p] == uid);
                     _trace("object:%p exists flag:%d", p, flag);
                     return flag;
                 }
                 void UntrackObject(void *p) {
                     pthread_mutex_lock(&track_lock_);
-                    allocated_objects_[p] = false;
+                    allocated_objects_[p] = 0;
                     pthread_mutex_unlock(&track_lock_);
                     //freed_objects+=1; 
                 }
-                void TrackObject(void *p) {
+                void TrackObject(void *p, unsigned long uid) {
                     pthread_mutex_lock(&track_lock_);
                     if (allocated_objects_.find(p) != allocated_objects_.end()) 
-                        allocated_objects_[p] = true;
+                        allocated_objects_[p] = uid;
                     else
-                        allocated_objects_.insert(pair<void *, bool>(p, true));
+                        allocated_objects_.insert(pair<void *, unsigned long>(p, uid));
                     pthread_mutex_unlock(&track_lock_);
 #if 0
                     if (freed_objects > 2048) {
