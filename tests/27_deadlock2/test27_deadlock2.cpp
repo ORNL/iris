@@ -56,13 +56,13 @@ int main(int argc, char** argv) {
   iris_task_h2d_full(task1, mem_B, B);
   iris_task_submit(task1, 1, NULL, 1);
 
-  void* params2[2] = { mem_C, mem_B };
+  void* params2[2] = { &mem_C, &mem_B };
   int params_info2[2] = { iris_w, iris_r };
   iris_task_kernel(task2, "copy", 1, NULL, &SIZE, NULL, 2, params2, params_info2);
   iris_task_d2h_full(task2, mem_C, C);
   iris_task_submit(task2, 0, NULL, 0);
 
-  void* params3[2] = { mem_D, mem_A };
+  void* params3[2] = { &mem_D, &mem_A };
   int params_info3[2] = { iris_w, iris_r };
   iris_task_kernel(task3, "copy", 1, NULL, &SIZE, NULL, 2, params3, params_info3);
   iris_task_d2h_full(task3, mem_D, D);

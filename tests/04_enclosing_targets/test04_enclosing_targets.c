@@ -37,7 +37,7 @@ int main(int argc, char** argv) {
   iris_task_h2d_full(task0, mem_A, A);
   size_t kernel_loop0_off[1] = { 0 };
   size_t kernel_loop0_idx[1] = { SIZE };
-  void* loop0_params[1] = { mem_A };
+  void* loop0_params[1] = { &mem_A };
   int loop0_params_info[1] = { iris_rw };
   iris_task_kernel(task0, "loop0", 1, kernel_loop0_off, kernel_loop0_idx, NULL, 1, loop0_params, loop0_params_info);
   iris_task_submit(task0, iris_default, NULL, true);
@@ -53,7 +53,7 @@ int main(int argc, char** argv) {
   iris_task_create(&task1);
   iris_task_retain(task1, true);
   iris_task_h2d_full(task1, mem_B, B);
-  void* loop1_params[2] = { mem_B, mem_A };
+  void* loop1_params[2] = { &mem_B, &mem_A };
   int loop1_params_info[2] = { iris_rw, iris_r };
   size_t kernel_loop1_off[1] = { 0 };
   size_t kernel_loop1_idx[1] = { SIZE };

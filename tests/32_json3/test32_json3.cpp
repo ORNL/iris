@@ -385,8 +385,8 @@ int main(int argc, char** argv) {
     for(auto & mem : host_mem){
       json_inputs[indexer] = mem; indexer++;
     }
-    for(auto & mem : dev_mem){
-      json_inputs[indexer] = mem; indexer++;
+    for (int i=0; i<dev_mem.size(); i++) {
+      json_inputs[indexer] = &dev_mem[i]; indexer++;
     }
     json_inputs[indexer] = &memory_task_target; indexer++;
     json_inputs[indexer] = &task_target; indexer++;

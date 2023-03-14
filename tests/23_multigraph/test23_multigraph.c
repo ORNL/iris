@@ -30,7 +30,7 @@ void build_graph(iris_mem mem_A, iris_mem mem_B, iris_mem mem_C, iris_graph G) {
 
   size_t gws[2] = { SIZE, SIZE };
   size_t lws[2] = { 1, 1 };
-  void* params[3] = { mem_C, mem_A, mem_B };
+  void* params[3] = { &mem_C, &mem_A, &mem_B };
   int pinfo[3] = { iris_w, iris_r, iris_r };
   iris_task task2;
   iris_task task2_dep[] = { task1 };

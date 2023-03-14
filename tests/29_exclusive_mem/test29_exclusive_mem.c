@@ -56,7 +56,7 @@ int main(int argc, char** argv) {
 
   for (int i = 0; i < NTASKS; i++) {
     iris_task_create(tasks + i);
-    void* params[3] = { mem_C, mem_A, mem_B };
+    void* params[3] = { &mem_C, &mem_A, &mem_B };
     int params_info[3] = { iris_xw, iris_xr, iris_xr };
     iris_task_kernel(tasks[i], "vecadd", 1, NULL, &SIZE, NULL, 3, params, params_info);
     for (int j = 0; j < i; j++) {

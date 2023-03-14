@@ -8,7 +8,7 @@
 
 int my_kernel_selector(iris_task task, void* params, char* kernel_name) {
   size_t threshold = *((size_t*) params);
-  iris::rt::Task* t = task->class_obj;
+  iris::rt::Task* t = task.class_obj;
   iris::rt::Device* d = t->dev();
   iris::rt::Command* c = t->cmd_kernel();
   iris::rt::Kernel* k = c->kernel();
@@ -50,7 +50,7 @@ int main(int argc, char** argv) {
   iris_task task;
   iris_task_create(&task);
   iris_task_h2d_full(task, mem_A, A);
-  void* params[1] = { mem_A };
+  void* params[1] = { &mem_A };
   int params_info[1] = { iris_rw };
   size_t threshold = 16;
   iris_task_kernel(task, "add1", 1, NULL, &SIZE, NULL, 1, params, params_info);

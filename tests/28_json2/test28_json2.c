@@ -31,7 +31,7 @@ int main(int argc, char** argv) {
   iris_mem_create(SIZE * sizeof(int), &memB);
   iris_mem_create(SIZE * sizeof(int), &memC);
 
-  void* json_inputs[10] = { &SIZE, &SIZECB, C, A, B, memC, memA, memB, &target1, &target2 };
+  void* json_inputs[10] = { &SIZE, &SIZECB, C, A, B, &memC, &memA, &memB, &target1, &target2 };
 
   iris_graph graph;
   iris_graph_create_json("graph.json", json_inputs, &graph);

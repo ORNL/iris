@@ -15,7 +15,7 @@ int main(int argc, char** argv) {
   iris_mem memA;
   iris_mem_create(SIZE * sizeof(int), &memA);
 
-  void* params[1] = { memA };
+  void* params[1] = { &memA };
   int params_info[1] = { iris_w };
   iris_task task;
   iris_task_create(&task);

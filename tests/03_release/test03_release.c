@@ -33,7 +33,7 @@ int main(int argc, char** argv) {
 
   iris_synchronize();
 
-#if 0
+#if 1
   iris_task_release(task2);
   iris_task_release(task3);
   iris_task_release(task4);

@@ -28,7 +28,7 @@ int main(int argc, char** argv) {
   iris_task_h2d_full(task1, mem, A);
   iris_task_submit(task1, iris_default, NULL, 1);
 
-  void* params[1] = { mem };
+  void* params[1] = { &mem };
   int params_info[1] = { iris_rw };
   iris_task task2;
   iris_task task2_dep[] = { task1 };

@@ -53,7 +53,7 @@ int main(int argc, char** argv) {
 
   iris_task task2;
   iris_task_create(&task2);
-  void* params[3] = { mem_C, mem_A, mem_B };
+  void* params[3] = { &mem_C, &mem_A, &mem_B };
   int params_info[3] = { iris_w, iris_r, iris_r };
   iris_task_kernel(task2, "vecadd", 1, NULL, &SIZE, NULL, 3, params, params_info);
   iris_task_d2h_full(task2, mem_C, C);

@@ -43,7 +43,7 @@ int main(int argc, char** argv) {
 
   for (int i = 0; i < NTASKS; i++) {
     iris_task_create(tasks + i);
-    void* params[1] = { mem_A };
+    void* params[1] = { &mem_A };
     int params_info[1] = { iris_w };
     iris_task_kernel(tasks[i], "add1", 1, NULL, &SIZE, NULL, 1, params, params_info);
     for (int j = 0; j < i; j++) {
