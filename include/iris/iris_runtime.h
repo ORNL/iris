@@ -401,6 +401,7 @@ extern void iris_task_get_dependencies(iris_task brs_task, iris_task *tasks);
 extern unsigned long iris_task_get_uid(iris_task brs_task);
 extern unsigned long iris_kernel_get_uid(iris_kernel brs_kernel);
 extern iris_kernel iris_task_get_kernel(iris_task brs_task);
+extern int iris_task_disable_consistency(iris_task brs_task);
 extern int iris_task_is_cmd_kernel_exists(iris_task brs_task);
 extern void *iris_task_get_cmd_kernel(iris_task brs_task);
 
@@ -428,6 +429,9 @@ extern int iris_graph_tasks_count(iris_graph graph);
 extern int iris_graph_submit_with_time(iris_graph graph, double *time, int device, int sync);
 extern int iris_get_graph_dependency_adj_list(iris_graph brs_graph, int8_t *dep_matrix);
 extern int iris_get_graph_dependency_adj_matrix(iris_graph brs_graph, int8_t *dep_matrix);
+extern size_t iris_get_graph_3d_comm_data_size(iris_graph brs_graph);
+extern void *iris_get_graph_3d_comm_data_ptr(iris_graph brs_graph);
+extern int iris_get_graph_3d_comm_data(iris_graph brs_graph, void *comm_data);
 extern int iris_get_graph_2d_comm_adj_matrix(iris_graph brs_graph, size_t *size_data);
 extern int iris_calibrate_compute_cost_adj_matrix(iris_graph brs_graph, double *comp_data);
 extern int iris_calibrate_compute_cost_adj_matrix_only_for_types(iris_graph brs_graph, double *comp_data);

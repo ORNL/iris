@@ -222,6 +222,11 @@ char *iris_kernel_get_name(iris_kernel brs_kernel) {
     return k->name();
 }
 
+int iris_task_disable_consistency(iris_task brs_task) {
+    Task *task = brs_task->class_obj;
+    task->set_disable_consistency(true);
+}
+
 char *iris_task_get_name(iris_task brs_task) {
     Task *task = brs_task.class_obj;
     return task->name();
@@ -473,36 +478,56 @@ int iris_graph_tasks_count(iris_graph graph)
 int iris_get_graph_dependency_adj_matrix(iris_graph brs_graph, int8_t *dep_matrix)
 {
     Graph* graph = brs_graph.class_obj;
-    GraphMetadata gm(graph);
-    gm.get_dependency_matrix(dep_matrix, true);
+    shared_ptr<GraphMetadata> gm = graph->get_metadata();
+    gm->get_dependency_matrix(dep_matrix, true);
     return IRIS_SUCCESS;
 }
 int iris_get_graph_dependency_adj_list(iris_graph brs_graph, int8_t *dep_matrix)
 {
     Graph* graph = brs_graph.class_obj;
-    GraphMetadata gm(graph);
-    gm.get_dependency_matrix(dep_matrix, false);
+    shared_ptr<GraphMetadata> gm = graph->get_metadata();
+    gm->get_dependency_matrix(dep_matrix, false);
+    return IRIS_SUCCESS;
+}
+size_t iris_get_graph_3d_comm_data_size(iris_graph brs_graph)
+{
+    Graph* graph = brs_graph->class_obj;
+    shared_ptr<GraphMetadata> gm = graph->get_metadata();
+    return gm->comm_task_data_size();
+}
+void *iris_get_graph_3d_comm_data_ptr(iris_graph brs_graph)
+{
+    Graph* graph = brs_graph->class_obj;
+    shared_ptr<GraphMetadata> gm = graph->get_metadata();
+    CommData3D *comm_data = gm->comm_task_data();
+    return comm_data;
+}
+int iris_get_graph_3d_comm_data(iris_graph brs_graph, void *comm_data)
+{
+    Graph* graph = brs_graph->class_obj;
+    shared_ptr<GraphMetadata> gm = graph->get_metadata();
+    gm->get_3d_comm_data();
     return IRIS_SUCCESS;
 }
 int iris_get_graph_2d_comm_adj_matrix(iris_graph brs_graph, size_t *size_data)
 {
     Graph* graph = brs_graph.class_obj;
-    GraphMetadata gm(graph);
-    gm.get_2d_comm_adj_matrix(size_data);
+    shared_ptr<GraphMetadata> gm = graph->get_metadata();
+    gm->get_2d_comm_adj_matrix(size_data);
     return IRIS_SUCCESS;
 }
 int iris_calibrate_compute_cost_adj_matrix_only_for_types(iris_graph brs_graph, double *comp_data)
 {
     Graph* graph = brs_graph.class_obj;
-    GraphMetadata gm(graph);
-    gm.calibrate_compute_cost_adj_matrix(comp_data, true);
+    shared_ptr<GraphMetadata> gm = graph->get_metadata();
+    gm->calibrate_compute_cost_adj_matrix(comp_data, true);
     return IRIS_SUCCESS;
 }
 int iris_calibrate_compute_cost_adj_matrix(iris_graph brs_graph, double *comp_data)
 {
     Graph* graph = brs_graph.class_obj;
-    GraphMetadata gm(graph);
-    gm.calibrate_compute_cost_adj_matrix(comp_data);
+    shared_ptr<GraphMetadata> gm = graph->get_metadata();
+    gm->calibrate_compute_cost_adj_matrix(comp_data);
     return IRIS_SUCCESS;
 }
 void iris_free_array(void *ptr)

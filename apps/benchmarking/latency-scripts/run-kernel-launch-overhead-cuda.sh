@@ -4,7 +4,7 @@ source ./setup.sh
 export WORKING_DIR=`pwd`
 
 make clean
-rm -f *.csv ; make kernellaunch-cuda-profiling kernellaunch-iris-profiling kernel.ptx
+make kernellaunch-cuda-profiling kernellaunch-iris-profiling kernel.ptx
 
 #exit if the last program run wasn't successful
 [ $? -ne 0 ] && exit

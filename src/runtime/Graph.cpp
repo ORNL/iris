@@ -22,6 +22,7 @@ namespace rt {
 Graph::Graph(Platform* platform) {
   platform_ = platform;
   retain_tasks_ = false;
+  graph_metadata_ = nullptr;
   if (platform) scheduler_ = platform_->scheduler();
   status_ = IRIS_NONE;
 
@@ -32,6 +33,13 @@ Graph::Graph(Platform* platform) {
   pthread_cond_init(&complete_cond_, NULL);
   platform_->track().TrackObject(this);
   platform_->track().TrackObject(struct_obj());
+}
+
+shared_ptr<GraphMetadata> Graph::get_metadata(int iterations)
+{
+    if (graph_metadata_ == nullptr)
+        graph_metadata_ = make_shared<GraphMetadata>(this, iterations);
+    return graph_metadata_;
 }
 
 Graph::~Graph() {
@@ -424,6 +432,86 @@ void GraphMetadata::get_2d_comm_adj_matrix(size_t *comm_task_adj_matrix)
         }
     }
     Utils::PrintMatrixLimited<size_t>(comm_task_adj_matrix, ntasks, ntasks, "Task Communication data(C++)");
+}
+void GraphMetadata::get_3d_comm_data()
+{
+    CommData3D *comm_task_data  = NULL;
+    vector<Task *> & tasks = graph_->tasks_list();
+    int ntasks = tasks.size()+1;
+    vector<CommData3D> results;
+    for(int index=0; index<tasks.size(); index++) {
+        Task *each_task = tasks[index];
+        vector<unsigned long> & lst1_v = task_inputs_map_[each_task->uid()];
+        set<unsigned long> lst1(lst1_v.begin(), lst1_v.end());
+        //printf("Task:%s:%lu ndepends:%lu lst1_v:%lu %lu\n", each_task->name(), each_task->uid(), each_task->ndepends(), lst1.size(), lst1_v.size());
+        for(unsigned long mid : lst1) {
+            BaseMem *mem = mem_index_hash_[mid];
+            //printf("            probing mem:%lu size:%lu\n", mid, mem->size());
+        }
+        set<unsigned long> all_covered_mem;
+        for(int di=0; di<each_task->ndepends(); di++) {
+            Task *d_task = each_task->depend(di);
+            unsigned long d_index = task_uid_2_index_hash_[d_task->uid()];
+            vector<unsigned long> & lst2_v = task_outputs_map_[d_task->uid()];
+            set<unsigned long> lst2(lst2_v.begin(), lst2_v.end());
+            set<unsigned long> mem_list;
+            for(unsigned long mid : lst2) {
+                BaseMem *mem = mem_index_hash_[mid];
+                //printf("                dependency probing mem:%lu size:%lu\n", mid, mem->size());
+            }
+            for(unsigned long mid : lst1) {
+                if (lst2.find(mid) != lst2.end())
+                    mem_list.insert(mid);
+            } 
+            set<unsigned long> dmem_region_lst;
+            for(unsigned long mid : lst2) {
+                if (mem_regions_2_dmem_hash_.find(mid) != 
+                        mem_regions_2_dmem_hash_.end()) {
+                    dmem_region_lst.insert(mid);
+                }
+            }
+            size_t size = 0;
+            for(unsigned long mid : mem_list) {
+                BaseMem *mem = mem_index_hash_[mid];
+                //printf("Common mem:%lu mid:%lu\n", mem->uid(), mid);
+                size += mem->size();
+                results.push_back({d_index+1, index+1, mid, mem->size()});
+                all_covered_mem.insert(mid);
+            }
+            //_info("partial updating %lu-> %lu size:%lu\n", index+1, d_index+1, size);
+            for(unsigned long mid : dmem_region_lst) {
+                // Check if input is part of DMEM region
+                BaseMem *rdmem = mem_index_hash_[mid];
+                unsigned long dmem_index = mem_regions_2_dmem_hash_[mid];
+                //printf("                dmem dependency probing mem:%lu size:%lu dmem_index:%lu\n", mid, rdmem->size(), dmem_index);
+                if (lst1.find(dmem_index) != lst1.end() && 
+                        all_covered_mem.find(mid) == all_covered_mem.end()) { 
+                    BaseMem *mem = mem_index_hash_[mid];
+                    all_covered_mem.insert(dmem_index);
+                    all_covered_mem.insert(mid);
+                    size += mem->size();
+                    results.push_back({d_index+1, index+1, mid, mem->size()});
+                }
+            }
+            //_info("updating %lu-> %lu size:%lu\n", index+1, d_index+1, size);
+        }
+        // Some of the uncovered memory inputs are not covered
+        size_t size = 0;
+        for(unsigned long mid : lst1) {
+            if (all_covered_mem.find(mid) == all_covered_mem.end()) {
+                BaseMem *mem = mem_index_hash_[mid];
+                size += mem->size();
+                results.push_back({0, index+1, mid, mem->size()});
+            }
+        }
+    }
+    if (comm_task_data == NULL) {
+        comm_task_data_ = (CommData3D*)calloc(results.size(), sizeof(CommData3D));
+        comm_task_data = comm_task_data_;
+    }
+    comm_task_data_size_ = results.size();
+    std::copy(results.begin(), results.end(), comm_task_data);
+    //Utils::PrintMatrixLimited<size_t>(comm_task_data, ntasks, ntasks, "Task Communication data(C++)");
 }
 
 } /* namespace rt */

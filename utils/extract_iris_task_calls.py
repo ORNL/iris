@@ -40,8 +40,8 @@ def getPyExprString(l):
 def extractTaskCalls(args):
     file = args.input[0]
     f = tempfile.NamedTemporaryFile(delete=False)
-    print(f"[Cmd] gcc -E {file} -Uiris_cpu -Uiris_dsp -o {f.name} {args.compile_options} -DUNDEF_IRIS_MACROS")
-    os.system(f"gcc -E {file} -Uiris_cpu -Uiris_dsp -o {f.name} {args.compile_options} -DUNDEF_IRIS_MACROS")
+    print(f"[Cmd] gcc -E {file} -Uiris_cpu -Uiris_dsp -o {f.name} {args.compile_options} -DUNDEF_IRIS_MACROS -DEXTRACT_MACROS")
+    os.system(f"gcc -E {file} -Uiris_cpu -Uiris_dsp -o {f.name} {args.compile_options} -DUNDEF_IRIS_MACROS -DEXTRACT_MACROS")
     if not os.path.exists(f.name):
         return ""
     fh = open(f.name, "r")
@@ -522,6 +522,10 @@ def appendKernelSignatureHeaderFile(args, lines, data_hash):
         if hdr_type == 0 or hdr_type == 1:
             func_sig = "extern \"C\" int "+func_name+"("
         params = []
+        if hdr_type == 1 or hdr_type == 3:
+            params.append("iris_task task")
+        else:
+            params.append("int target_dev")
         lines.append(func_sig)
         arguments_start_index = find_start_index(v)
         i = arguments_start_index

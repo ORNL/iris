@@ -37,10 +37,10 @@ public:
   void* GetParamWrapperMemory() { return (void *)param_wrapper_mem_; }
 
   char* name() { return name_; }
-  bool vendor_specific_kernel_check_flag() { return vendor_specific_kernel_check_flag_; }
-  void set_vendor_specific_kernel_check(bool flag=true) { vendor_specific_kernel_check_flag_ = flag; }
-  bool is_vendor_specific_kernel() { return is_vendor_specific_kernel_; }
-  void set_vendor_specific_kernel(bool flag=true) { is_vendor_specific_kernel_ = flag; }
+  bool vendor_specific_kernel_check_flag(int devno) { return vendor_specific_kernel_check_flag_[devno]; }
+  void set_vendor_specific_kernel_check(int devno, bool flag=true) { vendor_specific_kernel_check_flag_[devno] = flag; }
+  bool is_vendor_specific_kernel(int devno) { return is_vendor_specific_kernel_[devno]; }
+  void set_vendor_specific_kernel(int devno, bool flag=true) { is_vendor_specific_kernel_[devno] = flag; }
   void set_task_name(const char *name) { strcpy(task_name_, name); }
   char *get_task_name() { return task_name_; }
   Platform* platform() { return platform_; }
@@ -64,8 +64,8 @@ private:
   uint8_t param_wrapper_mem_[8*128];
   Platform* platform_;
   shared_ptr<History> history_;
-  bool is_vendor_specific_kernel_;
-  bool vendor_specific_kernel_check_flag_;
+  bool is_vendor_specific_kernel_[IRIS_MAX_NDEVS];
+  bool vendor_specific_kernel_check_flag_[IRIS_MAX_NDEVS];
   std::map<int, DataMem *> data_mems_in_;
   std::map<int, DataMemRegion *> data_mem_regions_in_;
   std::map<int, DataMem *> data_mems_out_;

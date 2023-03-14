@@ -17,6 +17,7 @@ Task::Task(Platform* platform, int type, const char* name) {
   //printf("Creating task:%lu:%s ptr:%p\n", uid(), name, this);
   type_ = type;
   ncmds_ = 0;
+  disable_consistency_ = false;
   cmd_kernel_ = NULL;
   cmd_last_ = NULL;
   platform_ = platform;
@@ -150,7 +151,7 @@ void Task::ClearCommands() {
 bool Task::Dispatchable() {
   //if we, or the tasks we depend on are pending (or not-complete), we can't run.
   _trace("Checking task:%lu:%s dispatchable depends_:%p ndepends_:%d", uid(), name(), depends_, ndepends_);
-  print_incomplete_tasks();
+  //print_incomplete_tasks();
   if (status_ == IRIS_PENDING) return false;
   if (depends_ == NULL) return true;
   for (int i = 0; i < ndepends_; i++) {

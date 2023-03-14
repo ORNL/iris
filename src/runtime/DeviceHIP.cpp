@@ -313,16 +313,16 @@ int DeviceHIP::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,
 }
 
 int DeviceHIP::KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bool report_error) {
-  if (!kernel->vendor_specific_kernel_check_flag())
+  if (!kernel->vendor_specific_kernel_check_flag(devno_))
       CheckVendorSpecificKernel(kernel);
   int kernel_idx = -1;
-  if (kernel->is_vendor_specific_kernel() && 
+  if (kernel->is_vendor_specific_kernel(devno_) && 
           host2hip_ld_->iris_host2hip_kernel_with_obj &&
         host2hip_ld_->iris_host2hip_kernel_with_obj(&kernel_idx, name)==IRIS_SUCCESS) {
       *kernel_bin = host2hip_ld_->GetFunctionPtr(name);
       return IRIS_SUCCESS;
   }
-  if (kernel->is_vendor_specific_kernel() && host2hip_ld_->iris_host2hip_kernel) {
+  if (kernel->is_vendor_specific_kernel(devno_) && host2hip_ld_->iris_host2hip_kernel) {
       *kernel_bin = host2hip_ld_->GetFunctionPtr(name);
       return IRIS_SUCCESS;
   }
@@ -353,9 +353,9 @@ int DeviceHIP::KernelSetArg(Kernel* kernel, int idx, int kindex, size_t size, vo
     shared_mem_bytes_ += size;
   }
   if (max_arg_idx_ < idx) max_arg_idx_ = idx;
-  if (kernel->is_vendor_specific_kernel() && host2hip_ld_->iris_host2hip_setarg_with_obj)
+  if (kernel->is_vendor_specific_kernel(devno_) && host2hip_ld_->iris_host2hip_setarg_with_obj)
       host2hip_ld_->iris_host2hip_setarg_with_obj(kernel->GetParamWrapperMemory(), kindex, size, value);
-  else if (kernel->is_vendor_specific_kernel() && host2hip_ld_->iris_host2hip_setarg)
+  else if (kernel->is_vendor_specific_kernel(devno_) && host2hip_ld_->iris_host2hip_setarg)
       host2hip_ld_->iris_host2hip_setarg(kindex, size, value);
   return IRIS_SUCCESS;
 }
@@ -365,27 +365,29 @@ int DeviceHIP::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, s
   void *dev_ptr = mem->arch(devno_);
   params_[idx] = mem->arch_ptr(devno_);
   if (max_arg_idx_ < idx) max_arg_idx_ = idx;
-  if (kernel->is_vendor_specific_kernel() && host2hip_ld_->iris_host2hip_setmem_with_obj) 
+  if (kernel->is_vendor_specific_kernel(devno_) && host2hip_ld_->iris_host2hip_setmem_with_obj) 
       host2hip_ld_->iris_host2hip_setmem_with_obj(kernel->GetParamWrapperMemory(), kindex, dev_ptr);
-  else if (kernel->is_vendor_specific_kernel() && host2hip_ld_->iris_host2hip_setmem) 
+  else if (kernel->is_vendor_specific_kernel(devno_) && host2hip_ld_->iris_host2hip_setmem) 
       host2hip_ld_->iris_host2hip_setmem(kindex, dev_ptr);
   return IRIS_SUCCESS;
 }
 
 void DeviceHIP::CheckVendorSpecificKernel(Kernel *kernel) {
-  kernel->set_vendor_specific_kernel(false);
+  kernel->set_vendor_specific_kernel(devno_, false);
   if (host2hip_ld_->iris_host2hip_kernel_with_obj) {
-      if (host2hip_ld_->iris_host2hip_kernel_with_obj(kernel->GetParamWrapperMemory(), kernel->name()) == IRIS_SUCCESS) {
-          if (host2hip_ld_->SetKernelPtr(kernel->GetParamWrapperMemory(), kernel->name())==IRIS_SUCCESS)
-              kernel->set_vendor_specific_kernel(true);
+      int status = host2hip_ld_->iris_host2hip_kernel_with_obj(kernel->GetParamWrapperMemory(), kernel->name());
+      if (status == IRIS_SUCCESS &&
+              host2hip_ld_->IsFunctionExists(kernel->name())) {
+          kernel->set_vendor_specific_kernel(devno_, true);
       }
   }
   else if (host2hip_ld_->iris_host2hip_kernel) {
-      if (host2hip_ld_->iris_host2hip_kernel(kernel->name()) == IRIS_SUCCESS) {
-          kernel->set_vendor_specific_kernel(true);
+      if (host2hip_ld_->iris_host2hip_kernel(kernel->name()) == IRIS_SUCCESS &&
+              host2hip_ld_->IsFunctionExists(kernel->name())) {
+          kernel->set_vendor_specific_kernel(devno_, true);
       }
   }
-  kernel->set_vendor_specific_kernel_check(true);
+  kernel->set_vendor_specific_kernel_check(devno_, true);
 }
 
 int DeviceHIP::KernelLaunchInit(Kernel* kernel) {
@@ -395,14 +397,15 @@ int DeviceHIP::KernelLaunchInit(Kernel* kernel) {
 
 int DeviceHIP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws) {
   atleast_one_command_ = true;
-  if (kernel->is_vendor_specific_kernel() && host2hip_ld_->iris_host2hip_launch_with_obj) {
+  if (kernel->is_vendor_specific_kernel(devno_) && host2hip_ld_->iris_host2hip_launch_with_obj) {
       _trace("dev[%d][%s] kernel[%s:%s] dim[%d] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, q_);
+      host2hip_ld_->SetKernelPtr(kernel->GetParamWrapperMemory(), kernel->name());
       int status = host2hip_ld_->iris_host2hip_launch_with_obj(kernel->GetParamWrapperMemory(), ordinal_, dim, off[0], gws[0]);
       err_ = ld_->hipDeviceSynchronize();
       _hiperror(err_);
       return status;
   }
-  else if (kernel->is_vendor_specific_kernel() && host2hip_ld_->iris_host2hip_launch) {
+  else if (kernel->is_vendor_specific_kernel(devno_) && host2hip_ld_->iris_host2hip_launch) {
       _trace("dev[%d][%s] kernel[%s:%s] dim[%d] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, q_);
       int status = host2hip_ld_->iris_host2hip_launch(dim, off[0], gws[0]);
       err_ = ld_->hipDeviceSynchronize();

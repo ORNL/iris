@@ -33,12 +33,13 @@ int main(int argc, char** argv) {
 
   iris_synchronize();
 
+#if 0
   iris_task_release(task2);
   iris_task_release(task3);
   iris_task_release(task4);
   iris_task_release(task5);
   iris_task_release(task6);
-
+#endif
   iris_finalize();
 
   return iris_error_count();

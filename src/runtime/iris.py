@@ -6,6 +6,17 @@ import pdb
 import os
 import struct 
 
+class CommData3D(Structure):
+    _fields_ = [
+        ("from_id", c_uint),
+        ("to_id", c_uint), 
+        ("mem_id", c_uint),
+        ("size", c_size_t)
+    ]
+    def __repr__(self):
+        return f'CommData3D(from_id={self.from_id}, to_id={self.to_id}, mem_id={self.mem_id}, size={self.size})'
+
+
 class library(CDLL):
     def __init__(self, library_name, read_symbols=False):
         super().__init__(library_name, mode=RTLD_GLOBAL)
@@ -145,6 +156,9 @@ class IRIS(library):
         c_ptr = dll.call_ret_ptr(dll.iris_allocate_array_int8_t, np.int32(total_size), init)
         np_data = dll.convert_c_pointer_to_numpy(c_ptr, size, ctypes.c_byte)
         return np_data, c_ptr
+
+    def free(self, c_ptr):
+        dll.call(dll.iris_free_array, c_ptr)
         
 dll = IRIS()
 
@@ -1009,6 +1023,13 @@ class graph:
             df['child_count'] = comm_2d.sum(axis=0)
             return df
         return comm_2d
+
+    def get_3d_cost_comm_data(self):
+        dll.call(dll.iris_get_graph_3d_comm_data, self.handle)
+        total = dll.call_ret(dll.iris_get_graph_3d_comm_data_size, c_size_t, self.handle)
+        ptr = dll.call_ret(dll.iris_get_graph_3d_comm_data_ptr, POINTER(CommData3D), self.handle)
+        ptr_list = [ ptr[i] for i in range(total) ]
+        return ptr_list
 
     def calibrate_compute_cost_adj_matrix(self, pdf=False, only_device_type=False):
         ntasks, tasks = self.get_tasks()

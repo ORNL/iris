@@ -53,6 +53,8 @@ public:
   void set_name(const char* name);
   bool user() { return user_; }
   void set_user(bool flag=true) { user_ = flag; }
+  bool disable_consistency() { return disable_consistency_; }
+  bool set_disable_consistency(bool flag=true) { return disable_consistency_ = flag; }
   bool system() { return system_; }
   void set_system() { system_ = true; }
   bool marker() { return type_ == IRIS_MARKER; }
@@ -134,6 +136,7 @@ private:
   int status_;
   bool user_;
   bool system_;
+  bool disable_consistency_;
   bool internal_memory_transfer_;
 
   double time_;

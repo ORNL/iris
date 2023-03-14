@@ -461,16 +461,16 @@ int DeviceCUDA::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
 }
 
 int DeviceCUDA::KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bool report_error) {
-  if (!kernel->vendor_specific_kernel_check_flag())
+  if (!kernel->vendor_specific_kernel_check_flag(devno_))
       CheckVendorSpecificKernel(kernel);
   int kernel_idx=-1;
-  if (kernel->is_vendor_specific_kernel() && 
+  if (kernel->is_vendor_specific_kernel(devno_) && 
           host2cuda_ld_->iris_host2cuda_kernel_with_obj &&
       host2cuda_ld_->iris_host2cuda_kernel_with_obj(&kernel_idx, name) == IRIS_SUCCESS)  {
           *kernel_bin = host2cuda_ld_->GetFunctionPtr(name);
           return IRIS_SUCCESS;
   }
-  if (kernel->is_vendor_specific_kernel() && host2cuda_ld_->iris_host2cuda_kernel) {
+  if (kernel->is_vendor_specific_kernel(devno_) && host2cuda_ld_->iris_host2cuda_kernel) {
       *kernel_bin = host2cuda_ld_->GetFunctionPtr(name);
       return IRIS_SUCCESS;
   }
@@ -504,7 +504,7 @@ int DeviceCUDA::KernelSetArg(Kernel* kernel, int idx, int kindex, size_t size, v
     shared_mem_bytes_ += size;
   }
   if (max_arg_idx_ < idx) max_arg_idx_ = idx;
-  if (kernel->is_vendor_specific_kernel()) {
+  if (kernel->is_vendor_specific_kernel(devno_)) {
      if (host2cuda_ld_->iris_host2cuda_setarg_with_obj)
          host2cuda_ld_->iris_host2cuda_setarg_with_obj(
                 kernel->GetParamWrapperMemory(), kindex, size, value);
@@ -526,7 +526,7 @@ int DeviceCUDA::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, 
       dev_ptr = *dev_alloc_ptr; 
   }
   if (max_arg_idx_ < idx) max_arg_idx_ = idx;
-  if (kernel->is_vendor_specific_kernel()) {
+  if (kernel->is_vendor_specific_kernel(devno_)) {
       if (host2cuda_ld_->iris_host2cuda_setmem_with_obj) 
           host2cuda_ld_->iris_host2cuda_setmem_with_obj(
                   kernel->GetParamWrapperMemory(), kindex, dev_ptr);
@@ -537,23 +537,24 @@ int DeviceCUDA::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, 
 }
 
 void DeviceCUDA::CheckVendorSpecificKernel(Kernel* kernel) {
-    kernel->set_vendor_specific_kernel(false);
+    kernel->set_vendor_specific_kernel(devno_, false);
     if (host2cuda_ld_->iris_host2cuda_kernel_with_obj) {
         int status = host2cuda_ld_->iris_host2cuda_kernel_with_obj(
                 kernel->GetParamWrapperMemory(), kernel->name());
-        if (status == IRIS_SUCCESS) {
-            if (host2cuda_ld_->SetKernelPtr(kernel->GetParamWrapperMemory(), kernel->name())==IRIS_SUCCESS)
-                kernel->set_vendor_specific_kernel(true);
+        if (status == IRIS_SUCCESS && 
+                host2cuda_ld_->IsFunctionExists(kernel->name())) {
+            kernel->set_vendor_specific_kernel(devno_, true);
         }
     }
     else if (host2cuda_ld_->iris_host2cuda_kernel) {
         int status = host2cuda_ld_->iris_host2cuda_kernel(
                 kernel->name());
-        if (status == IRIS_SUCCESS) {
-            kernel->set_vendor_specific_kernel(true);
+        if (status == IRIS_SUCCESS && 
+                host2cuda_ld_->IsFunctionExists(kernel->name())) {
+            kernel->set_vendor_specific_kernel(devno_, true);
         }
     }
-    kernel->set_vendor_specific_kernel_check(true);
+    kernel->set_vendor_specific_kernel_check(devno_, true);
 }
 int DeviceCUDA::KernelLaunchInit(Kernel* kernel) {
     return IRIS_SUCCESS;
@@ -572,9 +573,10 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
 #ifndef IRIS_SYNC_EXECUTION
   q_ = cmd->task()->uid() % nqueues_; 
 #endif
-  if (kernel->is_vendor_specific_kernel()) {
+  if (kernel->is_vendor_specific_kernel(devno_)) {
      if(host2cuda_ld_->iris_host2cuda_launch_with_obj) {
          _trace("dev[%d][%s] kernel[%s:%s] dim[%d] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, q_);
+         host2cuda_ld_->SetKernelPtr(kernel->GetParamWrapperMemory(), kernel->name());
          int status = host2cuda_ld_->iris_host2cuda_launch_with_obj(
 #ifndef IRIS_SYNC_EXECUTION
                  streams_[q_], 
