@@ -189,9 +189,9 @@ def preprocess_data(data):
         data = re.sub(r'^\s*', '', data)
     return data
 
-def read_metadata_file(args, input):
+def read_metadata_file(args, inputs):
     codes = []
-    for file in input:
+    for file in inputs:
         print("Reading input: "+file)
         fh = open(file, 'r')
         lcodes = fh.readlines()
@@ -591,7 +591,7 @@ def appendKernelSignatureHeaderFile(args, lines, data_hash):
                 params.append(fdt+f" "+" "+fvar)
                 one_param_exists = True
         if len(params) > 0:
-             lines.append("\t\t\t\t"+", \n\t\t\t\t".join(params)+",")
+             lines.append("\t\t\t\t"+", \n\t\t\t\t".join(params))
         lines.append(");")
         if hdr_type == 2 or hdr_type == 3:
             lines.append("#endif // __cplusplus")
@@ -1140,7 +1140,6 @@ def ExtractIRISTaskAPIs(args=None, arg_string='', arg_dict={}, in_code_buffer=''
         iris_calls = extractTaskCalls(args)
         output_lines = generateIrisInterfaceCode(args, iris_calls)
         if write_output:
-            pdb.set_trace()
             WriteFile(args.output, output_lines, tag="Consolidated CPU/DSP interface code for all kernels in header")
         if in_code_buffer != '':
             os.unlink(f.name)
@@ -1150,7 +1149,7 @@ def ExtractIRISTaskAPIs(args=None, arg_string='', arg_dict={}, in_code_buffer=''
             WriteFile(args.output, iris_calls, tag='Generating metadata')
         output_lines = iris_calls
     elif args.generate:
-        codes = read_metadata_file(args, input)
+        codes = read_metadata_file(args, args.input)
         output_lines = generateIrisInterfaceCode(args, codes)
         if write_output:
             WriteFile(args.output, output_lines, tag="Consolidated CPU/DSP interface code for all kernels in header")
@@ -1178,5 +1177,5 @@ def main():
     ExtractIRISTaskAPIs()
 
 if __name__ == "__main__":
-    #main()
-    test()
+    main()
+    #test()
