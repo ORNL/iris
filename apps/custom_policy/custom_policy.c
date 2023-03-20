@@ -13,7 +13,7 @@ int main(int argc, char** argv) {
 
   iris_register_policy("libPolicyGWS.so", "custom_gws", (void*) 16);
 
-  void* params[1] = { memA };
+  void* params[1] = { &memA };
   int params_info[1] = { iris_w };
   iris_task task;
   iris_task_create(&task);

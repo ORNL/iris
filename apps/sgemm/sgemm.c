@@ -72,7 +72,7 @@ int main(int argc, char** argv) {
   size_t ijk_idx[2] = { SIZE, SIZE };
   size_t lws_size = (SIZE > 16) ? 16 : SIZE;
   size_t ijk_lws[2] = { lws_size, lws_size };
-  void* params[3] = { mem_C, mem_A, mem_B };
+  void* params[3] = { &mem_C, &mem_A, &mem_B };
   int pinfo[3] = { iris_w, iris_r, iris_r };
   iris_task_kernel(task, "ijk", 2, NULL, ijk_idx, ijk_lws, 3, params, pinfo);
   iris_task_d2h(task, mem_C, 0, SIZE * SIZE * sizeof(float), C);
