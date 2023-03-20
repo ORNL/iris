@@ -23,6 +23,13 @@ def remove_spaces(api_name):
     api_name = re.sub(r'\s*', '', api_name)
     return api_name
 
+def WriteFile(output_file, lines, tag=''):
+    print("Generating "+tag+" file: "+output_file)
+    wfh = open(output_file, 'w')
+    for l in lines:
+        wfh.write(l+"\n")
+    wfh.close()
+
 def getPyExprString(l):
     if type(l) == list:
         p = []
@@ -37,11 +44,10 @@ def getPyExprString(l):
     else:
         return l
 
-def extractTaskCalls(args):
-    file = args.input[0]
+def extractTaskCallsCore(filename, args):
     f = tempfile.NamedTemporaryFile(delete=False)
-    print(f"[Cmd] gcc -E {file} -Uiris_cpu -Uiris_dsp -o {f.name} {args.compile_options} -DUNDEF_IRIS_MACROS -DEXTRACT_MACROS")
-    os.system(f"gcc -E {file} -Uiris_cpu -Uiris_dsp -o {f.name} {args.compile_options} -DUNDEF_IRIS_MACROS -DEXTRACT_MACROS")
+    print(f"[Cmd] gcc -E {filename} -Uiris_cpu -Uiris_dsp -o {f.name} {args.compile_options} -DUNDEF_IRIS_MACROS -DEXTRACT_MACROS")
+    os.system(f"gcc -E {filename} -Uiris_cpu -Uiris_dsp -o {f.name} {args.compile_options} -DUNDEF_IRIS_MACROS -DEXTRACT_MACROS")
     if not os.path.exists(f.name):
         return ""
     fh = open(f.name, "r")
@@ -122,11 +128,11 @@ def extractTaskCalls(args):
     os.unlink(f.name)
     return add_code(result0)+add_code(result1)+add_code(result2)+add_code(result3)+add_code(result4, 1)+add_code(result5, 2)
 
-def writeExtracts(code, args):
-    fh = open(args.output, "w")
-    for l in code:
-        fh.write(l+"\n")
-    fh.close()
+def extractTaskCalls(args):
+    output  = []
+    for in_file in args.input:
+        output = output + extractTaskCallsCore(in_file, args)
+    return output
 
 def parseFnParams(text):
     fn_name, nstack = parseFnParamsCore(text)
@@ -183,15 +189,18 @@ def preprocess_data(data):
         data = re.sub(r'^\s*', '', data)
     return data
 
-def generateIrisInterfaceCode(args, input):
+def read_metadata_file(args, inputs):
     codes = []
-    for file in input:
+    for file in inputs:
         print("Reading input: "+file)
         fh = open(file, 'r')
         lcodes = fh.readlines()
         for code in lcodes:
             codes.append(code)
         fh.close()
+    return codes
+
+def generateIrisInterfaceCode(args, codes):
     #print("\n".join(codes))
     data = []
     data_hash = {}
@@ -419,7 +428,7 @@ static int iris_kernel_idx = -1;
     #lines = lines + sig_lines
     k_sig_lines = [ ]
     k_sig_lines += sig_lines
-    writeLinesToFiles(k_sig_lines, args.signature_file)
+    WriteFile(args.signature_file, k_sig_lines, "Consolidated CPU/DSP interface code for all kernels in header")
     appendStructure(args, lines, data_hash, k_hash)
     if args.thread_safe == 1:
         appendSetKernelWrapperFunctions(args, lines, data_hash, k_hash)
@@ -437,10 +446,7 @@ static int iris_kernel_idx = -1;
             ''')
     for k,v in data_hash.items():
         print("Generated CPU/DSP interface code for kernel:"+k)
-    wfh = open(args.output, 'w')
-    print("Consolidated CPU/DSP interface code for all kernels in header file:"+args.output)
-    wfh.write("\n".join(lines)+"\n")
-    wfh.close()
+    return lines
 
 def getKernelParamVairable(k):
     return "__k_"+k+"_args"
@@ -496,12 +502,6 @@ def appendConditionalParameters(expr, fdt, params, lines):
             lines.append("#ifdef ENABLE_IRIS_HOST2HIP_APIS")
             lines.append("\t\t\t\t"+fdt+",")
             lines.append("#endif")
-
-def writeLinesToFiles(lines, filename):
-    wfh = open(filename, 'w')
-    print("Consolidated CPU/DSP interface code for all kernels in header file:"+args.output)
-    wfh.write("\n".join(lines)+"\n")
-    wfh.close()
 
 def appendKernelSignatureHeaderFile(args, lines, data_hash):
     global valid_params, global_res
@@ -591,7 +591,7 @@ def appendKernelSignatureHeaderFile(args, lines, data_hash):
                 params.append(fdt+f" "+" "+fvar)
                 one_param_exists = True
         if len(params) > 0:
-             lines.append("\t\t\t\t"+", \n\t\t\t\t".join(params)+",")
+             lines.append("\t\t\t\t"+", \n\t\t\t\t".join(params))
         lines.append(");")
         if hdr_type == 2 or hdr_type == 3:
             lines.append("#endif // __cplusplus")
@@ -1090,9 +1090,14 @@ int iris_launch(
 }
         ''')
 
+class AttrDict(dict):
+    def __init__(self, *args, **kwargs):
+        super(AttrDict, self).__init__(*args, **kwargs)
+        self.__dict__ = self
+
 def InitParser(parser):
-    parser.add_argument("-input", dest="input", nargs='+', default="sample.c")
-    parser.add_argument("-output", dest="output", default="sample.c.iris")
+    parser.add_argument("-input", dest="input", nargs='+', default=[])
+    parser.add_argument("-output", dest="output", default="iris_app_cpu_dsp_interface.h")
     parser.add_argument("-extract", dest="extract", action="store_true")
     parser.add_argument("-generate", dest="generate", action="store_true")
     parser.add_argument("-thread_safe", dest="thread_safe", type=int, default=1)
@@ -1100,17 +1105,77 @@ def InitParser(parser):
     parser.add_argument("-signature_file", dest="signature_file", default="app.h")
     parser.add_argument("-signature_file_include_headers", dest="signature_file_include_headers", nargs='+', default=[])
 
-if __name__ == "__main__":
+def GetDefaultArgs():
     parser = argparse.ArgumentParser()
     InitParser(parser)
     args = parser.parse_args()
-    input = args.input
-    if args.extract and args.generate:
-        input = [args.output]
+    return args 
+
+def GetIRISTaskAPIsArgs(args=None, arg_string='', arg_dict={}):
+    parser = argparse.ArgumentParser()
+    InitParser(parser)
+    if args == None:
+        if arg_string != '':
+            parser.parse_args(shlex.split(arg_string))
+        elif arg_dict != None:
+            args = GetDefaultArgs()
+            for k,v in arg_dict.items():
+                args.__dict__[k] = v
+        else:
+            args = parser.parse_args()
+    return args
+
+def ExtractIRISTaskAPIs(args=None, arg_string='', arg_dict={}, in_code_buffer='', write_output=True):
+    args = GetIRISTaskAPIsArgs(args, arg_string, arg_dict)
     if not args.extract and not args.generate:
         args.extract = True 
-    if args.extract:
+    if args.extract and args.generate:
+        if in_code_buffer != '':
+            f = tempfile.NamedTemporaryFile(delete=False)
+            fh = open(f.name+'.c', "w")
+            fh.write(in_code_buffer)
+            fh.close()
+            print('Temporary file: ', f.name+'.c')
+            args.__dict__['input'] = args.__dict__['input'] + [f.name+'.c']
         iris_calls = extractTaskCalls(args)
-        writeExtracts(iris_calls, args)
-    if args.generate:
-        generateIrisInterfaceCode(args, input)
+        output_lines = generateIrisInterfaceCode(args, iris_calls)
+        if write_output:
+            WriteFile(args.output, output_lines, tag="Consolidated CPU/DSP interface code for all kernels in header")
+        if in_code_buffer != '':
+            os.unlink(f.name)
+    elif args.extract:
+        iris_calls = extractTaskCalls(args)
+        if write_output:
+            WriteFile(args.output, iris_calls, tag='Generating metadata')
+        output_lines = iris_calls
+    elif args.generate:
+        codes = read_metadata_file(args, args.input)
+        output_lines = generateIrisInterfaceCode(args, codes)
+        if write_output:
+            WriteFile(args.output, output_lines, tag="Consolidated CPU/DSP interface code for all kernels in header")
+    return output_lines
+
+def test():
+    code = f'''
+IRIS_TASK_APIS_CPP(
+        saxpy,
+        saxpy_core,
+        saxpy_task,
+        "saxpy_kernel", 1,
+        NULL_OFFSET, GWS(SIZE), NULL_LWS,
+        OUT_TASK(Z, int32_t *, int32_t, Z, sizeof(int32_t)*SIZE),
+        IN_TASK(X, const int32_t *, int32_t, X, sizeof(int32_t)*SIZE),
+        IN_TASK(Y, const int32_t *, int32_t, Y, sizeof(int32_t)*SIZE),
+        PARAM(SIZE, int32_t, iris_cpu),
+        PARAM(A, int32_t),
+        PARAM(cuUsecPtr, int32_t*, iris_dsp),
+        PARAM(cuCycPtr, int32_t*, iris_dsp));
+    '''
+    ExtractIRISTaskAPIs(in_code_buffer=code, arg_dict={'extract': True, 'generate':True})
+
+def main():
+    ExtractIRISTaskAPIs()
+
+if __name__ == "__main__":
+    main()
+    #test()
