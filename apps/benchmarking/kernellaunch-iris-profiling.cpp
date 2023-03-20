@@ -37,7 +37,7 @@ void Init() {
 
 void Compute(int loop) {
   size_t gws = (size_t) SIZE;
-  void* params[4] = { dZ, &A, dX, dY };
+  void* params[4] = { &dZ, &A, &dX, &dY };
   int pinfo[4] = { iris_w, sizeof(A), iris_r, iris_r };
   for (int i = 0; i < loop; i++) {
     iris_task task;
