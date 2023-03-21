@@ -138,7 +138,7 @@ void GraphMetadata::calibrate_compute_cost_adj_matrix(double *comp_task_adj_matr
                         data64 = *((uint64_t *)value);
                         break;
                              }
-                    default: _error("Size:%d not yet handled", arg->size);
+                    default: _error("Size:%lu not yet handled", arg->size);
                 }
                 knobs.push_back(data64);
             }
