@@ -20,9 +20,10 @@ namespace iris {
                 }
                 bool IsObjectExists(void *p, unsigned long uid) { 
                     bool flag = false;
-                    if (allocated_objects_.find(p) != allocated_objects_.end()) 
+                    if (allocated_objects_.find(p) != allocated_objects_.end())  {
                         flag = allocated_objects_[p];
                         flag = flag & (allocated_objects_[p] == uid);
+                    }
                     _trace("object:%p exists flag:%d", p, flag);
                     return flag;
                 }
