@@ -230,6 +230,7 @@ char *iris_kernel_get_name(iris_kernel brs_kernel) {
 int iris_task_disable_consistency(iris_task brs_task) {
     Task *task = brs_task->class_obj;
     task->set_disable_consistency(true);
+    return IRIS_SUCCESS;
 }
 
 char *iris_task_get_name(iris_task brs_task) {
