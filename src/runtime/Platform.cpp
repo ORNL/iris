@@ -101,7 +101,7 @@ Platform::~Platform() {
       delete ld;
   }
   if (tmp_dir_[0] != '\0') {
-      char cmd[256];
+      char cmd[270];
       //printf("Removing tmp_dir:%s\n", tmp_dir_);
       sprintf(cmd, "rm -rf %s", tmp_dir_);
       system(cmd);

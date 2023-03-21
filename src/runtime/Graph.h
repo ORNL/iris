@@ -77,6 +77,7 @@ public:
     void get_2d_comm_adj_matrix(size_t *comm_task_adj_matrix=NULL);
     void calibrate_compute_cost_adj_matrix(double *comp_task_adj_matrix=NULL, bool only_device_type=false);
 private:
+    Graph *graph_;
     int iterations_;
     int8_t *dep_adj_matrix_;
     int8_t *dep_adj_list_;
@@ -84,7 +85,6 @@ private:
     size_t comm_task_data_size_;
     size_t *comm_task_adj_matrix_;
     double *comp_task_adj_matrix_;
-    Graph *graph_;
     map<unsigned long, unsigned long> task_uid_2_index_hash_;
     map<unsigned long, Task *> task_uid_hash_;
     map<unsigned long, BaseMem *> mem_index_hash_;
