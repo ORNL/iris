@@ -102,6 +102,13 @@ public:
   void set_metadata(int index, int data) { meta_data_[index] = data; }
   int metadata(int index) { return meta_data_[index]; }
   void print_incomplete_tasks();
+#ifdef AUTO_PAR
+  std::vector<BaseMem*>* get_write_list() { return &write_list_; }
+  std::vector<BaseMem*>* get_read_list() { return &read_list_; }
+  void add_to_read_list(BaseMem* mem) { read_list_.push_back(mem); }
+  void add_to_write_list(BaseMem* mem) { write_list_.push_back(mem); }
+#endif
+
 private:
   void CompleteSub();
 
@@ -120,6 +127,10 @@ private:
   Scheduler* scheduler_;
   std::vector<Task*> subtasks_;
   std::vector<Command *> reset_mems_;
+#ifdef AUTO_PAR
+  std::vector<BaseMem*> write_list_;
+  std::vector<BaseMem*> read_list_;
+#endif
   size_t subtasks_complete_;
   void* arch_;
 

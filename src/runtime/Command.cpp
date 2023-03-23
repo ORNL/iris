@@ -132,6 +132,7 @@ Command* Command::CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off,
 }
 
 Command* Command::CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, size_t* params_off, int* params_info, size_t* memranges) {
+  printf("insdie create kernel\n");
   Command* cmd = Create(task, IRIS_CMD_KERNEL);
   cmd->kernel_ = kernel;
   cmd->dim_ = dim;
@@ -165,6 +166,23 @@ Command* Command::CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off,
     }
     size_t mem_off = 0ULL;
     BaseMem* mem = cmd->platform_->GetMem((iris_mem) param);
+#ifdef AUTO_PAR
+    if(mem->get_current_writing_task() != NULL 
+		    && mem->get_current_writing_task() != task){
+        task->AddDepend(mem->get_current_writing_task());	
+	//printf("Task Name %s\n", mem->get_current_writing_task()->name());
+    }
+ 
+    if (param_info == iris_w || param_info == iris_rw) {
+	//printf("Seting current task info %d\n", param_info);
+ 	mem->set_current_writing_task(task);
+  	task->add_to_write_list(mem);
+    }
+    if (param_info == iris_r) {
+  	task->add_to_read_list(mem);
+    }
+#endif
+    //_trace_debug("Param %d", param_info);
     if (!mem) mem = cmd->platform_->GetMem(param, &mem_off);
     if (!mem) {
       _error("no mem[%p] task[%ld:%s]", param, task->uid(), task->name());
