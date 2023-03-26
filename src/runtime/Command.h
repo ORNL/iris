@@ -21,6 +21,7 @@
 #define IRIS_CMD_MEM_FLUSH      0x100c
 #define IRIS_CMD_CUSTOM         0x100d
 #define IRIS_CMD_RESET_INPUT    0x100e
+#define IRIS_CMD_H2BROADCAST    0x100f
 
 #define IRIS_CMD_KERNEL_NARGS_MAX   16
 
@@ -43,6 +44,7 @@ public:
   int type() { return type_; }
   bool type_init() { return type_ == IRIS_CMD_INIT; }
   bool type_h2d() { return type_ == IRIS_CMD_H2D; }
+  bool type_h2broadcast() { return type_ == IRIS_CMD_H2BROADCAST; }
   bool type_h2dnp() { return type_ == IRIS_CMD_H2DNP; }
   bool type_d2h() { return type_ == IRIS_CMD_D2H; }
   bool type_memflush() { return type_ == IRIS_CMD_MEM_FLUSH; }
@@ -141,6 +143,8 @@ public:
   static Command* CreateMalloc(Task* task, Mem* mem);
   static Command* CreateMemResetInput(Task* task, BaseMem *mem, uint8_t reset_value=0);
   static Command* CreateMemIn(Task* task, DataMem* mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host);
+  static Command* CreateH2Broadcast(Task* task, Mem* mem, size_t off, size_t size, void* host);
+  static Command* CreateH2Broadcast(Task* task, Mem* mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host);
   static Command* CreateH2D(Task* task, Mem* mem, size_t off, size_t size, void* host);
   static Command* CreateH2D(Task* task, Mem* mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host);
   static Command* CreateH2DNP(Task* task, Mem* mem, size_t off, size_t size, void* host);

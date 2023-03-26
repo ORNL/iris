@@ -926,6 +926,22 @@ int Platform::TaskMemResetInput(iris_task brs_task, iris_mem brs_mem, uint8_t re
     return IRIS_SUCCESS;
 }
 
+int Platform::TaskH2Broadcast(iris_task brs_task, iris_mem brs_mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host) {
+  Task* task = brs_task->class_obj;
+  Mem* mem = (Mem *)brs_mem->class_obj;
+  Command* cmd = Command::CreateH2Broadcast(task, mem, off, host_sizes, dev_sizes, elem_size, dim, host);
+  task->AddCommand(cmd);
+  return IRIS_SUCCESS;
+}
+
+int Platform::TaskH2Broadcast(iris_task brs_task, iris_mem brs_mem, size_t off, size_t size, void* host) {
+  Task* task = brs_task->class_obj;
+  Mem* mem = (Mem *)brs_mem->class_obj;
+  Command* cmd = Command::CreateH2Broadcast(task, mem, off, size, host);
+  task->AddCommand(cmd);
+  return IRIS_SUCCESS;
+}
+
 int Platform::TaskH2D(iris_task brs_task, iris_mem brs_mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host) {
   Task* task = brs_task->class_obj;
   Mem* mem = (Mem *)brs_mem->class_obj;

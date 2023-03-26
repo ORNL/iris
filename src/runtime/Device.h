@@ -48,7 +48,8 @@ public:
   void ExecuteMemOut(Task *task, Command* cmd);
   void ExecuteMemFlushOut(Command* cmd);
 
-  void ExecuteH2D(Command* cmd);
+  void ExecuteH2D(Command* cmd, Device *dev=NULL);
+  void ExecuteH2BroadCast(Command* cmd);
   void ExecuteH2DNP(Command* cmd);
   void ExecuteD2H(Command* cmd);
   void ExecuteMap(Command* cmd);

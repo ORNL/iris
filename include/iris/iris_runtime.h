@@ -214,6 +214,17 @@ extern int iris_task_get_metadata(iris_task brs_task, int index);
 extern int iris_task_set_metadata(iris_task brs_task, int index, int metadata);
 
 /**
+ * Adds a H2Broadcast command to the target task.
+ * @param task target task
+ * @param mem target memory object
+ * @param off offset in bytes
+ * @param size size in bytes
+ * @param host source host address
+ */
+extern int iris_task_h2broadcast(iris_task task, iris_mem mem, size_t off, size_t size, void* host);
+extern int iris_task_h2broadcast_offsets(iris_task task, iris_mem mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, void* host);
+
+/**
  * Adds a H2D command to the target task.
  * @param task target task
  * @param mem target memory object

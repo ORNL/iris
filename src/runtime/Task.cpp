@@ -305,7 +305,7 @@ int Task::ncmds_memcpy() {
   int total = 0;
   for (int i = 0; i < ncmds_; i++) {
     Command* cmd = cmds_[i];
-    if (cmd->type_h2d() || cmd->type_h2dnp() || cmd->type_d2h()) total++;
+    if (cmd->type_h2d() || cmd->type_h2broadcast() || cmd->type_h2dnp() || cmd->type_d2h()) total++;
   }
   return total;
 }

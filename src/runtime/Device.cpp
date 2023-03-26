@@ -64,6 +64,7 @@ void Device::Execute(Task* task) {
                                   }
       case IRIS_CMD_MALLOC:       ExecuteMalloc(cmd);     break;
       case IRIS_CMD_H2D:          ExecuteH2D(cmd);        break;
+      case IRIS_CMD_H2BROADCAST:  ExecuteH2BroadCast(cmd); break;
       case IRIS_CMD_H2DNP:        ExecuteH2DNP(cmd);      break;
       case IRIS_CMD_D2H:          ExecuteD2H(cmd);        break;
       case IRIS_CMD_MEM_FLUSH:    ExecuteMemFlushOut(cmd);break;
@@ -538,7 +539,15 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
         _trace("MemFlushout is skipped as host already having valid data for task:%ld:%s\n", cmd->task()->uid(), cmd->task()->name());
     }
 }
-void Device::ExecuteH2D(Command* cmd) {
+void Device::ExecuteH2BroadCast(Command *cmd) {
+    int ndevs = Platform::GetPlatform()->ndevs();
+    for(int i=0; i<ndevs; i++) {
+        Device *src_dev = Platform::GetPlatform()->device(i);
+        ExecuteH2D(cmd, src_dev);
+    }
+}
+void Device::ExecuteH2D(Command* cmd, Device *dev) {
+  if (dev == NULL) dev = this;
   Mem* mem = cmd->mem();
   size_t off = cmd->off(0);
   size_t *ptr_off = cmd->off();
@@ -553,7 +562,7 @@ void Device::ExecuteH2D(Command* cmd) {
   else mem->AddOwner(off, size, this);
   timer_->Start(IRIS_TIMER_H2D);
   cmd->set_time_start(timer_->Now());
-  errid_ = MemH2D(cmd->task(), mem, ptr_off, gws, lws, elem_size, dim, size, host);
+  errid_ = dev->MemH2D(cmd->task(), mem, ptr_off, gws, lws, elem_size, dim, size, host);
   if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
   cmd->set_time_end(timer_->Now());
   double time = timer_->Stop(IRIS_TIMER_H2D);
@@ -561,12 +570,12 @@ void Device::ExecuteH2D(Command* cmd) {
   Command* cmd_kernel = cmd->task()->cmd_kernel();
   if (cmd_kernel) {
       if  (cmd->is_internal_memory_transfer())
-          cmd_kernel->kernel()->history()->AddD2H_H2D(cmd, this, time, size, false);
+          cmd_kernel->kernel()->history()->AddD2H_H2D(cmd, dev, time, size, false);
       else
-          cmd_kernel->kernel()->history()->AddH2D(cmd, this, time, size);
+          cmd_kernel->kernel()->history()->AddH2D(cmd, dev, time, size);
   }
   else {
-      Platform::GetPlatform()->null_kernel()->history()->AddH2D(cmd, this, time, size);
+      Platform::GetPlatform()->null_kernel()->history()->AddH2D(cmd, dev, time, size);
   }
   if (Platform::GetPlatform()->enable_scheduling_history()) Platform::GetPlatform()->scheduling_history()->AddH2D(cmd);
 }
