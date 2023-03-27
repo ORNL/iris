@@ -157,6 +157,10 @@ int iris_task_h2d_full(iris_task task, iris_mem mem, void* host) {
   return Platform::GetPlatform()->TaskH2DFull(task, mem, host);
 }
 
+int iris_task_h2broadcast_full(iris_task task, iris_mem mem, void* host) {
+  return Platform::GetPlatform()->TaskH2BroadcastFull(task, mem, host);
+}
+
 int iris_task_d2h_full(iris_task task, iris_mem mem, void* host) {
   return Platform::GetPlatform()->TaskD2HFull(task, mem, host);
 }
@@ -184,6 +188,7 @@ int iris_task_kernel_launch_disabled(iris_task brs_task, int flag)
 {
     Task *task = brs_task->class_obj;
     task->set_kernel_launch_disabled((bool)flag);
+    return IRIS_SUCCESS;
 }   
 
 int iris_params_map(iris_task task, int *params_map) {

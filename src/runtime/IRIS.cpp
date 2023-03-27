@@ -97,6 +97,22 @@ int Task::h2d(Mem* mem, size_t off, size_t size, void* host) {
 #endif
 }
 
+int Task::h2broadcast(Mem* mem, size_t off, size_t size, void* host) {
+#ifdef ENABLE_SMART_PTR_TASK
+    return PlatformIRIS::GetPlatform()->TaskH2Broadcast(task_, mem->mem(), off, size, host);
+#else
+    return iris_task_h2broadcast(task_, mem->mem(), off, size, host);
+#endif
+}
+
+int Task::h2broadcast_full(Mem* mem, void* host) {
+#ifdef ENABLE_SMART_PTR_TASK
+    return PlatformIRIS::GetPlatform()->TaskH2BroadcastFull(task_, mem->mem(), host);
+#else
+    return iris_task_h2broadcast_full(task_, mem->mem(), host);
+#endif
+}
+
 int Task::h2d_full(Mem* mem, void* host) {
 #ifdef ENABLE_SMART_PTR_TASK
     return PlatformIRIS::GetPlatform()->TaskH2DFull(task_, mem->mem(), host);

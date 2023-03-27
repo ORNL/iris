@@ -89,6 +89,8 @@ namespace iris {
             virtual ~Task() { }
             int h2d(Mem* mem, size_t off, size_t size, void* host);
             int h2d_full(Mem* mem, void* host);
+            int h2broadcast(Mem* mem, size_t off, size_t size, void* host);
+            int h2broadcast_full(Mem* mem, void* host);
             int d2h(Mem* mem, size_t off, size_t size, void* host);
             int d2h_full(Mem* mem, void* host);
             int flush_out(DMem & mem);
