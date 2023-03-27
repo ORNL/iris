@@ -177,7 +177,7 @@ int iris_task_kernel_selector(iris_task task, iris_selector_kernel func, void* p
 }
 int iris_task_kernel_launch_disabled(iris_task brs_task, int flag)
 {
-    Task *task = brs_task->class_obj;
+    Task *task = brs_task.class_obj;
     task->set_kernel_launch_disabled((bool)flag);
 }   
 
