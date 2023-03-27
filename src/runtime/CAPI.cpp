@@ -180,6 +180,11 @@ int iris_task_kernel_v3(iris_task task, const char* kernel, int dim, size_t* off
 int iris_task_kernel_selector(iris_task task, iris_selector_kernel func, void* params, size_t params_size) {
   return Platform::GetPlatform()->TaskKernelSelector(task, func, params, params_size);
 }
+int iris_task_kernel_launch_disabled(iris_task brs_task, int flag)
+{
+    Task *task = brs_task->class_obj;
+    task->set_kernel_launch_disabled((bool)flag);
+}   
 
 int iris_params_map(iris_task task, int *params_map) {
   return Platform::GetPlatform()->SetParamsMap(task, params_map);

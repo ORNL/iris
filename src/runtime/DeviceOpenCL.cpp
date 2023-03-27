@@ -511,7 +511,11 @@ void DeviceOpenCL::ExecuteKernel(Command* cmd) {
     KernelSetArg(kernel, max_idx + 1, sizeof(size_t), &gws0);
   }
 #endif
-  errid_ = KernelLaunch(kernel, dim, off, gws, lws[0] > 0 ? lws : NULL);
+  bool enabled = true;
+  if (cmd->task() != NULL && cmd->task()->is_kernel_launch_disabled())
+      enabled = false;
+  if (enabled)
+      errid_ = KernelLaunch(kernel, dim, off, gws, lws[0] > 0 ? lws : NULL);
   if (errid_ != IRIS_SUCCESS) {
     _error("iret[%d]", errid_); 
     worker_->platform()->IncrementErrorCount();

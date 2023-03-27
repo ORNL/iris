@@ -15,6 +15,7 @@ namespace rt {
 
 Task::Task(Platform* platform, int type, const char* name) {
   //printf("Creating task:%lu:%s ptr:%p\n", uid(), name, this);
+  is_kernel_launch_disabled_ = false;
   type_ = type;
   ncmds_ = 0;
   disable_consistency_ = false;

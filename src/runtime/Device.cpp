@@ -205,7 +205,11 @@ void Device::ExecuteKernel(Command* cmd) {
   }
 #endif
   //double ktime_start = timer_->GetCurrentTime();
-  errid_ = KernelLaunch(kernel, dim, off, gws, lws[0] > 0 ? lws : NULL);
+  bool enabled = true;
+  if (cmd->task() != NULL && cmd->task()->is_kernel_launch_disabled())
+      enabled = false;
+  if (enabled)
+      errid_ = KernelLaunch(kernel, dim, off, gws, lws[0] > 0 ? lws : NULL);
   //double ktime = timer_->GetCurrentTime() - ktime_start;
   cmd->set_time_end(timer_->Now());
   double time = timer_->Stop(IRIS_TIMER_KERNEL);
