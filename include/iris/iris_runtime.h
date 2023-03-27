@@ -261,6 +261,17 @@ extern int iris_task_get_metadata(iris_task brs_task, int index);
 extern int iris_task_set_metadata(iris_task brs_task, int index, int metadata);
 
 /**
+ * Adds a H2Broadcast command to the target task.
+ * @param task target task
+ * @param mem target memory object
+ * @param off offset in bytes
+ * @param size size in bytes
+ * @param host source host address
+ */
+extern int iris_task_h2broadcast(iris_task task, iris_mem mem, size_t off, size_t size, void* host);
+extern int iris_task_h2broadcast_offsets(iris_task task, iris_mem mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, void* host);
+
+/**
  * Adds a H2D command to the target task.
  * @param task target task
  * @param mem target memory object
@@ -316,6 +327,7 @@ extern int iris_task_kernel(iris_task task, const char* kernel, int dim, size_t*
 extern int iris_task_kernel_v2(iris_task task, const char* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, size_t* params_off, int* params_info);
 extern int iris_task_kernel_v3(iris_task task, const char* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, size_t* params_off, int* params_info, size_t* memranges);
 extern int iris_task_kernel_selector(iris_task task, iris_selector_kernel func, void* params, size_t params_size);
+extern int iris_task_kernel_launch_disabled(iris_task task, int flag);
 extern int iris_task_host(iris_task task, iris_host_task func, void* params);
 extern int iris_task_host(iris_task task, iris_host_task func, void* params);
 extern int iris_task_custom(iris_task task, int tag, void* params, size_t params_size);

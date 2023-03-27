@@ -119,6 +119,14 @@ int iris_task_set_metadata(iris_task brs_task, int index, int metadata) {
     return IRIS_SUCCESS;
 }
 
+int iris_task_h2broadcast(iris_task task, iris_mem mem, size_t off, size_t size, void* host) {
+  return Platform::GetPlatform()->TaskH2Broadcast(task, mem, off, size, host);
+}
+
+int iris_task_h2broadcast_offsets(iris_task task, iris_mem mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host) {
+  return Platform::GetPlatform()->TaskH2Broadcast(task, mem, off, host_sizes, dev_sizes, elem_size, dim, host);
+}
+
 int iris_task_h2d(iris_task task, iris_mem mem, size_t off, size_t size, void* host) {
   return Platform::GetPlatform()->TaskH2D(task, mem, off, size, host);
 }
@@ -167,6 +175,11 @@ int iris_task_kernel_v3(iris_task task, const char* kernel, int dim, size_t* off
 int iris_task_kernel_selector(iris_task task, iris_selector_kernel func, void* params, size_t params_size) {
   return Platform::GetPlatform()->TaskKernelSelector(task, func, params, params_size);
 }
+int iris_task_kernel_launch_disabled(iris_task brs_task, int flag)
+{
+    Task *task = brs_task->class_obj;
+    task->set_kernel_launch_disabled((bool)flag);
+}   
 
 int iris_params_map(iris_task task, int *params_map) {
   return Platform::GetPlatform()->SetParamsMap(task, params_map);

@@ -98,6 +98,7 @@ namespace iris {
             void depends_on(int ntasks, Task **tasks);
             void depends_on(std::vector<Task *> tasks);
             void depends_on(Task & task);
+            void disable_launch() { iris_task_kernel_launch_disabled(task_, true); }
             iris_task_type task() { return task_; }
         private:
             iris_task_type task_;

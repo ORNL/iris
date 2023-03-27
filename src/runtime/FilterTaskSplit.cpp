@@ -75,7 +75,7 @@ int FilterTaskSplit::Execute(Task* task) {
     }
     for (int j = 0; j < task->ncmds(); j++) {
       Command* cmd = task->cmd(j);
-      if (cmd->type_h2d()) {
+      if (cmd->type_h2d() || cmd->type_h2broadcast()) {
         Mem* mem = (Mem *)cmd->mem();
         for (int k = 0; k < nmems; k++) {
           if (plmems_mem[k] == mem) {

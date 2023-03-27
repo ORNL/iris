@@ -15,6 +15,7 @@ namespace rt {
 
 Task::Task(Platform* platform, int type, const char* name) {
   //printf("Creating task:%lu:%s ptr:%p\n", uid(), name, this);
+  is_kernel_launch_disabled_ = false;
   type_ = type;
   ncmds_ = 0;
   disable_consistency_ = false;
@@ -327,7 +328,7 @@ int Task::ncmds_memcpy() {
   int total = 0;
   for (int i = 0; i < ncmds_; i++) {
     Command* cmd = cmds_[i];
-    if (cmd->type_h2d() || cmd->type_h2dnp() || cmd->type_d2h()) total++;
+    if (cmd->type_h2d() || cmd->type_h2broadcast() || cmd->type_h2dnp() || cmd->type_d2h()) total++;
   }
   return total;
 }
