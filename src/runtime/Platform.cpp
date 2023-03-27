@@ -985,7 +985,7 @@ int Platform::TaskD2H(iris_task brs_task, iris_mem brs_mem, size_t *off, size_t 
 }
 
 int Platform::TaskH2BroadcastFull(iris_task brs_task, iris_mem brs_mem, void* host) {
-  return TaskH2Broadcast(brs_task, brs_mem, 0ULL, brs_mem->class_obj->size(), host);
+  return TaskH2Broadcast(brs_task, brs_mem, 0ULL, brs_mem.class_obj->size(), host);
 }
 
 int Platform::TaskH2DFull(iris_task brs_task, iris_mem brs_mem, void* host) {
