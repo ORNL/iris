@@ -58,7 +58,7 @@ void Graph::Submit() {
 
 std::vector<Task*> Graph::formatted_tasks() { 
     vector<Task*> out;
-    for(int i=1; i<tasks_.size(); i++) {
+    for(size_t i=1; i<tasks_.size(); i++) {
       out.push_back(tasks_[i]);
     }
     out.push_back(tasks_[0]);
@@ -67,7 +67,7 @@ std::vector<Task*> Graph::formatted_tasks() {
 
 int Graph::iris_tasks(iris_task *pv) { 
     int index=0;
-    for(int i=1; i<tasks_.size(); i++) {
+    for(size_t i=1; i<tasks_.size(); i++) {
       Task *task = tasks_[i];
       pv[index++] = task->struct_obj();
     }
@@ -235,6 +235,7 @@ void GraphMetadata::map_task_inputs_outputs()
                   break;
               case IRIS_CMD_MEM_FLUSH:    // Fallthrough case
                   output_flushes.insert(cmd->mem()->uid());
+                  [[fallthrough]];
               case IRIS_CMD_D2H:          
                   uid = cmd->mem()->uid();       
                   output_mems.push_back(uid);
