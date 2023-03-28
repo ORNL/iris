@@ -26,6 +26,7 @@ public:
   Platform* platform() { return platform_; }
   std::vector<Task*>* tasks() { return &tasks_; }
   std::vector<Task*> & tasks_list() { return tasks_; }
+  std::vector<Task*> formatted_tasks();
   int iris_tasks(iris_task *pv);
   int tasks_count() { return tasks_.size(); }
   bool is_retainable() { return retain_tasks_; }
