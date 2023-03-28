@@ -169,9 +169,9 @@ int DeviceCUDA::Init() {
 #ifndef TRACE_DISABLE
   CUcontext ctx;
   ld_->cuCtxGetCurrent(&ctx);
-  _trace("Init:: Context create dev:%d cctx:%p octx:%p self:%p thread:%p", devno_, ctx, ctx_, worker()->self(), worker()->thread());
+  _trace("Init:: Context create dev:%d cctx:%p octx:%p self:%p thread:%p", devno_, ctx, ctx_, (void *)worker()->self(), (void *)worker()->thread());
   if (ctx != ctx_) {
-      _trace("Init:: Context wrong for CUDA resetting context switch dev[%d][%s] worker:%d self:%p thread:%p", devno(), name_, worker()->device()->devno(), worker()->self(), worker()->thread());
+      _trace("Init:: Context wrong for CUDA resetting context switch dev[%d][%s] worker:%d self:%p thread:%p", devno(), name_, worker()->device()->devno(), (void *)worker()->self(), (void *)worker()->thread());
       _trace("Init:: Context wrong for Kernel launch Context Switch: %p %p", ctx, ctx_);
   }
 #endif
@@ -295,7 +295,7 @@ int DeviceCUDA::MemD2D(Task *task, BaseMem *mem, void *dst, void *src, size_t si
   CUdeviceptr src_cumem = (CUdeviceptr) src;
   CUdeviceptr dst_cumem = (CUdeviceptr) dst;
   if (IsContextChangeRequired()) {
-      _trace("CUDA context switch dev[%d][%s] task[%ld:%s] mem[%lu] self:%p thread:%p\n", devno_, name_, task->uid(), task->name(), mem->uid(), worker()->self(), worker()->thread());
+      _trace("CUDA context switch dev[%d][%s] task[%ld:%s] mem[%lu] self:%p thread:%p\n", devno_, name_, task->uid(), task->name(), mem->uid(), (void *)worker()->self(), (void *)worker()->thread());
       ld_->cuCtxSetCurrent(ctx_);
   }
 #ifndef IRIS_SYNC_EXECUTION
@@ -314,10 +314,10 @@ int DeviceCUDA::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
 #ifndef TRACE_DISABLE
   CUcontext ctx;
   ld_->cuCtxGetCurrent(&ctx);
-  _trace("MemH2D:: Context create %sdev[%d][%s] task[%ld:%s] mem[%lu] cctx:%p octx:%p self:%p thread:%p", tag, devno_, name_, task->uid(), task->name(), mem->uid(), ctx, ctx_, worker()->self(), worker()->thread());
+  _trace("MemH2D:: Context create %sdev[%d][%s] task[%ld:%s] mem[%lu] cctx:%p octx:%p self:%p thread:%p", tag, devno_, name_, task->uid(), task->name(), mem->uid(), ctx, ctx_, (void *)worker()->self(), (void *)worker()->thread());
 #endif
   if (IsContextChangeRequired()) {
-      _trace("CUDA context switch %sdev[%d][%s] task[%ld:%s] mem[%lu] self:%p thread:%p\n", tag, devno_, name_, task->uid(), task->name(), mem->uid(), worker()->self(), worker()->thread());
+      _trace("CUDA context switch %sdev[%d][%s] task[%ld:%s] mem[%lu] self:%p thread:%p\n", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)worker()->self(), (void *)worker()->thread());
       ld_->cuCtxSetCurrent(ctx_);
   }
   //testMemcpy(ld_);
@@ -365,7 +365,7 @@ int DeviceCUDA::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
   err_ = ld_->cuMemcpyHtoDAsync(cumem + off[0], host, size, streams_[q_]);
 #endif
   }
-  _trace("Completed H2D DT of %sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] size[%lu] host[%p]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), cumem, size, host);
+  _trace("Completed H2D DT of %sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] size[%lu] host[%p]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, size, host);
   _cuerror(err_);
   if (err_ != CUDA_SUCCESS){
    worker_->platform()->IncrementErrorCount();
@@ -386,7 +386,7 @@ void DeviceCUDA::ResetContext()
 {
     CUcontext ctx;
     ld_->cuCtxGetCurrent(&ctx);
-    _trace("CUDA resetting context switch dev[%d][%s] self:%p thread:%p\n", devno_, name_, worker()->self(), worker()->thread());
+    _trace("CUDA resetting context switch dev[%d][%s] self:%p thread:%p\n", devno_, name_, (void *)worker()->self(), (void *)worker()->thread());
     _trace("Resetting Context Switch: %p %p\n", ctx, ctx_);
     ld_->cuCtxSetCurrent(ctx_);
 }
@@ -395,14 +395,14 @@ int DeviceCUDA::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
 #ifndef TRACE_DISABLE
   CUcontext ctx;
   ld_->cuCtxGetCurrent(&ctx);
-  _trace("MemD2H:: Context create %sdev[%d][%s] task[%ld:%s] mem[%lu] cctx:%p octx:%p self:%p thread:%p", tag, devno_, name_, task->uid(), task->name(), mem->uid(), ctx, ctx_, worker()->self(), worker()->thread());
+  _trace("MemD2H:: Context create %sdev[%d][%s] task[%ld:%s] mem[%lu] cctx:%p octx:%p self:%p thread:%p", tag, devno_, name_, task->uid(), task->name(), mem->uid(), ctx, ctx_, (void *)worker()->self(), (void *)worker()->thread());
 #endif
   CUdeviceptr cumem = (CUdeviceptr) mem->arch(this);
 #ifndef IRIS_SYNC_EXECUTION
   q_ = task->uid() % nqueues_; 
 #endif
   if (IsContextChangeRequired()) {
-      _trace("CUDA context switch %sdev[%d][%s] task[%ld:%s] mem[%lu] self:%p thread:%p\n", tag, devno_, name_, task->uid(), task->name(), mem->uid(), worker()->self(), worker()->thread());
+      _trace("CUDA context switch %sdev[%d][%s] task[%ld:%s] mem[%lu] self:%p thread:%p\n", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)worker()->self(), (void *)worker()->thread());
       ld_->cuCtxSetCurrent(ctx_);
   }
   if (dim == 3) {
@@ -451,7 +451,7 @@ int DeviceCUDA::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
   if (err_ != CUDA_SUCCESS) {
       _error("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, off[0], size, host, q_);
   }
-  _trace("Completed D2H DT of %sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] size[%lu] host[%p]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), cumem, size, host);
+  _trace("Completed D2H DT of %sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] size[%lu] host[%p]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, size, host);
   _cuerror(err_);
   if (err_ != CUDA_SUCCESS){
    worker_->platform()->IncrementErrorCount();
@@ -564,9 +564,9 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
 #ifndef TRACE_DISABLE
     CUcontext ctx;
     ld_->cuCtxGetCurrent(&ctx);
-    _trace("Getting Context for Kernel launch Context Switch: dev:%ld cctx:%p octx:%p self:%p thread:%p", devno_, ctx, ctx_, worker()->self(), worker()->thread());
+    _trace("Getting Context for Kernel launch Context Switch: dev:%d cctx:%p octx:%p self:%p thread:%p", devno_, ctx, ctx_, (void *)worker()->self(), (void *)worker()->thread());
     if (ctx != ctx_) {
-        _trace("Context wrong for CUDA resetting context switch dev[%d][%s] worker:%d self:%p thread:%p", devno(), name_, worker()->device()->devno(), worker()->self(), worker()->thread());
+        _trace("Context wrong for CUDA resetting context switch dev[%d][%s] worker:%d self:%p thread:%p", devno(), name_, worker()->device()->devno(), (void *)worker()->self(), (void *)worker()->thread());
         _trace("Context wrong for Kernel launch Context Switch: %p %p", ctx, ctx_);
     }
 #endif
