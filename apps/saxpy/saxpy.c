@@ -77,7 +77,7 @@ int main(int argc, char** argv) {
   free(Y);
   free(Z);
 
-  iris_task_release(task0);
+  //iris_task_release(task0);
 
   iris_finalize();
 
