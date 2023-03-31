@@ -777,7 +777,7 @@ int Platform::CalibrateCommunicationMatrix(double *comm_time, size_t data_size, 
     Command* d2h_cmd = Command::CreateD2H(task, mem, 0, data_size, A);
     iris_kernel null_brs_kernel;
     KernelCreate("iris_null", &null_brs_kernel);
-    Kernel *null_kernel = null_brs_kernel->class_obj;
+    Kernel *null_kernel = null_brs_kernel.class_obj;
     Command* cmd_kernel = Command::CreateKernel(task, null_kernel, 1, 0, &gws, &gws);
     task->AddCommand(cmd_kernel);
     int ndevs = ndevs_+1;
@@ -1012,8 +1012,8 @@ int Platform::TaskH2D(iris_task brs_task, iris_mem brs_mem, size_t *off, size_t 
 }
 
 int Platform::TaskD2D(iris_task brs_task, iris_mem brs_mem, size_t off, size_t size, void* host, int src_dev) {
-  Task* task = brs_task->class_obj;
-  Mem* mem = (Mem *)brs_mem->class_obj;
+  Task* task = brs_task.class_obj;
+  Mem* mem = (Mem *)brs_mem.class_obj;
   Command* cmd = Command::CreateD2D(task, mem, off, size, host, src_dev);
   task->AddCommand(cmd);
   return IRIS_SUCCESS;
