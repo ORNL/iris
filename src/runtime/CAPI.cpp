@@ -127,6 +127,10 @@ int iris_task_h2broadcast_offsets(iris_task task, iris_mem mem, size_t *off, siz
   return Platform::GetPlatform()->TaskH2Broadcast(task, mem, off, host_sizes, dev_sizes, elem_size, dim, host);
 }
 
+int iris_task_d2d(iris_task task, iris_mem mem, size_t off, size_t size, void* host, int src_dev) {
+  return Platform::GetPlatform()->TaskD2D(task, mem, off, size, host, src_dev);
+}
+
 int iris_task_h2d(iris_task task, iris_mem mem, size_t off, size_t size, void* host) {
   return Platform::GetPlatform()->TaskH2D(task, mem, off, size, host);
 }
@@ -547,6 +551,11 @@ int iris_calibrate_compute_cost_adj_matrix(iris_graph brs_graph, double *comp_da
     Graph* graph = brs_graph.class_obj;
     shared_ptr<GraphMetadata> gm = graph->get_metadata();
     gm->calibrate_compute_cost_adj_matrix(comp_data);
+    return IRIS_SUCCESS;
+}
+int iris_calibrate_communication_cost(double *data, size_t data_size, int iterations, int pin_memory_flag)
+{
+    Platform::GetPlatform()->CalibrateCommunicationMatrix(data, data_size, iterations, (bool)pin_memory_flag);
     return IRIS_SUCCESS;
 }
 void iris_free_array(void *ptr)
