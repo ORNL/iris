@@ -13,6 +13,10 @@ class Gantt():
     import pandas as pandas
     from bokeh import palettes
 
+    def __init__(self, device_colour_palette=None, use_device_background_colour=False):
+        self.device_colour_palette = device_colour_palette
+        self.use_device_background_colour = use_device_background_colour
+
     def _createGanttChart(self, timings, title=None, edgepalette=None, insidepalette=None, time_range=None, zoom=False, drop=[], outline=True, inner_label=False, timeline_output_file=None):
         import numpy as np
         timings['taskname'] = np.where(~timings['taskname'].isnull(),timings['taskname'],timings['type'])
@@ -21,10 +25,10 @@ class Gantt():
           timings = timings[timings.taskname != d]
 
         from natsort import humansorted
-        processors = sorted(list(set(timings['acclname'])))
+        processors = sorted(list(set(timings['acclname'])),reverse=False)
 
         proc_names = [p for p in processors]
-
+        
         # color_choices = ['red', 'blue', 'green', 'cyan', 'magenta']
         # Assign colors based on the palette or default to a palette.
         unique_kernels = humansorted(set(timings['taskname']))
@@ -81,16 +85,21 @@ class Gantt():
                     ax.text(job['start'] + (.05*(job['end']-job['start'])), (idx*0.5)+0.5 - 0.03125, job['taskname'].values[0], fontweight='bold', fontsize=9, alpha=0.75, rotation=90)
 
         locsy, labelsy = self.plt.yticks(pos, proc_names)
-        self.plt.ylabel('Accelerator', fontsize=10)
+        self.plt.ylabel('Devices', fontsize=10)
         self.plt.xlabel('Time (s)', fontsize=10)
         self.plt.setp(labelsy, fontsize = 8)
-        ax.set_ylim(ymin = -0.1, ymax = ilen*0.5+0.5)
+        #ax.set_ylim(ymin = -0.1, ymax = ilen*0.5+0.5)
         ax.set_xlim(xmin = -0.1, xmax = max(timings['end'])+0.1)
-
+        #TODO: move this to kwargs
+        if self.use_device_background_colour:
+            for tl in ax.get_yticklabels():
+                txt = tl.get_text()
+                tl.set_backgroundcolor(self.device_colour_palette[txt])
+                tl.set_text(txt)
         # sort both labels and handles by labels
         handles, labels = ax.get_legend_handles_labels()
         neworder = dict(humansorted(zip(labels, handles)))
-        ax.legend(neworder.values(), neworder.keys(), bbox_to_anchor=(1.15, 1), ncol = 1)
+        ax.legend(neworder.values(), neworder.keys(), title="Tasks",fontsize=8)#bbox_to_anchor=(0, .5), ncol = 1,
 
         if time_range and not zoom:
             ax.set_xlim(time_range)
@@ -99,6 +108,7 @@ class Gantt():
             ax.set_xlim(xmin=min(timings['start'])-padding,xmax=max(timings['end'])+padding)
         ax.grid(color = 'g', linestyle = ':', alpha=0.5)
 
+        ax.invert_yaxis()
         if title:
             self.plt.title(str(title))
         self.plt.tight_layout()
@@ -130,6 +140,7 @@ class DAG():
     def __init__(self, dag_file, timeline_file):
         self.tasks, self.edges = self.getJsonToTask(dag_file)
         self.timeline = self.getTimelineFromFile(timeline_file)
+        self.device_colour_palette = None
 
     def getJsonToTask(self, dag_file):
         tasks, edges = [],[]
@@ -210,6 +221,7 @@ class DAG():
         device_colour = {}
         for i,d in enumerate(unique_devices):
             device_colour[d] = palette[i]
+        self.device_colour_palette = device_colour #save the colour palette for later--incase the timeline plot should use it
         #if there are edges, create the DAG from it, otherwise just the nodes (there are no edges in the DAG, and so the draw call will fail)
         node_d = [(str(e['name']),{"label":e['name'], "position":(i,0), "marker":kernel_shapes[e['kernel']]}) for i, e in enumerate(task_dag)]
         dag.add_nodes_from(node_d)
@@ -302,9 +314,11 @@ class CombinePlots():
         # generate the dag/graph plot
         dag = DAG(self.dag_file,timeline_file=self.timeline_file)
         right = dag.plotDag(self.dag_output_file)
-
         # generate the timeline/gantt plot
-        gantt = Gantt()
+        use_device_background_colour = False
+        if 'use_device_background_colour' in self.kargs:
+            use_device_background_colour = self.kargs['use_device_background_colour']
+        gantt = Gantt(device_colour_palette=dag.device_colour_palette,use_device_background_colour=use_device_background_colour)
         left = gantt.plotGanttChart(timing_log=self.timeline_file,drop=self.drop,title=self.title_string,time_range=time_range,outline=False,timeline_output_file=self.timeline_output_file)
         if self.output_file is not None:
             self.write_pdf([left, right])
@@ -315,7 +329,6 @@ if __name__ == '__main__':
     import sys
     import pandas as pandas
     import argparse
-    #TODO use kargs HERE!!! to determine whether we're plotting a dag, a timeline or both
 
     parser = argparse.ArgumentParser(
         prog='IRIS Plotter',
@@ -343,5 +356,5 @@ if __name__ == '__main__':
     if output_file is None and timeline_output_file is None and dag_output_file is None:
         print("Incorrect Arguments. Please provide *at least* one output medium (--combined-out, --timeline-out, --dag-out)")
         sys.exit(1)
-    cp = CombinePlots(timeline_file=timeline_file, dag_file=dag_file, combined_output_file=output_file, timeline_output_file=timeline_output_file, dag_output_file=dag_output_file, title_string=title_string, drop=dropsy)
+    cp = CombinePlots(timeline_file=timeline_file, dag_file=dag_file, combined_output_file=output_file, timeline_output_file=timeline_output_file, dag_output_file=dag_output_file, title_string=title_string, drop=dropsy, use_device_background_colour=True)
 
