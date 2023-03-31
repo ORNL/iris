@@ -550,6 +550,56 @@ void Device::ExecuteH2BroadCast(Command *cmd) {
         ExecuteH2D(cmd, src_dev);
     }
 }
+void Device::ExecuteD2D(Command* cmd, Device *dev) {
+    if (dev == NULL) dev = this;
+    Mem* mem = cmd->mem();
+    size_t off = cmd->off(0);
+    size_t *ptr_off = cmd->off();
+    size_t *gws = cmd->gws();
+    size_t *lws = cmd->lws();
+    size_t elem_size = cmd->elem_size();
+    int dim = cmd->dim();
+    size_t size = cmd->size();
+    bool exclusive = cmd->exclusive();
+    void* host = cmd->host();
+    if (exclusive) mem->SetOwner(off, size, this);
+    else mem->AddOwner(off, size, this);
+    Device *src_dev = Platform::GetPlatform()->device(cmd->src_dev());
+    double start = timer_->Now();
+    cmd->set_time_start(start);
+    if (src_dev->type() == type()) {
+        // Invoke D2D
+        void* dst_arch = mem->arch(this);
+        void* src_arch = mem->arch(src_dev);
+        MemD2D(cmd->task(), mem, dst_arch, src_arch, mem->size());
+    }
+    else {
+        void* host = mem->host_inter(); // It should work even if host_ptr is null
+        // D2H should be issued from target src (remote) device
+        bool context_shift = src_dev->IsContextChangeRequired();
+        errid_ = src_dev->MemD2H(cmd->task(), mem, ptr_off, 
+                gws, lws, elem_size, dim, size, host, "D2H->H2D(1) ");
+        if (context_shift) ResetContext();
+        if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
+        // H2D should be issued from this current device
+        errid_ = MemH2D(cmd->task(), mem, ptr_off, 
+                gws, lws, elem_size, dim, size, host, "D2H->H2D(2) ");
+        if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
+    }
+    double end = timer_->Now();
+    cmd->set_time_end(end);
+    cmd->SetTime(end-start);
+    Kernel *kernel = Platform::GetPlatform()->null_kernel();
+    Command *cmd_kernel = cmd->task()->cmd_kernel();
+    if (cmd_kernel != NULL) 
+        kernel = cmd_kernel->kernel();
+    if (src_dev->type() == type()) {
+        kernel->history()->AddD2D(cmd, this, end, size);
+    }
+    else {
+        kernel->history()->AddD2H_H2D(cmd, this, end, size);
+    }
+}
 void Device::ExecuteH2D(Command* cmd, Device *dev) {
   if (dev == NULL) dev = this;
   Mem* mem = cmd->mem();

@@ -101,6 +101,7 @@ public:
   int TaskH2BroadcastFull(iris_task brs_task, iris_mem brs_mem, void* host);
   int TaskH2D(iris_task brs_task, iris_mem brs_mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host);
   int TaskH2D(iris_task brs_task, iris_mem brs_mem, size_t off, size_t size, void* host);
+  int TaskD2D(iris_task brs_task, iris_mem brs_mem, size_t off, size_t size, void* host, int src_dev);
   int TaskD2H(iris_task brs_task, iris_mem brs_mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host);
   int TaskD2H(iris_task brs_task, iris_mem brs_mem, size_t off, size_t size, void* host);
   int TaskH2DFull(iris_task brs_task, iris_mem brs_mem, void* host);
@@ -149,6 +150,7 @@ public:
   int GraphWaitAll(int ngraphs, iris_graph* brs_graphs);
   int GetGraphTasks(iris_graph graph, iris_task *tasks);
   int GetGraphTasksCount(iris_graph graph);
+  int CalibrateCommunicationMatrix(double *comm_time, size_t data_size, int iterations=1, bool pin_memory_flag=false);
 
   int RecordStart();
   int RecordStop();

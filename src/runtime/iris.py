@@ -265,6 +265,14 @@ def device_info(device, param):
     dll.iris_device_info(c_int(device), c_int(param), s, None)
     return s.value
 
+def calibrate_communication_cost_matrix(data_size, iterations=1, pin_memory=True):
+    ndevs = device_count()+1
+    data_np = np.zeros(ndevs*ndevs).astype(np.double)
+    data_np_cp = convert_obj_ctype(data_np)[0]
+    iterations = np.int32(iterations)
+    dll.iris_calibrate_communication_cost(data_np_cp, convert_obj_ctype(size_t(data_size))[0], convert_obj_ctype(iterations)[0], convert_obj_ctype(np.int32(pin_memory))[0])
+    return (data_size / data_np.reshape((ndevs, ndevs)))/1000000000
+
 def all_device_info():
     dev_names = []
     for i in range(device_count()):

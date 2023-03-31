@@ -762,6 +762,57 @@ int Platform::PolicyRegister(const char* lib, const char* name, void* params) {
   return scheduler_->policies()->Register(lib, name, params);
 }
 
+int Platform::CalibrateCommunicationMatrix(double *comm_time, size_t data_size, int iterations, bool pin_memory_flag)
+{
+    uint8_t *A = Utils::AllocateRandomArray<uint8_t>(data_size);
+    if (pin_memory_flag) 
+        iris_register_pin_memory(A, data_size);
+    Mem* mem = new Mem(data_size, this);
+    size_t gws=1;
+    Task* task = Task::Create(this, IRIS_TASK, NULL);
+    Command* d2d_cmd = Command::CreateD2D(task, mem, 0, data_size, A, 0);
+    Command* h2d_cmd = Command::CreateH2D(task, mem, 0, data_size, A);
+    Command* d2h_cmd = Command::CreateD2H(task, mem, 0, data_size, A);
+    iris_kernel null_brs_kernel;
+    KernelCreate("iris_null", &null_brs_kernel);
+    Kernel *null_kernel = null_brs_kernel->class_obj;
+    Command* cmd_kernel = Command::CreateKernel(task, null_kernel, 1, 0, &gws, &gws);
+    task->AddCommand(cmd_kernel);
+    int ndevs = ndevs_+1;
+    for(int i=0; i<ndevs; i++) {
+        for(int j=0; j<ndevs; j++) {
+            double cmd_time = 0.0f;
+            if (i != j) {
+                double total_cmd_time = 0.0f;
+                for(int k=0; k<iterations; k++) {
+                    double lcmd_time = 0.0f;
+                    if (j == 0) {
+                        devs_[i-1]->ExecuteD2H(d2h_cmd);
+                        lcmd_time = d2h_cmd->time_end() - d2h_cmd->time_start();
+                    } else if (i == 0) {
+                        devs_[j-1]->ExecuteH2D(h2d_cmd);
+                        lcmd_time = h2d_cmd->time_end() - h2d_cmd->time_start();
+                    } else {
+                        d2d_cmd->set_src_dev(i-1);
+                        devs_[j-1]->ExecuteD2D(d2d_cmd);
+                        lcmd_time = d2d_cmd->time_end() - d2d_cmd->time_start();
+                    }
+                    total_cmd_time += lcmd_time;
+                }
+                cmd_time = total_cmd_time / iterations;
+            }
+            comm_time[i*ndevs + j] = cmd_time;
+        }
+    }
+    //delete cmd_kernel;
+    delete d2d_cmd;
+    delete h2d_cmd;
+    delete d2h_cmd;
+    delete mem;
+    delete task;
+    return IRIS_SUCCESS;
+}
+
 int Platform::RegisterCommand(int tag, int device, command_handler handler) {
   for (int i = 0; i < ndevs_; i++)
     if (devs_[i]->type() == device) devs_[i]->RegisterCommand(tag, handler);
@@ -946,6 +997,14 @@ int Platform::TaskH2D(iris_task brs_task, iris_mem brs_mem, size_t *off, size_t 
   Task* task = brs_task->class_obj;
   Mem* mem = (Mem *)brs_mem->class_obj;
   Command* cmd = Command::CreateH2D(task, mem, off, host_sizes, dev_sizes, elem_size, dim, host);
+  task->AddCommand(cmd);
+  return IRIS_SUCCESS;
+}
+
+int Platform::TaskD2D(iris_task brs_task, iris_mem brs_mem, size_t off, size_t size, void* host, int src_dev) {
+  Task* task = brs_task->class_obj;
+  Mem* mem = (Mem *)brs_mem->class_obj;
+  Command* cmd = Command::CreateD2D(task, mem, off, size, host, src_dev);
   task->AddCommand(cmd);
   return IRIS_SUCCESS;
 }

@@ -22,6 +22,7 @@
 #define IRIS_CMD_CUSTOM         0x100d
 #define IRIS_CMD_RESET_INPUT    0x100e
 #define IRIS_CMD_H2BROADCAST    0x100f
+#define IRIS_CMD_D2D            0x1010
 
 #define IRIS_CMD_KERNEL_NARGS_MAX   16
 
@@ -87,7 +88,7 @@ public:
   const char* name() { return name_; }
   void set_name(const char* name) { name_ = name; }
   uint8_t reset_value() { return reset_value_; }
-  double SetTime(double t);
+  double SetTime(double t, bool incr=true);
   double time() { return time_; }
   void set_time_start(double d) { time_start_ = d; }
   void set_time_end(double d) { time_end_ = d; }
@@ -95,11 +96,14 @@ public:
   double time_end() { return time_end_; }
   double time_duration() { return time_end_-time_start_; }
   int get_access_index() { return access_index_; }
+  int src_dev() { return src_dev_; }
+  void set_src_dev(int devno) { src_dev_ = devno; }
 private:
   void Clear(bool init);
 
 private:
   int type_;
+  int src_dev_;
   size_t size_;
   void* host_;
   int *params_map_;
@@ -145,6 +149,7 @@ public:
   static Command* CreateMemIn(Task* task, DataMem* mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host);
   static Command* CreateH2Broadcast(Task* task, Mem* mem, size_t off, size_t size, void* host);
   static Command* CreateH2Broadcast(Task* task, Mem* mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host);
+  static Command* CreateD2D(Task* task, Mem* mem, size_t off, size_t size, void* host, int src_dev);
   static Command* CreateH2D(Task* task, Mem* mem, size_t off, size_t size, void* host);
   static Command* CreateH2D(Task* task, Mem* mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host);
   static Command* CreateH2DNP(Task* task, Mem* mem, size_t off, size_t size, void* host);
