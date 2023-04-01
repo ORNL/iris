@@ -1219,8 +1219,8 @@ int Platform::DataMemUpdate(iris_mem brs_mem, void *host) {
 }
 
 int Platform::RegisterPin(void *host, size_t size) {
-  for (int i=0; i<ndevs_; i++) {
-    devs_[i]->RegisterPin(host, size);
+  for (int i=0; i<nplatforms_; i++) {
+    first_dev_of_type_[i]->RegisterPin(host, size);
   }  
   return IRIS_SUCCESS;
 }
