@@ -39,6 +39,7 @@ public:
   const char* kernel_bin() { return "KERNEL_BIN_HIP"; }
   void ResetContext();
   bool IsContextChangeRequired();
+  void SetContextToCurrentThread();
 
 private:
   LoaderHIP* ld_;

@@ -105,9 +105,16 @@ KernelArg* Kernel::ExportArgs() {
   return new_args;
 }
 
+int Kernel::isSupported(Device* dev) {
+  int devno = dev->devno();
+  if (archs_[devno] != NULL) return IRIS_SUCCESS;
+  int result = dev->KernelGet(this, archs_ + devno, (const char*) name_, false);
+  return result;
+}
+
 void* Kernel::arch(Device* dev, bool report_error) {
   int devno = dev->devno();
-  if (archs_[devno] == NULL) dev->KernelGet(this, archs_ + devno, (const char*) name_, false);
+  if (archs_[devno] == NULL) dev->KernelGet(this, archs_ + devno, (const char*) name_, report_error);
   return archs_[devno];
 }
 

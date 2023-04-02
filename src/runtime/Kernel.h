@@ -52,6 +52,7 @@ public:
   void** archs() { return archs_; }
   size_t nargs() { return args_.size(); }
   void* arch(Device* dev, bool report_error=true);
+  int isSupported(Device* dev);
   void add_dmem(DataMem *mem, int idx, int mode);
   void add_dmem_region(DataMemRegion *mem, int idx, int mode);
 

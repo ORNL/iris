@@ -184,6 +184,12 @@ int DeviceHIP::MemFree(void* mem) {
 bool DeviceHIP::IsContextChangeRequired() {
     return (worker()->self() != worker()->thread());
 }
+void DeviceHIP::SetContextToCurrentThread()
+{
+    if (IsContextChangeRequired()) {
+        ld_->hipCtxSetCurrent(ctx_);
+    }
+}
 void DeviceHIP::ResetContext()
 {
     hipCtx_t ctx;
@@ -313,6 +319,15 @@ int DeviceHIP::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,
 }
 
 int DeviceHIP::KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bool report_error) {
+#ifdef TRACE_DISABLE
+  hipCtx_t ctx;
+  ld_->hipCtxGetCurrent(&ctx);
+  _trace("Getting Context for Kernel launch Context Switch: dev:%d cctx:%p octx:%p self:%p thread:%p", devno_, ctx, ctx_, (void *)worker()->self(), (void *)worker()->thread());
+  if (ctx != ctx_) {
+      _trace("Context wrong for HIP resetting context switch dev[%d][%s] worker:%d self:%p thread:%p", devno(), name_, worker()->device()->devno(), (void *)worker()->self(), (void *)worker()->thread());
+      _trace("Context wrong for Kernel launch Context Switch: %p %p", ctx, ctx_);
+  }
+#endif
   if (!kernel->vendor_specific_kernel_check_flag(devno_))
       CheckVendorSpecificKernel(kernel);
   int kernel_idx = -1;
@@ -326,22 +341,29 @@ int DeviceHIP::KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bo
       *kernel_bin = host2hip_ld_->GetFunctionPtr(name);
       return IRIS_SUCCESS;
   }
-  hipFunction_t* hipkernel = (hipFunction_t*) kernel_bin;
-  err_ = ld_->hipModuleGetFunction(hipkernel, module_, name);
-  if (report_error) _hiperror(err_);
-  if (err_ != hipSuccess){
-    if (report_error) worker_->platform()->IncrementErrorCount();
-    return IRIS_ERROR;
+  if (report_error) {
+      hipFunction_t* hipkernel = (hipFunction_t*) kernel_bin;
+      err_ = ld_->hipModuleGetFunction(hipkernel, module_, name);
+      if (report_error) _hiperror(err_);
+      if (err_ != hipSuccess){
+          if (report_error) {
+              _error("HIP kernel:%s not found !", name);
+              worker_->platform()->IncrementErrorCount();
+          }
+          return IRIS_ERROR;
+      }
+      char name_off[256];
+      memset(name_off, 0, sizeof(name_off));
+      sprintf(name_off, "%s_with_offsets", name);
+      hipFunction_t hipkernel_off;
+      err_ = ld_->hipModuleGetFunction(&hipkernel_off, module_, name_off);
+      if (err_ == hipSuccess) {
+          kernels_offs_.insert(std::pair<hipFunction_t, hipFunction_t>(*hipkernel, hipkernel_off));
+      }
+      else {
+          return IRIS_ERROR;
+      }
   }
-
-  char name_off[256];
-  memset(name_off, 0, sizeof(name_off));
-  sprintf(name_off, "%s_with_offsets", name);
-  hipFunction_t hipkernel_off;
-  err_ = ld_->hipModuleGetFunction(&hipkernel_off, module_, name_off);
-  if (err_ == hipSuccess)
-    kernels_offs_.insert(std::pair<hipFunction_t, hipFunction_t>(*hipkernel, hipkernel_off));
-
   return IRIS_SUCCESS;
 }
 
@@ -396,6 +418,15 @@ int DeviceHIP::KernelLaunchInit(Kernel* kernel) {
 
 
 int DeviceHIP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws) {
+#ifdef TRACE_DISABLE
+  hipCtx_t ctx;
+  ld_->hipCtxGetCurrent(&ctx);
+  _trace("Getting Context for Kernel launch Context Switch: dev:%d cctx:%p octx:%p self:%p thread:%p", devno_, ctx, ctx_, (void *)worker()->self(), (void *)worker()->thread());
+  if (ctx != ctx_) {
+      _trace("Context wrong for HIP resetting context switch dev[%d][%s] worker:%d self:%p thread:%p", devno(), name_, worker()->device()->devno(), (void *)worker()->self(), (void *)worker()->thread());
+      _trace("Context wrong for Kernel launch Context Switch: %p %p", ctx, ctx_);
+  }
+#endif
   atleast_one_command_ = true;
   if (kernel->is_vendor_specific_kernel(devno_) && host2hip_ld_->iris_host2hip_launch_with_obj) {
       _trace("dev[%d][%s] kernel[%s:%s] dim[%d] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, q_);
