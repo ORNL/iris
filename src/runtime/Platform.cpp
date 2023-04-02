@@ -786,10 +786,10 @@ int Platform::CalibrateCommunicationMatrix(double *comm_time, size_t data_size, 
                 double total_cmd_time = 0.0f;
                 for(int k=0; k<iterations; k++) {
                     double lcmd_time = 0.0f;
-                    if (j == 0) {
+                    if (j == 0 || devs_[i-1]->type() == iris_cpu) {
                         devs_[i-1]->ExecuteD2H(d2h_cmd);
                         lcmd_time = d2h_cmd->time_end() - d2h_cmd->time_start();
-                    } else if (i == 0) {
+                    } else if (i == 0 || devs_[j-1]->type() == iris_cpu) {
                         devs_[j-1]->ExecuteH2D(h2d_cmd);
                         lcmd_time = h2d_cmd->time_end() - h2d_cmd->time_start();
                     } else {
@@ -1219,9 +1219,13 @@ int Platform::DataMemUpdate(iris_mem brs_mem, void *host) {
 }
 
 int Platform::RegisterPin(void *host, size_t size) {
-  for (int i=0; i<nplatforms_; i++) {
+#if 1
+  for (int i=0; i<ndevs_; i++) 
+    devs_[i]->RegisterPin(host, size);
+#else
+  for (int i=0; i<nplatforms_; i++) 
     first_dev_of_type_[i]->RegisterPin(host, size);
-  }  
+#endif
   return IRIS_SUCCESS;
 }
 
