@@ -115,12 +115,17 @@ void GraphMetadata::calibrate_compute_cost_adj_matrix(double *comp_task_adj_matr
     map<vector<uint64_t>, double> knobs_to_makespan;
     for(unsigned long index=0; index<tasks.size(); index++) {
         Task *task = tasks[index];
+#ifdef ENABLE_DEBUG
+        printf("****** Task:%s ******\n", task->name());
+#endif
         vector<uint64_t> knobs;
         if (task->cmd_kernel() != NULL)  {
             string kname = task->cmd_kernel()->kernel()->name();
             if (kernel_map.find(kname) == kernel_map.end()) {
                 size_t size = kernel_map.size();
-                //printf("Inserting kname: %s in map size:%lu\n", kname.c_str(), size);
+#ifdef ENABLE_DEBUG
+                printf("Inserting kname: %s in map size:%lu\n", kname.c_str(), size);
+#endif
                 kernel_map[kname] = (int)size;
             }
             knobs.push_back(kernel_map[kname]);
@@ -154,6 +159,7 @@ void GraphMetadata::calibrate_compute_cost_adj_matrix(double *comp_task_adj_matr
                 knobs.push_back(data64);
             }
         }
+        int dev_type_index = 0;
         for(int dev_index : unique_devices) {
             int dev_no = model_2_devices[dev_index][0];
             vector<uint64_t > dknobs = knobs;
@@ -184,22 +190,43 @@ void GraphMetadata::calibrate_compute_cost_adj_matrix(double *comp_task_adj_matr
                     time_duration += dtime;
                 }
                 time_duration = time_duration / iterations_;
+#ifdef ENABLE_DEBUG
+                printf("Inserting: ");
+                for(uint64_t kn : dknobs) {
+                    printf(" %ld", kn);
+                }
+                printf(" Time: %lf\n", time_duration);
+#endif
                 knobs_to_makespan.insert(make_pair(dknobs, time_duration));
             }
             else {
                 time_duration = knobs_to_makespan[dknobs];
+#ifdef ENABLE_DEBUG
+                printf("Extracting: ");
+                for(uint64_t kn : dknobs) {
+                    printf(" %ld", kn);
+                }
+                printf(" Time: %lf\n", time_duration);
+#endif
             }
             if (only_device_type) {
-                comp_task_adj_matrix[GET2D_INDEX(nplatforms, index+1, dev_index)] = time_duration;
+                comp_task_adj_matrix[GET2D_INDEX(nplatforms, index+1, dev_type_index)] = time_duration;
             }
             else {
                 for(int dev_no : model_2_devices[dev_index]) {
                     comp_task_adj_matrix[GET2D_INDEX(ndevs, index+1, dev_no)] = time_duration;
                 }
             }
+            dev_type_index++;
         }
     }   
-    //Utils::PrintMatrixLimited<double>(comp_task_adj_matrix, ntasks, ndevs, "Task Computation data(C++)");
+#ifdef ENABLE_DEBUG
+    int nentries = ndevs;
+    if (only_device_type)
+        nentries = (int)unique_devices.size();
+    printf("N Entries:%d %d uniques:%d %ld\n", only_device_type, ndevs, nentries, unique_devices.size());
+    Utils::PrintMatrixLimited<double>(comp_task_adj_matrix, ntasks, nentries, "Task Computation data(C++)-");
+#endif
 }
 void GraphMetadata::map_task_inputs_outputs()
 {

@@ -786,12 +786,18 @@ int Platform::CalibrateCommunicationMatrix(double *comm_time, size_t data_size, 
                 double total_cmd_time = 0.0f;
                 for(int k=0; k<iterations; k++) {
                     double lcmd_time = 0.0f;
-                    if (j == 0 || devs_[i-1]->type() == iris_cpu) {
+                    if (j == 0) {
                         devs_[i-1]->ExecuteD2H(d2h_cmd);
                         lcmd_time = d2h_cmd->time_end() - d2h_cmd->time_start();
-                    } else if (i == 0 || devs_[j-1]->type() == iris_cpu) {
+                    } else if (i == 0) {
                         devs_[j-1]->ExecuteH2D(h2d_cmd);
                         lcmd_time = h2d_cmd->time_end() - h2d_cmd->time_start();
+                    } else if (j>0 && devs_[j-1]->type() == iris_cpu) {
+                        devs_[j-1]->ExecuteH2D(h2d_cmd);
+                        lcmd_time = h2d_cmd->time_end() - h2d_cmd->time_start();
+                    } else if (i>0 && devs_[i-1]->type() == iris_cpu) {
+                        devs_[i-1]->ExecuteD2H(d2h_cmd);
+                        lcmd_time = d2h_cmd->time_end() - d2h_cmd->time_start();
                     } else {
                         d2d_cmd->set_src_dev(i-1);
                         devs_[j-1]->ExecuteD2D(d2d_cmd);
