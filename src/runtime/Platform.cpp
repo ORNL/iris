@@ -765,6 +765,7 @@ int Platform::PolicyRegister(const char* lib, const char* name, void* params) {
 int Platform::CalibrateCommunicationMatrix(double *comm_time, size_t data_size, int iterations, bool pin_memory_flag)
 {
     uint8_t *A = Utils::AllocateRandomArray<uint8_t>(data_size);
+    uint8_t *nopin_A = Utils::AllocateRandomArray<uint8_t>(data_size);
     if (pin_memory_flag) 
         iris_register_pin_memory(A, data_size);
     Mem* mem = new Mem(data_size, this);
@@ -773,6 +774,8 @@ int Platform::CalibrateCommunicationMatrix(double *comm_time, size_t data_size, 
     Command* d2d_cmd = Command::CreateD2D(task, mem, 0, data_size, A, 0);
     Command* h2d_cmd = Command::CreateH2D(task, mem, 0, data_size, A);
     Command* d2h_cmd = Command::CreateD2H(task, mem, 0, data_size, A);
+    Command* nopin_h2d_cmd = Command::CreateH2D(task, mem, 0, data_size, nopin_A);
+    Command* nopin_d2h_cmd = Command::CreateD2H(task, mem, 0, data_size, nopin_A);
     iris_kernel null_brs_kernel;
     KernelCreate("iris_null", &null_brs_kernel);
     Kernel *null_kernel = null_brs_kernel->class_obj;
@@ -793,11 +796,11 @@ int Platform::CalibrateCommunicationMatrix(double *comm_time, size_t data_size, 
                         devs_[j-1]->ExecuteH2D(h2d_cmd);
                         lcmd_time = h2d_cmd->time_end() - h2d_cmd->time_start();
                     } else if (j>0 && devs_[j-1]->type() == iris_cpu) {
-                        devs_[j-1]->ExecuteH2D(h2d_cmd);
-                        lcmd_time = h2d_cmd->time_end() - h2d_cmd->time_start();
+                        devs_[i-1]->ExecuteD2H(nopin_d2h_cmd);
+                        lcmd_time = nopin_d2h_cmd->time_end() - nopin_d2h_cmd->time_start();
                     } else if (i>0 && devs_[i-1]->type() == iris_cpu) {
-                        devs_[i-1]->ExecuteD2H(d2h_cmd);
-                        lcmd_time = d2h_cmd->time_end() - d2h_cmd->time_start();
+                        devs_[j-1]->ExecuteH2D(nopin_h2d_cmd);
+                        lcmd_time = nopin_h2d_cmd->time_end() - nopin_h2d_cmd->time_start();
                     } else {
                         d2d_cmd->set_src_dev(i-1);
                         devs_[j-1]->ExecuteD2D(d2d_cmd);
@@ -806,9 +809,10 @@ int Platform::CalibrateCommunicationMatrix(double *comm_time, size_t data_size, 
                     total_cmd_time += lcmd_time;
                 }
                 cmd_time = total_cmd_time / iterations;
-            }
+            } 
             comm_time[i*ndevs + j] = cmd_time;
         }
+        printf("\n");
     }
     //delete cmd_kernel;
     delete d2d_cmd;
