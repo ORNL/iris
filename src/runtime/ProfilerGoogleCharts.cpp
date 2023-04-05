@@ -31,7 +31,8 @@
 namespace iris {
 namespace rt {
 
-ProfilerGoogleCharts::ProfilerGoogleCharts(Platform* platform) : Profiler(platform, "GoogleChart") {
+ProfilerGoogleCharts::ProfilerGoogleCharts(Platform* platform, bool kernel_profile) : Profiler(platform, "GoogleChart") {
+  kernel_profile_ = kernel_profile;
   first_task_ = 0.0;
   pthread_mutex_init(&chart_lock_, NULL);
   char* path = NULL;
@@ -68,11 +69,19 @@ int ProfilerGoogleCharts::CompleteTask(Task* task) {
   int policy = task->brs_policy();
   if (dev != NULL) {
       char s[1024];
-      sprintf(s, "[ '%s %d', '%s (%s)', %lf, %lf ],\n", dev->name(), dev->devno(), task->name(), policy_str(policy), (task->time_start() * 1.e+3) - first_task_, (task->time_end() * 1.e+3) - first_task_);
+      if (!kernel_profile_) {
+          sprintf(s, "[ '%s %d', '%s (%s)', %lf, %lf ],\n", dev->name(), dev->devno(), task->name(), policy_str(policy), (task->time_start() * 1.e+3) - first_task_, (task->time_end() * 1.e+3) - first_task_);
+          pthread_mutex_lock(&chart_lock_);
+          Write(s);
+          pthread_mutex_unlock(&chart_lock_);
+      }
+      else if (task->cmd_kernel() != NULL){
+          sprintf(s, "[ '%s %d', '%s (%s)', %lf, %lf ],\n", dev->name(), dev->devno(), task->name(), policy_str(policy), (task->cmd_kernel()->time_start() * 1.e+3) - first_task_, (task->cmd_kernel()->time_end() * 1.e+3) - first_task_);
+          pthread_mutex_lock(&chart_lock_);
+          Write(s);
+          pthread_mutex_unlock(&chart_lock_);
+      }
       //printf("Profiling Task: %s %lf %lf\n", s, task->time_start()*1.e+3, task->time_end()*1.e+3);
-      pthread_mutex_lock(&chart_lock_);
-      Write(s);
-      pthread_mutex_unlock(&chart_lock_);
   }
   return IRIS_SUCCESS;
 }

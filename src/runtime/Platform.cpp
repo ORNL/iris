@@ -201,6 +201,7 @@ int Platform::Init(int* argc, char*** argv, int sync) {
   if (enable_profiler_) {
     profilers_[nprofilers_++] = new ProfilerDOT(this);
     profilers_[nprofilers_++] = new ProfilerGoogleCharts(this);
+    profilers_[nprofilers_++] = new ProfilerGoogleCharts(this, true);
   }
   if (enable_scheduling_history_) scheduling_history_ = new SchedulingHistory(this);
 
