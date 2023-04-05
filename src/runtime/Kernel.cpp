@@ -107,9 +107,9 @@ KernelArg* Kernel::ExportArgs() {
 
 int Kernel::isSupported(Device* dev) {
   int devno = dev->devno();
-  if (archs_[devno] != NULL) return IRIS_SUCCESS;
+  if (archs_[devno] != NULL) return true;
   int result = dev->KernelGet(this, archs_ + devno, (const char*) name_, false);
-  return result;
+  return (result == IRIS_SUCCESS);
 }
 
 void* Kernel::arch(Device* dev, bool report_error) {
