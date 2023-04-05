@@ -232,6 +232,12 @@ class iris_graph(Structure):
 def init(sync = 1):
     return dll.iris_init(0, None, c_int(sync))
 
+def set_enable_profiler(flag=True):
+    dll.iris_set_enable_profiler(int(flag))
+
+def register_pin_memory(cptr, size):
+    dll.iris_register_pin_memory(convert_obj_ctype(cptr)[0], convert_obj_ctype(size_t(size))[0])
+
 def finalize():
     return dll.iris_finalize()
 
@@ -892,14 +898,28 @@ class graph:
         dll.iris_graph_free(self.handle)
     def wait(self):
         dll.iris_graph_wait(self.handle)
-    def submit(self, device=iris_default,sync=1):
-        dll.iris_graph_submit(self.handle, c_int(device), c_int(sync))
-    def submit_time(self, device=iris_default, sync=1):
+    def submit(self, device=iris_default, sync=1, order=None):
+        if type(order) == np.ndarray or order != None:
+            order_np = order
+            if type(order) != np.ndarray:
+                order_np = np.int32(order)
+            conv_order_np = convert_obj_ctype(order_np)
+            dll.iris_graph_submit_with_order(self.handle, conv_order_np[0], c_int(device), c_int(sync))
+        else:
+            dll.iris_graph_submit(self.handle, c_int(device), c_int(sync))
+    def submit_time(self, device=iris_default, sync=1, order=None):
         #stime = np.double(0.0)
         #cobj = byref(c_double(stime))
         stime = np.zeros((1), np.double)
         cobj = stime.ctypes.data_as(c_void_p)
-        dll.iris_graph_submit_with_time(self.handle, cobj, c_int(device), c_int(sync))
+        if type(order) == np.ndarray or order != None:
+            order_np = order
+            if type(order) != np.ndarray:
+                order_np = np.int32(order)
+            conv_order_np = convert_obj_ctype(order_np)
+            dll.iris_graph_submit_with_order_and_time(self.handle, conv_order_np[0], cobj, c_int(device), c_int(sync))
+        else:
+            dll.iris_graph_submit_with_time(self.handle, cobj, c_int(device), c_int(sync))
         return stime[0]
     def add_task(self, task, device=iris_default, opt=None):
         c_opt = c_void_p(0)

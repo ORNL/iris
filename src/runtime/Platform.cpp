@@ -1112,7 +1112,7 @@ shared_ptr<History> Platform::CreateHistory(string kname)
 }
 void Platform::ProfileCompletedTask(Task *task)
 {
-    if (enable_profiler_){
+    if (enable_profiler_ && !task->marker()){
         for (int i = 0; i < nprofilers_; i++) profilers_[i]->CompleteTask(task);
     }
 }
@@ -1397,6 +1397,25 @@ int Platform::GraphSubmit(iris_graph brs_graph, int brs_policy, int sync) {
   //graph->RecordStartTime(devs_[0]->Now());
   for (std::vector<Task*>::iterator I = tasks->begin(), E = tasks->end(); I != E; ++I) {
     Task* task = *I;
+    //preference is to honour the policy embedded in the task-graph.
+    if (task->brs_policy() == iris_default) {
+      task->set_brs_policy(brs_policy);
+    }
+    task->Submit(task->brs_policy(), task->opt(), sync);
+    if (recording_) json_->RecordTask(task);
+    if (scheduler_) scheduler_->Enqueue(task);
+    else workers_[0]->Enqueue(task);
+  }
+  if (sync) graph->Wait();
+  return IRIS_SUCCESS;
+}
+
+int Platform::GraphSubmit(iris_graph brs_graph, int *order, int brs_policy, int sync) {
+  Graph* graph = brs_graph->class_obj;
+  std::vector<Task*> & tasks = graph->tasks_list();
+  //graph->RecordStartTime(devs_[0]->Now());
+  for(size_t i=0; i<tasks.size(); i++) {
+    Task* task = tasks[order[i]];
     //preference is to honour the policy embedded in the task-graph.
     if (task->brs_policy() == iris_default) {
       task->set_brs_policy(brs_policy);

@@ -151,6 +151,10 @@ extern int iris_platform_info(int platform, int param, void* value, size_t* size
 extern int iris_set_shared_memory_model(int flag);
 
 /**
+ * Enable/disable profiler
+ */
+extern void iris_set_enable_profiler(int flag);
+/**
  * Returns the number of devices.
  * @param ndevs pointer to the number of devices
  */
@@ -350,6 +354,9 @@ extern int iris_graph_task(iris_graph graph, iris_task task, int device, const c
 extern int iris_graph_retain(iris_graph graph);
 extern int iris_graph_release(iris_graph graph);
 extern int iris_graph_submit(iris_graph graph, int device, int sync);
+extern int iris_graph_submit_with_order(iris_graph graph, int *order, int device, int sync);
+extern int iris_graph_submit_with_order_and_time(iris_graph graph, int *order, double *time, int device, int sync);
+extern int iris_graph_submit_with_time(iris_graph graph, double *time, int device, int sync);
 extern int iris_graph_wait(iris_graph graph);
 extern int iris_graph_wait_all(int ngraphs, iris_graph* graphs);
 
@@ -402,7 +409,6 @@ extern int    iris_cmd_kernel_get_arg_mode(void *cmd, int index);
 // Graph data 
 extern int iris_graph_get_tasks(iris_graph graph, iris_task *tasks);
 extern int iris_graph_tasks_count(iris_graph graph);
-extern int iris_graph_submit_with_time(iris_graph graph, double *time, int device, int sync);
 extern int iris_get_graph_dependency_adj_list(iris_graph brs_graph, int8_t *dep_matrix);
 extern int iris_get_graph_dependency_adj_matrix(iris_graph brs_graph, int8_t *dep_matrix);
 extern size_t iris_get_graph_3d_comm_data_size(iris_graph brs_graph);

@@ -144,6 +144,7 @@ public:
   int GraphCreateJSON(const char* json, void** params,  iris_graph* brs_graph);
   int GraphTask(iris_graph brs_graph, iris_task brs_task, int brs_policy, const char* opt);
   int GraphSubmit(iris_graph brs_graph, int brs_policy, int sync);
+  int GraphSubmit(iris_graph brs_graph, int *order, int brs_policy, int sync);
   int GraphRelease(iris_graph brs_graph);
   int GraphRetain(iris_graph brs_graph);
   int GraphWait(iris_graph brs_graph);
@@ -185,6 +186,7 @@ public:
   double time_app() { return time_app_; }
   double time_init() { return time_init_; }
   bool enable_profiler() { return enable_profiler_; }
+  void set_enable_profiler(bool profiler) { enable_profiler_ = profiler; }
   void disable_d2d() { disable_d2d_ = true; }
   void enable_d2d() { disable_d2d_ = false; }
   bool is_d2d_disabled() { return disable_d2d_; }

@@ -40,6 +40,10 @@ int iris_finalize() {
   return status;
 }
 
+void iris_set_enable_profiler(int flag) {
+  Platform::GetPlatform()->set_enable_profiler((bool)flag);
+}
+
 int iris_synchronize() {
   return Platform::GetPlatform()->Synchronize();
 }
@@ -447,6 +451,10 @@ int iris_graph_submit(iris_graph graph, int device, int sync) {
   return Platform::GetPlatform()->GraphSubmit(graph, device, sync);
 }
 
+int iris_graph_submit_with_order(iris_graph graph, int *order, int device, int sync) {
+  return Platform::GetPlatform()->GraphSubmit(graph, order, device, sync);
+}
+
 int iris_graph_wait(iris_graph graph) {
   return Platform::GetPlatform()->GraphWait(graph);
 }
@@ -456,6 +464,15 @@ int iris_graph_submit_with_time(iris_graph graph, double *time, int device, int 
     double st_time, end_time;
     Platform::GetPlatform()->TimerNow(&st_time);
     int status = Platform::GetPlatform()->GraphSubmit(graph, device, sync);
+    Platform::GetPlatform()->TimerNow(&end_time);
+    *time = end_time - st_time;
+    return status;
+}
+int iris_graph_submit_with_order_and_time(iris_graph graph, int *order, double *time, int device, int sync)
+{
+    double st_time, end_time;
+    Platform::GetPlatform()->TimerNow(&st_time);
+    int status = Platform::GetPlatform()->GraphSubmit(graph, order, device, sync);
     Platform::GetPlatform()->TimerNow(&end_time);
     *time = end_time - st_time;
     return status;
