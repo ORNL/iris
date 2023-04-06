@@ -18,8 +18,9 @@
 #include "rapidjson/document.h"
 #include "rapidjson/filewritestream.h"
 #include "rapidjson/writer.h"
+#include "rapidjson/error/en.h"
 #define RAPIDJSON_ALIGN (128)
-#include <csignal>
+//#include <csignal>
 namespace iris {
 namespace rt {
 
@@ -45,13 +46,18 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
     platform_->IncrementErrorCount();
     return IRIS_ERROR;
   }
-  printf("RAPIDJSON source = %s\n",src);
+  //printf("RAPIDJSON source = %s\n",src);
   rapidjson::Document json_;
   json_.Parse(src);
-  printf("debug! length of file = %ld\n",srclen);
+  //printf("debug! length of file = %ld\n",srclen);
   if (!json_.IsObject()){
     _error("failed to create JSON from file[%s]", path);
     platform_->IncrementErrorCount();
+    if (json_.HasParseError()) {
+      fprintf(stderr, "\nError(offset %u): %s\n",
+          (unsigned)json_.GetErrorOffset(),
+          GetParseError_En(json_.GetParseError()));
+    }
     return IRIS_ERROR;
   }
   if(!json_.HasMember("iris-graph")){
@@ -91,11 +97,16 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
     task->set_name(iris_tasks_[i]["name"].GetString());
     //depends
     if(!iris_tasks_[i].HasMember("depends") or !iris_tasks_[i]["depends"].IsArray()){
-      _error("malformed task depends in file[%s]", path);
+      _error("malformed task [%s] missing dependency in file[%s]", task->name(), path);
       platform_->IncrementErrorCount();
       return IRIS_ERROR;
     }
     for (rapidjson::SizeType j = 0; j < iris_tasks_[i]["depends"].Size(); j++){
+      //auto tmp = iris_tasks_[i]["depends"][j].GetType();
+      if(iris_tasks_[i]["depends"][j].IsNull()){
+        //raise(SIGINT);
+        continue;
+      }
       if(!iris_tasks_[i]["depends"][j].IsString()){
         _error("malformed task depends in file[%s]", path);
         platform_->IncrementErrorCount();
@@ -138,7 +149,7 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
     task->set_brs_policy(target);
     //commands (populate each task with assigned commands)
     if(!iris_tasks_[i].HasMember("commands") or !iris_tasks_[i]["commands"].IsArray()){
-      _error("malformed task commands in file[%s]", path);
+      _error("malformed task, missing (or not an array) commands of task[%s] in file[%s]", task->name(), path);
       platform_->IncrementErrorCount();
       return IRIS_ERROR;
     }

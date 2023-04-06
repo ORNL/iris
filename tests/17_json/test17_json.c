@@ -30,7 +30,7 @@ int main(int argc, char** argv) {
   for (int i = 0; i < SIZE; i++) printf("[%3d] %3d\n", i, B[i]);
 
   iris_finalize();
-
+  printf("return code = %i\n",iris_error_count());
   return iris_error_count();
 }
 
