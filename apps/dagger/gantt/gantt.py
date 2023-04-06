@@ -25,7 +25,7 @@ class Gantt():
           timings = timings[timings.taskname != d]
 
         from natsort import humansorted
-        processors = sorted(list(set(timings['acclname'])),reverse=False)
+        processors = sorted(list(set(timings['acclname'])),reverse=True)
 
         proc_names = [p for p in processors]
         
@@ -68,7 +68,7 @@ class Gantt():
 
         ilen=len(processors)
         pos = self.np.arange(0.5,ilen*0.5+0.5,0.5)
-        fig = self.plt.figure(figsize=(15,6)) # orig
+        fig = self.plt.figure(figsize=(12,6)) # orig
         ax = fig.add_subplot(111)
         used_labels = []
         for idx, proc in enumerate(processors):
@@ -165,7 +165,7 @@ class DAG():
         timing_content = read_csv(timeline_file)
         return timing_content
 
-    def plotDag(self, dag_path_plot=None):
+    def plotDag(self, dag_path_plot=None, show_device_legend=True):
         import networkx as nx
         from networkx.drawing.nx_agraph import graphviz_layout
         #from bokeh.palettes import Turbo256
@@ -246,7 +246,8 @@ class DAG():
                 kernel_name = kernel_name[0]
             node_shapes.append(kernel_shapes[kernel_name])
 
-        fig, ax = plt.subplots()
+        fig = plt.figure(figsize=(3,6))
+        ax = fig.add_subplot(111)
         nx.draw(dag,pos=pos,labels=node_labels,font_size=8,node_color=node_colours,  ax=ax,node_shape=node_shapes)
         #failed attempt at using generic networkx package---rather than my own modification in python -m pip install "networkx @ git+https://github.com/BeauJoh/networkx.git@main"
         #for i, (n, s) in enumerate(zip(dag, node_shapes)):
@@ -260,7 +261,9 @@ class DAG():
         legend_handles = []
         for i,d in enumerate(unique_devices):
             legend_handles.append(patch.Patch(color=device_colour[d], label=d))
-        ax.legend(handles=legend_handles,loc=3,title="Devices",fontsize=8)
+        if show_device_legend:
+          #ax.legend(handles=legend_handles,loc=3,title="Devices",fontsize=8)
+          ax.legend(handles=legend_handles,loc='upper center', bbox_to_anchor=(0.5, 0.0),title="Devices",fontsize=8)
         plt.gca().add_artist(kernel_legend)
         if dag_path_plot is not None:
             plt.savefig(dag_path_plot)
@@ -313,7 +316,7 @@ class CombinePlots():
 
         # generate the dag/graph plot
         dag = DAG(self.dag_file,timeline_file=self.timeline_file)
-        right = dag.plotDag(self.dag_output_file)
+        right = dag.plotDag(self.dag_output_file,show_device_legend=True)
         # generate the timeline/gantt plot
         use_device_background_colour = False
         if 'use_device_background_colour' in self.kargs:
