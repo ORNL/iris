@@ -21,18 +21,18 @@ namespace iris {
                 static void MemCpy3D(uint8_t *dev, uint8_t *host, size_t *off, size_t *dev_sizes, size_t *host_sizes, size_t elem_size, bool host_2_dev=true);
 
                 template<typename DType>
-                static DType *AllocateArray(int SIZE, DType init=0)
+                static DType *AllocateArray(size_t SIZE, DType init=0)
                 {
                     DType *A = (DType *)malloc ( SIZE *  sizeof(DType));
-                    for (int i = 0; i < SIZE; i++ )
+                    for (size_t i = 0; i < SIZE; i++ )
                         A[i] = init;
                     return A;
                 }
                 template<typename DType>
-                static DType *AllocateRandomArray(int SIZE)
+                static DType *AllocateRandomArray(size_t SIZE)
                 {
                     DType *A = (DType *)malloc ( SIZE *  sizeof(DType));
-                    for (int i = 0; i < SIZE; i++ )
+                    for (size_t i = 0; i < SIZE; i++ )
                     {
                         int a = rand() % 5+1;
                         A[i] = (DType)a;

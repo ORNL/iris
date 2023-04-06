@@ -79,6 +79,8 @@ void Command::Set(Task* task, int type) {
     case IRIS_CMD_KERNEL:      type_name_= const_cast<char*>("Kernel");  break;
     case IRIS_CMD_MALLOC:      type_name_= const_cast<char*>("Malloc");  break;
     case IRIS_CMD_H2D:         type_name_= const_cast<char*>("H2D");     break;
+    case IRIS_CMD_D2D:         type_name_= const_cast<char*>("D2D");     break;
+    case IRIS_CMD_H2BROADCAST: type_name_= const_cast<char*>("H2Broadcast");     break;
     case IRIS_CMD_H2DNP:       type_name_= const_cast<char*>("H2DNP");   break;
     case IRIS_CMD_D2H:         type_name_= const_cast<char*>("D2H");     break;
     case IRIS_CMD_MEM_FLUSH:   type_name_= const_cast<char*>("MemFlush");     break;
@@ -95,10 +97,15 @@ void Command::Set(Task* task, int type) {
   platform_ = task->platform();
 }
 
-double Command::SetTime(double t) {
+double Command::SetTime(double t, bool incr) {
 //  if (time_ != 0.0) _error("double set time[%lf]", t);
-  time_ += t;
-  task_->TimeInc(t);
+  if (incr) {
+    time_ += t;
+    task_->TimeInc(t);
+  }
+  else {
+    time_ = t;
+  }
   return time_;
 }
 
@@ -167,7 +174,7 @@ Command* Command::CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off,
     BaseMem* mem = cmd->platform_->GetMem(*((iris_mem*) param));
     if (!mem) mem = cmd->platform_->GetMem(param, &mem_off);
     if (!mem) {
-      _error("no mem[%p] task[%ld:%s]", param, task->uid(), task->name());
+      _error("no mem[%p] task[%ld:%s]", ((iris_mem*) param), task->uid(), task->name());
       continue;
     }
     if (mem->GetMemHandlerType() == IRIS_DMEM) kernel->add_dmem((DataMem *)mem, i, param_info);
@@ -249,6 +256,24 @@ Command* Command::CreateMemResetInput(Task* task, BaseMem *mem, uint8_t reset_va
   return cmd;
 }
 
+Command* Command::CreateH2Broadcast(Task* task, Mem* mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host) {
+  Command* cmd = Create(task, IRIS_CMD_H2BROADCAST);
+  cmd->mem_ = mem;
+  cmd->dim_ = dim;
+  size_t size = elem_size;
+  for(int i=0; i<dim; i++) {
+    cmd->off_[i] = off[i];
+    cmd->gws_[i] = host_sizes[i];
+    cmd->lws_[i] = dev_sizes[i];
+    size *= dev_sizes[i];
+  }
+  cmd->elem_size_ = elem_size;
+  cmd->size_ = size;
+  cmd->host_ = host;
+  cmd->exclusive_ = true;
+  return cmd;
+}
+
 Command* Command::CreateH2D(Task* task, Mem* mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host) {
   Command* cmd = Create(task, IRIS_CMD_H2D);
   cmd->mem_ = mem;
@@ -261,6 +286,28 @@ Command* Command::CreateH2D(Task* task, Mem* mem, size_t *off, size_t *host_size
     size *= dev_sizes[i];
   }
   cmd->elem_size_ = elem_size;
+  cmd->size_ = size;
+  cmd->host_ = host;
+  cmd->exclusive_ = true;
+  return cmd;
+}
+
+Command* Command::CreateH2Broadcast(Task* task, Mem* mem, size_t off, size_t size, void* host) {
+  Command* cmd = Create(task, IRIS_CMD_H2BROADCAST);
+  cmd->dim_ = 1;
+  cmd->mem_ = mem;
+  cmd->off_[0] = off;
+  cmd->size_ = size;
+  cmd->host_ = host;
+  cmd->exclusive_ = true;
+  return cmd;
+}
+Command* Command::CreateD2D(Task* task, Mem* mem, size_t off, size_t size, void* host, int src_dev) {
+  Command* cmd = Create(task, IRIS_CMD_D2D);
+  cmd->dim_ = 1;
+  cmd->src_dev_ = src_dev;
+  cmd->mem_ = mem;
+  cmd->off_[0] = off;
   cmd->size_ = size;
   cmd->host_ = host;
   cmd->exclusive_ = true;

@@ -71,11 +71,22 @@ void Graph::Submit() {
   status_ = IRIS_SUBMITTED;
 }
 
+std::vector<Task*> Graph::formatted_tasks() { 
+    vector<Task*> out;
+    for(size_t i=1; i<tasks_.size(); i++) {
+      out.push_back(tasks_[i]);
+    }
+    out.push_back(tasks_[0]);
+    return out;
+}
+
 int Graph::iris_tasks(iris_task *pv) { 
     int index=0;
-    for(Task *task : tasks_) {
+    for(size_t i=1; i<tasks_.size(); i++) {
+      Task *task = tasks_[i];
       pv[index++] = *(task->struct_obj());
     }
+    pv[index++] = *(tasks_[0]->struct_obj());
     return index;
 }
 
@@ -109,7 +120,7 @@ void GraphMetadata::calibrate_compute_cost_adj_matrix(double *comp_task_adj_matr
         }
         model_2_devices[model].push_back(i);
     }
-    vector<Task *> & tasks = graph_->tasks_list();
+    vector<Task *> tasks = graph_->formatted_tasks();
     int ntasks = tasks.size()+1;
     if (comp_task_adj_matrix == NULL) {
         comp_task_adj_matrix_ = (double *)calloc(ntasks*ndevs, sizeof(size_t));
@@ -153,7 +164,7 @@ void GraphMetadata::calibrate_compute_cost_adj_matrix(double *comp_task_adj_matr
                         data64 = *((uint64_t *)value);
                         break;
                              }
-                    default: _error("Size:%d not yet handled", arg->size);
+                    default: _error("Size:%lu not yet handled", arg->size);
                 }
                 knobs.push_back(data64);
             }
@@ -207,14 +218,14 @@ void GraphMetadata::calibrate_compute_cost_adj_matrix(double *comp_task_adj_matr
 }
 void GraphMetadata::map_task_inputs_outputs()
 {
-    vector<Task *> & tasks = graph_->tasks_list();
+    vector<Task *> tasks = graph_->formatted_tasks();
     for(unsigned long index=0; index<tasks.size(); index++) {
         Task *task = tasks[index];
         task_uid_2_index_hash_[task->uid()] = index; 
         task_uid_hash_[task->uid()] = task;
     }
     set<unsigned long> output_flushes;
-    for(int index=0; index<tasks.size(); index++) {
+    for(uint32_t index=0; index<(uint32_t)tasks.size(); index++) {
         Task *task = tasks[index];
         unsigned long uid = task->uid();
         vector<unsigned long> input_mems;
@@ -237,8 +248,9 @@ void GraphMetadata::map_task_inputs_outputs()
                       mem_index_hash_[uid] = cmd->mem(); 
                   //_info(" mid:%lu is added", uid);
                   break;
-              case IRIS_CMD_MEM_FLUSH:    
+              case IRIS_CMD_MEM_FLUSH:    // Fallthrough case
                   output_flushes.insert(cmd->mem()->uid());
+                  [[fallthrough]];
               case IRIS_CMD_D2H:          
                   uid = cmd->mem()->uid();       
                   output_mems.push_back(uid);
@@ -305,7 +317,7 @@ void GraphMetadata::map_task_inputs_outputs()
         //printf("%s:%d Task:%s:%lu ndepends:%lu in:%lu out:%lu\n", __func__, __LINE__, task->name(), task->uid(), task->ndepends(), task_inputs_map_[uid].size(), task_outputs_map_[uid].size());
     }
     if (tasks.size()>0) {
-        int index = 0;
+        int index = tasks.size()-1;
         Task *task = tasks[index];
         unsigned long uid = task->uid();
         // Special node with name: Graph
@@ -318,7 +330,7 @@ void GraphMetadata::map_task_inputs_outputs()
     }
 }
 void GraphMetadata::get_dependency_matrix(int8_t *dep_matrix, bool adj_matrix) {
-  vector<Task *> & tasks = graph_->tasks_list();
+  vector<Task *> tasks = graph_->formatted_tasks();
   int ntasks = tasks.size()+1;
   if (dep_matrix == NULL && adj_matrix) {
       dep_adj_matrix_ = (int8_t *)calloc(ntasks*ntasks, sizeof(int8_t));
@@ -328,7 +340,7 @@ void GraphMetadata::get_dependency_matrix(int8_t *dep_matrix, bool adj_matrix) {
       dep_adj_list_   = (int8_t *)calloc(ntasks*(ntasks+1), sizeof(int8_t));
       dep_matrix = dep_adj_list_;
   }
-  for(int t=0; t<tasks.size(); t++) {
+  for(uint32_t t=0; t<(uint32_t)tasks.size(); t++) {
       Task *task = tasks[t];
       for(int i=0; i<task->ndepends(); i++) {
           Task *dtask = task->depend(i);
@@ -356,13 +368,13 @@ void GraphMetadata::get_dependency_matrix(int8_t *dep_matrix, bool adj_matrix) {
 }
 void GraphMetadata::get_2d_comm_adj_matrix(size_t *comm_task_adj_matrix)
 {
-    vector<Task *> & tasks = graph_->tasks_list();
+    vector<Task *> tasks = graph_->formatted_tasks();
     int ntasks = tasks.size()+1;
     if (comm_task_adj_matrix == NULL) {
         comm_task_adj_matrix_ = (size_t *)calloc(ntasks*ntasks, sizeof(size_t));
         comm_task_adj_matrix = comm_task_adj_matrix_;
     }
-    for(int index=0; index<tasks.size(); index++) {
+    for(uint32_t index=0; index<(uint32_t)tasks.size(); index++) {
         Task *each_task = tasks[index];
         vector<unsigned long> & lst1_v = task_inputs_map_[each_task->uid()];
         set<unsigned long> lst1(lst1_v.begin(), lst1_v.end());
@@ -435,10 +447,10 @@ void GraphMetadata::get_2d_comm_adj_matrix(size_t *comm_task_adj_matrix)
 void GraphMetadata::get_3d_comm_data()
 {
     CommData3D *comm_task_data  = NULL;
-    vector<Task *> & tasks = graph_->tasks_list();
+    vector<Task *> tasks = graph_->formatted_tasks();
     int ntasks = tasks.size()+1;
     vector<CommData3D> results;
-    for(int index=0; index<tasks.size(); index++) {
+    for(uint32_t index=0; index<(uint32_t)tasks.size(); index++) {
         Task *each_task = tasks[index];
         vector<unsigned long> & lst1_v = task_inputs_map_[each_task->uid()];
         set<unsigned long> lst1(lst1_v.begin(), lst1_v.end());
@@ -474,7 +486,7 @@ void GraphMetadata::get_3d_comm_data()
                 BaseMem *mem = mem_index_hash_[mid];
                 //printf("Common mem:%lu mid:%lu\n", mem->uid(), mid);
                 size += mem->size();
-                CommData3D data = {d_index+1, index+1, mid, mem->size()};
+                CommData3D data = {(uint32_t)d_index+1, (uint32_t)index+1, (uint32_t)mid, mem->size()};
                 results.push_back(data);
                 all_covered_mem.insert(mid);
             }
@@ -490,7 +502,7 @@ void GraphMetadata::get_3d_comm_data()
                     all_covered_mem.insert(dmem_index);
                     all_covered_mem.insert(mid);
                     size += mem->size();
-                    CommData3D data = {d_index+1, index+1, mid, mem->size()};
+                    CommData3D data = {(uint32_t)d_index+1, (uint32_t)index+1, (uint32_t)mid, mem->size()};
                     results.push_back(data);
                 }
             }
@@ -502,7 +514,7 @@ void GraphMetadata::get_3d_comm_data()
             if (all_covered_mem.find(mid) == all_covered_mem.end()) {
                 BaseMem *mem = mem_index_hash_[mid];
                 size += mem->size();
-                CommData3D data = {0, index+1, mid, mem->size()};
+                CommData3D data = {0, (uint32_t)index+1, (uint32_t)mid, mem->size()};
                 results.push_back(data);
             }
         }

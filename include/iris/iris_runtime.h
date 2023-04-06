@@ -261,6 +261,28 @@ extern int iris_task_get_metadata(iris_task brs_task, int index);
 extern int iris_task_set_metadata(iris_task brs_task, int index, int metadata);
 
 /**
+ * Adds a H2Broadcast command to the target task.
+ * @param task target task
+ * @param mem target memory object
+ * @param off offset in bytes
+ * @param size size in bytes
+ * @param host source host address
+ */
+extern int iris_task_h2broadcast(iris_task task, iris_mem mem, size_t off, size_t size, void* host);
+extern int iris_task_h2broadcast_offsets(iris_task task, iris_mem mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, void* host);
+extern int iris_task_h2broadcast_full(iris_task task, iris_mem mem, void* host);
+
+/**
+ * Adds a D2D command to the target task.
+ * @param task target task
+ * @param mem target memory object
+ * @param off offset in bytes
+ * @param size size in bytes
+ * @param host source host address
+ * @param src_dev
+ */
+extern int iris_task_d2d(iris_task task, iris_mem mem, size_t off, size_t size, void* host, int src_dev);
+/**
  * Adds a H2D command to the target task.
  * @param task target task
  * @param mem target memory object
@@ -316,6 +338,7 @@ extern int iris_task_kernel(iris_task task, const char* kernel, int dim, size_t*
 extern int iris_task_kernel_v2(iris_task task, const char* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, size_t* params_off, int* params_info);
 extern int iris_task_kernel_v3(iris_task task, const char* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, size_t* params_off, int* params_info, size_t* memranges);
 extern int iris_task_kernel_selector(iris_task task, iris_selector_kernel func, void* params, size_t params_size);
+extern int iris_task_kernel_launch_disabled(iris_task task, int flag);
 extern int iris_task_host(iris_task task, iris_host_task func, void* params);
 extern int iris_task_host(iris_task task, iris_host_task func, void* params);
 extern int iris_task_custom(iris_task task, int tag, void* params, size_t params_size);
@@ -435,6 +458,7 @@ extern int iris_get_graph_3d_comm_data(iris_graph brs_graph, void *comm_data);
 extern int iris_get_graph_2d_comm_adj_matrix(iris_graph brs_graph, size_t *size_data);
 extern int iris_calibrate_compute_cost_adj_matrix(iris_graph brs_graph, double *comp_data);
 extern int iris_calibrate_compute_cost_adj_matrix_only_for_types(iris_graph brs_graph, double *comp_data);
+extern int iris_calibrate_communication_cost(double *data, size_t data_size, int iterations, int pin_memory_flag);
 extern void iris_free_array(void *ptr);
 extern int8_t *iris_allocate_array_int8_t(int SIZE, int8_t init);
 extern int16_t *iris_allocate_array_int16_t(int SIZE, int16_t init);

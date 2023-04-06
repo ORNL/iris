@@ -107,7 +107,7 @@ int main(int argc, char** argv) {
       assert(err != IRIS_ERROR && "ERROR creating task!");
       size_t gws = (size_t) SIZE;
       size_t lws = (size_t) 0;
-      void* params[1] = { mem_A };
+      void* params[1] = { &mem_A };
       int pinfo[1] = { iris_rw };
       if (add_work) {
         err = iris_task_kernel(add_id_task, "add_id", 1, NULL, &gws, &lws, 1, params, pinfo);

@@ -64,6 +64,7 @@ void Device::Execute(Task* task) {
                                   }
       case IRIS_CMD_MALLOC:       ExecuteMalloc(cmd);     break;
       case IRIS_CMD_H2D:          ExecuteH2D(cmd);        break;
+      case IRIS_CMD_H2BROADCAST:  ExecuteH2BroadCast(cmd); break;
       case IRIS_CMD_H2DNP:        ExecuteH2DNP(cmd);      break;
       case IRIS_CMD_D2H:          ExecuteD2H(cmd);        break;
       case IRIS_CMD_MEM_FLUSH:    ExecuteMemFlushOut(cmd);break;
@@ -204,7 +205,11 @@ void Device::ExecuteKernel(Command* cmd) {
   }
 #endif
   //double ktime_start = timer_->GetCurrentTime();
-  errid_ = KernelLaunch(kernel, dim, off, gws, lws[0] > 0 ? lws : NULL);
+  bool enabled = true;
+  if (cmd->task() != NULL && cmd->task()->is_kernel_launch_disabled())
+      enabled = false;
+  if (enabled)
+      errid_ = KernelLaunch(kernel, dim, off, gws, lws[0] > 0 ? lws : NULL);
   //double ktime = timer_->GetCurrentTime() - ktime_start;
   cmd->set_time_end(timer_->Now());
   double time = timer_->Stop(IRIS_TIMER_KERNEL);
@@ -538,7 +543,65 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
         _trace("MemFlushout is skipped as host already having valid data for task:%ld:%s\n", cmd->task()->uid(), cmd->task()->name());
     }
 }
-void Device::ExecuteH2D(Command* cmd) {
+void Device::ExecuteH2BroadCast(Command *cmd) {
+    int ndevs = Platform::GetPlatform()->ndevs();
+    for(int i=0; i<ndevs; i++) {
+        Device *src_dev = Platform::GetPlatform()->device(i);
+        ExecuteH2D(cmd, src_dev);
+    }
+}
+void Device::ExecuteD2D(Command* cmd, Device *dev) {
+    if (dev == NULL) dev = this;
+    Mem* mem = cmd->mem();
+    size_t off = cmd->off(0);
+    size_t *ptr_off = cmd->off();
+    size_t *gws = cmd->gws();
+    size_t *lws = cmd->lws();
+    size_t elem_size = cmd->elem_size();
+    int dim = cmd->dim();
+    size_t size = cmd->size();
+    bool exclusive = cmd->exclusive();
+    void* host = cmd->host();
+    if (exclusive) mem->SetOwner(off, size, this);
+    else mem->AddOwner(off, size, this);
+    Device *src_dev = Platform::GetPlatform()->device(cmd->src_dev());
+    double start = timer_->Now();
+    cmd->set_time_start(start);
+    if (src_dev->type() == type()) {
+        // Invoke D2D
+        void* dst_arch = mem->arch(this);
+        void* src_arch = mem->arch(src_dev);
+        MemD2D(cmd->task(), mem, dst_arch, src_arch, mem->size());
+    }
+    else {
+        void* host = mem->host_inter(); // It should work even if host_ptr is null
+        // D2H should be issued from target src (remote) device
+        bool context_shift = src_dev->IsContextChangeRequired();
+        errid_ = src_dev->MemD2H(cmd->task(), mem, ptr_off, 
+                gws, lws, elem_size, dim, size, host, "D2H->H2D(1) ");
+        if (context_shift) ResetContext();
+        if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
+        // H2D should be issued from this current device
+        errid_ = MemH2D(cmd->task(), mem, ptr_off, 
+                gws, lws, elem_size, dim, size, host, "D2H->H2D(2) ");
+        if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
+    }
+    double end = timer_->Now();
+    cmd->set_time_end(end);
+    cmd->SetTime(end-start);
+    Kernel *kernel = Platform::GetPlatform()->null_kernel();
+    Command *cmd_kernel = cmd->task()->cmd_kernel();
+    if (cmd_kernel != NULL) 
+        kernel = cmd_kernel->kernel();
+    if (src_dev->type() == type()) {
+        kernel->history()->AddD2D(cmd, this, end, size);
+    }
+    else {
+        kernel->history()->AddD2H_H2D(cmd, this, end, size);
+    }
+}
+void Device::ExecuteH2D(Command* cmd, Device *dev) {
+  if (dev == NULL) dev = this;
   Mem* mem = cmd->mem();
   size_t off = cmd->off(0);
   size_t *ptr_off = cmd->off();
@@ -553,7 +616,7 @@ void Device::ExecuteH2D(Command* cmd) {
   else mem->AddOwner(off, size, this);
   timer_->Start(IRIS_TIMER_H2D);
   cmd->set_time_start(timer_->Now());
-  errid_ = MemH2D(cmd->task(), mem, ptr_off, gws, lws, elem_size, dim, size, host);
+  errid_ = dev->MemH2D(cmd->task(), mem, ptr_off, gws, lws, elem_size, dim, size, host);
   if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
   cmd->set_time_end(timer_->Now());
   double time = timer_->Stop(IRIS_TIMER_H2D);
@@ -561,12 +624,12 @@ void Device::ExecuteH2D(Command* cmd) {
   Command* cmd_kernel = cmd->task()->cmd_kernel();
   if (cmd_kernel) {
       if  (cmd->is_internal_memory_transfer())
-          cmd_kernel->kernel()->history()->AddD2H_H2D(cmd, this, time, size, false);
+          cmd_kernel->kernel()->history()->AddD2H_H2D(cmd, dev, time, size, false);
       else
-          cmd_kernel->kernel()->history()->AddH2D(cmd, this, time, size);
+          cmd_kernel->kernel()->history()->AddH2D(cmd, dev, time, size);
   }
   else {
-      Platform::GetPlatform()->null_kernel()->history()->AddH2D(cmd, this, time, size);
+      Platform::GetPlatform()->null_kernel()->history()->AddH2D(cmd, dev, time, size);
   }
   if (Platform::GetPlatform()->enable_scheduling_history()) Platform::GetPlatform()->scheduling_history()->AddH2D(cmd);
 }

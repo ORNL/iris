@@ -90,6 +90,8 @@ namespace iris {
             virtual ~Task() { }
             int h2d(Mem* mem, size_t off, size_t size, void* host);
             int h2d_full(Mem* mem, void* host);
+            int h2broadcast(Mem* mem, size_t off, size_t size, void* host);
+            int h2broadcast_full(Mem* mem, void* host);
             int d2h(Mem* mem, size_t off, size_t size, void* host);
             int d2h_full(Mem* mem, void* host);
             int flush_out(DMem & mem);
@@ -98,6 +100,7 @@ namespace iris {
             void depends_on(int ntasks, Task **tasks);
             void depends_on(std::vector<Task *> tasks);
             void depends_on(Task & task);
+            void disable_launch() { iris_task_kernel_launch_disabled(task_, true); }
             iris_task_type task() { return task_; }
         private:
             iris_task_type task_;

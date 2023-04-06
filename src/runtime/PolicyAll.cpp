@@ -18,7 +18,7 @@ PolicyAll::~PolicyAll() {
 
 void PolicyAll::GetDevices(Task* task, Device** devs, int* ndevs) {
   int n = 0;
-  for (int i = 0, n=0; i < ndevs_; i++) 
+  for (int i = 0; i < ndevs_; i++) 
       if (IsKernelSupported(task, devs_[i]))
           devs[n++] = devs_[i];
   *ndevs = n;

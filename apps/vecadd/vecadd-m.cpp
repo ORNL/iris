@@ -40,7 +40,7 @@ int main(int argc, char** argv) {
     iris_task_h2d(task, mem_A, SIZE * i * sizeof(int), SIZE * sizeof(int), A + SIZE * i);
     iris_task_h2d(task, mem_B, SIZE * i * sizeof(int), SIZE * sizeof(int), B + SIZE * i);
     int off_x = SIZE * i;
-    void* params[4] = { mem_C, mem_A, mem_B, &off_x };
+    void* params[4] = { &mem_C, &mem_A, &mem_B, &off_x };
     int pinfo[4] = { iris_w, iris_r, iris_r, sizeof(int) };
     size_t memranges[8] = {
       i * SIZE * sizeof(int), SIZE * sizeof(int),

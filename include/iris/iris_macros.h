@@ -151,16 +151,16 @@
 
 #define P_PARAM(NAME, DATA_TYPE ...)                                                       &NAME,
 #define P_PARAM_CONST(NAME, DATA_TYPE ...)                                                 &IRIS_VAR(NAME),
-#define P_VEC_PARAM(NAME, DATA_TYPE ...)                                                   __iris_ ## NAME, 
-#define P_IN_TASK(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE ...)                  __iris_ ## IRIS_NAME,
-#define P_IN_TASK_DEV_OFFSET(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE ...)       __iris_ ## IRIS_NAME,
-#define P_IN_TASK_OFFSET(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE ...)           __iris_ ## IRIS_NAME,
-#define P_OUT_TASK(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE ...)                 __iris_ ## IRIS_NAME,
-#define P_OUT_TASK_DEV_OFFSET(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE ...)      __iris_ ## IRIS_NAME,
-#define P_OUT_TASK_OFFSET(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE ...)          __iris_ ## IRIS_NAME,
-#define P_IN_OUT_TASK(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE ...)              __iris_ ## IRIS_NAME,
-#define P_IN_OUT_TASK_DEV_OFFSET(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE ...)   __iris_ ## IRIS_NAME,
-#define P_IN_OUT_TASK_OFFSET(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE ...)       __iris_ ## IRIS_NAME,
+#define P_VEC_PARAM(NAME, DATA_TYPE ...)                                                   &__iris_ ## NAME, 
+#define P_IN_TASK(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE ...)                  &__iris_ ## IRIS_NAME,
+#define P_IN_TASK_DEV_OFFSET(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE ...)       &__iris_ ## IRIS_NAME,
+#define P_IN_TASK_OFFSET(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE ...)           &__iris_ ## IRIS_NAME,
+#define P_OUT_TASK(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE ...)                 &__iris_ ## IRIS_NAME,
+#define P_OUT_TASK_DEV_OFFSET(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE ...)      &__iris_ ## IRIS_NAME,
+#define P_OUT_TASK_OFFSET(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE ...)          &__iris_ ## IRIS_NAME,
+#define P_IN_OUT_TASK(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE ...)              &__iris_ ## IRIS_NAME,
+#define P_IN_OUT_TASK_DEV_OFFSET(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE ...)   &__iris_ ## IRIS_NAME,
+#define P_IN_OUT_TASK_OFFSET(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE ...)       &__iris_ ## IRIS_NAME,
 #define P_DEPENDENCY(...)   
 #define P_REPLACE_PARAMS(NAME)  CONCATENATE(P_, NAME)
 #define IRIS_TASK_PARAMS(...)    FOR_EACH(P_REPLACE_PARAMS, __VA_ARGS__)
@@ -218,16 +218,16 @@
 
 #define MEM_DECL_PARAM(IRIS_NAME, ...)               
 #define MEM_DECL_PARAM_CONST(IRIS_NAME, ...)               
-#define MEM_DECL_VEC_PARAM(IRIS_NAME, ...)              iris_mem  __iris_ ## IRIS_NAME = NULL; 
-#define MEM_DECL_IN_TASK(IRIS_NAME, ...)                iris_mem  __iris_ ## IRIS_NAME = NULL; 
-#define MEM_DECL_IN_TASK_DEV_OFFSET(IRIS_NAME, ...)     iris_mem  __iris_ ## IRIS_NAME = NULL; 
-#define MEM_DECL_IN_TASK_OFFSET(IRIS_NAME, ...)         iris_mem  __iris_ ## IRIS_NAME = NULL; 
-#define MEM_DECL_OUT_TASK(IRIS_NAME, ...)               iris_mem  __iris_ ## IRIS_NAME = NULL; 
-#define MEM_DECL_OUT_TASK_DEV_OFFSET(IRIS_NAME, ...)    iris_mem  __iris_ ## IRIS_NAME = NULL; 
-#define MEM_DECL_OUT_TASK_OFFSET(IRIS_NAME, ...)        iris_mem  __iris_ ## IRIS_NAME = NULL; 
-#define MEM_DECL_IN_OUT_TASK(IRIS_NAME, ...)            iris_mem  __iris_ ## IRIS_NAME = NULL; 
-#define MEM_DECL_IN_OUT_TASK_DEV_OFFSET(IRIS_NAME, ...) iris_mem  __iris_ ## IRIS_NAME = NULL; 
-#define MEM_DECL_IN_OUT_TASK_OFFSET(IRIS_NAME, ...)     iris_mem  __iris_ ## IRIS_NAME = NULL; 
+#define MEM_DECL_VEC_PARAM(IRIS_NAME, ...)              iris_mem  __iris_ ## IRIS_NAME; 
+#define MEM_DECL_IN_TASK(IRIS_NAME, ...)                iris_mem  __iris_ ## IRIS_NAME; 
+#define MEM_DECL_IN_TASK_DEV_OFFSET(IRIS_NAME, ...)     iris_mem  __iris_ ## IRIS_NAME; 
+#define MEM_DECL_IN_TASK_OFFSET(IRIS_NAME, ...)         iris_mem  __iris_ ## IRIS_NAME; 
+#define MEM_DECL_OUT_TASK(IRIS_NAME, ...)               iris_mem  __iris_ ## IRIS_NAME; 
+#define MEM_DECL_OUT_TASK_DEV_OFFSET(IRIS_NAME, ...)    iris_mem  __iris_ ## IRIS_NAME; 
+#define MEM_DECL_OUT_TASK_OFFSET(IRIS_NAME, ...)        iris_mem  __iris_ ## IRIS_NAME; 
+#define MEM_DECL_IN_OUT_TASK(IRIS_NAME, ...)            iris_mem  __iris_ ## IRIS_NAME; 
+#define MEM_DECL_IN_OUT_TASK_DEV_OFFSET(IRIS_NAME, ...) iris_mem  __iris_ ## IRIS_NAME; 
+#define MEM_DECL_IN_OUT_TASK_OFFSET(IRIS_NAME, ...)     iris_mem  __iris_ ## IRIS_NAME; 
 #define MEM_DEPENDENCY(...)   
 #define MEM_DECL_REPLACE_PARAMS(NAME)      CONCATENATE(MEM_DECL_, NAME)
 #define IRIS_MEM_DECLARE(...)    \
@@ -236,15 +236,15 @@
 #define MEM_CREATE_PARAM(NAME, DATA_TYPE ...)               
 #define MEM_CREATE_PARAM_CONST(NAME, DATA_TYPE ...)               
 #define MEM_CREATE_VEC_PARAM(NAME, DATA_TYPE ...)                                        iris_mem_create(sizeof(NAME), &__iris_ ## NAME);
-#define MEM_CREATE_IN_TASK(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE ...)       if (__iris_ ## IRIS_NAME == NULL) iris_mem_create((SIZE), &__iris_ ## IRIS_NAME);
-#define MEM_CREATE_IN_TASK_DEV_OFFSET(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE ...)       if (__iris_ ## IRIS_NAME == NULL) iris_mem_create((SIZE), &__iris_ ## IRIS_NAME);
-#define MEM_CREATE_IN_TASK_OFFSET(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE, OFFSET, HOST_SIZE, DEV_SIZE, DIM ...)       if (__iris_ ## IRIS_NAME == NULL) iris_mem_create((SIZE), &__iris_ ## IRIS_NAME);
-#define MEM_CREATE_OUT_TASK(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE ...)      if (__iris_ ## IRIS_NAME == NULL) iris_mem_create((SIZE), &__iris_ ## IRIS_NAME);
-#define MEM_CREATE_OUT_TASK_DEV_OFFSET(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE, OFFSET, HOST_SIZE, DEV_SIZE, DIM ...)      if (__iris_ ## IRIS_NAME == NULL) iris_mem_create((SIZE), &__iris_ ## IRIS_NAME);
-#define MEM_CREATE_OUT_TASK_OFFSET(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE, OFFSET, HOST_SIZE, DEV_SIZE, DIM ...)      if (__iris_ ## IRIS_NAME == NULL) iris_mem_create((SIZE), &__iris_ ## IRIS_NAME);
-#define MEM_CREATE_IN_OUT_TASK(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE ...)   if (__iris_ ## IRIS_NAME == NULL) iris_mem_create((SIZE), &__iris_ ## IRIS_NAME);
-#define MEM_CREATE_IN_OUT_TASK_DEV_OFFSET(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE, OFFSET, HOST_SIZE, DEV_SIZE, DIM ...)   if (__iris_ ## IRIS_NAME == NULL) iris_mem_create((SIZE), &__iris_ ## IRIS_NAME);
-#define MEM_CREATE_IN_OUT_TASK_OFFSET(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE, OFFSET, HOST_SIZE, DEV_SIZE, DIM ...)   if (__iris_ ## IRIS_NAME == NULL) iris_mem_create((SIZE), &__iris_ ## IRIS_NAME);
+#define MEM_CREATE_IN_TASK(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE ...)       iris_mem_create((SIZE), &__iris_ ## IRIS_NAME);
+#define MEM_CREATE_IN_TASK_DEV_OFFSET(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE ...)       iris_mem_create((SIZE), &__iris_ ## IRIS_NAME);
+#define MEM_CREATE_IN_TASK_OFFSET(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE, OFFSET, HOST_SIZE, DEV_SIZE, DIM ...)       iris_mem_create((SIZE), &__iris_ ## IRIS_NAME);
+#define MEM_CREATE_OUT_TASK(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE ...)       iris_mem_create((SIZE), &__iris_ ## IRIS_NAME);
+#define MEM_CREATE_OUT_TASK_DEV_OFFSET(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE, OFFSET, HOST_SIZE, DEV_SIZE, DIM ...)      iris_mem_create((SIZE), &__iris_ ## IRIS_NAME);
+#define MEM_CREATE_OUT_TASK_OFFSET(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE, OFFSET, HOST_SIZE, DEV_SIZE, DIM ...)      iris_mem_create((SIZE), &__iris_ ## IRIS_NAME);
+#define MEM_CREATE_IN_OUT_TASK(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE ...)   iris_mem_create((SIZE), &__iris_ ## IRIS_NAME);
+#define MEM_CREATE_IN_OUT_TASK_DEV_OFFSET(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE, OFFSET, HOST_SIZE, DEV_SIZE, DIM ...)   iris_mem_create((SIZE), &__iris_ ## IRIS_NAME);
+#define MEM_CREATE_IN_OUT_TASK_OFFSET(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE, OFFSET, HOST_SIZE, DEV_SIZE, DIM ...)   iris_mem_create((SIZE), &__iris_ ## IRIS_NAME);
 #define MEM_CREATE_DEPENDENCY(...)   
 #define MEM_CREATE_REPLACE_PARAMS(NAME)      CONCATENATE(MEM_CREATE_, NAME)
 #define IRIS_MEM_CREATE_INTERNAL(...)    \
@@ -414,9 +414,9 @@
 #define IRIS_H2D_HOST_OFFSET(TASK_VAR, IRIS_MEM_VAR, OFFSET, HOST_SIZE, DEV_SIZE, ELEM_SIZE, DIM, SIZE, HOST)   iris_task_h2d_offsets(TASK_VAR, IRIS_MEM_VAR, OFFSET, HOST_SIZE, DEV_SIZE, ELEM_SIZE, DIM, SIZE, HOST)
 #define IRIS_D2H(TASK_VAR, IRIS_MEM_VAR, OFFSET, SIZE, HOST)   iris_task_d2h(TASK_VAR, IRIS_MEM_VAR, OFFSET, SIZE, HOST)
 #define IRIS_D2H_HOST_OFFSET(TASK_VAR, IRIS_MEM_VAR, OFFSET, HOST_SIZE, DEV_SIZE, ELEM_SIZE, DIM, SIZE, HOST)   iris_task_d2h_offsets(TASK_VAR, IRIS_MEM_VAR, OFFSET, HOST_SIZE, DEV_SIZE, ELEM_SIZE, DIM, SIZE, HOST)
-#define IRIS_MEM_CREATE(IRIS_MEM_VAR, SIZE)   iris_mem  IRIS_MEM_VAR = NULL; iris_mem_create(SIZE, &IRIS_MEM_VAR)
-#define IRIS_DATA_MEM_CREATE(IRIS_MEM_VAR, HOST, SIZE)   iris_mem  IRIS_MEM_VAR = NULL; iris_data_mem_create(&IRIS_MEM_VAR, HOST, SIZE)
-#define IRIS_DATA_MEM_CREATE_WITH_OFFSETS(IRIS_MEM_VAR, ...)   iris_mem  IRIS_MEM_VAR = NULL; iris_data_mem_create_with_offsets(&IRIS_MEM_VAR, __VA_ARGS__)
+#define IRIS_MEM_CREATE(IRIS_MEM_VAR, SIZE)   iris_mem  IRIS_MEM_VAR; iris_mem_create(SIZE, &IRIS_MEM_VAR)
+#define IRIS_DATA_MEM_CREATE(IRIS_MEM_VAR, HOST, SIZE)   iris_mem  IRIS_MEM_VAR; iris_data_mem_create(&IRIS_MEM_VAR, HOST, SIZE)
+#define IRIS_DATA_MEM_CREATE_WITH_OFFSETS(IRIS_MEM_VAR, ...)   iris_mem  IRIS_MEM_VAR; iris_data_mem_create_with_offsets(&IRIS_MEM_VAR, __VA_ARGS__)
 #define IRIS_TASK_SUBMIT(TASK_VAR, TARGET_DEVICE)  iris_task_submit(TASK_VAR, TARGET_DEVICE, NULL, 1);
 #define IRIS_TASK_WITH_DT(TASK_VAR, TASK_NAME, DIM, OFFSET, GWS, LWS, ...)  \
     { \
@@ -552,19 +552,24 @@
 #define IRIS_TASK_SIGNATURE_GRAPH_PARAMS(...)   FOR_EACH_COMMA(SIGNATURE_GRAPH_REPLACE_PARAMS, __VA_ARGS__)
 
 
-
+#ifdef __cplusplus
 #define IRIS_TASK_CORE_SIGNATURE_CPP(API_NAME, ...) \
-    extern "C" int API_NAME(int target_dev, IRIS_TASK_SIGNATURE_CORE_PARAMS(__VA_ARGS__))
-
+    int API_NAME(int target_dev, IRIS_TASK_SIGNATURE_CORE_PARAMS(__VA_ARGS__))
 #define IRIS_TASK_GRAPH_SIGNATURE_CPP(API_NAME, ...) \
-    extern "C" int API_NAME(iris_task task, IRIS_TASK_SIGNATURE_GRAPH_PARAMS(__VA_ARGS__))
+    int API_NAME(iris_task task, IRIS_TASK_SIGNATURE_GRAPH_PARAMS(__VA_ARGS__))
+#endif //__cplusplus
 
+#ifdef __cplusplus
+#define IRIS_TASK_CORE_SIGNATURE(API_NAME, ...) \
+    extern "C" int API_NAME(int target_dev, IRIS_TASK_SIGNATURE_CORE_PARAMS(__VA_ARGS__))
+#define IRIS_TASK_GRAPH_SIGNATURE(API_NAME, ...) \
+    extern "C" int API_NAME(iris_task task, IRIS_TASK_SIGNATURE_GRAPH_PARAMS(__VA_ARGS__))
+#else //__cplusplus
 #define IRIS_TASK_CORE_SIGNATURE(API_NAME, ...) \
     int API_NAME(int target_dev, IRIS_TASK_SIGNATURE_CORE_PARAMS(__VA_ARGS__))
-
 #define IRIS_TASK_GRAPH_SIGNATURE(API_NAME, ...) \
     int API_NAME(iris_task task, IRIS_TASK_SIGNATURE_GRAPH_PARAMS(__VA_ARGS__))
-
+#endif //__cplusplus
 
 #ifndef IRIS_API_DEFINITION
 #define IRIS_TASK_API_DECL(API_NAME, ...) \
@@ -572,11 +577,15 @@
 #define IRIS_TASK_APIS(CORE_API_NAME, GRAPH_API_NAME, KERNEL_NAME, DIM, OFFSET, GWS, LWS, ...) \
     IRIS_TASK_CORE_SIGNATURE(CORE_API_NAME, __VA_ARGS__); \
     IRIS_TASK_GRAPH_SIGNATURE(GRAPH_API_NAME, __VA_ARGS__); 
+#ifdef __cplusplus
 #define IRIS_TASK_APIS_CPP(CPP_API_NAME, CORE_API_NAME, GRAPH_API_NAME, KERNEL_NAME, DIM, OFFSET, GWS, LWS, ...) \
-    IRIS_TASK_CORE_SIGNATURE_CPP(CORE_API_NAME, __VA_ARGS__); \
-    IRIS_TASK_GRAPH_SIGNATURE_CPP(GRAPH_API_NAME, __VA_ARGS__); \
-    IRIS_TASK_CORE_SIGNATURE(CPP_API_NAME, __VA_ARGS__); \
-    IRIS_TASK_GRAPH_SIGNATURE(CPP_API_NAME, __VA_ARGS__); 
+    IRIS_TASK_CORE_SIGNATURE(CORE_API_NAME, __VA_ARGS__); \
+    IRIS_TASK_GRAPH_SIGNATURE(GRAPH_API_NAME, __VA_ARGS__); \
+    IRIS_TASK_CORE_SIGNATURE_CPP(CPP_API_NAME, __VA_ARGS__); \
+    IRIS_TASK_GRAPH_SIGNATURE_CPP(CPP_API_NAME, __VA_ARGS__); 
+#else //__cplusplus
+#define IRIS_TASK_APIS_CPP(CPP_API_NAME, ...)  IRIS_TASK_APIS(__VA_ARGS__) 
+#endif //__cplusplus
 #else // IRIS_API_DEFINITION
 #define IRIS_TASK_APIS(CORE_API_NAME, GRAPH_API_NAME, KERNEL_NAME, DIM, OFFSET, GWS, LWS, ...) \
     IRIS_TASK_CORE_SIGNATURE(CORE_API_NAME, __VA_ARGS__) \
@@ -589,6 +598,7 @@
       IRIS_TASK_NO_DT(task, KERNEL_NAME, DIM, OFFSET, GWS, LWS, __VA_ARGS__); \
       return IRIS_SUCCESS; \
     } 
+#ifdef __cplusplus
 #define IRIS_TASK_APIS_CPP(CPP_API_NAME, CORE_API_NAME, GRAPH_API_NAME, KERNEL_NAME, DIM, OFFSET, GWS, LWS, ...) \
     IRIS_TASK_CORE_SIGNATURE(CORE_API_NAME, __VA_ARGS__) \
     { \
@@ -600,16 +610,19 @@
       IRIS_TASK_NO_DT(task, KERNEL_NAME, DIM, OFFSET, GWS, LWS, __VA_ARGS__); \
       return IRIS_SUCCESS; \
     } \
-    IRIS_TASK_CORE_SIGNATURE(CPP_API_NAME, __VA_ARGS__) \
+    IRIS_TASK_CORE_SIGNATURE_CPP(CPP_API_NAME, __VA_ARGS__) \
     { \
       IRIS_SINGLE_TASK(task, KERNEL_NAME, target_dev, DIM, OFFSET, GWS, LWS, __VA_ARGS__); \
       return IRIS_SUCCESS; \
     } \
-    IRIS_TASK_GRAPH_SIGNATURE(CPP_API_NAME, __VA_ARGS__) \
+    IRIS_TASK_GRAPH_SIGNATURE_CPP(CPP_API_NAME, __VA_ARGS__) \
     { \
       IRIS_TASK_NO_DT(task, KERNEL_NAME, DIM, OFFSET, GWS, LWS, __VA_ARGS__); \
       return IRIS_SUCCESS; \
     } 
+#else //__cplusplus
+#define IRIS_TASK_APIS_CPP(CPP_API_NAME, ...)  IRIS_TASK_APIS(__VA_ARGS__) 
+#endif //__cplusplus
 #endif // IRIS_API_DEFINITION
 
 

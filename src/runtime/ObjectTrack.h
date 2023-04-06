@@ -20,9 +20,10 @@ namespace iris {
                 }
                 bool IsObjectExists(void *p, unsigned long uid) { 
                     bool flag = false;
-                    if (allocated_objects_.find(p) != allocated_objects_.end()) 
-                        flag = allocated_objects_[p];
-                        flag = flag & (allocated_objects_[p] == uid);
+                    if (allocated_objects_.find(p) != allocated_objects_.end())  {
+                        unsigned long luid = allocated_objects_[p];
+                        flag = (luid > 0) && (allocated_objects_[p] == uid);
+                    }
                     _trace("object:%p exists flag:%d", p, flag);
                     return flag;
                 }
@@ -57,7 +58,7 @@ namespace iris {
 
             private:
                 int freed_objects;
-                std::map<void *, bool> allocated_objects_;
+                std::map<void *, unsigned long> allocated_objects_;
                 pthread_mutex_t track_lock_;
         };
     }

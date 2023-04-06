@@ -87,6 +87,8 @@ public:
   std::vector<Task*>* subtasks() { return &subtasks_; }
   Task* subtask(int i) { return subtasks_[i]; }
   bool is_subtask() { return parent_ != NULL; }
+  bool is_kernel_launch_disabled() { return is_kernel_launch_disabled_; }
+  void set_kernel_launch_disabled(bool flag=true) { is_kernel_launch_disabled_ = flag; }
   int ndepends() { return ndepends_; }
   void set_ndepends(int n) { ndepends_ = n; }
   Task** depends() { return depends_; }
@@ -130,14 +132,15 @@ private:
 
   int brs_policy_;
   char opt_[64];
-  bool sync_;
 
   int type_;
   int status_;
+  bool sync_;
   bool user_;
   bool system_;
   bool disable_consistency_;
   bool internal_memory_transfer_;
+  bool is_kernel_launch_disabled_;
 
   double time_;
   double time_start_;

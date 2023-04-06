@@ -50,7 +50,7 @@ int main(int argc, char** argv) {
   iris_task_create(&task0);
   iris_task_h2d_full(task0, mem_X, X);
   iris_task_h2d_full(task0, mem_Y, Y);
-  void* saxpy_params[4] = { mem_Z, &A, mem_X, mem_Y };
+  void* saxpy_params[4] = { &mem_Z, &A, &mem_X, &mem_Y };
   int saxpy_params_info[4] = { iris_w, sizeof(A), iris_r, iris_r };
   iris_task_kernel(task0, "saxpy", 1, NULL, &SIZE, NULL, 4, saxpy_params, saxpy_params_info);
   iris_task_d2h_full(task0, mem_Z, Z);
@@ -77,7 +77,7 @@ int main(int argc, char** argv) {
   free(Y);
   free(Z);
 
-  iris_task_release(task0);
+  //iris_task_release(task0);
 
   iris_finalize();
 

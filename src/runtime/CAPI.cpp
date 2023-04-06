@@ -119,6 +119,18 @@ int iris_task_set_metadata(iris_task brs_task, int index, int metadata) {
     return IRIS_SUCCESS;
 }
 
+int iris_task_h2broadcast(iris_task task, iris_mem mem, size_t off, size_t size, void* host) {
+  return Platform::GetPlatform()->TaskH2Broadcast(task, mem, off, size, host);
+}
+
+int iris_task_h2broadcast_offsets(iris_task task, iris_mem mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host) {
+  return Platform::GetPlatform()->TaskH2Broadcast(task, mem, off, host_sizes, dev_sizes, elem_size, dim, host);
+}
+
+int iris_task_d2d(iris_task task, iris_mem mem, size_t off, size_t size, void* host, int src_dev) {
+  return Platform::GetPlatform()->TaskD2D(task, mem, off, size, host, src_dev);
+}
+
 int iris_task_h2d(iris_task task, iris_mem mem, size_t off, size_t size, void* host) {
   return Platform::GetPlatform()->TaskH2D(task, mem, off, size, host);
 }
@@ -144,6 +156,10 @@ int iris_task_h2d_full(iris_task task, iris_mem mem, void* host) {
   return Platform::GetPlatform()->TaskH2DFull(task, mem, host);
 }
 
+int iris_task_h2broadcast_full(iris_task task, iris_mem mem, void* host) {
+  return Platform::GetPlatform()->TaskH2BroadcastFull(task, mem, host);
+}
+
 int iris_task_d2h_full(iris_task task, iris_mem mem, void* host) {
   return Platform::GetPlatform()->TaskD2HFull(task, mem, host);
 }
@@ -167,6 +183,12 @@ int iris_task_kernel_v3(iris_task task, const char* kernel, int dim, size_t* off
 int iris_task_kernel_selector(iris_task task, iris_selector_kernel func, void* params, size_t params_size) {
   return Platform::GetPlatform()->TaskKernelSelector(task, func, params, params_size);
 }
+int iris_task_kernel_launch_disabled(iris_task brs_task, int flag)
+{
+    Task *task = brs_task.class_obj;
+    task->set_kernel_launch_disabled((bool)flag);
+    return IRIS_SUCCESS;
+}   
 
 int iris_params_map(iris_task task, int *params_map) {
   return Platform::GetPlatform()->SetParamsMap(task, params_map);
@@ -529,6 +551,11 @@ int iris_calibrate_compute_cost_adj_matrix(iris_graph brs_graph, double *comp_da
     Graph* graph = brs_graph.class_obj;
     shared_ptr<GraphMetadata> gm = graph->get_metadata();
     gm->calibrate_compute_cost_adj_matrix(comp_data);
+    return IRIS_SUCCESS;
+}
+int iris_calibrate_communication_cost(double *data, size_t data_size, int iterations, int pin_memory_flag)
+{
+    Platform::GetPlatform()->CalibrateCommunicationMatrix(data, data_size, iterations, (bool)pin_memory_flag);
     return IRIS_SUCCESS;
 }
 void iris_free_array(void *ptr)
