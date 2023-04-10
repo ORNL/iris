@@ -272,6 +272,7 @@ def device_info(device, param):
     return s.value
 
 def calibrate_communication_cost_matrix(data_size, iterations=1, pin_memory=True, units='B'):
+    print("Calibrate communication cost matrix from IRIS platform")
     ndevs = device_count()+1
     data_np = np.zeros(ndevs*ndevs).astype(np.double)
     data_np_cp = convert_obj_ctype(data_np)[0]
@@ -1067,7 +1068,17 @@ class graph:
             return df
         return comm_2d
 
+    def get_3d_cost_comm_time(self, iterations=1, pin_memory=True):
+        print("Extracting 3d communication cost for each object")
+        n_mems = dll.call_ret(dll.iris_count_mems, c_size_t, self.handle)
+        ndevs = device_count()+1
+        time_data = np.zeros(n_mems*ndevs*ndevs, np.double)
+        mem_ids = np.zeros(n_mems, np.int32)
+        dll.call(dll.iris_get_graph_3d_comm_time, self.handle, time_data, mem_ids, np.int32(iterations), np.int32(pin_memory))
+        return time_data.reshape((n_mems, ndevs, ndevs)), mem_ids 
+
     def get_3d_cost_comm_data(self):
+        print("Extracting communication data 3d list of (task from id, task to id, mem_id, size)")
         dll.call(dll.iris_get_graph_3d_comm_data, self.handle)
         total = dll.call_ret(dll.iris_get_graph_3d_comm_data_size, c_size_t, self.handle)
         ptr = dll.call_ret(dll.iris_get_graph_3d_comm_data_ptr, POINTER(CommData3D), self.handle)
@@ -1075,6 +1086,7 @@ class graph:
         return ptr_list
 
     def calibrate_compute_cost_adj_matrix(self, pdf=False, only_device_type=False):
+        print("Calibrating computation cost for each task and for each processor type")
         ntasks, tasks = self.get_tasks()
         ndevs = device_count()
         dev_names = all_device_info()

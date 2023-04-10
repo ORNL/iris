@@ -418,6 +418,8 @@ extern int iris_get_graph_2d_comm_adj_matrix(iris_graph brs_graph, size_t *size_
 extern int iris_calibrate_compute_cost_adj_matrix(iris_graph brs_graph, double *comp_data);
 extern int iris_calibrate_compute_cost_adj_matrix_only_for_types(iris_graph brs_graph, double *comp_data);
 extern int iris_calibrate_communication_cost(double *data, size_t data_size, int iterations, int pin_memory_flag);
+extern int iris_get_graph_3d_comm_time(iris_graph brs_graph, double *comm_time, int *mem_ids, int iterations, int pin_memory_flag);
+extern size_t iris_count_mems(iris_graph brs_graph);
 extern void iris_free_array(void *ptr);
 extern int8_t *iris_allocate_array_int8_t(int SIZE, int8_t init);
 extern int16_t *iris_allocate_array_int16_t(int SIZE, int16_t init);

@@ -813,7 +813,6 @@ int Platform::CalibrateCommunicationMatrix(double *comm_time, size_t data_size, 
             } 
             comm_time[i*ndevs + j] = cmd_time;
         }
-        printf("\n");
     }
     //delete cmd_kernel;
     delete d2d_cmd;

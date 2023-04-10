@@ -456,6 +456,29 @@ void GraphMetadata::get_2d_comm_adj_matrix(size_t *comm_task_adj_matrix)
     }
     Utils::PrintMatrixLimited<size_t>(comm_task_adj_matrix, ntasks, ntasks, "Task Communication data(C++)");
 }
+void GraphMetadata::get_3d_comm_time(double *obj_2_dev_dev_time, int *mem_ids, int iterations, bool pin_memory_flag)
+{
+    int total_mems = mem_index_hash_.size();
+    int ndevs = graph_->platform()->ndevs()+1;
+    int index = 0;
+    map<size_t, double *> processed;
+    for(auto i : mem_index_hash_) {
+        mem_ids[index] = i.first;
+        BaseMem *mem = i.second;
+        size_t size = mem->size();
+        printf("Mem id:%d size:%lu uid:%lu\n", index, size, mem->uid());
+        double *comp_time_matrix = obj_2_dev_dev_time + GET2D_INDEX(ndevs * ndevs, index, 0);
+        if (processed.find(size) != processed.end()) {
+            memcpy(comp_time_matrix, processed[size], sizeof(double)*ndevs*ndevs);
+        }
+        else {
+            graph_->platform()->CalibrateCommunicationMatrix(comp_time_matrix, size, iterations, pin_memory_flag);
+            processed[size] = comp_time_matrix;
+        }
+        printf("        Completed Mem id:%d size:%lu uid:%lu\n", index, size, mem->uid());
+        index++;
+    }
+}
 void GraphMetadata::get_3d_comm_data()
 {
     CommData3D *comm_task_data  = NULL;
@@ -467,10 +490,10 @@ void GraphMetadata::get_3d_comm_data()
         vector<unsigned long> & lst1_v = task_inputs_map_[each_task->uid()];
         set<unsigned long> lst1(lst1_v.begin(), lst1_v.end());
         //printf("Task:%s:%lu ndepends:%lu lst1_v:%lu %lu\n", each_task->name(), each_task->uid(), each_task->ndepends(), lst1.size(), lst1_v.size());
-        for(unsigned long mid : lst1) {
-            BaseMem *mem = mem_index_hash_[mid];
+        //for(unsigned long mid : lst1) {
+            //BaseMem *mem = mem_index_hash_[mid];
             //printf("            probing mem:%lu size:%lu\n", mid, mem->size());
-        }
+        //}
         set<unsigned long> all_covered_mem;
         for(int di=0; di<each_task->ndepends(); di++) {
             Task *d_task = each_task->depend(di);
@@ -478,10 +501,10 @@ void GraphMetadata::get_3d_comm_data()
             vector<unsigned long> & lst2_v = task_outputs_map_[d_task->uid()];
             set<unsigned long> lst2(lst2_v.begin(), lst2_v.end());
             set<unsigned long> mem_list;
-            for(unsigned long mid : lst2) {
-                BaseMem *mem = mem_index_hash_[mid];
+            //for(unsigned long mid : lst2) {
+                //BaseMem *mem = mem_index_hash_[mid];
                 //printf("                dependency probing mem:%lu size:%lu\n", mid, mem->size());
-            }
+            //}
             for(unsigned long mid : lst1) {
                 if (lst2.find(mid) != lst2.end())
                     mem_list.insert(mid);

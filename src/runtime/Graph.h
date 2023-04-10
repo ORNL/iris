@@ -77,6 +77,8 @@ public:
     void get_3d_comm_data();
     void get_2d_comm_adj_matrix(size_t *comm_task_adj_matrix=NULL);
     void calibrate_compute_cost_adj_matrix(double *comp_task_adj_matrix=NULL, bool only_device_type=false);
+    void get_3d_comm_time(double *obj_2_dev_dev_time, int *mem_ids, int iterations, bool pin_memory_flag);
+    size_t count_mems() { return mem_index_hash_.size(); }
 private:
     Graph *graph_;
     int iterations_;

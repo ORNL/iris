@@ -547,6 +547,19 @@ void *iris_get_graph_3d_comm_data_ptr(iris_graph brs_graph)
     CommData3D *comm_data = gm->comm_task_data();
     return comm_data;
 }
+size_t iris_count_mems(iris_graph brs_graph)
+{
+    Graph* graph = brs_graph->class_obj;
+    shared_ptr<GraphMetadata> gm = graph->get_metadata();
+    return gm->count_mems();
+}
+int iris_get_graph_3d_comm_time(iris_graph brs_graph, double *comm_time, int *mem_ids, int iterations, int pin_memory_flag)
+{
+    Graph* graph = brs_graph->class_obj;
+    shared_ptr<GraphMetadata> gm = graph->get_metadata();
+    gm->get_3d_comm_time(comm_time, mem_ids, iterations, pin_memory_flag);
+    return IRIS_SUCCESS;
+}
 int iris_get_graph_3d_comm_data(iris_graph brs_graph, void *comm_data)
 {
     Graph* graph = brs_graph->class_obj;
