@@ -927,6 +927,10 @@ class graph:
         if opt != None:
            c_opt = c_char_p(opt) if sys.version_info[0] == 2 else c_char_p(bytes(opt, 'ascii'))
         dll.iris_graph_task(self.handle, task.handle, c_int(device), c_opt)
+
+    def reset_memories(self):
+        dll.iris_graph_reset_memories(self.handle)
+
     def get_tasks(self):
         dll.iris_graph_tasks_count.restype = c_int
         ntasks = dll.iris_graph_tasks_count(self.handle)

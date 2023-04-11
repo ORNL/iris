@@ -439,6 +439,11 @@ int iris_graph_task(iris_graph graph, iris_task task, int device, const char* op
   return Platform::GetPlatform()->GraphTask(graph, task, device, opt);
 }
 
+int iris_graph_reset_memories(iris_graph brs_graph) {
+  Graph* graph = brs_graph->class_obj;
+  graph->ResetMemories();
+  return IRIS_SUCCESS;
+}
 int iris_graph_retain(iris_graph graph) {
   return Platform::GetPlatform()->GraphRetain(graph);
 }

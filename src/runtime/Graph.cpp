@@ -82,6 +82,14 @@ void Graph::Complete() {
   pthread_mutex_unlock(&mutex_complete_);
 }
 
+void Graph::ResetMemories() {
+    GraphMetadata gmeta(this);
+    map<unsigned long, BaseMem *> & mems = gmeta.mem_index_hash();
+    for(auto i : mems) {
+        i.second->init_reset(true);
+    }
+}   
+
 void Graph::Wait() {
   end_->Wait();
 }

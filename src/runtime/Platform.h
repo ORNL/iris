@@ -126,6 +126,7 @@ public:
 
   int MemCreate(size_t size, iris_mem* brs_mem);
   int DataMemInit(iris_mem brs_mem, bool reset);
+  int DataMemInit(BaseMem *mem, bool reset);
   int DataMemUpdate(iris_mem brs_mem, void *host);
   int RegisterPin(void *host, size_t size);
   int DataMemRegisterPin(iris_mem brs_mem);

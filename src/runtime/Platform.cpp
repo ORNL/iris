@@ -1222,6 +1222,15 @@ int Platform::DataMemInit(iris_mem brs_mem, bool reset) {
     return IRIS_SUCCESS;
 }
 
+int Platform::DataMemInit(BaseMem *mem, bool reset) {
+    if (mem->GetMemHandlerType() != IRIS_DMEM) {
+        _error("IRIS Mem is not supported for initialization with reset value. %ld", mem->uid());
+        return IRIS_ERROR;
+    }
+    mem->init_reset(reset);
+    return IRIS_SUCCESS;
+}
+
 int Platform::DataMemUpdate(iris_mem brs_mem, void *host) {
   DataMem *mem = (DataMem *) brs_mem->class_obj;
   mem->UpdateHost(host);

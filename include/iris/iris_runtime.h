@@ -407,6 +407,7 @@ extern size_t iris_cmd_kernel_get_arg_off(void *cmd, int index);
 extern int    iris_cmd_kernel_get_arg_mode(void *cmd, int index);
 
 // Graph data 
+extern int iris_graph_reset_memories(iris_graph graph);
 extern int iris_graph_get_tasks(iris_graph graph, iris_task *tasks);
 extern int iris_graph_tasks_count(iris_graph graph);
 extern int iris_get_graph_dependency_adj_list(iris_graph brs_graph, int8_t *dep_matrix);

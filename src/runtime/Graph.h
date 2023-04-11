@@ -22,6 +22,7 @@ public:
   void Submit();
   void Complete();
   void Wait();
+  void ResetMemories();
 
   Platform* platform() { return platform_; }
   std::vector<Task*>* tasks() { return &tasks_; }
@@ -79,6 +80,11 @@ public:
     void calibrate_compute_cost_adj_matrix(double *comp_task_adj_matrix=NULL, bool only_device_type=false);
     void get_3d_comm_time(double *obj_2_dev_dev_time, int *mem_ids, int iterations, bool pin_memory_flag);
     size_t count_mems() { return mem_index_hash_.size(); }
+    map<unsigned long, vector<unsigned long> > & task_inputs_map() { return task_inputs_map_; }
+    map<unsigned long, vector<unsigned long> > & task_outputs_map() { return task_outputs_map_; }
+    map<unsigned long, BaseMem *> & mem_index_hash() { return mem_index_hash_; }
+    map<unsigned long, Task *> & task_uid_hash() { return task_uid_hash_; }
+
 private:
     Graph *graph_;
     int iterations_;

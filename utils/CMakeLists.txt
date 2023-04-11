@@ -778,11 +778,13 @@ addKernelRule(kernel.host2roc "${HOST2ROC_KERNEL_SOURCES}" ${HOST2ROC_FLAGS} ${H
 endif() #HOST2ROC_KERNEL_SOURCES
 
 if (EXISTS "$ENV{IRIS}/lib64/libiris.so")
-install(FILES $ENV{IRIS}/lib64/libiris.so DESTINATION ${LIB_INSTALL_PATH})
+install(CODE "EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E create_symlink $ENV{IRIS}/lib64/libiris.so ${LIB_INSTALL_PATH}/libiris.so)")
+#install(FILES $ENV{IRIS}/lib64/libiris.so DESTINATION ${LIB_INSTALL_PATH})
 endif()
 
 if (EXISTS "$ENV{IRIS}/lib/libiris.so")
-install(FILES $ENV{IRIS}/lib/libiris.so DESTINATION ${LIB_INSTALL_PATH})
+install(CODE "EXECUTE_PROCESS(COMMAND  ${CMAKE_COMMAND} -E create_symlink $ENV{IRIS}/lib/libiris.so ${LIB_INSTALL_PATH}/libiris.so)")
+#install(FILES $ENV{IRIS}/lib/libiris.so DESTINATION ${LIB_INSTALL_PATH})
 endif()
 
 #printf "0x%x\n" `adb shell cat /sys/devices/soc0/serial_number` > serial

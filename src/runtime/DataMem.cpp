@@ -50,17 +50,9 @@ void DataMem::UpdateHost(void *host_ptr)
 void DataMem::init_reset(bool reset)
 {
     reset_ = reset;
-    if (reset) {
-        host_dirty_flag_ = true;
-        for(int i=0;  i<ndevs_; i++) {
-            dirty_flag_[i] = false;
-        }
-    }
-    else {
-        host_dirty_flag_ = false;
-        for(int i=0;  i<ndevs_; i++) {
-            dirty_flag_[i] = true;
-        }
+    host_dirty_flag_ = !reset;
+    for(int i=0;  i<ndevs_; i++) {
+        dirty_flag_[i] = reset;
     }
 }
 DataMem::DataMem(Platform *platform, void *host_ptr, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim) : BaseMem(IRIS_DMEM, platform->ndevs()) 
