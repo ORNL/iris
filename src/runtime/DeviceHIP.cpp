@@ -194,8 +194,8 @@ void DeviceHIP::ResetContext()
 {
     hipCtx_t ctx;
     ld_->hipCtxGetCurrent(&ctx);
-    _trace("HIP resetting context switch dev[%d][%s] self:%p thread:%p\n", devno_, name_, (void *)worker()->self(), (void *)worker()->thread());
-    _trace("Resetting Context Switch: %p %p\n", ctx, ctx_);
+    _trace("HIP resetting context switch dev[%d][%s] self:%p thread:%p", devno_, name_, (void *)worker()->self(), (void *)worker()->thread());
+    _trace("Resetting Context Switch: %p %p", ctx, ctx_);
     ld_->hipCtxSetCurrent(ctx_);
 }
 int DeviceHIP::MemD2D(Task *task, BaseMem *mem, void *dst, void *src, size_t size) {
