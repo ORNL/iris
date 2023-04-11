@@ -1,4 +1,7 @@
 #!/bin/bash
+source /etc/profile
+source /etc/profile.d/z00_lmod.sh
+source ~/.bashrc
 source ./setup.sh
 
 if [ "$SYSTEM" = "leconte" ] ; then
@@ -23,9 +26,10 @@ if ! [ -f dagger_runner ] ; then
    echo "No dagger_runner app! " && exit 1
 fi
 
-export RESULTS_DIR=`pwd`/dagger-figures
-mkdir -p $RESULTS_DIR
-echo "Running DAGGER evaluation.... (result figures can be found in $RESULTS_DIR)"
+export RESULTS_DIR=`pwd`/dagger-results
+export GRAPHS_DIR=`pwd`/dagger-graphs
+mkdir -p $RESULTS_DIR $GRAPHS_DIR
+echo "Running DAGGER evaluation.... (graph figures can be found in $GRAPHS_DIR)"
 
 #ensure libiris.so is in the shared library path
 #  echo "ADDING $HOME/.local/lib64 to LD_LIBRARY_PATH"
@@ -43,7 +47,7 @@ if ! [ -d dagger-payloads ] ; then
   [ $? -ne 0 ] &&  exit 1
   cat graph.json
   cp graph.json dagger-payloads/linear10-graph.json
-  cp dag.png $RESULTS_DIR/linear10-graph.png
+  cp dag.png $GRAPHS_DIR/linear10-graph.png
   echo "*******************************************************************"
   echo "*                          Parallel 2by10                         *"
   echo "*******************************************************************"
@@ -51,7 +55,7 @@ if ! [ -d dagger-payloads ] ; then
   [ $? -ne 0 ] &&  exit 1
   cat graph.json
   cp graph.json dagger-payloads/parallel-2by10-graph.json
-  cp dag.png $RESULTS_DIR/parallel-2by10-graph.png
+  cp dag.png $GRAPHS_DIR/parallel-2by10-graph.png
   echo "*******************************************************************"
   echo "*                          Parallel 5by100                        *"
   echo "*******************************************************************"
@@ -59,7 +63,7 @@ if ! [ -d dagger-payloads ] ; then
   [ $? -ne 0 ] &&  exit 1
   cat graph.json
   cp graph.json dagger-payloads/parallel-5by100-graph.json
-  cp dag.png $RESULTS_DIR/parallel-5by100-graph.png
+  cp dag.png $GRAPHS_DIR/parallel-5by100-graph.png
   echo "*******************************************************************"
   echo "*                          Diamond 10                             *"
   echo "*******************************************************************"
@@ -68,7 +72,7 @@ if ! [ -d dagger-payloads ] ; then
   [ $? -ne 0 ] &&  exit 1
   cat graph.json
   cp graph.json dagger-payloads/diamond-10-graph.json
-  cp dag.png $RESULTS_DIR/diamond-10-graph.png
+  cp dag.png $GRAPHS_DIR/diamond-10-graph.png
   echo "*******************************************************************"
   echo "*                          Diamond 100                            *"
   echo "*******************************************************************"
@@ -76,7 +80,7 @@ if ! [ -d dagger-payloads ] ; then
   [ $? -ne 0 ] &&  exit 1
   cat graph.json
   cp graph.json dagger-payloads/diamond-100-graph.json
-  cp dag.png $RESULTS_DIR/diamond-100-graph.png
+  cp dag.png $GRAPHS_DIR/diamond-100-graph.png
   echo "*******************************************************************"
   echo "*                          Diamond 1000                           *"
   echo "*******************************************************************"
@@ -84,7 +88,7 @@ if ! [ -d dagger-payloads ] ; then
   [ $? -ne 0 ] &&  exit 1
   cat graph.json
   cp graph.json dagger-payloads/diamond-1000-graph.json
-  cp dag.png $RESULTS_DIR/diamond-1000-graph.png
+  cp dag.png $GRAPHS_DIR/diamond-1000-graph.png
   echo "*******************************************************************"
   echo "*                          Chainlink 25                           *"
   echo "*******************************************************************"
@@ -92,7 +96,7 @@ if ! [ -d dagger-payloads ] ; then
   [ $? -ne 0 ] &&  exit 1
   cat graph.json
   cp graph.json dagger-payloads/chainlink-25-graph.json
-  cp dag.png $RESULTS_DIR/chainlink-25-graph.png
+  cp dag.png $GRAPHS_DIR/chainlink-25-graph.png
   echo "*******************************************************************"
   echo "*                          Galaga 25                              *"
   echo "*******************************************************************"
@@ -100,7 +104,7 @@ if ! [ -d dagger-payloads ] ; then
   [ $? -ne 0 ] &&  exit 1
   cat graph.json
   cp graph.json dagger-payloads/galaga-25-graph.json
-  cp dag.png $RESULTS_DIR/galaga-25-graph.png
+  cp dag.png $GRAPHS_DIR/galaga-25-graph.png
   echo "*******************************************************************"
   echo "*                          Tangled 25                             *"
   echo "*******************************************************************"
@@ -108,7 +112,7 @@ if ! [ -d dagger-payloads ] ; then
   [ $? -ne 0 ] &&  exit 1
   cat graph.json
   cp graph.json dagger-payloads/tangled-25-graph.json
-  cp dag.png $RESULTS_DIR/tangled-25-graph.png
+  cp dag.png $GRAPHS_DIR/tangled-25-graph.png
   echo "*******************************************************************"
   echo "*                           Brain 1000                            *"
   echo "*******************************************************************"
@@ -116,7 +120,7 @@ if ! [ -d dagger-payloads ] ; then
   [ $? -ne 0 ] &&  exit 1
   cat graph.json
   cp graph.json dagger-payloads/brain-1000-graph.json
-  cp dag.png $RESULTS_DIR/brain-1000-graph.png
+  cp dag.png $GRAPHS_DIR/brain-1000-graph.png
 fi
 
 echo "Running DAGGER on payloads..."

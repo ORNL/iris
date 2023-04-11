@@ -384,7 +384,7 @@ int indexer = 0;
       json_inputs[indexer] = mem; indexer++;
     }
     for(auto & mem : dev_mem){
-      json_inputs[indexer] = mem; indexer++;
+      json_inputs[indexer] = &mem; indexer++;
     }
     json_inputs[indexer] = &memory_task_target; indexer++;
     json_inputs[indexer] = &task_target; indexer++;

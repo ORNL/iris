@@ -10,6 +10,9 @@ fi
 export IRIS_SRC_DIR=../..
 export WORKING_DIR=`pwd`
 
+#installed with:
+#micromamba create -f dagger.yaml
+micromamba activate dagger
 #if we don't have a conda env set, then load it.
 if [[ -z "$CONDA_PREFIX" ]] ; then
   echo "Please ensure this script is run from a conda session (hint: conda activate iris)"

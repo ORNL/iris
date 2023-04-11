@@ -22,6 +22,7 @@
             "0",
             "user-size-cb-ijk"
           ],
+          "depends": [null],
           "target": "user-target-control"
         },
         {
@@ -32,6 +33,7 @@
             "0",
             "user-size-cb-ijk"
           ],
+          "depends": [null],
           "target": "user-target-control"
         },
         {
