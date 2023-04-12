@@ -21,7 +21,7 @@ struct TaskProfile
     double start;
     double end;
 };
-struct MemProfile {
+struct DataObjectProfile {
   uint32_t  task_id_;;
   uint32_t  mem_id_;
   uint32_t datatransfer_type_;

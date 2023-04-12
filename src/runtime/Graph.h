@@ -14,7 +14,7 @@ namespace rt {
 class BaseMem;
 class GraphMetadata;
 class TaskProfile;
-class MemProfile;
+class DataObjectProfile;
 class Graph: public Retainable<struct _iris_graph, Graph> {
 public:
   Graph(Platform* platform);
@@ -88,10 +88,10 @@ public:
     map<unsigned long, BaseMem *> & mem_index_hash() { return mem_index_hash_; }
     map<unsigned long, Task *> & task_uid_hash() { return task_uid_hash_; }
     void fetch_task_execution_schedules(int kernel_profile=false);
-    void fetch_mem_execution_schedules();
+    void fetch_dataobject_execution_schedules();
     size_t task_schedule_count() { return task_schedule_count_; }
-    size_t mem_schedule_count() { return mem_schedule_count_; }
-    MemProfile *mem_schedule_data() { return mem_schedule_data_; }
+    size_t dataobject_schedule_count() { return dataobject_schedule_count_; }
+    DataObjectProfile *dataobject_schedule_data() { return dataobject_schedule_data_; }
     TaskProfile *task_schedule_data() { return task_schedule_data_; }
 
 
@@ -103,8 +103,8 @@ private:
     CommData3D *comm_task_data_;
     TaskProfile *task_schedule_data_;
     size_t task_schedule_count_;
-    MemProfile *mem_schedule_data_;
-    size_t mem_schedule_count_;
+    DataObjectProfile *dataobject_schedule_data_;
+    size_t dataobject_schedule_count_;
     size_t comm_task_data_size_;
     size_t *comm_task_adj_matrix_;
     double *comp_task_adj_matrix_;

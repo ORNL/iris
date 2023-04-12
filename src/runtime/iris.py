@@ -20,33 +20,33 @@ class CommData3D(Structure):
 
 class TaskProfile(Structure):
     _fields_ = [
-        ("task_id", c_uint),
-        ("dev_id", c_uint),
+        ("task", c_uint),
+        ("device", c_uint),
         ("start", c_double),
         ("end", c_double)
     ]
     def __str__(self):
-        return f"task_id={self.task_id}, dev_id={self.dev_id}, start={self.start}, end={self.end}"
+        return f"task={self.task}, device={self.device}, start={self.start}, end={self.end}"
 
     def __repr__(self) -> str:
-        return f"TaskProfile(task_id={self.task_id}, dev_id={self.dev_id}, start={self.start}, end={self.end})"
+        return f"TaskProfile(task={self.task}, device={self.device}, start={self.start}, end={self.end})"
 
 
-class MemProfile(Structure):
+class DataObjectProfile(Structure):
     _fields_ = [
-        ("task_id", c_uint),
-        ("mem_id", c_uint),
+        ("task", c_uint),
+        ("data_object", c_uint),
         ("datatransfer_type", c_uint),
-        ("from_dev_id", c_uint),
-        ("dev_id", c_uint),
+        ("from_device", c_uint),
+        ("device", c_uint),
         ("start", c_double),
         ("end", c_double)
     ]
     def __str__(self):
-        return f"task_id={self.task_id}, mem_id={self.mem_id}, datatransfer_type={self.datatransfer_type}, from_dev_id={self.from_dev_id}, dev_id={self.dev_id}, start={self.start}, end={self.end}"
+        return f"task={self.task}, data_object={self.data_object}, datatransfer_type={self.datatransfer_type}, from_device={self.from_device}, device={self.device}, start={self.start}, end={self.end}"
 
     def __repr__(self) -> str:
-        return f"MemProfile(task_id={self.task_id}, mem_id={self.mem_id}, datatransfer_type={self.datatransfer_type}, from_dev_id={self.from_dev_id}, dev_id={self.dev_id}, start={self.start}, end={self.end})"
+        return f"DataObjectProfile(task={self.task}, data_object={self.data_object}, datatransfer_type={self.datatransfer_type}, from_device={self.from_device}, device={self.device}, start={self.start}, end={self.end})"
 
 
 
@@ -1005,8 +1005,8 @@ class graph:
 
     def mems_execution_schedule(self):
         # Order should not be changed
-        ptr = dll.call_ret(dll.iris_get_graph_mems_execution_schedule, POINTER(MemProfile), self.handle)
-        total = dll.call_ret(dll.iris_get_graph_mems_execution_schedule_count, c_size_t, self.handle)
+        ptr = dll.call_ret(dll.iris_get_graph_dataobjects_execution_schedule, POINTER(DataObjectProfile), self.handle)
+        total = dll.call_ret(dll.iris_get_graph_dataobjects_execution_schedule_count, c_size_t, self.handle)
         ptr_list = [ ptr[i] for i in range(total) ]
         return ptr_list
 

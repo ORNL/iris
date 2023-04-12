@@ -80,6 +80,7 @@ int Graph::enable_mem_profiling() {
         if (task->cmd_kernel() != NULL) 
             task->cmd_kernel()->kernel()->set_profile_data_transfers();
     }
+    return IRIS_SUCCESS;
 }
 
 void Graph::Complete() {
@@ -243,9 +244,9 @@ void GraphMetadata::calibrate_compute_cost_adj_matrix(double *comp_task_adj_matr
     Utils::PrintMatrixLimited<double>(comp_task_adj_matrix, ntasks, nentries, "Task Computation data(C++)-");
 #endif
 }
-void GraphMetadata::fetch_mem_execution_schedules()
+void GraphMetadata::fetch_dataobject_execution_schedules()
 {
-    vector<MemProfile> results;
+    vector<DataObjectProfile> results;
     vector<Task *> tasks = graph_->formatted_tasks();
     for(unsigned long index=0; index<tasks.size(); index++) {
         Task *task = tasks[index];
@@ -256,9 +257,9 @@ void GraphMetadata::fetch_mem_execution_schedules()
             }
         }
     }
-    mem_schedule_data_ = (MemProfile *) malloc(sizeof(MemProfile)*results.size());
-    mem_schedule_count_ = results.size();
-    std::copy(results.begin(), results.end(), mem_schedule_data_);
+    dataobject_schedule_data_ = (DataObjectProfile *) malloc(sizeof(DataObjectProfile)*results.size());
+    dataobject_schedule_count_ = results.size();
+    std::copy(results.begin(), results.end(), dataobject_schedule_data_);
 }
 void GraphMetadata::fetch_task_execution_schedules(int kernel_profile)
 {

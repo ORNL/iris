@@ -41,9 +41,9 @@ public:
   char* name() { return name_; }
   void set_profile_data_transfers(bool flag=true) { profile_data_transfers_ = flag; }
   bool is_profile_data_transfers() { return profile_data_transfers_; }
-  void AddInMemProfile(MemProfile hist) { in_mem_profiles_.push_back(hist); }
-  void ClearMemInProfile() { in_mem_profiles_.clear(); }
-  vector<MemProfile> & in_mem_profiles() { return in_mem_profiles_; }
+  void AddInDataObjectProfile(DataObjectProfile hist) { in_dataobject_profiles.push_back(hist); }
+  void ClearMemInProfile() { in_dataobject_profiles.clear(); }
+  vector<DataObjectProfile> & in_mem_profiles() { return in_dataobject_profiles; }
   bool vendor_specific_kernel_check_flag(int devno) { return vendor_specific_kernel_check_flag_[devno]; }
   void set_vendor_specific_kernel_check(int devno, bool flag=true) { vendor_specific_kernel_check_flag_[devno] = flag; }
   bool is_vendor_specific_kernel(int devno) { return is_vendor_specific_kernel_[devno]; }
@@ -75,7 +75,7 @@ private:
   bool is_vendor_specific_kernel_[IRIS_MAX_NDEVS];
   bool vendor_specific_kernel_check_flag_[IRIS_MAX_NDEVS];
   bool profile_data_transfers_;
-  vector<MemProfile>       in_mem_profiles_;
+  vector<DataObjectProfile>       in_dataobject_profiles;
   std::map<int, DataMem *> data_mems_in_;
   std::map<int, DataMemRegion *> data_mem_regions_in_;
   std::map<int, DataMem *> data_mems_out_;
