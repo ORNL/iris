@@ -518,6 +518,11 @@ int iris_timer_now(double* time) {
   return Platform::GetPlatform()->TimerNow(time);
 }
 
+int iris_graph_enable_mem_profiling(iris_graph brs_graph)
+{
+    Graph* graph = brs_graph->class_obj;
+    graph->enable_mem_profiling();
+}
 int iris_graph_get_tasks(iris_graph graph, iris_task *tasks) {
   return Platform::GetPlatform()->GetGraphTasks(graph, tasks);
 }
@@ -551,6 +556,34 @@ void *iris_get_graph_3d_comm_data_ptr(iris_graph brs_graph)
     shared_ptr<GraphMetadata> gm = graph->get_metadata();
     CommData3D *comm_data = gm->comm_task_data();
     return comm_data;
+}
+size_t iris_get_graph_tasks_execution_schedule_count(iris_graph brs_graph)
+{
+    Graph* graph = brs_graph->class_obj;
+    shared_ptr<GraphMetadata> gm = graph->get_metadata();
+    return gm->task_schedule_count();
+}
+void *iris_get_graph_tasks_execution_schedule(iris_graph brs_graph, int kernel_profile)
+{
+    Graph* graph = brs_graph->class_obj;
+    shared_ptr<GraphMetadata> gm = graph->get_metadata();
+    gm->fetch_task_execution_schedules(kernel_profile);
+    TaskProfile *tasks_data = gm->task_schedule_data();
+    return tasks_data;
+}
+size_t iris_get_graph_mems_execution_schedule_count(iris_graph brs_graph)
+{
+    Graph* graph = brs_graph->class_obj;
+    shared_ptr<GraphMetadata> gm = graph->get_metadata();
+    return gm->mem_schedule_count();
+}
+void *iris_get_graph_mems_execution_schedule(iris_graph brs_graph)
+{
+    Graph* graph = brs_graph->class_obj;
+    shared_ptr<GraphMetadata> gm = graph->get_metadata();
+    gm->fetch_mem_execution_schedules();
+    MemProfile *mems_data = gm->mem_schedule_data();
+    return mems_data;
 }
 size_t iris_count_mems(iris_graph brs_graph)
 {

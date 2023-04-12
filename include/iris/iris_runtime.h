@@ -49,6 +49,14 @@ typedef int8_t bool;
 #define iris_xw                 -5
 #define iris_xrw                -6
 
+#define iris_dt_h2d             1
+#define iris_dt_d2o             2
+#define iris_dt_o2d             3
+#define iris_dt_d2h             4
+#define iris_dt_d2d             5
+#define iris_dt_d2h_h2d         6
+#define iris_dt_error           0
+
 #define iris_int                (1 << 0)
 #define iris_long               (1 << 1)
 #define iris_float              (1 << 2)
@@ -407,6 +415,7 @@ extern size_t iris_cmd_kernel_get_arg_off(void *cmd, int index);
 extern int    iris_cmd_kernel_get_arg_mode(void *cmd, int index);
 
 // Graph data 
+extern int iris_graph_enable_mem_profiling(iris_graph brs_graph);
 extern int iris_graph_reset_memories(iris_graph graph);
 extern int iris_graph_get_tasks(iris_graph graph, iris_task *tasks);
 extern int iris_graph_tasks_count(iris_graph graph);
@@ -414,6 +423,10 @@ extern int iris_get_graph_dependency_adj_list(iris_graph brs_graph, int8_t *dep_
 extern int iris_get_graph_dependency_adj_matrix(iris_graph brs_graph, int8_t *dep_matrix);
 extern size_t iris_get_graph_3d_comm_data_size(iris_graph brs_graph);
 extern void *iris_get_graph_3d_comm_data_ptr(iris_graph brs_graph);
+extern void *iris_get_graph_tasks_execution_schedule(iris_graph brs_graph, int kernel_profile);
+extern size_t iris_get_graph_tasks_execution_schedule_count(iris_graph brs_graph);
+extern void *iris_get_graph_mems_execution_schedule(iris_graph brs_graph);
+extern size_t iris_get_graph_mems_execution_schedule_count(iris_graph brs_graph);
 extern int iris_get_graph_3d_comm_data(iris_graph brs_graph, void *comm_data);
 extern int iris_get_graph_2d_comm_adj_matrix(iris_graph brs_graph, size_t *size_data);
 extern int iris_calibrate_compute_cost_adj_matrix(iris_graph brs_graph, double *comp_data);

@@ -15,6 +15,39 @@ class CommData3D(Structure):
     ]
     def __repr__(self):
         return f'CommData3D(from_id={self.from_id}, to_id={self.to_id}, mem_id={self.mem_id}, size={self.size})'
+    def __str__(self):
+        return f"from_id={self.from_id}, to_id={self.to_id}, mem_id={self.mem_id}, size={self.size}"
+
+class TaskProfile(Structure):
+    _fields_ = [
+        ("task_id", c_uint),
+        ("dev_id", c_uint),
+        ("start", c_double),
+        ("end", c_double)
+    ]
+    def __str__(self):
+        return f"task_id={self.task_id}, dev_id={self.dev_id}, start={self.start}, end={self.end}"
+
+    def __repr__(self) -> str:
+        return f"TaskProfile(task_id={self.task_id}, dev_id={self.dev_id}, start={self.start}, end={self.end})"
+
+
+class MemProfile(Structure):
+    _fields_ = [
+        ("task_id", c_uint),
+        ("mem_id", c_uint),
+        ("datatransfer_type", c_uint),
+        ("from_dev_id", c_uint),
+        ("dev_id", c_uint),
+        ("start", c_double),
+        ("end", c_double)
+    ]
+    def __str__(self):
+        return f"task_id={self.task_id}, mem_id={self.mem_id}, datatransfer_type={self.datatransfer_type}, from_dev_id={self.from_dev_id}, dev_id={self.dev_id}, start={self.start}, end={self.end}"
+
+    def __repr__(self) -> str:
+        return f"MemProfile(task_id={self.task_id}, mem_id={self.mem_id}, datatransfer_type={self.datatransfer_type}, from_dev_id={self.from_dev_id}, dev_id={self.dev_id}, start={self.start}, end={self.end})"
+
 
 
 class library(CDLL):
@@ -212,6 +245,14 @@ iris_platform   =   0x1001
 iris_vendor     =   0x1002
 iris_name       =   0x1003
 iris_type       =   0x1004
+
+iris_dt_h2d     =        1
+iris_dt_h2o     =        2
+iris_dt_d2o     =        3
+iris_dt_d2h     =        4
+iris_dt_d2d     =        5
+iris_dt_d2h_h2d =        6
+iris_dt_error   =        0
 
 IRIS_MEM = 0x1
 IRIS_DMEM = 0x2
@@ -931,6 +972,9 @@ class graph:
     def reset_memories(self):
         dll.iris_graph_reset_memories(self.handle)
 
+    def enable_mem_profiling(self):
+        dll.iris_graph_enable_mem_profiling(self.handle)
+
     def get_tasks(self):
         dll.iris_graph_tasks_count.restype = c_int
         ntasks = dll.iris_graph_tasks_count(self.handle)
@@ -940,6 +984,7 @@ class graph:
         dll.iris_graph_get_tasks(self.handle, tasks)
         ptasks = convert_ctasks(tasks)
         return ntasks, ptasks
+
     def get_task_names(self):
         ntasks, tasks = self.get_tasks()
         task_names = [ task.name() for task in tasks]
@@ -950,6 +995,21 @@ class graph:
         ntasks, tasks = self.get_tasks()
         task_uids = [0] + [ task.uid() for task in tasks]
         return task_uids
+
+    def tasks_execution_schedule(self, kernel_profile=False):
+        # Order should not be changed
+        ptr = dll.call_ret(dll.iris_get_graph_tasks_execution_schedule, POINTER(TaskProfile), self.handle, np.int32(kernel_profile))
+        total = dll.call_ret(dll.iris_get_graph_tasks_execution_schedule_count, c_size_t, self.handle)
+        ptr_list = [ ptr[i] for i in range(total) ]
+        return ptr_list
+
+    def mems_execution_schedule(self):
+        # Order should not be changed
+        ptr = dll.call_ret(dll.iris_get_graph_mems_execution_schedule, POINTER(MemProfile), self.handle)
+        total = dll.call_ret(dll.iris_get_graph_mems_execution_schedule_count, c_size_t, self.handle)
+        ptr_list = [ ptr[i] for i in range(total) ]
+        return ptr_list
+
     def get_dependency_matrix(self, pdf=False):
         ntasks, tasks = self.get_tasks()
         SIZE = ntasks+1

@@ -74,6 +74,13 @@ int Graph::iris_tasks(iris_task *pv) {
     pv[index++] = tasks_[0]->struct_obj();
     return index;
 }
+int Graph::enable_mem_profiling() {
+    for(size_t i=1; i<tasks_.size(); i++) {
+        Task *task = tasks_[i];
+        if (task->cmd_kernel() != NULL) 
+            task->cmd_kernel()->kernel()->set_profile_data_transfers();
+    }
+}
 
 void Graph::Complete() {
   pthread_mutex_lock(&mutex_complete_);
@@ -235,6 +242,40 @@ void GraphMetadata::calibrate_compute_cost_adj_matrix(double *comp_task_adj_matr
     printf("N Entries:%d %d uniques:%d %ld\n", only_device_type, ndevs, nentries, unique_devices.size());
     Utils::PrintMatrixLimited<double>(comp_task_adj_matrix, ntasks, nentries, "Task Computation data(C++)-");
 #endif
+}
+void GraphMetadata::fetch_mem_execution_schedules()
+{
+    vector<MemProfile> results;
+    vector<Task *> tasks = graph_->formatted_tasks();
+    for(unsigned long index=0; index<tasks.size(); index++) {
+        Task *task = tasks[index];
+        if (task->cmd_kernel() != NULL && task->cmd_kernel()->kernel() != NULL && task->cmd_kernel()->kernel()->is_profile_data_transfers()) {
+            Kernel *kernel = task->cmd_kernel()->kernel();
+            for(auto i : kernel->in_mem_profiles()) {
+                results.push_back(i);
+            }
+        }
+    }
+    mem_schedule_data_ = (MemProfile *) malloc(sizeof(MemProfile)*results.size());
+    mem_schedule_count_ = results.size();
+    std::copy(results.begin(), results.end(), mem_schedule_data_);
+}
+void GraphMetadata::fetch_task_execution_schedules(int kernel_profile)
+{
+    vector<TaskProfile> results;
+    vector<Task *> tasks = graph_->formatted_tasks();
+    for(unsigned long index=0; index<tasks.size(); index++) {
+        Task *task = tasks[index];
+        if (!kernel_profile) 
+            results.push_back({(uint32_t) task->uid(), (uint32_t)task->dev()->devno(), task->time_start(), task->time_end()});
+        else if (task->cmd_kernel() != NULL && task->cmd_kernel()->kernel() != NULL) {
+            Command *cmd = task->cmd_kernel();
+            results.push_back({(uint32_t) task->uid(), (uint32_t)task->dev()->devno(), cmd->time_start(), cmd->time_end()});
+        }
+    }
+    task_schedule_data_ = (TaskProfile*) malloc(sizeof(TaskProfile)*results.size());
+    task_schedule_count_ = results.size();
+    std::copy(results.begin(), results.end(), task_schedule_data_);
 }
 void GraphMetadata::map_task_inputs_outputs()
 {

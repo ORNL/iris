@@ -277,6 +277,10 @@ void Device::ExecuteMemIn(Task *task, Command* cmd) {
     if (cmd == NULL || cmd->kernel() == NULL) return;
     int *params_map = cmd->get_params_map();
     //int nargs = cmd->kernel_nargs();
+    Kernel *kernel = cmd->kernel();
+    if (kernel->is_profile_data_transfers()) {
+        kernel->ClearMemInProfile();
+    }
     for(pair<int, DataMem *> it : cmd->kernel()->data_mems_in()) {
         int idx = it.first;
         DataMem *mem = it.second;
@@ -299,6 +303,7 @@ template <typename DMemType>
 void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem)
 {
     int nddevs[IRIS_MAX_NDEVS+1];
+    Kernel *kernel = cmd->kernel();
     size_t *ptr_off = mem->local_off();
     size_t *gws = mem->host_size();
     size_t *lws = mem->dev_size();
@@ -331,8 +336,13 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem)
         void* dst_arch = mem->arch(this);
         void* src_arch = mem->arch(src_dev);
         double start = timer_->Now();
+
         MemD2D(task, mem, dst_arch, src_arch, mem->size());
-        d2dtime = timer_->Now() - start;
+        double end = timer_->Now();
+        if (kernel->is_profile_data_transfers()) {
+            kernel->AddInMemProfile({(uint32_t) cmd->task()->uid(), (uint32_t) mem->uid(), (uint32_t) iris_dt_d2d, (uint32_t) d2d_dev, (uint32_t) devno_, start, end});
+        }
+        d2dtime = end - start;
         d2d_enabled = true;
     }
     else if (cpu_dev >= 0) {
@@ -350,7 +360,11 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem)
         // You do not need offsets as they correspond to host pointer
         double start = timer_->Now();
         MemH2D(task, mem, off, host_sizes, dev_sizes, 1, 1, mem->size(), src_arch, "OpenMP2DEV ");
-        o2dtime = timer_->Now() - start;
+        double end = timer_->Now();
+        o2dtime = end - start;
+        if (kernel->is_profile_data_transfers()) {
+            kernel->AddInMemProfile({(uint32_t) cmd->task()->uid(), (uint32_t) mem->uid(), (uint32_t) iris_dt_o2d, (uint32_t) cpu_dev, (uint32_t) devno_, start, end});
+        }
         o2d_enabled = true;
     }
     else if (this->type() == iris_cpu && non_cpu_dev >= 0) {
@@ -369,8 +383,12 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem)
         _trace("explore Device2Device(OpenMP) (D2O) dev[%d][%s] task[%ld:%s] mem[%lu] cs:%d", devno_, name_, task->uid(), task->name(), mem->uid(), context_shift);
         double start = timer_->Now();
         src_dev->MemD2H(task, mem, off, host_sizes, dev_sizes, 1, 1, mem->size(), src_arch, "DEV2OpenMP ");
+        double end = timer_->Now();
         if (context_shift) ResetContext();
-        d2otime = timer_->Now() - start;
+        if (kernel->is_profile_data_transfers()) {
+            kernel->AddInMemProfile({(uint32_t) cmd->task()->uid(), (uint32_t) mem->uid(), (uint32_t) iris_dt_d2o, (uint32_t) non_cpu_dev, (uint32_t) devno_, start, end});
+        }
+        d2otime = end - start;
         d2o_enabled = true;
     }
     else if (!mem->is_host_dirty()) {
@@ -381,8 +399,12 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem)
         double start = timer_->Now();
         errid_ = MemH2D(task, mem, ptr_off, 
                 gws, lws, elem_size, dim, size, host);
+        double end = timer_->Now();
         if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
-        h2dtime = timer_->Now() - start;
+        if (kernel->is_profile_data_transfers()) {
+            kernel->AddInMemProfile({(uint32_t) cmd->task()->uid(), (uint32_t) mem->uid(), (uint32_t) iris_dt_h2d, (uint32_t) -1, (uint32_t) devno_, start, end});
+        }
+        h2dtime = end - start;
         h2d_enabled = true;
     }
     else {
@@ -396,19 +418,25 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem)
         bool context_shift = src_dev->IsContextChangeRequired();
         _trace("explore D2H->H2D dev[%d][%s] task[%ld:%s] mem[%lu] cs:%d", devno_, name_, task->uid(), task->name(), mem->uid(), context_shift);
         double start = timer_->Now();
+        double d2h_start = start;
         errid_ = src_dev->MemD2H(task, mem, ptr_off, 
                 gws, lws, elem_size, dim, size, host, "D2H->H2D(1) ");
-        d2htime = timer_->Now() - start;
+        double end = timer_->Now();
+        d2htime = end - start;
         if (context_shift) ResetContext();
         if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
         // H2D should be issued from this current device
         start = timer_->Now();
         errid_ = MemH2D(task, mem, ptr_off, 
                 gws, lws, elem_size, dim, size, host, "D2H->H2D(2) ");
-        h2dtime = timer_->Now() - start;
+        end = timer_->Now();
+        h2dtime = end - start;
         if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
         mem->clear_host_dirty();
         d2h_h2d_enabled = true;
+        if (kernel->is_profile_data_transfers()) {
+            kernel->AddInMemProfile({(uint32_t) cmd->task()->uid(), (uint32_t) mem->uid(), (uint32_t) iris_dt_d2h_h2d, (uint32_t) nddevs[0], (uint32_t) devno_, d2h_start, end});
+        }
     }
     mem->clear_dev_dirty(devno_ );
     mem->dev_unlock(devno_);

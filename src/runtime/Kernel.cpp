@@ -16,6 +16,7 @@ Kernel::Kernel(const char* name, Platform* platform) {
   strncpy(name_, name, len);
   strcpy(task_name_, name);
   name_[len] = 0;
+  profile_data_transfers_ = false;
   platform_ = platform;
   history_ = platform->CreateHistory(name);
   for (int i = 0; i < IRIS_MAX_NDEVS; i++) {

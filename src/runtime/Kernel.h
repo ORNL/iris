@@ -4,6 +4,7 @@
 #include "Config.h"
 #include "Retainable.h"
 #include "Platform.h"
+#include "History.h"
 #include <stdint.h>
 #include <map>
 #include <vector>
@@ -14,6 +15,7 @@ namespace iris {
 namespace rt {
 
 class History;
+class MemHistory;
 class DataMem;
 class DataMemRegion;
 typedef struct _KernelArg {
@@ -37,6 +39,11 @@ public:
   void* GetParamWrapperMemory() { return (void *)param_wrapper_mem_; }
 
   char* name() { return name_; }
+  void set_profile_data_transfers(bool flag=true) { profile_data_transfers_ = flag; }
+  bool is_profile_data_transfers() { return profile_data_transfers_; }
+  void AddInMemProfile(MemProfile hist) { in_mem_profiles_.push_back(hist); }
+  void ClearMemInProfile() { in_mem_profiles_.clear(); }
+  vector<MemProfile> & in_mem_profiles() { return in_mem_profiles_; }
   bool vendor_specific_kernel_check_flag(int devno) { return vendor_specific_kernel_check_flag_[devno]; }
   void set_vendor_specific_kernel_check(int devno, bool flag=true) { vendor_specific_kernel_check_flag_[devno] = flag; }
   bool is_vendor_specific_kernel(int devno) { return is_vendor_specific_kernel_[devno]; }
@@ -67,6 +74,8 @@ private:
   shared_ptr<History> history_;
   bool is_vendor_specific_kernel_[IRIS_MAX_NDEVS];
   bool vendor_specific_kernel_check_flag_[IRIS_MAX_NDEVS];
+  bool profile_data_transfers_;
+  vector<MemProfile>       in_mem_profiles_;
   std::map<int, DataMem *> data_mems_in_;
   std::map<int, DataMemRegion *> data_mem_regions_in_;
   std::map<int, DataMem *> data_mems_out_;

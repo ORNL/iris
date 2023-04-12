@@ -13,6 +13,8 @@ namespace iris {
 namespace rt {
 class BaseMem;
 class GraphMetadata;
+class TaskProfile;
+class MemProfile;
 class Graph: public Retainable<struct _iris_graph, Graph> {
 public:
   Graph(Platform* platform);
@@ -24,6 +26,7 @@ public:
   void Wait();
   void ResetMemories();
 
+  int enable_mem_profiling();
   Platform* platform() { return platform_; }
   std::vector<Task*>* tasks() { return &tasks_; }
   std::vector<Task*> & tasks_list() { return tasks_; }
@@ -84,6 +87,13 @@ public:
     map<unsigned long, vector<unsigned long> > & task_outputs_map() { return task_outputs_map_; }
     map<unsigned long, BaseMem *> & mem_index_hash() { return mem_index_hash_; }
     map<unsigned long, Task *> & task_uid_hash() { return task_uid_hash_; }
+    void fetch_task_execution_schedules(int kernel_profile=false);
+    void fetch_mem_execution_schedules();
+    size_t task_schedule_count() { return task_schedule_count_; }
+    size_t mem_schedule_count() { return mem_schedule_count_; }
+    MemProfile *mem_schedule_data() { return mem_schedule_data_; }
+    TaskProfile *task_schedule_data() { return task_schedule_data_; }
+
 
 private:
     Graph *graph_;
@@ -91,6 +101,10 @@ private:
     int8_t *dep_adj_matrix_;
     int8_t *dep_adj_list_;
     CommData3D *comm_task_data_;
+    TaskProfile *task_schedule_data_;
+    size_t task_schedule_count_;
+    MemProfile *mem_schedule_data_;
+    size_t mem_schedule_count_;
     size_t comm_task_data_size_;
     size_t *comm_task_adj_matrix_;
     double *comp_task_adj_matrix_;
