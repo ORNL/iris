@@ -31,7 +31,7 @@ namespace rt {
             virtual void* arch(int devno, void *host=NULL) = 0;
             virtual void** arch_ptr(Device *dev, void *host=NULL) = 0;
             virtual void** arch_ptr(int devno, void *host=NULL) = 0;
-            void init_reset(bool reset=true) { reset_ = reset; }
+            virtual void init_reset(bool reset=true) { reset_ = reset; }
             inline bool is_reset() { return reset_; }
             inline void** archs_off() { return archs_off_; }
             inline void** archs() { return archs_; }
