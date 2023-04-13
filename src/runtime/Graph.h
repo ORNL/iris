@@ -108,6 +108,8 @@ private:
     size_t comm_task_data_size_;
     size_t *comm_task_adj_matrix_;
     double *comp_task_adj_matrix_;
+    map<unsigned long, set<unsigned long>> mem_flash_out_2_task_map_;
+    map<unsigned long, set<unsigned long>> mem_flash_task_2_mem_ids_;
     map<unsigned long, unsigned long> task_uid_2_index_hash_;
     map<unsigned long, Task *> task_uid_hash_;
     map<unsigned long, BaseMem *> mem_index_hash_;
