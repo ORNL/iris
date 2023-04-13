@@ -55,6 +55,18 @@ void DataMem::init_reset(bool reset)
         dirty_flag_[i] = reset;
     }
 }
+void DataMem::clear() {
+  host_dirty_flag_ = false;
+  for(int i=0;  i<ndevs_; i++) {
+      dirty_flag_[i] = true;
+  }
+  for (int i = 0; i < ndevs_; i++) {
+      if (archs_[i]) {
+          archs_dev_[i]->MemFree(archs_[i]);
+          archs_[i] = NULL;
+      }
+  }
+}
 DataMem::DataMem(Platform *platform, void *host_ptr, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim) : BaseMem(IRIS_DMEM, platform->ndevs()) 
 {
     size_t size = elem_size;

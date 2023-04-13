@@ -94,7 +94,7 @@ void Graph::ResetMemories() {
     GraphMetadata gmeta(this);
     map<unsigned long, BaseMem *> & mems = gmeta.mem_index_hash();
     for(auto i : mems) {
-        i.second->init_reset(true);
+        i.second->clear();
     }
 }   
 
@@ -396,6 +396,12 @@ void GraphMetadata::map_task_inputs_outputs()
         }
         //printf("%s:%d Task:%s:%lu ndepends:%lu in:%lu out:%lu\n", __func__, __LINE__, task->name(), task->uid(), task->ndepends(), task_inputs_map_[uid].size(), task_outputs_map_[uid].size());
     }
+    for( auto i : mem_index_hash_) {
+        BaseMem *rdmem = i.second;
+        if (rdmem->GetMemHandlerType() == IRIS_DMEM && 
+                ((DataMem*)rdmem)->is_regions_enabled()) continue;
+        mem_index_hash_valid_[i.first] = i.second;
+    }
 }
 void GraphMetadata::get_dependency_matrix(int8_t *dep_matrix, bool adj_matrix) {
   vector<Task *> tasks = graph_->formatted_tasks();
@@ -540,11 +546,11 @@ void GraphMetadata::get_2d_comm_adj_matrix(size_t *comm_task_adj_matrix)
 }
 void GraphMetadata::get_3d_comm_time(double *obj_2_dev_dev_time, int *mem_ids, int iterations, bool pin_memory_flag)
 {
-    int total_mems = mem_index_hash_.size();
+    int total_mems = mem_index_hash_valid_.size();
     int ndevs = graph_->platform()->ndevs()+1;
     int index = 0;
     map<size_t, double *> processed;
-    for(auto i : mem_index_hash_) {
+    for(auto i : mem_index_hash_valid_) {
         mem_ids[index] = i.first;
         BaseMem *mem = i.second;
         size_t size = mem->size();

@@ -363,6 +363,11 @@ int iris_data_mem_create_tile(iris_mem* mem, void *host, size_t *off, size_t *ho
 int iris_data_mem_create(iris_mem *mem, void *host, size_t size) {
   return Platform::GetPlatform()->DataMemCreate(mem, host, size);
 }
+int iris_data_mem_clear(iris_mem brs_mem) {
+  DataMem* mem = (DataMem *)brs_mem->class_obj;
+  mem->clear();
+  return IRIS_SUCCESS;
+}
 int iris_data_mem_update(iris_mem mem, void *host) {
   return Platform::GetPlatform()->DataMemUpdate(mem, host);
 }

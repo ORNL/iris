@@ -40,6 +40,7 @@ namespace rt {
             inline void set_arch(int devno, void *ptr) { archs_[devno] = ptr; }
             inline size_t size() { return size_; }
             inline int ndevs() { return ndevs_; }
+            virtual inline void clear() { }
         protected:
             MemHandlerType handler_type_;
             void* archs_[IRIS_MAX_NDEVS];
