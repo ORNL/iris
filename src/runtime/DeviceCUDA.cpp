@@ -115,8 +115,8 @@ DeviceCUDA::DeviceCUDA(LoaderCUDA* ld, LoaderHost2CUDA *host2cuda_ld, CUdevice c
 
 void DeviceCUDA::RegisterPin(void *host, size_t size)
 {
-    ld_->cudaHostRegister(host, size, cudaHostRegisterMapped);
-    //ld_->cudaHostRegister(host, size, cudaHostRegisterDefault);
+    //ld_->cudaHostRegister(host, size, cudaHostRegisterMapped);
+    ld_->cudaHostRegister(host, size, cudaHostRegisterDefault);
 }
 
 DeviceCUDA::~DeviceCUDA() {
