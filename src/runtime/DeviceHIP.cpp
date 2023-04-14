@@ -154,7 +154,8 @@ int DeviceHIP::ResetMemory(BaseMem *mem, uint8_t reset_value) {
 
 void DeviceHIP::RegisterPin(void *host, size_t size)
 {
-    ld_->hipHostRegister(host, size, hipHostRegisterMapped);
+    ld_->hipHostRegister(host, size, hipHostRegisterDefault);
+    //ld_->hipHostRegister(host, size, hipHostRegisterMapped);
 }
 
 int DeviceHIP::MemAlloc(void** mem, size_t size, bool reset) {
