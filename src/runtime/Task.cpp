@@ -107,6 +107,18 @@ const char* Task::brs_policy_string() {
   }
 }
 
+const char* Task::task_status_string() {
+  switch(status_){
+    case IRIS_COMPLETE:   return("complete");
+    case IRIS_RUNNING:    return("running");
+    case IRIS_SUBMITTED:  return("submitted");
+    case IRIS_QUEUED:     return("queued");
+    case IRIS_NONE:       return("none");
+    case IRIS_PENDING:    return("pending");
+    default: return("unknown");
+  }
+}
+
 void Task::set_opt(const char* opt) {
   if (!opt) return;
   memset(opt_, 0, sizeof(opt_));
@@ -139,7 +151,7 @@ void Task::print_incomplete_tasks()
   if (depends_ == NULL) return;
   printf("Task Name: %ld:%s\n", uid(), name());
   for (int i = 0; i < ndepends_; i++) {
-    printf("      Running dependent task: %d:%ld:%ld:%s Status:%d object exists:%d %p\n", i, depends_uids_[i], depends_[i]->uid(), depends_[i]->name(), depends_[i]->status_, platform_->track().IsObjectExists(depends_[i], depends_uids_[i]), depends_[i]);
+    printf("      Running dependent task: %d:%ld:%ld:%s Status:%s object exists:%d %p\n", i, depends_uids_[i], depends_[i]->uid(), depends_[i]->name(), depends_[i]->task_status_string(), platform_->track().IsObjectExists(depends_[i], depends_uids_[i]), depends_[i]);
   }
 }
 
@@ -166,7 +178,7 @@ void Task::DispatchDependencies() {
   pthread_mutex_lock(&mutex_pending_);
   if (status_ == IRIS_PENDING) status_ = IRIS_NONE;
   for (int i = 0; i < ndepends_; i++) {
-      printf("      Dispatch dependdencies task: %d:%ld:%ld:%s Status:%d object exists:%d\n", i, depends_uids_[i], depends_[i]->uid(), depends_[i]->name(), depends_[i]->status_, platform_->track().IsObjectExists(depends_[i], depends_uids_[i]));
+      printf("      Dispatch dependencies task: %d:%ld:%ld:%s Status:%s object exists:%d\n", i, depends_uids_[i], depends_[i]->uid(), depends_[i]->name(), depends_[i]->task_status_string(), platform_->track().IsObjectExists(depends_[i], depends_uids_[i]));
       if (platform_->track().IsObjectExists(depends_[i], depends_uids_[i]) && depends_[i]->status() == IRIS_PENDING) depends_[i]->status_ = IRIS_NONE;
   }
   pthread_mutex_unlock(&mutex_pending_);

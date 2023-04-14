@@ -83,6 +83,7 @@ public:
   char* opt() { return opt_; }
   int brs_policy() { return brs_policy_; }
   const char* brs_policy_string();
+  const char* task_status_string();
   bool sync() { return sync_; }
   std::vector<Task*>* subtasks() { return &subtasks_; }
   Task* subtask(int i) { return subtasks_[i]; }
