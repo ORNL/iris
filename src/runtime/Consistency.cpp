@@ -140,6 +140,12 @@ void Consistency::ResolveKernelWithoutPolymem(Task* task, Command* cmd, Mem* mem
 
 void Consistency::ResolveD2H(Task* task, Command* cmd) {
   Device* dev = task->dev();
+  DataMem* dmem = cmd->datamem();
+  if(dmem) {
+    //we're using datamem so there is no need to execute this memory transfer --- just flush
+    dev->ExecuteMemFlushOut(cmd);
+    return;
+  }
   Mem* mem = (Mem *)cmd->mem();
   Device* owner = mem->Owner();
   if (!owner || dev == owner || mem->IsOwner(0, mem->size(), dev)) return;
