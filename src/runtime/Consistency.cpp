@@ -140,8 +140,8 @@ void Consistency::ResolveKernelWithoutPolymem(Task* task, Command* cmd, Mem* mem
 
 void Consistency::ResolveD2H(Task* task, Command* cmd) {
   Device* dev = task->dev();
-  DataMem* dmem = cmd->datamem();
-  if(dmem) {
+  BaseMem* dmem = (BaseMem *)cmd->mem();
+  if (dmem && dmem->GetMemHandlerType() == IRIS_DMEM) {
     //we're using datamem so there is no need to execute this memory transfer --- just flush
     dev->ExecuteMemFlushOut(cmd);
     return;
