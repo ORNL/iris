@@ -78,6 +78,7 @@ public:
     size_t comm_task_data_size() { return comm_task_data_size_; }
     CommData3D *comm_task_data() { return comm_task_data_; }
     void get_dependency_matrix(int8_t *dep_matrix=NULL, bool adj_matrix=true);
+    void level_order_traversal(int8_t s, int ntasks, int8_t* dep_matrix);
     void get_3d_comm_data();
     void get_2d_comm_adj_matrix(size_t *comm_task_adj_matrix=NULL);
     void calibrate_compute_cost_adj_matrix(double *comp_task_adj_matrix=NULL, bool only_device_type=false);
@@ -98,6 +99,7 @@ public:
 private:
     Graph *graph_;
     int iterations_;
+    int max_level_; 
     int8_t *dep_adj_matrix_;
     int8_t *dep_adj_list_;
     CommData3D *comm_task_data_;
@@ -111,6 +113,7 @@ private:
     map<unsigned long, set<unsigned long>> mem_flash_out_2_task_map_;
     map<unsigned long, set<unsigned long>> mem_flash_task_2_mem_ids_;
     map<unsigned long, unsigned long> task_uid_2_index_hash_;
+    map<unsigned long, unsigned long> task_index_2_uid_hash_;
     map<unsigned long, Task *> task_uid_hash_;
     map<unsigned long, BaseMem *> mem_index_hash_;
     map<unsigned long, BaseMem *> mem_index_hash_valid_;
@@ -118,6 +121,7 @@ private:
     map<unsigned long, vector<unsigned long>> output_tasks_map_;
     map<unsigned long, vector<unsigned long>> task_inputs_map_;
     map<unsigned long, vector<unsigned long>> task_outputs_map_;
+    vector<vector<unsigned long>> levels_dag_;
 };
 
 } /* namespace rt */

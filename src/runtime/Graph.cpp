@@ -13,6 +13,7 @@
 #include "Utils.h"
 #include <vector>
 #include <set>
+#include <queue>
 #define GET2D_INDEX(NCOL, I, J)  ((I)*(NCOL)+(J))
 #define PRUNE_EDGES //Prunes end node incoming edges
 using namespace std;
@@ -284,6 +285,7 @@ void GraphMetadata::map_task_inputs_outputs()
     for(unsigned long index=0; index<tasks.size(); index++) {
         Task *task = tasks[index];
         task_uid_2_index_hash_[task->uid()] = index; 
+        task_index_2_uid_hash_[index] = task->uid(); 
         task_uid_hash_[task->uid()] = task;
     }
     for(uint32_t index=0; index<(uint32_t)tasks.size(); index++) {
@@ -416,13 +418,18 @@ void GraphMetadata::get_dependency_matrix(int8_t *dep_matrix, bool adj_matrix) {
   }
   for(uint32_t t=0; t<(uint32_t)tasks.size(); t++) {
       Task *task = tasks[t];
+      //printf("Tasks %s\n", task->name());
       for(int i=0; i<task->ndepends(); i++) {
           Task *dtask = task->depend(i);
+          //printf("Tasks %s depend %s depend index %lu task index %d\n", task->name(), dtask->name(), task_uid_2_index_hash_[dtask->uid()], task_uid_2_index_hash_[task->uid()]);
+          //printf("Depend %d\n", task == graph_->end());
+          //printf("Map %d\n", output_tasks_map_[dtask->uid()].size());
 #ifdef PRUNE_EDGES 
           if (task == graph_->end() && 
                   output_tasks_map_[dtask->uid()].size() > 1)
               continue;
 #endif
+          //printf("Tasks %s depend %s\n", task->name(), dtask->name());
           unsigned long did = task_uid_2_index_hash_[dtask->uid()];
           if (! adj_matrix) {
               dep_matrix[GET2D_INDEX(ntasks+1, t+1, 0)]++;
@@ -430,6 +437,7 @@ void GraphMetadata::get_dependency_matrix(int8_t *dep_matrix, bool adj_matrix) {
               dep_matrix[GET2D_INDEX(ntasks+1, t+1, adj_list_index)] = did; 
           }
           else {
+              //printf ("index did %d\n",GET2D_INDEX(ntasks, t+1, did+1)); 
               dep_matrix[GET2D_INDEX(ntasks, t+1, did+1)] = 1; 
           }
       }
@@ -440,11 +448,80 @@ void GraphMetadata::get_dependency_matrix(int8_t *dep_matrix, bool adj_matrix) {
               dep_matrix[GET2D_INDEX(ntasks+1, t+1, adj_list_index)] = 0;
           }
           else {
+              //printf ("index %d\n",GET2D_INDEX(ntasks, t+1, 0)); 
               dep_matrix[GET2D_INDEX(ntasks, t+1, 0)] = 1;
           }
       }
+
   }
+ //level_order_traversal(0, ntasks, dep_matrix); 
 }
+
+void GraphMetadata::level_order_traversal(int8_t s, int ntasks, int8_t* dep_matrix)
+{
+    // a queue for Level Order Traversal
+    queue<int> q;
+    vector<unsigned long> vec;
+ 
+    // Stores if the current node is visited
+    vector<Task *> tasks = graph_->formatted_tasks();
+    ntasks = tasks.size()+1;
+    std::vector<bool> visited(ntasks+1);
+ 
+    q.push(s);
+ 
+    // -1 marks the end of level
+    q.push(-1);
+    visited[s] = true;
+    int levels = 0;
+    while (!q.empty()) {
+ 
+        // Dequeue a vertex from queue
+        int v = q.front();
+        q.pop();
+ 
+        // If v marks the end of level
+        if (v == -1) {
+            if (!q.empty())
+                q.push(-1);
+ 
+            // Print a newline character
+	    levels += 1;
+	    levels_dag_.push_back(vec);
+	    vec.clear();
+            continue;
+        }
+ 
+        // store the current vertex
+	vec.push_back(v);
+        //cout << task_index_2_uid_hash_[v] << " ";
+        //cout << task_uid_hash_[task_index_2_uid_hash_[v]]->name() << " ";
+ 
+        // Add the child vertices of the current node in queue
+        for (int i = 1; i < ntasks + 1; i++) {
+            if (dep_matrix[i * ntasks + v + 1] !=  0 && !visited[i-1]) {
+                visited[i - 1] = true;
+                q.push(i - 1);
+            }
+        }
+    }
+
+    max_level_ = levels; 
+
+    std::cout << "max levels : " << max_level_ << "\n";
+    int l = 0; 
+    for (auto& i : levels_dag_){
+       std::cout << "Level " << l++ << " : ";
+       for (auto& j : i) {
+	  std::cout <<  j << " ";
+       }
+       std::cout << "\n";
+    }
+	
+}
+
+
+
 void GraphMetadata::get_2d_comm_adj_matrix(size_t *comm_task_adj_matrix)
 {
     vector<Task *> tasks = graph_->formatted_tasks();
