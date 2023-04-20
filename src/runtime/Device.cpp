@@ -278,24 +278,44 @@ void Device::ExecuteMemIn(Task *task, Command* cmd) {
     int *params_map = cmd->get_params_map();
     //int nargs = cmd->kernel_nargs();
     Kernel *kernel = cmd->kernel();
+    vector<int> data_mems_in_order = kernel->data_mems_in_order();
+    map<int, DataMem *> & data_mems_in = kernel->data_mems_in();
+    map<int, DataMemRegion *> & data_mem_regions_in = kernel->data_mem_regions_in();
     if (kernel->is_profile_data_transfers()) {
         kernel->ClearMemInProfile();
     }
-    for(pair<int, DataMem *> it : cmd->kernel()->data_mems_in()) {
-        int idx = it.first;
-        DataMem *mem = it.second;
-        if (params_map != NULL && 
-                (params_map[idx] & iris_all) == 0 && 
-                !(params_map[idx] & type_) ) continue;
-        ExecuteMemInDMemIn(task, cmd, mem);
+    if (kernel->data_mems_in_order().size() > 0) {
+        for(int idx : kernel->data_mems_in_order()) {
+            if (params_map != NULL && 
+                    (params_map[idx] & iris_all) == 0 && 
+                    !(params_map[idx] & type_) ) continue;
+            if (data_mems_in.find(idx) != data_mems_in.end()) {
+                DataMem *mem = data_mems_in[idx];
+                ExecuteMemInDMemIn(task, cmd, mem);
+            }
+            else if (data_mem_regions_in.find(idx) != data_mem_regions_in.end()) {
+                DataMemRegion *mem = data_mem_regions_in[idx];
+                ExecuteMemInDMemRegionIn(task, cmd, mem);
+            }
+        }
     }
-    for(pair<int, DataMemRegion *> it : cmd->kernel()->data_mem_regions_in()) {
-        int idx = it.first;
-        DataMemRegion *mem = it.second;
-        if (params_map != NULL && 
-                (params_map[idx] & iris_all) == 0 && 
-                !(params_map[idx] & type_) ) continue;
-        ExecuteMemInDMemRegionIn(task, cmd, mem);
+    else {
+        for(pair<int, DataMem *> it : kernel->data_mems_in()) {
+            int idx = it.first;
+            DataMem *mem = it.second;
+            if (params_map != NULL && 
+                    (params_map[idx] & iris_all) == 0 && 
+                    !(params_map[idx] & type_) ) continue;
+            ExecuteMemInDMemIn(task, cmd, mem);
+        }
+        for(pair<int, DataMemRegion *> it : kernel->data_mem_regions_in()) {
+            int idx = it.first;
+            DataMemRegion *mem = it.second;
+            if (params_map != NULL && 
+                    (params_map[idx] & iris_all) == 0 && 
+                    !(params_map[idx] & type_) ) continue;
+            ExecuteMemInDMemRegionIn(task, cmd, mem);
+        }
     }
 }
 

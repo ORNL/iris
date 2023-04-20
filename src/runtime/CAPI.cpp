@@ -310,6 +310,12 @@ int    iris_cmd_kernel_get_arg_mode(void *cmd_p, int index) {
     Command *cmd = (Command *)cmd_p;
     return cmd->kernel_arg(index)->mode;
 }
+int iris_task_kernel_dmem_fetch_order(iris_task brs_task, int *order) {
+    Task *task = brs_task->class_obj;
+    if (task->cmd_kernel() && task->cmd_kernel()->kernel()) 
+        task->cmd_kernel()->kernel()->set_order(order);
+    return IRIS_SUCCESS;
+}
 iris_kernel iris_task_get_kernel(iris_task brs_task)
 {
     Task *task = brs_task->class_obj;

@@ -89,6 +89,9 @@ Task::Task(const char *name, bool perm, bool retainable)
     if (retainable) iris_task_set_retain_flag(!retainable, task_);
 #endif
 }
+int Task::set_order(int *order) {
+    return iris_task_kernel_dmem_fetch_order(task_, order);
+}
 int Task::h2d(Mem* mem, size_t off, size_t size, void* host) {
 #ifdef ENABLE_SMART_PTR_TASK
     return PlatformIRIS::GetPlatform()->TaskH2D(task_, mem->mem(), off, size, host);

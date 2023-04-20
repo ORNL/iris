@@ -816,6 +816,10 @@ class task:
         dll.iris_task_get_name.restype = c_char_p
         kname = dll.iris_task_get_name(self.handle)
         return kname.decode('ascii')
+
+    def set_order(self, order):
+        dll.call(dll.iris_task_kernel_dmem_fetch_order, self.handle, order)
+
     def set_name(self, name):
         c_name = c_char_p(name) if sys.version_info[0] == 2 else c_char_p(bytes(name, 'ascii'))
         dll.iris_task_set_name(self.handle, c_name)

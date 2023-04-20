@@ -29,11 +29,18 @@ Kernel::Kernel(const char* name, Platform* platform) {
 
 Kernel::~Kernel() {
   data_mems_in_.clear();
+  data_mems_in_order_.clear();
   data_mem_regions_in_.clear();
   history_ = nullptr;
   for (std::map<int, KernelArg*>::iterator I = args_.begin(), E = args_.end(); I != E; ++I)
     delete I->second;
   _trace(" kernel:%lu:%s is destroyed", uid(), name_);
+}
+
+int Kernel::set_order(int *order) {
+  for(int index = 0; index < data_mems_in_.size(); index++) {
+    data_mems_in_order_.push_back(order[index]);
+  }
 }
 
 int Kernel::SetArg(int idx, size_t size, void* value) {
