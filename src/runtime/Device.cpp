@@ -365,7 +365,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem)
         d2dtime = end - start;
         d2d_enabled = true;
     }
-    else if (cpu_dev >= 0) {
+    else if (!Platform::GetPlatform()->is_d2d_disabled() && cpu_dev >= 0) {
         // You didn't find data in peer device, 
         // but you found it in neighbouring CPU (OpenMP) device.
         // Fetch it through H2D
@@ -387,7 +387,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem)
         }
         o2d_enabled = true;
     }
-    else if (this->type() == iris_cpu && non_cpu_dev >= 0) {
+    else if (!Platform::GetPlatform()->is_d2d_disabled() && this->type() == iris_cpu && non_cpu_dev >= 0) {
         // You found data in non-CPU/OpenMP device, but this device is CPU/OpenMP
         // Use target D2H transfer 
         //_trace("explore Device2Device(OpenMP) (D2O) dev[%d][%s] task[%ld:%s] mem[%lu]", devno_, name_, task->uid(), task->name(), mem->uid());
