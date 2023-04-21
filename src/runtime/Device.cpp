@@ -279,8 +279,7 @@ void Device::ExecuteMemIn(Task *task, Command* cmd) {
     //int nargs = cmd->kernel_nargs();
     Kernel *kernel = cmd->kernel();
     vector<int> data_mems_in_order = kernel->data_mems_in_order();
-    map<int, DataMem *> & data_mems_in = kernel->data_mems_in();
-    map<int, DataMemRegion *> & data_mem_regions_in = kernel->data_mem_regions_in();
+    vector<BaseMem *> & all_data_mems_in = kernel->all_data_mems_in();
     if (kernel->is_profile_data_transfers()) {
         kernel->ClearMemInProfile();
     }
@@ -289,13 +288,21 @@ void Device::ExecuteMemIn(Task *task, Command* cmd) {
             if (params_map != NULL && 
                     (params_map[idx] & iris_all) == 0 && 
                     !(params_map[idx] & type_) ) continue;
-            if (data_mems_in.find(idx) != data_mems_in.end()) {
-                DataMem *mem = data_mems_in[idx];
-                ExecuteMemInDMemIn(task, cmd, mem);
+            if (idx < all_data_mems_in.size()) {
+                if (all_data_mems_in[idx]->GetMemHandlerType() == IRIS_DMEM) {
+                    DataMem *mem = (DataMem*)all_data_mems_in[idx];
+                    ExecuteMemInDMemIn(task, cmd, mem);
+                }
+                else if (all_data_mems_in[idx]->GetMemHandlerType() == IRIS_DMEM_REGION) {
+                    DataMemRegion *mem = (DataMemRegion*)all_data_mems_in[idx];
+                    ExecuteMemInDMemRegionIn(task, cmd, mem);
+                }
+                else {
+                    _error("Couldn't find idx:%d in data_mems_in_ or data_mem_regions_in_ for task:%s:%ld", idx, task->name(), task->uid());
+                }
             }
-            else if (data_mem_regions_in.find(idx) != data_mem_regions_in.end()) {
-                DataMemRegion *mem = data_mem_regions_in[idx];
-                ExecuteMemInDMemRegionIn(task, cmd, mem);
+            else {
+                _error("Couldn't find idx:%d<size:%ld in data_mems_in_ or data_mem_regions_in_ for task:%s:%ld", idx, all_data_mems_in.size(), task->name(), task->uid());
             }
         }
     }

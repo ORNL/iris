@@ -57,6 +57,7 @@ public:
   map<int, DataMemRegion *> & data_mem_regions_in() { return data_mem_regions_in_; }
   map<int, DataMemRegion *> & data_mem_regions_out() { return data_mem_regions_out_; }
   vector<int> & data_mems_in_order() { return data_mems_in_order_; }
+  vector<BaseMem*> & all_data_mems_in() { return all_data_mems_in_; }
   void** archs() { return archs_; }
   size_t nargs() { return args_.size(); }
   void* arch(Device* dev, bool report_error=true);
@@ -79,6 +80,7 @@ private:
   bool profile_data_transfers_;
   vector<DataObjectProfile>       in_dataobject_profiles;
   vector<int> data_mems_in_order_;
+  vector<BaseMem *> all_data_mems_in_;
   std::map<int, DataMem *> data_mems_in_;
   std::map<int, DataMemRegion *> data_mem_regions_in_;
   std::map<int, DataMem *> data_mems_out_;
