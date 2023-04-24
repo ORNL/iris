@@ -1,11 +1,11 @@
 {
   "iris-graph": {
     "inputs": [
-      "user-size",
-      "user-size-cb",
-      "user-A",
-      "user-B",
-      "user-target"
+      "worksize",
+      "worksize-inbytes",
+      "hostmem",
+      "devmem",
+      "target-device"
     ],
     "graph": {
       "tasks": [
@@ -15,14 +15,14 @@
             {
               "h2d": {
                 "name": "h2d-cmd",
-                "device_memory": "user-B",
-                "host_memory": "user-A",
+                "device_memory": "devmem",
+                "host_memory": "hostmem",
                 "offset": "0",
-                "size": "user-size-cb"
+                "size": "worksize-inbytes"
               }
             }
           ],
-          "target": "user-target",
+          "target": "target-device",
           "depends": []
         },
         {
@@ -32,12 +32,12 @@
               "kernel": {
                 "name": "process",
                 "global_size": [
-                  "user-size"
+                  "worksize"
                 ],
                 "parameters": [
                   {
                     "type": "memory_object",
-                    "name": "user-B",
+                    "name": "devmem",
                     "permission": "rw"
                   }
                 ]
@@ -47,7 +47,7 @@
           "depends": [
             "h2d-task"
           ],
-          "target": "user-target"
+          "target": "target-device"
         },
         {
           "name": "task1",
@@ -56,12 +56,12 @@
               "kernel": {
                 "name": "process",
                 "global_size": [
-                  "user-size"
+                  "worksize"
                 ],
                 "parameters": [
                   {
                     "type": "memory_object",
-                    "name": "user-B",
+                    "name": "devmem",
                     "permission": "rw"
                   }
                 ]
@@ -71,7 +71,7 @@
           "depends": [
             "task0"
           ],
-          "target": "user-target"
+          "target": "target-device"
         },
         {
           "name": "task2",
@@ -80,12 +80,12 @@
               "kernel": {
                 "name": "process",
                 "global_size": [
-                  "user-size"
+                  "worksize"
                 ],
                 "parameters": [
                   {
                     "type": "memory_object",
-                    "name": "user-B",
+                    "name": "devmem",
                     "permission": "rw"
                   }
                 ]
@@ -95,7 +95,7 @@
           "depends": [
             "task1"
           ],
-          "target": "user-target"
+          "target": "target-device"
         },
         {
           "name": "task3",
@@ -104,12 +104,12 @@
               "kernel": {
                 "name": "process",
                 "global_size": [
-                  "user-size"
+                  "worksize"
                 ],
                 "parameters": [
                   {
                     "type": "memory_object",
-                    "name": "user-B",
+                    "name": "devmem",
                     "permission": "rw"
                   }
                 ]
@@ -119,7 +119,7 @@
           "depends": [
             "task2"
           ],
-          "target": "user-target"
+          "target": "target-device"
         },
         {
           "name": "task4",
@@ -128,12 +128,12 @@
               "kernel": {
                 "name": "process",
                 "global_size": [
-                  "user-size"
+                  "worksize"
                 ],
                 "parameters": [
                   {
                     "type": "memory_object",
-                    "name": "user-B",
+                    "name": "devmem",
                     "permission": "rw"
                   }
                 ]
@@ -143,7 +143,7 @@
           "depends": [
             "task3"
           ],
-          "target": "user-target"
+          "target": "target-device"
         },
         {
           "name": "task5",
@@ -152,12 +152,12 @@
               "kernel": {
                 "name": "process",
                 "global_size": [
-                  "user-size"
+                  "worksize"
                 ],
                 "parameters": [
                   {
                     "type": "memory_object",
-                    "name": "user-B",
+                    "name": "devmem",
                     "permission": "rw"
                   }
                 ]
@@ -167,7 +167,7 @@
           "depends": [
             "task4"
           ],
-          "target": "user-target"
+          "target": "target-device"
         },
         {
           "name": "task6",
@@ -176,12 +176,12 @@
               "kernel": {
                 "name": "process",
                 "global_size": [
-                  "user-size"
+                  "worksize"
                 ],
                 "parameters": [
                   {
                     "type": "memory_object",
-                    "name": "user-B",
+                    "name": "devmem",
                     "permission": "rw"
                   }
                 ]
@@ -191,7 +191,7 @@
           "depends": [
             "task5"
           ],
-          "target": "user-target"
+          "target": "target-device"
         },
         {
           "name": "task7",
@@ -200,12 +200,12 @@
               "kernel": {
                 "name": "process",
                 "global_size": [
-                  "user-size"
+                  "worksize"
                 ],
                 "parameters": [
                   {
                     "type": "memory_object",
-                    "name": "user-B",
+                    "name": "devmem",
                     "permission": "rw"
                   }
                 ]
@@ -215,7 +215,7 @@
           "depends": [
             "task6"
           ],
-          "target": "user-target"
+          "target": "target-device"
         },
         {
           "name": "d2h-task",
@@ -223,17 +223,17 @@
             {
               "d2h": {
                 "name": "d2h-cmd",
-                "device_memory": "user-B",
-                "host_memory": "user-A",
+                "device_memory": "devmem",
+                "host_memory": "hostmem",
                 "offset": "0",
-                "size": "user-size-cb"
+                "size": "worksize-inbytes"
               }
             }
           ],
           "depends": [
             "task7"
           ],
-          "target": "user-target"
+          "target": "target-device"
         }
       ]
     }

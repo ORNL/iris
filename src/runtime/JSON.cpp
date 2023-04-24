@@ -20,7 +20,7 @@
 #include "rapidjson/writer.h"
 #include "rapidjson/error/en.h"
 #define RAPIDJSON_ALIGN (128)
-//#include <csignal>
+
 namespace iris {
 namespace rt {
 
@@ -37,7 +37,6 @@ JSON::~JSON() {
 }
 
 int JSON::Load(Graph* graph, const char* path, void** params) {
-
   //read file from path
   char* src = NULL;
   size_t srclen = 0;
@@ -46,10 +45,8 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
     platform_->IncrementErrorCount();
     return IRIS_ERROR;
   }
-  //printf("RAPIDJSON source = %s\n",src);
   rapidjson::Document json_;
   json_.Parse(src);
-  //printf("debug! length of file = %ld\n",srclen);
   if (!json_.IsObject()){
     _error("failed to create JSON from file[%s]", path);
     platform_->IncrementErrorCount();
@@ -319,7 +316,7 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
           return IRIS_ERROR;
         }
         void* p_size = GetParameterInput(params, h2d_["size"].GetString());
-        size_t size = p_size ? (*(size_t*) p_size) : atol(h2d_["size"].GetString());       
+        size_t size = p_size ? (*(size_t*) p_size) : atol(h2d_["size"].GetString());
 
         Command* cmd = Command::CreateH2D(task, (Mem *)dev_mem->class_obj, offset, size, host_mem);
         //name (optional)

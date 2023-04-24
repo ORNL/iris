@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
+#include <assert.h>
 
 int main(int argc, char** argv) {
   iris_init(&argc, &argv, true);
@@ -29,13 +30,14 @@ int main(int argc, char** argv) {
   iris_mem mem;
   iris_mem_create(SIZE * sizeof(int), &mem);
 
-  void* json_inputs[6] = { &SIZE, &SIZECB, B, &mem, &target };
+  void* json_inputs[5] = { &SIZE, &SIZECB, B, &mem, &target };
 
   iris_graph graph;
   iris_graph_create_json("graph.json", json_inputs, &graph);
 
   iris_graph_submit(graph, iris_any, true);
   iris_synchronize();
+  iris_graph_free(graph);
   int errs = 0;
   for (int i = 0; i < SIZE; i++) {
     if (A[i] != B[i]) errs++;
@@ -47,8 +49,9 @@ int main(int argc, char** argv) {
   iris_mem dmem;
   iris_data_mem_create(&dmem,C,SIZE*sizeof(int));
   iris_graph dmemgraph;
-  void* dmem_json_inputs[6] = { &SIZE, &SIZECB, C, &dmem, &target };
-  iris_graph_create_json("graph.json", dmem_json_inputs, &dmemgraph);
+  void* dmem_json_inputs[5] = { &SIZE, &SIZECB, C, &dmem, &target };
+  int retval = iris_graph_create_json("graph.json", dmem_json_inputs, &dmemgraph);
+  assert(retval == IRIS_SUCCESS);
   iris_graph_submit(dmemgraph, iris_any, true);
   iris_synchronize();
 

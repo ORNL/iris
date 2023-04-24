@@ -1346,8 +1346,10 @@ int Platform::GraphFree(iris_graph brs_graph) {
 int Platform::GraphCreateJSON(const char* path, void** params, iris_graph* brs_graph) {
   Graph* graph = Graph::Create(this);
   if (brs_graph) graph->SetStructObject(brs_graph);
-  //*brs_graph = graph->struct_obj();
-  int retcode = json_->Load(graph, path, params);
+  //create a new temporary JSON to process this current graph --- it may be brand new and we don't want to mangle the old memory objects tracked for recording
+  JSON* loader_json = new JSON(this);
+  int retcode = loader_json->Load(graph, path, params);
+  delete loader_json;
   return retcode;
 }
 

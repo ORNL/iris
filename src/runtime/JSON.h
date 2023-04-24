@@ -36,7 +36,6 @@ private:
   const std::string NameFromHostPointer(void*host_ptr);
   const std::string NameFromDeviceMem(Mem* dev_mem);
 
-
   Platform* platform_;
   std::vector<const char*> inputs_;
   std::vector<Task*> tasks_;
