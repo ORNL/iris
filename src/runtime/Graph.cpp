@@ -320,7 +320,7 @@ void GraphMetadata::map_task_inputs_outputs()
                   if (mem_flash_out_2_new_id_map_.find(muid) == mem_flash_out_2_new_id_map_.end()) {
                       mem_flash_out_2_new_id_map_[muid] = iris_create_new_uid();
                       mem_flash_out_new_id_2_mid_map_[mem_flash_out_2_new_id_map_[muid]] = muid;
-                      printf("MEM FLASH %ld %ld\n", mem_flash_out_2_new_id_map_[muid], muid);
+                      //printf("MEM FLASH %ld %ld\n", mem_flash_out_2_new_id_map_[muid], muid);
                   }
                   if (mem_flash_task_2_mem_ids_.find(uid) == mem_flash_task_2_mem_ids_.end()) 
                       mem_flash_task_2_mem_ids_.insert(make_pair(uid, set<unsigned long>()));
