@@ -286,10 +286,12 @@ void GraphMetadata::map_task_inputs_outputs()
         task_uid_2_index_hash_[task->uid()] = index; 
         task_uid_hash_[task->uid()] = task;
     }
+    // Iterate through each task and track its input and output DMEM objects
     for(uint32_t index=0; index<(uint32_t)tasks.size(); index++) {
         Task *task = tasks[index];
         unsigned long uid = task->uid();
         vector<unsigned long> input_mems;
+        vector<unsigned long> flush_input_mems;
         vector<unsigned long> output_mems;
         for(int di=0; di<task->ndepends(); di++) {
             unsigned long duid = task->depend(di)->uid();
@@ -310,17 +312,28 @@ void GraphMetadata::map_task_inputs_outputs()
                   //_info(" mid:%lu is added", uid);
                   break;
               case IRIS_CMD_MEM_FLUSH:    // Fallthrough case
+                  // Special case
                   muid = cmd->mem()->uid();       
                   if (mem_flash_out_2_task_map_.find(muid) == mem_flash_out_2_task_map_.end())
                       mem_flash_out_2_task_map_.insert(make_pair(muid, set<unsigned long>()));
                   mem_flash_out_2_task_map_[muid].insert(uid);
+                  if (mem_flash_out_2_new_id_map_.find(muid) == mem_flash_out_2_new_id_map_.end()) {
+                      mem_flash_out_2_new_id_map_[muid] = iris_create_new_uid();
+                      mem_flash_out_new_id_2_mid_map_[mem_flash_out_2_new_id_map_[muid]] = muid;
+                      printf("MEM FLASH %ld %ld\n", mem_flash_out_2_new_id_map_[muid], muid);
+                  }
                   if (mem_flash_task_2_mem_ids_.find(uid) == mem_flash_task_2_mem_ids_.end()) 
                       mem_flash_task_2_mem_ids_.insert(make_pair(uid, set<unsigned long>()));
                   mem_flash_task_2_mem_ids_[uid].insert(muid);
-                  [[fallthrough]];
+                  output_mems.push_back(mem_flash_out_2_new_id_map_[muid]);
+                  if (mem_index_hash_.find(muid) == mem_index_hash_.end())
+                      mem_index_hash_[muid] = cmd->mem(); 
+                  flush_input_mems.push_back(muid);
+                  break;
               case IRIS_CMD_D2H:          
                   muid = cmd->mem()->uid();       
                   output_mems.push_back(muid);
+                  flush_input_mems.push_back(muid);
                   if (mem_index_hash_.find(muid) == mem_index_hash_.end())
                       mem_index_hash_[muid] = cmd->mem(); 
                   //_info(" mid:%lu is added", muid);
@@ -344,7 +357,7 @@ void GraphMetadata::map_task_inputs_outputs()
             if (output_mems.size()==0) 
                 task_outputs_map_[uid] = input_mems;
             if (input_mems.size() == 0)
-                task_inputs_map_[uid]  = output_mems;
+                task_inputs_map_[uid]  = flush_input_mems;
         }
         else {
             set<unsigned long> input_mems_set(input_mems.begin(), input_mems.end());
@@ -392,7 +405,8 @@ void GraphMetadata::map_task_inputs_outputs()
         // But, it doesn't have memory inputs
         for (auto i : mem_flash_out_2_task_map_) {
             unsigned long mid = i.first;
-            task_inputs_map_[uid].push_back(mid);
+            unsigned long tmp_mid = mem_flash_out_2_new_id_map_[mid];
+            task_inputs_map_[uid].push_back(tmp_mid);
         }
         //printf("%s:%d Task:%s:%lu ndepends:%lu in:%lu out:%lu\n", __func__, __LINE__, task->name(), task->uid(), task->ndepends(), task_inputs_map_[uid].size(), task_outputs_map_[uid].size());
     }
@@ -401,6 +415,9 @@ void GraphMetadata::map_task_inputs_outputs()
         if (rdmem->GetMemHandlerType() == IRIS_DMEM && 
                 ((DataMem*)rdmem)->is_regions_enabled()) continue;
         mem_index_hash_valid_[i.first] = i.second;
+    }
+    for(auto i : mem_flash_out_2_new_id_map_) {
+        mem_index_hash_valid_[i.second] = NULL;
     }
 }
 void GraphMetadata::get_dependency_matrix(int8_t *dep_matrix, bool adj_matrix) {
@@ -457,7 +474,7 @@ void GraphMetadata::get_2d_comm_adj_matrix(size_t *comm_task_adj_matrix)
         Task *each_task = tasks[index];
         vector<unsigned long> & lst1_v = task_inputs_map_[each_task->uid()];
         set<unsigned long> lst1(lst1_v.begin(), lst1_v.end());
-        //printf("Task:%s:%lu ndepends:%lu lst1_v:%lu %lu\n", each_task->name(), each_task->uid(), each_task->ndepends(), lst1.size(), lst1_v.size());
+        //printf("Task:%s:%lu:%d ndepends:%lu lst1_v:%lu %lu\n", each_task->name(), each_task->uid(), index+1, each_task->ndepends(), lst1.size(), lst1_v.size());
         for(unsigned long mid : lst1) {
             BaseMem *mem = mem_index_hash_[mid];
             //printf("            probing mem:%lu size:%lu\n", mid, mem->size());
@@ -469,7 +486,7 @@ void GraphMetadata::get_2d_comm_adj_matrix(size_t *comm_task_adj_matrix)
             if (each_task == graph_->end() && 
                     mem_flash_task_2_mem_ids_.find(d_task->uid()) ==  
                     mem_flash_task_2_mem_ids_.end()) {
-                // Special case. the each_task is end task and 
+                // Special case. if each_task is end task and 
                 // the d_task is not flushing out any
                 continue;
             }
@@ -495,7 +512,17 @@ void GraphMetadata::get_2d_comm_adj_matrix(size_t *comm_task_adj_matrix)
             }
             size_t size = 0;
             for(unsigned long mid : mem_list) {
-                BaseMem *mem = mem_index_hash_[mid];
+                unsigned long tmp_mid = mid;
+                //printf("Processing mid:%ld\n", mid);
+#ifdef PRUNE_EDGES 
+                if (each_task == graph_->end() && 
+                        mem_flash_out_new_id_2_mid_map_.find(mid) !=
+                        mem_flash_out_new_id_2_mid_map_.end()) {
+                    tmp_mid = mem_flash_out_new_id_2_mid_map_[mid];
+                    //printf("    Converting Processing mid:%ld to tmp_mid:%ld\n", mid, tmp_mid);
+                }
+#endif
+                BaseMem *mem = mem_index_hash_[tmp_mid];
 #ifdef PRUNE_EDGES 
                 if (each_task == graph_->end() && 
                         mem_flash_out_2_task_map_.find(mem->uid()) ==  
@@ -533,7 +560,12 @@ void GraphMetadata::get_2d_comm_adj_matrix(size_t *comm_task_adj_matrix)
         size_t size = 0;
         for(unsigned long mid : lst1) {
             if (all_covered_mem.find(mid) == all_covered_mem.end()) {
-                BaseMem *mem = mem_index_hash_[mid];
+                unsigned long tmp_mid = mid;
+                if ( mem_flash_out_new_id_2_mid_map_.find(mid) !=
+                        mem_flash_out_new_id_2_mid_map_.end()) {
+                    tmp_mid = mem_flash_out_new_id_2_mid_map_[mid];
+                }
+                BaseMem *mem = mem_index_hash_[tmp_mid];
                 size += mem->size();
             }
         }
@@ -551,8 +583,13 @@ void GraphMetadata::get_3d_comm_time(double *obj_2_dev_dev_time, int *mem_ids, i
     int index = 0;
     map<size_t, double *> processed;
     for(auto i : mem_index_hash_valid_) {
+        unsigned long mid = i.first;
         mem_ids[index] = i.first;
         BaseMem *mem = i.second;
+        if (mem == NULL && 
+                mem_flash_out_new_id_2_mid_map_.find(mid) != mem_flash_out_new_id_2_mid_map_.end()) {
+            mem = mem_index_hash_valid_[mem_flash_out_new_id_2_mid_map_[mid]];
+        }
         size_t size = mem->size();
         printf("Mem id:%d size:%lu uid:%lu\n", index, size, mem->uid());
         double *comp_time_matrix = obj_2_dev_dev_time + GET2D_INDEX(ndevs * ndevs, index, 0);
@@ -615,7 +652,15 @@ void GraphMetadata::get_3d_comm_data()
             }
             size_t size = 0;
             for(unsigned long mid : mem_list) {
-                BaseMem *mem = mem_index_hash_[mid];
+                unsigned long tmp_mid = mid;
+#ifdef PRUNE_EDGES 
+                if (each_task == graph_->end() && 
+                        mem_flash_out_new_id_2_mid_map_.find(mid) !=
+                        mem_flash_out_new_id_2_mid_map_.end()) {
+                    tmp_mid = mem_flash_out_new_id_2_mid_map_[mid];
+                }
+#endif
+                BaseMem *mem = mem_index_hash_[tmp_mid];
 #ifdef PRUNE_EDGES 
                 if (each_task == graph_->end() && 
                         mem_flash_out_2_task_map_.find(mem->uid()) ==  
@@ -654,7 +699,12 @@ void GraphMetadata::get_3d_comm_data()
         size_t size = 0;
         for(unsigned long mid : lst1) {
             if (all_covered_mem.find(mid) == all_covered_mem.end()) {
-                BaseMem *mem = mem_index_hash_[mid];
+                unsigned long tmp_mid = mid;
+                if (mem_flash_out_new_id_2_mid_map_.find(mid) !=
+                        mem_flash_out_new_id_2_mid_map_.end()) {
+                    tmp_mid = mem_flash_out_new_id_2_mid_map_[mid];
+                }
+                BaseMem *mem = mem_index_hash_[tmp_mid];
                 size += mem->size();
                 results.push_back({0, (uint32_t)index+1, (uint32_t)mid, mem->size()});
             }
