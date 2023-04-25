@@ -113,6 +113,7 @@ namespace iris {
             virtual ~Graph();
             void retainable();
             int add_task(Task & task, int device, const char *opt=NULL);
+            int set_order(int *order);
             int submit(int device, int sync=false);
             int wait();
             int release();

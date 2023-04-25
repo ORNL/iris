@@ -32,6 +32,7 @@ public:
   std::vector<Task*> & tasks_list() { return tasks_; }
   std::vector<Task*> formatted_tasks();
   int iris_tasks(iris_task *pv);
+  void set_order(int *order);
   int tasks_count() { return tasks_.size(); }
   bool is_retainable() { return retain_tasks_; }
   void enable_retainable() { retain_tasks_ = true; }
@@ -51,6 +52,7 @@ private:
   pthread_mutex_t mutex_complete_;
   pthread_cond_t complete_cond_;
   shared_ptr<GraphMetadata> graph_metadata_;
+  vector<int> tasks_order_;
 public:
   static Graph* Create(Platform* platform);
   Task* end() { return end_; }

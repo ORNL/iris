@@ -449,6 +449,11 @@ int iris_graph_create_json(const char* json, void** params, iris_graph* graph) {
 int iris_graph_task(iris_graph graph, iris_task task, int device, const char* opt) {
   return Platform::GetPlatform()->GraphTask(graph, task, device, opt);
 }
+int iris_graph_tasks_order(iris_graph brs_graph, int *order) {
+    Graph *graph = brs_graph->class_obj;
+    graph->set_order(order);
+    return IRIS_SUCCESS;
+}
 
 int iris_graph_reset_memories(iris_graph brs_graph) {
   Graph* graph = brs_graph->class_obj;

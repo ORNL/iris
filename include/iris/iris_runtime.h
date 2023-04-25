@@ -358,6 +358,7 @@ extern int iris_mem_release(iris_mem mem);
 
 extern int iris_graph_create(iris_graph* graph);
 extern int iris_graph_free(iris_graph graph);
+extern int iris_graph_tasks_order(iris_graph brs_graph, int *order);
 extern int iris_graph_create_json(const char* json, void** params, iris_graph* graph);
 extern int iris_graph_task(iris_graph graph, iris_task task, int device, const char* opt);
 extern int iris_graph_retain(iris_graph graph);

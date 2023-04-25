@@ -232,6 +232,9 @@ int Graph::release() {
     is_released_ = true;
     return iris_graph_release(graph_);
 }
+int Graph::set_order(int *order) {
+    return iris_graph_tasks_order(graph_, order);
+}
 int Graph::submit(int device, int sync) {
     return iris_graph_submit(graph_, device, sync);
 }

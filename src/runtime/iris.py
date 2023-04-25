@@ -979,6 +979,9 @@ class graph:
     def enable_mem_profiling(self):
         dll.iris_graph_enable_mem_profiling(self.handle)
 
+    def set_order(self, order):
+        dll.call(dll.iris_graph_tasks_order, self.handle, order)
+
     def get_tasks(self):
         dll.iris_graph_tasks_count.restype = c_int
         ntasks = dll.iris_graph_tasks_count(self.handle)
