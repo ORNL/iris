@@ -1,6 +1,7 @@
 #!/bin/bash
 
 source /auto/software/iris/setup_system.source
+
 export SYSTEM=$(hostname|cut -d . -f 1|sed 's/[0-9]*//g')
 export MACHINE=${SYSTEM^}
 
@@ -12,7 +13,7 @@ fi
 export LD_LIBRARY_PATH=$HOME/.local/lib:$LD_LIBRARY_PATH
 
 make clean
-make kernel.openmp.so kernel.ptx kernel.hip test29_data_mem
+make kernel.ptx kernel.hip test29_data_mem
 [ $? -ne 0 ] && echo "Failed! Couldn't compile all kernels. Exiting." && exit 1
 
 echo "Running OpenCL..."
@@ -27,6 +28,13 @@ echo "Running HIP..."
 IRIS_ARCHS=hip ./test29_data_mem
 [ $? -ne 0 ] && echo "Failed! (HIP backend) Exiting." && exit 1
 
+module load gcc/12.1.0
+export OPENMP_PATH=/auto/software/swtree/ubuntu20.04/x86_64/gcc/12.1.0/lib64
+make clean
+make kernel.openmp.so test29_data_mem
+[ $? -ne 0 ] && echo "Failed! Couldn't compile openmp kernels. Exiting." && exit 1
 echo "Running OpenMP..."
-IRIS_ARCHS=openmp ./test29_data_mem
-[ $? -ne 0 ] && echo "Failed! (OpenMP backend) Exiting." && exit 1
+IRIS_ARCHS=openmp IRIS_KERNEL_BIN_OPENMP=`pwd`/kernel.openmp.so ./test29_data_mem
+[ $? -ne 0 ] && echo "Failed! (OpenMP [GNU] backend) Exiting." && exit 1
+module unload gcc/12.1.0
+

@@ -1,7 +1,6 @@
 #include <iris/iris.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <signal.h>
 #include <assert.h>
 
 int main(int argc, char** argv) {
