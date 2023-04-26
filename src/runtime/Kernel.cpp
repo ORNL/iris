@@ -41,6 +41,7 @@ int Kernel::set_order(int *order) {
   for(int index = 0; index < data_mems_in_.size(); index++) {
     data_mems_in_order_.push_back(order[index]);
   }
+  return IRIS_SUCCESS;
 }
 
 int Kernel::SetArg(int idx, size_t size, void* value) {
