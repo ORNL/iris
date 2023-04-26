@@ -250,6 +250,8 @@ int Platform::EnvironmentInit() {
   EnvironmentSet("KERNEL_DIR",      "",                   false);
   EnvironmentSet("KERNEL_SRC_CUDA",     "kernel.cu",          false);
   EnvironmentSet("KERNEL_BIN_CUDA",     "kernel.ptx",         false);
+  EnvironmentSet("KERNEL_XILINIX_XCLBIN", "kernel.xilinx.xclbin",  false);
+  EnvironmentSet("KERNEL_INTEL_AOCX", "kernel.intel.aocx",  false);
   EnvironmentSet("KERNEL_SRC_HEXAGON",  "kernel.hexagon.cpp", false);
   EnvironmentSet("KERNEL_BIN_HEXAGON",  "kernel.hexagon.so",  false);
   EnvironmentSet("KERNEL_SRC_HIP",      "kernel.hip.cpp",     false);

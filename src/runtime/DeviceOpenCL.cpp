@@ -536,6 +536,13 @@ int DeviceOpenCL::CreateProgram(const char* suffix, char** src, size_t* srclen) 
     _trace("dev[%d][%s] kernels[%s]", devno_, name_, p);
     return IRIS_SUCCESS;
   }
+  if (type_ == iris_fpga && Platform::GetPlatform()->GetFilePath(strcmp("aocx", fpga_bin_suffix_.c_str()) == 0 ? "KERNEL_INTEL_AOCX" : "KERNEL_XILINIX_XCLBIN", &p, NULL) == IRIS_SUCCESS) {
+    Utils::ReadFile(p, src, srclen);
+    if (*srclen > 0) {
+      _trace("dev[%d][%s] kernels[%s]", devno_, name_, p);
+      return IRIS_SUCCESS;
+    }
+  }
 
   char path[256];
   sprintf(path, "kernel-%s.%s",
