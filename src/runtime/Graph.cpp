@@ -83,7 +83,7 @@ int Graph::enable_mem_profiling() {
     return IRIS_SUCCESS;
 }
 void Graph::set_order(int *order) {
-    for(int i=0; i<tasks_.size(); i++)
+    for(size_t i=0; i<tasks_.size(); i++)
         tasks_order_.push_back(order[i]);
 }
 void Graph::Complete() {
