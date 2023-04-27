@@ -79,6 +79,7 @@ int Graph::enable_mem_profiling() {
         Task *task = tasks_[i];
         if (task->cmd_kernel() != NULL) 
             task->cmd_kernel()->kernel()->set_profile_data_transfers();
+        task->set_profile_data_transfers();
     }
     return IRIS_SUCCESS;
 }
@@ -258,6 +259,9 @@ void GraphMetadata::fetch_dataobject_execution_schedules()
             for(auto i : kernel->in_mem_profiles()) {
                 results.push_back(i);
             }
+        }
+        for(auto i : task->out_mem_profiles()) {
+            results.push_back(i);
         }
     }
     dataobject_schedule_data_ = (DataObjectProfile *) malloc(sizeof(DataObjectProfile)*results.size());

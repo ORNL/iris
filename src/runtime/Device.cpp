@@ -589,10 +589,14 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
         }
         if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
         mem->clear_host_dirty();
-        double d2htime = timer_->Now() - start;
+        double end = timer_->Now();
+        double d2htime = end - start;
         Command* cmd_kernel = cmd->task()->cmd_kernel();
         if (cmd_kernel) cmd_kernel->kernel()->history()->AddD2H(cmd_kernel, src_dev, d2htime, size);
         else Platform::GetPlatform()->null_kernel()->history()->AddD2H(cmd, this, d2htime, size);
+        if (task->is_profile_data_transfers()) {
+            task->AddOutDataObjectProfile({(uint32_t) task->uid(), (uint32_t) mem->uid(), (uint32_t) iris_dt_d2h_h2d, (uint32_t) devno_, (uint32_t) -1, start, end});
+        }
     }
     else {
         _trace("MemFlushout is skipped as host already having valid data for task:%ld:%s\n", cmd->task()->uid(), cmd->task()->name());
