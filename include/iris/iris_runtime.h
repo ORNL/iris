@@ -352,6 +352,8 @@ extern int iris_data_mem_update(iris_mem mem, void *host);
 extern int iris_data_mem_create_region(iris_mem* mem, iris_mem root_mem, int region);
 extern int iris_data_mem_enable_outer_dim_regions(iris_mem mem);
 extern int iris_data_mem_create_tile(iris_mem* mem, void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim);
+extern int iris_data_mem_n_regions(iris_mem brs_mem);
+extern unsigned long iris_data_mem_get_region_uid(iris_mem brs_mem, int region);
 extern int iris_mem_arch(iris_mem mem, int device, void** arch);
 extern int iris_mem_reduce(iris_mem mem, int mode, int type);
 extern int iris_mem_release(iris_mem mem);

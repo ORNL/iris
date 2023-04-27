@@ -523,6 +523,12 @@ class dmem:
   def update(self, host):
     c_host = host.ctypes.data_as(c_void_p)
     dll.iris_data_mem_update(self.handle, c_host)
+  def get_region_uids(self):
+    n_regions = dll.call_ret(dll.iris_data_mem_n_regions(self.handle), np.int32)
+    output = []
+    for i in range(n_regions):
+      output.append(dll.call_ret(dll.iris_data_mem_get_region_uid, np.uint32, self.handle, np.int32(i)))
+    return output
 class dmem_region:
   def __init__(self, *args):
     self.handle = dmem_create(args)

@@ -386,6 +386,14 @@ int iris_data_mem_pin(iris_mem mem) {
 int iris_data_mem_create_region(iris_mem *mem, iris_mem root_mem, int region) {
   return Platform::GetPlatform()->DataMemCreate(mem, root_mem, region);
 }
+int iris_data_mem_n_regions(iris_mem brs_mem) {
+  DataMem *mem = (DataMem *)brs_mem->class_obj;
+  return mem->get_n_regions();
+}
+unsigned long iris_data_mem_get_region_uid(iris_mem brs_mem, int region) {
+  DataMem *mem = (DataMem *)brs_mem->class_obj;
+  return mem->get_region(region)->uid();
+}
 int iris_data_mem_enable_outer_dim_regions(iris_mem mem) {
   return Platform::GetPlatform()->DataMemEnableOuterDimRegions(mem);
 }
