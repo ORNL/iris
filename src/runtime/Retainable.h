@@ -57,6 +57,7 @@ public:
     pthread_mutex_lock(&delete_lock_);
     if (!platform->track().IsObjectExists(this, uid())) return;
     platform->track().UntrackObject(this);
+    if (!struct_obj()) return;
     platform->track().UntrackObject(struct_obj());
     pthread_mutex_unlock(&delete_lock_);
     delete this;
