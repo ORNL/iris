@@ -306,7 +306,7 @@ int    iris_cmd_kernel_get_arg_mode(void *cmd_p, int index) {
     return cmd->kernel_arg(index)->mode;
 }
 int iris_task_kernel_dmem_fetch_order(iris_task brs_task, int *order) {
-    Task *task = brs_task->class_obj;
+    Task *task = brs_task.class_obj;
     if (task->cmd_kernel() && task->cmd_kernel()->kernel()) 
         task->cmd_kernel()->kernel()->set_order(order);
     return IRIS_SUCCESS;
@@ -365,7 +365,7 @@ int iris_data_mem_create(iris_mem *mem, void *host, size_t size) {
   return Platform::GetPlatform()->DataMemCreate(mem, host, size);
 }
 int iris_data_mem_clear(iris_mem brs_mem) {
-  DataMem* mem = (DataMem *)brs_mem->class_obj;
+  DataMem* mem = (DataMem *)brs_mem.class_obj;
   mem->clear();
   return IRIS_SUCCESS;
 }
@@ -382,11 +382,11 @@ int iris_data_mem_create_region(iris_mem *mem, iris_mem root_mem, int region) {
   return Platform::GetPlatform()->DataMemCreate(mem, root_mem, region);
 }
 int iris_data_mem_n_regions(iris_mem brs_mem) {
-  DataMem *mem = (DataMem *)brs_mem->class_obj;
+  DataMem *mem = (DataMem *)brs_mem.class_obj;
   return mem->get_n_regions();
 }
 unsigned long iris_data_mem_get_region_uid(iris_mem brs_mem, int region) {
-  DataMem *mem = (DataMem *)brs_mem->class_obj;
+  DataMem *mem = (DataMem *)brs_mem.class_obj;
   return mem->get_region(region)->uid();
 }
 int iris_data_mem_enable_outer_dim_regions(iris_mem mem) {
@@ -453,13 +453,13 @@ int iris_graph_task(iris_graph graph, iris_task task, int device, const char* op
   return Platform::GetPlatform()->GraphTask(graph, task, device, opt);
 }
 int iris_graph_tasks_order(iris_graph brs_graph, int *order) {
-    Graph *graph = brs_graph->class_obj;
+    Graph *graph = brs_graph.class_obj;
     graph->set_order(order);
     return IRIS_SUCCESS;
 }
 
 int iris_graph_reset_memories(iris_graph brs_graph) {
-  Graph* graph = brs_graph->class_obj;
+  Graph* graph = brs_graph.class_obj;
   graph->ResetMemories();
   return IRIS_SUCCESS;
 }
@@ -539,7 +539,7 @@ int iris_timer_now(double* time) {
 
 int iris_graph_enable_mem_profiling(iris_graph brs_graph)
 {
-    Graph* graph = brs_graph->class_obj;
+    Graph* graph = brs_graph.class_obj;
     graph->enable_mem_profiling();
     return IRIS_SUCCESS;
 }
@@ -579,13 +579,13 @@ void *iris_get_graph_3d_comm_data_ptr(iris_graph brs_graph)
 }
 size_t iris_get_graph_tasks_execution_schedule_count(iris_graph brs_graph)
 {
-    Graph* graph = brs_graph->class_obj;
+    Graph* graph = brs_graph.class_obj;
     shared_ptr<GraphMetadata> gm = graph->get_metadata();
     return gm->task_schedule_count();
 }
 void *iris_get_graph_tasks_execution_schedule(iris_graph brs_graph, int kernel_profile)
 {
-    Graph* graph = brs_graph->class_obj;
+    Graph* graph = brs_graph.class_obj;
     shared_ptr<GraphMetadata> gm = graph->get_metadata();
     gm->fetch_task_execution_schedules(kernel_profile);
     TaskProfile *tasks_data = gm->task_schedule_data();
@@ -593,13 +593,13 @@ void *iris_get_graph_tasks_execution_schedule(iris_graph brs_graph, int kernel_p
 }
 size_t iris_get_graph_dataobjects_execution_schedule_count(iris_graph brs_graph)
 {
-    Graph* graph = brs_graph->class_obj;
+    Graph* graph = brs_graph.class_obj;
     shared_ptr<GraphMetadata> gm = graph->get_metadata();
     return gm->dataobject_schedule_count();
 }
 void *iris_get_graph_dataobjects_execution_schedule(iris_graph brs_graph)
 {
-    Graph* graph = brs_graph->class_obj;
+    Graph* graph = brs_graph.class_obj;
     shared_ptr<GraphMetadata> gm = graph->get_metadata();
     gm->fetch_dataobject_execution_schedules();
     DataObjectProfile *mems_data = gm->dataobject_schedule_data();
@@ -607,13 +607,13 @@ void *iris_get_graph_dataobjects_execution_schedule(iris_graph brs_graph)
 }
 size_t iris_count_mems(iris_graph brs_graph)
 {
-    Graph* graph = brs_graph->class_obj;
+    Graph* graph = brs_graph.class_obj;
     shared_ptr<GraphMetadata> gm = graph->get_metadata();
     return gm->count_mems();
 }
 int iris_get_graph_3d_comm_time(iris_graph brs_graph, double *comm_time, int *mem_ids, int iterations, int pin_memory_flag)
 {
-    Graph* graph = brs_graph->class_obj;
+    Graph* graph = brs_graph.class_obj;
     shared_ptr<GraphMetadata> gm = graph->get_metadata();
     gm->get_3d_comm_time(comm_time, mem_ids, iterations, pin_memory_flag);
     return IRIS_SUCCESS;

@@ -1444,7 +1444,7 @@ int Platform::GraphSubmit(iris_graph brs_graph, int brs_policy, int sync) {
 }
 
 int Platform::GraphSubmit(iris_graph brs_graph, int *order, int brs_policy, int sync) {
-  Graph* graph = brs_graph->class_obj;
+  Graph* graph = brs_graph.class_obj;
   std::vector<Task*> & tasks = graph->tasks_list();
   //graph->RecordStartTime(devs_[0]->Now());
   for(size_t i=0; i<tasks.size(); i++) {
