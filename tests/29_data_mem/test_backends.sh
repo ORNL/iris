@@ -33,8 +33,16 @@ export OPENMP_PATH=/auto/software/swtree/ubuntu20.04/x86_64/gcc/12.1.0/lib64
 make clean
 make kernel.openmp.so test29_data_mem
 [ $? -ne 0 ] && echo "Failed! Couldn't compile openmp kernels. Exiting." && exit 1
-echo "Running OpenMP..."
+echo "Running (GNU) OpenMP..."
 IRIS_ARCHS=openmp IRIS_KERNEL_BIN_OPENMP=`pwd`/kernel.openmp.so ./test29_data_mem
 [ $? -ne 0 ] && echo "Failed! (OpenMP [GNU] backend) Exiting." && exit 1
 module unload gcc/12.1.0
+
+export CUDA_PATH=/opt/nvidia/hpc_sdk/Linux_x86_64/22.9/cuda/11.7
+make clean
+make kernel.nvopenmp.so test29_data_mem
+[ $? -ne 0 ] && echo "Failed! Couldn't compile openmp kernels. Exiting." && exit 1
+echo "Running (NVIDIA) OpenMP..."
+IRIS_ARCHS=openmp IRIS_KERNEL_BIN_OPENMP=`pwd`/kernel.nvopenmp.so ./test29_data_mem
+[ $? -ne 0 ] && echo "Failed! (OpenMP [NVIDIA] backend) Exiting." && exit 1
 

@@ -6,8 +6,9 @@ CXX				:= g++
 INCLUDE		+= -I$(IRIS)/include
 CFLAGS		+= ${INCLUDE} -g -std=gnu99 ${EXT_INCLUDE}
 CXXFLAGS	+= ${INCLUDE} -g -std=c++11 ${EXT_INCLUDE}
-LDFLAGS	  += -liris -lpthread -ldl ${EXT_LDFLAGS}
-LDINC     += -L${IRIS}/lib -L${IRIS}/lib64
+LDFLAGS		+= -liris -lpthread -ldl ${EXT_LDFLAGS}
+LDINC			+= -L${IRIS}/lib -L${IRIS}/lib64
+NVCC			?= $(CUDA_PATH)/bin/nvcc
 
 ifeq (1, ${CPP})
 $(TEST):$(TEST).cpp
