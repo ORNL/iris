@@ -31,7 +31,7 @@ namespace rt {
             virtual void* arch(int devno, void *host=NULL) = 0;
             virtual void** arch_ptr(Device *dev, void *host=NULL) = 0;
             virtual void** arch_ptr(int devno, void *host=NULL) = 0;
-            void init_reset(bool reset=true) { reset_ = reset; }
+            virtual void init_reset(bool reset=true) { reset_ = reset; }
             inline bool is_reset() { return reset_; }
             inline void** archs_off() { return archs_off_; }
             inline void** archs() { return archs_; }
@@ -40,6 +40,7 @@ namespace rt {
             inline void set_arch(int devno, void *ptr) { archs_[devno] = ptr; }
             inline size_t size() { return size_; }
             inline int ndevs() { return ndevs_; }
+            virtual inline void clear() { }
         protected:
             MemHandlerType handler_type_;
             void* archs_[IRIS_MAX_NDEVS];

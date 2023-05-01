@@ -88,6 +88,7 @@ namespace iris {
         public:
             Task(const char *name=NULL, bool perm=false, bool retainable=false);
             virtual ~Task() { }
+            int set_order(int *order);
             int h2d(Mem* mem, size_t off, size_t size, void* host);
             int h2d_full(Mem* mem, void* host);
             int h2broadcast(Mem* mem, size_t off, size_t size, void* host);
@@ -113,6 +114,7 @@ namespace iris {
             virtual ~Graph();
             void retainable();
             int add_task(Task & task, int device, const char *opt=NULL);
+            int set_order(int *order);
             int submit(int device, int sync=false);
             int wait();
             int release();

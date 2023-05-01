@@ -89,6 +89,9 @@ Task::Task(const char *name, bool perm, bool retainable)
     if (retainable) iris_task_retain(task_, !retainable);
 #endif
 }
+int Task::set_order(int *order) {
+    return iris_task_kernel_dmem_fetch_order(task_, order);
+}
 int Task::h2d(Mem* mem, size_t off, size_t size, void* host) {
 #ifdef ENABLE_SMART_PTR_TASK
     return PlatformIRIS::GetPlatform()->TaskH2D(task_, mem->mem(), off, size, host);
@@ -228,6 +231,9 @@ int Graph::add_task(Task & task, int device, const char *opt) {
 int Graph::release() {
     is_released_ = true;
     return iris_graph_release(graph_);
+}
+int Graph::set_order(int *order) {
+    return iris_graph_tasks_order(graph_, order);
 }
 int Graph::submit(int device, int sync) {
     return iris_graph_submit(graph_, device, sync);

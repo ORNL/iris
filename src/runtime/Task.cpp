@@ -40,6 +40,7 @@ Task::Task(Platform* platform, int type, const char* name) {
   depends_max_ = 1024;
   ndepends_ = 0;
   given_name_ = name != NULL;
+  profile_data_transfers_ = false;
   name_[0]='\0';
   if (name) strcpy(name_, name);
   status_ = IRIS_NONE;

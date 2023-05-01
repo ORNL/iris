@@ -277,21 +277,52 @@ void Device::ExecuteMemIn(Task *task, Command* cmd) {
     if (cmd == NULL || cmd->kernel() == NULL) return;
     int *params_map = cmd->get_params_map();
     //int nargs = cmd->kernel_nargs();
-    for(pair<int, DataMem *> it : cmd->kernel()->data_mems_in()) {
-        int idx = it.first;
-        DataMem *mem = it.second;
-        if (params_map != NULL && 
-                (params_map[idx] & iris_all) == 0 && 
-                !(params_map[idx] & type_) ) continue;
-        ExecuteMemInDMemIn(task, cmd, mem);
+    Kernel *kernel = cmd->kernel();
+    vector<int> data_mems_in_order = kernel->data_mems_in_order();
+    vector<BaseMem *> & all_data_mems_in = kernel->all_data_mems_in();
+    if (kernel->is_profile_data_transfers()) {
+        kernel->ClearMemInProfile();
     }
-    for(pair<int, DataMemRegion *> it : cmd->kernel()->data_mem_regions_in()) {
-        int idx = it.first;
-        DataMemRegion *mem = it.second;
-        if (params_map != NULL && 
-                (params_map[idx] & iris_all) == 0 && 
-                !(params_map[idx] & type_) ) continue;
-        ExecuteMemInDMemRegionIn(task, cmd, mem);
+    if (kernel->data_mems_in_order().size() > 0) {
+        for(int idx : kernel->data_mems_in_order()) {
+            if (params_map != NULL && 
+                    (params_map[idx] & iris_all) == 0 && 
+                    !(params_map[idx] & type_) ) continue;
+            if (idx < all_data_mems_in.size()) {
+                if (all_data_mems_in[idx]->GetMemHandlerType() == IRIS_DMEM) {
+                    DataMem *mem = (DataMem*)all_data_mems_in[idx];
+                    ExecuteMemInDMemIn(task, cmd, mem);
+                }
+                else if (all_data_mems_in[idx]->GetMemHandlerType() == IRIS_DMEM_REGION) {
+                    DataMemRegion *mem = (DataMemRegion*)all_data_mems_in[idx];
+                    ExecuteMemInDMemRegionIn(task, cmd, mem);
+                }
+                else {
+                    _error("Couldn't find idx:%d in data_mems_in_ or data_mem_regions_in_ for task:%s:%ld", idx, task->name(), task->uid());
+                }
+            }
+            else {
+                _error("Couldn't find idx:%d<size:%ld in data_mems_in_ or data_mem_regions_in_ for task:%s:%ld", idx, all_data_mems_in.size(), task->name(), task->uid());
+            }
+        }
+    }
+    else {
+        for(pair<int, DataMem *> it : kernel->data_mems_in()) {
+            int idx = it.first;
+            DataMem *mem = it.second;
+            if (params_map != NULL && 
+                    (params_map[idx] & iris_all) == 0 && 
+                    !(params_map[idx] & type_) ) continue;
+            ExecuteMemInDMemIn(task, cmd, mem);
+        }
+        for(pair<int, DataMemRegion *> it : kernel->data_mem_regions_in()) {
+            int idx = it.first;
+            DataMemRegion *mem = it.second;
+            if (params_map != NULL && 
+                    (params_map[idx] & iris_all) == 0 && 
+                    !(params_map[idx] & type_) ) continue;
+            ExecuteMemInDMemRegionIn(task, cmd, mem);
+        }
     }
 }
 
@@ -299,6 +330,7 @@ template <typename DMemType>
 void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem)
 {
     int nddevs[IRIS_MAX_NDEVS+1];
+    Kernel *kernel = cmd->kernel();
     size_t *ptr_off = mem->local_off();
     size_t *gws = mem->host_size();
     size_t *lws = mem->dev_size();
@@ -331,11 +363,16 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem)
         void* dst_arch = mem->arch(this);
         void* src_arch = mem->arch(src_dev);
         double start = timer_->Now();
+
         MemD2D(task, mem, dst_arch, src_arch, mem->size());
-        d2dtime = timer_->Now() - start;
+        double end = timer_->Now();
+        if (kernel->is_profile_data_transfers()) {
+            kernel->AddInDataObjectProfile({(uint32_t) cmd->task()->uid(), (uint32_t) mem->uid(), (uint32_t) iris_dt_d2d, (uint32_t) d2d_dev, (uint32_t) devno_, start, end});
+        }
+        d2dtime = end - start;
         d2d_enabled = true;
     }
-    else if (cpu_dev >= 0) {
+    else if (!Platform::GetPlatform()->is_d2d_disabled() && cpu_dev >= 0) {
         // You didn't find data in peer device, 
         // but you found it in neighbouring CPU (OpenMP) device.
         // Fetch it through H2D
@@ -350,10 +387,14 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem)
         // You do not need offsets as they correspond to host pointer
         double start = timer_->Now();
         MemH2D(task, mem, off, host_sizes, dev_sizes, 1, 1, mem->size(), src_arch, "OpenMP2DEV ");
-        o2dtime = timer_->Now() - start;
+        double end = timer_->Now();
+        o2dtime = end - start;
+        if (kernel->is_profile_data_transfers()) {
+            kernel->AddInDataObjectProfile({(uint32_t) cmd->task()->uid(), (uint32_t) mem->uid(), (uint32_t) iris_dt_o2d, (uint32_t) cpu_dev, (uint32_t) devno_, start, end});
+        }
         o2d_enabled = true;
     }
-    else if (this->type() == iris_cpu && non_cpu_dev >= 0) {
+    else if (!Platform::GetPlatform()->is_d2d_disabled() && this->type() == iris_cpu && non_cpu_dev >= 0) {
         // You found data in non-CPU/OpenMP device, but this device is CPU/OpenMP
         // Use target D2H transfer 
         //_trace("explore Device2Device(OpenMP) (D2O) dev[%d][%s] task[%ld:%s] mem[%lu]", devno_, name_, task->uid(), task->name(), mem->uid());
@@ -369,8 +410,12 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem)
         _trace("explore Device2Device(OpenMP) (D2O) dev[%d][%s] task[%ld:%s] mem[%lu] cs:%d", devno_, name_, task->uid(), task->name(), mem->uid(), context_shift);
         double start = timer_->Now();
         src_dev->MemD2H(task, mem, off, host_sizes, dev_sizes, 1, 1, mem->size(), src_arch, "DEV2OpenMP ");
+        double end = timer_->Now();
         if (context_shift) ResetContext();
-        d2otime = timer_->Now() - start;
+        if (kernel->is_profile_data_transfers()) {
+            kernel->AddInDataObjectProfile({(uint32_t) cmd->task()->uid(), (uint32_t) mem->uid(), (uint32_t) iris_dt_d2o, (uint32_t) non_cpu_dev, (uint32_t) devno_, start, end});
+        }
+        d2otime = end - start;
         d2o_enabled = true;
     }
     else if (!mem->is_host_dirty()) {
@@ -381,8 +426,12 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem)
         double start = timer_->Now();
         errid_ = MemH2D(task, mem, ptr_off, 
                 gws, lws, elem_size, dim, size, host);
+        double end = timer_->Now();
         if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
-        h2dtime = timer_->Now() - start;
+        if (kernel->is_profile_data_transfers()) {
+            kernel->AddInDataObjectProfile({(uint32_t) cmd->task()->uid(), (uint32_t) mem->uid(), (uint32_t) iris_dt_h2d, (uint32_t) -1, (uint32_t) devno_, start, end});
+        }
+        h2dtime = end - start;
         h2d_enabled = true;
     }
     else {
@@ -396,19 +445,25 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem)
         bool context_shift = src_dev->IsContextChangeRequired();
         _trace("explore D2H->H2D dev[%d][%s] task[%ld:%s] mem[%lu] cs:%d", devno_, name_, task->uid(), task->name(), mem->uid(), context_shift);
         double start = timer_->Now();
+        double d2h_start = start;
         errid_ = src_dev->MemD2H(task, mem, ptr_off, 
                 gws, lws, elem_size, dim, size, host, "D2H->H2D(1) ");
-        d2htime = timer_->Now() - start;
+        double end = timer_->Now();
+        d2htime = end - start;
         if (context_shift) ResetContext();
         if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
         // H2D should be issued from this current device
         start = timer_->Now();
         errid_ = MemH2D(task, mem, ptr_off, 
                 gws, lws, elem_size, dim, size, host, "D2H->H2D(2) ");
-        h2dtime = timer_->Now() - start;
+        end = timer_->Now();
+        h2dtime = end - start;
         if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
         mem->clear_host_dirty();
         d2h_h2d_enabled = true;
+        if (kernel->is_profile_data_transfers()) {
+            kernel->AddInDataObjectProfile({(uint32_t) cmd->task()->uid(), (uint32_t) mem->uid(), (uint32_t) iris_dt_d2h_h2d, (uint32_t) nddevs[0], (uint32_t) devno_, d2h_start, end});
+        }
     }
     mem->clear_dev_dirty(devno_ );
     mem->dev_unlock(devno_);
@@ -534,10 +589,14 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
         }
         if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
         mem->clear_host_dirty();
-        double d2htime = timer_->Now() - start;
+        double end = timer_->Now();
+        double d2htime = end - start;
         Command* cmd_kernel = cmd->task()->cmd_kernel();
         if (cmd_kernel) cmd_kernel->kernel()->history()->AddD2H(cmd_kernel, src_dev, d2htime, size);
         else Platform::GetPlatform()->null_kernel()->history()->AddD2H(cmd, this, d2htime, size);
+        if (task->is_profile_data_transfers()) {
+            task->AddOutDataObjectProfile({(uint32_t) task->uid(), (uint32_t) mem->uid(), (uint32_t) iris_dt_d2h_h2d, (uint32_t) devno_, (uint32_t) -1, start, end});
+        }
     }
     else {
         _trace("MemFlushout is skipped as host already having valid data for task:%ld:%s\n", cmd->task()->uid(), cmd->task()->name());

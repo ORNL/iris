@@ -79,6 +79,11 @@ public:
   double time_end() { return time_end_; }
   void set_parent(Task* task);
   void set_brs_policy(int brs_policy);
+  void set_profile_data_transfers(bool flag=true) { profile_data_transfers_ = flag; }
+  bool is_profile_data_transfers() { return profile_data_transfers_; }
+  void AddOutDataObjectProfile(DataObjectProfile hist) { out_dataobject_profiles.push_back(hist); }
+  void ClearMemOutProfile() { out_dataobject_profiles.clear(); }
+  vector<DataObjectProfile> & out_mem_profiles() { return out_dataobject_profiles; }
   void set_opt(const char* opt);
   char* opt() { return opt_; }
   int brs_policy() { return brs_policy_; }
@@ -142,6 +147,7 @@ private:
   bool disable_consistency_;
   bool internal_memory_transfer_;
   bool is_kernel_launch_disabled_;
+  bool profile_data_transfers_;
 
   double time_;
   double time_start_;
@@ -152,6 +158,7 @@ private:
   pthread_mutex_t mutex_complete_;
   pthread_mutex_t mutex_subtasks_;
   pthread_cond_t complete_cond_;
+  vector<DataObjectProfile>       out_dataobject_profiles;
 
 public:
   static Task* Create(Platform* platform, int type, const char* name);

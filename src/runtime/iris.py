@@ -15,6 +15,39 @@ class CommData3D(Structure):
     ]
     def __repr__(self):
         return f'CommData3D(from_id={self.from_id}, to_id={self.to_id}, mem_id={self.mem_id}, size={self.size})'
+    def __str__(self):
+        return f"from_id={self.from_id}, to_id={self.to_id}, mem_id={self.mem_id}, size={self.size}"
+
+class TaskProfile(Structure):
+    _fields_ = [
+        ("task", c_uint),
+        ("device", c_uint),
+        ("start", c_double),
+        ("end", c_double)
+    ]
+    def __str__(self):
+        return f"task={self.task}, device={self.device}, start={self.start}, end={self.end}"
+
+    def __repr__(self) -> str:
+        return f"TaskProfile(task={self.task}, device={self.device}, start={self.start}, end={self.end})"
+
+
+class DataObjectProfile(Structure):
+    _fields_ = [
+        ("task", c_uint),
+        ("data_object", c_uint),
+        ("datatransfer_type", c_uint),
+        ("from_device", c_uint),
+        ("device", c_uint),
+        ("start", c_double),
+        ("end", c_double)
+    ]
+    def __str__(self):
+        return f"task={self.task}, data_object={self.data_object}, datatransfer_type={self.datatransfer_type}, from_device={self.from_device}, device={self.device}, start={self.start}, end={self.end}"
+
+    def __repr__(self) -> str:
+        return f"DataObjectProfile(task={self.task}, data_object={self.data_object}, datatransfer_type={self.datatransfer_type}, from_device={self.from_device}, device={self.device}, start={self.start}, end={self.end})"
+
 
 
 class library(CDLL):
@@ -213,6 +246,14 @@ iris_vendor     =   0x1002
 iris_name       =   0x1003
 iris_type       =   0x1004
 
+iris_dt_h2d     =        1
+iris_dt_h2o     =        2
+iris_dt_d2o     =        3
+iris_dt_d2h     =        4
+iris_dt_d2d     =        5
+iris_dt_d2h_h2d =        6
+iris_dt_error   =        0
+
 IRIS_MEM = 0x1
 IRIS_DMEM = 0x2
 IRIS_DMEM_REGION = 0x4
@@ -231,6 +272,12 @@ class iris_graph(Structure):
 
 def init(sync = 1):
     return dll.iris_init(0, None, c_int(sync))
+
+def set_enable_profiler(flag=True):
+    dll.iris_set_enable_profiler(int(flag))
+
+def register_pin_memory(cptr, size):
+    dll.iris_register_pin_memory(convert_obj_ctype(cptr)[0], convert_obj_ctype(size_t(size))[0])
 
 def finalize():
     return dll.iris_finalize()
@@ -266,6 +313,7 @@ def device_info(device, param):
     return s.value
 
 def calibrate_communication_cost_matrix(data_size, iterations=1, pin_memory=True, units='B'):
+    print("Calibrate communication cost matrix from IRIS platform")
     ndevs = device_count()+1
     data_np = np.zeros(ndevs*ndevs).astype(np.double)
     data_np_cp = convert_obj_ctype(data_np)[0]
@@ -475,6 +523,12 @@ class dmem:
   def update(self, host):
     c_host = host.ctypes.data_as(c_void_p)
     dll.iris_data_mem_update(self.handle, c_host)
+  def get_region_uids(self):
+    n_regions = dll.call_ret(dll.iris_data_mem_n_regions(self.handle), np.int32)
+    output = []
+    for i in range(n_regions):
+      output.append(dll.call_ret(dll.iris_data_mem_get_region_uid, np.uint32, self.handle, np.int32(i)))
+    return output
 class dmem_region:
   def __init__(self, *args):
     self.handle = dmem_create(args)
@@ -768,6 +822,10 @@ class task:
         dll.iris_task_get_name.restype = c_char_p
         kname = dll.iris_task_get_name(self.handle)
         return kname.decode('ascii')
+
+    def set_order(self, order):
+        dll.call(dll.iris_task_kernel_dmem_fetch_order, self.handle, order)
+
     def set_name(self, name):
         c_name = c_char_p(name) if sys.version_info[0] == 2 else c_char_p(bytes(name, 'ascii'))
         dll.iris_task_set_name(self.handle, c_name)
@@ -892,20 +950,44 @@ class graph:
         dll.iris_graph_free(self.handle)
     def wait(self):
         dll.iris_graph_wait(self.handle)
-    def submit(self, device=iris_default,sync=1):
-        dll.iris_graph_submit(self.handle, c_int(device), c_int(sync))
-    def submit_time(self, device=iris_default, sync=1):
+    def submit(self, device=iris_default, sync=1, order=None):
+        if type(order) == np.ndarray or order != None:
+            order_np = order
+            if type(order) != np.ndarray:
+                order_np = np.int32(order)
+            conv_order_np = convert_obj_ctype(order_np)
+            dll.iris_graph_submit_with_order(self.handle, conv_order_np[0], c_int(device), c_int(sync))
+        else:
+            dll.iris_graph_submit(self.handle, c_int(device), c_int(sync))
+    def submit_time(self, device=iris_default, sync=1, order=None):
         #stime = np.double(0.0)
         #cobj = byref(c_double(stime))
         stime = np.zeros((1), np.double)
         cobj = stime.ctypes.data_as(c_void_p)
-        dll.iris_graph_submit_with_time(self.handle, cobj, c_int(device), c_int(sync))
+        if type(order) == np.ndarray or order != None:
+            order_np = order
+            if type(order) != np.ndarray:
+                order_np = np.int32(order)
+            conv_order_np = convert_obj_ctype(order_np)
+            dll.iris_graph_submit_with_order_and_time(self.handle, conv_order_np[0], cobj, c_int(device), c_int(sync))
+        else:
+            dll.iris_graph_submit_with_time(self.handle, cobj, c_int(device), c_int(sync))
         return stime[0]
     def add_task(self, task, device=iris_default, opt=None):
         c_opt = c_void_p(0)
         if opt != None:
            c_opt = c_char_p(opt) if sys.version_info[0] == 2 else c_char_p(bytes(opt, 'ascii'))
         dll.iris_graph_task(self.handle, task.handle, c_int(device), c_opt)
+
+    def reset_memories(self):
+        dll.iris_graph_reset_memories(self.handle)
+
+    def enable_mem_profiling(self):
+        dll.iris_graph_enable_mem_profiling(self.handle)
+
+    def set_order(self, order):
+        dll.call(dll.iris_graph_tasks_order, self.handle, order)
+
     def get_tasks(self):
         dll.iris_graph_tasks_count.restype = c_int
         ntasks = dll.iris_graph_tasks_count(self.handle)
@@ -915,6 +997,7 @@ class graph:
         dll.iris_graph_get_tasks(self.handle, tasks)
         ptasks = convert_ctasks(tasks)
         return ntasks, ptasks
+
     def get_task_names(self):
         ntasks, tasks = self.get_tasks()
         task_names = [ task.name() for task in tasks]
@@ -925,6 +1008,21 @@ class graph:
         ntasks, tasks = self.get_tasks()
         task_uids = [0] + [ task.uid() for task in tasks]
         return task_uids
+
+    def tasks_execution_schedule(self, kernel_profile=False):
+        # Order should not be changed
+        ptr = dll.call_ret(dll.iris_get_graph_tasks_execution_schedule, POINTER(TaskProfile), self.handle, np.int32(kernel_profile))
+        total = dll.call_ret(dll.iris_get_graph_tasks_execution_schedule_count, c_size_t, self.handle)
+        ptr_list = [ ptr[i] for i in range(total) ]
+        return ptr_list
+
+    def mems_execution_schedule(self):
+        # Order should not be changed
+        ptr = dll.call_ret(dll.iris_get_graph_dataobjects_execution_schedule, POINTER(DataObjectProfile), self.handle)
+        total = dll.call_ret(dll.iris_get_graph_dataobjects_execution_schedule_count, c_size_t, self.handle)
+        ptr_list = [ ptr[i] for i in range(total) ]
+        return ptr_list
+
     def get_dependency_matrix(self, pdf=False):
         ntasks, tasks = self.get_tasks()
         SIZE = ntasks+1
@@ -1047,7 +1145,17 @@ class graph:
             return df
         return comm_2d
 
+    def get_3d_cost_comm_time(self, iterations=1, pin_memory=True):
+        print("Extracting 3d communication cost for each object")
+        n_mems = dll.call_ret(dll.iris_count_mems, c_size_t, self.handle)
+        ndevs = device_count()+1
+        time_data = np.zeros(n_mems*ndevs*ndevs, np.double)
+        mem_ids = np.zeros(n_mems, np.int32)
+        dll.call(dll.iris_get_graph_3d_comm_time, self.handle, time_data, mem_ids, np.int32(iterations), np.int32(pin_memory))
+        return time_data.reshape((n_mems, ndevs, ndevs)), mem_ids 
+
     def get_3d_cost_comm_data(self):
+        print("Extracting communication data 3d list of (task from id, task to id, mem_id, size)")
         dll.call(dll.iris_get_graph_3d_comm_data, self.handle)
         total = dll.call_ret(dll.iris_get_graph_3d_comm_data_size, c_size_t, self.handle)
         ptr = dll.call_ret(dll.iris_get_graph_3d_comm_data_ptr, POINTER(CommData3D), self.handle)
@@ -1055,6 +1163,7 @@ class graph:
         return ptr_list
 
     def calibrate_compute_cost_adj_matrix(self, pdf=False, only_device_type=False):
+        print("Calibrating computation cost for each task and for each processor type")
         ntasks, tasks = self.get_tasks()
         ndevs = device_count()
         dev_names = all_device_info()

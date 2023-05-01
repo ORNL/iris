@@ -201,6 +201,7 @@ int Platform::Init(int* argc, char*** argv, int sync) {
   if (enable_profiler_) {
     profilers_[nprofilers_++] = new ProfilerDOT(this);
     profilers_[nprofilers_++] = new ProfilerGoogleCharts(this);
+    profilers_[nprofilers_++] = new ProfilerGoogleCharts(this, true);
   }
   if (enable_scheduling_history_) scheduling_history_ = new SchedulingHistory(this);
 
@@ -250,6 +251,9 @@ int Platform::EnvironmentInit() {
   EnvironmentSet("KERNEL_DIR",      "",                   false);
   EnvironmentSet("KERNEL_SRC_CUDA",     "kernel.cu",          false);
   EnvironmentSet("KERNEL_BIN_CUDA",     "kernel.ptx",         false);
+  EnvironmentSet("KERNEL_XILINX_XCLBIN", "kernel.xilinx.xclbin",  false);
+  EnvironmentSet("KERNEL_FPGA_XCLBIN",   "kernel-fpga.xclbin",  false);
+  EnvironmentSet("KERNEL_INTEL_AOCX", "kernel.intel.aocx",  false);
   EnvironmentSet("KERNEL_SRC_HEXAGON",  "kernel.hexagon.cpp", false);
   EnvironmentSet("KERNEL_BIN_HEXAGON",  "kernel.hexagon.so",  false);
   EnvironmentSet("KERNEL_SRC_HIP",      "kernel.hip.cpp",     false);
@@ -767,6 +771,7 @@ int Platform::PolicyRegister(const char* lib, const char* name, void* params) {
 int Platform::CalibrateCommunicationMatrix(double *comm_time, size_t data_size, int iterations, bool pin_memory_flag)
 {
     uint8_t *A = Utils::AllocateRandomArray<uint8_t>(data_size);
+    uint8_t *nopin_A = Utils::AllocateRandomArray<uint8_t>(data_size);
     if (pin_memory_flag) 
         iris_register_pin_memory(A, data_size);
     Mem* mem = new Mem(data_size, this);
@@ -775,6 +780,8 @@ int Platform::CalibrateCommunicationMatrix(double *comm_time, size_t data_size, 
     Command* d2d_cmd = Command::CreateD2D(task, mem, 0, data_size, A, 0);
     Command* h2d_cmd = Command::CreateH2D(task, mem, 0, data_size, A);
     Command* d2h_cmd = Command::CreateD2H(task, mem, 0, data_size, A);
+    Command* nopin_h2d_cmd = Command::CreateH2D(task, mem, 0, data_size, nopin_A);
+    Command* nopin_d2h_cmd = Command::CreateD2H(task, mem, 0, data_size, nopin_A);
     iris_kernel null_brs_kernel;
     KernelCreate("iris_null", &null_brs_kernel);
     Kernel *null_kernel = null_brs_kernel.class_obj;
@@ -794,6 +801,12 @@ int Platform::CalibrateCommunicationMatrix(double *comm_time, size_t data_size, 
                     } else if (i == 0) {
                         devs_[j-1]->ExecuteH2D(h2d_cmd);
                         lcmd_time = h2d_cmd->time_end() - h2d_cmd->time_start();
+                    } else if (j>0 && devs_[j-1]->type() == iris_cpu) {
+                        devs_[i-1]->ExecuteD2H(nopin_d2h_cmd);
+                        lcmd_time = nopin_d2h_cmd->time_end() - nopin_d2h_cmd->time_start();
+                    } else if (i>0 && devs_[i-1]->type() == iris_cpu) {
+                        devs_[j-1]->ExecuteH2D(nopin_h2d_cmd);
+                        lcmd_time = nopin_h2d_cmd->time_end() - nopin_h2d_cmd->time_start();
                     } else {
                         d2d_cmd->set_src_dev(i-1);
                         devs_[j-1]->ExecuteD2D(d2d_cmd);
@@ -802,7 +815,7 @@ int Platform::CalibrateCommunicationMatrix(double *comm_time, size_t data_size, 
                     total_cmd_time += lcmd_time;
                 }
                 cmd_time = total_cmd_time / iterations;
-            }
+            } 
             comm_time[i*ndevs + j] = cmd_time;
         }
     }
@@ -1112,7 +1125,7 @@ shared_ptr<History> Platform::CreateHistory(string kname)
 }
 void Platform::ProfileCompletedTask(Task *task)
 {
-    if (enable_profiler_){
+    if (enable_profiler_ && !task->marker()){
         for (int i = 0; i < nprofilers_; i++) profilers_[i]->CompleteTask(task);
     }
 }
@@ -1224,6 +1237,15 @@ int Platform::DataMemInit(iris_mem brs_mem, bool reset) {
     return IRIS_SUCCESS;
 }
 
+int Platform::DataMemInit(BaseMem *mem, bool reset) {
+    if (mem->GetMemHandlerType() != IRIS_DMEM) {
+        _error("IRIS Mem is not supported for initialization with reset value. %ld", mem->uid());
+        return IRIS_ERROR;
+    }
+    mem->init_reset(reset);
+    return IRIS_SUCCESS;
+}
+
 int Platform::DataMemUpdate(iris_mem brs_mem, void *host) {
   DataMem *mem = (DataMem *) brs_mem.class_obj;
   mem->UpdateHost(host);
@@ -1231,9 +1253,13 @@ int Platform::DataMemUpdate(iris_mem brs_mem, void *host) {
 }
 
 int Platform::RegisterPin(void *host, size_t size) {
-  for (int i=0; i<nplatforms_; i++) {
+#if 1
+  for (int i=0; i<ndevs_; i++) 
+    devs_[i]->RegisterPin(host, size);
+#else
+  for (int i=0; i<nplatforms_; i++) 
     first_dev_of_type_[i]->RegisterPin(host, size);
-  }  
+#endif
   return IRIS_SUCCESS;
 }
 
@@ -1404,6 +1430,25 @@ int Platform::GraphSubmit(iris_graph brs_graph, int brs_policy, int sync) {
   //graph->RecordStartTime(devs_[0]->Now());
   for (std::vector<Task*>::iterator I = tasks->begin(), E = tasks->end(); I != E; ++I) {
     Task* task = *I;
+    //preference is to honour the policy embedded in the task-graph.
+    if (task->brs_policy() == iris_default) {
+      task->set_brs_policy(brs_policy);
+    }
+    task->Submit(task->brs_policy(), task->opt(), sync);
+    if (recording_) json_->RecordTask(task);
+    if (scheduler_) scheduler_->Enqueue(task);
+    else workers_[0]->Enqueue(task);
+  }
+  if (sync) graph->Wait();
+  return IRIS_SUCCESS;
+}
+
+int Platform::GraphSubmit(iris_graph brs_graph, int *order, int brs_policy, int sync) {
+  Graph* graph = brs_graph->class_obj;
+  std::vector<Task*> & tasks = graph->tasks_list();
+  //graph->RecordStartTime(devs_[0]->Now());
+  for(size_t i=0; i<tasks.size(); i++) {
+    Task* task = tasks[order[i]];
     //preference is to honour the policy embedded in the task-graph.
     if (task->brs_policy() == iris_default) {
       task->set_brs_policy(brs_policy);

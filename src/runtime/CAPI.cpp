@@ -35,6 +35,10 @@ int iris_finalize() {
   return status;
 }
 
+void iris_set_enable_profiler(int flag) {
+  Platform::GetPlatform()->set_enable_profiler((bool)flag);
+}
+
 int iris_synchronize() {
   return Platform::GetPlatform()->Synchronize();
 }
@@ -301,6 +305,12 @@ int    iris_cmd_kernel_get_arg_mode(void *cmd_p, int index) {
     Command *cmd = (Command *)cmd_p;
     return cmd->kernel_arg(index)->mode;
 }
+int iris_task_kernel_dmem_fetch_order(iris_task brs_task, int *order) {
+    Task *task = brs_task->class_obj;
+    if (task->cmd_kernel() && task->cmd_kernel()->kernel()) 
+        task->cmd_kernel()->kernel()->set_order(order);
+    return IRIS_SUCCESS;
+}
 iris_kernel iris_task_get_kernel(iris_task brs_task)
 {
     Task *task = brs_task.class_obj;
@@ -354,6 +364,11 @@ int iris_data_mem_create_tile(iris_mem* mem, void *host, size_t *off, size_t *ho
 int iris_data_mem_create(iris_mem *mem, void *host, size_t size) {
   return Platform::GetPlatform()->DataMemCreate(mem, host, size);
 }
+int iris_data_mem_clear(iris_mem brs_mem) {
+  DataMem* mem = (DataMem *)brs_mem->class_obj;
+  mem->clear();
+  return IRIS_SUCCESS;
+}
 int iris_data_mem_update(iris_mem mem, void *host) {
   return Platform::GetPlatform()->DataMemUpdate(mem, host);
 }
@@ -365,6 +380,14 @@ int iris_data_mem_pin(iris_mem mem) {
 }
 int iris_data_mem_create_region(iris_mem *mem, iris_mem root_mem, int region) {
   return Platform::GetPlatform()->DataMemCreate(mem, root_mem, region);
+}
+int iris_data_mem_n_regions(iris_mem brs_mem) {
+  DataMem *mem = (DataMem *)brs_mem->class_obj;
+  return mem->get_n_regions();
+}
+unsigned long iris_data_mem_get_region_uid(iris_mem brs_mem, int region) {
+  DataMem *mem = (DataMem *)brs_mem->class_obj;
+  return mem->get_region(region)->uid();
 }
 int iris_data_mem_enable_outer_dim_regions(iris_mem mem) {
   return Platform::GetPlatform()->DataMemEnableOuterDimRegions(mem);
@@ -429,7 +452,17 @@ int iris_graph_create_json(const char* json, void** params, iris_graph* graph) {
 int iris_graph_task(iris_graph graph, iris_task task, int device, const char* opt) {
   return Platform::GetPlatform()->GraphTask(graph, task, device, opt);
 }
+int iris_graph_tasks_order(iris_graph brs_graph, int *order) {
+    Graph *graph = brs_graph->class_obj;
+    graph->set_order(order);
+    return IRIS_SUCCESS;
+}
 
+int iris_graph_reset_memories(iris_graph brs_graph) {
+  Graph* graph = brs_graph->class_obj;
+  graph->ResetMemories();
+  return IRIS_SUCCESS;
+}
 int iris_graph_retain(iris_graph graph, bool flag) {
   return Platform::GetPlatform()->GraphRetain(graph, flag);
 }
@@ -442,6 +475,10 @@ int iris_graph_submit(iris_graph graph, int device, int sync) {
   return Platform::GetPlatform()->GraphSubmit(graph, device, sync);
 }
 
+int iris_graph_submit_with_order(iris_graph graph, int *order, int device, int sync) {
+  return Platform::GetPlatform()->GraphSubmit(graph, order, device, sync);
+}
+
 int iris_graph_wait(iris_graph graph) {
   return Platform::GetPlatform()->GraphWait(graph);
 }
@@ -451,6 +488,15 @@ int iris_graph_submit_with_time(iris_graph graph, double *time, int device, int 
     double st_time, end_time;
     Platform::GetPlatform()->TimerNow(&st_time);
     int status = Platform::GetPlatform()->GraphSubmit(graph, device, sync);
+    Platform::GetPlatform()->TimerNow(&end_time);
+    *time = end_time - st_time;
+    return status;
+}
+int iris_graph_submit_with_order_and_time(iris_graph graph, int *order, double *time, int device, int sync)
+{
+    double st_time, end_time;
+    Platform::GetPlatform()->TimerNow(&st_time);
+    int status = Platform::GetPlatform()->GraphSubmit(graph, order, device, sync);
     Platform::GetPlatform()->TimerNow(&end_time);
     *time = end_time - st_time;
     return status;
@@ -491,6 +537,12 @@ int iris_timer_now(double* time) {
   return Platform::GetPlatform()->TimerNow(time);
 }
 
+int iris_graph_enable_mem_profiling(iris_graph brs_graph)
+{
+    Graph* graph = brs_graph->class_obj;
+    graph->enable_mem_profiling();
+    return IRIS_SUCCESS;
+}
 int iris_graph_get_tasks(iris_graph graph, iris_task *tasks) {
   return Platform::GetPlatform()->GetGraphTasks(graph, tasks);
 }
@@ -524,6 +576,47 @@ void *iris_get_graph_3d_comm_data_ptr(iris_graph brs_graph)
     shared_ptr<GraphMetadata> gm = graph->get_metadata();
     CommData3D *comm_data = gm->comm_task_data();
     return comm_data;
+}
+size_t iris_get_graph_tasks_execution_schedule_count(iris_graph brs_graph)
+{
+    Graph* graph = brs_graph->class_obj;
+    shared_ptr<GraphMetadata> gm = graph->get_metadata();
+    return gm->task_schedule_count();
+}
+void *iris_get_graph_tasks_execution_schedule(iris_graph brs_graph, int kernel_profile)
+{
+    Graph* graph = brs_graph->class_obj;
+    shared_ptr<GraphMetadata> gm = graph->get_metadata();
+    gm->fetch_task_execution_schedules(kernel_profile);
+    TaskProfile *tasks_data = gm->task_schedule_data();
+    return tasks_data;
+}
+size_t iris_get_graph_dataobjects_execution_schedule_count(iris_graph brs_graph)
+{
+    Graph* graph = brs_graph->class_obj;
+    shared_ptr<GraphMetadata> gm = graph->get_metadata();
+    return gm->dataobject_schedule_count();
+}
+void *iris_get_graph_dataobjects_execution_schedule(iris_graph brs_graph)
+{
+    Graph* graph = brs_graph->class_obj;
+    shared_ptr<GraphMetadata> gm = graph->get_metadata();
+    gm->fetch_dataobject_execution_schedules();
+    DataObjectProfile *mems_data = gm->dataobject_schedule_data();
+    return mems_data;
+}
+size_t iris_count_mems(iris_graph brs_graph)
+{
+    Graph* graph = brs_graph->class_obj;
+    shared_ptr<GraphMetadata> gm = graph->get_metadata();
+    return gm->count_mems();
+}
+int iris_get_graph_3d_comm_time(iris_graph brs_graph, double *comm_time, int *mem_ids, int iterations, int pin_memory_flag)
+{
+    Graph* graph = brs_graph->class_obj;
+    shared_ptr<GraphMetadata> gm = graph->get_metadata();
+    gm->get_3d_comm_time(comm_time, mem_ids, iterations, pin_memory_flag);
+    return IRIS_SUCCESS;
 }
 int iris_get_graph_3d_comm_data(iris_graph brs_graph, void *comm_data)
 {

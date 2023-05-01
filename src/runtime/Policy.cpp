@@ -18,7 +18,7 @@ bool Policy::IsKernelSupported(Task *task, Device *dev) {
     if (cmd == NULL) return true;
     Kernel *kernel = cmd->kernel();
     if (kernel == NULL) return true;
-    if (kernel->arch(dev, false)) return true;
+    if (kernel->isSupported(dev)) return true;
     return false;
 }
 
