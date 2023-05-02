@@ -3,9 +3,15 @@
 
 #include "Config.h"
 #include "Retainable.h"
+#ifdef AUTO_PAR
+#include "Task.h"
+#endif
 namespace iris {
 namespace rt {
     class Device;
+#ifdef AUTO_PAR
+    class Task;
+#endif
     enum MemHandlerType{
         IRIS_MEM = 0x1,
         IRIS_DMEM = 0x2,
@@ -39,6 +45,10 @@ namespace rt {
             inline void *get_arch(int devno) { return archs_[devno]; }
             inline void set_arch(int devno, void *ptr) { archs_[devno] = ptr; }
             inline size_t size() { return size_; }
+#ifdef AUTO_PAR
+  	    inline Task* get_current_writing_task() { return current_writing_task_;}
+  	    inline void set_current_writing_task(Task* task) { current_writing_task_ = task;}
+#endif
             inline int ndevs() { return ndevs_; }
             virtual inline void clear() { }
         protected:
@@ -49,7 +59,10 @@ namespace rt {
             size_t size_;
             int ndevs_;
             bool  reset_;
-
+#ifdef AUTO_PAR
+  	    Task* current_writing_task_;
+#endif
+ 
     };
 }
 }

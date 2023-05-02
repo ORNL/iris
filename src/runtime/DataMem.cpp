@@ -36,6 +36,10 @@ void DataMem::Init(Platform *platform, void *host_ptr, size_t size)
     }
     dim_ = 1;
     host_ptr_ = host_ptr;
+#ifdef AUTO_PAR
+  current_writing_task_ = NULL;
+#endif
+ 
 }
 void DataMem::UpdateHost(void *host_ptr)
 {
