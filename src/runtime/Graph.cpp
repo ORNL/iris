@@ -14,6 +14,9 @@
 #include <vector>
 #include <set>
 #include <queue>
+#include <typeinfo>
+#include <bits/stdc++.h>
+
 #define GET2D_INDEX(NCOL, I, J)  ((I)*(NCOL)+(J))
 #define PRUNE_EDGES //Prunes end node incoming edges
 using namespace std;
@@ -466,6 +469,49 @@ void GraphMetadata::level_order_traversal(int8_t s, int ntasks, int8_t* dep_matr
     // Stores if the current node is visited
     vector<Task *> tasks = graph_->formatted_tasks();
     ntasks = tasks.size()+1;
+    std::vector<int> v_level(ntasks);
+    int max_level = 0;
+    for ( int i = 1; i < ntasks; i++) v_level.at(i) = 0;
+    /*for (auto& a : v_level) {
+	
+    }*/
+    v_level.at(0) = 0; 
+    for ( int j = 1; j < ntasks; j++) {
+    	for ( int i = 1; i < ntasks; i++) {
+            if (dep_matrix[i * ntasks + j] !=  0) {
+		 v_level.at(i-1) = v_level.at(j-1) + 1;
+                 //std::cout << "I : " << i-1 << " j " << j-1 <<  "\n";
+                 //std::cout << "here i=" << i-1 <<" cur level i : " << v_level.at(i-1) << " here j=" <<j-1 << " cur level j " << v_level.at(j-1) <<  "\n";
+            //if (dep_matrix[i * ntasks + v + 1] !=  0 && !visited[i-1]) {
+	    }
+	}
+    }
+    max_level_ = 0; 
+    for ( auto & i : v_level) 
+	    if (max_level_ < i) max_level_ = i;
+    //vector<unsigned long> vec;
+    for ( int i = 0; i < max_level_; i++) {
+    	for ( int j = 1; j < ntasks; j++) {
+           if (v_level.at(j-1) == i) vec.push_back(j-1);	    
+	}
+        levels_dag_.push_back(vec);
+	vec.clear();
+    }
+
+    //max_level_ = i-1; 
+
+}
+
+/*
+void GraphMetadata::level_order_traversal(int8_t s, int ntasks, int8_t* dep_matrix)
+{
+    // a queue for Level Order Traversal
+    queue<int> q;
+    vector<unsigned long> vec;
+ 
+    // Stores if the current node is visited
+    vector<Task *> tasks = graph_->formatted_tasks();
+    ntasks = tasks.size()+1;
     std::vector<bool> visited(ntasks+1);
  
     q.push(s);
@@ -500,6 +546,7 @@ void GraphMetadata::level_order_traversal(int8_t s, int ntasks, int8_t* dep_matr
         // Add the child vertices of the current node in queue
         for (int i = 1; i < ntasks + 1; i++) {
             if (dep_matrix[i * ntasks + v + 1] !=  0 && !visited[i-1]) {
+            //if (dep_matrix[i * ntasks + v + 1] !=  0 && !visited[i-1]) {
                 visited[i - 1] = true;
                 q.push(i - 1);
             }
@@ -508,19 +555,105 @@ void GraphMetadata::level_order_traversal(int8_t s, int ntasks, int8_t* dep_matr
 
     max_level_ = levels; 
 
-    std::cout << "max levels : " << max_level_ << "\n";
-    int l = 0; 
-    for (auto& i : levels_dag_){
-       std::cout << "Level " << l++ << " : ";
-       for (auto& j : i) {
-	  std::cout <<  j << " ";
-       }
-       std::cout << "\n";
-    }
-	
 }
+*/
 
+bool GraphMetadata::exists_edge(unsigned long u, 
+	unsigned long v, int8_t * dep_matrix, int ntasks){
+   if ( dep_matrix[(u + 1) * ntasks + (v + 1)] > 0) return true;	
+   if ( dep_matrix[(v + 1) * ntasks + (u + 1)] > 0) return true;	
 
+   return false;
+} 
+
+int GraphMetadata::get_max_parallelism()
+{ 
+  int max_par = 0;
+  vector<Task *> tasks = graph_->formatted_tasks();
+  int ntasks = tasks.size()+1;
+  int8_t * dep_matrix = (int8_t *)calloc(ntasks*ntasks, sizeof(int8_t));
+  get_dependency_matrix(dep_matrix, true);
+  for (int i = 0 ; i < ntasks; i++) {
+  	for (int j = 0 ; j < ntasks; j++) {
+  		printf("%d ", dep_matrix[i * ntasks + j]);
+	}
+  	printf("\n");
+  }
+  level_order_traversal(0, ntasks, dep_matrix);
+
+  std::cout << "max levels : " << max_level_ << "\n";
+  int l = 0; 
+  for (auto& i : levels_dag_){
+      std::cout << "Level " << l++ << " : ";
+      for (auto& j : i) {
+	  std::cout <<  j << " ";
+          //cout << task_uid_hash_[task_index_2_uid_hash_[j]]->name() << " ";
+      }
+      std::cout << "\n";
+  }
+	
+  vector<unsigned long> merged_dag;
+  int count_level = 0 ; 
+  for (auto& i : levels_dag_){
+      for (auto& j : i) {
+	  //std::cout << "for value "  << j << " and size of merged_dag " << merged_dag.size() << " \n";
+	  if(std::find(merged_dag.begin(), merged_dag.end(), j) 
+		                   != merged_dag.end()) {
+	       continue;
+	  }
+
+	  int count = 0 ;
+          for (auto& k : merged_dag) {
+	      //std::cout << "here j " << j << " k " << k << " \n";
+              if(exists_edge(j, k, dep_matrix, ntasks)) {
+		  merged_dag.erase(merged_dag.begin() + count);
+	          //std::cout << "erased k  " << k << " \n";
+		  count--;
+	      }
+	      count++;
+	  }
+ 	  merged_dag.push_back(j);
+	  //std::cout << "pushed j  " << j << " \n";
+	
+ /*	
+          if (merged_dag.size() != 0) {
+	      int count = 0 ;
+              for (auto& k : merged_dag) {
+		  //std::cout << "value of k " << k << " \n";
+		  //std::cout << "type of k " << typeid(k).name() << " \n";
+		  std::cout << "here j " << j << " k " << k << " \n";
+                  if(exists_edge(j, k, dep_matrix, ntasks)) {
+		      //merged_dag.erase(k); 
+		      merged_dag.erase(merged_dag.begin() + count);
+		      std::cout << "erased k " << k << " \n";
+	 	      if(std::find(merged_dag.begin(), merged_dag.end(), j) 
+		                   == merged_dag.end()) {
+ 	                  merged_dag.push_back(j);
+		          std::cout << "pushed j " << j << " \n";
+                          count++; 
+		      } else  {
+                          count++; 
+		          continue;
+		      }
+ 		  } else {
+		  }	
+              } // for 
+	  } else {
+ 	      merged_dag.push_back(j);
+	      std::cout << "pushed j int empty " << j << " \n";
+	  }
+	*/
+      }
+      /*std::cout << "After merging Level :  " << count_level++ << "\n" ;
+      for (auto& k : merged_dag)
+	  std::cout << k << " " ;
+      std::cout << " \n" ; */
+      if (max_par < merged_dag.size()) max_par = merged_dag.size();
+
+   }
+   std::cout << "Maximum theoretical parallelism:  " << max_par << "\n" ;
+return 0;
+}
 
 void GraphMetadata::get_2d_comm_adj_matrix(size_t *comm_task_adj_matrix)
 {

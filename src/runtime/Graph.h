@@ -77,6 +77,8 @@ public:
     void map_task_inputs_outputs();
     size_t comm_task_data_size() { return comm_task_data_size_; }
     CommData3D *comm_task_data() { return comm_task_data_; }
+    int get_max_parallelism(void);
+    bool exists_edge(unsigned long u, unsigned long v, int8_t * dep_matrix, int ntasks);
     void get_dependency_matrix(int8_t *dep_matrix=NULL, bool adj_matrix=true);
     void level_order_traversal(int8_t s, int ntasks, int8_t* dep_matrix);
     void get_3d_comm_data();
@@ -100,6 +102,7 @@ private:
     Graph *graph_;
     int iterations_;
     int max_level_; 
+    int max_parallelism_; 
     int8_t *dep_adj_matrix_;
     int8_t *dep_adj_list_;
     CommData3D *comm_task_data_;
