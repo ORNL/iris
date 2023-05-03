@@ -5,6 +5,7 @@
 #include "Retainable.h"
 #ifdef AUTO_PAR
 #include "Task.h"
+#include <vector>
 #endif
 namespace iris {
 namespace rt {
@@ -48,6 +49,11 @@ namespace rt {
 #ifdef AUTO_PAR
   	    inline Task* get_current_writing_task() { return current_writing_task_;}
   	    inline void set_current_writing_task(Task* task) { current_writing_task_ = task;}
+  	    void add_to_read_task_list(Task* task) { read_task_list_.push_back(task); }
+  	    std::vector<Task*>* get_read_task_list() { return &read_task_list_; }
+  	    void erase_all_read_task_list() {
+		    read_task_list_.erase(read_task_list_.begin(), 
+		    read_task_list_.end()); }
 #endif
             inline int ndevs() { return ndevs_; }
             virtual inline void clear() { }
@@ -61,6 +67,7 @@ namespace rt {
             bool  reset_;
 #ifdef AUTO_PAR
   	    Task* current_writing_task_;
+  	    std::vector<Task*> read_task_list_;
 #endif
  
     };

@@ -159,6 +159,7 @@ Command* Command::CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off,
   }
   cmd->kernel_nargs_ = nparams;
   KernelArg* args = cmd->kernel_args();
+  Task* task_prev = NULL;
   for (int i = 0; i < nparams; i++) {
     KernelArg* arg = args + i;
     void* param = params[i];
@@ -172,6 +173,50 @@ Command* Command::CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off,
     }
     size_t mem_off = 0ULL;
     BaseMem* mem = cmd->platform_->GetMem((iris_mem) param);
+
+#ifdef AUTO_PAR
+    if (param_info == iris_w || param_info == iris_rw) {
+
+    	if(mem->get_current_writing_task() != NULL 
+		    && mem->get_read_task_list()->size() == 0 ){
+    	    if (mem->get_current_writing_task() != task) {
+            	    task->AddDepend(mem->get_current_writing_task());	
+	    }
+    	} else if (  mem->get_read_task_list()->size() != 0 ){
+  	    std::vector<Task*>* read_list =  mem->get_read_task_list();
+	    Task* read_task;
+            for( int i = 0 ; i < read_list->size(); i++){
+            //for( auto & read_task : read_list){
+            //for( auto & read_task : mem->get_read_task_list()){
+	        read_task = read_list->at(i);
+	    	if (read_task != task) {
+                	task->AddDepend(read_task);	
+	    	}
+	    }
+        }
+ 
+	//printf("Seting current task info %d\n", param_info);
+	task_prev = mem->get_current_writing_task();
+ 	mem->set_current_writing_task(task);
+ 	mem->erase_all_read_task_list();
+  	task->add_to_write_list(mem);
+    }
+    if (param_info == iris_r) {
+    	if(mem->get_current_writing_task() != NULL) {
+    	    if (mem->get_current_writing_task() != task) {
+            	    task->AddDepend(mem->get_current_writing_task());	
+	    }
+	}
+
+  	task->add_to_read_list(mem);
+	if (mem->get_current_writing_task() != task) {
+  	    mem->add_to_read_task_list(task);
+  	    //set_current_writing_task(NULL);
+	}
+    }
+#endif
+
+/*
 #ifdef AUTO_PAR
     if(mem->get_current_writing_task() != NULL 
 		    && mem->get_current_writing_task() != task){
@@ -188,6 +233,7 @@ Command* Command::CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off,
   	task->add_to_read_list(mem);
     }
 #endif
+*/
     //_trace_debug("Param %d", param_info);
     if (!mem) mem = cmd->platform_->GetMem(param, &mem_off);
     if (!mem) {
