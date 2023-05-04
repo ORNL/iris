@@ -346,28 +346,26 @@ int DeviceHIP::KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bo
       *kernel_bin = host2hip_ld_->GetFunctionPtr(name);
       return IRIS_SUCCESS;
   }
-  if (report_error) {
-      hipFunction_t* hipkernel = (hipFunction_t*) kernel_bin;
-      err_ = ld_->hipModuleGetFunction(hipkernel, module_, name);
-      if (report_error) _hiperror(err_);
-      if (err_ != hipSuccess){
-          if (report_error) {
-              _error("HIP kernel:%s not found !", name);
-              worker_->platform()->IncrementErrorCount();
-          }
-          return IRIS_ERROR;
+  hipFunction_t* hipkernel = (hipFunction_t*) kernel_bin;
+  err_ = ld_->hipModuleGetFunction(hipkernel, module_, name);
+  if (report_error) _hiperror(err_);
+  if (err_ != hipSuccess){
+      if (report_error) {
+          _error("HIP kernel:%s not found !", name);
+          worker_->platform()->IncrementErrorCount();
       }
-      char name_off[256];
-      memset(name_off, 0, sizeof(name_off));
-      sprintf(name_off, "%s_with_offsets", name);
-      hipFunction_t hipkernel_off;
-      err_ = ld_->hipModuleGetFunction(&hipkernel_off, module_, name_off);
-      if (err_ == hipSuccess) {
-          kernels_offs_.insert(std::pair<hipFunction_t, hipFunction_t>(*hipkernel, hipkernel_off));
-      }
-      else {
-          return IRIS_ERROR;
-      }
+      return IRIS_ERROR;
+  }
+  char name_off[256];
+  memset(name_off, 0, sizeof(name_off));
+  sprintf(name_off, "%s_with_offsets", name);
+  hipFunction_t hipkernel_off;
+  err_ = ld_->hipModuleGetFunction(&hipkernel_off, module_, name_off);
+  if (err_ == hipSuccess) {
+      kernels_offs_.insert(std::pair<hipFunction_t, hipFunction_t>(*hipkernel, hipkernel_off));
+  }
+  else {
+      return IRIS_ERROR;
   }
   return IRIS_SUCCESS;
 }
