@@ -475,6 +475,17 @@ int DeviceCUDA::KernelGet(Kernel *kernel, void** kernel_bin, const char* name, b
       *kernel_bin = host2cuda_ld_->GetFunctionPtr(name);
       return IRIS_SUCCESS;
   }
+  if (IsContextChangeRequired()) {
+      _trace("Changed Context for CUDA resetting context switch dev[%d][%s] worker:%d self:%p thread:%p", devno(), name_, worker()->device()->devno(), (void *)worker()->self(), (void *)worker()->thread());
+      ld_->cuCtxSetCurrent(ctx_);
+  }
+  if (native_kernel_not_exists()) {
+      if (report_error) {
+          _error("CUDA kernel:%s not found !", name);
+          worker_->platform()->IncrementErrorCount();
+      }
+      return IRIS_ERROR;
+  }
   CUfunction* cukernel = (CUfunction*) kernel_bin;
   err_ = ld_->cuModuleGetFunction(cukernel, module_, name);
   if (report_error) _cuerror(err_);

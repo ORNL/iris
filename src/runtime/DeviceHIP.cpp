@@ -346,6 +346,13 @@ int DeviceHIP::KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bo
       *kernel_bin = host2hip_ld_->GetFunctionPtr(name);
       return IRIS_SUCCESS;
   }
+  if (native_kernel_not_exists()) {
+      if (report_error) {
+          _error("HIP kernel:%s not found !", name);
+          worker_->platform()->IncrementErrorCount();
+      }
+      return IRIS_ERROR;
+  }
   hipFunction_t* hipkernel = (hipFunction_t*) kernel_bin;
   err_ = ld_->hipModuleGetFunction(hipkernel, module_, name);
   if (report_error) _hiperror(err_);

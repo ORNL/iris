@@ -19,6 +19,7 @@ Device::Device(int devno, int platform) {
   platform_ = platform;
   busy_ = false;
   enable_ = false;
+  native_kernel_not_exists_ = false;
   is_d2d_possible_ = false;
   shared_memory_buffers_ = false;
   can_share_host_memory_ = false;
@@ -95,6 +96,7 @@ void Device::Execute(Task* task) {
 void Device::ExecuteInit(Command* cmd) {
   timer_->Start(IRIS_TIMER_INIT);
   cmd->set_time_start(timer_->Now());
+  native_kernel_not_exists_ = false;
   if (SupportJIT()) {
     char* tmpdir = NULL;
     char* src = NULL;
@@ -107,6 +109,7 @@ void Device::ExecuteInit(Command* cmd) {
     errid_ = IRIS_SUCCESS;
     if (!stat_src && !stat_bin) {
       _error("NO KERNEL SRC[%s] NO KERNEL BIN[%s]", src, bin);
+      native_kernel_not_exists_ = true;
     } else if (!stat_src && stat_bin) {
       strncpy(kernel_path_, bin, strlen(bin));
     } else if (stat_src && !stat_bin) {
