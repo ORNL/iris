@@ -69,6 +69,7 @@ int main(int argc, char** argv) {
 
   free(A);
 
+  printf("IRIS error count:%d\n", iris_error_count());
   return iris_error_count();
 }
 
