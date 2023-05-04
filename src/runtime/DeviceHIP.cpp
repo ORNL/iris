@@ -329,6 +329,10 @@ int DeviceHIP::KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bo
       _trace("Context wrong for Kernel launch Context Switch: %p %p", ctx, ctx_);
   }
 #endif
+  if (IsContextChangeRequired()) {
+      _trace("Changed Context for HIP resetting context switch dev[%d][%s] worker:%d self:%p thread:%p", devno(), name_, worker()->device()->devno(), (void *)worker()->self(), (void *)worker()->thread());
+      ld_->hipCtxSetCurrent(ctx_);
+  }
   if (!kernel->vendor_specific_kernel_check_flag(devno_))
       CheckVendorSpecificKernel(kernel);
   int kernel_idx = -1;
