@@ -114,6 +114,11 @@ test-job-zenith:
     - cmake ..
     - make --ignore-errors
     - make test
+    - cd ..
+    - echo "Test backends for test 29"
+    - bash 29_data_mem/test_backends.sh
+    - echo "Test backends for test 34"
+    - bash 34_set_mem/test_backends.sh
   after_script:
     - python3 -m venv .venv
     - source .venv/bin/activate
