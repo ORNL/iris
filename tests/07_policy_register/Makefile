@@ -16,7 +16,10 @@ libPolicyGWSHook.so: policy_gws_hook.cpp
 	g++ -std=c++11 -fPIC -shared ${CXXFLAGS} -o $@ $^
 
 kernel.ptx: kernel.cu
-	nvcc -ptx $^
+	$(NVCC) -ptx $^
+
+kernel.hip: kernel.hip.cpp
+	$(HIPCC) --genco -o $@ $^
 
 kernel.openmp.so: kernel.cl.openmp.h
 	gcc -g -fopenmp -fPIC -shared -I. ${CFLAGS} -o $@ kernel.cl.openmp.c
