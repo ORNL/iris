@@ -57,52 +57,13 @@ deploy_docs_manual-job:
   extends: .deploy_docs_common
   when: manual
 
-# test-job:
-#   extends: [.excl_runner]
-#   needs: []
-#   stage: test
-#   allow_failure: true
-#   before_script:
-#     - module load cmake
-#     - module load gnu
-#   script:
-#     - echo "Installing iris to $CI_PROJECT_DIR/install"
-#     - bash build-coverage.sh
-#     - echo $CI_REPOSITORY_URL
-#     - echo $CI_PROJECT_PATH
-#     - source $IRIS_INSTALL_ROOT/setup.source
-#     - cd tests
-#     - mkdir build
-#     - cd build
-#     - cmake ..
-#     - make --ignore-errors
-#     - make test
-#   after_script:
-#     - module load cmake
-#     - module load gnu
-#     - module load python
-#     - python3 -m venv .venv
-#     - source .venv/bin/activate
-#     - pip install gcovr==5.0 # There seems to be a bug for newer versions of gcovr.
-#     - gcovr --xml-pretty --exclude-unreachable-branches --print-summary -o coverage.xml --gcov-ignore-parse-errors
-#   coverage: /^\s*lines:\s*\d+.\d+\%/
-#   artifacts:
-#     when: always
-#     paths:
-#       - tests/build/Testing/Temporary/LastTest.log
-#     reports:
-#       coverage_report:
-#         coverage_format: cobertura
-#         path: coverage.xml
-
-.test-job-zenith:
+.test-job:
   tags: [zenith]
   needs: []
   stage: test
   allow_failure: true
   before_script:
     - source /auto/software/iris/setup_system.source
-    - export IRIS_ARCHS=openmp,cuda,hip,opencl
   script:
     - echo "Installing iris to $IRIS_INSTALL_ROOT"
     - bash build-coverage.sh
@@ -114,8 +75,78 @@ deploy_docs_manual-job:
     - cd build
     - cmake ..
     - make --ignore-errors
+    - echo "IRIS ARCHS: $IRIS_ARCHS"
     - ctest --output-junit testRes.xml
-    - cd ..
+  after_script:
+    - python3 -m venv .venv
+    - source .venv/bin/activate
+    - pip install gcovr==5.0 # There seems to be a bug for newer versions of gcovr.
+    - gcovr --xml-pretty --exclude-unreachable-branches --print-summary -o coverage.xml --gcov-ignore-parse-errors
+  coverage: /^\s*lines:\s*\d+.\d+\%/
+  artifacts:
+    when: always
+    paths:
+      - tests/build/Testing/Temporary/LastTest.log
+      - tests/build/testRes.xml
+    reports:
+      junit: tests/build/testRes.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+
+test-job-zenith-openmp:
+  extends: .test-job
+  before_script:
+    - source /auto/software/iris/setup_system.source
+    - export IRIS_ARCHS=openmp
+    - echo "Running OpenMP version of the tests..."
+
+test-job-zenith-cuda:
+  extends: .test-job
+  before_script:
+    - source /auto/software/iris/setup_system.source
+    - export IRIS_ARCHS=cuda
+    - echo "Running CUDA version of the tests..."
+
+test-job-zenith-hip:
+  extends: .test-job
+  before_script:
+    - source /auto/software/iris/setup_system.source
+    - export IRIS_ARCHS=hip
+    - echo "Running CUDA version of the tests..."
+
+test-job-zenith-opencl:
+  extends: .test-job
+  before_script:
+    - source /auto/software/iris/setup_system.source
+    - export IRIS_ARCHS=opencl
+    - echo "Running OpenCL version of the tests..."
+
+test-job-zenith-all:
+  extends: .test-job
+  before_script:
+    - source /auto/software/iris/setup_system.source
+    - export IRIS_ARCHS=openmp,cuda,hip,opencl
+    - echo "Running All version of the tests..."
+
+test-job-explorer:
+  extends: .test-job
+  tags: [explorer]
+
+test-backends:
+  tags: [zenith]
+  needs: []
+  stage: test
+  allow_failure: true
+  before_script:
+    - source /auto/software/iris/setup_system.source
+  script:
+    - echo "Installing iris to $IRIS_INSTALL_ROOT"
+    - bash build-coverage.sh
+    - echo $CI_REPOSITORY_URL
+    - echo $CI_PROJECT_PATH
+    - source $IRIS_INSTALL_ROOT/setup.source
+    - cd tests
     - echo "Test backends for test 29"
     - bash 29_data_mem/test_backends.sh
     - echo "Test backends for test 34"
@@ -136,41 +167,6 @@ deploy_docs_manual-job:
       coverage_report:
         coverage_format: cobertura
         path: coverage.xml
-
-test-job-zenith-openmp:
-  extends: .test-job-zenith
-  before_script:
-    - source /auto/software/iris/setup_system.source
-    - export IRIS_ARCHS=openmp
-    - echo "Running OpenMP version of the tests..."
-
-test-job-zenith-cuda:
-  extends: .test-job-zenith
-  before_script:
-    - source /auto/software/iris/setup_system.source
-    - export IRIS_ARCHS=cuda
-    - echo "Running CUDA version of the tests..."
-
-test-job-zenith-hip:
-  extends: .test-job-zenith
-  before_script:
-    - source /auto/software/iris/setup_system.source
-    - export IRIS_ARCHS=hip
-    - echo "Running CUDA version of the tests..."
-
-test-job-zenith-opencl:
-  extends: .test-job-zenith
-  before_script:
-    - source /auto/software/iris/setup_system.source
-    - export IRIS_ARCHS=opencl
-    - echo "Running OpenCL version of the tests..."
-
-test-job-zenith-all:
-  extends: .test-job-zenith
-  before_script:
-    - source /auto/software/iris/setup_system.source
-    - export IRIS_ARCHS=openmp,cuda,hip,opencl
-    - echo "Running All version of the tests..."
 
 .dagger:
   tags: [slurm]
