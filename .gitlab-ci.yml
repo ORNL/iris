@@ -114,7 +114,7 @@ deploy_docs_manual-job:
     - cd build
     - cmake ..
     - make --ignore-errors
-    - make test
+    - ctest --output-junit testRes.xml
     - cd ..
     - echo "Test backends for test 29"
     - bash 29_data_mem/test_backends.sh
@@ -130,7 +130,9 @@ deploy_docs_manual-job:
     when: always
     paths:
       - tests/build/Testing/Temporary/LastTest.log
+      - testRes.xml
     reports:
+      junit: testRes.xml
       coverage_report:
         coverage_format: cobertura
         path: coverage.xml
