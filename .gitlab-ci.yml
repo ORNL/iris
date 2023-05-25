@@ -130,26 +130,12 @@ deploy_docs_manual-job:
     when: always
     paths:
       - tests/build/Testing/Temporary/LastTest.log
-      - testRes.xml
+      - tests/build/testRes.xml
     reports:
-      junit: testRes.xml
+      junit: tests/build/testRes.xml
       coverage_report:
         coverage_format: cobertura
         path: coverage.xml
-
-test-job-zenith-all:
-  extends: .test-job-zenith
-  before_script:
-    - source /auto/software/iris/setup_system.source
-    - export IRIS_ARCHS=openmp,cuda,hip,opencl
-    - echo "Running All version of the tests..."
-
-test-job-zenith-opencl:
-  extends: .test-job-zenith
-  before_script:
-    - source /auto/software/iris/setup_system.source
-    - export IRIS_ARCHS=opencl
-    - echo "Running OpenCL version of the tests..."
 
 test-job-zenith-openmp:
   extends: .test-job-zenith
@@ -171,6 +157,20 @@ test-job-zenith-hip:
     - source /auto/software/iris/setup_system.source
     - export IRIS_ARCHS=hip
     - echo "Running CUDA version of the tests..."
+
+test-job-zenith-opencl:
+  extends: .test-job-zenith
+  before_script:
+    - source /auto/software/iris/setup_system.source
+    - export IRIS_ARCHS=opencl
+    - echo "Running OpenCL version of the tests..."
+
+test-job-zenith-all:
+  extends: .test-job-zenith
+  before_script:
+    - source /auto/software/iris/setup_system.source
+    - export IRIS_ARCHS=openmp,cuda,hip,opencl
+    - echo "Running All version of the tests..."
 
 .dagger:
   tags: [slurm]
