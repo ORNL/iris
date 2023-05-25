@@ -75,7 +75,7 @@ deploy_docs_manual-job:
     - cd build
     - cmake ..
     - make --ignore-errors
-    - echo "IRIS ARCHS: $IRIS_ARCHS"
+    - echo IRIS_ARCHS is $IRIS_ARCHS
     - ctest --output-junit testRes.xml
   after_script:
     - python3 -m venv .venv
