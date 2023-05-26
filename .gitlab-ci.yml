@@ -149,6 +149,7 @@ test-backends-29:
     - cd tests
     - echo "Test backends for test 29"
     - cd 29_data_mem
+    - set -x
     - bash test_backends.sh
   after_script:
     - python3 -m venv .venv
