@@ -33,7 +33,6 @@ int main(int argc, char** argv) {
   int ndevs;
   bool is_nvidia_device=false; bool is_opencl_device=false;
   iris_device_count(&ndevs);
-  printf("found %i devices\n",ndevs);
   for (int d = 0; d < ndevs; d++){
     int backend_worker;
     iris_device_info(d, iris_backend, &backend_worker, nullptr);
