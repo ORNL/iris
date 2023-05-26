@@ -69,6 +69,7 @@ deploy_docs_manual-job:
     - bash build-coverage.sh
     - echo $CI_REPOSITORY_URL
     - echo $CI_PROJECT_PATH
+    - set -x
     - source $IRIS_INSTALL_ROOT/setup.source
     - cd tests
     - mkdir build
