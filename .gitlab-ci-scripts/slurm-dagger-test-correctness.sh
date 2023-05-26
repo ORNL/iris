@@ -48,6 +48,7 @@ popd
 
 # Collect Output
 grep -e '\[E\]' slurm-test-out.txt > errors.txt
+grep -e 'PackagesNotFoundError' slurm-test-out.txt >> errors.txt
 
 # Validate Json
 pushd apps/dagger
