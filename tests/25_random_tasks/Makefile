@@ -1,9 +1,11 @@
 TEST=test25_random_tasks
+all: $(TEST) kernel.ptx kernel.openmp.so kernel.hip
 
 include ../Makefile.tests
 
 kernel.ptx: kernel.cu
-	nvcc -ptx $^
+	$(NVCC) -ptx $^
 kernel.hip: kernel.hip.cpp
 	$(HIPCC) --genco -o $@ $^
-
+kernel.openmp.so: kernel.openmp.c
+	gcc -g -lgomp -Wl,-rpath=$(OPENMP_PATH) -fPIC -shared -I. $(CFLAGS) -o $@ $^
