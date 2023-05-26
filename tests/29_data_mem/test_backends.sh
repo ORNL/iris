@@ -29,7 +29,6 @@ IRIS_ARCHS=hip ./test29_data_mem
 [ $? -ne 0 ] && echo "Failed! (HIP backend) Exiting." && exit 1
 
 module load gcc/12.1.0
-export OPENMP_PATH=/auto/software/swtree/ubuntu20.04/x86_64/gcc/12.1.0/lib64
 make clean
 make kernel.openmp.so test29_data_mem
 [ $? -ne 0 ] && echo "Failed! Couldn't compile openmp kernels. Exiting." && exit 1

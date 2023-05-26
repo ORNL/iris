@@ -2,28 +2,28 @@
   "iris-graph": {
     "inputs": [
       "user-size",
-      "user-size-cb-ijk",
-      "hostmem-ijk-buffer0-instance0",
-      "hostmem-ijk-buffer1-instance0",
-      "hostmem-ijk-buffer2-instance0",
-      "devicemem-ijk-buffer0-instance0",
-      "devicemem-ijk-buffer1-instance0",
-      "devicemem-ijk-buffer2-instance0",
+      "user-size-cb-vecadd",
+      "hostmem-vecadd-buffer0-instance0",
+      "hostmem-vecadd-buffer1-instance0",
+      "hostmem-vecadd-buffer2-instance0",
+      "devicemem-vecadd-buffer0-instance0",
+      "devicemem-vecadd-buffer1-instance0",
+      "devicemem-vecadd-buffer2-instance0",
       "user-target-control",
       "user-target-data"
     ],
     "graph": {
       "tasks": [
         {
-          "name": "transferto-ijk-buffer0-instance0",
+          "name": "transferto-vecadd-buffer0-instance0",
           "commands": [
             {
               "h2d": {
                 "name": "h2d-buffer0-instance0",
-                "device_memory": "devicemem-ijk-buffer0-instance0",
-                "host_memory": "hostmem-ijk-buffer0-instance0",
+                "device_memory": "devicemem-vecadd-buffer0-instance0",
+                "host_memory": "hostmem-vecadd-buffer0-instance0",
                 "offset": "0",
-                "size": "user-size-cb-ijk"
+                "size": "user-size-cb-vecadd"
               }
             }
           ],
@@ -31,15 +31,15 @@
           "depends": []
         },
         {
-          "name": "transferto-ijk-buffer1-instance0",
+          "name": "transferto-vecadd-buffer1-instance0",
           "commands": [
             {
               "h2d": {
                 "name": "h2d-buffer1-instance0",
-                "device_memory": "devicemem-ijk-buffer1-instance0",
-                "host_memory": "hostmem-ijk-buffer1-instance0",
+                "device_memory": "devicemem-vecadd-buffer1-instance0",
+                "host_memory": "hostmem-vecadd-buffer1-instance0",
                 "offset": "0",
-                "size": "user-size-cb-ijk"
+                "size": "user-size-cb-vecadd"
               }
             }
           ],
@@ -47,15 +47,15 @@
           "depends": []
         },
         {
-          "name": "transferto-ijk-buffer2-instance0",
+          "name": "transferto-vecadd-buffer2-instance0",
           "commands": [
             {
               "h2d": {
                 "name": "h2d-buffer2-instance0",
-                "device_memory": "devicemem-ijk-buffer2-instance0",
-                "host_memory": "hostmem-ijk-buffer2-instance0",
+                "device_memory": "devicemem-vecadd-buffer2-instance0",
+                "host_memory": "hostmem-vecadd-buffer2-instance0",
                 "offset": "0",
-                "size": "user-size-cb-ijk"
+                "size": "user-size-cb-vecadd"
               }
             }
           ],
@@ -67,24 +67,24 @@
           "commands": [
             {
               "kernel": {
-                "name": "ijk",
+                "name": "vecadd",
                 "global_size": [
                   "user-size"
                 ],
                 "parameters": [
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer0-instance0",
+                    "name": "devicemem-vecadd-buffer0-instance0",
                     "permission": "rw"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer1-instance0",
+                    "name": "devicemem-vecadd-buffer1-instance0",
                     "permission": "r"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer2-instance0",
+                    "name": "devicemem-vecadd-buffer2-instance0",
                     "permission": "r"
                   }
                 ]
@@ -92,9 +92,9 @@
             }
           ],
           "depends": [
-            "transferto-ijk-buffer0-instance0",
-            "transferto-ijk-buffer1-instance0",
-            "transferto-ijk-buffer2-instance0"
+            "transferto-vecadd-buffer0-instance0",
+            "transferto-vecadd-buffer1-instance0",
+            "transferto-vecadd-buffer2-instance0"
           ],
           "target": "user-target-data"
         },
@@ -103,24 +103,24 @@
           "commands": [
             {
               "kernel": {
-                "name": "ijk",
+                "name": "vecadd",
                 "global_size": [
                   "user-size"
                 ],
                 "parameters": [
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer0-instance0",
+                    "name": "devicemem-vecadd-buffer0-instance0",
                     "permission": "rw"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer1-instance0",
+                    "name": "devicemem-vecadd-buffer1-instance0",
                     "permission": "r"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer2-instance0",
+                    "name": "devicemem-vecadd-buffer2-instance0",
                     "permission": "r"
                   }
                 ]
@@ -129,9 +129,9 @@
           ],
           "depends": [
             "task0",
-            "transferto-ijk-buffer0-instance0",
-            "transferto-ijk-buffer1-instance0",
-            "transferto-ijk-buffer2-instance0"
+            "transferto-vecadd-buffer0-instance0",
+            "transferto-vecadd-buffer1-instance0",
+            "transferto-vecadd-buffer2-instance0"
           ],
           "target": "user-target-data"
         },
@@ -140,24 +140,24 @@
           "commands": [
             {
               "kernel": {
-                "name": "ijk",
+                "name": "vecadd",
                 "global_size": [
                   "user-size"
                 ],
                 "parameters": [
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer0-instance0",
+                    "name": "devicemem-vecadd-buffer0-instance0",
                     "permission": "rw"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer1-instance0",
+                    "name": "devicemem-vecadd-buffer1-instance0",
                     "permission": "r"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer2-instance0",
+                    "name": "devicemem-vecadd-buffer2-instance0",
                     "permission": "r"
                   }
                 ]
@@ -166,9 +166,9 @@
           ],
           "depends": [
             "task1",
-            "transferto-ijk-buffer0-instance0",
-            "transferto-ijk-buffer1-instance0",
-            "transferto-ijk-buffer2-instance0"
+            "transferto-vecadd-buffer0-instance0",
+            "transferto-vecadd-buffer1-instance0",
+            "transferto-vecadd-buffer2-instance0"
           ],
           "target": "user-target-data"
         },
@@ -177,24 +177,24 @@
           "commands": [
             {
               "kernel": {
-                "name": "ijk",
+                "name": "vecadd",
                 "global_size": [
                   "user-size"
                 ],
                 "parameters": [
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer0-instance0",
+                    "name": "devicemem-vecadd-buffer0-instance0",
                     "permission": "rw"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer1-instance0",
+                    "name": "devicemem-vecadd-buffer1-instance0",
                     "permission": "r"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer2-instance0",
+                    "name": "devicemem-vecadd-buffer2-instance0",
                     "permission": "r"
                   }
                 ]
@@ -203,9 +203,9 @@
           ],
           "depends": [
             "task2",
-            "transferto-ijk-buffer0-instance0",
-            "transferto-ijk-buffer1-instance0",
-            "transferto-ijk-buffer2-instance0"
+            "transferto-vecadd-buffer0-instance0",
+            "transferto-vecadd-buffer1-instance0",
+            "transferto-vecadd-buffer2-instance0"
           ],
           "target": "user-target-data"
         },
@@ -214,24 +214,24 @@
           "commands": [
             {
               "kernel": {
-                "name": "ijk",
+                "name": "vecadd",
                 "global_size": [
                   "user-size"
                 ],
                 "parameters": [
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer0-instance0",
+                    "name": "devicemem-vecadd-buffer0-instance0",
                     "permission": "rw"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer1-instance0",
+                    "name": "devicemem-vecadd-buffer1-instance0",
                     "permission": "r"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer2-instance0",
+                    "name": "devicemem-vecadd-buffer2-instance0",
                     "permission": "r"
                   }
                 ]
@@ -240,9 +240,9 @@
           ],
           "depends": [
             "task3",
-            "transferto-ijk-buffer0-instance0",
-            "transferto-ijk-buffer1-instance0",
-            "transferto-ijk-buffer2-instance0"
+            "transferto-vecadd-buffer0-instance0",
+            "transferto-vecadd-buffer1-instance0",
+            "transferto-vecadd-buffer2-instance0"
           ],
           "target": "user-target-data"
         },
@@ -251,24 +251,24 @@
           "commands": [
             {
               "kernel": {
-                "name": "ijk",
+                "name": "vecadd",
                 "global_size": [
                   "user-size"
                 ],
                 "parameters": [
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer0-instance0",
+                    "name": "devicemem-vecadd-buffer0-instance0",
                     "permission": "rw"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer1-instance0",
+                    "name": "devicemem-vecadd-buffer1-instance0",
                     "permission": "r"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer2-instance0",
+                    "name": "devicemem-vecadd-buffer2-instance0",
                     "permission": "r"
                   }
                 ]
@@ -277,9 +277,9 @@
           ],
           "depends": [
             "task4",
-            "transferto-ijk-buffer0-instance0",
-            "transferto-ijk-buffer1-instance0",
-            "transferto-ijk-buffer2-instance0"
+            "transferto-vecadd-buffer0-instance0",
+            "transferto-vecadd-buffer1-instance0",
+            "transferto-vecadd-buffer2-instance0"
           ],
           "target": "user-target-data"
         },
@@ -288,24 +288,24 @@
           "commands": [
             {
               "kernel": {
-                "name": "ijk",
+                "name": "vecadd",
                 "global_size": [
                   "user-size"
                 ],
                 "parameters": [
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer0-instance0",
+                    "name": "devicemem-vecadd-buffer0-instance0",
                     "permission": "rw"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer1-instance0",
+                    "name": "devicemem-vecadd-buffer1-instance0",
                     "permission": "r"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer2-instance0",
+                    "name": "devicemem-vecadd-buffer2-instance0",
                     "permission": "r"
                   }
                 ]
@@ -314,9 +314,9 @@
           ],
           "depends": [
             "task5",
-            "transferto-ijk-buffer0-instance0",
-            "transferto-ijk-buffer1-instance0",
-            "transferto-ijk-buffer2-instance0"
+            "transferto-vecadd-buffer0-instance0",
+            "transferto-vecadd-buffer1-instance0",
+            "transferto-vecadd-buffer2-instance0"
           ],
           "target": "user-target-data"
         },
@@ -325,24 +325,24 @@
           "commands": [
             {
               "kernel": {
-                "name": "ijk",
+                "name": "vecadd",
                 "global_size": [
                   "user-size"
                 ],
                 "parameters": [
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer0-instance0",
+                    "name": "devicemem-vecadd-buffer0-instance0",
                     "permission": "rw"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer1-instance0",
+                    "name": "devicemem-vecadd-buffer1-instance0",
                     "permission": "r"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer2-instance0",
+                    "name": "devicemem-vecadd-buffer2-instance0",
                     "permission": "r"
                   }
                 ]
@@ -351,9 +351,9 @@
           ],
           "depends": [
             "task6",
-            "transferto-ijk-buffer0-instance0",
-            "transferto-ijk-buffer1-instance0",
-            "transferto-ijk-buffer2-instance0"
+            "transferto-vecadd-buffer0-instance0",
+            "transferto-vecadd-buffer1-instance0",
+            "transferto-vecadd-buffer2-instance0"
           ],
           "target": "user-target-data"
         },
@@ -362,24 +362,24 @@
           "commands": [
             {
               "kernel": {
-                "name": "ijk",
+                "name": "vecadd",
                 "global_size": [
                   "user-size"
                 ],
                 "parameters": [
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer0-instance0",
+                    "name": "devicemem-vecadd-buffer0-instance0",
                     "permission": "rw"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer1-instance0",
+                    "name": "devicemem-vecadd-buffer1-instance0",
                     "permission": "r"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer2-instance0",
+                    "name": "devicemem-vecadd-buffer2-instance0",
                     "permission": "r"
                   }
                 ]
@@ -388,9 +388,9 @@
           ],
           "depends": [
             "task7",
-            "transferto-ijk-buffer0-instance0",
-            "transferto-ijk-buffer1-instance0",
-            "transferto-ijk-buffer2-instance0"
+            "transferto-vecadd-buffer0-instance0",
+            "transferto-vecadd-buffer1-instance0",
+            "transferto-vecadd-buffer2-instance0"
           ],
           "target": "user-target-data"
         },
@@ -399,24 +399,24 @@
           "commands": [
             {
               "kernel": {
-                "name": "ijk",
+                "name": "vecadd",
                 "global_size": [
                   "user-size"
                 ],
                 "parameters": [
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer0-instance0",
+                    "name": "devicemem-vecadd-buffer0-instance0",
                     "permission": "rw"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer1-instance0",
+                    "name": "devicemem-vecadd-buffer1-instance0",
                     "permission": "r"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer2-instance0",
+                    "name": "devicemem-vecadd-buffer2-instance0",
                     "permission": "r"
                   }
                 ]
@@ -425,22 +425,22 @@
           ],
           "depends": [
             "task8",
-            "transferto-ijk-buffer0-instance0",
-            "transferto-ijk-buffer1-instance0",
-            "transferto-ijk-buffer2-instance0"
+            "transferto-vecadd-buffer0-instance0",
+            "transferto-vecadd-buffer1-instance0",
+            "transferto-vecadd-buffer2-instance0"
           ],
           "target": "user-target-data"
         },
         {
-          "name": "transferfrom-ijk-buffer0-instance0",
+          "name": "transferfrom-vecadd-buffer0-instance0",
           "commands": [
             {
               "d2h": {
                 "name": "d2h-buffer0-instance0",
-                "device_memory": "devicemem-ijk-buffer0-instance0",
-                "host_memory": "hostmem-ijk-buffer0-instance0",
+                "device_memory": "devicemem-vecadd-buffer0-instance0",
+                "host_memory": "hostmem-vecadd-buffer0-instance0",
                 "offset": "0",
-                "size": "user-size-cb-ijk"
+                "size": "user-size-cb-vecadd"
               }
             }
           ],
