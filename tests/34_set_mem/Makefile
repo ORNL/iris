@@ -18,7 +18,7 @@ kernel.hip: kernel.hip.cpp
 	$(HIPCC) --genco -o $@ $^
 
 kernel.openmp.so: kernel.openmp.c
-	gcc -g -fopenmp -Wl,-rpath=$(OPENMP_PATH) -fPIC -shared -I. $(CFLAGS) -o $@ $^
+	gcc -g -lgomp -Wl,-rpath=$(OPENMP_PATH) -fPIC -shared -I. $(CFLAGS) -o $@ $^
 
 kernel.nvopenmp.so: kernel.openmp.c
 	$(NVCC) -g -shared -I. ${INCLUDE} ${EXT_INCLUDE} --compiler-options -fPIC -o $@ $^
