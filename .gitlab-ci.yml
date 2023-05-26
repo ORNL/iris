@@ -148,9 +148,12 @@ test-backends:
     - source $IRIS_INSTALL_ROOT/setup.source
     - cd tests
     - echo "Test backends for test 29"
-    - bash 29_data_mem/test_backends.sh
+    - cd 29_data_mem
+    - bash test_backends.sh
+    - cd ..
     - echo "Test backends for test 34"
-    - bash 34_set_mem/test_backends.sh
+    - cd 34_set_mem
+    - bash test_backends.sh
   after_script:
     - python3 -m venv .venv
     - source .venv/bin/activate
