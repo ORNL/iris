@@ -10,7 +10,7 @@ if [ $MACHINE != "Zenith" ] ; then
   exit
 fi
 
-export LD_LIBRARY_PATH=$HOME/.local/lib:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=$IRIS_INSTALL_ROOT/lib:$LD_LIBRARY_PATH
 
 make clean
 make kernel.ptx kernel.hip test34_set_mem
