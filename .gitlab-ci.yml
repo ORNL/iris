@@ -151,6 +151,7 @@ test-backends-29:
     - cd 29_data_mem
     - set -x
     - bash test_backends.sh
+    - echo "Finished"
   after_script:
     - python3 -m venv .venv
     - source .venv/bin/activate
@@ -182,6 +183,7 @@ test-backends-34:
     - echo "Test backends for test 34"
     - cd 34_set_mem
     - bash test_backends.sh
+    - echo "Finished"
   after_script:
     - python3 -m venv .venv
     - source .venv/bin/activate
