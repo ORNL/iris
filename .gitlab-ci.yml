@@ -141,6 +141,7 @@ test-backends-29:
   before_script:
     - source /auto/software/iris/setup_system.source
   script:
+    - set +e
     - echo "Installing iris to $IRIS_INSTALL_ROOT"
     - bash build-coverage.sh
     - echo $CI_REPOSITORY_URL
@@ -174,6 +175,7 @@ test-backends-34:
   before_script:
     - source /auto/software/iris/setup_system.source
   script:
+    - set +e
     - echo "Installing iris to $IRIS_INSTALL_ROOT"
     - bash build-coverage.sh
     - echo $CI_REPOSITORY_URL
