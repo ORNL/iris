@@ -1270,7 +1270,7 @@ void {c_task_api_name}({params_decl_irismem_str})
     size_t *__st_offset = {offset};
     size_t __st_gws[] = {gws};
     size_t *__st_lws = {lws};
-    iris_task_kernel(task, {kernel_name}, {dim}, __st_offset, __st_gws, __st_lws, sizeof(__task_params_info)/sizeof(int), __task_params, __task_params_info);
+    iris_task_kernel(task, "{kernel_name}", {dim}, __st_offset, __st_gws, __st_lws, sizeof(__task_params_info)/sizeof(int), __task_params, __task_params_info);
     iris_params_map(task, __task_params_device_map);
 }}
 #ifdef __cplusplus
