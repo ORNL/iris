@@ -140,6 +140,7 @@ if (HIP_ROOT_DIR)
 else()
     set(HIP_ENABLED OFF)
 endif()
+option(APP_LIB_STATIC "Enable static app lib"    OFF)
 option(SNAPDRAGON "Enable support for Hexagon"    OFF )
 option(CDSP_FLAG "Enable support for CDSP"     OFF )
 option(ADSP_FLAG "Enable support for ADSP"     OFF )
@@ -513,10 +514,12 @@ if (CUDA_KERNEL_SOURCES)
 add_custom_command(
   OUTPUT ${CMAKE_BINARY_DIR}/kernel.ptx
   WORKING_DIRECTORY ${PROJECT_SOURCE_DIR} 
-  COMMAND nvcc -ptx ${CUDA_KERNEL_SOURCES} ${CUDA_FLAGS} -o ${CMAKE_BINARY_DIR}/kernel.ptx --output-directory ${CMAKE_BINARY_DIR}
+  COMMAND cat ${CUDA_KERNEL_SOURCES} > ${CMAKE_CURRENT_BINARY_DIR}/__iris_kernel.cu
+  COMMAND nvcc -ptx ${CMAKE_CURRENT_BINARY_DIR}/__iris_kernel.cu ${CUDA_FLAGS} -o ${CMAKE_BINARY_DIR}/kernel.ptx --output-directory ${CMAKE_BINARY_DIR}
   BYPRODUCTS ${CMAKE_BINARY_DIR}/kernel.ptx
   )
 add_custom_target(kernel.ptx ALL DEPENDS ${CMAKE_BINARY_DIR}/kernel.ptx)
+add_dependencies(kernel.ptx iris_app_cpu_dsp_interface.h)
 install(FILES ${CMAKE_BINARY_DIR}/kernel.ptx DESTINATION ${KERNEL_INSTALL_PATH})
 endif() # CUDA_KERNEL_SOURCES
 endif() # USE_CUDA
@@ -659,10 +662,12 @@ endif()
 add_custom_command(
   OUTPUT ${CMAKE_BINARY_DIR}/kernel.hip
   WORKING_DIRECTORY ${PROJECT_SOURCE_DIR} 
-  COMMAND hipcc --genco ${hip_flags} -o ${CMAKE_BINARY_DIR}/kernel.hip ${HIP_KERNEL_SOURCES}
+  COMMAND cat ${HIP_KERNEL_SOURCES} > ${CMAKE_CURRENT_BINARY_DIR}/__iris_kernel.hip.cpp
+  COMMAND hipcc --genco ${hip_flags} ${HIP_FLAGS} -o ${CMAKE_BINARY_DIR}/kernel.hip ${CMAKE_CURRENT_BINARY_DIR}/__iris_kernel.hip.cpp
   BYPRODUCTS ${CMAKE_BINARY_DIR}/kernel.hip
   )
 add_custom_target(kernel.hip DEPENDS ${CMAKE_BINARY_DIR}/kernel.hip)
+add_dependencies(kernel.hip iris_app_cpu_dsp_interface.h)
 install(FILES ${CMAKE_BINARY_DIR}/kernel.hip DESTINATION ${KERNEL_INSTALL_PATH})
 endif() #HIP_KERNEL_SOURCES
 endif() # USE_HIP
@@ -735,6 +740,7 @@ endfunction() #addKernelRule
 
 if (OPENMP_KERNEL_SOURCES)
 addKernelRule(kernel.openmp "${OPENMP_KERNEL_SOURCES}" ${OPENMP_FLAGS} ${OPENMP_LDFLAGS} "${OPENMP_LIBRARIES}")
+add_dependencies(kernel.openmp iris_app_cpu_dsp_interface.h)
 if (USE_NDK)
 target_link_libraries(kernel.openmp log)
 endif() # USE_NDK
@@ -794,36 +800,40 @@ install_iris_files("${PROJECT_SOURCE_DIR}/src/*.cl" ${KERNEL_INSTALL_PATH})
 
 
 if (APP_LIB_SOURCES)
-initVar(APP_LIBRARY_NAME "irisapp")
-add_library(${APP_LIBRARY_NAME} SHARED ${APP_LIB_SOURCES})
-add_dependencies(${APP_LIBRARY_NAME} iris_app_cpu_dsp_interface.h)
-set_property(TARGET ${APP_LIBRARY_NAME} PROPERTY POSITION_INDEPENDENT_CODE ON)
-if (SNAPDRAGON)
-if (HEXAGON_KERNEL_SOURCES)
-add_dependencies(${APP_LIBRARY_NAME} kernel.hexagon)
-add_dependencies(${APP_LIBRARY_NAME} irishxg_lib)
-add_dependencies(${APP_LIBRARY_NAME} irishxg_skel)
-target_link_libraries(${APP_LIBRARY_NAME} ${STUB_LIB_NAME} ${LINK_LIB_DSPRPC})
-endif() #HEXAGON_KERNEL_SOURCES
-target_link_libraries(${APP_LIBRARY_NAME} iris log m)
-add_dependencies(${APP_LIBRARY_NAME} setup.android.source)
-else() # SNAPDRAGON
-target_link_libraries(${APP_LIBRARY_NAME} iris pthread dl m)
-add_dependencies(${APP_LIBRARY_NAME} setup.host)
-endif() #SNAPDRAGON
-if (USE_CUDA)
-if (CUDA_KERNEL_SOURCES)
-add_dependencies(${APP_LIBRARY_NAME} kernel.ptx)
-endif() #CUDA_KERNEL_SOURCES
-endif() #USE_CUDA
-if (USE_HIP)
-if (HIP_KERNEL_SOURCES)
-add_dependencies(${APP_LIBRARY_NAME} kernel.hip)
-endif() # HIP_KERNEL_SOURCES
-endif() # USE_HIP
-set_target_properties(${APP_LIBRARY_NAME} PROPERTIES COMPILE_FLAGS ${APP_FLAGS})
-set_target_properties(${APP_LIBRARY_NAME} PROPERTIES LINK_FLAGS ${APP_LDFLAGS})
-install(TARGETS ${APP_LIBRARY_NAME} DESTINATION ${LIB_INSTALL_PATH})
+    initVar(APP_LIBRARY_NAME "irisapp")
+    if (APP_LIB_STATIC)
+    add_library(${APP_LIBRARY_NAME} STATIC ${APP_LIB_SOURCES})
+    else() # APP_LIB_STATIC
+    add_library(${APP_LIBRARY_NAME} SHARED ${APP_LIB_SOURCES})
+    endif() # APP_LIB_STATIC
+    add_dependencies(${APP_LIBRARY_NAME} iris_app_cpu_dsp_interface.h)
+    set_property(TARGET ${APP_LIBRARY_NAME} PROPERTY POSITION_INDEPENDENT_CODE ON)
+    if (SNAPDRAGON)
+        if (HEXAGON_KERNEL_SOURCES)
+            add_dependencies(${APP_LIBRARY_NAME} kernel.hexagon)
+            add_dependencies(${APP_LIBRARY_NAME} irishxg_lib)
+            add_dependencies(${APP_LIBRARY_NAME} irishxg_skel)
+            target_link_libraries(${APP_LIBRARY_NAME} ${STUB_LIB_NAME} ${LINK_LIB_DSPRPC})
+        endif() #HEXAGON_KERNEL_SOURCES
+        target_link_libraries(${APP_LIBRARY_NAME} iris log m)
+        add_dependencies(${APP_LIBRARY_NAME} setup.android.source)
+    else() # SNAPDRAGON
+        target_link_libraries(${APP_LIBRARY_NAME} iris pthread dl m)
+        add_dependencies(${APP_LIBRARY_NAME} setup.host)
+    endif() #SNAPDRAGON
+    if (USE_CUDA)
+        if (CUDA_KERNEL_SOURCES)
+            add_dependencies(${APP_LIBRARY_NAME} kernel.ptx)
+        endif() #CUDA_KERNEL_SOURCES
+    endif() #USE_CUDA
+    if (USE_HIP)
+        if (HIP_KERNEL_SOURCES)
+            add_dependencies(${APP_LIBRARY_NAME} kernel.hip)
+        endif() # HIP_KERNEL_SOURCES
+    endif() # USE_HIP
+    set_target_properties(${APP_LIBRARY_NAME} PROPERTIES COMPILE_FLAGS ${APP_FLAGS})
+    set_target_properties(${APP_LIBRARY_NAME} PROPERTIES LINK_FLAGS ${APP_LDFLAGS})
+    install(TARGETS ${APP_LIBRARY_NAME} DESTINATION ${LIB_INSTALL_PATH})
 endif() #APP_LIB_SOURCES
 
 if (APP_SOURCES)

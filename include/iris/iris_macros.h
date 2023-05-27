@@ -626,5 +626,6 @@
 #endif // IRIS_API_DEFINITION
 
 
+#define IRIS_CREATE_APIS(...)
 #endif //UNDEF_IRIS_MACROS
 #endif //__IRIS_MACROS_H
