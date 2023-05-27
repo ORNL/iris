@@ -657,7 +657,7 @@ endif() # USE_SPIR
 if (USE_HIP)
 if (HIP_KERNEL_SOURCES)
 if (HIP_FLAGS)
-#string(REPLACE " " ";" hip_flags ${HIP_FLAGS})
+string(REPLACE " " ";" hip_flags ${HIP_FLAGS})
 endif()
 add_custom_command(
   OUTPUT ${CMAKE_BINARY_DIR}/kernel.hip
