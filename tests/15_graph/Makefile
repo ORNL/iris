@@ -1,11 +1,14 @@
 TEST=test15_graph
 
-all: $(TEST) kernel.openmp.so 
+all: $(TEST) kernel.openmp.so kernel.ptx kernel.hip
 
 include ../Makefile.tests
 
 kernel.ptx: kernel.cu
-	nvcc -ptx $^
+	$(NVCC) -ptx $^
+
+kernel.hip: kernel.hip.cpp
+	$(HIPCC) --genco -o $@ $^
 
 kernel.openmp.so: kernel.cl.openmp.c
 	$(CC) -g -fopenmp -fPIC -shared -I. $(CFLAGS) -o $@ $^

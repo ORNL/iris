@@ -25,6 +25,19 @@ int my_kernel_selector(iris_task task, void* params, char* kernel_name) {
 int main(int argc, char** argv) {
   iris_init(&argc, &argv, 1);
 
+  int ndevs;
+  bool bool is_opencl_device=false;
+  iris_device_count(&ndevs);
+  for (int d = 0; d < ndevs; d++){
+    int backend_worker;
+    iris_device_info(d, iris_backend, &backend_worker, nullptr);
+    if (backend_worker == iris_opencl) is_opencl_device = true;
+  }
+  if(!(is_opencl_device)){
+    printf("Skipping this test because it is only designed to test on OpenCL backends.\n");
+    return 0;
+  }
+
   size_t SIZE;
   int TARGET;
   int* A;

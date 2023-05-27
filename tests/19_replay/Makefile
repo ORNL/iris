@@ -5,7 +5,7 @@ all: $(TEST) kernel.openmp.so
 include ../Makefile.tests
 
 kernel.ptx: kernel.cu
-	nvcc -ptx $^
+	$(NVCC) -ptx $^
 
 kernel.hip: kernel.hip.cpp
 	hipcc --genco -o $@ $^

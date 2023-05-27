@@ -728,6 +728,7 @@ int Platform::DeviceInfo(int device, int param, void* value, size_t* size) {
     case iris_vendor    : if (size) *size = strlen(dev->vendor());  strcpy((char*) value, dev->vendor());   break;
     case iris_name      : if (size) *size = strlen(dev->name());    strcpy((char*) value, dev->name());     break;
     case iris_type      : if (size) *size = sizeof(int);            *((int*) value) = dev->type();          break;
+    case iris_backend   : if (size) *size = sizeof(int);            *((int*) value) = dev->model();         break;
     default: return IRIS_ERROR;
   }
   return IRIS_SUCCESS;

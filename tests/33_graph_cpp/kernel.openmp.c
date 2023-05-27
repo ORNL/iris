@@ -24,7 +24,7 @@ static int iris_openmp_process_setmem(int idx, void* mem) {
   return IRIS_SUCCESS;
 }
 
-#include "kernel.cl.openmp.h"
+#include "kernel.openmp.h"
 
 int iris_openmp_kernel(const char* name) {
   iris_openmp_lock();

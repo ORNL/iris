@@ -4,7 +4,7 @@
 
 int main(int argc, char** argv) {
   size_t SIZE;
-  int *A, *B, *C, *D, *E;
+  int *A, *B, *C;
   int ERROR = 0;
 
   SIZE = argc > 1 ? atol(argv[1]) : 16;
@@ -13,12 +13,11 @@ int main(int argc, char** argv) {
   A = (int*) malloc(SIZE * sizeof(int));
   B = (int*) malloc(SIZE * sizeof(int));
   C = (int*) malloc(SIZE * sizeof(int));
-  D = (int*) malloc(SIZE * sizeof(int));
-  E = (int*) malloc(SIZE * sizeof(int));
 
   for (int i = 0; i < SIZE; i++) {
     A[i] = i;
-    B[i] = i * 1000;
+    B[i] = i;
+    C[i] = 0;
   }
 
 #pragma acc parallel loop copyin(A[0:SIZE], B[0:SIZE]) device(gpu)
@@ -28,31 +27,15 @@ int main(int argc, char** argv) {
     C[i] = A[i] + B[i];
   }
 
-#pragma acc parallel loop present(C[0:SIZE]) device(cpu)
-#pragma omp target teams distribute parallel for device(cpu)
-#pragma iris kernel present(C[0:SIZE]) device(cpu)
   for (int i = 0; i < SIZE; i++) {
-    D[i] = C[i] * 10;
-  }
-
-#pragma acc parallel loop present(D[0:SIZE]) device(data)
-#pragma omp target teams distribute parallel for map(from:E[0:SIZE]) device(data)
-#pragma iris kernel d2h(E[0:SIZE]) present(D[0:SIZE]) device(data)
-  for (int i = 0; i < SIZE; i++) {
-    E[i] = D[i] * 2;
-  }
-
-  for (int i = 0; i < SIZE; i++) {
-    printf("[%8d] %8d = (%8d + %8d) * %d\n", i, E[i], A[i], B[i], 20);
-    if (E[i] != (A[i] + B[i]) * 20) ERROR++;
+    printf("C[%d] = %d\n", i, C[i]);
+    if (C[i] != (A[i] + B[i])) ERROR++;
   }
   printf("ERROR[%d]\n", ERROR);
 
   free(A);
   free(B);
   free(C);
-  free(D);
-  free(E);
 
-  return 0;
+  return ERROR;
 }

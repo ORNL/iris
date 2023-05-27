@@ -30,6 +30,20 @@ int main(int argc, char** argv) {
 
   iris_init(&argc, &argv, 1);
 
+  int ndevs;
+  bool is_nvidia_device=false; bool is_opencl_device=false;
+  iris_device_count(&ndevs);
+  for (int d = 0; d < ndevs; d++){
+    int backend_worker;
+    iris_device_info(d, iris_backend, &backend_worker, nullptr);
+    if (backend_worker == iris_cuda) is_nvidia_device = true;
+    if (backend_worker == iris_opencl) is_opencl_device = true;
+  }
+  if(!(is_nvidia_device && is_opencl_device)){
+    printf("Skipping this test because it is only designed to test NVIDIA GPUs with CUDA and OpenCL.\n");
+    return 0;
+  }
+
   size_t SIZE;
   int TARGET;
   int* A;

@@ -10,5 +10,19 @@ mkdir build
 cd build
 cmake ..
 make --ignore-errors
-make test
+echo "Running OpenCL version of the tests..."
+IRIS_ARCHS=opencl make test
+echo "Done."
+echo "Running OpenMP version of the tests..."
+IRIS_ARCHS=openmp make test
+echo "Done."
+echo "Running CUDA version of the tests..."
+IRIS_ARCHS=cuda make test
+echo "Done."
+echo "Running HIP version of the tests..."
+IRIS_ARCHS=hip make test
+echo "Done."
+echo "Running All version of the tests..."
+IRIS_ARCHS=openmp,cuda,hip,opencl make test
+echo "Done."
 

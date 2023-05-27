@@ -120,6 +120,7 @@ typedef int8_t bool;
 #define iris_vendor             0x1002
 #define iris_name               0x1003
 #define iris_type               0x1004
+#define iris_backend            0x1005
 
 #define iris_ncmds              1
 #define iris_ncmds_kernel       2

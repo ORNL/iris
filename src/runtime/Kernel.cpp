@@ -61,6 +61,8 @@ int Kernel::SetMem(int idx, BaseMem* mem, size_t off, int mode) {
     platform_->IncrementErrorCount();
     return IRIS_ERROR;
   }
+  if (mem->GetMemHandlerType() == IRIS_DMEM) add_dmem((DataMem *)mem, idx, mode);
+  if (mem->GetMemHandlerType() == IRIS_DMEM_REGION) add_dmem_region((DataMemRegion *)mem, idx, mode);
   arg->mem = mem;
   arg->off = off;
   arg->mode = mode;

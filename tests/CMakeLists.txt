@@ -87,7 +87,8 @@ if (CUDAToolkit_FOUND)
 list(APPEND TEST_EXES "10_multikernelexecution" "test10_multikernelexecution" "")
 endif()
 list(APPEND TEST_EXES "11_deadlock" "test11_deadlock" "")
-list(APPEND TEST_EXES "12_task_custom" "test12_task_custom" "")
+#[REMOVE] CUDA specific and interfaces directly with the CUDA loader
+#list(APPEND TEST_EXES "12_task_custom" "test12_task_custom" "")
 list(APPEND TEST_EXES "13_hooks" "test13_hooks" "")
 if (CUDAToolkit_FOUND)
 list(APPEND TEST_EXES "14_permanent_task" "test14_permanent_task" "")
@@ -119,6 +120,7 @@ endif()
 #list(APPEND TEST_EXES "31_isaxpy" "test31_isaxpy" "")
 list(APPEND TEST_EXES "32_json3" "test32_json3" "--kernels=ijk --duplicates=0 --buffers-per-kernel=\"ijk:w-r-r\" --kernel-dimensions=ijk:2 --kernel-split=100 --depth=10 --num-tasks=10 --min-width=1 --max-width=1 --logfile=log.txt --repeats=1 --scheduling-policy=any --size=128")
 list(APPEND TEST_EXES "33_graph_cpp" "test33_graph_cpp" " ")
+list(APPEND TEST_EXES "34_set_mem" "test34_set_mem" " ")
 
 # Run each test in TEST_EXES
 list(LENGTH TEST_EXES count)

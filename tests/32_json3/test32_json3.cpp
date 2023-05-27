@@ -424,16 +424,17 @@ int main(int argc, char** argv) {
         D = host_mem[concurrent_device*kernel.buffers.size()];//json_inputs[ concurrent_device*3 + 3+ sizecb.size()];
         for (size_t i = 0; i < SIZE; i++)
           for (size_t j = 0; j < SIZE; j++){
-            double sum = 0.0;
+              double sum = 0.0;
               for (size_t k = 0; k < SIZE; k++) {
                 sum += A[i * SIZE + k] * B[k * SIZE + j];
               }
             C[i * SIZE + j] = sum;
           }
         //compare local C vs C computed in IRIS
-        for (size_t i = 0; i < SIZE*SIZE; i++)
-          assert(std::abs(C[i]-D[i]) <std::numeric_limits<double>::epsilon());
+        for (size_t i = 0; i < SIZE*SIZE; i++){
           //printf("sequential = %f : iris = %f\n",C[i],D[i]);
+          assert(std::abs(C[i]-D[i]) <std::numeric_limits<double>::epsilon());
+        }
       }
       
     }
