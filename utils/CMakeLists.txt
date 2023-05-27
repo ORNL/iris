@@ -1,3 +1,9 @@
+#
+# Author : Narasinga Rao Miniskar
+# Date   : Jun 16 2022
+# Contact for bug : miniskarnr@ornl.gov
+#
+
 cmake_minimum_required(VERSION 3.0)
 
 # Sources(C) in sd_hexagon file without extension 

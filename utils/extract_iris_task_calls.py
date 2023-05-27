@@ -1,3 +1,8 @@
+#
+# Author : Narasinga Rao Miniskar
+# Date   : Jun 16 2022
+# Contact for bug : miniskarnr@ornl.gov
+#
 import re
 import argparse
 import pdb
@@ -472,7 +477,20 @@ static int iris_kernel_idx = -1;
     generateTaskAPIs(args, cu_type_lines, header_data_hash)
     #lines = lines + sig_lines
     k_sig_lines = [ ]
+    k_sig_lines += [ """
+/**
+ * Author : Narasinga Rao Miniskar
+ * Date   : Jun 16 2022
+ * Contact for bug : miniskarnr@ornl.gov
+ *
+ */
+    """]
+    k_sig_lines += [ "#pragma once"]
     k_sig_lines += sig_lines
+    if os.path.exists('codegen_task_template.h'):
+        k_sig_lines += [ "#include <codegen_task_template.h>"]
+    if os.path.exists('codegen_tiled.h'):
+        k_sig_lines += [ "#include <codegen_tiled.h>"]
     WriteFile(args.signature_file, k_sig_lines, "Consolidated CPU/DSP interface code for all kernels in header")
     appendStructure(args, lines, data_hash, k_hash)
     if args.thread_safe == 1:
@@ -1035,6 +1053,19 @@ extern \"C\" void {func_name}(
         cpp_call = cpp_call_fn_name+"("+", ".join(cpp_call_args)+")"
         lines.append(f"""
 {include_headers_str}
+#ifndef IRIS_API_DEFINITION
+#ifdef __cplusplus
+void {g_func_name}({cpp_params_decl_str});
+void {g_func_name}({params_decl_str});
+#endif // __cplusplus
+#ifdef __cplusplus
+extern \"C\"  {{
+#endif
+void {c_func_name}({params_decl_str});
+#ifdef __cplusplus
+}}
+#endif
+#else //IRIS_API_DEFINITION
 #ifdef __cplusplus
 void {g_func_name}({cpp_params_decl_str})
 {{
@@ -1066,6 +1097,7 @@ void {c_func_name}({params_decl_str})
 #ifdef __cplusplus
 }}
 #endif
+#endif //IRIS_API_DEFINITION
                 """)
     def generate_cpp_task_template_code(cpp_api_name, c_api_name, kvar_original, lines, v, f_details, kernel_apis):
         vs_params, include_headers, params, params_decl, arguments, arguments_variable_hash, expression_stmts = get_headers(f_details, 'iris_all', start_index=0)
@@ -1294,7 +1326,11 @@ void {func_name}<{param_map_src_dtype}>({params_decl_str})
         kvar = getKernelParamVairable(func_name)
         func_sig = "int "+func_name+"("
         if hdr_type == C_CORE_API or hdr_type == C_TASK_API:
-            func_sig = "extern \"C\" int "+func_name+"("
+            func_sig = f"""
+#ifdef __cplusplus
+extern \"C\" 
+#endif
+int {func_name}("""
         arguments_start_index = find_start_index(v)
         i = arguments_start_index
         cpp_task_template = {}
@@ -1322,6 +1358,7 @@ void {func_name}<{param_map_src_dtype}>({params_decl_str})
                 insert_code(cu_type_lines, f_details[0], lines)
             elif f_param == 'TILED_CODE_GEN':
                 lines = []
+                lines.append("#pragma once")
                 generate_tiled_code(cpp_api_name, lines, v, data_details_hash, f_details, cpp_task_template)
                 insert_code(cu_type_lines, "tiled", lines)
             elif f_param == 'CPP_TASK_TEMPLATE':
@@ -1331,8 +1368,17 @@ void {func_name}<{param_map_src_dtype}>({params_decl_str})
     def write_kernel_to_file(cu_type, filename):
         if cu_type in cu_type_lines and len(cu_type_lines[cu_type])>0:
             print(f"Writing {cu_type} kernels to file: {filename}")
+            lines = [ """
+/**
+ * Author : Narasinga Rao Miniskar
+ * Date   : Jun 16 2022
+ * Contact for bug : miniskarnr@ornl.gov
+ *
+ */
+            """]
+            lines += cu_type_lines[cu_type]
             with open(filename, 'w') as fh:
-                fh.write("\n".join(cu_type_lines[cu_type]))
+                fh.write("\n".join(lines))
                 fh.close()
     write_kernel_to_file('cpp_task_template', 'codegen_task_template.h')
     write_kernel_to_file('tiled', 'codegen_tiled.h')
@@ -1374,7 +1420,11 @@ def appendKernelSignatureHeaderFile(args, lines, header_data_hash):
         kvar = getKernelParamVairable(func_name)
         func_sig = "int "+func_name+"("
         if hdr_type == C_CORE_API or hdr_type == C_TASK_API:
-            func_sig = "extern \"C\" int "+func_name+"("
+            func_sig = f"""
+#ifdef __cplusplus
+extern \"C\" 
+#endif
+int {func_name}("""
         params = []
         if hdr_type == C_TASK_API or hdr_type == CPP_TASK_API:
             params.append("iris_task task")
