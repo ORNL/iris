@@ -58,7 +58,7 @@ public:
   void ForceRelease() {
     Platform *platform = Platform::GetPlatform();
     pthread_mutex_lock(&delete_lock_);
-    if (track_!=NULL && !track_->IsObjectExists(this, uid())) return;
+    if (track_!=NULL && !track_->IsObjectExists(uid_)) return;
     //if (!struct_obj()) return;
     pthread_mutex_unlock(&delete_lock_);
     delete this;
