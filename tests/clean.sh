@@ -38,4 +38,5 @@ rm                                                        \
   ./30_task_info/test30_task_info                         \
   ./32_json3/test32_json3                                 \
   ./33_graph_cpp/test33_graph_cpp                         \
-  ./33_graph_cpp/*.so
+  ./33_graph_cpp/*.so                                     \
+  ./34_set_mem/test34_set_mem
