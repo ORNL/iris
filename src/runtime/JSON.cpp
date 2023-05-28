@@ -318,7 +318,7 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
         void* p_size = GetParameterInput(params, h2d_["size"].GetString());
         size_t size = p_size ? (*(size_t*) p_size) : atol(h2d_["size"].GetString());
 
-        Command* cmd = Command::CreateH2D(task, (Mem *)dev_mem->class_obj, offset, size, host_mem);
+        Command* cmd = Command::CreateH2D(task, (Mem *)platform_->get_mem_object(*dev_mem), offset, size, host_mem);
         //name (optional)
         if(h2d_.HasMember("name")){
           if(!h2d_["name"].IsString()){
@@ -363,7 +363,7 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
         void* p_size = GetParameterInput(params, d2h_["size"].GetString());
         size_t size = p_size ? (*(size_t*) p_size) : atol(d2h_["size"].GetString());
 
-        Command* cmd = Command::CreateD2H(task, (Mem *)dev_mem->class_obj, offset, size, host_mem);
+        Command* cmd = Command::CreateD2H(task, (Mem *)platform_->get_mem_object(*dev_mem), offset, size, host_mem);
         //name (optional)
         if(d2h_.HasMember("name")){
           if(!d2h_["name"].IsString()){

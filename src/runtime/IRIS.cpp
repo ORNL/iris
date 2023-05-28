@@ -181,10 +181,10 @@ void Task::depends_on(int ntasks, Task **tasks) {
 #ifdef ENABLE_SMART_PTR_TASK
     _error("Task::Depend is not supported for smart pointer\n");
 #else
-    TaskIRIS *c_task = (TaskIRIS *)(task().class_obj);
+    TaskIRIS *c_task = (TaskIRIS *)(PlatformIRIS::GetPlatform()->get_task_object(task()));
     for (int i=0; i<ntasks; i++) {
         if (tasks[i] != NULL)  {
-            TaskIRIS *i_task = (TaskIRIS*)(tasks[i]->task().class_obj);
+            TaskIRIS *i_task = (TaskIRIS*)(PlatformIRIS::GetPlatform()->get_task_object(tasks[i]->task()));
             c_task->AddDepend(i_task, tasks[i]->task().uid);
         }
     }
@@ -194,16 +194,16 @@ void Task::depends_on(vector<Task *> tasks) {
 #ifdef ENABLE_SMART_PTR_TASK
     _error("Task::Depend is not supported for smart pointer\n");
 #else
-    TaskIRIS *c_task = (TaskIRIS *)(task().class_obj);
+    TaskIRIS *c_task = (TaskIRIS *)(PlatformIRIS::GetPlatform()->get_task_object(task()));
     for (Task *d_task : tasks) {
-        TaskIRIS *i_task = (TaskIRIS*)(d_task->task().class_obj);
+        TaskIRIS *i_task = (TaskIRIS*)(PlatformIRIS::GetPlatform()->get_task_object(d_task->task()));
         c_task->AddDepend(i_task, d_task->task().uid);
     }
 #endif
 }
 void Task::depends_on(Task & d_task) {
-    TaskIRIS *c_task = (TaskIRIS *)(task().class_obj);
-    TaskIRIS *i_task = (TaskIRIS*)(d_task.task().class_obj);
+    TaskIRIS *c_task = (TaskIRIS *)(PlatformIRIS::GetPlatform()->get_task_object(task()));
+    TaskIRIS *i_task = (TaskIRIS*)(PlatformIRIS::GetPlatform()->get_task_object(d_task.task()));
     c_task->AddDepend(i_task, d_task.task().uid);
 }
 Graph::Graph(bool retainable) {

@@ -51,11 +51,13 @@ Task::Task(Platform* platform, int type, const char* name) {
   pthread_mutex_init(&mutex_subtasks_, NULL);
   pthread_cond_init(&complete_cond_, NULL);
   brs_policy_ = iris_default;
-  platform_->track().TrackObject(this, uid());
+  set_object_track(Platform::GetPlatform()->task_track_ptr());
+  platform_->task_track().TrackObject(this, uid());
 }
 
 Task::~Task() {
   //printf("released task:%lu:%s released ptr:%p ref_cnt:%d\n", uid(), name(), this, ref_cnt());
+  Platform::GetPlatform()->task_track().UntrackObject(this, uid());
   for (int i = 0; i < ncmds_; i++) delete cmds_[i];
   if (depends_) delete [] depends_;
   if (depends_uids_) delete [] depends_uids_;
@@ -152,7 +154,7 @@ void Task::print_incomplete_tasks()
   if (depends_ == NULL) return;
   printf("Task Name: %ld:%s\n", uid(), name());
   for (int i = 0; i < ndepends_; i++) {
-    printf("      Running dependent task: %d:%ld:%ld:%s Status:%s object exists:%d %p\n", i, depends_uids_[i], depends_[i]->uid(), depends_[i]->name(), depends_[i]->task_status_string(), platform_->track().IsObjectExists(depends_[i], depends_uids_[i]), depends_[i]);
+    printf("      Running dependent task: %d:%ld:%ld:%s Status:%s object exists:%d %p\n", i, depends_uids_[i], depends_[i]->uid(), depends_[i]->name(), depends_[i]->task_status_string(), platform_->task_track().IsObjectExists(depends_[i], depends_uids_[i]), depends_[i]);
   }
 }
 
@@ -168,7 +170,7 @@ bool Task::Dispatchable() {
   if (status_ == IRIS_PENDING) return false;
   if (depends_ == NULL) return true;
   for (int i = 0; i < ndepends_; i++) {
-    if (platform_->track().IsObjectExists(depends_[i], depends_uids_[i]) && depends_[i]->status() != IRIS_COMPLETE) return false;
+    if (platform_->task_track().IsObjectExists(depends_[i], depends_uids_[i]) && depends_[i]->status() != IRIS_COMPLETE) return false;
   }
   _trace("Task task:%lu:%s is ready to run", uid(), name());
   return true;
@@ -179,8 +181,8 @@ void Task::DispatchDependencies() {
   pthread_mutex_lock(&mutex_pending_);
   if (status_ == IRIS_PENDING) status_ = IRIS_NONE;
   for (int i = 0; i < ndepends_; i++) {
-      _trace("      Dispatch dependencies task: %d:%ld:%ld:%s Status:%s object exists:%d\n", i, depends_uids_[i], depends_[i]->uid(), depends_[i]->name(), depends_[i]->task_status_string(), platform_->track().IsObjectExists(depends_[i], depends_uids_[i]));
-      if (platform_->track().IsObjectExists(depends_[i], depends_uids_[i]) && depends_[i]->status() == IRIS_PENDING) depends_[i]->status_ = IRIS_NONE;
+      _trace("      Dispatch dependencies task: %d:%ld:%ld:%s Status:%s object exists:%d\n", i, depends_uids_[i], depends_[i]->uid(), depends_[i]->name(), depends_[i]->task_status_string(), platform_->task_track().IsObjectExists(depends_[i], depends_uids_[i]));
+      if (platform_->task_track().IsObjectExists(depends_[i], depends_uids_[i]) && depends_[i]->status() == IRIS_PENDING) depends_[i]->status_ = IRIS_NONE;
   }
   pthread_mutex_unlock(&mutex_pending_);
 }
@@ -220,7 +222,7 @@ void Task::Complete() {
   _trace(" trying to release task:%lu:%s ref_cnt:%d", uid(), name(), ref_cnt());
   if (platform_->release_task_flag()) {
       for (int i = 0; i < ndepends_; i++)
-          if (platform_->track().IsObjectExists(depends_[i], depends_uids_[i]) && depends_[i]->user()) depends_[i]->Release();
+          if (platform_->task_track().IsObjectExists(depends_[i], depends_uids_[i]) && depends_[i]->user()) depends_[i]->Release();
       if (is_user_task) Release();
   }
 }
@@ -228,7 +230,7 @@ void Task::Complete() {
 void Task::TryReleaseTask()
 {
     for (int i = 0; i < ndepends_; i++)
-        if (platform_->track().IsObjectExists(depends_[i], depends_uids_[i]) && depends_[i]->user()) depends_[i]->Release();
+        if (platform_->task_track().IsObjectExists(depends_[i], depends_uids_[i]) && depends_[i]->user()) depends_[i]->Release();
     if (user_) Release();
 }
 
@@ -263,7 +265,7 @@ bool Task::HasSubtasks() {
 // comparing the actual parent task uid.
 void Task::AddDepend(Task* task, unsigned long uid) {
   if (task == NULL) return;
-  if (!platform_->track().IsObjectExists(task, uid)) 
+  if (!platform_->task_track().IsObjectExists(task, uid)) 
       return;
   if (depends_ == NULL) {
       depends_ = new Task*[depends_max_];

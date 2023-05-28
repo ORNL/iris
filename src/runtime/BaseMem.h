@@ -24,9 +24,13 @@ namespace rt {
                   archs_off_[i] = NULL;
                   archs_dev_[i] = NULL;
                 }
+                set_object_track(Platform::GetPlatform()->mem_track_ptr());
+                track()->TrackObject(this, uid());
             }
             MemHandlerType GetMemHandlerType() { return handler_type_; }
-            virtual ~BaseMem() { }
+            virtual ~BaseMem() { 
+                track()->UntrackObject(this, uid());
+            }
             virtual void* arch(Device* dev, void *host=NULL) = 0;
             virtual void* arch(int devno, void *host=NULL) = 0;
             virtual void** arch_ptr(Device *dev, void *host=NULL) = 0;
