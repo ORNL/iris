@@ -18,6 +18,16 @@ namespace iris {
                 ~ObjectTrack() {
                     pthread_mutex_destroy(&track_lock_);
                 }
+                bool IsObjectExists(unsigned long uid) { 
+                    bool flag = false;
+                    void *obj = NULL;
+                    if (allocated_objects_.find(uid) != allocated_objects_.end())  {
+                        obj = allocated_objects_[uid];
+                        flag = (obj != NULL);
+                    }
+                    _trace("object:%lu: %p exists flag:%d", uid, obj, flag);
+                    return flag;
+                }
                 bool IsObjectExists(void *p, unsigned long uid) { 
                     bool flag = false;
                     if (allocated_objects_.find(uid) != allocated_objects_.end())  {
