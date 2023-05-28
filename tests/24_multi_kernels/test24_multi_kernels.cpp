@@ -26,7 +26,7 @@ int main(int argc, char** argv) {
   iris_init(&argc, &argv, 1);
 
   int ndevs;
-  bool bool is_opencl_device=false;
+  bool is_opencl_device=false;
   iris_device_count(&ndevs);
   for (int d = 0; d < ndevs; d++){
     int backend_worker;
