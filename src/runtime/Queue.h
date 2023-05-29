@@ -16,6 +16,7 @@ public:
   virtual bool Dequeue(Task** task) = 0;
   virtual size_t Size() = 0;
   virtual bool Empty() = 0;
+  virtual void Print(int devno=-1) { }
 };
 
 } /* namespace rt */

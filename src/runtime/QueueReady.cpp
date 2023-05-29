@@ -22,6 +22,14 @@ bool QueueReady::Peek(Task** task, int target_index){
   return true;
 }
 
+void QueueReady::Print(int devno) {
+  printf("Queue data: (%lu) devno:%d:%p --- ", pqueue_.size(), devno, this);
+  for(size_t i=0; i<pqueue_.size(); i++) {
+    printf("%lu:%p ", pqueue_[i]->uid(), pqueue_[i]);
+  }
+  printf("\n");
+}
+
 bool QueueReady::Enqueue(Task* task) {
   std::lock_guard<std::mutex> lock(mutex_);
   //if the task to be enqueued is a memory transfer it should be prioritized

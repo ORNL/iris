@@ -19,6 +19,7 @@ public:
   bool Dequeue(Task** task);
   size_t Size();
   bool Empty();
+  void Print(int devno=-1);
 
 private:
   std::deque<Task*> pqueue_, queue_;

@@ -53,11 +53,13 @@ Task::Task(Platform* platform, int type, const char* name) {
   brs_policy_ = iris_default;
   set_object_track(Platform::GetPlatform()->task_track_ptr());
   platform_->task_track().TrackObject(this, uid());
+  _trace("Task created %lu %s %p", uid(), name_, this);
 }
 
 Task::~Task() {
   //printf("released task:%lu:%s released ptr:%p ref_cnt:%d\n", uid(), name(), this, ref_cnt());
   Platform::GetPlatform()->task_track().UntrackObject(this, uid());
+  _trace("Task deleted %lu %s %p", uid(), name(), this);
   for (int i = 0; i < ncmds_; i++) delete cmds_[i];
   if (depends_uids_) delete [] depends_uids_;
   pthread_mutex_destroy(&mutex_pending_);
@@ -191,6 +193,7 @@ void Task::DispatchDependencies() {
 }
 
 bool Task::Executable() {
+  _trace("Task executable check %lu %s %p", uid(), name(), this);
   pthread_mutex_lock(&mutex_executable_);
   if (status_ == IRIS_NONE) {
     status_ = IRIS_RUNNING;
@@ -250,12 +253,15 @@ void Task::CompleteSub() {
 }
 
 void Task::Wait() {
-  _trace(" task:%lu:%s is waiting", uid(), name());
+  unsigned long id = uid();
+  //printf(" task:%lu:%s is waiting\n", id, name());
+  if (!track()->IsObjectExists(id)) return;
   pthread_mutex_lock(&mutex_complete_);
   if (status_ != IRIS_COMPLETE)
     pthread_cond_wait(&complete_cond_, &mutex_complete_);
+  if (!track()->IsObjectExists(id)) return;
   pthread_mutex_unlock(&mutex_complete_);
-  _trace(" task:%lu:%s dependency is clear", uid(), name());
+  //printf(" task:%lu:%s dependency is clear\n", uid(), name());
 }
 
 void Task::AddSubtask(Task* subtask) {

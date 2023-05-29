@@ -192,6 +192,10 @@ public:
   ObjectTrack & graph_track() { return graph_track_; }
   ObjectTrack & mem_track() { return mem_track_; }
   ObjectTrack & kernel_track() { return kernel_track_; }
+  bool is_task_exist(unsigned long uid) { return task_track_.IsObjectExists(uid); }
+  bool is_mem_exist(unsigned long uid) { return mem_track_.IsObjectExists(uid); }
+  bool is_kernel_exist(unsigned long uid) { return kernel_track_.IsObjectExists(uid); }
+  bool is_graph_exist(unsigned long uid) { return graph_track_.IsObjectExists(uid); }
   Task *get_task_object(unsigned long uid) { return (Task *)task_track_.GetObject(uid); }
   Task *get_task_object(iris_task brs_task) { return (Task *)task_track_.GetObject(brs_task.uid); }
   BaseMem *get_mem_object(unsigned long uid) { BaseMem *mem = (BaseMem *)mem_track_.GetObject(uid); return mem; }
