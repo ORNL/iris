@@ -6,6 +6,7 @@
 #include <stddef.h>
 #include <vector>
 #include <set>
+#include <assert.h>
 #include <map>
 #include <mutex>
 #include <string>
@@ -196,10 +197,30 @@ public:
   bool is_mem_exist(unsigned long uid) { return mem_track_.IsObjectExists(uid); }
   bool is_kernel_exist(unsigned long uid) { return kernel_track_.IsObjectExists(uid); }
   bool is_graph_exist(unsigned long uid) { return graph_track_.IsObjectExists(uid); }
-  Task *get_task_object(unsigned long uid) { return (Task *)task_track_.GetObject(uid); }
-  Task *get_task_object(iris_task brs_task) { return (Task *)task_track_.GetObject(brs_task.uid); }
-  BaseMem *get_mem_object(unsigned long uid) { BaseMem *mem = (BaseMem *)mem_track_.GetObject(uid); return mem; }
-  BaseMem *get_mem_object(iris_mem brs_mem) { BaseMem *mem = (BaseMem *)mem_track_.GetObject(brs_mem.uid); return mem; }
+  Task *get_task_object(unsigned long uid) { 
+      //task_track_.Print("Task track"); 
+      Task *task = (Task *)task_track_.GetObject(uid); 
+      assert(task != NULL);
+      return task;
+  }
+  Task *get_task_object(iris_task brs_task) { 
+      //task_track_.Print("Task track"); 
+      Task *task = (Task *)task_track_.GetObject(brs_task.uid); 
+      assert(task != NULL);
+      return task;
+  }
+  BaseMem *get_mem_object(unsigned long uid) { 
+      //mem_track_.Print("Mem track"); 
+      BaseMem *mem = (BaseMem *)mem_track_.GetObject(uid); 
+      assert(mem != NULL);
+      return mem; 
+  }
+  BaseMem *get_mem_object(iris_mem brs_mem) { 
+      //mem_track_.Print("Mem track"); 
+      BaseMem *mem = (BaseMem *)mem_track_.GetObject(brs_mem.uid); 
+      assert(mem != NULL);
+      return mem; 
+  }
   Graph *get_graph_object(unsigned long uid) { return (Graph *)graph_track_.GetObject(uid); }
   Graph *get_graph_object(iris_graph brs_graph) { return (Graph *)graph_track_.GetObject(brs_graph.uid); }
   Kernel *get_kernel_object(unsigned long uid) { return (Kernel *)kernel_track_.GetObject(uid); }

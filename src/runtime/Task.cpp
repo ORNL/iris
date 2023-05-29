@@ -254,12 +254,14 @@ void Task::CompleteSub() {
 
 void Task::Wait() {
   unsigned long id = uid();
+  Platform *platform = Platform::GetPlatform();
   //printf(" task:%lu:%s is waiting\n", id, name());
-  if (!track()->IsObjectExists(id)) return;
+  if (!platform->is_task_exist(id)) return;
   pthread_mutex_lock(&mutex_complete_);
+  if (!platform->is_task_exist(id)) return;
   if (status_ != IRIS_COMPLETE)
     pthread_cond_wait(&complete_cond_, &mutex_complete_);
-  if (!track()->IsObjectExists(id)) return;
+  if (!platform->is_task_exist(id)) return;
   pthread_mutex_unlock(&mutex_complete_);
   //printf(" task:%lu:%s dependency is clear\n", uid(), name());
 }

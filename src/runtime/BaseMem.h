@@ -26,9 +26,11 @@ namespace rt {
                 }
                 set_object_track(Platform::GetPlatform()->mem_track_ptr());
                 track()->TrackObject(this, uid());
+                _trace("Memory object is Created :%lu:%p", uid(), this);
             }
             MemHandlerType GetMemHandlerType() { return handler_type_; }
             virtual ~BaseMem() { 
+                _trace("Memory object is deleted:%lu:%p", uid(), this);
                 track()->UntrackObject(this, uid());
             }
             virtual void* arch(Device* dev, void *host=NULL) = 0;

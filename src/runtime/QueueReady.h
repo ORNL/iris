@@ -8,7 +8,7 @@
 
 namespace iris {
 namespace rt {
-
+using namespace std;
 class QueueReady : public Queue {
 public:
   QueueReady();
@@ -17,12 +17,13 @@ public:
   bool Peek(Task** task, int index);
   bool Enqueue(Task* task);
   bool Dequeue(Task** task);
+  virtual bool Dequeue(pair<unsigned long, Task*>* task);
   size_t Size();
   bool Empty();
   void Print(int devno=-1);
 
 private:
-  std::deque<Task*> pqueue_, queue_;
+  std::deque<pair<unsigned long, Task*>> pqueue_, queue_;
   mutable std::mutex mutex_;
 };
 

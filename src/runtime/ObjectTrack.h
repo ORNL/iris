@@ -25,6 +25,7 @@ namespace iris {
                         obj = allocated_objects_[uid];
                         flag = (obj != NULL);
                     }
+                    //printf("object:%lu: %p exists flag:%d\n", uid, obj, flag);
                     _trace("object:%lu: %p exists flag:%d", uid, obj, flag);
                     return flag;
                 }
@@ -37,15 +38,10 @@ namespace iris {
                     pthread_mutex_lock(&track_lock_);
                     allocated_objects_[uid] = 0;
                     _trace("Untracking object: %lu: %p", uid, p);
+                    //printf("Untracking object: %lu: %p\n", uid, p);
                     pthread_mutex_unlock(&track_lock_);
                     //freed_objects+=1; 
-                }/*
-                void UntrackObject(unsigned long uid) {
-                    pthread_mutex_lock(&track_lock_);
-                    allocated_objects_[uid] = NULL;
-                    pthread_mutex_unlock(&track_lock_);
-                    //freed_objects+=1; 
-                }*/
+                }
                 virtual void TrackObject(void *p, unsigned long uid) {
                     pthread_mutex_lock(&track_lock_);
                     if (allocated_objects_.find(uid) != allocated_objects_.end()) 
@@ -67,6 +63,14 @@ namespace iris {
                 }
                 virtual void Clear() {
                     allocated_objects_.clear();
+                }
+                void Print(const char *data="Task track") {
+                    printf("%s\n", data);
+                    for ( auto & z : allocated_objects_) {
+                        if (z.second != NULL)
+                        printf("%lu:%p ", z.first, z.second);
+                    }
+                    printf("\n");
                 }
 
             private:
