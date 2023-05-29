@@ -1,5 +1,5 @@
-IRIS_INSTALL_ROOT ?= $(HOME)/.local
-IRIS=$(IRIS_INSTALL_ROOT)
+IRIS_INSTALL_ROOT ?= $(HOME)/.iris
+IRIS ?= $(IRIS_INSTALL_ROOT)
 
 CC				:= gcc
 CXX				:= g++
