@@ -75,14 +75,14 @@ bool QueueReady::Dequeue(pair<unsigned long, Task *> *task) {
   if (!pqueue_.empty()){
     auto &data = pqueue_.front();
     *task = data; //(Task*) data.second;
-    _trace("Popped task:%lu:%s to pqueue pq:%lu q:%lu", (*task)->uid(), (*task)->name(), pqueue_.size(), queue_.size());
+    _trace("Popped task:%lu:%s to pqueue pq:%lu q:%lu", data.second->uid(), data.second->name(), pqueue_.size(), queue_.size());
     pqueue_.pop_front();
     return true;
   }
   if (!queue_.empty()){
     auto &data = queue_.front();
     *task = data; //(Task*) data.second;
-    _trace("Popped task:%lu:%s to queue pq:%lu q:%lu", (*task)->uid(), (*task)->name(), pqueue_.size(), queue_.size());
+    _trace("Popped task:%lu:%s to queue pq:%lu q:%lu", data.second->uid(), data.second->name(), pqueue_.size(), queue_.size());
     queue_.pop_front();
     return true;
   }
