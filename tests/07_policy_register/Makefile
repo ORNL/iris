@@ -1,7 +1,5 @@
 TEST=test07_policy_register
 
-IRIS=$(HOME)/work/iris-rts
-
 all: $(TEST) libPolicyGWS.so libPolicyGWSHook.so policy_last.so kernel.openmp.so
 
 include ../Makefile.tests
