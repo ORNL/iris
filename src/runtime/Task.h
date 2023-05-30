@@ -22,6 +22,7 @@ namespace iris {
 namespace rt {
 
 class Scheduler;
+class Graph;
 
 class Task: public Retainable<struct _iris_task, Task> {
 public:
@@ -79,7 +80,9 @@ public:
   double time_end() { return time_end_; }
   void set_parent(Task* task);
   void set_brs_policy(int brs_policy);
+  int get_brs_policy(){return brs_policy_;}
   void set_opt(const char* opt);
+  const char* get_opt(){return opt_;}
   char* opt() { return opt_; }
   int brs_policy() { return brs_policy_; }
   const char* brs_policy_string();
@@ -109,6 +112,10 @@ public:
   std::vector<BaseMem*>* get_read_list() { return &read_list_; }
   void add_to_read_list(BaseMem* mem) { read_list_.push_back(mem); }
   void add_to_write_list(BaseMem* mem) { write_list_.push_back(mem); }
+#ifdef AUTO_FLUSH
+  Graph* get_graph(){return graph_;}
+  void set_graph(Graph* graph){graph_ = graph;}
+#endif
 #endif
 
 private:
@@ -132,6 +139,9 @@ private:
 #ifdef AUTO_PAR
   std::vector<BaseMem*> write_list_;
   std::vector<BaseMem*> read_list_;
+#ifdef AUTO_FLUSH
+  Graph* graph_;
+#endif
 #endif
   size_t subtasks_complete_;
   void* arch_;

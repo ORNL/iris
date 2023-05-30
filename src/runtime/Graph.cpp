@@ -54,6 +54,12 @@ void Graph::AddTask(Task* task) {
   if (is_retainable()) task->DisableRelease();
   tasks_.push_back(task);
   end_->AddDepend(task);
+
+#ifdef AUTO_PAR
+#ifdef AUTO_FLUSH
+  task->set_graph(this);
+#endif
+#endif
 }
 
 void Graph::Submit() {
@@ -594,6 +600,8 @@ int GraphMetadata::get_max_parallelism()
 	
   vector<unsigned long> merged_dag;
   int count_level = 0 ; 
+  int total_parallelism = 0 ; 
+  double average_parallelism = 0 ; 
   for (auto& i : levels_dag_){
       for (auto& j : i) {
 	  //std::cout << "for value "  << j << " and size of merged_dag " << merged_dag.size() << " \n";
@@ -649,9 +657,12 @@ int GraphMetadata::get_max_parallelism()
 	  std::cout << k << " " ;
       std::cout << " \n" ; */
       if (max_par < merged_dag.size()) max_par = merged_dag.size();
-
+      total_parallelism += merged_dag.size();
    }
+   average_parallelism = (double) total_parallelism / max_level_;
    std::cout << "Maximum theoretical parallelism:  " << max_par << "\n" ;
+   std::cout << "Height of the DAG:  " << max_level_ << "\n" ;
+   std::cout << "Average parallelism of a DAG:  " << average_parallelism << "\n" ;
 return 0;
 }
 

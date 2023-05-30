@@ -200,6 +200,33 @@ Command* Command::CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off,
  	mem->set_current_writing_task(task);
  	mem->erase_all_read_task_list();
   	task->add_to_write_list(mem);
+
+#ifdef AUTO_FLUSH
+    	char tn[256];
+    	sprintf(tn, "%s-flush-out", task->name());
+    	//sprintf(tn, "%s-flush-out", mem->get_flush_task();
+	//cmd->platform_->TaskCreate(tn, false, mem->get_flush_task())
+	Task* task_flush = mem->get_flush_task();
+	task_flush = Task::Create(cmd->platform_, IRIS_TASK, tn);
+        Command* cmd_flush = Command::CreateMemFlushOut(task_flush, (DataMem *) mem);
+        task_flush->AddCommand(cmd_flush);
+	task_flush->set_opt(task->get_opt());
+	task_flush->set_brs_policy(task->get_brs_policy());
+	Graph* graph_flush = task->get_graph();
+	if(graph_flush != NULL) {
+		graph_flush->AddTask(task_flush);
+        	task->AddDepend(task_flush);	
+	}
+	
+  	//platform_->GraphTask(get_graph(), mem->get_flush_task(), 1, NULL);
+        //platform_->TaskMemFlushOut(mem->get_flush_task(), mem) {
+        //task->AddDepend(mem->get_flush_task());	
+    	//iris_graph_task( graph, mem->get_flush_task(), 1, NULL );
+  	//platform_->GraphTask(get_graph(), mem->get_flush_task(), 1, NULL);
+	printf("-------auto flush----------\n");
+    	//mem->get_flush_task(
+#endif
+
     }
     if (param_info == iris_r) {
     	if(mem->get_current_writing_task() != NULL) {

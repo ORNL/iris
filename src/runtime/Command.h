@@ -4,6 +4,7 @@
 #include <iris/iris_poly_types.h>
 #include "BaseMem.h"
 #include "Kernel.h"
+#include "Graph.h"
 #include <stddef.h>
 
 #define IRIS_CMD_NOP            0x1000
@@ -33,6 +34,7 @@ class DataMem;
 class Mem;
 class DataMem;
 class Task;
+class Graph;
 
 class Command {
 public:

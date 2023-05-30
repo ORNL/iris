@@ -54,6 +54,11 @@ namespace rt {
   	    void erase_all_read_task_list() {
 		    read_task_list_.erase(read_task_list_.begin(), 
 		    read_task_list_.end()); }
+
+#ifdef AUTO_FLUSH
+  	    inline Task* get_flush_task() { return flush_task_;}
+#endif 
+
 #endif
             inline int ndevs() { return ndevs_; }
             virtual inline void clear() { }
@@ -68,6 +73,9 @@ namespace rt {
 #ifdef AUTO_PAR
   	    Task* current_writing_task_;
   	    std::vector<Task*> read_task_list_;
+#ifdef AUTO_FLUSH
+  	    Task* flush_task_;
+#endif 
 #endif
  
     };
