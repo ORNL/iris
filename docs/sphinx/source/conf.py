@@ -35,7 +35,8 @@ author = 'Jungwon Kim'
 extensions = [
     'sphinx_rtd_theme',
     'sphinxcontrib.contentui',
-    'breathe'
+    'breathe',
+    'sphinx.ext.viewcode'
 ]
 
 subprocess.call('cd ../../doxygen/; doxygen Doxyfile.in', shell=True)
@@ -79,5 +80,6 @@ html_theme_options = {
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+# html_static_path = ['_static']
+html_static_path = []
 
