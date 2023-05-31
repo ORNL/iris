@@ -73,7 +73,7 @@ deploy_docs_manual-job:
     - cd tests
     - mkdir build
     - cd build
-    - cmake ..
+    - cmake .. -DIRIS=$IRIS
     - make --ignore-errors
     - echo IRIS_ARCHS is $IRIS_ARCHS
     - ctest --output-junit testRes.xml
