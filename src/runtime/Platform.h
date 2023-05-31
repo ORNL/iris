@@ -200,13 +200,11 @@ public:
   Task *get_task_object(unsigned long uid) { 
       //task_track_.Print("Task track"); 
       Task *task = (Task *)task_track_.GetObject(uid); 
-      assert(task != NULL);
       return task;
   }
   Task *get_task_object(iris_task brs_task) { 
       //task_track_.Print("Task track"); 
       Task *task = (Task *)task_track_.GetObject(brs_task.uid); 
-      assert(task != NULL);
       return task;
   }
   BaseMem *get_mem_object(unsigned long uid) { 

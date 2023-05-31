@@ -910,6 +910,7 @@ int Platform::TaskCreate(const char* name, bool perm, iris_task* brs_task) {
 
 int Platform::TaskDepend(iris_task brs_task, int ntasks, iris_task** brs_tasks) {
   Task *task = get_task_object(brs_task);
+  assert(task != NULL);
   for (int i = 0; i < ntasks; i++) 
       if (brs_tasks[i] != NULL) 
           task->AddDepend(get_task_object(brs_tasks[i]->uid), brs_tasks[i]->uid);
@@ -918,6 +919,7 @@ int Platform::TaskDepend(iris_task brs_task, int ntasks, iris_task** brs_tasks) 
 
 int Platform::TaskDepend(iris_task brs_task, int ntasks, iris_task* brs_tasks) {
   Task *task = get_task_object(brs_task);
+  assert(task != NULL);
   for (int i = 0; i < ntasks; i++) 
       task->AddDepend(get_task_object(brs_tasks[i].uid), brs_tasks[i].uid);
   return IRIS_SUCCESS;
@@ -925,6 +927,7 @@ int Platform::TaskDepend(iris_task brs_task, int ntasks, iris_task* brs_tasks) {
 
 int Platform::TaskKernel(iris_task brs_task, iris_kernel brs_kernel, int dim, size_t* off, size_t* gws, size_t* lws) {
   Task *task = get_task_object(brs_task);
+  assert(task != NULL);
   Kernel* kernel = Platform::GetPlatform()->get_kernel_object(brs_kernel);
   kernel->set_task_name(task->name());
   Command* cmd = Command::CreateKernel(task, kernel, dim, off, gws, lws);
@@ -934,6 +937,7 @@ int Platform::TaskKernel(iris_task brs_task, iris_kernel brs_kernel, int dim, si
 
 int Platform::TaskCustom(iris_task brs_task, int tag, void* params, size_t params_size) {
   Task *task = get_task_object(brs_task);
+  assert(task != NULL);
   Command* cmd = Command::CreateCustom(task, tag, params, params_size);
   task->AddCommand(cmd);
   return IRIS_SUCCESS;
@@ -941,6 +945,7 @@ int Platform::TaskCustom(iris_task brs_task, int tag, void* params, size_t param
 
 int Platform::TaskKernel(iris_task brs_task, const char* name, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, size_t* params_off, int* params_info, size_t* memranges) {
   Task *task = get_task_object(brs_task);
+  assert(task != NULL);
   Kernel* kernel = GetKernel(name);
   //_trace("Adding kernel:%s:%p to task:%s\n", name, kernel, task->name());
   kernel->set_task_name(task->name());
@@ -952,6 +957,7 @@ int Platform::TaskKernel(iris_task brs_task, const char* name, int dim, size_t* 
 int Platform::SetParamsMap(iris_task brs_task, int *params_map)
 {
   Task *task = get_task_object(brs_task);
+  assert(task != NULL);
   Command *cmd_kernel = task->cmd_kernel();
   cmd_kernel->set_params_map(params_map);
   return IRIS_SUCCESS;
@@ -967,6 +973,7 @@ int Platform::SetSharedMemoryModel(int flag)
 
 int Platform::TaskKernelSelector(iris_task brs_task, iris_selector_kernel func, void* params, size_t params_size) {
   Task *task = get_task_object(brs_task);
+  assert(task != NULL);
   Command* cmd = task->cmd_kernel();
   if (!cmd) return IRIS_ERROR;
   cmd->set_selector_kernel(func, params, params_size);
@@ -975,6 +982,7 @@ int Platform::TaskKernelSelector(iris_task brs_task, iris_selector_kernel func, 
 
 int Platform::TaskHost(iris_task brs_task, iris_host_task func, void* params) {
   Task *task = get_task_object(brs_task);
+  assert(task != NULL);
   Command* cmd = Command::CreateHost(task, func, params);
   task->AddCommand(cmd);
   return IRIS_SUCCESS;
@@ -982,6 +990,7 @@ int Platform::TaskHost(iris_task brs_task, iris_host_task func, void* params) {
 
 int Platform::TaskMalloc(iris_task brs_task, iris_mem brs_mem) {
   Task *task = get_task_object(brs_task);
+  assert(task != NULL);
   Mem* mem = (Mem*)Platform::GetPlatform()->get_mem_object(brs_mem);
   Command* cmd = Command::CreateMalloc(task, mem);
   task->AddCommand(cmd);
@@ -990,6 +999,7 @@ int Platform::TaskMalloc(iris_task brs_task, iris_mem brs_mem) {
 
 int Platform::TaskMemFlushOut(iris_task brs_task, iris_mem brs_mem) {
   Task *task = get_task_object(brs_task);
+  assert(task != NULL);
   DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
   Command* cmd = Command::CreateMemFlushOut(task, mem);
   task->AddCommand(cmd);
@@ -999,6 +1009,7 @@ int Platform::TaskMemFlushOut(iris_task brs_task, iris_mem brs_mem) {
 int Platform::TaskMemResetInput(iris_task brs_task, iris_mem brs_mem, uint8_t reset) 
 {
     Task *task = get_task_object(brs_task);
+    assert(task != NULL);
     BaseMem* mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
     Command *cmd = Command::CreateMemResetInput(task, mem, reset);
     task->AddMemResetCommand(cmd);
@@ -1007,6 +1018,7 @@ int Platform::TaskMemResetInput(iris_task brs_task, iris_mem brs_mem, uint8_t re
 
 int Platform::TaskH2Broadcast(iris_task brs_task, iris_mem brs_mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host) {
   Task *task = get_task_object(brs_task);
+  assert(task != NULL);
   Mem* mem = (Mem *)Platform::GetPlatform()->get_mem_object(brs_mem);
   Command* cmd = Command::CreateH2Broadcast(task, mem, off, host_sizes, dev_sizes, elem_size, dim, host);
   task->AddCommand(cmd);
@@ -1015,6 +1027,7 @@ int Platform::TaskH2Broadcast(iris_task brs_task, iris_mem brs_mem, size_t *off,
 
 int Platform::TaskH2Broadcast(iris_task brs_task, iris_mem brs_mem, size_t off, size_t size, void* host) {
   Task *task = get_task_object(brs_task);
+  assert(task != NULL);
   Mem* mem = (Mem *)Platform::GetPlatform()->get_mem_object(brs_mem);
   Command* cmd = Command::CreateH2Broadcast(task, mem, off, size, host);
   task->AddCommand(cmd);
@@ -1023,6 +1036,7 @@ int Platform::TaskH2Broadcast(iris_task brs_task, iris_mem brs_mem, size_t off, 
 
 int Platform::TaskH2D(iris_task brs_task, iris_mem brs_mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host) {
   Task *task = get_task_object(brs_task);
+  assert(task != NULL);
   Mem* mem = (Mem *)Platform::GetPlatform()->get_mem_object(brs_mem);
   Command* cmd = Command::CreateH2D(task, mem, off, host_sizes, dev_sizes, elem_size, dim, host);
   task->AddCommand(cmd);
@@ -1031,6 +1045,7 @@ int Platform::TaskH2D(iris_task brs_task, iris_mem brs_mem, size_t *off, size_t 
 
 int Platform::TaskD2D(iris_task brs_task, iris_mem brs_mem, size_t off, size_t size, void* host, int src_dev) {
   Task *task = get_task_object(brs_task);
+  assert(task != NULL);
   Mem* mem = (Mem *)Platform::GetPlatform()->get_mem_object(brs_mem);
   Command* cmd = Command::CreateD2D(task, mem, off, size, host, src_dev);
   task->AddCommand(cmd);
@@ -1039,6 +1054,7 @@ int Platform::TaskD2D(iris_task brs_task, iris_mem brs_mem, size_t off, size_t s
 
 int Platform::TaskH2D(iris_task brs_task, iris_mem brs_mem, size_t off, size_t size, void* host) {
   Task *task = get_task_object(brs_task);
+  assert(task != NULL);
   Mem* mem = (Mem *)Platform::GetPlatform()->get_mem_object(brs_mem);
   Command* cmd = Command::CreateH2D(task, mem, off, size, host);
   task->AddCommand(cmd);
@@ -1047,6 +1063,7 @@ int Platform::TaskH2D(iris_task brs_task, iris_mem brs_mem, size_t off, size_t s
 
 int Platform::TaskD2H(iris_task brs_task, iris_mem brs_mem, size_t off, size_t size, void* host) {
   Task *task = get_task_object(brs_task);
+  assert(task != NULL);
   Mem* mem = (Mem *)Platform::GetPlatform()->get_mem_object(brs_mem);
   Command* cmd = Command::CreateD2H(task, mem, off, size, host);
   task->AddCommand(cmd);
@@ -1055,6 +1072,7 @@ int Platform::TaskD2H(iris_task brs_task, iris_mem brs_mem, size_t off, size_t s
 
 int Platform::TaskD2H(iris_task brs_task, iris_mem brs_mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host) {
   Task *task = get_task_object(brs_task);
+  assert(task != NULL);
   Mem* mem = (Mem *)Platform::GetPlatform()->get_mem_object(brs_mem);
   Command* cmd = Command::CreateD2H(task, mem, off, host_sizes, dev_sizes, elem_size, dim, host);
   task->AddCommand(cmd);
@@ -1075,6 +1093,7 @@ int Platform::TaskD2HFull(iris_task brs_task, iris_mem brs_mem, void* host) {
 
 int Platform::TaskMap(iris_task brs_task, void* host, size_t size) {
   Task *task = get_task_object(brs_task);
+  assert(task != NULL);
   Command* cmd = Command::CreateMap(task, host, size);
   task->AddCommand(cmd);
   return IRIS_SUCCESS;
@@ -1082,6 +1101,7 @@ int Platform::TaskMap(iris_task brs_task, void* host, size_t size) {
 
 int Platform::TaskMapTo(iris_task brs_task, void* host, size_t size) {
   Task *task = get_task_object(brs_task);
+  assert(task != NULL);
   size_t off = 0ULL;
   Mem* mem = (Mem *)present_table_->Get(host, &off);
   Command* cmd = Command::CreateH2D(task, mem, off, size, host);
@@ -1091,6 +1111,7 @@ int Platform::TaskMapTo(iris_task brs_task, void* host, size_t size) {
 
 int Platform::TaskMapToFull(iris_task brs_task, void* host) {
   Task *task = get_task_object(brs_task);
+  assert(task != NULL);
   size_t off = 0ULL;
   Mem* mem = (Mem *)present_table_->Get(host, &off);
   size_t size = mem->size();
@@ -1101,6 +1122,7 @@ int Platform::TaskMapToFull(iris_task brs_task, void* host) {
 
 int Platform::TaskMapFrom(iris_task brs_task, void* host, size_t size) {
   Task *task = get_task_object(brs_task);
+  assert(task != NULL);
   size_t off = 0ULL;
   Mem* mem = (Mem *)present_table_->Get(host, &off);
   Command* cmd = Command::CreateD2H(task, mem, off, size, host);
@@ -1110,6 +1132,7 @@ int Platform::TaskMapFrom(iris_task brs_task, void* host, size_t size) {
 
 int Platform::TaskMapFromFull(iris_task brs_task, void* host) {
   Task *task = get_task_object(brs_task);
+  assert(task != NULL);
   size_t off = 0ULL;
   Mem* mem = (Mem *)present_table_->Get(host, &off);
   size_t size = mem->size();
@@ -1145,6 +1168,7 @@ int Platform::NumErrors(){
 
 int Platform::TaskSubmit(iris_task brs_task, int brs_policy, const char* opt, int sync) {
   Task *task = get_task_object(brs_task);
+  assert(task != NULL);
   task->Submit(brs_policy, opt, sync);
   _trace(" successfully submitted task:%lu:%s", task->uid(), task->name());
   if (recording_) json_->RecordTask(task);
@@ -1170,7 +1194,7 @@ int Platform::TaskSubmit(Task *task, int brs_policy, const char* opt, int sync) 
 
 int Platform::TaskWait(iris_task brs_task) {
   Task *task = get_task_object(brs_task);
-  task->Wait();
+  if (task != NULL) task->Wait();
   return IRIS_SUCCESS;
 }
 
@@ -1182,6 +1206,7 @@ int Platform::TaskWaitAll(int ntasks, iris_task* brs_tasks) {
 
 int Platform::TaskAddSubtask(iris_task brs_task, iris_task brs_subtask) {
   Task *task = get_task_object(brs_task);
+  assert(task != NULL);
   Task *subtask = get_task_object(brs_subtask);
   task->AddSubtask(subtask);
   return IRIS_SUCCESS;
@@ -1189,12 +1214,13 @@ int Platform::TaskAddSubtask(iris_task brs_task, iris_task brs_subtask) {
 
 int Platform::TaskKernelCmdOnly(iris_task brs_task) {
   Task *task = get_task_object(brs_task);
+  assert(task != NULL);
   return (task->ncmds() == 1 && task->cmd_kernel()) ? IRIS_SUCCESS : IRIS_ERROR;
 }
 
 int Platform::TaskRelease(iris_task brs_task) {
     Task *task = get_task_object(brs_task);
-    if (task_track().IsObjectExists(brs_task.uid)) {
+    if (task != NULL) {
         if (!task->IsRelease())
             task->ForceRelease();
         else 
@@ -1205,6 +1231,7 @@ int Platform::TaskRelease(iris_task brs_task) {
 
 int Platform::TaskReleaseMem(iris_task brs_task, iris_mem brs_mem) {
   Task *task = get_task_object(brs_task);
+  assert(task != NULL);
   Mem* mem = (Mem *)Platform::GetPlatform()->get_mem_object(brs_mem);
   Command* cmd = Command::CreateReleaseMem(task, mem);
   task->AddCommand(cmd);
@@ -1391,6 +1418,7 @@ int Platform::GraphCreateJSON(const char* path, void** params, iris_graph* brs_g
 int Platform::GraphTask(iris_graph brs_graph, iris_task brs_task, int brs_policy, const char* opt) {
   Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
   Task *task = get_task_object(brs_task);
+  assert(task != NULL);
   task->set_brs_policy(brs_policy);
   task->set_opt(opt);
   graph->AddTask(task, brs_task.uid);
@@ -1400,6 +1428,7 @@ int Platform::GraphTask(iris_graph brs_graph, iris_task brs_task, int brs_policy
 int Platform::SetTaskPolicy(iris_task brs_task, int brs_policy)
 {
     Task *task = get_task_object(brs_task);
+    assert(task != NULL);
     task->set_brs_policy(brs_policy);
     return IRIS_SUCCESS;
 }
@@ -1407,6 +1436,7 @@ int Platform::SetTaskPolicy(iris_task brs_task, int brs_policy)
 void Platform::set_release_task_flag(bool flag, iris_task brs_task)
 {
     Task *task = get_task_object(brs_task);
+    assert(task != NULL);
     task->DisableRelease();
 }
 

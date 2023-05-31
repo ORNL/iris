@@ -79,57 +79,6 @@ namespace iris {
             protected:
                 pthread_mutex_t track_lock_;
         };
-#if 0
-        class ObjectSharedPtrTrack  
-        {
-            public:
-                ObjectSharedPtrTrack( ) {
-                    //freed_objects = 0;
-                    pthread_mutex_init(&track_lock_, NULL);
-                }
-                ~ObjectSharedPtrTrack() {
-                    pthread_mutex_destroy(&track_lock_);
-                }
-                bool IsObjectExists(unsigned long uid) { 
-                    bool flag = false;
-                    void *obj = NULL;
-                    if (allocated_shared_ptr_objects_.find(uid) != allocated_shared_ptr_objects_.end())  {
-                        obj = allocated_shared_ptr_objects_[uid];
-                        flag = (obj != NULL);
-                    }
-                    _trace("object:%lu: %p exists flag:%d", uid, obj, flag);
-                    return flag;
-                }
-                shared_ptr<Task> GetObject(unsigned long uid) {
-                    if (allocated_shared_ptr_objects_.find(uid) != allocated_shared_ptr_objects_.end())
-                        return allocated_shared_ptr_objects_[uid];
-                    return NULL;
-                }
-                void UntrackObject(shared_ptr<Task> p, unsigned long uid) {
-                    pthread_mutex_lock(&track_lock_);
-                    allocated_shared_ptr_objects_[uid] = 0;
-                    _trace("Untracking object: %lu: %p", uid, p);
-                    pthread_mutex_unlock(&track_lock_);
-                    //freed_objects+=1; 
-                }
-                void TrackObject(void *p, unsigned long uid) {
-                    pthread_mutex_lock(&track_lock_);
-                    if (allocated_shared_ptr_objects_.find(uid) != allocated_shared_ptr_objects_.end()) 
-                        allocated_shared_ptr_objects_[uid] = p;
-                    else
-                        allocated_shared_ptr_objects_.insert(pair<unsigned long, void *>(uid, p));
-                    pthread_mutex_unlock(&track_lock_);
-                }
-                void Clear() {
-                    allocated_shared_ptr_objects_.clear();
-                }
-
-            private:
-                //int freed_objects;
-                std::map<unsigned long, shared_ptr<Task>> allocated_shared_ptr_objects_;
-                pthread_mutex_t track_lock_;
-        };
-#endif
     }
 }
 
