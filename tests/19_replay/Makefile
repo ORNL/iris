@@ -10,7 +10,7 @@ kernel.ptx: kernel.cu
 kernel.hip: kernel.hip.cpp
 	hipcc --genco -o $@ $^
 
-kernel.openmp.so: kernel.cl.openmp.c
+kernel.openmp.so: kernel.cl.openmp.c kernel.cl.openmp.h
 	gcc -g -lgomp -Wl,-rpath=$(OPENMP_PATH) -fPIC -shared -I. $(CFLAGS) -o $@ $^
 
 cleanjson:
