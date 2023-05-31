@@ -20,10 +20,8 @@
 #include "rapidjson/writer.h"
 #include "rapidjson/error/en.h"
 #include <csignal>
-#ifdef RAPIDJSON_ALIGN
-#undef RAPIDJSON_ALIGN
-#endif // RAPIDJSON_ALIGN
 #define RAPIDJSON_ALIGN (128)
+
 namespace iris {
 namespace rt {
 
