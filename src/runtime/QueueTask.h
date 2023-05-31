@@ -18,6 +18,7 @@ public:
   bool Peek(Task** task, int index);
   bool Enqueue(Task* task);
   bool Dequeue(Task** task);
+  bool Dequeue(pair<unsigned long, Task*>* task) { return Dequeue(task); }
   size_t Size();
   bool Empty();
 

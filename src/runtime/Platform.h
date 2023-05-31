@@ -6,6 +6,7 @@
 #include <stddef.h>
 #include <vector>
 #include <set>
+#include <assert.h>
 #include <map>
 #include <mutex>
 #include <string>
@@ -183,7 +184,45 @@ public:
   char* app() { return app_; }
   char* host() { return host_; }
   Profiler** profilers() { return profilers_; }
-  ObjectTrack & track() { return object_track_; }
+  //ObjectTrack & track() { return object_track_; }
+  ObjectTrack * task_track_ptr() { return &task_track_; }
+  ObjectTrack * graph_track_ptr() { return &graph_track_; }
+  ObjectTrack * mem_track_ptr() { return &mem_track_; }
+  ObjectTrack * kernel_track_ptr() { return &kernel_track_; }
+  ObjectTrack & task_track() { return task_track_; }
+  ObjectTrack & graph_track() { return graph_track_; }
+  ObjectTrack & mem_track() { return mem_track_; }
+  ObjectTrack & kernel_track() { return kernel_track_; }
+  bool is_task_exist(unsigned long uid) { return task_track_.IsObjectExists(uid); }
+  bool is_mem_exist(unsigned long uid) { return mem_track_.IsObjectExists(uid); }
+  bool is_kernel_exist(unsigned long uid) { return kernel_track_.IsObjectExists(uid); }
+  bool is_graph_exist(unsigned long uid) { return graph_track_.IsObjectExists(uid); }
+  Task *get_task_object(unsigned long uid) { 
+      //task_track_.Print("Task track"); 
+      Task *task = (Task *)task_track_.GetObject(uid); 
+      return task;
+  }
+  Task *get_task_object(iris_task brs_task) { 
+      //task_track_.Print("Task track"); 
+      Task *task = (Task *)task_track_.GetObject(brs_task.uid); 
+      return task;
+  }
+  BaseMem *get_mem_object(unsigned long uid) { 
+      //mem_track_.Print("Mem track"); 
+      BaseMem *mem = (BaseMem *)mem_track_.GetObject(uid); 
+      assert(mem != NULL);
+      return mem; 
+  }
+  BaseMem *get_mem_object(iris_mem brs_mem) { 
+      //mem_track_.Print("Mem track"); 
+      BaseMem *mem = (BaseMem *)mem_track_.GetObject(brs_mem.uid); 
+      assert(mem != NULL);
+      return mem; 
+  }
+  Graph *get_graph_object(unsigned long uid) { return (Graph *)graph_track_.GetObject(uid); }
+  Graph *get_graph_object(iris_graph brs_graph) { return (Graph *)graph_track_.GetObject(brs_graph.uid); }
+  Kernel *get_kernel_object(unsigned long uid) { return (Kernel *)kernel_track_.GetObject(uid); }
+  Kernel *get_kernel_object(iris_kernel brs_kernel) { return (Kernel *)kernel_track_.GetObject(brs_kernel.uid); }
   int nprofilers() { return nprofilers_; }
   bool enable_scheduling_history() { return enable_scheduling_history_; }
   SchedulingHistory* scheduling_history() { return scheduling_history_; }
@@ -252,7 +291,10 @@ private:
   std::map<std::string, vector<shared_ptr<History> > > kernel_history_;
   //std::set<BaseMem*> mems_;
   std::map<std::string, std::string> env_;
-  ObjectTrack object_track_;
+  ObjectTrack task_track_;
+  ObjectTrack mem_track_;
+  ObjectTrack kernel_track_;
+  ObjectTrack graph_track_;
 
   PresentTable* present_table_;
   Pool* pool_;

@@ -12,33 +12,42 @@ namespace iris {
         {
             public:
                 ObjectTrack( ) {
-                    freed_objects = 0;
+                    //freed_objects = 0;
                     pthread_mutex_init(&track_lock_, NULL);
                 }
-                ~ObjectTrack() {
+                virtual ~ObjectTrack() {
                     pthread_mutex_destroy(&track_lock_);
                 }
-                bool IsObjectExists(void *p, unsigned long uid) { 
+                virtual bool IsObjectExists(unsigned long uid) { 
                     bool flag = false;
-                    if (allocated_objects_.find(p) != allocated_objects_.end())  {
-                        unsigned long luid = allocated_objects_[p];
-                        flag = (luid > 0) && (allocated_objects_[p] == uid);
+                    void *obj = NULL;
+                    if (allocated_objects_.find(uid) != allocated_objects_.end())  {
+                        obj = allocated_objects_[uid];
+                        flag = (obj != NULL);
                     }
-                    _trace("object:%p exists flag:%d", p, flag);
+                    //printf("object:%lu: %p exists flag:%d\n", uid, obj, flag);
+                    _trace("object:%lu: %p exists flag:%d", uid, obj, flag);
                     return flag;
                 }
-                void UntrackObject(void *p) {
+                virtual void *GetObject(unsigned long uid) {
+                    if (allocated_objects_.find(uid) != allocated_objects_.end())
+                        return allocated_objects_[uid];
+                    return NULL;
+                }
+                virtual void UntrackObject(void *p, unsigned long uid) {
                     pthread_mutex_lock(&track_lock_);
-                    allocated_objects_[p] = 0;
+                    allocated_objects_[uid] = 0;
+                    _trace("Untracking object: %lu: %p", uid, p);
+                    //printf("Untracking object: %lu: %p\n", uid, p);
                     pthread_mutex_unlock(&track_lock_);
                     //freed_objects+=1; 
                 }
-                void TrackObject(void *p, unsigned long uid) {
+                virtual void TrackObject(void *p, unsigned long uid) {
                     pthread_mutex_lock(&track_lock_);
-                    if (allocated_objects_.find(p) != allocated_objects_.end()) 
-                        allocated_objects_[p] = uid;
+                    if (allocated_objects_.find(uid) != allocated_objects_.end()) 
+                        allocated_objects_[uid] = p;
                     else
-                        allocated_objects_.insert(pair<void *, unsigned long>(p, uid));
+                        allocated_objects_.insert(pair<unsigned long, void *>(uid, p));
                     pthread_mutex_unlock(&track_lock_);
 #if 0
                     if (freed_objects > 2048) {
@@ -52,14 +61,25 @@ namespace iris {
                     }
 #endif
                 }
-                void Clear() {
+                virtual void Clear() {
                     allocated_objects_.clear();
+                }
+                void Print(const char *data="Task track") {
+                    printf("%s\n", data);
+                    for ( auto & z : allocated_objects_) {
+                        if (z.second != NULL)
+                        printf("%lu:%p ", z.first, z.second);
+                    }
+                    printf("\n");
                 }
 
             private:
-                int freed_objects;
-                std::map<void *, unsigned long> allocated_objects_;
+                //int freed_objects;
+                std::map<unsigned long, void *> allocated_objects_;
+            protected:
                 pthread_mutex_t track_lock_;
         };
     }
 }
+
+

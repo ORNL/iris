@@ -74,18 +74,18 @@
                 "parameters": [
                   {
                     "type": "memory_object",
-                    "name": "devicemem-vecadd-buffer0-instance0",
-                    "permission": "rw"
+                    "value": "devicemem-vecadd-buffer0-instance0",
+                    "permissions": "rw"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-vecadd-buffer1-instance0",
-                    "permission": "r"
+                    "value": "devicemem-vecadd-buffer1-instance0",
+                    "permissions": "r"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-vecadd-buffer2-instance0",
-                    "permission": "r"
+                    "value": "devicemem-vecadd-buffer2-instance0",
+                    "permissions": "r"
                   }
                 ]
               }
@@ -110,18 +110,18 @@
                 "parameters": [
                   {
                     "type": "memory_object",
-                    "name": "devicemem-vecadd-buffer0-instance0",
-                    "permission": "rw"
+                    "value": "devicemem-vecadd-buffer0-instance0",
+                    "permissions": "rw"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-vecadd-buffer1-instance0",
-                    "permission": "r"
+                    "value": "devicemem-vecadd-buffer1-instance0",
+                    "permissions": "r"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-vecadd-buffer2-instance0",
-                    "permission": "r"
+                    "value": "devicemem-vecadd-buffer2-instance0",
+                    "permissions": "r"
                   }
                 ]
               }
@@ -147,18 +147,18 @@
                 "parameters": [
                   {
                     "type": "memory_object",
-                    "name": "devicemem-vecadd-buffer0-instance0",
-                    "permission": "rw"
+                    "value": "devicemem-vecadd-buffer0-instance0",
+                    "permissions": "rw"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-vecadd-buffer1-instance0",
-                    "permission": "r"
+                    "value": "devicemem-vecadd-buffer1-instance0",
+                    "permissions": "r"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-vecadd-buffer2-instance0",
-                    "permission": "r"
+                    "value": "devicemem-vecadd-buffer2-instance0",
+                    "permissions": "r"
                   }
                 ]
               }
@@ -184,18 +184,18 @@
                 "parameters": [
                   {
                     "type": "memory_object",
-                    "name": "devicemem-vecadd-buffer0-instance0",
-                    "permission": "rw"
+                    "value": "devicemem-vecadd-buffer0-instance0",
+                    "permissions": "rw"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-vecadd-buffer1-instance0",
-                    "permission": "r"
+                    "value": "devicemem-vecadd-buffer1-instance0",
+                    "permissions": "r"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-vecadd-buffer2-instance0",
-                    "permission": "r"
+                    "value": "devicemem-vecadd-buffer2-instance0",
+                    "permissions": "r"
                   }
                 ]
               }
@@ -221,18 +221,18 @@
                 "parameters": [
                   {
                     "type": "memory_object",
-                    "name": "devicemem-vecadd-buffer0-instance0",
-                    "permission": "rw"
+                    "value": "devicemem-vecadd-buffer0-instance0",
+                    "permissions": "rw"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-vecadd-buffer1-instance0",
-                    "permission": "r"
+                    "value": "devicemem-vecadd-buffer1-instance0",
+                    "permissions": "r"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-vecadd-buffer2-instance0",
-                    "permission": "r"
+                    "value": "devicemem-vecadd-buffer2-instance0",
+                    "permissions": "r"
                   }
                 ]
               }
@@ -258,18 +258,18 @@
                 "parameters": [
                   {
                     "type": "memory_object",
-                    "name": "devicemem-vecadd-buffer0-instance0",
-                    "permission": "rw"
+                    "value": "devicemem-vecadd-buffer0-instance0",
+                    "permissions": "rw"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-vecadd-buffer1-instance0",
-                    "permission": "r"
+                    "value": "devicemem-vecadd-buffer1-instance0",
+                    "permissions": "r"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-vecadd-buffer2-instance0",
-                    "permission": "r"
+                    "value": "devicemem-vecadd-buffer2-instance0",
+                    "permissions": "r"
                   }
                 ]
               }
@@ -295,18 +295,18 @@
                 "parameters": [
                   {
                     "type": "memory_object",
-                    "name": "devicemem-vecadd-buffer0-instance0",
-                    "permission": "rw"
+                    "value": "devicemem-vecadd-buffer0-instance0",
+                    "permissions": "rw"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-vecadd-buffer1-instance0",
-                    "permission": "r"
+                    "value": "devicemem-vecadd-buffer1-instance0",
+                    "permissions": "r"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-vecadd-buffer2-instance0",
-                    "permission": "r"
+                    "value": "devicemem-vecadd-buffer2-instance0",
+                    "permissions": "r"
                   }
                 ]
               }
@@ -332,18 +332,18 @@
                 "parameters": [
                   {
                     "type": "memory_object",
-                    "name": "devicemem-vecadd-buffer0-instance0",
-                    "permission": "rw"
+                    "value": "devicemem-vecadd-buffer0-instance0",
+                    "permissions": "rw"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-vecadd-buffer1-instance0",
-                    "permission": "r"
+                    "value": "devicemem-vecadd-buffer1-instance0",
+                    "permissions": "r"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-vecadd-buffer2-instance0",
-                    "permission": "r"
+                    "value": "devicemem-vecadd-buffer2-instance0",
+                    "permissions": "r"
                   }
                 ]
               }
@@ -369,18 +369,18 @@
                 "parameters": [
                   {
                     "type": "memory_object",
-                    "name": "devicemem-vecadd-buffer0-instance0",
-                    "permission": "rw"
+                    "value": "devicemem-vecadd-buffer0-instance0",
+                    "permissions": "rw"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-vecadd-buffer1-instance0",
-                    "permission": "r"
+                    "value": "devicemem-vecadd-buffer1-instance0",
+                    "permissions": "r"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-vecadd-buffer2-instance0",
-                    "permission": "r"
+                    "value": "devicemem-vecadd-buffer2-instance0",
+                    "permissions": "r"
                   }
                 ]
               }
@@ -406,18 +406,18 @@
                 "parameters": [
                   {
                     "type": "memory_object",
-                    "name": "devicemem-vecadd-buffer0-instance0",
-                    "permission": "rw"
+                    "value": "devicemem-vecadd-buffer0-instance0",
+                    "permissions": "rw"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-vecadd-buffer1-instance0",
-                    "permission": "r"
+                    "value": "devicemem-vecadd-buffer1-instance0",
+                    "permissions": "r"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-vecadd-buffer2-instance0",
-                    "permission": "r"
+                    "value": "devicemem-vecadd-buffer2-instance0",
+                    "permissions": "r"
                   }
                 ]
               }

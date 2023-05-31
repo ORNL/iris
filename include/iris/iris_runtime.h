@@ -19,36 +19,36 @@ class Graph;
 
 struct _iris_task {
 #ifdef __cplusplus
-  iris::rt::Task* class_obj;
+  //iris::rt::Task* class_obj;
 #else
-  void *class_obj;
+  //void *class_obj;
 #endif
   unsigned long uid;
 };
 
 struct _iris_kernel {
 #ifdef __cplusplus
-  iris::rt::Kernel* class_obj;
+  //iris::rt::Kernel* class_obj;
 #else
-  void *class_obj;
+  //void *class_obj;
 #endif
   unsigned long uid;
 };
 
 struct _iris_mem {
 #ifdef __cplusplus
-    iris::rt::BaseMem* class_obj;
+    //iris::rt::BaseMem* class_obj;
 #else
-  void *class_obj;
+  //void *class_obj;
 #endif
   unsigned long uid;
 };
 
 struct _iris_graph {
 #ifdef __cplusplus
-    iris::rt::Graph* class_obj;
+  //iris::rt::Graph* class_obj;
 #else
-  void *class_obj;
+  //void *class_obj;
 #endif
   unsigned long uid;
 };

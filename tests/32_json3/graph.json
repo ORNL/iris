@@ -59,18 +59,18 @@
                 "parameters": [
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer0-instance0",
-                    "permission": "w"
+                    "value": "devicemem-ijk-buffer0-instance0",
+                    "permissions": "w"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer1-instance0",
-                    "permission": "r"
+                    "value": "devicemem-ijk-buffer1-instance0",
+                    "permissions": "r"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer2-instance0",
-                    "permission": "r"
+                    "value": "devicemem-ijk-buffer2-instance0",
+                    "permissions": "r"
                   }
                 ]
               }
@@ -95,18 +95,18 @@
                 "parameters": [
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer0-instance0",
-                    "permission": "w"
+                    "value": "devicemem-ijk-buffer0-instance0",
+                    "permissions": "w"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer1-instance0",
-                    "permission": "r"
+                    "value": "devicemem-ijk-buffer1-instance0",
+                    "permissions": "r"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer2-instance0",
-                    "permission": "r"
+                    "value": "devicemem-ijk-buffer2-instance0",
+                    "permissions": "r"
                   }
                 ]
               }
@@ -132,18 +132,18 @@
                 "parameters": [
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer0-instance0",
-                    "permission": "w"
+                    "value": "devicemem-ijk-buffer0-instance0",
+                    "permissions": "w"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer1-instance0",
-                    "permission": "r"
+                    "value": "devicemem-ijk-buffer1-instance0",
+                    "permissions": "r"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer2-instance0",
-                    "permission": "r"
+                    "value": "devicemem-ijk-buffer2-instance0",
+                    "permissions": "r"
                   }
                 ]
               }
@@ -169,18 +169,18 @@
                 "parameters": [
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer0-instance0",
-                    "permission": "w"
+                    "value": "devicemem-ijk-buffer0-instance0",
+                    "permissions": "w"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer1-instance0",
-                    "permission": "r"
+                    "value": "devicemem-ijk-buffer1-instance0",
+                    "permissions": "r"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer2-instance0",
-                    "permission": "r"
+                    "value": "devicemem-ijk-buffer2-instance0",
+                    "permissions": "r"
                   }
                 ]
               }
@@ -206,18 +206,18 @@
                 "parameters": [
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer0-instance0",
-                    "permission": "w"
+                    "value": "devicemem-ijk-buffer0-instance0",
+                    "permissions": "w"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer1-instance0",
-                    "permission": "r"
+                    "value": "devicemem-ijk-buffer1-instance0",
+                    "permissions": "r"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer2-instance0",
-                    "permission": "r"
+                    "value": "devicemem-ijk-buffer2-instance0",
+                    "permissions": "r"
                   }
                 ]
               }
@@ -243,18 +243,18 @@
                 "parameters": [
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer0-instance0",
-                    "permission": "w"
+                    "value": "devicemem-ijk-buffer0-instance0",
+                    "permissions": "w"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer1-instance0",
-                    "permission": "r"
+                    "value": "devicemem-ijk-buffer1-instance0",
+                    "permissions": "r"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer2-instance0",
-                    "permission": "r"
+                    "value": "devicemem-ijk-buffer2-instance0",
+                    "permissions": "r"
                   }
                 ]
               }
@@ -280,18 +280,18 @@
                 "parameters": [
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer0-instance0",
-                    "permission": "w"
+                    "value": "devicemem-ijk-buffer0-instance0",
+                    "permissions": "w"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer1-instance0",
-                    "permission": "r"
+                    "value": "devicemem-ijk-buffer1-instance0",
+                    "permissions": "r"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer2-instance0",
-                    "permission": "r"
+                    "value": "devicemem-ijk-buffer2-instance0",
+                    "permissions": "r"
                   }
                 ]
               }
@@ -317,18 +317,18 @@
                 "parameters": [
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer0-instance0",
-                    "permission": "w"
+                    "value": "devicemem-ijk-buffer0-instance0",
+                    "permissions": "w"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer1-instance0",
-                    "permission": "r"
+                    "value": "devicemem-ijk-buffer1-instance0",
+                    "permissions": "r"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer2-instance0",
-                    "permission": "r"
+                    "value": "devicemem-ijk-buffer2-instance0",
+                    "permissions": "r"
                   }
                 ]
               }
@@ -354,18 +354,18 @@
                 "parameters": [
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer0-instance0",
-                    "permission": "w"
+                    "value": "devicemem-ijk-buffer0-instance0",
+                    "permissions": "w"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer1-instance0",
-                    "permission": "r"
+                    "value": "devicemem-ijk-buffer1-instance0",
+                    "permissions": "r"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer2-instance0",
-                    "permission": "r"
+                    "value": "devicemem-ijk-buffer2-instance0",
+                    "permissions": "r"
                   }
                 ]
               }
@@ -391,18 +391,18 @@
                 "parameters": [
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer0-instance0",
-                    "permission": "w"
+                    "value": "devicemem-ijk-buffer0-instance0",
+                    "permissions": "w"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer1-instance0",
-                    "permission": "r"
+                    "value": "devicemem-ijk-buffer1-instance0",
+                    "permissions": "r"
                   },
                   {
                     "type": "memory_object",
-                    "name": "devicemem-ijk-buffer2-instance0",
-                    "permission": "r"
+                    "value": "devicemem-ijk-buffer2-instance0",
+                    "permissions": "r"
                   }
                 ]
               }

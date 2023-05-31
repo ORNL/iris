@@ -20,7 +20,7 @@ int main(int argc, char** argv) {
   iris_mem mem;
   iris_mem_create(SIZE * sizeof(int), &mem);
 
-  void* json_inputs[3] = { &mem, A, B };
+  void* json_inputs[3] = { A, B, &mem };
 
   iris_graph graph;
   iris_graph_create_json("../18_record/output.json", json_inputs, &graph);

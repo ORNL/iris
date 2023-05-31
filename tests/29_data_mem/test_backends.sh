@@ -45,3 +45,4 @@ echo "Running (NVIDIA) OpenMP..."
 IRIS_ARCHS=openmp IRIS_KERNEL_BIN_OPENMP=`pwd`/kernel.nvopenmp.so ./test29_data_mem
 [ $? -ne 0 ] && echo "Failed! (OpenMP [NVIDIA] backend) Exiting." && exit 1
 
+exit 0
