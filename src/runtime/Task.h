@@ -59,7 +59,7 @@ public:
   void set_system() { system_ = true; }
   bool marker() { return type_ == IRIS_MARKER; }
   int status() { return status_; }
-  Task* parent() { return parent_; }
+  Task* parent() { return platform_->get_task_object(parent_); }
   Command* cmd(int i) { return cmds_[i]; }
   Command* cmd_kernel() { return cmd_kernel_; }
   Command* cmd_last() { return cmd_last_; }
@@ -92,13 +92,14 @@ public:
   bool sync() { return sync_; }
   std::vector<Task*>* subtasks() { return &subtasks_; }
   Task* subtask(int i) { return subtasks_[i]; }
-  bool is_subtask() { return parent_ != NULL; }
+  bool is_subtask() { return parent_exist_; }
   bool is_kernel_launch_disabled() { return is_kernel_launch_disabled_; }
   void set_kernel_launch_disabled(bool flag=true) { is_kernel_launch_disabled_ = flag; }
   int ndepends() { return ndepends_; }
   void set_ndepends(int n) { ndepends_ = n; }
-  Task** depends() { return depends_; }
-  Task* depend(int i) { return depends_[i]; }
+  //Task** depends() { return depends_; }
+  unsigned long* depends() { return depends_uids_; }
+  Task* depend(int i) { return platform_->get_task_object(depends_uids_[i]); }
   void* arch() { return arch_; }
   void set_arch(void* arch) { arch_ = arch; }
   void set_pending();
@@ -116,7 +117,8 @@ private:
 private:
   char name_[128];
   bool given_name_;
-  Task* parent_;
+  unsigned long parent_;
+  bool parent_exist_;
   int ncmds_;
   Command* cmds_[64];
   Command* cmd_kernel_;
@@ -131,7 +133,7 @@ private:
   size_t subtasks_complete_;
   void* arch_;
 
-  Task** depends_;
+  //Task** depends_;
   unsigned long* depends_uids_;
   int depends_max_;
   int ndepends_;

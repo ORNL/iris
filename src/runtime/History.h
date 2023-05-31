@@ -22,7 +22,7 @@ struct TaskProfile
     double end;
 };
 struct DataObjectProfile {
-  uint32_t  task_id_;;
+  uint32_t  task_id_;
   uint32_t  mem_id_;
   uint32_t datatransfer_type_;
   uint32_t from_dev_id_;

@@ -69,10 +69,10 @@ int ProfilerDOT::CompleteTask(Task* task) {
     sprintf(s, "start -> task%lu\n", tid);
     Write(s);
   } else {
-    Task** deps = task->depends();
+    unsigned long *deps = task->depends();
     pthread_mutex_lock(&dot_lock_);
     for (int i = 0; i < ndepends; i++) {
-      unsigned long duid = deps[i]->uid();
+      unsigned long duid = deps[i];
       if (tasks_exit_.find(duid) != tasks_exit_.end())
           tasks_exit_.erase(duid);
       sprintf(s, "task%lu -> task%lu\n", duid, tid);

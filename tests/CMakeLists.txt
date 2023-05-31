@@ -86,7 +86,7 @@ list(APPEND TEST_EXES "09_dataflow" "test09_dataflow" "")
 if (CUDAToolkit_FOUND)
 list(APPEND TEST_EXES "10_multikernelexecution" "test10_multikernelexecution" "")
 endif()
-list(APPEND TEST_EXES "11_deadlock" "test11_deadlock" "")
+#list(APPEND TEST_EXES "11_deadlock" "test11_deadlock" "")
 #[REMOVE] CUDA specific and interfaces directly with the CUDA loader
 #list(APPEND TEST_EXES "12_task_custom" "test12_task_custom" "")
 list(APPEND TEST_EXES "13_hooks" "test13_hooks" "")

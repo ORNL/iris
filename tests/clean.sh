@@ -34,8 +34,9 @@ rm -rf                                                    \
   ./26_env_set/test26_env_set                             \
   ./27_deadlock2/test27_deadlock2                         \
   ./28_json2/test28_json2                                 \
-  ./29_data_mem/test29_data_mem                           \
+  ./29_data_flow/test29_data_mem                          \
   ./30_task_info/test30_task_info                         \
   ./32_json3/test32_json3                                 \
   ./33_graph_cpp/test33_graph_cpp                         \
+  ./33_graph_cpp/*.so                                     \
   ./34_set_mem/test34_set_mem

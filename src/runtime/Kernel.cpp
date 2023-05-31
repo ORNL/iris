@@ -25,9 +25,12 @@ Kernel::Kernel(const char* name, Platform* platform) {
     set_vendor_specific_kernel(i, false);
     vendor_specific_kernel_check_flag_[i] = false;
   }
+  set_object_track(Platform::GetPlatform()->kernel_track_ptr());
+  Platform::GetPlatform()->kernel_track().TrackObject(this, uid());
 }
 
 Kernel::~Kernel() {
+  Platform::GetPlatform()->kernel_track().UntrackObject(this, uid());
   data_mems_in_.clear();
   data_mems_in_order_.clear();
   data_mem_regions_in_.clear();
