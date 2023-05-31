@@ -37,8 +37,8 @@
                 "parameters": [
                   {
                     "type": "memory_object",
-                    "name": "user-B",
-                    "permission": "rw"
+                    "value": "user-B",
+                    "permissions": "rw"
                   }
                 ]
               }
@@ -61,8 +61,8 @@
                 "parameters": [
                   {
                     "type": "memory_object",
-                    "name": "user-B",
-                    "permission": "rw"
+                    "value": "user-B",
+                    "permissions": "rw"
                   }
                 ]
               }
@@ -85,8 +85,8 @@
                 "parameters": [
                   {
                     "type": "memory_object",
-                    "name": "user-B",
-                    "permission": "rw"
+                    "value": "user-B",
+                    "permissions": "rw"
                   }
                 ]
               }
@@ -109,8 +109,8 @@
                 "parameters": [
                   {
                     "type": "memory_object",
-                    "name": "user-B",
-                    "permission": "rw"
+                    "value": "user-B",
+                    "permissions": "rw"
                   }
                 ]
               }
@@ -133,8 +133,8 @@
                 "parameters": [
                   {
                     "type": "memory_object",
-                    "name": "user-B",
-                    "permission": "rw"
+                    "value": "user-B",
+                    "permissions": "rw"
                   }
                 ]
               }
@@ -157,8 +157,8 @@
                 "parameters": [
                   {
                     "type": "memory_object",
-                    "name": "user-B",
-                    "permission": "rw"
+                    "value": "user-B",
+                    "permissions": "rw"
                   }
                 ]
               }
@@ -181,8 +181,8 @@
                 "parameters": [
                   {
                     "type": "memory_object",
-                    "name": "user-B",
-                    "permission": "rw"
+                    "value": "user-B",
+                    "permissions": "rw"
                   }
                 ]
               }
@@ -205,8 +205,8 @@
                 "parameters": [
                   {
                     "type": "memory_object",
-                    "name": "user-B",
-                    "permission": "rw"
+                    "value": "user-B",
+                    "permissions": "rw"
                   }
                 ]
               }
