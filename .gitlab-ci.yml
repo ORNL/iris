@@ -153,11 +153,7 @@ test-backends-29:
     - cd tests
     - echo "Test backends for test 29"
     - cd 29_data_mem
-    - set +e
     - bash test_backends.sh
-    - EXIT_CODE=$?
-    - echo Finished $EXIT_CODE
-    - exit $EXIT_CODE
   after_script:
     - python3 -m venv .venv
     - source .venv/bin/activate
@@ -188,11 +184,7 @@ test-backends-34:
     - cd tests
     - echo "Test backends for test 34"
     - cd 34_set_mem
-    - set +e
     - bash test_backends.sh
-    - EXIT_CODE=$?
-    - echo Finished $EXIT_CODE
-    - exit $EXIT_CODE
   after_script:
     - python3 -m venv .venv
     - source .venv/bin/activate
