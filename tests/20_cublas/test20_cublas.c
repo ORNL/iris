@@ -52,6 +52,19 @@ int main(int argc, char** argv) {
   //setenv("IRIS_ARCHS", "cuda", 1);
   iris_init(&argc, &argv, 1);
 
+  int ndevs;
+  bool is_nvidia_device=0;
+  iris_device_count(&ndevs);
+  for (int d = 0; d < ndevs; d++){
+    int backend_worker;
+    iris_device_info(d, iris_backend, &backend_worker, NULL);
+    if (backend_worker == iris_cuda) is_nvidia_device = 1;
+  }
+  if(!is_nvidia_device){
+    printf("Skipping this test because it is only designed to test NVIDIA GPUs with CUDA.\n");
+    return 0;
+  }
+
   size_t SIZE, nbytes;
   double *A, *B, *C;
 
