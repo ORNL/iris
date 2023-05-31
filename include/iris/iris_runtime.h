@@ -531,16 +531,53 @@ extern int iris_register_pin_memory(void *host, size_t size);
 
 /**
  * UPDATED
- * @brief Registers pin memory
- * This function enables pinning of host memory
+ * @brief Cretes IRIS memory object
+ * This function creates IRIS memory object for a given size
+ * @param size size of the memory
+ * @param mem pointer to the memory object
+ * @return This function returns an integer indicating IRIS STATUS.
+ */
+extern int iris_mem_create(size_t size, iris_mem* mem);
+
+/**
+ * UPDATED
+ * @brief Resets a memory object by setting the dirty flag for host
+ * This function resets a memory object by setting the dirty flag for host
+ * @param mem pointer to the memory object
+ * @param reset 0: no reseting 1: reset
+ * @return This function returns an integer indicating IRIS STATUS.
+ */
+extern int iris_data_mem_init_reset(iris_mem mem, int reset);
+
+/**
+ * UPDATED
+ * @brief Cretes IRIS data memory object
+ * This function creates IRIS data memory object for a given size
+ * @param mem pointer to the memory object
  * @param host host pointer of the data structure
  * @param size size of the memory
  * @return This function returns an integer indicating IRIS STATUS.
  */
-extern int iris_mem_create(size_t size, iris_mem* mem);
-extern int iris_data_mem_init_reset(iris_mem mem, int reset);
 extern int iris_data_mem_create(iris_mem* mem, void *host, size_t size);
+
+/**
+ * UPDATED
+ * @brief Frees memory for a DMEM object for all the devices
+ * This function Resets a memory object by setting the dirty flag for host
+ * @param mem pointer to the memory object
+ * @return This function returns an integer indicating IRIS STATUS.
+ */
 extern int iris_data_mem_clear(iris_mem mem);
+
+
+/**
+ * UPDATED
+ * QUESTION : it pins a host memory for all the available platforms
+ * @brief  Pins a host memory for all the available platforms
+ * This function pins a host memory for all the available platforms
+ * @param mem pointer to the memory object
+ * @return This function returns an integer indicating IRIS STATUS.
+ */
 extern int iris_data_mem_pin(iris_mem mem);
 extern int iris_data_mem_update(iris_mem mem, void *host);
 extern int iris_data_mem_create_region(iris_mem* mem, iris_mem root_mem, int region);
@@ -576,15 +613,52 @@ extern int iris_record_stop();
  */
 extern int iris_timer_now(double* time);
 
-// Enable/Disable methods
+
+/**
+ * UPDATED
+ * @brief Enables peer to peer transfer
+ * This function enables peer to peer transfer
+ */
 extern void iris_enable_d2d();
+
+/**
+ * UPDATED
+ * @brief Disables peer to peer transfer
+ * This function disables peer to peer transfer
+ */
 extern void iris_disable_d2d();
 extern void iris_disable_consistency_check();
 extern void iris_enable_consistency_check();
 
-// Task internal members access
+
+/**
+ * UPDATED
+ * @brief Returns a kernel name
+ * This function returns a kernel name
+ * @param brs_kernel kernel object
+ * @return This function returns name of the kernel.
+ */
 extern char *iris_kernel_get_name(iris_kernel brs_kernel);
+
+
+/**
+ * UPDATED
+ * @brief Retruns a task name
+ * This function returns a task name
+ * @param brs_task task object
+ * @return This function returns name of the task.
+ */
 extern char *iris_task_get_name(iris_task brs_task);
+
+
+/**
+ * UPDATED
+ * @brief Sets a task name
+ * This function Sets a task name
+ * @param brs_task task object
+ * @param name name of the task
+ * @return This function returns an integer indicating IRIS STATUS.
+ */
 extern void iris_task_set_name(iris_task brs_task, const char *name);
 extern int iris_task_get_dependency_count(iris_task brs_task);
 extern void iris_task_get_dependencies(iris_task brs_task, iris_task *tasks);
