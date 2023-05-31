@@ -31,7 +31,8 @@ Graph::Graph(Platform* platform) {
 
   pthread_mutex_init(&mutex_complete_, NULL);
   pthread_cond_init(&complete_cond_, NULL);
-  platform_->track().TrackObject(this, uid());
+  set_object_track(platform_->graph_track_ptr());
+  platform_->graph_track().TrackObject(this, uid());
 }
 
 shared_ptr<GraphMetadata> Graph::get_metadata(int iterations)
@@ -42,8 +43,7 @@ shared_ptr<GraphMetadata> Graph::get_metadata(int iterations)
 }
 
 Graph::~Graph() {
-  platform_->track().UntrackObject(this);
-  platform_->track().UntrackObject(struct_obj());
+  platform_->graph_track().UntrackObject(this, uid());
   pthread_mutex_destroy(&mutex_complete_);
   pthread_cond_destroy(&complete_cond_);
   //if (end_) delete end_;

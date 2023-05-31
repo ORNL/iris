@@ -3,12 +3,13 @@
 #include <iris/rt/Device.h>
 #include <iris/rt/Kernel.h>
 #include <iris/rt/Task.h>
+#include <iris/rt/Platform.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 int my_kernel_selector(iris_task task, void* params, char* kernel_name) {
   size_t threshold = *((size_t*) params);
-  iris::rt::Task* t = task.class_obj;
+  iris::rt::Task* t = iris::rt::Platform::GetPlatform()->get_task_object(task);
   iris::rt::Device* d = t->dev();
   iris::rt::Command* c = t->cmd_kernel();
   iris::rt::Kernel* k = c->kernel();

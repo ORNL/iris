@@ -20,6 +20,9 @@
 #include "rapidjson/writer.h"
 #include "rapidjson/error/en.h"
 #include <csignal>
+#ifdef RAPIDJSON_ALIGN
+#undef RAPIDJSON_ALIGN
+#endif //RAPIDJSON_ALIGN
 #define RAPIDJSON_ALIGN (128)
 
 namespace iris {
@@ -386,7 +389,7 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
           platform_->IncrementErrorCount();
           return IRIS_ERROR;
         }
-        Command* cmd = Command::CreateH2D(task, (Mem *)dev_mem->class_obj, offset, size, host_mem);
+        Command* cmd = Command::CreateH2D(task, (Mem *)platform_->get_mem_object(*dev_mem), offset, size, host_mem);
         //name (optional)
         if(h2d_.HasMember("name")){
           if(!h2d_["name"].IsString()){
@@ -449,7 +452,7 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
           return IRIS_ERROR;
         }
 
-        Command* cmd = Command::CreateD2H(task, (Mem *)dev_mem->class_obj, offset, size, host_mem);
+        Command* cmd = Command::CreateD2H(task, (Mem *)platform_->get_mem_object(*dev_mem), offset, size, host_mem);
         //name (optional)
         if(d2h_.HasMember("name")){
           if(!d2h_["name"].IsString()){

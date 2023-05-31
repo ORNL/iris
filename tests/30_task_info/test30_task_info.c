@@ -89,8 +89,8 @@ int main(int argc, char** argv) {
   iris_task_create(&task3);
   iris_task_d2h_full(task3, mem_C, C);
   iris_task_info(task3, iris_ncmds, &ncmds, NULL);
-  iris_task_info(task2, iris_ncmds_kernel, &ncmds_kernel, NULL);
-  iris_task_info(task2, iris_ncmds_memcpy, &ncmds_memcpy, NULL);
+  iris_task_info(task3, iris_ncmds_kernel, &ncmds_kernel, NULL);
+  iris_task_info(task3, iris_ncmds_memcpy, &ncmds_memcpy, NULL);
   printf("[%s:%d] ncmds[%d] kernel[%d] memcpy[%d]\n", __FILE__, __LINE__, ncmds, ncmds_kernel, ncmds_memcpy);
   iris_task_submit(task3, iris_roundrobin, NULL, 1);
 
