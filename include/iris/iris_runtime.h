@@ -142,6 +142,7 @@ typedef int (*hook_command)(void* command);
 typedef int (*iris_selector_kernel)(iris_task task, void* params, char* kernel_name);
 
 /**
+ * OLD
  * Initializes the IRIS execution environment.
  * @param argc pointer to the number of arguments
  * @param argv argument array
@@ -151,26 +152,31 @@ typedef int (*iris_selector_kernel)(iris_task task, void* params, char* kernel_n
 extern int iris_init(int* argc, char*** argv, int sync);
 
 /**
-  * Return number of errors occurred in IRIS
-  */
+ * OLD
+ * Return number of errors occurred in IRIS
+ */
 extern int iris_error_count();
 
 /**
+ * OLD
  * Terminates the IRIS execution environment.
  */
 extern int iris_finalize();
 
 /**
+ * OLD
  * Waits for all the submitted tasks to complete.
  */
 extern int iris_synchronize();
 
 /**
+ * OLD
   * If task need to be submitted again and again.
   */
 extern void iris_task_retain(iris_task task, bool flag);
 
 /**
+ * OLD
  * Sets an IRIS environment variable.
  * @param key key string
  * @param value value to be stored into key
@@ -178,6 +184,7 @@ extern void iris_task_retain(iris_task task, bool flag);
 extern int iris_env_set(const char* key, const char* value);
 
 /**
+ * OLD
  * Gets an IRIS environment variable.
  * @param key key string
  * @param value pointer to the value to be retrieved
@@ -186,17 +193,20 @@ extern int iris_env_set(const char* key, const char* value);
 extern int iris_env_get(const char* key, char** value, size_t* vallen);
 
 /**
+ * OLD
  * Gets the number of errors encountered during the IRIS environments history.
  */
 extern int iris_error_count();
 
 /**
+ * OLD
  * Returns the number of platforms.
  * @param nplatforms pointer to the number of platform
  */
 extern int iris_platform_count(int* nplatforms);
 
 /**
+ * OLD
  * Returns the platform information.
  * @param platform platform number
  * @param param information type
@@ -207,16 +217,19 @@ extern int iris_platform_info(int platform, int param, void* value, size_t* size
 extern int iris_set_shared_memory_model(int flag);
 
 /**
+ * OLD
  * Enable/disable profiler
  */
 extern void iris_set_enable_profiler(int flag);
 /**
+ * OLD
  * Returns the number of devices.
  * @param ndevs pointer to the number of devices
  */
 extern int iris_device_count(int* ndevs);
 
 /**
+ * OLD
  * Returns the device information.
  * @param device device number
  * @param param information type
@@ -228,6 +241,7 @@ extern int iris_device_set_default(int device);
 extern int iris_device_get_default(int* device);
 
 /**
+ * OLD
  * Waits for all the submitted tasks in a device to complete.
  * @param ndevs number of devices
  * @param devices device array
@@ -235,6 +249,7 @@ extern int iris_device_get_default(int* device);
 extern int iris_device_synchronize(int ndevs, int* devices);
 
 /**
+ * OLD
  * Registers a new device selector
  * @param lib shared library path
  * @param name selector name
@@ -254,6 +269,7 @@ extern int iris_kernel_setmap(iris_kernel kernel, int idx, void* host, size_t mo
 extern int iris_kernel_release(iris_kernel kernel);
 
 /**
+ * OLD
  * Creates a new task.
  * @param task pointer of the new task
  */
@@ -262,6 +278,7 @@ extern int iris_task_create_perm(iris_task* task);
 extern int iris_task_create_name(const char* name, iris_task* task);
 
 /**
+ * OLD
  * Adds a dependency to a task.
  * @param task source task
  * @param ntasks number of tasks
@@ -274,6 +291,7 @@ extern int iris_task_get_metadata(iris_task brs_task, int index);
 extern int iris_task_set_metadata(iris_task brs_task, int index, int metadata);
 
 /**
+ * OLD
  * Adds a H2Broadcast command to the target task.
  * @param task target task
  * @param mem target memory object
@@ -286,6 +304,7 @@ extern int iris_task_h2broadcast_offsets(iris_task task, iris_mem mem, size_t *o
 extern int iris_task_h2broadcast_full(iris_task task, iris_mem mem, void* host);
 
 /**
+ * OLD
  * Adds a D2D command to the target task.
  * @param task target task
  * @param mem target memory object
@@ -296,6 +315,7 @@ extern int iris_task_h2broadcast_full(iris_task task, iris_mem mem, void* host);
  */
 extern int iris_task_d2d(iris_task task, iris_mem mem, size_t off, size_t size, void* host, int src_dev);
 /**
+ * OLD
  * Adds a H2D command to the target task.
  * @param task target task
  * @param mem target memory object
@@ -307,6 +327,7 @@ extern int iris_task_h2d(iris_task task, iris_mem mem, size_t off, size_t size, 
 extern int iris_task_h2d_offsets(iris_task task, iris_mem mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, void* host);
 
 /**
+ * OLD
  * Adds a D2H command to the target task.
  * @param task target task
  * @param mem source memory object
@@ -319,6 +340,7 @@ extern int iris_task_d2h_offsets(iris_task task, iris_mem mem, size_t *off, size
 extern int iris_task_dmem_flush_out(iris_task task, iris_mem mem);
 
 /**
+ * OLD
  * Adds a H2D command with the size of the target memory to the target task.
  * @param task target task
  * @param mem target memory object
@@ -327,6 +349,7 @@ extern int iris_task_dmem_flush_out(iris_task task, iris_mem mem);
 extern int iris_task_h2d_full(iris_task task, iris_mem mem, void* host);
 
 /**
+ * OLD
  * Adds a D2H command with the size of the source memory to the target task.
  * @param task target task
  * @param mem source memory object
@@ -336,6 +359,7 @@ extern int iris_task_d2h_full(iris_task task, iris_mem mem, void* host);
 extern int iris_task_kernel_object(iris_task task, iris_kernel kernel, int dim, size_t* off, size_t* gws, size_t* lws);
 
 /**
+ * OLD
  * Launch a kernel
  * @param task target task
  * @param kernel kernel name
@@ -357,6 +381,7 @@ extern int iris_task_host(iris_task task, iris_host_task func, void* params);
 extern int iris_task_custom(iris_task task, int tag, void* params, size_t params_size);
 
 /**
+ * OLD
  * Submits a task.
  * @param task target task
  * @param device device_selector
@@ -367,12 +392,14 @@ extern int iris_task_submit(iris_task task, int device, const char* opt, int syn
 extern int iris_task_set_policy(iris_task task, int device);
 
 /**
+ * OLD
  * Waits for the task to complete.
  * @param task target task
  */
 extern int iris_task_wait(iris_task task);
 
 /**
+ * OLD
  * Waits for all the tasks to complete.
  * @param ntasks number of tasks
  * @param tasks target tasks array
@@ -382,6 +409,7 @@ extern int iris_task_add_subtask(iris_task task, iris_task subtask);
 extern int iris_task_kernel_cmd_only(iris_task task);
 
 /**
+ * OLD
  * Releases a target.
  * @param task target task
  */
@@ -424,6 +452,7 @@ extern int iris_record_start();
 extern int iris_record_stop();
 
 /**
+ * OLD
  * Returns current time in seconds.
  * @param time pointer of time
  */
