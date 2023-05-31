@@ -70,6 +70,9 @@ deploy_docs_manual-job:
     - echo $CI_REPOSITORY_URL
     - echo $CI_PROJECT_PATH
     - source $IRIS_INSTALL_ROOT/setup.source
+    - echo $PATH
+    - echo $LD_LIBRARY_PATH
+    - echo $HIP_ROOT
     - cd tests
     - mkdir build
     - cd build
@@ -133,9 +136,9 @@ test-job-explorer:
   extends: .test-job
   tags: [explorer]
 
-test-job-leconte:
-  extends: .test-job
-  tags: [leconte]
+# test-job-leconte:
+#   extends: .test-job
+#   tags: [leconte]
 
 test-backends-29:
   tags: [zenith]
@@ -150,6 +153,9 @@ test-backends-29:
     - echo $CI_REPOSITORY_URL
     - echo $CI_PROJECT_PATH
     - source $IRIS_INSTALL_ROOT/setup.source
+    - echo $PATH
+    - echo $LD_LIBRARY_PATH
+    - echo $HIP_ROOT
     - cd tests
     - echo "Test backends for test 29"
     - cd 29_data_mem
@@ -181,6 +187,9 @@ test-backends-34:
     - echo $CI_REPOSITORY_URL
     - echo $CI_PROJECT_PATH
     - source $IRIS_INSTALL_ROOT/setup.source
+    - echo $PATH
+    - echo $LD_LIBRARY_PATH
+    - echo $HIP_ROOT
     - cd tests
     - echo "Test backends for test 34"
     - cd 34_set_mem
