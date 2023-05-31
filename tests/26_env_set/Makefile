@@ -5,6 +5,9 @@ all: $(TEST) kernel.ptx kernel-negative.ptx
 
 include ../Makefile.tests
 
+kernel.hip: kernel.hip.cpp
+	$(HIPCC) --genco -o $@ $^
+
 kernel.ptx: kernel.cu
 	$(NVCC) -ptx $^
 
