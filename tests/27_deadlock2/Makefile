@@ -9,5 +9,5 @@ include ../Makefile.tests
 kernel.ptx: kernel.cu
 	nvcc -ptx $^
 
-kernel.openmp.so: kernel.openmp.c
-	$(CC) -g -fopenmp -fPIC -shared -I. $(CFLAGS) -o $@ $^
+kernel.openmp.so: kernel.openmp.c kernel.openmp.h
+	gcc -g -lgomp -Wl,-rpath=$(OPENMP_PATH) -fPIC -shared -I. $(CFLAGS) -o $@ $^

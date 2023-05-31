@@ -11,7 +11,7 @@ kernel.hip: kernel.hip.cpp
 	hipcc --genco -o $@ $^
 
 kernel.openmp.so: kernel.cl.openmp.c
-	gcc -g -fopenmp -fPIC -shared -I. $(CFLAGS) -o $@ $^
+	gcc -g -lgomp -Wl,-rpath=$(OPENMP_PATH) -fPIC -shared -I. $(CFLAGS) -o $@ $^
 
 clean:
 	rm -f kernel.ptx kernel.hip kernel.openmp.so test17_json

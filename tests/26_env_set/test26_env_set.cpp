@@ -24,7 +24,6 @@ int my_kernel_selector(iris_task task, void* params, char* kernel_name) {
 }
 
 int main(int argc, char** argv) {
-  iris_env_set("ARCHS", "opencl:cuda:hip");
   iris_env_set("KERNEL_CUDA",   "kernel.ptx");
   iris_env_set("KERNEL_OPENCL", "kernel-negative.cl");
   iris_env_set("KERNEL_CUDA",   "kernel-negative.ptx");
@@ -33,24 +32,25 @@ int main(int argc, char** argv) {
 
   int ndevs;
   bool is_nvidia_device=false; bool is_opencl_device=false;
+  int nvidia_device_id = -1; int opencl_device_id = -1;
   iris_device_count(&ndevs);
   for (int d = 0; d < ndevs; d++){
     int backend_worker;
     iris_device_info(d, iris_backend, &backend_worker, nullptr);
-    if (backend_worker == iris_cuda) is_nvidia_device = true;
-    if (backend_worker == iris_opencl) is_opencl_device = true;
+    if (backend_worker == iris_cuda) {is_nvidia_device = true; nvidia_device_id = d;}
+    if (backend_worker == iris_opencl) {is_opencl_device = true; opencl_device_id = d;}
   }
-  //if(!(is_nvidia_device && is_opencl_device)){
-  //  printf("Skipping this test because it is only designed to test NVIDIA GPUs with CUDA and OpenCL.\n");
-  //  return 0;
-  //}
+  if(!(is_nvidia_device and is_opencl_device)){
+    printf("Skipping this test because it is only designed to test NVIDIA GPUs with CUDA and OpenCL.\n");
+    return 0;
+  }
 
   size_t SIZE;
   int TARGET;
   int* A;
 
   SIZE = argc > 1 ? atol(argv[1]) : 8;
-  TARGET = argc > 2 ? atol(argv[2]) : 0;
+  TARGET = argc > 2 ? atol(argv[2]) : nvidia_device_id || opencl_device_id;
 
   printf("[%s:%d] SIZE[%zu] TARGET[%d]\n", __FILE__, __LINE__, SIZE, TARGET);
 

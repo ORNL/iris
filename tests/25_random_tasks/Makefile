@@ -5,7 +5,12 @@ include ../Makefile.tests
 
 kernel.ptx: kernel.cu
 	$(NVCC) -ptx $^
+
 kernel.hip: kernel.hip.cpp
 	$(HIPCC) --genco -o $@ $^
-kernel.openmp.so: kernel.openmp.c
+
+kernel.openmp.so: kernel.openmp.c kernel.openmp.h
 	gcc -g -lgomp -Wl,-rpath=$(OPENMP_PATH) -fPIC -shared -I. $(CFLAGS) -o $@ $^
+
+clean:
+	rm -f kernel.ptx kernel.hip kernel.openmp.so test25_random_tasks
