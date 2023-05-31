@@ -61,7 +61,7 @@ int main(int argc, char** argv) {
   iris_task task;
   iris_task_create(&task);
   iris_task_custom(task, 0xdeadcafe, params, params_size);
-  iris_task_submit(task, iris_cuda, NULL, true);
+  iris_task_submit(task, iris_nvidia, NULL, true);
 
   iris_finalize();
 
