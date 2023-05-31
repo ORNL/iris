@@ -3,7 +3,6 @@
 
 #include <string>
 #include <vector>
-#include <set>
 
 namespace iris {
 namespace rt {
@@ -33,6 +32,7 @@ private:
 private:
   void* GetParameterInput(void** params, const char* string_to_lookup);
   int UniqueUIDFromHostPointer(void*host_ptr);
+  int UniqueUIDFromDevicePointer(Mem* dev_ptr);
   const std::string NameFromHostPointer(void*host_ptr);
   const std::string NameFromDeviceMem(Mem* dev_mem);
 
@@ -41,8 +41,8 @@ private:
   std::vector<Task*> tasks_;
   Timer* timer_;
   std::string str_;
-  std::set<Mem*> mems_;
-  std::set<void*> host_ptrs_;
+  std::vector<Mem*> mems_;
+  std::vector<void*> host_ptrs_;
 };
 
 } /* namespace rt */
