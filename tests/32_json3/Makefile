@@ -11,8 +11,8 @@ kernel.ptx: kernel.cu
 kernel.hip: kernel.hip.cpp
 	$(HIPCC) --genco -o $@ $^
 
-kernel.openmp.so: kernel.openmp.c kernel.openmp.h
-		gcc -g -lgomp -Wl,-rpath=$(OPENMP_PATH) -fPIC -shared -I. $(CFLAGS) -o $@ $^
+kernel.openmp.so: kernel.openmp.c
+		$(CC) -g -lgomp -Wl,-rpath=$(OPENMP_PATH) -fPIC -shared -I. $(CFLAGS) -o $@ $^
 
 kernel.spv: kernel.cl
 	clang -cc1 -finclude-default-header -triple spir $^ -O0 -emit-llvm-bc -o kernel.bc

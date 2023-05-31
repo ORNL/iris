@@ -10,5 +10,5 @@ kernel.hip: kernel.hip.cpp
 	$(HIPCC) --genco -o $@ $^
 
 kernel.openmp.so: kernel.openmp.c
-	gcc -g -lgomp -Wl,-rpath=$(OPENMP_PATH) -fPIC -shared -I. $(CFLAGS) -o $@ $^
+	$(CC) -g -lgomp -Wl,-rpath=$(OPENMP_PATH) -fPIC -shared -I. $(CFLAGS) -o $@ $^
 
