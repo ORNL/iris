@@ -51,7 +51,7 @@ Task::Task(Platform* platform, int type, const char* name) {
   pthread_mutex_init(&mutex_subtasks_, NULL);
   pthread_cond_init(&complete_cond_, NULL);
   brs_policy_ = iris_default;
-  platform_->track().TrackObject(this, uid());
+  //platform_->track().TrackObject(this, uid());
 }
 
 Task::~Task() {

@@ -21,6 +21,7 @@ public:
     ref_cnt_ = 1;
     struct_obj_ = NULL;
     is_release_ = true;
+    Platform::GetPlatform()->track().TrackObject(this, uid_);
     pthread_mutex_init(&delete_lock_, NULL);
   }
   Retainable(struct_type obj) {
@@ -30,6 +31,7 @@ public:
     struct_obj_->uid = uid_;
     ref_cnt_ = 1;
     is_release_ = true;
+    Platform::GetPlatform()->track().TrackObject(this, uid_);
     pthread_mutex_init(&delete_lock_, NULL);
   }
   void SetStructObject(struct_type *obj)
@@ -54,11 +56,11 @@ public:
 
   void ForceRelease() {
     Platform *platform = Platform::GetPlatform();
+    if (!platform->track().IsObjectExists(this, uid())) return;
     pthread_mutex_lock(&delete_lock_);
     if (!platform->track().IsObjectExists(this, uid())) return;
     platform->track().UntrackObject(this);
-    if (!struct_obj()) return;
-    platform->track().UntrackObject(struct_obj());
+    //if (!struct_obj()) return;
     pthread_mutex_unlock(&delete_lock_);
     delete this;
   }
