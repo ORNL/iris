@@ -215,11 +215,12 @@ extern int iris_platform_count(int* nplatforms);
  */
 extern int iris_platform_info(int platform, int param, void* value, size_t* size);
 
-/**
- * UPDATED
- * @brief Sets shared memory model
+// Updated
+/** @brief Sets shared memory model
+ *
  * Using this function shared memory model can be set
- * @param flag 0: non shared memory, 1: shared memory 
+ *
+ * @param flag 0: non shared memory, 1: shared memory
  * @return This function returns an integer indicating IRIS STATUS.
  */
 extern int iris_set_shared_memory_model(int flag);
@@ -251,7 +252,7 @@ extern int iris_device_info(int device, int param, void* value, size_t* size);
  * UPDATED
  * @brief Sets the default device
  * Using this function default device can be set
- * @param device integer value representing the desired default device 
+ * @param device integer value representing the desired default device
  * @return This function returns an integer indicating IRIS STATUS.
  */
 extern int iris_device_set_default(int device);
@@ -261,7 +262,7 @@ extern int iris_device_set_default(int device);
  * UPDATED
  * @brief Gets the default device
  * Using this function default device can be obtained
- * @param device IRIS returns the default device on this variable 
+ * @param device IRIS returns the default device on this variable
  * @return This function returns an integer indicating IRIS STATUS.
  */
 extern int iris_device_get_default(int* device);
@@ -468,7 +469,7 @@ extern int iris_task_submit(iris_task task, int device, const char* opt, int syn
 /**
  * UPDATED
  * @brief Sets a scheduling policy for a task
- * This function sets scheduling policy for a task 
+ * This function sets scheduling policy for a task
  * @param task iris task object
  * @param device device or scheduling policy
  * @return This function returns an integer indicating IRIS STATUS.
@@ -503,7 +504,7 @@ extern int iris_task_add_subtask(iris_task task, iris_task subtask);
 /**
  * UPDATED
  * @brief Retruns whether a task only has kernel command
- * This function returns whether a task has only kernel command or not 
+ * This function returns whether a task has only kernel command or not
  * @param task iris task object
  * @return returns true if only kernel present in the task otherwise false
  */
@@ -688,7 +689,7 @@ extern size_t iris_cmd_kernel_get_arg_mem_size(void *cmd, int index);
 extern size_t iris_cmd_kernel_get_arg_off(void *cmd, int index);
 extern int    iris_cmd_kernel_get_arg_mode(void *cmd, int index);
 
-// Graph data 
+// Graph data
 extern int iris_graph_enable_mem_profiling(iris_graph brs_graph);
 extern int iris_graph_reset_memories(iris_graph graph);
 extern int iris_graph_get_tasks(iris_graph graph, iris_task *tasks);
