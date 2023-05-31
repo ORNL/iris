@@ -133,6 +133,10 @@ test-job-explorer:
   extends: .test-job
   tags: [explorer]
 
+test-job-leconte:
+  extends: .test-job
+  tags: [leconte]
+
 test-backends-29:
   tags: [zenith]
   needs: []
