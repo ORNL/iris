@@ -221,10 +221,6 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
               return IRIS_ERROR;
             }
             kparams[l] = GetParameterInput(params,param_["value"].GetString());
-            raise(SIGINT);
-
-            //size_bytes
-            
             //permissions---for the memory object
             if (!param_.HasMember("permissions")){
               _error("malformed command kernel parameters memory permission in file[%s]", path);
@@ -244,6 +240,17 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
             if (param_.HasMember("name")){
                kparams[l] = GetParameterInput(params,param_["name"].GetString());
             }
+            ////TODO: implement loading size_bytes
+            ////size_bytes
+            //if (param_.HasMember("size_bytes")){
+            //  if (param_["size_bytes"].IsInt()){
+            //    kparams[l] = const_cast<char*>(std::to_string(param_["size_bytes"].GetInt()).data());
+            //  } else {
+            //    _error("unsupported command kernel parameters memory size_bytes in file[%s]", path);
+            //    platform_->IncrementErrorCount();
+            //    return IRIS_ERROR;
+            //  }
+            //}
           }
           else{
             _error("malformed command kernel params in file[%s]", path);
@@ -408,21 +415,39 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
         }
         iris_mem *dev_mem = (iris_mem*) GetParameterInput(params, d2h_["device_memory"].GetString());
         //offset
-        if(!d2h_.HasMember("offset") or !d2h_["offset"].IsString()){
+        if(!d2h_.HasMember("offset")){
+          _error("missing command d2h offset in file[%s]", path);
+          platform_->IncrementErrorCount();
+          return IRIS_ERROR;
+        }
+        size_t offset;
+        if(d2h_["offset"].IsInt()){
+          offset = static_cast<size_t>(d2h_["offset"].GetInt());
+        } else if(d2h_["offset"].IsString()){
+          void* p_off = GetParameterInput(params, d2h_["offset"].GetString());
+          offset = p_off ? (*(size_t*) p_off) : atol(d2h_["offset"].GetString());
+        } else{
           _error("malformed command d2h offset in file[%s]", path);
           platform_->IncrementErrorCount();
           return IRIS_ERROR;
         }
-        void* p_off = GetParameterInput(params, d2h_["offset"].GetString());
-        size_t offset = p_off ? (*(size_t*) p_off) : atol(d2h_["offset"].GetString());
         //size
-        if(!d2h_.HasMember("size") or !d2h_["size"].IsString()){
+        if(!d2h_.HasMember("size")){
+          _error("missing command d2h size in file[%s]", path);
+          platform_->IncrementErrorCount();
+          return IRIS_ERROR;
+        }
+        size_t size;
+        if(d2h_["size"].IsInt()){
+          size = static_cast<size_t>(d2h_["size"].GetInt());
+        } else if(d2h_["size"].IsString()){
+          void* p_size = GetParameterInput(params, d2h_["size"].GetString());
+          size = p_size ? (*(size_t*) p_size) : atol(d2h_["size"].GetString());
+        } else{
           _error("malformed command d2h size in file[%s]", path);
           platform_->IncrementErrorCount();
           return IRIS_ERROR;
         }
-        void* p_size = GetParameterInput(params, d2h_["size"].GetString());
-        size_t size = p_size ? (*(size_t*) p_size) : atol(d2h_["size"].GetString());
 
         Command* cmd = Command::CreateD2H(task, (Mem *)dev_mem->class_obj, offset, size, host_mem);
         //name (optional)
@@ -532,8 +557,7 @@ int JSON::RecordTask(Task* task) {
   _task.AddMember("name",_name,iris_output_document_.GetAllocator());
   if (task->ncmds() == 0) {
     //it's and empty (likely checkpointing) task, so don't record it.
-    raise(SIGINT);
-    //TODO: discard empty tasks (tasks without any commands)
+    //just discard empty tasks (tasks without any commands)
     return IRIS_SUCCESS;
   }
   //command(s)
@@ -596,7 +620,6 @@ int JSON::RecordTask(Task* task) {
         rapidjson::Value param_(rapidjson::kObjectType);
         KernelArg* arg = cmd->kernel_arg(i);
         if(arg->mem){//memory
-          //raise(SIGINT);
           param_.AddMember("type",rapidjson::StringRef("memory_object"),iris_output_document_.GetAllocator());
           tmp.SetString(NameFromDeviceMem((Mem *)arg->mem).c_str(),iris_output_document_.GetAllocator());
           param_.AddMember("value",tmp,iris_output_document_.GetAllocator());
@@ -628,12 +651,10 @@ int JSON::RecordTask(Task* task) {
   rapidjson::Value _target;
   if (task->dev()) {
     _target.SetString(rapidjson::StringRef(std::to_string(task->devno()).c_str()),iris_output_document_.GetAllocator());
-    //TODO: handle passing device ids as the target directly (prioritizing it over a policy)
-    raise(SIGINT);
   }
   else {
     const char* tmp = task->brs_policy_string();
-    if(strcmp(tmp, "unknown") == 0) raise(SIGINT);//debugging, we shouldn't ever hit this! TODO: delete this!
+    if(strcmp(tmp, "unknown") == 0) { _error("unknown policy in JSON file[%s]", tmp); return IRIS_ERROR; }//we should never hit this!
     _target.SetString(rapidjson::StringRef(task->brs_policy_string()), iris_output_document_.GetAllocator());
   }
   _task.AddMember("target",_target,iris_output_document_.GetAllocator());
