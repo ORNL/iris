@@ -156,7 +156,11 @@ void Task::print_incomplete_tasks()
   if (depends_uids_ == NULL) return;
   printf("Task Name: %ld:%s\n", uid(), name());
   for (int i = 0; i < ndepends_; i++) {
-    printf("      Running dependent task: %d:%ld:%ld:%s Status:%s object exists:%d %p\n", i, depends_uids_[i], depend(i)->uid(), depend(i)->name(), depend(i)->task_status_string(), platform_->task_track().IsObjectExists(depends_uids_[i]), depend(i));
+    Task *dep= depend(i);
+    if (dep!= NULL) 
+        printf("      Running dependent task: %d:%ld:%ld:%s Status:%s object exists:%d %p\n", i, depends_uids_[i], dep->uid(), dep->name(), dep->task_status_string(), dep);
+    else
+        printf("      Running dependent task: %d:%ld object not exists\n", i, depends_uids_[i]);
   }
 }
 
@@ -186,8 +190,12 @@ void Task::DispatchDependencies() {
   pthread_mutex_lock(&mutex_pending_);
   if (status_ == IRIS_PENDING) status_ = IRIS_NONE;
   for (int i = 0; i < ndepends_; i++) {
-      _trace("      Dispatch dependencies task: %d:%ld:%ld:%s Status:%s object exists:%d\n", i, depends_uids_[i], depend(i)->uid(), depend(i)->name(), depend(i)->task_status_string(), platform_->task_track().IsObjectExists(depends_uids_[i]));
-      if (platform_->task_track().IsObjectExists(depends_uids_[i]) && depend(i)->status() == IRIS_PENDING) depend(i)->status_ = IRIS_NONE;
+      Task *dep= depend(i);
+      if (dep!= NULL) {
+          _trace("      Dispatch dependencies task: %d:%ld:%ld:%s Status:%s object exists\n", i, depends_uids_[i], dep->uid(), dep->name(), dep->task_status_string());
+          if (dep->status() == IRIS_PENDING) 
+              dep->status_ = IRIS_NONE;
+      }
   }
   pthread_mutex_unlock(&mutex_pending_);
 }
