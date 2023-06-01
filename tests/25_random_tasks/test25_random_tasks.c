@@ -12,6 +12,7 @@ iris_task* tasks;
 
 int main(int argc, char** argv) {
   iris_init(&argc, &argv, 1);
+  setenv("IRIS_ARCHS", "cuda", 1);
 
   time_t t;
   srand((unsigned int) time(&t));

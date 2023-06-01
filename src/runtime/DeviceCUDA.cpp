@@ -224,6 +224,9 @@ int DeviceCUDA::ResetMemory(BaseMem *mem, uint8_t reset_value) {
     return IRIS_SUCCESS;
 }
 int DeviceCUDA::MemAlloc(void** mem, size_t size, bool reset) {
+  if (IsContextChangeRequired()) {
+      ld_->cuCtxSetCurrent(ctx_);
+  }
   CUdeviceptr* cumem = (CUdeviceptr*) mem;
   //double mtime = timer_->Now();
   err_ = ld_->cuMemAlloc(cumem, size);
@@ -398,14 +401,14 @@ int DeviceCUDA::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
   ld_->cuCtxGetCurrent(&ctx);
   _trace("MemD2H:: Context create %sdev[%d][%s] task[%ld:%s] mem[%lu] cctx:%p octx:%p self:%p thread:%p", tag, devno_, name_, task->uid(), task->name(), mem->uid(), ctx, ctx_, (void *)worker()->self(), (void *)worker()->thread());
 #endif
-  CUdeviceptr cumem = (CUdeviceptr) mem->arch(this);
-#ifndef IRIS_SYNC_EXECUTION
-  q_ = task->uid() % nqueues_; 
-#endif
   if (IsContextChangeRequired()) {
       _trace("CUDA context switch %sdev[%d][%s] task[%ld:%s] mem[%lu] self:%p thread:%p", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)worker()->self(), (void *)worker()->thread());
       ld_->cuCtxSetCurrent(ctx_);
   }
+  CUdeviceptr cumem = (CUdeviceptr) mem->arch(this);
+#ifndef IRIS_SYNC_EXECUTION
+  q_ = task->uid() % nqueues_; 
+#endif
   if (dim == 3) {
       _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu,%lu,%lu] host_sizes[%lu,%lu,%lu] dev_sizes[%lu,%lu,%lu] size[%lu] host[%p]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, off[0], off[1], off[2], host_sizes[0], host_sizes[1], host_sizes[2], dev_sizes[0], dev_sizes[1], dev_sizes[2], size, host);
       MemCpy3D(cumem, (uint8_t *)host, off, dev_sizes, host_sizes, elem_size, false);
