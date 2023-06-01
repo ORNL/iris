@@ -38,6 +38,9 @@ void DataMem::Init(Platform *platform, void *host_ptr, size_t size)
     host_ptr_ = host_ptr;
 #ifdef AUTO_PAR
   current_writing_task_ = NULL;
+#ifdef AUTO_FLUSH
+  flush_task_ = NULL;
+#endif
 #endif
  
 }

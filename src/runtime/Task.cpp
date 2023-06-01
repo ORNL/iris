@@ -259,6 +259,18 @@ void Task::AddDepend(Task* task) {
   task->Retain();
 }
 
+#ifdef AUTO_PAR
+#ifdef AUTO_FLUSH
+void Task::EraseDepend() {
+  for (int i = 0; i < ndepends_; i++) {
+      delete depends_[i];
+      ndepends_--;
+      //task->Release();
+    }
+}
+#endif
+#endif
+
 /*
 void Task::RemoveDepend(Task* task) {
   for (int i = 0; i < ndepends_; i++) 

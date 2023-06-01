@@ -202,20 +202,35 @@ Command* Command::CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off,
   	task->add_to_write_list(mem);
 
 #ifdef AUTO_FLUSH
-    	char tn[256];
-    	sprintf(tn, "%s-flush-out", task->name());
     	//sprintf(tn, "%s-flush-out", mem->get_flush_task();
 	//cmd->platform_->TaskCreate(tn, false, mem->get_flush_task())
 	Task* task_flush = mem->get_flush_task();
-	task_flush = Task::Create(cmd->platform_, IRIS_TASK, tn);
-        Command* cmd_flush = Command::CreateMemFlushOut(task_flush, (DataMem *) mem);
-        task_flush->AddCommand(cmd_flush);
+	Graph* graph_flush = cmd->platform_->get_current_graph();
+	//printf("-------Flush task Name: %s----------\n", task_flush->name());
+    	char tn[256];
+	if ( task_flush == NULL){
+    		sprintf(tn, "%s-auto-flushed-out", task->name());
+		task_flush = Task::Create(cmd->platform_, IRIS_TASK, tn);
+        	Command* cmd_flush = Command::CreateMemFlushOut(task_flush, (DataMem *) mem);
+        	task_flush->AddCommand(cmd_flush);
+		mem->set_flush_task(task_flush);
+		graph_flush->AddTask(task_flush);
+	} else {
+    		sprintf(tn, "%s-auto-flushed-out", task->name());
+		task_flush->set_name(tn);
+		//graph_flush->AddTask(task_flush);
+		printf("-------Flush task Null----------\n");
+	}
 	task_flush->set_opt(task->get_opt());
 	task_flush->set_brs_policy(task->get_brs_policy());
-	Graph* graph_flush = task->get_graph();
+	//Graph* graph_flush = task->get_graph();
 	if(graph_flush != NULL) {
-		graph_flush->AddTask(task_flush);
-        	task->AddDepend(task_flush);	
+        	//task_flush->EraseDepend();
+		/// This function is not working correctly the erase function
+        	task_flush->AddDepend(task);	
+	}else {
+		printf("-------auto flush----------\n");
+        	_error("Graph is NULL:%ld:%s\n", task->uid(), task->name());
 	}
 	
   	//platform_->GraphTask(get_graph(), mem->get_flush_task(), 1, NULL);
@@ -223,7 +238,6 @@ Command* Command::CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off,
         //task->AddDepend(mem->get_flush_task());	
     	//iris_graph_task( graph, mem->get_flush_task(), 1, NULL );
   	//platform_->GraphTask(get_graph(), mem->get_flush_task(), 1, NULL);
-	printf("-------auto flush----------\n");
     	//mem->get_flush_task(
 #endif
 

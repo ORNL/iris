@@ -201,6 +201,14 @@ public:
   BaseMem* GetMem(void* host, size_t* off);
   shared_ptr<History> CreateHistory(string kname);
 
+#ifdef AUTO_PAR
+#ifdef AUTO_FLUSH
+  Graph* get_current_graph(){return current_graph_;}
+  void set_current_graph(Graph* current_graph){
+	  current_graph_ = current_graph;}
+#endif
+#endif
+
 private:
   int SetDevsAvailable();
   int InitCUDA();
@@ -276,6 +284,11 @@ private:
 
   Kernel* null_kernel_;
 
+#ifdef AUTO_PAR
+#ifdef AUTO_FLUSH
+  Graph* current_graph_;
+#endif
+#endif
   pthread_mutex_t mutex_;
   hook_task hook_task_pre_;
   hook_task hook_task_post_;

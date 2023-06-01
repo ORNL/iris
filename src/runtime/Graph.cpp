@@ -35,6 +35,13 @@ Graph::Graph(Platform* platform) {
 
   pthread_mutex_init(&mutex_complete_, NULL);
   pthread_cond_init(&complete_cond_, NULL);
+
+#ifdef AUTO_PAR
+#ifdef AUTO_FLUSH
+  platform_->set_current_graph(this);
+#endif
+#endif
+  
 }
 
 shared_ptr<GraphMetadata> Graph::get_metadata(int iterations)

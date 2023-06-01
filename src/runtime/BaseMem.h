@@ -57,6 +57,7 @@ namespace rt {
 
 #ifdef AUTO_FLUSH
   	    inline Task* get_flush_task() { return flush_task_;}
+  	    inline void set_flush_task(Task* flush_task) { flush_task_ = flush_task;}
 #endif 
 
 #endif

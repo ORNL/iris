@@ -90,6 +90,13 @@ Platform::Platform() {
   hook_command_post_ = NULL;
   scheduling_history_ = NULL;
   pthread_mutex_init(&mutex_, NULL);
+#ifdef AUTO_PAR
+#ifdef AUTO_FLUSH
+  current_graph_ = NULL;
+#endif
+#endif
+ 
+
 }
 
 Platform::~Platform() {
