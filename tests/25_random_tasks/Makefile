@@ -9,7 +9,7 @@ kernel.ptx: kernel.cu
 kernel.hip: kernel.hip.cpp
 	$(HIPCC) --genco -o $@ $^
 
-kernel.openmp.so: kernel.openmp.c kernel.openmp.h
+kernel.openmp.so: kernel.openmp.c
 	$(CC) -g -lgomp -Wl,-rpath=$(OPENMP_PATH) -fPIC -shared -I. $(CFLAGS) -o $@ $^
 
 clean:

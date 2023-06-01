@@ -551,7 +551,10 @@ int JSON::RecordTask(Task* task) {
   if(task->ncmds() == 0) return IRIS_SUCCESS;//skip recording IRIS_MARKER tasks
   rapidjson::Value _task(rapidjson::kObjectType);
   //name
-  rapidjson::Value _name(rapidjson::StringRef(task->name()));
+  //rapidjson::Value _name(rapidjson::StringRef(task->name()));
+  std::string nbuffer = std::string(task->name());
+  rapidjson::Value _name;
+  _name.SetString(nbuffer.c_str(),nbuffer.size(),iris_output_document_.GetAllocator());
   if(_name == ""){
     char buffer[64];
     int len = sprintf(buffer, "task-%lu", task->uid()); // dynamically created string.
@@ -601,7 +604,13 @@ int JSON::RecordTask(Task* task) {
       printf("recorded d2h\n");    }
     else if (cmd->type() == IRIS_CMD_KERNEL) {
       rapidjson::Value kernel_(rapidjson::kObjectType);
-      kernel_.AddMember("name",rapidjson::StringRef(cmd->name()),iris_output_document_.GetAllocator());
+      //kernel name (TODO: implement the long term solution issue #24)[https://code.ornl.gov/brisbane/iris/-/issues/24]
+      std::string buffer = std::string(cmd->name());
+      rapidjson::Value name_;
+      name_.SetString(buffer.c_str(),buffer.size(),iris_output_document_.GetAllocator());
+      kernel_.AddMember("name",name_,iris_output_document_.GetAllocator());
+      //raise(SIGINT);
+      //kernel_.AddMember("name",rapidjson::StringRef(cmd->name()),iris_output_document_.GetAllocator());
       //global_size
       rapidjson::Value gs_(rapidjson::kArrayType);
       for(int i = 0; i < cmd->dim(); i ++)
