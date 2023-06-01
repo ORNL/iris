@@ -101,7 +101,7 @@ list(APPEND TEST_EXES "18_record" "test18_record" "")
 list(APPEND TEST_EXES "19_replay" "test19_replay" "")
 #[DEBUG] Remove test20 due to dependency to cublas.
 if (CUDAToolkit_FOUND)
-list(APPEND TEST_EXES "20_cublas" "test20_cublas" "")
+  #list(APPEND TEST_EXES "20_cublas" "test20_cublas" "")
 list(APPEND TEST_EXES "21_task_malloc" "test21_task_malloc" "")
 endif()
 list(APPEND TEST_EXES "23_multigraph" "test23_multigraph" "")
