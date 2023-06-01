@@ -21,6 +21,7 @@ public:
   int ResetMemory(BaseMem *mem, uint8_t reset_value);
   int MemAlloc(void** mem, size_t size, bool reset=false);
   int MemFree(void* mem);
+  void RegisterPin(void *host, size_t size);
   void EnablePeerAccess();
   void SetPeerDevices(int *peers, int count);
   void MemCpy3D(CUdeviceptr dev, uint8_t *host, size_t *off, 
@@ -29,7 +30,8 @@ public:
   int MemD2D(Task *task, BaseMem *mem, void *dst, void *src, size_t size);
   int MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag="");
   int MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag="");
-  int KernelGet(Kernel *kernel, void** kernel_bin, const char* name);
+  int KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bool report_error=true);
+  void CheckVendorSpecificKernel(Kernel* kernel);
   int KernelLaunchInit(Kernel* kernel);
   int KernelSetArg(Kernel* kernel, int idx, int kindex, size_t size, void* value);
   int KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, size_t off);
@@ -49,6 +51,7 @@ public:
   int cudev() { return dev_; }
   void ResetContext();
   bool IsContextChangeRequired();
+  void SetContextToCurrentThread();
 
 private:
   static void Callback(CUstream stream, CUresult status, void* data);

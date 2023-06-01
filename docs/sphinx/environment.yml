@@ -5,9 +5,10 @@ channels:
   - defaults
 
 dependencies:
-  - breathe=4.30.0
+  - python
+  - breathe
   - pip
   - pip:
-    - sphinxcontrib-contentui>=0.2.5
+    - sphinxcontrib-contentui
     - sphinx_rtd_theme
 

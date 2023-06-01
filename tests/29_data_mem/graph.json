@@ -1,0 +1,241 @@
+{
+  "iris-graph": {
+    "inputs": [
+      "worksize",
+      "worksize-inbytes",
+      "hostmem",
+      "devmem",
+      "target-device"
+    ],
+    "graph": {
+      "tasks": [
+        {
+          "name": "h2d-task",
+          "commands": [
+            {
+              "h2d": {
+                "name": "h2d-cmd",
+                "device_memory": "devmem",
+                "host_memory": "hostmem",
+                "offset": "0",
+                "size": "worksize-inbytes"
+              }
+            }
+          ],
+          "target": "target-device",
+          "depends": []
+        },
+        {
+          "name": "task0",
+          "commands": [
+            {
+              "kernel": {
+                "name": "process",
+                "global_size": [
+                  "worksize"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "value": "devmem",
+                    "permissions": "rw"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "h2d-task"
+          ],
+          "target": "target-device"
+        },
+        {
+          "name": "task1",
+          "commands": [
+            {
+              "kernel": {
+                "name": "process",
+                "global_size": [
+                  "worksize"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "value": "devmem",
+                    "permissions": "rw"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task0"
+          ],
+          "target": "target-device"
+        },
+        {
+          "name": "task2",
+          "commands": [
+            {
+              "kernel": {
+                "name": "process",
+                "global_size": [
+                  "worksize"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "value": "devmem",
+                    "permissions": "rw"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task1"
+          ],
+          "target": "target-device"
+        },
+        {
+          "name": "task3",
+          "commands": [
+            {
+              "kernel": {
+                "name": "process",
+                "global_size": [
+                  "worksize"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "value": "devmem",
+                    "permissions": "rw"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task2"
+          ],
+          "target": "target-device"
+        },
+        {
+          "name": "task4",
+          "commands": [
+            {
+              "kernel": {
+                "name": "process",
+                "global_size": [
+                  "worksize"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "value": "devmem",
+                    "permissions": "rw"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task3"
+          ],
+          "target": "target-device"
+        },
+        {
+          "name": "task5",
+          "commands": [
+            {
+              "kernel": {
+                "name": "process",
+                "global_size": [
+                  "worksize"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "value": "devmem",
+                    "permissions": "rw"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task4"
+          ],
+          "target": "target-device"
+        },
+        {
+          "name": "task6",
+          "commands": [
+            {
+              "kernel": {
+                "name": "process",
+                "global_size": [
+                  "worksize"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "value": "devmem",
+                    "permissions": "rw"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task5"
+          ],
+          "target": "target-device"
+        },
+        {
+          "name": "task7",
+          "commands": [
+            {
+              "kernel": {
+                "name": "process",
+                "global_size": [
+                  "worksize"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "value": "devmem",
+                    "permissions": "rw"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task6"
+          ],
+          "target": "target-device"
+        },
+        {
+          "name": "d2h-task",
+          "commands": [
+            {
+              "d2h": {
+                "name": "d2h-cmd",
+                "device_memory": "devmem",
+                "host_memory": "hostmem",
+                "offset": "0",
+                "size": "worksize-inbytes"
+              }
+            }
+          ],
+          "depends": [
+            "task7"
+          ],
+          "target": "target-device"
+        }
+      ]
+    }
+  }
+}

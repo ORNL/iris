@@ -16,21 +16,35 @@ Kernel::Kernel(const char* name, Platform* platform) {
   strncpy(name_, name, len);
   strcpy(task_name_, name);
   name_[len] = 0;
+  profile_data_transfers_ = false;
   platform_ = platform;
-  history_ = new History(this);
+  history_ = platform->CreateHistory(name);
   for (int i = 0; i < IRIS_MAX_NDEVS; i++) {
     archs_[i] = NULL;
     archs_devs_[i] = NULL;
+    set_vendor_specific_kernel(i, false);
+    vendor_specific_kernel_check_flag_[i] = false;
   }
-  set_vendor_specific_kernel(false);
+  set_object_track(Platform::GetPlatform()->kernel_track_ptr());
+  Platform::GetPlatform()->kernel_track().TrackObject(this, uid());
 }
 
 Kernel::~Kernel() {
+  Platform::GetPlatform()->kernel_track().UntrackObject(this, uid());
   data_mems_in_.clear();
+  data_mems_in_order_.clear();
   data_mem_regions_in_.clear();
-  delete history_;
+  history_ = nullptr;
   for (std::map<int, KernelArg*>::iterator I = args_.begin(), E = args_.end(); I != E; ++I)
     delete I->second;
+  _trace(" kernel:%lu:%s is destroyed", uid(), name_);
+}
+
+int Kernel::set_order(int *order) {
+  for(int index = 0; index < data_mems_in_.size(); index++) {
+    data_mems_in_order_.push_back(order[index]);
+  }
+  return IRIS_SUCCESS;
 }
 
 int Kernel::SetArg(int idx, size_t size, void* value) {
@@ -50,6 +64,8 @@ int Kernel::SetMem(int idx, BaseMem* mem, size_t off, int mode) {
     platform_->IncrementErrorCount();
     return IRIS_ERROR;
   }
+  if (mem->GetMemHandlerType() == IRIS_DMEM) add_dmem((DataMem *)mem, idx, mode);
+  if (mem->GetMemHandlerType() == IRIS_DMEM_REGION) add_dmem_region((DataMemRegion *)mem, idx, mode);
   arg->mem = mem;
   arg->off = off;
   arg->mode = mode;
@@ -61,24 +77,32 @@ int Kernel::SetMem(int idx, BaseMem* mem, size_t off, int mode) {
 
 void Kernel::add_dmem(DataMem *mem, int idx, int mode)
 {
-    if (mode == iris_r)
+    if (mode == iris_r) {
         data_mems_in_.insert(make_pair(idx, mem));
-    else if (mode == iris_w) 
+        all_data_mems_in_.push_back(mem);
+    }
+    else if (mode == iris_w)  {
         data_mems_out_.insert(make_pair(idx, mem));
+    }
     else if (mode == iris_rw)  {
         data_mems_in_.insert(make_pair(idx, mem));
         data_mems_out_.insert(make_pair(idx, mem));
+        all_data_mems_in_.push_back(mem);
     }
 }
 void  Kernel::add_dmem_region(DataMemRegion *mem, int idx, int mode)
 {
-    if (mode == iris_r)
+    if (mode == iris_r) {
         data_mem_regions_in_.insert(make_pair(idx, mem));
-    else if (mode == iris_w) 
+        all_data_mems_in_.push_back(mem);
+    }
+    else if (mode == iris_w)  {
         data_mem_regions_out_.insert(make_pair(idx, mem));
+    }
     else if (mode == iris_rw)  {
         data_mem_regions_in_.insert(make_pair(idx, mem));
         data_mem_regions_out_.insert(make_pair(idx, mem));
+        all_data_mems_in_.push_back(mem);
     }
 }
 
@@ -103,9 +127,16 @@ KernelArg* Kernel::ExportArgs() {
   return new_args;
 }
 
-void* Kernel::arch(Device* dev) {
+int Kernel::isSupported(Device* dev) {
   int devno = dev->devno();
-  if (archs_[devno] == NULL) dev->KernelGet(this, archs_ + devno, (const char*) name_);
+  if (archs_[devno] != NULL) return true;
+  int result = dev->KernelGet(this, archs_ + devno, (const char*) name_, false);
+  return (result == IRIS_SUCCESS);
+}
+
+void* Kernel::arch(Device* dev, bool report_error) {
+  int devno = dev->devno();
+  if (archs_[devno] == NULL) dev->KernelGet(this, archs_ + devno, (const char*) name_, report_error);
   return archs_[devno];
 }
 

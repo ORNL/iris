@@ -1,5 +1,7 @@
 #include "Policies.h"
 #include "Debug.h"
+#include "Platform.h"
+#include "Scheduler.h"
 #include "LoaderPolicy.h"
 #include "PolicyAll.h"
 #include "PolicyAny.h"
@@ -67,7 +69,7 @@ Policy* Policies::GetPolicy(int brs_policy, char* opt) {
       return policy;
     }
   }
-  _error("unknown policy [%d] [0x%x] [%s]", brs_policy, brs_policy, opt);
+  _warning("unknown policy [%d] [0x%x] [%s]", brs_policy, brs_policy, opt);
   return policy_any_;
 }
 
@@ -75,10 +77,12 @@ int Policies::Register(const char* lib, const char* name, void* params) {
   LoaderPolicy* loader = new LoaderPolicy(lib, name);
   std::string namestr = std::string(name);
   if (policy_customs_.find(namestr) != policy_customs_.end()) {
+    scheduler_->platform()->IncrementErrorCount();
     _error("existing policy name[%s]", name);
     return IRIS_ERROR;
   }
   if (loader->Load() != IRIS_SUCCESS) {
+    scheduler_->platform()->IncrementErrorCount();
     _error("cannot load custom policy[%s]", name);
     return IRIS_ERROR;
   }

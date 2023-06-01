@@ -18,6 +18,7 @@ namespace rt {
 
 DeviceHIP::DeviceHIP(LoaderHIP* ld, LoaderHost2HIP *host2hip_ld, hipDevice_t dev, int ordinal, int devno, int platform) : Device(devno, platform) {
   ld_ = ld;
+  atleast_one_command_ = false;
   host2hip_ld_ = host2hip_ld;
   max_arg_idx_ = 0;
   shared_mem_bytes_ = 0;
@@ -86,7 +87,7 @@ void DeviceHIP::SetPeerDevices(int *peers, int count)
     peers_count_ = count;
 }
 int DeviceHIP::Init() {
-  int tb, mc, bx, by, bz, dx, dy, dz, ck; //, ae;
+  int tb=0, mc=0, bx=0, by=0, bz=0, dx=0, dy=0, dz=0, ck=0; //, ae;
   err_ = ld_->hipSetDevice(ordinal_);
   err_ = ld_->hipCtxCreate(&ctx_, hipDeviceScheduleAuto, ordinal_);
   EnablePeerAccess();
@@ -151,6 +152,12 @@ int DeviceHIP::ResetMemory(BaseMem *mem, uint8_t reset_value) {
     return IRIS_SUCCESS;
 }
 
+void DeviceHIP::RegisterPin(void *host, size_t size)
+{
+    ld_->hipHostRegister(host, size, hipHostRegisterDefault);
+    //ld_->hipHostRegister(host, size, hipHostRegisterMapped);
+}
+
 int DeviceHIP::MemAlloc(void** mem, size_t size, bool reset) {
   void** hipmem = mem;
   err_ = ld_->hipMalloc(hipmem, size);
@@ -178,19 +185,26 @@ int DeviceHIP::MemFree(void* mem) {
 bool DeviceHIP::IsContextChangeRequired() {
     return (worker()->self() != worker()->thread());
 }
+void DeviceHIP::SetContextToCurrentThread()
+{
+    if (IsContextChangeRequired()) {
+        ld_->hipCtxSetCurrent(ctx_);
+    }
+}
 void DeviceHIP::ResetContext()
 {
     hipCtx_t ctx;
     ld_->hipCtxGetCurrent(&ctx);
-    _trace("HIP resetting context switch dev[%d][%s] self:%p thread:%p\n", devno_, name_, worker()->self(), worker()->thread());
-    _trace("Resetting Context Switch: %p %p\n", ctx, ctx_);
+    _trace("HIP resetting context switch dev[%d][%s] self:%p thread:%p", devno_, name_, (void *)worker()->self(), (void *)worker()->thread());
+    _trace("Resetting Context Switch: %p %p", ctx, ctx_);
     ld_->hipCtxSetCurrent(ctx_);
 }
 int DeviceHIP::MemD2D(Task *task, BaseMem *mem, void *dst, void *src, size_t size) {
-if (IsContextChangeRequired()) {
-    _trace("HIP context switch dev[%d][%s] task[%ld:%s] mem[%lu] self:%p thread:%p\n", devno_, name_, task->uid(), task->name(), mem->uid(), worker()->self(), worker()->thread());
-    ld_->hipCtxSetCurrent(ctx_);
-}
+  atleast_one_command_ = true;
+  if (IsContextChangeRequired()) {
+      _trace("HIP context switch dev[%d][%s] task[%ld:%s] mem[%lu] self:%p thread:%p", devno_, name_, task->uid(), task->name(), mem->uid(), (void *)worker()->self(), (void *)worker()->thread());
+      ld_->hipCtxSetCurrent(ctx_);
+  }
 #ifndef IRIS_SYNC_EXECUTION
   q_ = task->uid() % nqueues_; 
   err_ = ld_->hipMemcpyDtoDAsync(dst, src, size, streams_[q_]);
@@ -203,8 +217,9 @@ if (IsContextChangeRequired()) {
   return IRIS_SUCCESS;
 }
 int DeviceHIP::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag) {
+  atleast_one_command_ = true;
   if (IsContextChangeRequired()) {
-      _trace("HIP context switch dev[%d][%s] task[%ld:%s] mem[%lu] self:%p thread:%p\n", devno_, name_, task->uid(), task->name(), mem->uid(), worker()->self(), worker()->thread());
+      _trace("HIP context switch dev[%d][%s] task[%ld:%s] mem[%lu] self:%p thread:%p", devno_, name_, task->uid(), task->name(), mem->uid(), (void *)worker()->self(), (void *)worker()->thread());
       ld_->hipCtxSetCurrent(ctx_);
   }
   void* hipmem = mem->arch(this);
@@ -250,8 +265,9 @@ int DeviceHIP::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,
 }
 
 int DeviceHIP::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag) {
+  atleast_one_command_ = true;
   if (IsContextChangeRequired()) {
-      _trace("HIP context switch dev[%d][%s] task[%ld:%s] mem[%lu] self:%p thread:%p\n", devno_, name_, task->uid(), task->name(), mem->uid(), worker()->self(), worker()->thread());
+      _trace("HIP context switch dev[%d][%s] task[%ld:%s] mem[%lu] self:%p thread:%p", devno_, name_, task->uid(), task->name(), mem->uid(), (void *)worker()->self(), (void *)worker()->thread());
       ld_->hipCtxSetCurrent(ctx_);
   }
   void* hipmem = mem->arch(this);
@@ -303,30 +319,61 @@ int DeviceHIP::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,
   return IRIS_SUCCESS;
 }
 
-int DeviceHIP::KernelGet(Kernel *kernel, void** kernel_bin, const char* name) {
+int DeviceHIP::KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bool report_error) {
+#ifdef TRACE_DISABLE
+  hipCtx_t ctx;
+  ld_->hipCtxGetCurrent(&ctx);
+  _trace("Getting Context for Kernel launch Context Switch: dev:%d cctx:%p octx:%p self:%p thread:%p", devno_, ctx, ctx_, (void *)worker()->self(), (void *)worker()->thread());
+  if (ctx != ctx_) {
+      _trace("Context wrong for HIP resetting context switch dev[%d][%s] worker:%d self:%p thread:%p", devno(), name_, worker()->device()->devno(), (void *)worker()->self(), (void *)worker()->thread());
+      _trace("Context wrong for Kernel launch Context Switch: %p %p", ctx, ctx_);
+  }
+#endif
+  if (IsContextChangeRequired()) {
+      _trace("Changed Context for HIP resetting context switch dev[%d][%s] worker:%d self:%p thread:%p", devno(), name_, worker()->device()->devno(), (void *)worker()->self(), (void *)worker()->thread());
+      ld_->hipCtxSetCurrent(ctx_);
+  }
+  if (!kernel->vendor_specific_kernel_check_flag(devno_))
+      CheckVendorSpecificKernel(kernel);
   int kernel_idx = -1;
-  if (kernel->is_vendor_specific_kernel() && 
+  if (kernel->is_vendor_specific_kernel(devno_) && 
           host2hip_ld_->iris_host2hip_kernel_with_obj &&
-        host2hip_ld_->iris_host2hip_kernel_with_obj(&kernel_idx, name)==IRIS_SUCCESS)
+        host2hip_ld_->iris_host2hip_kernel_with_obj(&kernel_idx, name)==IRIS_SUCCESS) {
+      *kernel_bin = host2hip_ld_->GetFunctionPtr(name);
       return IRIS_SUCCESS;
-  if (kernel->is_vendor_specific_kernel() && host2hip_ld_->iris_host2hip_kernel)
+  }
+  if (kernel->is_vendor_specific_kernel(devno_) && host2hip_ld_->iris_host2hip_kernel) {
+      *kernel_bin = host2hip_ld_->GetFunctionPtr(name);
       return IRIS_SUCCESS;
+  }
+  if (native_kernel_not_exists()) {
+      if (report_error) {
+          _error("HIP kernel:%s not found !", name);
+          worker_->platform()->IncrementErrorCount();
+      }
+      return IRIS_ERROR;
+  }
   hipFunction_t* hipkernel = (hipFunction_t*) kernel_bin;
   err_ = ld_->hipModuleGetFunction(hipkernel, module_, name);
-  _hiperror(err_);
+  if (report_error) _hiperror(err_);
   if (err_ != hipSuccess){
-    worker_->platform()->IncrementErrorCount();
-    return IRIS_ERROR;
+      if (report_error) {
+          _error("HIP kernel:%s not found !", name);
+          worker_->platform()->IncrementErrorCount();
+      }
+      return IRIS_ERROR;
   }
-
   char name_off[256];
   memset(name_off, 0, sizeof(name_off));
   sprintf(name_off, "%s_with_offsets", name);
   hipFunction_t hipkernel_off;
   err_ = ld_->hipModuleGetFunction(&hipkernel_off, module_, name_off);
-  if (err_ == hipSuccess)
-    kernels_offs_.insert(std::pair<hipFunction_t, hipFunction_t>(*hipkernel, hipkernel_off));
-
+  if (err_ == hipSuccess) {
+      kernels_offs_.insert(std::pair<hipFunction_t, hipFunction_t>(*hipkernel, hipkernel_off));
+  }
+  else {
+      return IRIS_ERROR;
+  }
   return IRIS_SUCCESS;
 }
 
@@ -338,9 +385,9 @@ int DeviceHIP::KernelSetArg(Kernel* kernel, int idx, int kindex, size_t size, vo
     shared_mem_bytes_ += size;
   }
   if (max_arg_idx_ < idx) max_arg_idx_ = idx;
-  if (kernel->is_vendor_specific_kernel() && host2hip_ld_->iris_host2hip_setarg_with_obj)
+  if (kernel->is_vendor_specific_kernel(devno_) && host2hip_ld_->iris_host2hip_setarg_with_obj)
       host2hip_ld_->iris_host2hip_setarg_with_obj(kernel->GetParamWrapperMemory(), kindex, size, value);
-  else if (kernel->is_vendor_specific_kernel() && host2hip_ld_->iris_host2hip_setarg)
+  else if (kernel->is_vendor_specific_kernel(devno_) && host2hip_ld_->iris_host2hip_setarg)
       host2hip_ld_->iris_host2hip_setarg(kindex, size, value);
   return IRIS_SUCCESS;
 }
@@ -350,39 +397,56 @@ int DeviceHIP::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, s
   void *dev_ptr = mem->arch(devno_);
   params_[idx] = mem->arch_ptr(devno_);
   if (max_arg_idx_ < idx) max_arg_idx_ = idx;
-  if (kernel->is_vendor_specific_kernel() && host2hip_ld_->iris_host2hip_setmem_with_obj) 
+  if (kernel->is_vendor_specific_kernel(devno_) && host2hip_ld_->iris_host2hip_setmem_with_obj) 
       host2hip_ld_->iris_host2hip_setmem_with_obj(kernel->GetParamWrapperMemory(), kindex, dev_ptr);
-  else if (kernel->is_vendor_specific_kernel() && host2hip_ld_->iris_host2hip_setmem) 
+  else if (kernel->is_vendor_specific_kernel(devno_) && host2hip_ld_->iris_host2hip_setmem) 
       host2hip_ld_->iris_host2hip_setmem(kindex, dev_ptr);
   return IRIS_SUCCESS;
 }
 
+void DeviceHIP::CheckVendorSpecificKernel(Kernel *kernel) {
+  kernel->set_vendor_specific_kernel(devno_, false);
+  if (host2hip_ld_->iris_host2hip_kernel_with_obj) {
+      int status = host2hip_ld_->iris_host2hip_kernel_with_obj(kernel->GetParamWrapperMemory(), kernel->name());
+      if (status == IRIS_SUCCESS &&
+              host2hip_ld_->IsFunctionExists(kernel->name())) {
+          kernel->set_vendor_specific_kernel(devno_, true);
+      }
+  }
+  else if (host2hip_ld_->iris_host2hip_kernel) {
+      if (host2hip_ld_->iris_host2hip_kernel(kernel->name()) == IRIS_SUCCESS &&
+              host2hip_ld_->IsFunctionExists(kernel->name())) {
+          kernel->set_vendor_specific_kernel(devno_, true);
+      }
+  }
+  kernel->set_vendor_specific_kernel_check(devno_, true);
+}
+
 int DeviceHIP::KernelLaunchInit(Kernel* kernel) {
-    kernel->set_vendor_specific_kernel(false);
-    if (host2hip_ld_->iris_host2hip_kernel_with_obj) {
-        if (host2hip_ld_->iris_host2hip_kernel_with_obj(kernel->GetParamWrapperMemory(), kernel->name()) == IRIS_SUCCESS) {
-            if (host2hip_ld_->SetKernelPtr(kernel->GetParamWrapperMemory(), kernel->name())==IRIS_SUCCESS)
-                kernel->set_vendor_specific_kernel(true);
-        }
-    }
-    else if (host2hip_ld_->iris_host2hip_kernel) {
-        if (host2hip_ld_->iris_host2hip_kernel(kernel->name()) == IRIS_SUCCESS) {
-            kernel->set_vendor_specific_kernel(true);
-        }
-    }
     return IRIS_SUCCESS;
 }
 
 
 int DeviceHIP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws) {
-  if (kernel->is_vendor_specific_kernel() && host2hip_ld_->iris_host2hip_launch_with_obj) {
+#ifdef TRACE_DISABLE
+  hipCtx_t ctx;
+  ld_->hipCtxGetCurrent(&ctx);
+  _trace("Getting Context for Kernel launch Context Switch: dev:%d cctx:%p octx:%p self:%p thread:%p", devno_, ctx, ctx_, (void *)worker()->self(), (void *)worker()->thread());
+  if (ctx != ctx_) {
+      _trace("Context wrong for HIP resetting context switch dev[%d][%s] worker:%d self:%p thread:%p", devno(), name_, worker()->device()->devno(), (void *)worker()->self(), (void *)worker()->thread());
+      _trace("Context wrong for Kernel launch Context Switch: %p %p", ctx, ctx_);
+  }
+#endif
+  atleast_one_command_ = true;
+  if (kernel->is_vendor_specific_kernel(devno_) && host2hip_ld_->iris_host2hip_launch_with_obj) {
       _trace("dev[%d][%s] kernel[%s:%s] dim[%d] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, q_);
+      host2hip_ld_->SetKernelPtr(kernel->GetParamWrapperMemory(), kernel->name());
       int status = host2hip_ld_->iris_host2hip_launch_with_obj(kernel->GetParamWrapperMemory(), ordinal_, dim, off[0], gws[0]);
       err_ = ld_->hipDeviceSynchronize();
       _hiperror(err_);
       return status;
   }
-  else if (kernel->is_vendor_specific_kernel() && host2hip_ld_->iris_host2hip_launch) {
+  else if (kernel->is_vendor_specific_kernel(devno_) && host2hip_ld_->iris_host2hip_launch) {
       _trace("dev[%d][%s] kernel[%s:%s] dim[%d] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, q_);
       int status = host2hip_ld_->iris_host2hip_launch(dim, off[0], gws[0]);
       err_ = ld_->hipDeviceSynchronize();
@@ -393,7 +457,7 @@ int DeviceHIP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, s
   hipFunction_t func = (hipFunction_t) kernel->arch(this);
   int block[3] = { lws ? (int) lws[0] : 1, lws ? (int) lws[1] : 1, lws ? (int) lws[2] : 1 };
   if (!lws) {
-    while (max_compute_units_ * block[0] < gws[0]) block[0] <<= 1;
+    if (max_compute_units_ != 0) while (max_compute_units_ * block[0] < gws[0]) block[0] <<= 1;
     while (block[0] > max_block_dims_[0] && max_block_dims_[0] !=0) block[0] >>= 1;
   }
   int grid[3] = { (int) (gws[0] / block[0]), (int) (gws[1] / block[1]), (int) (gws[2] / block[2]) };
@@ -435,6 +499,7 @@ int DeviceHIP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, s
 }
 
 int DeviceHIP::Synchronize() {
+  if (! atleast_one_command_) return IRIS_SUCCESS;
   err_ = ld_->hipDeviceSynchronize();
   _hiperror(err_);
   if (err_ != hipSuccess){

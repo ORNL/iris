@@ -40,6 +40,7 @@ endif()
 
 set(IRIS_RUNTIME_SOURCES
   CAPI.cpp
+  IRIS.cpp
   Command.cpp
   Consistency.cpp
   Device.cpp
@@ -140,6 +141,7 @@ set(IRIS_RUNTIME_HEADERS
   Mem.h
   MemRange.h
   Platform.h
+  ObjectTrack.h
   Policies.h
   Policy.h
   PolicyAll.h

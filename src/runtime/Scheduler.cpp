@@ -33,6 +33,11 @@ Scheduler::Scheduler(Platform* platform) {
 }
 
 Scheduler::~Scheduler() {
+  if (sleeping_) {
+    running_ = false;
+    Invoke();
+    while(running_);
+  }
   delete consistency_;
   delete policies_;
   delete hub_client_;
@@ -81,8 +86,11 @@ void Scheduler::Enqueue(Task* task) {
 
 void Scheduler::Run() {
   while (true) {
+    _trace("Scheduler entering into sleep mode qsize:%lu", queue_->Size());
     Sleep();
+    _trace("Scheduler invoked qsize:%lu", queue_->Size());
     if (!running_) break;
+    _trace("Scheduler in running state qsize:%lu", queue_->Size());
     Task* task = NULL;
     while (queue_->Dequeue(&task)) Submit(task);
   }
@@ -94,6 +102,7 @@ void Scheduler::SubmitTaskDirect(Task* task, Device* dev) {
 }
 
 void Scheduler::Submit(Task* task) {
+  _trace("Dequeued task:%lu:%s", task->uid(), task->name());
   if (!ndevs_) {
     if (!task->marker()) { 
        _error("%s", "no device");
@@ -103,10 +112,12 @@ void Scheduler::Submit(Task* task) {
     return;
   }
   if (task->marker()) {
+    _trace("Identified marker task:%lu:%s", task->uid(), task->name());
     std::vector<Task*>* subtasks = task->subtasks();
     for (std::vector<Task*>::iterator I = subtasks->begin(), E = subtasks->end(); I != E; ++I) {
       Task* subtask = *I;
       int dev = subtask->devno();
+      _trace("Enquing marker task:%lu:%s of subtask:%lu:%s to device", task->uid(), task->name(), subtask->uid(), subtask->name());
       workers_[dev]->Enqueue(subtask);
     }
     return;

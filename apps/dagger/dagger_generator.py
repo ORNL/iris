@@ -390,7 +390,7 @@ def determine_and_prepend_iris_h2d_transfers(dag):
                 transfer["name"] = "transferto-{}-buffer{}-instance{}".format(k,j,ck)
                 buffer_name = "devicemem-{}-buffer{}-instance{}".format(k,j,ck)
                 commands = {}
-                commands["h2d"] = {"name":"d2h-buffer{}-instance{}".format(j,ck),"device_memory":buffer_name,"host_memory":"hostmem-{}-buffer{}-instance{}".format(k,j,ck),"offset":"0","size":"user-size-cb-{}".format(k)}
+                commands["h2d"] = {"name":"h2d-buffer{}-instance{}".format(j,ck),"device_memory":buffer_name,"host_memory":"hostmem-{}-buffer{}-instance{}".format(k,j,ck),"offset":"0","size":"user-size-cb-{}".format(k)}
                 #commands["h2d"] = buffer_name, "hostmem-{}-buffer{}-instance{}".format(k,j,ck), "0", "user-size-cb-{}".format(k)
                 transfer["commands"] = [commands]
                 #transfer["h2d"] = [buffer_name, "hostmem-{}-buffer{}-instance{}".format(k,j,ck), "0", "user-size-cb-{}".format(k)]

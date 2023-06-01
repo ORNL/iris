@@ -175,13 +175,13 @@ int DeviceLevelZero::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *tile_
   return IRIS_SUCCESS;
 }
 
-int DeviceLevelZero::KernelGet(Kernel *kernel, void** kernel_bin, const char* name) {
+int DeviceLevelZero::KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bool report_error) {
   ze_kernel_handle_t* zekernel = (ze_kernel_handle_t*) kernel_bin;
   ze_kernel_desc_t kernel_desc = {};
   kernel_desc.stype = ZE_STRUCTURE_TYPE_KERNEL_DESC;
   kernel_desc.pKernelName = name;
   err_ = ld_->zeKernelCreate(zemod_, &kernel_desc, zekernel);
-  _zeerror(err_);
+  if (report_error) _zeerror(err_);
   return IRIS_SUCCESS;
 }
 

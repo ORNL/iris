@@ -13,6 +13,8 @@ To create a working environment, it should be as simple as:
   conda activate dagger
 ```
 
+**Note** the DAGGER visualization uses a custom version of networkx which can be installed with `python -m pip install "networkx @ git+https://github.com/BeauJoh/networkx.git@main"`.
+
 ## Usage:
 
 ```

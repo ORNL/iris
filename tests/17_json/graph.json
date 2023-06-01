@@ -1,0 +1,241 @@
+{
+  "iris-graph": {
+    "inputs": [
+      "user-size",
+      "user-size-cb",
+      "user-A",
+      "user-B",
+      "user-target"
+    ],
+    "graph": {
+      "tasks": [
+        {
+          "name": "h2d-task",
+          "commands": [
+            {
+              "h2d": {
+                "name": "h2d-cmd",
+                "device_memory": "user-B",
+                "host_memory": "user-A",
+                "offset": "0",
+                "size": "user-size-cb"
+              }
+            }
+          ],
+          "target": "user-target",
+          "depends": []
+        },
+        {
+          "name": "task0",
+          "commands": [
+            {
+              "kernel": {
+                "name": "process",
+                "global_size": [
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "value": "user-B",
+                    "permissions": "rw"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "h2d-task"
+          ],
+          "target": "user-target"
+        },
+        {
+          "name": "task1",
+          "commands": [
+            {
+              "kernel": {
+                "name": "process",
+                "global_size": [
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "value": "user-B",
+                    "permissions": "rw"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task0"
+          ],
+          "target": "user-target"
+        },
+        {
+          "name": "task2",
+          "commands": [
+            {
+              "kernel": {
+                "name": "process",
+                "global_size": [
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "value": "user-B",
+                    "permissions": "rw"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task1"
+          ],
+          "target": "user-target"
+        },
+        {
+          "name": "task3",
+          "commands": [
+            {
+              "kernel": {
+                "name": "process",
+                "global_size": [
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "value": "user-B",
+                    "permissions": "rw"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task2"
+          ],
+          "target": "user-target"
+        },
+        {
+          "name": "task4",
+          "commands": [
+            {
+              "kernel": {
+                "name": "process",
+                "global_size": [
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "value": "user-B",
+                    "permissions": "rw"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task3"
+          ],
+          "target": "user-target"
+        },
+        {
+          "name": "task5",
+          "commands": [
+            {
+              "kernel": {
+                "name": "process",
+                "global_size": [
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "value": "user-B",
+                    "permissions": "rw"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task4"
+          ],
+          "target": "user-target"
+        },
+        {
+          "name": "task6",
+          "commands": [
+            {
+              "kernel": {
+                "name": "process",
+                "global_size": [
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "value": "user-B",
+                    "permissions": "rw"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task5"
+          ],
+          "target": "user-target"
+        },
+        {
+          "name": "task7",
+          "commands": [
+            {
+              "kernel": {
+                "name": "process",
+                "global_size": [
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "value": "user-B",
+                    "permissions": "rw"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task6"
+          ],
+          "target": "user-target"
+        },
+        {
+          "name": "d2h-task",
+          "commands": [
+            {
+              "d2h": {
+                "name": "d2h-cmd",
+                "device_memory": "user-B",
+                "host_memory": "user-A",
+                "offset": "0",
+                "size": "user-size-cb"
+              }
+            }
+          ],
+          "depends": [
+            "task7"
+          ],
+          "target": "user-target"
+        }
+      ]
+    }
+  }
+}

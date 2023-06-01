@@ -1,0 +1,25 @@
+IRIS_INSTALL_ROOT ?= $(HOME)/.iris
+IRIS ?= $(IRIS_INSTALL_ROOT)
+
+CC				:= gcc
+CXX				:= g++
+INCLUDE		+= -I$(IRIS)/include
+CFLAGS		+= ${INCLUDE} -g -std=gnu99 ${EXT_INCLUDE}
+CXXFLAGS	+= ${INCLUDE} -g -std=c++11 ${EXT_INCLUDE}
+LDFLAGS		+= -liris -lpthread -ldl ${EXT_LDFLAGS}
+LDINC			+= -L${IRIS}/lib -L${IRIS}/lib64
+NVCC			?= $(CUDA_PATH)/bin/nvcc
+HIPCC			?= $(ROCM_PATH)/bin/hipcc
+
+ifeq (1, ${CPP})
+$(TEST):$(TEST).cpp
+	rm -f $(TEST)
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDINC) $(LDFLAGS)
+else
+$(TEST):$(TEST).c
+	rm -f $(TEST)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDINC) $(LDFLAGS) -Dfalse=0 -Dtrue=1
+endif
+
+clean:
+	rm -f $(TEST)

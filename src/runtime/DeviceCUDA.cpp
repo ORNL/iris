@@ -113,6 +113,12 @@ DeviceCUDA::DeviceCUDA(LoaderCUDA* ld, LoaderHost2CUDA *host2cuda_ld, CUdevice c
   _info("device[%d] platform[%d] vendor[%s] device[%s] type[%d] version[%s] max_compute_units[%zu] max_work_group_size_[%zu] max_work_item_sizes[%zu,%zu,%zu] max_block_dims[%d,%d,%d] concurrent_kernels[%d] async_engines[%d]", devno_, platform_, vendor_, name_, type_, version_, max_compute_units_, max_work_group_size_, max_work_item_sizes_[0], max_work_item_sizes_[1], max_work_item_sizes_[2], max_block_dims_[0], max_block_dims_[1], max_block_dims_[2], ck, ae);
 }
 
+void DeviceCUDA::RegisterPin(void *host, size_t size)
+{
+    //ld_->cudaHostRegister(host, size, cudaHostRegisterMapped);
+    ld_->cudaHostRegister(host, size, cudaHostRegisterDefault);
+}
+
 DeviceCUDA::~DeviceCUDA() {
     if (host2cuda_ld_->iris_host2cuda_finalize){
         host2cuda_ld_->iris_host2cuda_finalize();
@@ -126,6 +132,7 @@ int DeviceCUDA::Compile(char* src) {
   char cmd[1024];
   memset(cmd, 0, 256);
   sprintf(cmd, "nvcc -ptx %s -o %s", src, kernel_path_);
+  //printf("Cmd: %s\n", cmd);
   if (system(cmd) != EXIT_SUCCESS) {
     _error("cmd[%s]", cmd);
     worker_->platform()->IncrementErrorCount();
@@ -163,9 +170,9 @@ int DeviceCUDA::Init() {
 #ifndef TRACE_DISABLE
   CUcontext ctx;
   ld_->cuCtxGetCurrent(&ctx);
-  _trace("Init:: Context create dev:%d cctx:%p octx:%p self:%p thread:%p", devno_, ctx, ctx_, worker()->self(), worker()->thread());
+  _trace("Init:: Context create dev:%d cctx:%p octx:%p self:%p thread:%p", devno_, ctx, ctx_, (void *)worker()->self(), (void *)worker()->thread());
   if (ctx != ctx_) {
-      _trace("Init:: Context wrong for CUDA resetting context switch dev[%d][%s] worker:%d self:%p thread:%p", devno(), name_, worker()->device()->devno(), worker()->self(), worker()->thread());
+      _trace("Init:: Context wrong for CUDA resetting context switch dev[%d][%s] worker:%d self:%p thread:%p", devno(), name_, worker()->device()->devno(), (void *)worker()->self(), (void *)worker()->thread());
       _trace("Init:: Context wrong for Kernel launch Context Switch: %p %p", ctx, ctx_);
   }
 #endif
@@ -217,6 +224,9 @@ int DeviceCUDA::ResetMemory(BaseMem *mem, uint8_t reset_value) {
     return IRIS_SUCCESS;
 }
 int DeviceCUDA::MemAlloc(void** mem, size_t size, bool reset) {
+  if (IsContextChangeRequired()) {
+      ld_->cuCtxSetCurrent(ctx_);
+  }
   CUdeviceptr* cumem = (CUdeviceptr*) mem;
   //double mtime = timer_->Now();
   err_ = ld_->cuMemAlloc(cumem, size);
@@ -289,7 +299,7 @@ int DeviceCUDA::MemD2D(Task *task, BaseMem *mem, void *dst, void *src, size_t si
   CUdeviceptr src_cumem = (CUdeviceptr) src;
   CUdeviceptr dst_cumem = (CUdeviceptr) dst;
   if (IsContextChangeRequired()) {
-      _trace("CUDA context switch dev[%d][%s] task[%ld:%s] mem[%lu] self:%p thread:%p\n", devno_, name_, task->uid(), task->name(), mem->uid(), worker()->self(), worker()->thread());
+      _trace("CUDA context switch dev[%d][%s] task[%ld:%s] mem[%lu] self:%p thread:%p", devno_, name_, task->uid(), task->name(), mem->uid(), (void *)worker()->self(), (void *)worker()->thread());
       ld_->cuCtxSetCurrent(ctx_);
   }
 #ifndef IRIS_SYNC_EXECUTION
@@ -308,10 +318,10 @@ int DeviceCUDA::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
 #ifndef TRACE_DISABLE
   CUcontext ctx;
   ld_->cuCtxGetCurrent(&ctx);
-  _trace("MemH2D:: Context create %sdev[%d][%s] task[%ld:%s] mem[%lu] cctx:%p octx:%p self:%p thread:%p", tag, devno_, name_, task->uid(), task->name(), mem->uid(), ctx, ctx_, worker()->self(), worker()->thread());
+  _trace("MemH2D:: Context create %sdev[%d][%s] task[%ld:%s] mem[%lu] cctx:%p octx:%p self:%p thread:%p", tag, devno_, name_, task->uid(), task->name(), mem->uid(), ctx, ctx_, (void *)worker()->self(), (void *)worker()->thread());
 #endif
   if (IsContextChangeRequired()) {
-      _trace("CUDA context switch %sdev[%d][%s] task[%ld:%s] mem[%lu] self:%p thread:%p\n", tag, devno_, name_, task->uid(), task->name(), mem->uid(), worker()->self(), worker()->thread());
+      _trace("CUDA context switch %sdev[%d][%s] task[%ld:%s] mem[%lu] self:%p thread:%p", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)worker()->self(), (void *)worker()->thread());
       ld_->cuCtxSetCurrent(ctx_);
   }
   //testMemcpy(ld_);
@@ -359,7 +369,7 @@ int DeviceCUDA::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
   err_ = ld_->cuMemcpyHtoDAsync(cumem + off[0], host, size, streams_[q_]);
 #endif
   }
-  _trace("Completed H2D DT of %sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] size[%lu] host[%p]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), cumem, size, host);
+  _trace("Completed H2D DT of %sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] size[%lu] host[%p]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, size, host);
   _cuerror(err_);
   if (err_ != CUDA_SUCCESS){
    worker_->platform()->IncrementErrorCount();
@@ -370,12 +380,18 @@ int DeviceCUDA::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
 bool DeviceCUDA::IsContextChangeRequired() {
     return (worker()->self() != worker()->thread());
 }
+void DeviceCUDA::SetContextToCurrentThread()
+{
+    if (IsContextChangeRequired()) {
+        ld_->cuCtxSetCurrent(ctx_);
+    }
+}
 void DeviceCUDA::ResetContext()
 {
     CUcontext ctx;
     ld_->cuCtxGetCurrent(&ctx);
-    _trace("CUDA resetting context switch dev[%d][%s] self:%p thread:%p\n", devno_, name_, worker()->self(), worker()->thread());
-    _trace("Resetting Context Switch: %p %p\n", ctx, ctx_);
+    _trace("CUDA resetting context switch dev[%d][%s] self:%p thread:%p", devno_, name_, (void *)worker()->self(), (void *)worker()->thread());
+    _trace("Resetting Context Switch: %p %p", ctx, ctx_);
     ld_->cuCtxSetCurrent(ctx_);
 }
 
@@ -383,16 +399,16 @@ int DeviceCUDA::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
 #ifndef TRACE_DISABLE
   CUcontext ctx;
   ld_->cuCtxGetCurrent(&ctx);
-  _trace("MemD2H:: Context create %sdev[%d][%s] task[%ld:%s] mem[%lu] cctx:%p octx:%p self:%p thread:%p", tag, devno_, name_, task->uid(), task->name(), mem->uid(), ctx, ctx_, worker()->self(), worker()->thread());
+  _trace("MemD2H:: Context create %sdev[%d][%s] task[%ld:%s] mem[%lu] cctx:%p octx:%p self:%p thread:%p", tag, devno_, name_, task->uid(), task->name(), mem->uid(), ctx, ctx_, (void *)worker()->self(), (void *)worker()->thread());
 #endif
+  if (IsContextChangeRequired()) {
+      _trace("CUDA context switch %sdev[%d][%s] task[%ld:%s] mem[%lu] self:%p thread:%p", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)worker()->self(), (void *)worker()->thread());
+      ld_->cuCtxSetCurrent(ctx_);
+  }
   CUdeviceptr cumem = (CUdeviceptr) mem->arch(this);
 #ifndef IRIS_SYNC_EXECUTION
   q_ = task->uid() % nqueues_; 
 #endif
-  if (IsContextChangeRequired()) {
-      _trace("CUDA context switch %sdev[%d][%s] task[%ld:%s] mem[%lu] self:%p thread:%p\n", tag, devno_, name_, task->uid(), task->name(), mem->uid(), worker()->self(), worker()->thread());
-      ld_->cuCtxSetCurrent(ctx_);
-  }
   if (dim == 3) {
       _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu,%lu,%lu] host_sizes[%lu,%lu,%lu] dev_sizes[%lu,%lu,%lu] size[%lu] host[%p]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, off[0], off[1], off[2], host_sizes[0], host_sizes[1], host_sizes[2], dev_sizes[0], dev_sizes[1], dev_sizes[2], size, host);
       MemCpy3D(cumem, (uint8_t *)host, off, dev_sizes, host_sizes, elem_size, false);
@@ -439,7 +455,7 @@ int DeviceCUDA::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
   if (err_ != CUDA_SUCCESS) {
       _error("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, off[0], size, host, q_);
   }
-  _trace("Completed D2H DT of %sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] size[%lu] host[%p]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), cumem, size, host);
+  _trace("Completed D2H DT of %sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] size[%lu] host[%p]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, size, host);
   _cuerror(err_);
   if (err_ != CUDA_SUCCESS){
    worker_->platform()->IncrementErrorCount();
@@ -448,20 +464,39 @@ int DeviceCUDA::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
   return IRIS_SUCCESS;
 }
 
-int DeviceCUDA::KernelGet(Kernel *kernel, void** kernel_bin, const char* name) {
+int DeviceCUDA::KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bool report_error) {
+  if (!kernel->vendor_specific_kernel_check_flag(devno_))
+      CheckVendorSpecificKernel(kernel);
   int kernel_idx=-1;
-  if (kernel->is_vendor_specific_kernel() && 
+  if (kernel->is_vendor_specific_kernel(devno_) && 
           host2cuda_ld_->iris_host2cuda_kernel_with_obj &&
-      host2cuda_ld_->iris_host2cuda_kernel_with_obj(&kernel_idx, name) == IRIS_SUCCESS) 
+      host2cuda_ld_->iris_host2cuda_kernel_with_obj(&kernel_idx, name) == IRIS_SUCCESS)  {
+          *kernel_bin = host2cuda_ld_->GetFunctionPtr(name);
           return IRIS_SUCCESS;
-  if (kernel->is_vendor_specific_kernel() && host2cuda_ld_->iris_host2cuda_kernel) 
+  }
+  if (kernel->is_vendor_specific_kernel(devno_) && host2cuda_ld_->iris_host2cuda_kernel) {
+      *kernel_bin = host2cuda_ld_->GetFunctionPtr(name);
       return IRIS_SUCCESS;
+  }
+  if (IsContextChangeRequired()) {
+      _trace("Changed Context for CUDA resetting context switch dev[%d][%s] worker:%d self:%p thread:%p", devno(), name_, worker()->device()->devno(), (void *)worker()->self(), (void *)worker()->thread());
+      ld_->cuCtxSetCurrent(ctx_);
+  }
+  if (native_kernel_not_exists()) {
+      if (report_error) {
+          _error("CUDA kernel:%s not found !", name);
+          worker_->platform()->IncrementErrorCount();
+      }
+      return IRIS_ERROR;
+  }
   CUfunction* cukernel = (CUfunction*) kernel_bin;
   err_ = ld_->cuModuleGetFunction(cukernel, module_, name);
-  _cuerror(err_);
+  if (report_error) _cuerror(err_);
   if (err_ != CUDA_SUCCESS) {
-      _error("CUDA kernel:%s not found !", name);
-      worker_->platform()->IncrementErrorCount();
+      if (report_error) {
+          _error("CUDA kernel:%s not found !", name);
+          worker_->platform()->IncrementErrorCount();
+      }
       return IRIS_ERROR;
   }
   char name_off[256];
@@ -484,7 +519,7 @@ int DeviceCUDA::KernelSetArg(Kernel* kernel, int idx, int kindex, size_t size, v
     shared_mem_bytes_ += size;
   }
   if (max_arg_idx_ < idx) max_arg_idx_ = idx;
-  if (kernel->is_vendor_specific_kernel()) {
+  if (kernel->is_vendor_specific_kernel(devno_)) {
      if (host2cuda_ld_->iris_host2cuda_setarg_with_obj)
          host2cuda_ld_->iris_host2cuda_setarg_with_obj(
                 kernel->GetParamWrapperMemory(), kindex, size, value);
@@ -506,7 +541,7 @@ int DeviceCUDA::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, 
       dev_ptr = *dev_alloc_ptr; 
   }
   if (max_arg_idx_ < idx) max_arg_idx_ = idx;
-  if (kernel->is_vendor_specific_kernel()) {
+  if (kernel->is_vendor_specific_kernel(devno_)) {
       if (host2cuda_ld_->iris_host2cuda_setmem_with_obj) 
           host2cuda_ld_->iris_host2cuda_setmem_with_obj(
                   kernel->GetParamWrapperMemory(), kindex, dev_ptr);
@@ -516,23 +551,27 @@ int DeviceCUDA::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, 
   return IRIS_SUCCESS;
 }
 
-int DeviceCUDA::KernelLaunchInit(Kernel* kernel) {
-    kernel->set_vendor_specific_kernel(false);
+void DeviceCUDA::CheckVendorSpecificKernel(Kernel* kernel) {
+    kernel->set_vendor_specific_kernel(devno_, false);
     if (host2cuda_ld_->iris_host2cuda_kernel_with_obj) {
         int status = host2cuda_ld_->iris_host2cuda_kernel_with_obj(
                 kernel->GetParamWrapperMemory(), kernel->name());
-        if (status == IRIS_SUCCESS) {
-            if (host2cuda_ld_->SetKernelPtr(kernel->GetParamWrapperMemory(), kernel->name())==IRIS_SUCCESS)
-                kernel->set_vendor_specific_kernel(true);
+        if (status == IRIS_SUCCESS && 
+                host2cuda_ld_->IsFunctionExists(kernel->name())) {
+            kernel->set_vendor_specific_kernel(devno_, true);
         }
     }
     else if (host2cuda_ld_->iris_host2cuda_kernel) {
         int status = host2cuda_ld_->iris_host2cuda_kernel(
                 kernel->name());
-        if (status == IRIS_SUCCESS) {
-            kernel->set_vendor_specific_kernel(true);
+        if (status == IRIS_SUCCESS && 
+                host2cuda_ld_->IsFunctionExists(kernel->name())) {
+            kernel->set_vendor_specific_kernel(devno_, true);
         }
     }
+    kernel->set_vendor_specific_kernel_check(devno_, true);
+}
+int DeviceCUDA::KernelLaunchInit(Kernel* kernel) {
     return IRIS_SUCCESS;
 }
 
@@ -540,18 +579,19 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
 #ifndef TRACE_DISABLE
     CUcontext ctx;
     ld_->cuCtxGetCurrent(&ctx);
-    _trace("Getting Context for Kernel launch Context Switch: dev:%ld cctx:%p octx:%p self:%p thread:%p", devno_, ctx, ctx_, worker()->self(), worker()->thread());
+    _trace("Getting Context for Kernel launch Context Switch: dev:%d cctx:%p octx:%p self:%p thread:%p", devno_, ctx, ctx_, (void *)worker()->self(), (void *)worker()->thread());
     if (ctx != ctx_) {
-        _trace("Context wrong for CUDA resetting context switch dev[%d][%s] worker:%d self:%p thread:%p", devno(), name_, worker()->device()->devno(), worker()->self(), worker()->thread());
+        _trace("Context wrong for CUDA resetting context switch dev[%d][%s] worker:%d self:%p thread:%p", devno(), name_, worker()->device()->devno(), (void *)worker()->self(), (void *)worker()->thread());
         _trace("Context wrong for Kernel launch Context Switch: %p %p", ctx, ctx_);
     }
 #endif
 #ifndef IRIS_SYNC_EXECUTION
   q_ = cmd->task()->uid() % nqueues_; 
 #endif
-  if (kernel->is_vendor_specific_kernel()) {
+  if (kernel->is_vendor_specific_kernel(devno_)) {
      if(host2cuda_ld_->iris_host2cuda_launch_with_obj) {
          _trace("dev[%d][%s] kernel[%s:%s] dim[%d] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, q_);
+         host2cuda_ld_->SetKernelPtr(kernel->GetParamWrapperMemory(), kernel->name());
          int status = host2cuda_ld_->iris_host2cuda_launch_with_obj(
 #ifndef IRIS_SYNC_EXECUTION
                  streams_[q_], 

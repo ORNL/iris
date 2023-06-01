@@ -7,7 +7,7 @@
 
 #include <iostream>
 #include <fstream>
-#include <codecvt>
+//#include <codecvt>
 #include <locale>
 #include <string>
 
@@ -39,10 +39,14 @@ void SchedulingHistory::AddKernel(Command* cmd) {
 
 void SchedulingHistory::AddH2D(Command* cmd) {
   //check if the buffer has a name, use that rather than the transfer type
+  if(cmd->task()->name())
+    cmd->set_name(cmd->task()->name());
   Add(cmd);
 }
 
 void SchedulingHistory::AddD2H(Command* cmd) {
+  if(cmd->task()->name())
+    cmd->set_name(cmd->task()->name());
   Add(cmd);
 }
 

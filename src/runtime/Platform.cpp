@@ -50,6 +50,7 @@ char iris_log_prefix_[256];
 
 Platform::Platform() {
   init_ = false;
+  tmp_dir_[0] = '\0';
   disable_d2d_ = false;
   finalize_ = false;
   release_task_flag_ = true;
@@ -99,6 +100,12 @@ Platform::~Platform() {
   for(LoaderHost2OpenCL *ld : loaderHost2OpenCL_) {
       delete ld;
   }
+  if (tmp_dir_[0] != '\0') {
+      char cmd[270];
+      //printf("Removing tmp_dir:%s\n", tmp_dir_);
+      sprintf(cmd, "rm -rf %s", tmp_dir_);
+      system(cmd);
+  }
   /*
   for (std::set<Mem*>::iterator I = mems_.begin(), E = mems_.end(); I != E; ++I) {
       Mem *mem = *I;
@@ -123,7 +130,7 @@ Platform::~Platform() {
   if (sig_handler_) delete sig_handler_;
   if (json_) delete json_;
   if (pool_) delete pool_;
-
+  kernel_history_.clear();
   pthread_mutex_destroy(&mutex_);
 }
 
@@ -191,13 +198,10 @@ int Platform::Init(int* argc, char*** argv, int sync) {
   if (polyhedral_available_)
     filter_task_split_ = new FilterTaskSplit(polyhedral_, this);
 
-  iris_kernel null_brs_kernel;
-  KernelCreate("iris_null", &null_brs_kernel);
-  null_kernel_ = null_brs_kernel->class_obj;
-
   if (enable_profiler_) {
     profilers_[nprofilers_++] = new ProfilerDOT(this);
     profilers_[nprofilers_++] = new ProfilerGoogleCharts(this);
+    profilers_[nprofilers_++] = new ProfilerGoogleCharts(this, true);
   }
   if (enable_scheduling_history_) scheduling_history_ = new SchedulingHistory(this);
 
@@ -205,6 +209,10 @@ int Platform::Init(int* argc, char*** argv, int sync) {
   present_table_ = new PresentTable();
   queue_ = new QueueTask(this);
   pool_ = new Pool(this);
+
+  iris_kernel null_brs_kernel;
+  KernelCreate("iris_null", &null_brs_kernel);
+  null_kernel_ = get_kernel_object(null_brs_kernel);
 
   InitScheduler();
   InitWorkers();
@@ -228,16 +236,25 @@ int Platform::Synchronize() {
   for (int i = 0; i < ndevs_; i++) devices[i] = i;
   int ret = DeviceSynchronize(ndevs_, devices);
   delete [] devices;
+  //track().Clear();
+  task_track().Clear();
   return ret;
 }
 
 int Platform::EnvironmentInit() {
+  char tmp_dir_str[] = "/tmp/iris-XXXXXX";
+  char *tmp_dir = mkdtemp(tmp_dir_str);
+  strcpy(tmp_dir_, tmp_dir);
+  //printf("Temp directory:%s\n", tmp_dir_);
   EnvironmentSet("ARCHS",  "openmp:cuda:hip:levelzero:hexagon:opencl",  false);
-  EnvironmentSet("TMPDIR", "/tmp/iris",                                 false);
+  EnvironmentSet("TMPDIR", tmp_dir_,                                 false);
 
   EnvironmentSet("KERNEL_DIR",      "",                   false);
   EnvironmentSet("KERNEL_SRC_CUDA",     "kernel.cu",          false);
   EnvironmentSet("KERNEL_BIN_CUDA",     "kernel.ptx",         false);
+  EnvironmentSet("KERNEL_XILINX_XCLBIN", "kernel.xilinx.xclbin",  false);
+  EnvironmentSet("KERNEL_FPGA_XCLBIN",   "kernel-fpga.xclbin",  false);
+  EnvironmentSet("KERNEL_INTEL_AOCX", "kernel.intel.aocx",  false);
   EnvironmentSet("KERNEL_SRC_HEXAGON",  "kernel.hexagon.cpp", false);
   EnvironmentSet("KERNEL_BIN_HEXAGON",  "kernel.hexagon.so",  false);
   EnvironmentSet("KERNEL_SRC_HIP",      "kernel.hip.cpp",     false);
@@ -343,10 +360,10 @@ int Platform::SetDevsAvailable() {
 }
 
 int Platform::InitCUDA() {
-  if (arch_available_ & iris_nvidia) {
-    _trace("%s", "skipping CUDA architecture");
-    return IRIS_ERROR;
-  }
+  //if (arch_available_ & iris_nvidia) {
+  //  _trace("%s", "skipping CUDA architecture");
+  //  return IRIS_ERROR;
+  //}
   loaderCUDA_ = new LoaderCUDA();
   if (loaderCUDA_->LoadExtHandle("libcudart.so") != IRIS_SUCCESS) {
     _trace("%s", "skipping CUDA RT architecture");
@@ -405,16 +422,17 @@ int Platform::InitCUDA() {
   }
   if (ndevs) {
     strcpy(platform_names_[nplatforms_], "CUDA");
+    first_dev_of_type_[nplatforms_] = devs_[ndevs_-mdevs];
     nplatforms_++;
   }
   return IRIS_SUCCESS;
 }
 
 int Platform::InitHIP() {
-  if (arch_available_ & iris_amd) {
-    _trace("%s", "skipping HIP architecture");
-    return IRIS_ERROR;
-  }
+  //if (arch_available_ & iris_amd) {
+  //  _trace("%s", "skipping HIP architecture");
+  //  return IRIS_ERROR;
+  //}
   loaderHIP_ = new LoaderHIP();
   if (loaderHIP_->Load() != IRIS_SUCCESS) {
     _trace("%s", "skipping HIP architecture");
@@ -467,16 +485,17 @@ int Platform::InitHIP() {
   }
   if (ndevs) {
     strcpy(platform_names_[nplatforms_], "HIP");
+    first_dev_of_type_[nplatforms_] = devs_[ndevs_-mdevs];
     nplatforms_++;
   }
   return IRIS_SUCCESS;
 }
 
 int Platform::InitLevelZero() {
-  if (arch_available_ & iris_gpu_intel) {
-    _trace("%s", "skipping LevelZero architecture");
-    return IRIS_ERROR;
-  }
+  //if (arch_available_ & iris_gpu_intel) {
+  //  _trace("%s", "skipping LevelZero architecture");
+  //  return IRIS_ERROR;
+  //}
   loaderLevelZero_ = new LoaderLevelZero();
   if (loaderLevelZero_->Load() != IRIS_SUCCESS) {
     _trace("%s", "skipping LevelZero architecture");
@@ -513,45 +532,53 @@ int Platform::InitLevelZero() {
   err = loaderLevelZero_->zeContextCreate(driver, &zectx_desc, &zectx);
   _zeerror(err);
 
+  int mdevs = 0;
   for (uint32_t i = 0; i < ndevs; i++) {
     devs_[ndevs_] = new DeviceLevelZero(loaderLevelZero_, devs[i], zectx, driver, ndevs_, nplatforms_);
     arch_available_ |= devs_[ndevs_]->type();
-    ndevs_++;
+    ndevs_++; mdevs++;
   }
   if (ndevs) {
     strcpy(platform_names_[nplatforms_], "LevelZero");
+    first_dev_of_type_[nplatforms_] = devs_[ndevs_-mdevs];
     nplatforms_++;
   }
   return IRIS_SUCCESS;
 }
 
 int Platform::InitOpenMP() {
-  if (arch_available_ & iris_cpu) {
-    _trace("%s", "skipping OpenMP architecture");
-    return IRIS_ERROR;
-  }
+  //if (arch_available_ & iris_cpu) {
+  //  _trace("%s", "skipping OpenMP architecture");
+  //  return IRIS_ERROR;
+  //}
   loaderOpenMP_ = new LoaderOpenMP();
   if (loaderOpenMP_->Load() != IRIS_SUCCESS) {
-    _trace("%s", "skipping OpenMP architecture");
-    return IRIS_ERROR;
+      char *filename = (char *)malloc(512);
+      EnvironmentGet("KERNEL_BIN_OPENMP", &filename, NULL);
+      _warning("couldn't find OpenMP architecture kernel library:%s", filename);
+      free(filename);
   }
   _trace("OpenMP platform[%d] ndevs[%d]", nplatforms_, 1);
   devs_[ndevs_] = new DeviceOpenMP(loaderOpenMP_, ndevs_, nplatforms_);
   arch_available_ |= devs_[ndevs_]->type();
   ndevs_++;
   strcpy(platform_names_[nplatforms_], "OpenMP");
+  first_dev_of_type_[nplatforms_] = devs_[ndevs_-1];
   nplatforms_++;
   return IRIS_SUCCESS;
 }
 
 int Platform::InitHexagon() {
-  if (arch_available_ & iris_hexagon) {
-    _trace("%s", "skipping Hexagon architecture");
-    return IRIS_ERROR;
-  }
+  //if (arch_available_ & iris_hexagon) {
+  //  _trace("%s", "skipping Hexagon architecture");
+  //  return IRIS_ERROR;
+  //}
   loaderHexagon_ = new LoaderHexagon();
   if (loaderHexagon_->Load() != IRIS_SUCCESS) {
-    _trace("%s", "skipping Hexagon architecture");
+    char *filename = (char *)malloc(512);
+    EnvironmentGet("KERNEL_BIN_HEXAGON", &filename, NULL);
+    _trace("couldn't find Hexagon architecture kernel library:%s, hence skipping", filename);
+    free(filename);
     return IRIS_ERROR;
   }
   _trace("Hexagon platform[%d] ndevs[%d]", nplatforms_, 1);
@@ -559,6 +586,7 @@ int Platform::InitHexagon() {
   arch_available_ |= devs_[ndevs_]->type();
   ndevs_++;
   strcpy(platform_names_[nplatforms_], "Hexagon");
+  first_dev_of_type_[nplatforms_] = devs_[ndevs_-1];
   nplatforms_++;
   return IRIS_SUCCESS;
 }
@@ -590,14 +618,14 @@ int Platform::InitOpenCL() {
     _clerror(err);
     _trace("OpenCL platform[%s] from [%s]", platform_name, vendor);
 
-    if ((arch_available_ & iris_nvidia) && strstr(vendor, "NVIDIA") != NULL) {
-      _trace("skipping platform[%d] [%s %s] ndevs[%u]", nplatforms_, vendor, platform_name, ndevs);
-      continue;
-    }
-    if ((arch_available_ & iris_amd) && strstr(vendor, "Advanced Micro Devices") != NULL) {
-      _trace("skipping platform[%d] [%s %s] ndevs[%u]", nplatforms_, vendor, platform_name, ndevs);
-      continue;
-    }
+    //if ((arch_available_ & iris_nvidia) && strstr(vendor, "NVIDIA") != NULL) {
+    //  _trace("skipping platform[%d] [%s %s] ndevs[%u]", nplatforms_, vendor, platform_name, ndevs);
+    //  continue;
+    //}
+    //if ((arch_available_ & iris_amd) && strstr(vendor, "Advanced Micro Devices") != NULL) {
+    //  _trace("skipping platform[%d] [%s %s] ndevs[%u]", nplatforms_, vendor, platform_name, ndevs);
+    //  continue;
+    //}
     err = loaderOpenCL_->clGetDeviceIDs(cl_platforms[i], CL_DEVICE_TYPE_ALL, 0, NULL, &ndevs);
     if (!ndevs) {
       _trace("skipping platform[%d] [%s %s] ndevs[%u]", nplatforms_, vendor, platform_name, ndevs);
@@ -611,6 +639,7 @@ int Platform::InitOpenCL() {
       _trace("skipping platform[%d] [%s %s] ndevs[%u]", nplatforms_, vendor, platform_name, ndevs);
       continue;
     }
+    int mdevs = 0;
     for (cl_uint j = 0; j < ndevs; j++) {
       cl_device_type dev_type;
       err = loaderOpenCL_->clGetDeviceInfo(cl_devices[j], CL_DEVICE_TYPE, sizeof(dev_type), &dev_type, NULL);
@@ -625,10 +654,12 @@ int Platform::InitOpenCL() {
       devs_[ndevs_] = new DeviceOpenCL(loaderOpenCL_, loaderHost2OpenCL, cl_devices[j], cl_contexts[i], ndevs_, ocldevno, nplatforms_);
       arch_available_ |= devs_[ndevs_]->type();
       ndevs_++;
+      mdevs++;
       ocldevno++;
     }
     _trace("adding platform[%d] [%s %s] ndevs[%u]", nplatforms_, vendor, platform_name, ndevs);
     sprintf(platform_names_[nplatforms_], "OpenCL %s", vendor);
+    first_dev_of_type_[nplatforms_] = devs_[ndevs_-mdevs];
     nplatforms_++;
   }
   return IRIS_SUCCESS;
@@ -655,7 +686,8 @@ int Platform::InitDevices(bool sync) {
   }
   if (sync) for (int i = 0; i < ndevs_; i++) tasks[i]->Wait();
   for (int i = 0; i < ndevs_; i++) {
-    delete tasks[i];
+    //delete tasks[i];
+    tasks[i]->Release();
   }
   delete[] tasks;
   return IRIS_SUCCESS;
@@ -697,6 +729,7 @@ int Platform::DeviceInfo(int device, int param, void* value, size_t* size) {
     case iris_vendor    : if (size) *size = strlen(dev->vendor());  strcpy((char*) value, dev->vendor());   break;
     case iris_name      : if (size) *size = strlen(dev->name());    strcpy((char*) value, dev->name());     break;
     case iris_type      : if (size) *size = sizeof(int);            *((int*) value) = dev->type();          break;
+    case iris_backend   : if (size) *size = sizeof(int);            *((int*) value) = dev->model();         break;
     default: return IRIS_ERROR;
   }
   return IRIS_SUCCESS;
@@ -724,6 +757,7 @@ int Platform::DeviceSynchronize(int ndevs, int* devices) {
       sprintf(sync_task, "Marker-%d", i);
       Task* subtask = new Task(this, IRIS_MARKER, sync_task);
       subtask->set_devno(devices[i]);
+      subtask->set_user(true);
       task->AddSubtask(subtask);
     }
     scheduler_->Enqueue(task);
@@ -734,6 +768,66 @@ int Platform::DeviceSynchronize(int ndevs, int* devices) {
 
 int Platform::PolicyRegister(const char* lib, const char* name, void* params) {
   return scheduler_->policies()->Register(lib, name, params);
+}
+
+int Platform::CalibrateCommunicationMatrix(double *comm_time, size_t data_size, int iterations, bool pin_memory_flag)
+{
+    uint8_t *A = Utils::AllocateRandomArray<uint8_t>(data_size);
+    uint8_t *nopin_A = Utils::AllocateRandomArray<uint8_t>(data_size);
+    if (pin_memory_flag) 
+        iris_register_pin_memory(A, data_size);
+    Mem* mem = new Mem(data_size, this);
+    size_t gws=1;
+    Task* task = Task::Create(this, IRIS_TASK, NULL);
+    Command* d2d_cmd = Command::CreateD2D(task, mem, 0, data_size, A, 0);
+    Command* h2d_cmd = Command::CreateH2D(task, mem, 0, data_size, A);
+    Command* d2h_cmd = Command::CreateD2H(task, mem, 0, data_size, A);
+    Command* nopin_h2d_cmd = Command::CreateH2D(task, mem, 0, data_size, nopin_A);
+    Command* nopin_d2h_cmd = Command::CreateD2H(task, mem, 0, data_size, nopin_A);
+    iris_kernel null_brs_kernel;
+    KernelCreate("iris_null", &null_brs_kernel);
+    Kernel *null_kernel = get_kernel_object(null_brs_kernel);;
+    Command* cmd_kernel = Command::CreateKernel(task, null_kernel, 1, 0, &gws, &gws);
+    task->AddCommand(cmd_kernel);
+    int ndevs = ndevs_+1;
+    for(int i=0; i<ndevs; i++) {
+        for(int j=0; j<ndevs; j++) {
+            double cmd_time = 0.0f;
+            if (i != j) {
+                double total_cmd_time = 0.0f;
+                for(int k=0; k<iterations; k++) {
+                    double lcmd_time = 0.0f;
+                    if (j == 0) {
+                        devs_[i-1]->ExecuteD2H(d2h_cmd);
+                        lcmd_time = d2h_cmd->time_end() - d2h_cmd->time_start();
+                    } else if (i == 0) {
+                        devs_[j-1]->ExecuteH2D(h2d_cmd);
+                        lcmd_time = h2d_cmd->time_end() - h2d_cmd->time_start();
+                    } else if (j>0 && devs_[j-1]->type() == iris_cpu) {
+                        devs_[i-1]->ExecuteD2H(nopin_d2h_cmd);
+                        lcmd_time = nopin_d2h_cmd->time_end() - nopin_d2h_cmd->time_start();
+                    } else if (i>0 && devs_[i-1]->type() == iris_cpu) {
+                        devs_[j-1]->ExecuteH2D(nopin_h2d_cmd);
+                        lcmd_time = nopin_h2d_cmd->time_end() - nopin_h2d_cmd->time_start();
+                    } else {
+                        d2d_cmd->set_src_dev(i-1);
+                        devs_[j-1]->ExecuteD2D(d2d_cmd);
+                        lcmd_time = d2d_cmd->time_end() - d2d_cmd->time_start();
+                    }
+                    total_cmd_time += lcmd_time;
+                }
+                cmd_time = total_cmd_time / iterations;
+            } 
+            comm_time[i*ndevs + j] = cmd_time;
+        }
+    }
+    //delete cmd_kernel;
+    delete d2d_cmd;
+    delete h2d_cmd;
+    delete d2h_cmd;
+    delete mem;
+    delete task;
+    return IRIS_SUCCESS;
 }
 
 int Platform::RegisterCommand(int tag, int device, command_handler handler) {
@@ -758,7 +852,8 @@ int Platform::RegisterHooksCommand(hook_command pre, hook_command post) {
 
 int Platform::KernelCreate(const char* name, iris_kernel* brs_kernel) {
   Kernel* kernel = new Kernel(name, this);
-  if (brs_kernel) *brs_kernel = kernel->struct_obj();
+  if (brs_kernel) kernel->SetStructObject(brs_kernel);
+  //if (brs_kernel) *brs_kernel = kernel->struct_obj();
   std::string name_string = name;
   if (kernels_.find(name_string) != kernels_.end()) {
       std::vector<Kernel *> vec;
@@ -774,20 +869,20 @@ int Platform::KernelGet(const char* name, iris_kernel* brs_kernel) {
 }
 
 int Platform::KernelSetArg(iris_kernel brs_kernel, int idx, size_t size, void* value) {
-  Kernel* kernel = brs_kernel->class_obj;
+  Kernel* kernel = Platform::GetPlatform()->get_kernel_object(brs_kernel);
   kernel->SetArg(idx, size, value);
   return IRIS_SUCCESS;
 }
 
 int Platform::KernelSetMem(iris_kernel brs_kernel, int idx, iris_mem brs_mem, size_t off, size_t mode) {
-  Kernel* kernel = brs_kernel->class_obj;
-  BaseMem* mem = brs_mem->class_obj;
+  Kernel* kernel = Platform::GetPlatform()->get_kernel_object(brs_kernel);
+  BaseMem* mem = Platform::GetPlatform()->get_mem_object(brs_mem);
   kernel->SetMem(idx, mem, off, mode);
   return IRIS_SUCCESS;
 }
 
 int Platform::KernelSetMap(iris_kernel brs_kernel, int idx, void* host, size_t mode) {
-  Kernel* kernel = brs_kernel->class_obj;
+  Kernel* kernel = Platform::GetPlatform()->get_kernel_object(brs_kernel);
   size_t off = 0ULL;
   Mem* mem = (Mem *)present_table_->Get(host, &off);
   if (mem) kernel->SetMem(idx, mem, off, mode);
@@ -801,26 +896,39 @@ int Platform::KernelSetMap(iris_kernel brs_kernel, int idx, void* host, size_t m
 }
 
 int Platform::KernelRelease(iris_kernel brs_kernel) {
-  Kernel* kernel = brs_kernel->class_obj;
+  Kernel* kernel = Platform::GetPlatform()->get_kernel_object(brs_kernel);
   kernel->Release();
   return IRIS_SUCCESS;
 }
 
 int Platform::TaskCreate(const char* name, bool perm, iris_task* brs_task) {
   Task* task = Task::Create(this, perm ? IRIS_TASK_PERM : IRIS_TASK, name);
-  *brs_task = task->struct_obj();
+  if (brs_task) task->SetStructObject(brs_task);
+  //*brs_task = task->struct_obj();
+  return IRIS_SUCCESS;
+}
+
+int Platform::TaskDepend(iris_task brs_task, int ntasks, iris_task** brs_tasks) {
+  Task *task = get_task_object(brs_task);
+  assert(task != NULL);
+  for (int i = 0; i < ntasks; i++) 
+      if (brs_tasks[i] != NULL) 
+          task->AddDepend(get_task_object(brs_tasks[i]->uid), brs_tasks[i]->uid);
   return IRIS_SUCCESS;
 }
 
 int Platform::TaskDepend(iris_task brs_task, int ntasks, iris_task* brs_tasks) {
-  Task* task = brs_task->class_obj;
-  for (int i = 0; i < ntasks; i++) task->AddDepend(brs_tasks[i]->class_obj);
+  Task *task = get_task_object(brs_task);
+  assert(task != NULL);
+  for (int i = 0; i < ntasks; i++) 
+      task->AddDepend(get_task_object(brs_tasks[i].uid), brs_tasks[i].uid);
   return IRIS_SUCCESS;
 }
 
 int Platform::TaskKernel(iris_task brs_task, iris_kernel brs_kernel, int dim, size_t* off, size_t* gws, size_t* lws) {
-  Task* task = brs_task->class_obj;
-  Kernel* kernel = brs_kernel->class_obj;
+  Task *task = get_task_object(brs_task);
+  assert(task != NULL);
+  Kernel* kernel = Platform::GetPlatform()->get_kernel_object(brs_kernel);
   kernel->set_task_name(task->name());
   Command* cmd = Command::CreateKernel(task, kernel, dim, off, gws, lws);
   task->AddCommand(cmd);
@@ -828,14 +936,16 @@ int Platform::TaskKernel(iris_task brs_task, iris_kernel brs_kernel, int dim, si
 }
 
 int Platform::TaskCustom(iris_task brs_task, int tag, void* params, size_t params_size) {
-  Task* task = brs_task->class_obj;
+  Task *task = get_task_object(brs_task);
+  assert(task != NULL);
   Command* cmd = Command::CreateCustom(task, tag, params, params_size);
   task->AddCommand(cmd);
   return IRIS_SUCCESS;
 }
 
 int Platform::TaskKernel(iris_task brs_task, const char* name, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, size_t* params_off, int* params_info, size_t* memranges) {
-  Task* task = brs_task->class_obj;
+  Task *task = get_task_object(brs_task);
+  assert(task != NULL);
   Kernel* kernel = GetKernel(name);
   //_trace("Adding kernel:%s:%p to task:%s\n", name, kernel, task->name());
   kernel->set_task_name(task->name());
@@ -846,7 +956,8 @@ int Platform::TaskKernel(iris_task brs_task, const char* name, int dim, size_t* 
 
 int Platform::SetParamsMap(iris_task brs_task, int *params_map)
 {
-  Task *task = brs_task->class_obj;
+  Task *task = get_task_object(brs_task);
+  assert(task != NULL);
   Command *cmd_kernel = task->cmd_kernel();
   cmd_kernel->set_params_map(params_map);
   return IRIS_SUCCESS;
@@ -861,7 +972,8 @@ int Platform::SetSharedMemoryModel(int flag)
 }
 
 int Platform::TaskKernelSelector(iris_task brs_task, iris_selector_kernel func, void* params, size_t params_size) {
-  Task* task = brs_task->class_obj;
+  Task *task = get_task_object(brs_task);
+  assert(task != NULL);
   Command* cmd = task->cmd_kernel();
   if (!cmd) return IRIS_ERROR;
   cmd->set_selector_kernel(func, params, params_size);
@@ -869,23 +981,26 @@ int Platform::TaskKernelSelector(iris_task brs_task, iris_selector_kernel func, 
 }
 
 int Platform::TaskHost(iris_task brs_task, iris_host_task func, void* params) {
-  Task* task = brs_task->class_obj;
+  Task *task = get_task_object(brs_task);
+  assert(task != NULL);
   Command* cmd = Command::CreateHost(task, func, params);
   task->AddCommand(cmd);
   return IRIS_SUCCESS;
 }
 
 int Platform::TaskMalloc(iris_task brs_task, iris_mem brs_mem) {
-  Task* task = brs_task->class_obj;
-  Mem* mem = (Mem*)brs_mem->class_obj;
+  Task *task = get_task_object(brs_task);
+  assert(task != NULL);
+  Mem* mem = (Mem*)Platform::GetPlatform()->get_mem_object(brs_mem);
   Command* cmd = Command::CreateMalloc(task, mem);
   task->AddCommand(cmd);
   return IRIS_SUCCESS;
 }
 
 int Platform::TaskMemFlushOut(iris_task brs_task, iris_mem brs_mem) {
-  Task* task = brs_task->class_obj;
-  DataMem* mem = (DataMem *)brs_mem->class_obj;
+  Task *task = get_task_object(brs_task);
+  assert(task != NULL);
+  DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
   Command* cmd = Command::CreateMemFlushOut(task, mem);
   task->AddCommand(cmd);
   return IRIS_SUCCESS;
@@ -893,62 +1008,100 @@ int Platform::TaskMemFlushOut(iris_task brs_task, iris_mem brs_mem) {
 
 int Platform::TaskMemResetInput(iris_task brs_task, iris_mem brs_mem, uint8_t reset) 
 {
-    Task* task = brs_task->class_obj;
-    BaseMem* mem = (BaseMem *)brs_mem->class_obj;
+    Task *task = get_task_object(brs_task);
+    assert(task != NULL);
+    BaseMem* mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
     Command *cmd = Command::CreateMemResetInput(task, mem, reset);
     task->AddMemResetCommand(cmd);
     return IRIS_SUCCESS;
 }
 
+int Platform::TaskH2Broadcast(iris_task brs_task, iris_mem brs_mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host) {
+  Task *task = get_task_object(brs_task);
+  assert(task != NULL);
+  Mem* mem = (Mem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  Command* cmd = Command::CreateH2Broadcast(task, mem, off, host_sizes, dev_sizes, elem_size, dim, host);
+  task->AddCommand(cmd);
+  return IRIS_SUCCESS;
+}
+
+int Platform::TaskH2Broadcast(iris_task brs_task, iris_mem brs_mem, size_t off, size_t size, void* host) {
+  Task *task = get_task_object(brs_task);
+  assert(task != NULL);
+  Mem* mem = (Mem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  Command* cmd = Command::CreateH2Broadcast(task, mem, off, size, host);
+  task->AddCommand(cmd);
+  return IRIS_SUCCESS;
+}
+
 int Platform::TaskH2D(iris_task brs_task, iris_mem brs_mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host) {
-  Task* task = brs_task->class_obj;
-  Mem* mem = (Mem *)brs_mem->class_obj;
+  Task *task = get_task_object(brs_task);
+  assert(task != NULL);
+  Mem* mem = (Mem *)Platform::GetPlatform()->get_mem_object(brs_mem);
   Command* cmd = Command::CreateH2D(task, mem, off, host_sizes, dev_sizes, elem_size, dim, host);
   task->AddCommand(cmd);
   return IRIS_SUCCESS;
 }
 
+int Platform::TaskD2D(iris_task brs_task, iris_mem brs_mem, size_t off, size_t size, void* host, int src_dev) {
+  Task *task = get_task_object(brs_task);
+  assert(task != NULL);
+  Mem* mem = (Mem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  Command* cmd = Command::CreateD2D(task, mem, off, size, host, src_dev);
+  task->AddCommand(cmd);
+  return IRIS_SUCCESS;
+}
+
 int Platform::TaskH2D(iris_task brs_task, iris_mem brs_mem, size_t off, size_t size, void* host) {
-  Task* task = brs_task->class_obj;
-  Mem* mem = (Mem *)brs_mem->class_obj;
+  Task *task = get_task_object(brs_task);
+  assert(task != NULL);
+  Mem* mem = (Mem *)Platform::GetPlatform()->get_mem_object(brs_mem);
   Command* cmd = Command::CreateH2D(task, mem, off, size, host);
   task->AddCommand(cmd);
   return IRIS_SUCCESS;
 }
 
 int Platform::TaskD2H(iris_task brs_task, iris_mem brs_mem, size_t off, size_t size, void* host) {
-  Task* task = brs_task->class_obj;
-  Mem* mem = (Mem *)brs_mem->class_obj;
+  Task *task = get_task_object(brs_task);
+  assert(task != NULL);
+  Mem* mem = (Mem *)Platform::GetPlatform()->get_mem_object(brs_mem);
   Command* cmd = Command::CreateD2H(task, mem, off, size, host);
   task->AddCommand(cmd);
   return IRIS_SUCCESS;
 }
 
 int Platform::TaskD2H(iris_task brs_task, iris_mem brs_mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host) {
-  Task* task = brs_task->class_obj;
-  Mem* mem = (Mem *)brs_mem->class_obj;
+  Task *task = get_task_object(brs_task);
+  assert(task != NULL);
+  Mem* mem = (Mem *)Platform::GetPlatform()->get_mem_object(brs_mem);
   Command* cmd = Command::CreateD2H(task, mem, off, host_sizes, dev_sizes, elem_size, dim, host);
   task->AddCommand(cmd);
   return IRIS_SUCCESS;
 }
 
+int Platform::TaskH2BroadcastFull(iris_task brs_task, iris_mem brs_mem, void* host) {
+  return TaskH2Broadcast(brs_task, brs_mem, 0ULL, Platform::GetPlatform()->get_mem_object(brs_mem)->size(), host);
+}
+
 int Platform::TaskH2DFull(iris_task brs_task, iris_mem brs_mem, void* host) {
-  return TaskH2D(brs_task, brs_mem, 0ULL, brs_mem->class_obj->size(), host);
+  return TaskH2D(brs_task, brs_mem, 0ULL, Platform::GetPlatform()->get_mem_object(brs_mem)->size(), host);
 }
 
 int Platform::TaskD2HFull(iris_task brs_task, iris_mem brs_mem, void* host) {
-  return TaskD2H(brs_task, brs_mem, 0ULL, brs_mem->class_obj->size(), host);
+  return TaskD2H(brs_task, brs_mem, 0ULL, Platform::GetPlatform()->get_mem_object(brs_mem)->size(), host);
 }
 
 int Platform::TaskMap(iris_task brs_task, void* host, size_t size) {
-  Task* task = brs_task->class_obj;
+  Task *task = get_task_object(brs_task);
+  assert(task != NULL);
   Command* cmd = Command::CreateMap(task, host, size);
   task->AddCommand(cmd);
   return IRIS_SUCCESS;
 }
 
 int Platform::TaskMapTo(iris_task brs_task, void* host, size_t size) {
-  Task* task = brs_task->class_obj;
+  Task *task = get_task_object(brs_task);
+  assert(task != NULL);
   size_t off = 0ULL;
   Mem* mem = (Mem *)present_table_->Get(host, &off);
   Command* cmd = Command::CreateH2D(task, mem, off, size, host);
@@ -957,7 +1110,8 @@ int Platform::TaskMapTo(iris_task brs_task, void* host, size_t size) {
 }
 
 int Platform::TaskMapToFull(iris_task brs_task, void* host) {
-  Task* task = brs_task->class_obj;
+  Task *task = get_task_object(brs_task);
+  assert(task != NULL);
   size_t off = 0ULL;
   Mem* mem = (Mem *)present_table_->Get(host, &off);
   size_t size = mem->size();
@@ -967,7 +1121,8 @@ int Platform::TaskMapToFull(iris_task brs_task, void* host) {
 }
 
 int Platform::TaskMapFrom(iris_task brs_task, void* host, size_t size) {
-  Task* task = brs_task->class_obj;
+  Task *task = get_task_object(brs_task);
+  assert(task != NULL);
   size_t off = 0ULL;
   Mem* mem = (Mem *)present_table_->Get(host, &off);
   Command* cmd = Command::CreateD2H(task, mem, off, size, host);
@@ -976,7 +1131,8 @@ int Platform::TaskMapFrom(iris_task brs_task, void* host, size_t size) {
 }
 
 int Platform::TaskMapFromFull(iris_task brs_task, void* host) {
-  Task* task = brs_task->class_obj;
+  Task *task = get_task_object(brs_task);
+  assert(task != NULL);
   size_t off = 0ULL;
   Mem* mem = (Mem *)present_table_->Get(host, &off);
   size_t size = mem->size();
@@ -985,9 +1141,19 @@ int Platform::TaskMapFromFull(iris_task brs_task, void* host) {
   return IRIS_SUCCESS;
 }
 
+shared_ptr<History> Platform::CreateHistory(string kname)
+{
+    if (kernel_history_.find(kname) == kernel_history_.end()) {
+        std::vector<shared_ptr<History> > vec;
+        kernel_history_.insert(std::pair<std::string, std::vector<shared_ptr<History>> >(kname, vec));
+    }
+    shared_ptr<History> history = make_shared<History>(this);
+    kernel_history_[kname].push_back(history);
+    return history;
+}
 void Platform::ProfileCompletedTask(Task *task)
 {
-    if (enable_profiler_){
+    if (enable_profiler_ && !task->marker()){
         for (int i = 0; i < nprofilers_; i++) profilers_[i]->CompleteTask(task);
     }
 }
@@ -1001,8 +1167,22 @@ int Platform::NumErrors(){
 }
 
 int Platform::TaskSubmit(iris_task brs_task, int brs_policy, const char* opt, int sync) {
-  Task* task = brs_task->class_obj;
+  Task *task = get_task_object(brs_task);
+  assert(task != NULL);
   task->Submit(brs_policy, opt, sync);
+  _trace(" successfully submitted task:%lu:%s", task->uid(), task->name());
+  if (recording_) json_->RecordTask(task);
+  if (scheduler_) {
+    FilterSubmitExecute(task);
+    scheduler_->Enqueue(task);
+  } else workers_[0]->Enqueue(task);
+  if (sync) task->Wait();
+  return nfailures_;
+}
+
+int Platform::TaskSubmit(Task *task, int brs_policy, const char* opt, int sync) {
+  task->Submit(brs_policy, opt, sync);
+  _trace(" successfully submitted task:%lu:%s", task->uid(), task->name());
   if (recording_) json_->RecordTask(task);
   if (scheduler_) {
     FilterSubmitExecute(task);
@@ -1013,8 +1193,8 @@ int Platform::TaskSubmit(iris_task brs_task, int brs_policy, const char* opt, in
 }
 
 int Platform::TaskWait(iris_task brs_task) {
-  Task* task = brs_task->class_obj;
-  task->Wait();
+  Task *task = get_task_object(brs_task);
+  if (task != NULL) task->Wait();
   return IRIS_SUCCESS;
 }
 
@@ -1025,33 +1205,45 @@ int Platform::TaskWaitAll(int ntasks, iris_task* brs_tasks) {
 }
 
 int Platform::TaskAddSubtask(iris_task brs_task, iris_task brs_subtask) {
-  Task* task = brs_task->class_obj;
-  Task* subtask = brs_subtask->class_obj;
+  Task *task = get_task_object(brs_task);
+  assert(task != NULL);
+  Task *subtask = get_task_object(brs_subtask);
   task->AddSubtask(subtask);
   return IRIS_SUCCESS;
 }
 
 int Platform::TaskKernelCmdOnly(iris_task brs_task) {
-  Task* task = brs_task->class_obj;
+  Task *task = get_task_object(brs_task);
+  assert(task != NULL);
   return (task->ncmds() == 1 && task->cmd_kernel()) ? IRIS_SUCCESS : IRIS_ERROR;
 }
 
 int Platform::TaskRelease(iris_task brs_task) {
-  Task* task = brs_task->class_obj;
-  task->Release();
-  return IRIS_SUCCESS;
+    Task *task = get_task_object(brs_task);
+    if (task != NULL) {
+        if (!task->IsRelease())
+            task->ForceRelease();
+        else 
+            task->Release();
+    }
+    return IRIS_SUCCESS;
 }
 
 int Platform::TaskReleaseMem(iris_task brs_task, iris_mem brs_mem) {
-  Task* task = brs_task->class_obj;
-  Mem* mem = (Mem *)brs_mem->class_obj;
+  Task *task = get_task_object(brs_task);
+  assert(task != NULL);
+  Mem* mem = (Mem *)Platform::GetPlatform()->get_mem_object(brs_mem);
   Command* cmd = Command::CreateReleaseMem(task, mem);
   task->AddCommand(cmd);
   return IRIS_SUCCESS;
 }
 
 int Platform::TaskInfo(iris_task brs_task, int param, void* value, size_t* size) {
-  Task* task = brs_task->class_obj;
+  Task *task = get_task_object(brs_task);
+  if (task == NULL) {
+    _error("Task:%lu is not alive!", brs_task.uid);
+    return IRIS_ERROR;
+  }
   if (param == iris_ncmds) {
     if (size) *size = sizeof(int);
     *((int*) value) = task->ncmds();
@@ -1072,7 +1264,16 @@ int Platform::TaskInfo(iris_task brs_task, int param, void* value, size_t* size)
 }
 
 int Platform::DataMemInit(iris_mem brs_mem, bool reset) {
-    BaseMem *mem = brs_mem->class_obj;
+    BaseMem *mem = Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (mem->GetMemHandlerType() != IRIS_DMEM) {
+        _error("IRIS Mem is not supported for initialization with reset value. %ld", mem->uid());
+        return IRIS_ERROR;
+    }
+    mem->init_reset(reset);
+    return IRIS_SUCCESS;
+}
+
+int Platform::DataMemInit(BaseMem *mem, bool reset) {
     if (mem->GetMemHandlerType() != IRIS_DMEM) {
         _error("IRIS Mem is not supported for initialization with reset value. %ld", mem->uid());
         return IRIS_ERROR;
@@ -1082,34 +1283,58 @@ int Platform::DataMemInit(iris_mem brs_mem, bool reset) {
 }
 
 int Platform::DataMemUpdate(iris_mem brs_mem, void *host) {
-  DataMem *mem = (DataMem *) brs_mem->class_obj;
+  DataMem *mem = (DataMem *) Platform::GetPlatform()->get_mem_object(brs_mem);
   mem->UpdateHost(host);
+  return IRIS_SUCCESS;
+}
+
+int Platform::RegisterPin(void *host, size_t size) {
+#if 1
+  for (int i=0; i<ndevs_; i++) 
+    devs_[i]->RegisterPin(host, size);
+#else
+  for (int i=0; i<nplatforms_; i++) 
+    first_dev_of_type_[i]->RegisterPin(host, size);
+#endif
+  return IRIS_SUCCESS;
+}
+
+int Platform::DataMemRegisterPin(iris_mem brs_mem) {
+  DataMem *mem = (DataMem *) Platform::GetPlatform()->get_mem_object(brs_mem);
+  void *host = mem->host_memory();
+  size_t size =mem->size();
+  for (int i=0; i<nplatforms_; i++) {
+    first_dev_of_type_[i]->RegisterPin(host, size);
+  }  
   return IRIS_SUCCESS;
 }
 
 int Platform::DataMemCreate(iris_mem* brs_mem, void *host, size_t size) {
   DataMem* mem = new DataMem(this, host, size);
-  if (brs_mem) *brs_mem = mem->struct_obj();
+  if (brs_mem) mem->SetStructObject(brs_mem);
+  //if (brs_mem) *brs_mem = mem->struct_obj();
   if (mem->size()==0) return IRIS_ERROR;
 
-  mems_.insert(mem);
+  //mems_.insert(mem);
   return IRIS_SUCCESS;
 }
 
 int Platform::DataMemCreate(iris_mem* brs_mem, void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim) {
   DataMem* mem = new DataMem(this, host, off, host_size, dev_size, elem_size, dim);
-  if (brs_mem) *brs_mem = mem->struct_obj();
+  if (brs_mem) mem->SetStructObject(brs_mem);
+  //if (brs_mem) *brs_mem = mem->struct_obj();
   if (mem->size()==0) return IRIS_ERROR;
 
-  mems_.insert(mem);
+  //mems_.insert(mem);
   return IRIS_SUCCESS;
 }
 
 int Platform::DataMemCreate(iris_mem* brs_mem, iris_mem root_mem, int region) {
-  DataMem *root = (DataMem *) root_mem->class_obj;
+  DataMem *root = (DataMem *) get_mem_object(root_mem);
   DataMemRegion *mem= root->get_region(region);
-  if (brs_mem) *brs_mem = mem->struct_obj();
-  mems_.insert(mem);
+  if (brs_mem) mem->SetStructObject(brs_mem);
+  //if (brs_mem) *brs_mem = mem->struct_obj();
+  //mems_.insert(mem);
   if (mem->size()==0) {
       return IRIS_ERROR;
   }
@@ -1117,23 +1342,24 @@ int Platform::DataMemCreate(iris_mem* brs_mem, iris_mem root_mem, int region) {
 }
 
 int Platform::DataMemEnableOuterDimRegions(iris_mem brs_mem) {
-  DataMem *mem= (DataMem *)brs_mem->class_obj;
+  DataMem *mem= (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
   mem->EnableOuterDimensionRegions();
   return IRIS_SUCCESS;
 }
 
 int Platform::MemCreate(size_t size, iris_mem* brs_mem) {
   Mem* mem = new Mem(size, this);
-  if (brs_mem) *brs_mem = mem->struct_obj();
+  //if (brs_mem) *brs_mem = mem->struct_obj();
+  if (brs_mem) mem->SetStructObject(brs_mem);
   if (mem->size()==0) return IRIS_ERROR;
 
-  mems_.insert(mem);
+  //mems_.insert(mem);
   return IRIS_SUCCESS;
 }
 
 int Platform::MemArch(iris_mem brs_mem, int device, void** arch) {
   if (!arch) return IRIS_ERROR;
-  Mem* mem = (Mem *)brs_mem->class_obj;
+  Mem* mem = (Mem *)Platform::GetPlatform()->get_mem_object(brs_mem);
   Device* dev = devs_[device];
   void* ret = mem->arch(dev);
   if (!ret) return IRIS_ERROR;
@@ -1144,7 +1370,7 @@ int Platform::MemArch(iris_mem brs_mem, int device, void** arch) {
 int Platform::MemMap(void* host, size_t size) {
   Mem* mem = new Mem(size, this);
   mem->SetMap(host, size);
-  mems_.insert(mem);
+  //mems_.insert(mem);
   present_table_->Add(host, size, mem);
   return IRIS_SUCCESS;
 }
@@ -1156,54 +1382,89 @@ int Platform::MemUnmap(void* host) {
 }
 
 int Platform::MemReduce(iris_mem brs_mem, int mode, int type) {
-  Mem* mem = (Mem *)brs_mem->class_obj;
+  Mem* mem = (Mem *)Platform::GetPlatform()->get_mem_object(brs_mem);
   mem->Reduce(mode, type);
   return IRIS_SUCCESS;
 }
 
 int Platform::MemRelease(iris_mem brs_mem) {
-  BaseMem* mem = brs_mem->class_obj;
+  BaseMem* mem = Platform::GetPlatform()->get_mem_object(brs_mem);
   mem->Release();
   return IRIS_SUCCESS;
 }
 
 int Platform::GraphCreate(iris_graph* brs_graph) {
   Graph* graph = Graph::Create(this);
-  *brs_graph = graph->struct_obj();
+  if (brs_graph) graph->SetStructObject(brs_graph);
   return IRIS_SUCCESS;
 }
 
 int Platform::GraphFree(iris_graph brs_graph) {
-  Graph* graph = brs_graph->class_obj;
+  Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
   delete graph;
   return IRIS_SUCCESS;
 }
 
 int Platform::GraphCreateJSON(const char* path, void** params, iris_graph* brs_graph) {
   Graph* graph = Graph::Create(this);
-  *brs_graph = graph->struct_obj();
-  int retcode = json_->Load(graph, path, params);
+  if (brs_graph) graph->SetStructObject(brs_graph);
+  //create a new temporary JSON to process this current graph --- it may be brand new and we don't want to mangle the old memory objects tracked for recording
+  JSON* loader_json = new JSON(this);
+  int retcode = loader_json->Load(graph, path, params);
+  delete loader_json;
   return retcode;
 }
 
 int Platform::GraphTask(iris_graph brs_graph, iris_task brs_task, int brs_policy, const char* opt) {
-  Graph* graph = brs_graph->class_obj;
-  Task* task = brs_task->class_obj;
+  Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
+  Task *task = get_task_object(brs_task);
+  assert(task != NULL);
   task->set_brs_policy(brs_policy);
   task->set_opt(opt);
-  graph->AddTask(task);
+  graph->AddTask(task, brs_task.uid);
   return IRIS_SUCCESS;
 }
 
 int Platform::SetTaskPolicy(iris_task brs_task, int brs_policy)
 {
-    Task* task = brs_task->class_obj;
+    Task *task = get_task_object(brs_task);
+    assert(task != NULL);
     task->set_brs_policy(brs_policy);
     return IRIS_SUCCESS;
 }
 
+void Platform::set_release_task_flag(bool flag, iris_task brs_task)
+{
+    Task *task = get_task_object(brs_task);
+    assert(task != NULL);
+    task->DisableRelease();
+}
+
+int Platform::GraphRelease(iris_graph brs_graph) {
+  Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
+  graph->ForceRelease();
+  return IRIS_SUCCESS;
+}
+
+int Platform::GraphRetain(iris_graph brs_graph, bool flag) {
+  Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
+  if (flag)
+      graph->enable_retainable();
+  else
+      graph->disable_retainable();
+  std::vector<Task*>* tasks = graph->tasks();
+  for (std::vector<Task*>::iterator I = tasks->begin(), E = tasks->end(); I != E; ++I) {
+    Task* task = *I;
+    if (flag)
+        task->DisableRelease();
+    else
+        task->EnableRelease();
+  }
+  return IRIS_SUCCESS;
+}
+
 int Platform::GraphSubmit(iris_graph brs_graph, int brs_policy, int sync) {
-  Graph* graph = brs_graph->class_obj;
+  Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
   std::vector<Task*>* tasks = graph->tasks();
   //graph->RecordStartTime(devs_[0]->Now());
   for (std::vector<Task*>::iterator I = tasks->begin(), E = tasks->end(); I != E; ++I) {
@@ -1221,8 +1482,27 @@ int Platform::GraphSubmit(iris_graph brs_graph, int brs_policy, int sync) {
   return IRIS_SUCCESS;
 }
 
+int Platform::GraphSubmit(iris_graph brs_graph, int *order, int brs_policy, int sync) {
+  Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
+  std::vector<Task*> & tasks = graph->tasks_list();
+  //graph->RecordStartTime(devs_[0]->Now());
+  for(size_t i=0; i<tasks.size(); i++) {
+    Task* task = tasks[order[i]];
+    //preference is to honour the policy embedded in the task-graph.
+    if (task->brs_policy() == iris_default) {
+      task->set_brs_policy(brs_policy);
+    }
+    task->Submit(task->brs_policy(), task->opt(), sync);
+    if (recording_) json_->RecordTask(task);
+    if (scheduler_) scheduler_->Enqueue(task);
+    else workers_[0]->Enqueue(task);
+  }
+  if (sync) graph->Wait();
+  return IRIS_SUCCESS;
+}
+
 int Platform::GraphWait(iris_graph brs_graph) {
-  Graph* graph = brs_graph->class_obj;
+  Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
   graph->Wait();
   return IRIS_SUCCESS;
 }
@@ -1275,11 +1555,14 @@ Kernel* Platform::GetKernel(const char* name) {
 
 BaseMem* Platform::GetMem(iris_mem brs_mem) {
   //todo: mutex lock
+  return Platform::GetPlatform()->get_mem_object(brs_mem);
+#if 0
   for (std::set<BaseMem*>::iterator I = mems_.begin(), E = mems_.end(); I != E; ++I) {
     BaseMem* mem = *I;
-    if (mem->struct_obj() == brs_mem) return mem;
+    if (mem == Platform::GetPlatform()->get_mem_object(brs_mem)) return mem;
   }
   return NULL;
+#endif
 }
 
 BaseMem* Platform::GetMem(void* host, size_t* off) {
@@ -1318,102 +1601,218 @@ int Platform::InitWorkers() {
 }
 
 int Platform::ShowKernelHistory() {
-  double t_ker = 0.0f;
-  double t_h2d = 0.0f;
-  double t_d2d = 0.0f;
-  double t_d2h_h2d = 0.0f;
-  double t_d2o = 0.0f;
-  double t_o2d = 0.0f;
-  double t_d2h = 0.0f;
-  size_t total_size_h2d = 0.0f;
-  size_t total_size_d2d = 0.0f;
-  size_t total_size_d2h_h2d = 0.0f;
-  size_t total_size_d2o = 0.0f;
-  size_t total_size_o2d = 0.0f;
-  size_t total_size_d2h = 0.0f;
-  for (std::map<std::string, std::vector<Kernel*> >::iterator I = kernels_.begin(), 
-          E = kernels_.end(); I != E; ++I) {
-      std::string name = I->first;
-      std::vector<Kernel*> & kernel_vector = I->second;
-      double k_ker = 0.0f;
-      double k_h2d = 0.0f;
-      double k_d2d = 0.0f;
-      double k_d2h_h2d = 0.0f;
-      double k_o2d = 0.0f;
-      double k_d2o = 0.0f;
-      double k_d2h = 0.0f;
-      size_t c_ker = 0;
-      size_t c_d2d = 0;
-      size_t c_d2h_h2d = 0;
-      size_t c_d2o = 0;
-      size_t c_o2d = 0;
-      size_t c_h2d = 0;
-      size_t c_d2h = 0;
-      size_t size_d2d = 0;
-      size_t size_d2h_h2d = 0;
-      size_t size_d2o = 0;
-      size_t size_o2d = 0;
-      size_t size_h2d = 0;
-      size_t size_d2h = 0;
-      for(std::vector<Kernel *>::iterator kI = kernel_vector.begin(), kE = kernel_vector.end(); kI != kE; ++kI) {
-          Kernel *kernel = *kI;
-          History* history = kernel->history();
-          k_ker += history->t_kernel();
-          k_h2d += history->t_h2d();
-          k_d2d += history->t_d2d();
-          k_d2h_h2d += history->t_d2h_h2d();
-          k_d2o += history->t_d2o();
-          k_o2d += history->t_o2d();
-          k_d2h += history->t_d2h();
-          c_ker += history->c_kernel();
-          c_h2d += history->c_h2d();
-          c_d2d += history->c_d2d();
-          c_d2h_h2d += history->c_d2h_h2d();
-          c_d2o += history->c_d2o();
-          c_o2d += history->c_o2d();
-          c_d2h += history->c_d2h();
-          size_h2d += history->size_h2d();
-          size_d2d += history->size_d2d();
-          size_d2h_h2d += history->size_d2h_h2d();
-          size_d2o += history->size_d2o();
-          size_o2d += history->size_o2d();
-          size_d2h += history->size_d2h();
-          //printf("Name:%s kname:%s time:%f acc:%f\n", name.c_str(), kernel->get_task_name(), history->t_kernel(), k_ker);
-      }
-      _info("kernel[%s] k[%lf][%zu] h2d[%lf][%zu][%ld] o2d[%lf][%zu][%ld] d2o[%lf][%zu][%ld] d2h_h2d[%lf][%zu][%ld] d2d[%lf][%zu][%ld] d2h[%lf][%zu][%ld]", name.c_str(), k_ker, c_ker, k_h2d, c_h2d, size_h2d, k_o2d, c_o2d, size_o2d, k_d2o, c_d2o, size_d2o, k_d2h_h2d, c_d2h_h2d, size_d2h_h2d, k_d2d, c_d2d, size_d2d, k_d2h, c_d2h, size_d2h);
-    t_ker += k_ker;
-    t_h2d += k_h2d;
-    t_d2d += k_d2d;
-    t_d2h_h2d += k_d2h_h2d;
-    t_o2d += k_o2d;
-    t_d2o += k_d2o;
-    t_d2h += k_d2h;
-    total_size_h2d += size_h2d;
-    total_size_d2d += size_d2d;
-    total_size_d2h_h2d += size_d2h_h2d;
-    total_size_o2d += size_o2d;
-    total_size_d2o += size_d2o;
-    total_size_d2h += size_d2h;
-  }
-  _info("total kernel[%lf] h2d[%lf][%ld] o2d[%lf][%ld] d2o[%lf][%ld] d2h_h2d[%lf][%ld] d2d[%lf][%ld] d2h[%lf][%ld]", t_ker, t_h2d, total_size_h2d, t_o2d, total_size_o2d, t_d2o, total_size_d2o, t_d2h_h2d, total_size_d2h_h2d, t_d2d, total_size_d2d, t_d2h, total_size_d2h);
-  return IRIS_SUCCESS;
+#if 0
+    double t_ker = 0.0f;
+    double t_h2d = 0.0f;
+    double t_d2d = 0.0f;
+    double t_d2h_h2d = 0.0f;
+    double t_d2o = 0.0f;
+    double t_o2d = 0.0f;
+    double t_d2h = 0.0f;
+    size_t total_c_ker = 0;
+    size_t total_c_h2d = 0;
+    size_t total_c_d2d = 0;
+    size_t total_c_d2h_h2d = 0;
+    size_t total_c_d2o = 0;
+    size_t total_c_o2d = 0;
+    size_t total_c_d2h = 0;
+    size_t total_size_h2d = 0;
+    size_t total_size_d2d = 0;
+    size_t total_size_d2h_h2d = 0;
+    size_t total_size_d2o = 0;
+    size_t total_size_o2d = 0;
+    size_t total_size_d2h = 0;
+    for (std::map<std::string, std::vector<Kernel*> >::iterator I = kernels_.begin(), 
+            E = kernels_.end(); I != E; ++I) {
+        std::string name = I->first;
+        std::vector<Kernel*> & kernel_vector = I->second;
+        double k_ker = 0.0f;
+        double k_h2d = 0.0f;
+        double k_d2d = 0.0f;
+        double k_d2h_h2d = 0.0f;
+        double k_o2d = 0.0f;
+        double k_d2o = 0.0f;
+        double k_d2h = 0.0f;
+        size_t c_ker = 0;
+        size_t c_d2d = 0;
+        size_t c_d2h_h2d = 0;
+        size_t c_d2o = 0;
+        size_t c_o2d = 0;
+        size_t c_h2d = 0;
+        size_t c_d2h = 0;
+        size_t size_d2d = 0;
+        size_t size_d2h_h2d = 0;
+        size_t size_d2o = 0;
+        size_t size_o2d = 0;
+        size_t size_h2d = 0;
+        size_t size_d2h = 0;
+        for(std::vector<Kernel *>::iterator kI = kernel_vector.begin(), kE = kernel_vector.end(); kI != kE; ++kI) {
+            Kernel *kernel = *kI;
+            shared_ptr<History> history = kernel->history();
+            k_ker += history->t_kernel();
+            k_h2d += history->t_h2d();
+            k_d2d += history->t_d2d();
+            k_d2h_h2d += history->t_d2h_h2d();
+            k_d2o += history->t_d2o();
+            k_o2d += history->t_o2d();
+            k_d2h += history->t_d2h();
+            c_ker += history->c_kernel();
+            c_h2d += history->c_h2d();
+            c_d2d += history->c_d2d();
+            c_d2h_h2d += history->c_d2h_h2d();
+            c_d2o += history->c_d2o();
+            c_o2d += history->c_o2d();
+            c_d2h += history->c_d2h();
+            size_h2d += history->size_h2d();
+            size_d2d += history->size_d2d();
+            size_d2h_h2d += history->size_d2h_h2d();
+            size_d2o += history->size_d2o();
+            size_o2d += history->size_o2d();
+            size_d2h += history->size_d2h();
+            //printf("Name:%s kname:%s time:%f acc:%f\n", name.c_str(), kernel->get_task_name(), history->t_kernel(), k_ker);
+        }
+        _info("kernel[%s] k[%lf][%zu] h2d[%lf][%zu][%ld] o2d[%lf][%zu][%ld] d2o[%lf][%zu][%ld] d2h_h2d[%lf][%zu][%ld] d2d[%lf][%zu][%ld] d2h[%lf][%zu][%ld]", name.c_str(), k_ker, c_ker, k_h2d, c_h2d, size_h2d, k_o2d, c_o2d, size_o2d, k_d2o, c_d2o, size_d2o, k_d2h_h2d, c_d2h_h2d, size_d2h_h2d, k_d2d, c_d2d, size_d2d, k_d2h, c_d2h, size_d2h);
+        t_ker += k_ker;
+        total_c_ker += c_ker;
+        t_h2d += k_h2d;
+        t_d2d += k_d2d;
+        t_d2h_h2d += k_d2h_h2d;
+        t_o2d += k_o2d;
+        t_d2o += k_d2o;
+        t_d2h += k_d2h;
+        total_c_h2d +=     c_h2d;
+        total_c_d2d +=     c_d2d;
+        total_c_d2h_h2d += c_d2h_h2d;
+        total_c_o2d +=     c_o2d;
+        total_c_d2o +=     c_d2o;
+        total_c_d2h +=     c_d2h;
+        total_size_h2d +=     size_h2d;
+        total_size_d2d +=     size_d2d;
+        total_size_d2h_h2d += size_d2h_h2d;
+        total_size_o2d +=     size_o2d;
+        total_size_d2o +=     size_d2o;
+        total_size_d2h +=     size_d2h; 
+    }
+    t_h2d          += null_kernel()->history()->t_h2d();
+    t_d2h          += null_kernel()->history()->t_d2h();
+    total_c_h2d    += null_kernel()->history()->c_h2d();
+    total_c_d2h    += null_kernel()->history()->c_d2h();
+    total_size_h2d += null_kernel()->history()->size_h2d();
+    total_size_d2h += null_kernel()->history()->size_d2h();
+    _info("total kernel k[%lf][%zu] h2d[%lf][%zu][%ld] o2d[%lf][%zu][%ld] d2o[%lf][%zu][%ld] d2h_h2d[%lf][%zu][%ld] d2d[%lf][%zu][%ld] d2h[%lf][%zu][%ld]", t_ker, total_c_ker, t_h2d, total_c_h2d, total_size_h2d, t_o2d, total_c_o2d, total_size_o2d, t_d2o, total_c_d2o, total_size_d2o, t_d2h_h2d, total_c_d2h_h2d, total_size_d2h_h2d, t_d2d, total_c_d2d, total_size_d2d, t_d2h, total_c_d2h, total_size_d2h);
+    return IRIS_SUCCESS;
+#else
+    double t_ker = 0.0f;
+    double t_h2d = 0.0f;
+    double t_d2d = 0.0f;
+    double t_d2h_h2d = 0.0f;
+    double t_d2o = 0.0f;
+    double t_o2d = 0.0f;
+    double t_d2h = 0.0f;
+    size_t total_c_ker = 0;
+    size_t total_c_h2d = 0;
+    size_t total_c_d2d = 0;
+    size_t total_c_d2h_h2d = 0;
+    size_t total_c_d2o = 0;
+    size_t total_c_o2d = 0;
+    size_t total_c_d2h = 0;
+    size_t total_size_h2d = 0;
+    size_t total_size_d2d = 0;
+    size_t total_size_d2h_h2d = 0;
+    size_t total_size_d2o = 0;
+    size_t total_size_o2d = 0;
+    size_t total_size_d2h = 0;
+    for (std::map<std::string, vector<shared_ptr<History> > >::iterator I = kernel_history_.begin(), 
+            E = kernel_history_.end(); I != E; ++I) {
+        std::string name = I->first;
+        std::vector<shared_ptr<History>> & history_vector = I->second;
+        double k_ker = 0.0f;
+        double k_h2d = 0.0f;
+        double k_d2d = 0.0f;
+        double k_d2h_h2d = 0.0f;
+        double k_o2d = 0.0f;
+        double k_d2o = 0.0f;
+        double k_d2h = 0.0f;
+        size_t c_ker = 0;
+        size_t c_d2d = 0;
+        size_t c_d2h_h2d = 0;
+        size_t c_d2o = 0;
+        size_t c_o2d = 0;
+        size_t c_h2d = 0;
+        size_t c_d2h = 0;
+        size_t size_d2d = 0;
+        size_t size_d2h_h2d = 0;
+        size_t size_d2o = 0;
+        size_t size_o2d = 0;
+        size_t size_h2d = 0;
+        size_t size_d2h = 0;
+        for(std::vector<shared_ptr<History> >::iterator kI = history_vector.begin(), kE = history_vector.end(); kI != kE; ++kI) {
+            shared_ptr<History> history = *kI;
+            k_ker += history->t_kernel();
+            k_h2d += history->t_h2d();
+            k_d2d += history->t_d2d();
+            k_d2h_h2d += history->t_d2h_h2d();
+            k_d2o += history->t_d2o();
+            k_o2d += history->t_o2d();
+            k_d2h += history->t_d2h();
+            c_ker += history->c_kernel();
+            c_h2d += history->c_h2d();
+            c_d2d += history->c_d2d();
+            c_d2h_h2d += history->c_d2h_h2d();
+            c_d2o += history->c_d2o();
+            c_o2d += history->c_o2d();
+            c_d2h += history->c_d2h();
+            size_h2d += history->size_h2d();
+            size_d2d += history->size_d2d();
+            size_d2h_h2d += history->size_d2h_h2d();
+            size_d2o += history->size_d2o();
+            size_o2d += history->size_o2d();
+            size_d2h += history->size_d2h();
+            //printf("Name:%s kname:%s time:%f acc:%f\n", name.c_str(), kernel->get_task_name(), history->t_kernel(), k_ker);
+        }
+        _info("kernel[%s] k[%lf][%zu] h2d[%lf][%zu][%ld] o2d[%lf][%zu][%ld] d2o[%lf][%zu][%ld] d2h_h2d[%lf][%zu][%ld] d2d[%lf][%zu][%ld] d2h[%lf][%zu][%ld]", name.c_str(), k_ker, c_ker, k_h2d, c_h2d, size_h2d, k_o2d, c_o2d, size_o2d, k_d2o, c_d2o, size_d2o, k_d2h_h2d, c_d2h_h2d, size_d2h_h2d, k_d2d, c_d2d, size_d2d, k_d2h, c_d2h, size_d2h);
+        t_ker += k_ker;
+        total_c_ker += c_ker;
+        t_h2d += k_h2d;
+        t_d2d += k_d2d;
+        t_d2h_h2d += k_d2h_h2d;
+        t_o2d += k_o2d;
+        t_d2o += k_d2o;
+        t_d2h += k_d2h;
+        total_c_h2d +=     c_h2d;
+        total_c_d2d +=     c_d2d;
+        total_c_d2h_h2d += c_d2h_h2d;
+        total_c_o2d +=     c_o2d;
+        total_c_d2o +=     c_d2o;
+        total_c_d2h +=     c_d2h;
+        total_size_h2d +=     size_h2d;
+        total_size_d2d +=     size_d2d;
+        total_size_d2h_h2d += size_d2h_h2d;
+        total_size_o2d +=     size_o2d;
+        total_size_d2o +=     size_d2o;
+        total_size_d2h +=     size_d2h; 
+    }
+    _info("total kernel k[%lf][%zu] h2d[%lf][%zu][%ld] o2d[%lf][%zu][%ld] d2o[%lf][%zu][%ld] d2h_h2d[%lf][%zu][%ld] d2d[%lf][%zu][%ld] d2h[%lf][%zu][%ld]", t_ker, total_c_ker, t_h2d, total_c_h2d, total_size_h2d, t_o2d, total_c_o2d, total_size_o2d, t_d2o, total_c_d2o, total_size_d2o, t_d2h_h2d, total_c_d2h_h2d, total_size_d2h_h2d, t_d2d, total_c_d2d, total_size_d2d, t_d2h, total_c_d2h, total_size_d2h);
+    return IRIS_SUCCESS;
+
+#endif
 }
 
-Platform* Platform::singleton_ = NULL;
+unique_ptr<Platform> Platform::singleton_ = nullptr;
 std::once_flag Platform::flag_singleton_;
 std::once_flag Platform::flag_finalize_;
 
 Platform* Platform::GetPlatform() {
 //  if (singleton_ == NULL) singleton_ = new Platform();
-  std::call_once(flag_singleton_, []() { singleton_ = new Platform(); });
-  return singleton_;
+  std::call_once(flag_singleton_, []() { singleton_ = std::unique_ptr<Platform>(new Platform()); });
+  return singleton_.get();
 }
 int Platform::GetGraphTasksCount(iris_graph brs_graph) {
-    Graph* graph = brs_graph->class_obj;
+    Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
     return graph->tasks_count();
 }
 int Platform::GetGraphTasks(iris_graph brs_graph, iris_task *tasks) {
-  Graph* graph = brs_graph->class_obj;
+  Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
   return graph->iris_tasks(tasks);
 }
 
@@ -1432,9 +1831,9 @@ int Platform::Finalize() {
   _info("t14[%lf] t15[%lf] t16[%lf] t17[%lf]", timer()->Total(14), timer()->Total(15), timer()->Total(16), timer()->Total(17));
   _info("t18[%lf] t19[%lf] t20[%lf] t21[%lf]", timer()->Total(18), timer()->Total(19), timer()->Total(20), timer()->Total(21));
   finalize_ = true;
+  if (scheduling_history_) delete scheduling_history_;
   pthread_mutex_unlock(&mutex_);
- if (scheduling_history_) delete scheduling_history_;
-   return ret_id;
+  return ret_id;
 }
 
 } /* namespace rt */

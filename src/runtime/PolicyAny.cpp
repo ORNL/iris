@@ -21,6 +21,7 @@ void PolicyAny::GetDevices(Task* task, Device** devs, int* ndevs) {
   int min_dev = 0;
   scheduler_->RefreshNTasksOnDevs();
   for (int i = 0; i < ndevs_; i++) {
+    if (!IsKernelSupported(task, devs_[i])) continue;
     unsigned long n = scheduler_->NTasksOnDev(i);
     if (n == 0) {
       min_dev = i;

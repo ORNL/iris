@@ -1,0 +1,464 @@
+{
+  "iris-graph": {
+    "inputs": [
+      "user-size",
+      "user-size-cb-vecadd",
+      "hostmem-vecadd-buffer0-instance0",
+      "hostmem-vecadd-buffer1-instance0",
+      "hostmem-vecadd-buffer2-instance0",
+      "devicemem-vecadd-buffer0-instance0",
+      "devicemem-vecadd-buffer1-instance0",
+      "devicemem-vecadd-buffer2-instance0",
+      "user-target-control",
+      "user-target-data"
+    ],
+    "graph": {
+      "tasks": [
+        {
+          "name": "transferto-vecadd-buffer0-instance0",
+          "commands": [
+            {
+              "h2d": {
+                "name": "h2d-buffer0-instance0",
+                "device_memory": "devicemem-vecadd-buffer0-instance0",
+                "host_memory": "hostmem-vecadd-buffer0-instance0",
+                "offset": "0",
+                "size": "user-size-cb-vecadd"
+              }
+            }
+          ],
+          "target": "user-target-control",
+          "depends": []
+        },
+        {
+          "name": "transferto-vecadd-buffer1-instance0",
+          "commands": [
+            {
+              "h2d": {
+                "name": "h2d-buffer1-instance0",
+                "device_memory": "devicemem-vecadd-buffer1-instance0",
+                "host_memory": "hostmem-vecadd-buffer1-instance0",
+                "offset": "0",
+                "size": "user-size-cb-vecadd"
+              }
+            }
+          ],
+          "target": "user-target-control",
+          "depends": []
+        },
+        {
+          "name": "transferto-vecadd-buffer2-instance0",
+          "commands": [
+            {
+              "h2d": {
+                "name": "h2d-buffer2-instance0",
+                "device_memory": "devicemem-vecadd-buffer2-instance0",
+                "host_memory": "hostmem-vecadd-buffer2-instance0",
+                "offset": "0",
+                "size": "user-size-cb-vecadd"
+              }
+            }
+          ],
+          "target": "user-target-control",
+          "depends": []
+        },
+        {
+          "name": "task0",
+          "commands": [
+            {
+              "kernel": {
+                "name": "vecadd",
+                "global_size": [
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "value": "devicemem-vecadd-buffer0-instance0",
+                    "permissions": "rw"
+                  },
+                  {
+                    "type": "memory_object",
+                    "value": "devicemem-vecadd-buffer1-instance0",
+                    "permissions": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "value": "devicemem-vecadd-buffer2-instance0",
+                    "permissions": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "transferto-vecadd-buffer0-instance0",
+            "transferto-vecadd-buffer1-instance0",
+            "transferto-vecadd-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task1",
+          "commands": [
+            {
+              "kernel": {
+                "name": "vecadd",
+                "global_size": [
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "value": "devicemem-vecadd-buffer0-instance0",
+                    "permissions": "rw"
+                  },
+                  {
+                    "type": "memory_object",
+                    "value": "devicemem-vecadd-buffer1-instance0",
+                    "permissions": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "value": "devicemem-vecadd-buffer2-instance0",
+                    "permissions": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task0",
+            "transferto-vecadd-buffer0-instance0",
+            "transferto-vecadd-buffer1-instance0",
+            "transferto-vecadd-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task2",
+          "commands": [
+            {
+              "kernel": {
+                "name": "vecadd",
+                "global_size": [
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "value": "devicemem-vecadd-buffer0-instance0",
+                    "permissions": "rw"
+                  },
+                  {
+                    "type": "memory_object",
+                    "value": "devicemem-vecadd-buffer1-instance0",
+                    "permissions": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "value": "devicemem-vecadd-buffer2-instance0",
+                    "permissions": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task1",
+            "transferto-vecadd-buffer0-instance0",
+            "transferto-vecadd-buffer1-instance0",
+            "transferto-vecadd-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task3",
+          "commands": [
+            {
+              "kernel": {
+                "name": "vecadd",
+                "global_size": [
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "value": "devicemem-vecadd-buffer0-instance0",
+                    "permissions": "rw"
+                  },
+                  {
+                    "type": "memory_object",
+                    "value": "devicemem-vecadd-buffer1-instance0",
+                    "permissions": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "value": "devicemem-vecadd-buffer2-instance0",
+                    "permissions": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task2",
+            "transferto-vecadd-buffer0-instance0",
+            "transferto-vecadd-buffer1-instance0",
+            "transferto-vecadd-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task4",
+          "commands": [
+            {
+              "kernel": {
+                "name": "vecadd",
+                "global_size": [
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "value": "devicemem-vecadd-buffer0-instance0",
+                    "permissions": "rw"
+                  },
+                  {
+                    "type": "memory_object",
+                    "value": "devicemem-vecadd-buffer1-instance0",
+                    "permissions": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "value": "devicemem-vecadd-buffer2-instance0",
+                    "permissions": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task3",
+            "transferto-vecadd-buffer0-instance0",
+            "transferto-vecadd-buffer1-instance0",
+            "transferto-vecadd-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task5",
+          "commands": [
+            {
+              "kernel": {
+                "name": "vecadd",
+                "global_size": [
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "value": "devicemem-vecadd-buffer0-instance0",
+                    "permissions": "rw"
+                  },
+                  {
+                    "type": "memory_object",
+                    "value": "devicemem-vecadd-buffer1-instance0",
+                    "permissions": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "value": "devicemem-vecadd-buffer2-instance0",
+                    "permissions": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task4",
+            "transferto-vecadd-buffer0-instance0",
+            "transferto-vecadd-buffer1-instance0",
+            "transferto-vecadd-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task6",
+          "commands": [
+            {
+              "kernel": {
+                "name": "vecadd",
+                "global_size": [
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "value": "devicemem-vecadd-buffer0-instance0",
+                    "permissions": "rw"
+                  },
+                  {
+                    "type": "memory_object",
+                    "value": "devicemem-vecadd-buffer1-instance0",
+                    "permissions": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "value": "devicemem-vecadd-buffer2-instance0",
+                    "permissions": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task5",
+            "transferto-vecadd-buffer0-instance0",
+            "transferto-vecadd-buffer1-instance0",
+            "transferto-vecadd-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task7",
+          "commands": [
+            {
+              "kernel": {
+                "name": "vecadd",
+                "global_size": [
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "value": "devicemem-vecadd-buffer0-instance0",
+                    "permissions": "rw"
+                  },
+                  {
+                    "type": "memory_object",
+                    "value": "devicemem-vecadd-buffer1-instance0",
+                    "permissions": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "value": "devicemem-vecadd-buffer2-instance0",
+                    "permissions": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task6",
+            "transferto-vecadd-buffer0-instance0",
+            "transferto-vecadd-buffer1-instance0",
+            "transferto-vecadd-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task8",
+          "commands": [
+            {
+              "kernel": {
+                "name": "vecadd",
+                "global_size": [
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "value": "devicemem-vecadd-buffer0-instance0",
+                    "permissions": "rw"
+                  },
+                  {
+                    "type": "memory_object",
+                    "value": "devicemem-vecadd-buffer1-instance0",
+                    "permissions": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "value": "devicemem-vecadd-buffer2-instance0",
+                    "permissions": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task7",
+            "transferto-vecadd-buffer0-instance0",
+            "transferto-vecadd-buffer1-instance0",
+            "transferto-vecadd-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "task9",
+          "commands": [
+            {
+              "kernel": {
+                "name": "vecadd",
+                "global_size": [
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "value": "devicemem-vecadd-buffer0-instance0",
+                    "permissions": "rw"
+                  },
+                  {
+                    "type": "memory_object",
+                    "value": "devicemem-vecadd-buffer1-instance0",
+                    "permissions": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "value": "devicemem-vecadd-buffer2-instance0",
+                    "permissions": "r"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "task8",
+            "transferto-vecadd-buffer0-instance0",
+            "transferto-vecadd-buffer1-instance0",
+            "transferto-vecadd-buffer2-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "transferfrom-vecadd-buffer0-instance0",
+          "commands": [
+            {
+              "d2h": {
+                "name": "d2h-buffer0-instance0",
+                "device_memory": "devicemem-vecadd-buffer0-instance0",
+                "host_memory": "hostmem-vecadd-buffer0-instance0",
+                "offset": "0",
+                "size": "user-size-cb-vecadd"
+              }
+            }
+          ],
+          "depends": [
+            "task0",
+            "task1",
+            "task2",
+            "task3",
+            "task4",
+            "task5",
+            "task6",
+            "task7",
+            "task8",
+            "task9"
+          ],
+          "target": "user-target-control"
+        }
+      ]
+    }
+  }
+}

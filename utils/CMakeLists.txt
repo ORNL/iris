@@ -1,3 +1,9 @@
+#
+# Author : Narasinga Rao Miniskar
+# Date   : Jun 16 2022
+# Contact for bug : miniskarnr@ornl.gov
+#
+
 cmake_minimum_required(VERSION 3.0)
 
 # Sources(C) in sd_hexagon file without extension 
@@ -67,6 +73,80 @@ set(IRISKernels_SRC_DIR ${PROJECT_SOURCE_DIR}/src)
 set(IRISKernels_INC_DIR ${PROJECT_SOURCE_DIR}/include)
 set(IRISKernels_BIN_DIR ${PROJECT_BINARY_DIR}/bin)
 
+message(STATUS "CMAKE_SYSTEM_PROCESSOR: ${CMAKE_SYSTEM_PROCESSOR}")
+find_package(CUDAToolkit)
+if(CMAKE_SYSTEM_PROCESSOR STREQUAL "armv7-a")
+  # Support for NVPACK
+  set(CUDAToolkit_TARGET_NAME "armv7-linux-androideabi")
+elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "arm")
+  set(CUDAToolkit_TARGET_NAME "armv7-linux-gnueabihf")
+elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
+  if(ANDROID_ARCH_NAME STREQUAL "arm64")
+    set(CUDAToolkit_TARGET_NAME "aarch64-linux-androideabi")
+  elseif (CMAKE_SYSTEM_NAME STREQUAL "QNX")
+    set(CUDAToolkit_TARGET_NAME "aarch64-qnx")
+  else()
+    set(CUDAToolkit_TARGET_NAME "aarch64-linux")
+  endif(ANDROID_ARCH_NAME STREQUAL "arm64")
+elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "ppc64le")
+  set(CUDAToolkit_TARGET_NAME "ppc64le-linux")
+elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64")
+  set(CUDAToolkit_TARGET_NAME "x86_64-linux")
+endif()
+
+#message(STATUS "CUDAToolkit_FOUND=${CUDAToolkit_FOUND}")
+#message(STATUS "CUDAToolkit_INCLUDE_DIRS=${CUDAToolkit_INCLUDE_DIRS}")
+#message(STATUS "CUDAToolkit_LIBRARY_DIR=${CUDAToolkit_LIBRARY_DIR}")
+#message(STATUS "CUDAToolkit_BIN_DIR=${CUDAToolkit_BIN_DIR}")
+#message(STATUS "CUDAToolkit_TARGET_NAME=${CUDAToolkit_TARGET_NAME}")
+#message(STATUS "CUDAToolkit_TARGET_DIR=${CUDAToolkit_TARGET_DIR}")
+
+set(AUTO_CUDA_INCLUDE )
+set(AUTO_CUDA_LDFLAGS )
+if (CUDAToolkit_FOUND)
+set(CUDAToolkit_ROOT_DIR ${CUDAToolkit_TARGET_DIR})
+set(CUSTOM_CUDAToolkit_TARGET_DIR "${CUDAToolkit_ROOT_DIR}/targets/${CUDAToolkit_TARGET_NAME}")
+set(CUDAToolkit_MATH_LIB_DIR "${CUDAToolkit_TARGET_DIR}/../../math_libs")
+#message(STATUS "CUSTOM_CUDAToolkit_TARGET_DIR=${CUSTOM_CUDAToolkit_TARGET_DIR}")
+#message(STATUS "CUDAToolkit_MATH_LIB_DIR=${CUDAToolkit_MATH_LIB_DIR}")
+set(AUTO_CUDA_INCLUDE "-I${CUDAToolkit_TARGET_DIR}/include -I${CUSTOM_CUDAToolkit_TARGET_DIR}/include")
+set(AUTO_CUDA_LDFLAGS "-L${CUDAToolkit_LIBRARY_DIR} -L${CUDAToolkit_MATH_LIB_DIR}/lib64 -L${CUDAToolkit_MATH_LIB_DIR}/lib")
+message(STATUS "CUDA Toolkit found: ${CUDAToolkit_TARGET_DIR}")
+#set(CMAKE_C_COMPILER gcc)
+#set(CMAKE_CXX_COMPILER g++)
+message(STATUS "Host C compiler: ${CMAKE_C_COMPILER}")
+message(STATUS "Host C++ compiler: ${CMAKE_CXX_COMPILER}")
+else()
+message(STATUS "CUDA Toolkit not found")
+endif()
+
+if(NOT DEFINED HIP_PATH)
+    if(NOT DEFINED ENV{HIP_PATH})
+        set(HIP_PATH "/opt/rocm/hip" CACHE PATH "Path to which HIP has been installed")
+    else()
+        set(HIP_PATH $ENV{HIP_PATH} CACHE PATH "Path to which HIP has been installed")
+    endif()
+endif()
+set(CMAKE_MODULE_PATH "/opt/rocm/hip/cmake" ${CMAKE_MODULE_PATH})
+find_package(HIP)
+set(AUTO_HIP_INCLUDE )
+set(AUTO_HIP_LDFLAGS )
+if (HIP_ROOT_DIR)
+set(AUTO_HIP_INCLUDE "-I${HIP_ROOT_DIR}/../hipsolver/include -I${HIP_ROOT_DIR}/../hipfft/include -I${HIP_ROOT_DIR}/../hipblas/include -I${HIP_ROOT_DIR}/../rocblas/include -I${HIP_ROOT_DIR}/include")
+set(AUTO_HIP_LDFLAGS "-L${HIP_ROOT_DIR}/../hipblas/lib64 -L${HIP_ROOT_DIR}/../hipblas/lib -L${HIP_ROOT_DIR}/../rocblas/lib64 -L${HIP_ROOT_DIR}/../rocblas/lib -L${HIP_ROOT_DIR}/../hipfft/lib64 -L${HIP_ROOT_DIR}/../hipfft/lib -L${HIP_ROOT_DIR}/../hipsolver/lib64 -L${HIP_ROOT_DIR}/../hipsolver/lib -L${HIP_ROOT_DIR}/lib64 -L${HIP_ROOT_DIR}/lib")
+message(STATUS "HIP Toolkit found in HIP_ROOT_DIR=${HIP_ROOT_DIR}")
+#message(STATUS "AUTO_HIP_LDFLAGS=${AUTO_HIP_LDFLAGS}")
+#message(STATUS "AUTO_HIP_INCLUDE=${AUTO_HIP_INCLUDE}")
+else()
+message(STATUS "HIP not found")
+endif()
+
+if (HIP_ROOT_DIR)
+    set(HIP_ENABLED ON)
+else()
+    set(HIP_ENABLED OFF)
+endif()
+option(APP_LIB_STATIC "Enable static app lib"    OFF)
 option(SNAPDRAGON "Enable support for Hexagon"    OFF )
 option(CDSP_FLAG "Enable support for CDSP"     OFF )
 option(ADSP_FLAG "Enable support for ADSP"     OFF )
@@ -75,8 +155,8 @@ option(SLPI_FLAG "Enable support for SLPI"     OFF )
 option(ENABLE_STD11 "Enable STD 11"    ON)
 option(USE_SPIR "Use SPIR toolchain "    OFF )
 option(USE_XILINX "Use Xilinx toolchain "    OFF )
-option(USE_HIP "Use HIP toolchain "    OFF )
-option(USE_CUDA "Use CUDA toolchain "    OFF )
+option(USE_HIP "Use HIP toolchain "    ${HIP_ENABLED})
+option(USE_CUDA "Use CUDA toolchain "    ${CUDAToolkit_FOUND})
 option(USE_AARCH64 "Use Aarch64 toolchain "    OFF )
 option(USE_NDK   "Use NDK toolchain "          OFF )
 option(USE_PYTHON  "Enable support for Python" ON )
@@ -219,16 +299,16 @@ else()
 endif()
 set(HOST2XILINX_FLAGS "${HOST2XILINX_FLAGS} -I$ENV{XILINX_HLS}/include -I$ENV{XILINX_VITIS}/include -I$ENV{XILINX_XRT}/include/ -DENABLE_IRIS ${OPENMP_INC} -O3 -g -fPIC ${COMMON_FLAGS} ${LOCAL_COMMON_FLAGS} -I. ")
 set(HOST2OPENCL_FLAGS "${HOST2OPENCL_FLAGS} -DENABLE_IRIS ${OPENMP_INC} -O3 -g -fPIC ${COMMON_FLAGS} ${LOCAL_COMMON_FLAGS} -I.")
-set(HOST2CUDA_FLAGS "${HOST2CUDA_FLAGS} -DENABLE_IRIS ${OPENMP_INC} -O3 -g -fPIC ${COMMON_FLAGS} ${LOCAL_COMMON_FLAGS} -I.")
-set(HOST2CUDA_COMP_FLAGS "${HOST2CUDA_COMP_FLAGS} -DENABLE_IRIS ${OPENMP_INC} -O3 -g -fPIC ${COMMON_FLAGS} ${LOCAL_COMMON_FLAGS} -I.")
-set(HOST2HIP_FLAGS "${HOST2HIP_FLAGS} -DENABLE_IRIS ${OPENMP_INC} -O3 -g -fPIC ${COMMON_FLAGS} ${LOCAL_COMMON_FLAGS} -I.")
+set(HOST2CUDA_FLAGS "${HOST2CUDA_FLAGS} ${AUTO_CUDA_INCLUDE} -DENABLE_IRIS ${OPENMP_INC} -O3 -g -fPIC ${COMMON_FLAGS} ${LOCAL_COMMON_FLAGS} -I.")
+set(HOST2CUDA_COMP_FLAGS "${HOST2CUDA_COMP_FLAGS} ${AUTO_CUDA_INCLUDE} -DENABLE_IRIS ${OPENMP_INC} -O3 -g -fPIC ${COMMON_FLAGS} ${LOCAL_COMMON_FLAGS} -I.")
+set(HOST2HIP_FLAGS "${HOST2HIP_FLAGS} ${AUTO_HIP_INCLUDE} -DENABLE_IRIS ${OPENMP_INC} -O3 -g -fPIC ${COMMON_FLAGS} ${LOCAL_COMMON_FLAGS} -I.")
 set(HOST2ROC_FLAGS "${HOST2ROC_FLAGS} -DENABLE_IRIS ${OPENMP_INC} -O3 -g -fPIC ${COMMON_FLAGS} ${LOCAL_COMMON_FLAGS} -I.")
 set(OPENMP_FLAGS "${OPENMP_FLAGS} -DENABLE_IRIS ${OPENMP_INC} -O3 -g -fPIC ${COMMON_FLAGS} ${LOCAL_COMMON_FLAGS} -I.")
 set(HOST2XILINX_LDFLAGS "${HOST2XILINX_LDFLAGS} ${OPENMP_INC} -g -fPIC")
 set(HOST2OPENCL_LDFLAGS "${HOST2OPENCL_LDFLAGS} ${OPENMP_INC} -g -fPIC")
-set(HOST2CUDA_LDFLAGS "${HOST2CUDA_LDFLAGS} ${OPENMP_INC} -g -fPIC")
-set(HOST2CUDA_COMP_LDFLAGS "${HOST2CUDA_COMP_LDFLAGS} ${OPENMP_INC} -g -fPIC")
-set(HOST2HIP_LDFLAGS "${HOST2HIP_LDFLAGS} ${OPENMP_INC} -g -fPIC")
+set(HOST2CUDA_LDFLAGS "${HOST2CUDA_LDFLAGS} ${AUTO_CUDA_LDFLAGS} ${OPENMP_INC} -g -fPIC")
+set(HOST2CUDA_COMP_LDFLAGS "${HOST2CUDA_COMP_LDFLAGS} ${AUTO_CUDA_LDFLAGS} ${OPENMP_INC} -g -fPIC")
+set(HOST2HIP_LDFLAGS "${HOST2HIP_LDFLAGS} ${AUTO_HIP_LDFLAGS} ${OPENMP_INC} -g -fPIC")
 set(OPENMP_LDFLAGS "${OPENMP_LDFLAGS} ${OPENMP_INC} -g -fPIC")
 set(HEXAGON_FLAGS "${HEXAGON_FLAGS} -fPIC -g -O3 ${COMMON_FLAGS}  ${LOCAL_COMMON_FLAGS} -I$ENV{IRIS}/include/iris/hexagon")
 set(HEXAGON_LDFLAGS "${HEXAGON_LDFLAGS} -g -L${ANDROID_STUB_LIBDIR}  -Wl,--no-as-needed")
@@ -440,10 +520,12 @@ if (CUDA_KERNEL_SOURCES)
 add_custom_command(
   OUTPUT ${CMAKE_BINARY_DIR}/kernel.ptx
   WORKING_DIRECTORY ${PROJECT_SOURCE_DIR} 
-  COMMAND nvcc -ptx ${CUDA_KERNEL_SOURCES} ${CUDA_FLAGS} -o ${CMAKE_BINARY_DIR}/kernel.ptx --output-directory ${CMAKE_BINARY_DIR}
+  COMMAND cat ${CUDA_KERNEL_SOURCES} > ${CMAKE_CURRENT_BINARY_DIR}/__iris_kernel.cu
+  COMMAND nvcc -ptx ${CMAKE_CURRENT_BINARY_DIR}/__iris_kernel.cu ${CUDA_FLAGS} -o ${CMAKE_BINARY_DIR}/kernel.ptx --output-directory ${CMAKE_BINARY_DIR}
   BYPRODUCTS ${CMAKE_BINARY_DIR}/kernel.ptx
   )
 add_custom_target(kernel.ptx ALL DEPENDS ${CMAKE_BINARY_DIR}/kernel.ptx)
+add_dependencies(kernel.ptx iris_app_cpu_dsp_interface.h)
 install(FILES ${CMAKE_BINARY_DIR}/kernel.ptx DESTINATION ${KERNEL_INSTALL_PATH})
 endif() # CUDA_KERNEL_SOURCES
 endif() # USE_CUDA
@@ -580,14 +662,18 @@ endif() # USE_SPIR
 
 if (USE_HIP)
 if (HIP_KERNEL_SOURCES)
+if (HIP_FLAGS)
 string(REPLACE " " ";" hip_flags ${HIP_FLAGS})
+endif()
 add_custom_command(
   OUTPUT ${CMAKE_BINARY_DIR}/kernel.hip
   WORKING_DIRECTORY ${PROJECT_SOURCE_DIR} 
-  COMMAND hipcc --genco ${hip_flags} -o ${CMAKE_BINARY_DIR}/kernel.hip ${HIP_KERNEL_SOURCES}
+  COMMAND cat ${HIP_KERNEL_SOURCES} > ${CMAKE_CURRENT_BINARY_DIR}/__iris_kernel.hip.cpp
+  COMMAND hipcc --genco ${hip_flags} ${HIP_FLAGS} -o ${CMAKE_BINARY_DIR}/kernel.hip ${CMAKE_CURRENT_BINARY_DIR}/__iris_kernel.hip.cpp
   BYPRODUCTS ${CMAKE_BINARY_DIR}/kernel.hip
   )
 add_custom_target(kernel.hip DEPENDS ${CMAKE_BINARY_DIR}/kernel.hip)
+add_dependencies(kernel.hip iris_app_cpu_dsp_interface.h)
 install(FILES ${CMAKE_BINARY_DIR}/kernel.hip DESTINATION ${KERNEL_INSTALL_PATH})
 endif() #HIP_KERNEL_SOURCES
 endif() # USE_HIP
@@ -660,6 +746,7 @@ endfunction() #addKernelRule
 
 if (OPENMP_KERNEL_SOURCES)
 addKernelRule(kernel.openmp "${OPENMP_KERNEL_SOURCES}" ${OPENMP_FLAGS} ${OPENMP_LDFLAGS} "${OPENMP_LIBRARIES}")
+add_dependencies(kernel.openmp iris_app_cpu_dsp_interface.h)
 if (USE_NDK)
 target_link_libraries(kernel.openmp log)
 endif() # USE_NDK
@@ -683,12 +770,12 @@ addKernelCUDARule(kernel.host2cudaComp
                  "${HOST2CUDA_COMP_LIBRARIES}" 
                  "${output_obj_files}"
                  "${output_rules}")
-message(STATUS "Output obj files in CUDA: ${output_obj_files}")
+#message(STATUS "Output obj files in CUDA: ${output_obj_files}")
 set(HOST2CUDA_LDFLAGS "${HOST2CUDA_LDFLAGS} ${OPENMP_GPU_LDFLAGS} ${output_obj_files} -L${CMAKE_CURRENT_BINARY_DIR}")
 set(HOST2CUDA_LIBRARIES  ${HOST2CUDA_LIBRARIES} )
 #set(HOST2CUDA_LIBRARIES  "${HOST2CUDA_LIBRARIES} -lkernel.host2cudaComp")
 endif() #HOST2CUDA_COMP_KERNEL_SOURCES
-message(STATUS "Output obj files in CUDA ALL: ${output_obj_files}")
+#message(STATUS "Output obj files in CUDA ALL: ${output_obj_files}")
 
 if (HOST2CUDA_KERNEL_SOURCES AND USE_CUDA)
 addKernelRule(kernel.host2cuda "${HOST2CUDA_KERNEL_SOURCES}" ${HOST2CUDA_FLAGS} ${HOST2CUDA_LDFLAGS} "${HOST2CUDA_LIBRARIES}")
@@ -703,11 +790,13 @@ addKernelRule(kernel.host2roc "${HOST2ROC_KERNEL_SOURCES}" ${HOST2ROC_FLAGS} ${H
 endif() #HOST2ROC_KERNEL_SOURCES
 
 if (EXISTS "$ENV{IRIS}/lib64/libiris.so")
-install(FILES $ENV{IRIS}/lib64/libiris.so DESTINATION ${LIB_INSTALL_PATH})
+install(CODE "EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E create_symlink $ENV{IRIS}/lib64/libiris.so ${LIB_INSTALL_PATH}/libiris.so)")
+#install(FILES $ENV{IRIS}/lib64/libiris.so DESTINATION ${LIB_INSTALL_PATH})
 endif()
 
 if (EXISTS "$ENV{IRIS}/lib/libiris.so")
-install(FILES $ENV{IRIS}/lib/libiris.so DESTINATION ${LIB_INSTALL_PATH})
+install(CODE "EXECUTE_PROCESS(COMMAND  ${CMAKE_COMMAND} -E create_symlink $ENV{IRIS}/lib/libiris.so ${LIB_INSTALL_PATH}/libiris.so)")
+#install(FILES $ENV{IRIS}/lib/libiris.so DESTINATION ${LIB_INSTALL_PATH})
 endif()
 
 #printf "0x%x\n" `adb shell cat /sys/devices/soc0/serial_number` > serial
@@ -717,36 +806,40 @@ install_iris_files("${PROJECT_SOURCE_DIR}/src/*.cl" ${KERNEL_INSTALL_PATH})
 
 
 if (APP_LIB_SOURCES)
-initVar(APP_LIBRARY_NAME "irisapp")
-add_library(${APP_LIBRARY_NAME} SHARED ${APP_LIB_SOURCES})
-add_dependencies(${APP_LIBRARY_NAME} iris_app_cpu_dsp_interface.h)
-set_property(TARGET ${APP_LIBRARY_NAME} PROPERTY POSITION_INDEPENDENT_CODE ON)
-if (SNAPDRAGON)
-if (HEXAGON_KERNEL_SOURCES)
-add_dependencies(${APP_LIBRARY_NAME} kernel.hexagon)
-add_dependencies(${APP_LIBRARY_NAME} irishxg_lib)
-add_dependencies(${APP_LIBRARY_NAME} irishxg_skel)
-target_link_libraries(${APP_LIBRARY_NAME} ${STUB_LIB_NAME} ${LINK_LIB_DSPRPC})
-endif() #HEXAGON_KERNEL_SOURCES
-target_link_libraries(${APP_LIBRARY_NAME} iris log m)
-add_dependencies(${APP_LIBRARY_NAME} setup.android.source)
-else() # SNAPDRAGON
-target_link_libraries(${APP_LIBRARY_NAME} iris pthread dl m)
-add_dependencies(${APP_LIBRARY_NAME} setup.host)
-endif() #SNAPDRAGON
-if (USE_CUDA)
-if (CUDA_KERNEL_SOURCES)
-add_dependencies(${APP_LIBRARY_NAME} kernel.ptx)
-endif() #CUDA_KERNEL_SOURCES
-endif() #USE_CUDA
-if (USE_HIP)
-if (HIP_KERNEL_SOURCES)
-add_dependencies(${APP_LIBRARY_NAME} kernel.hip)
-endif() # HIP_KERNEL_SOURCES
-endif() # USE_HIP
-set_target_properties(${APP_LIBRARY_NAME} PROPERTIES COMPILE_FLAGS ${APP_FLAGS})
-set_target_properties(${APP_LIBRARY_NAME} PROPERTIES LINK_FLAGS ${APP_LDFLAGS})
-install(TARGETS ${APP_LIBRARY_NAME} DESTINATION ${LIB_INSTALL_PATH})
+    initVar(APP_LIBRARY_NAME "irisapp")
+    if (APP_LIB_STATIC)
+    add_library(${APP_LIBRARY_NAME} STATIC ${APP_LIB_SOURCES})
+    else() # APP_LIB_STATIC
+    add_library(${APP_LIBRARY_NAME} SHARED ${APP_LIB_SOURCES})
+    endif() # APP_LIB_STATIC
+    add_dependencies(${APP_LIBRARY_NAME} iris_app_cpu_dsp_interface.h)
+    set_property(TARGET ${APP_LIBRARY_NAME} PROPERTY POSITION_INDEPENDENT_CODE ON)
+    if (SNAPDRAGON)
+        if (HEXAGON_KERNEL_SOURCES)
+            add_dependencies(${APP_LIBRARY_NAME} kernel.hexagon)
+            add_dependencies(${APP_LIBRARY_NAME} irishxg_lib)
+            add_dependencies(${APP_LIBRARY_NAME} irishxg_skel)
+            target_link_libraries(${APP_LIBRARY_NAME} ${STUB_LIB_NAME} ${LINK_LIB_DSPRPC})
+        endif() #HEXAGON_KERNEL_SOURCES
+        target_link_libraries(${APP_LIBRARY_NAME} iris log m)
+        add_dependencies(${APP_LIBRARY_NAME} setup.android.source)
+    else() # SNAPDRAGON
+        target_link_libraries(${APP_LIBRARY_NAME} iris pthread dl m)
+        add_dependencies(${APP_LIBRARY_NAME} setup.host)
+    endif() #SNAPDRAGON
+    if (USE_CUDA)
+        if (CUDA_KERNEL_SOURCES)
+            add_dependencies(${APP_LIBRARY_NAME} kernel.ptx)
+        endif() #CUDA_KERNEL_SOURCES
+    endif() #USE_CUDA
+    if (USE_HIP)
+        if (HIP_KERNEL_SOURCES)
+            add_dependencies(${APP_LIBRARY_NAME} kernel.hip)
+        endif() # HIP_KERNEL_SOURCES
+    endif() # USE_HIP
+    set_target_properties(${APP_LIBRARY_NAME} PROPERTIES COMPILE_FLAGS ${APP_FLAGS})
+    set_target_properties(${APP_LIBRARY_NAME} PROPERTIES LINK_FLAGS ${APP_LDFLAGS})
+    install(TARGETS ${APP_LIBRARY_NAME} DESTINATION ${LIB_INSTALL_PATH})
 endif() #APP_LIB_SOURCES
 
 if (APP_SOURCES)

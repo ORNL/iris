@@ -43,6 +43,7 @@ int LoaderCUDA::LoadFunctions() {
   LOADFUNCEXT(cudaMemcpy);
   LOADFUNCEXT(cudaMemcpy2D);
   LOADFUNCEXT(cudaMemset);
+  LOADFUNCEXT(cudaHostRegister);
   LOADFUNC(cuMemcpy2DUnaligned);
   LOADFUNC(cuMemcpy2DAsync);
   LOADFUNCSYM(cuMemAlloc, cuMemAlloc_v2);

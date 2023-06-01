@@ -9,9 +9,8 @@
 namespace iris {
 namespace rt {
 
-History::History(Kernel* kernel) {
-  kernel_ = kernel;
-  platform_ = kernel_->platform();
+History::History(Platform* platform) {
+  platform_ = platform;
   ndevs_ = platform_->ndevs();
   for (int i = 0; i < ndevs_; i++) {
     t_kernel_[i] = 0.0;
@@ -45,6 +44,7 @@ History::History(Kernel* kernel) {
 }
 
 History::~History() {
+    _trace("Deleted history object");
 }
 
 void History::AddKernel(Command* cmd, Device* dev, double time) {

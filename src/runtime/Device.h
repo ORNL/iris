@@ -35,8 +35,9 @@ public:
 
   void ExecuteInit(Command* cmd);
   virtual void ExecuteKernel(Command* cmd);
+  virtual void RegisterPin(void *host, size_t size) { }
   void ExecuteMalloc(Command* cmd);
-
+  void RegisterHost(BaseMem *mem);
   template <typename DMemType>
   void InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem);
   void ExecuteMemResetInput(Task *task, Command* cmd);
@@ -47,7 +48,9 @@ public:
   void ExecuteMemOut(Task *task, Command* cmd);
   void ExecuteMemFlushOut(Command* cmd);
 
-  void ExecuteH2D(Command* cmd);
+  void ExecuteD2D(Command* cmd, Device *dev=NULL);
+  void ExecuteH2D(Command* cmd, Device *dev=NULL);
+  void ExecuteH2BroadCast(Command* cmd);
   void ExecuteH2DNP(Command* cmd);
   void ExecuteD2H(Command* cmd);
   void ExecuteMap(Command* cmd);
@@ -73,8 +76,9 @@ public:
   virtual int MemD2D(Task *task, BaseMem *mem, void *dst, void *src, size_t size) { _error("Device:%d:%s doesn't support MemD2D", devno_, name()); return IRIS_ERROR; }
   virtual int MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag="") = 0;
   virtual int MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag="") = 0;
-  virtual int KernelGet(Kernel *kernel, void** kernel_bin, const char* name) = 0;
+  virtual int KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bool report_error=true) = 0;
   virtual int KernelLaunchInit(Kernel* kernel) { return IRIS_SUCCESS; }
+  virtual void CheckVendorSpecificKernel(Kernel *kernel) { }
   virtual int KernelSetArg(Kernel* kernel, int idx, int kindex, size_t size, void* value) = 0;
   virtual int KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, size_t off) = 0;
   virtual int KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws) = 0;
@@ -98,6 +102,7 @@ public:
   bool busy() { return busy_; }
   bool idle() { return !busy_; }
   bool enable() { return enable_; }
+  bool native_kernel_not_exists() { return native_kernel_not_exists_; }
   void enableD2D() { is_d2d_possible_ = true; }
   bool isD2DEnabled() { return is_d2d_possible_; }
   int ok() { return errid_; }
@@ -128,6 +133,7 @@ protected:
   bool shared_memory_buffers_;
   bool can_share_host_memory_;
   bool is_d2d_possible_;
+  bool native_kernel_not_exists_;
 
   Worker* worker_;
   Timer* timer_;

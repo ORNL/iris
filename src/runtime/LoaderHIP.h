@@ -32,6 +32,7 @@ public:
   hipError_t (*hipModuleLoad)(hipModule_t* module, const char* fname);
   hipError_t (*hipModuleGetFunction)(hipFunction_t* function, hipModule_t module, const char* kname);
   hipError_t (*hipMalloc)(void** ptr, size_t size);
+  hipError_t (*hipHostRegister)(void *ptr, size_t size, unsigned int flags);
   hipError_t (*hipMemset)(hipDeviceptr_t ptr, int init, size_t size);
   hipError_t (*hipDeviceEnablePeerAccess)(int peerDevice, unsigned int flags);
   hipError_t (*hipDeviceCanAccessPeer)(int *canaccess, int device, int peerDevice);

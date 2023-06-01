@@ -28,6 +28,7 @@ int LoaderHIP::LoadFunctions() {
   LOADFUNC(hipModuleLoad);
   LOADFUNC(hipModuleGetFunction);
   LOADFUNC(hipMalloc);
+  LOADFUNC(hipHostRegister);
   LOADFUNC(hipMemset);
   LOADFUNC(hipFree);
   LOADFUNC(hipGetDeviceProperties);

@@ -18,6 +18,7 @@ Mem::Mem(size_t size, Platform* platform) : BaseMem(IRIS_MEM, platform->ndevs())
   mapped_host_ = NULL;
   for (int i = 0; i < ndevs_; i++) {
     archs_dev_[i] = platform->device(i);
+    archs_[i] = NULL;
   }
   pthread_mutex_init(&mutex_, NULL);
 }

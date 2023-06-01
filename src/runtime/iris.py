@@ -6,6 +6,50 @@ import pdb
 import os
 import struct 
 
+class CommData3D(Structure):
+    _fields_ = [
+        ("from_id", c_uint),
+        ("to_id", c_uint), 
+        ("mem_id", c_uint),
+        ("size", c_size_t)
+    ]
+    def __repr__(self):
+        return f'CommData3D(from_id={self.from_id}, to_id={self.to_id}, mem_id={self.mem_id}, size={self.size})'
+    def __str__(self):
+        return f"from_id={self.from_id}, to_id={self.to_id}, mem_id={self.mem_id}, size={self.size}"
+
+class TaskProfile(Structure):
+    _fields_ = [
+        ("task", c_uint),
+        ("device", c_uint),
+        ("start", c_double),
+        ("end", c_double)
+    ]
+    def __str__(self):
+        return f"task={self.task}, device={self.device}, start={self.start}, end={self.end}"
+
+    def __repr__(self) -> str:
+        return f"TaskProfile(task={self.task}, device={self.device}, start={self.start}, end={self.end})"
+
+
+class DataObjectProfile(Structure):
+    _fields_ = [
+        ("task", c_uint),
+        ("data_object", c_uint),
+        ("datatransfer_type", c_uint),
+        ("from_device", c_uint),
+        ("device", c_uint),
+        ("start", c_double),
+        ("end", c_double)
+    ]
+    def __str__(self):
+        return f"task={self.task}, data_object={self.data_object}, datatransfer_type={self.datatransfer_type}, from_device={self.from_device}, device={self.device}, start={self.start}, end={self.end}"
+
+    def __repr__(self) -> str:
+        return f"DataObjectProfile(task={self.task}, data_object={self.data_object}, datatransfer_type={self.datatransfer_type}, from_device={self.from_device}, device={self.device}, start={self.start}, end={self.end})"
+
+
+
 class library(CDLL):
     def __init__(self, library_name, read_symbols=False):
         super().__init__(library_name, mode=RTLD_GLOBAL)
@@ -41,7 +85,115 @@ class library(CDLL):
             fn_name = self.__getitem__(fn_name)
         fn_name(*conv_args)
 
-dll = library("libiris.so")
+class IRIS(library):
+    def __init__(self):
+        super(IRIS, self).__init__("libiris.so")
+    def get_numpy_size(self, size):
+        if type(size) != np.ndarray:
+            size = np.array(size)
+        return size
+    def alloc_random_size_t(self, size, init=np.int64(0)):
+        size = self.get_numpy_size(size)
+        total_size = size.prod()
+        c_ptr = dll.call_ret_ptr(dll.iris_allocate_random_array_size_t, np.int32(total_size), init)
+        np_data = dll.convert_c_pointer_to_numpy(c_ptr, size, ctypes.c_size_t)
+        return np_data, c_ptr
+        
+    def alloc_random_float(self, size, init=np.float32(0.0)):
+        size = self.get_numpy_size(size)
+        total_size = size.prod()
+        c_ptr = dll.call_ret_ptr(dll.iris_allocate_random_array_float, np.int32(total_size), init)
+        np_data = dll.convert_c_pointer_to_numpy(c_ptr, size, ctypes.c_float)
+        return np_data, c_ptr
+        
+    def alloc_random_double(self, size, init=np.float64(0.0)):
+        size = self.get_numpy_size(size)
+        total_size = size.prod()
+        c_ptr = dll.call_ret_ptr(dll.iris_allocate_random_array_double, np.int32(total_size), init)
+        np_data = dll.convert_c_pointer_to_numpy(c_ptr, size, ctypes.c_double)
+        return np_data, c_ptr
+        
+    def alloc_random_int64(self, size, init=np.int64(0)):
+        size = self.get_numpy_size(size)
+        total_size = size.prod()
+        c_ptr = dll.call_ret_ptr(dll.iris_allocate_random_array_int64_t, np.int32(total_size), init)
+        np_data = dll.convert_c_pointer_to_numpy(c_ptr, size, ctypes.c_int64)
+        return np_data, c_ptr
+        
+    def alloc_random_int32(self, size, init=np.int32(0)):
+        size = self.get_numpy_size(size)
+        total_size = size.prod()
+        c_ptr = dll.call_ret_ptr(dll.iris_allocate_random_array_int32_t, np.int32(total_size), init)
+        np_data = dll.convert_c_pointer_to_numpy(c_ptr, size, ctypes.c_int32)
+        return np_data, c_ptr
+
+    def alloc_random_int16(self, size, init=np.int16(0)):
+        size = self.get_numpy_size(size)
+        total_size = size.prod()
+        c_ptr = dll.call_ret_ptr(dll.iris_allocate_random_array_int16_t, np.int32(total_size), init)
+        np_data = dll.convert_c_pointer_to_numpy(c_ptr, size, ctypes.c_short)
+        return np_data, c_ptr
+
+    def alloc_random_int8(self, size, init=np.int8(0)):
+        size = self.get_numpy_size(size)
+        total_size = size.prod()
+        c_ptr = dll.call_ret_ptr(dll.iris_allocate_random_array_int8_t, np.int32(total_size), init)
+        np_data = dll.convert_c_pointer_to_numpy(c_ptr, size, ctypes.c_byte)
+        return np_data, c_ptr
+        
+    def alloc_size_t(self, size, init=np.int64(0)):
+        size = self.get_numpy_size(size)
+        total_size = size.prod()
+        c_ptr = dll.call_ret_ptr(dll.iris_allocate_array_size_t, np.int32(total_size), init)
+        np_data = dll.convert_c_pointer_to_numpy(c_ptr, size, ctypes.c_size_t)
+        return np_data, c_ptr
+        
+    def alloc_float(self, size, init=np.float32(0.0)):
+        size = self.get_numpy_size(size)
+        total_size = size.prod()
+        c_ptr = dll.call_ret_ptr(dll.iris_allocate_array_float, np.int32(total_size), init)
+        np_data = dll.convert_c_pointer_to_numpy(c_ptr, size, ctypes.c_float)
+        return np_data, c_ptr
+        
+    def alloc_double(self, size, init=np.float64(0.0)):
+        size = self.get_numpy_size(size)
+        total_size = size.prod()
+        c_ptr = dll.call_ret_ptr(dll.iris_allocate_array_double, np.int32(total_size), init)
+        np_data = dll.convert_c_pointer_to_numpy(c_ptr, size, ctypes.c_double)
+        return np_data, c_ptr
+        
+    def alloc_int64(self, size, init=np.int64(0)):
+        size = self.get_numpy_size(size)
+        total_size = size.prod()
+        c_ptr = dll.call_ret_ptr(dll.iris_allocate_array_int64_t, np.int32(total_size), init)
+        np_data = dll.convert_c_pointer_to_numpy(c_ptr, size, ctypes.c_int64)
+        return np_data, c_ptr
+        
+    def alloc_int32(self, size, init=np.int32(0)):
+        size = self.get_numpy_size(size)
+        total_size = size.prod()
+        c_ptr = dll.call_ret_ptr(dll.iris_allocate_array_int32_t, np.int32(total_size), init)
+        np_data = dll.convert_c_pointer_to_numpy(c_ptr, size, ctypes.c_int32)
+        return np_data, c_ptr
+        
+    def alloc_int16(self, size, init=np.int16(0)):
+        size = self.get_numpy_size(size)
+        total_size = size.prod()
+        c_ptr = dll.call_ret_ptr(dll.iris_allocate_array_int16_t, np.int32(total_size), init)
+        np_data = dll.convert_c_pointer_to_numpy(c_ptr, size, ctypes.c_short)
+        return np_data, c_ptr
+
+    def alloc_int8(self, size, init=np.int8(0)):
+        size = self.get_numpy_size(size)
+        total_size = size.prod()
+        c_ptr = dll.call_ret_ptr(dll.iris_allocate_array_int8_t, np.int32(total_size), init)
+        np_data = dll.convert_c_pointer_to_numpy(c_ptr, size, ctypes.c_byte)
+        return np_data, c_ptr
+
+    def free(self, c_ptr):
+        dll.call(dll.iris_free_array, c_ptr)
+        
+dll = IRIS()
 
 def call(fn_name, *args):
     dll.call(fn_name, *args)
@@ -94,6 +246,14 @@ iris_vendor     =   0x1002
 iris_name       =   0x1003
 iris_type       =   0x1004
 
+iris_dt_h2d     =        1
+iris_dt_h2o     =        2
+iris_dt_d2o     =        3
+iris_dt_d2h     =        4
+iris_dt_d2d     =        5
+iris_dt_d2h_h2d =        6
+iris_dt_error   =        0
+
 IRIS_MEM = 0x1
 IRIS_DMEM = 0x2
 IRIS_DMEM_REGION = 0x4
@@ -113,6 +273,12 @@ class iris_graph(Structure):
 def init(sync = 1):
     return dll.iris_init(0, None, c_int(sync))
 
+def set_enable_profiler(flag=True):
+    dll.iris_set_enable_profiler(int(flag))
+
+def register_pin_memory(cptr, size):
+    dll.iris_register_pin_memory(convert_obj_ctype(cptr)[0], convert_obj_ctype(size_t(size))[0])
+
 def finalize():
     return dll.iris_finalize()
 
@@ -129,6 +295,13 @@ def platform_info(platform, param):
     dll.iris_platform_info(c_int(platform), c_int(param), s, None)
     return s.value
 
+def all_platform_info():
+    platform_names = []
+    for i in range(platform_count()):
+        plt = platform_info(i, iris_name)
+        platform_names.append(plt)
+    return platform_names
+
 def device_count():
     i = c_int()
     dll.iris_device_count(byref(i))
@@ -138,6 +311,37 @@ def device_info(device, param):
     s = (c_char * 64)()
     dll.iris_device_info(c_int(device), c_int(param), s, None)
     return s.value
+
+def calibrate_communication_cost_matrix(data_size, iterations=1, pin_memory=True, units='B'):
+    print("Calibrate communication cost matrix from IRIS platform")
+    ndevs = device_count()+1
+    data_np = np.zeros(ndevs*ndevs).astype(np.double)
+    data_np_cp = convert_obj_ctype(data_np)[0]
+    iterations = np.int32(iterations)
+    dll.iris_calibrate_communication_cost(data_np_cp, 
+            convert_obj_ctype(size_t(data_size))[0], 
+            convert_obj_ctype(iterations)[0], 
+            convert_obj_ctype(np.int32(pin_memory))[0])
+    np.seterr(divide='ignore')
+    out_data_np = data_size / data_np.reshape((ndevs, ndevs))
+    if units == 'KB':
+        out_data_np = out_data_np / 1000
+    elif units == 'MB':
+        out_data_np = out_data_np / 1000000
+    elif units == 'GB':
+        out_data_np = out_data_np / 1000000000
+    elif units == 'TB':
+        out_data_np = out_data_np / 1000000000000
+    elif units == 'PB':
+        out_data_np = out_data_np / 1000000000000000
+    return out_data_np
+
+def all_device_info():
+    dev_names = []
+    for i in range(device_count()):
+        dev = device_info(i, iris_name)
+        dev_names.append(dev)
+    return dev_names
 
 def mem_create(size):
     m = iris_mem()
@@ -319,6 +523,12 @@ class dmem:
   def update(self, host):
     c_host = host.ctypes.data_as(c_void_p)
     dll.iris_data_mem_update(self.handle, c_host)
+  def get_region_uids(self):
+    n_regions = dll.call_ret(dll.iris_data_mem_n_regions(self.handle), np.int32)
+    output = []
+    for i in range(n_regions):
+      output.append(dll.call_ret(dll.iris_data_mem_get_region_uid, np.uint32, self.handle, np.int32(i)))
+    return output
 class dmem_region:
   def __init__(self, *args):
     self.handle = dmem_create(args)
@@ -612,6 +822,10 @@ class task:
         dll.iris_task_get_name.restype = c_char_p
         kname = dll.iris_task_get_name(self.handle)
         return kname.decode('ascii')
+
+    def set_order(self, order):
+        dll.call(dll.iris_task_kernel_dmem_fetch_order, self.handle, order)
+
     def set_name(self, name):
         c_name = c_char_p(name) if sys.version_info[0] == 2 else c_char_p(bytes(name, 'ascii'))
         dll.iris_task_set_name(self.handle, c_name)
@@ -728,24 +942,52 @@ class graph:
         self.handle = graph_create()
         for each_task in tasks:
             self.add_task(each_task, device, opt)
+    def retain(self):
+        dll.iris_graph_retain(self.handle)
+    def release(self):
+        dll.iris_graph_release(self.handle)
     def free(self):
         dll.iris_graph_free(self.handle)
     def wait(self):
         dll.iris_graph_wait(self.handle)
-    def submit(self, device=iris_default,sync=1):
-        dll.iris_graph_submit(self.handle, c_int(device), c_int(sync))
-    def submit_time(self, device=iris_default, sync=1):
+    def submit(self, device=iris_default, sync=1, order=None):
+        if type(order) == np.ndarray or order != None:
+            order_np = order
+            if type(order) != np.ndarray:
+                order_np = np.int32(order)
+            conv_order_np = convert_obj_ctype(order_np)
+            dll.iris_graph_submit_with_order(self.handle, conv_order_np[0], c_int(device), c_int(sync))
+        else:
+            dll.iris_graph_submit(self.handle, c_int(device), c_int(sync))
+    def submit_time(self, device=iris_default, sync=1, order=None):
         #stime = np.double(0.0)
         #cobj = byref(c_double(stime))
         stime = np.zeros((1), np.double)
         cobj = stime.ctypes.data_as(c_void_p)
-        dll.iris_graph_submit_with_time(self.handle, cobj, c_int(device), c_int(sync))
+        if type(order) == np.ndarray or order != None:
+            order_np = order
+            if type(order) != np.ndarray:
+                order_np = np.int32(order)
+            conv_order_np = convert_obj_ctype(order_np)
+            dll.iris_graph_submit_with_order_and_time(self.handle, conv_order_np[0], cobj, c_int(device), c_int(sync))
+        else:
+            dll.iris_graph_submit_with_time(self.handle, cobj, c_int(device), c_int(sync))
         return stime[0]
     def add_task(self, task, device=iris_default, opt=None):
         c_opt = c_void_p(0)
         if opt != None:
            c_opt = c_char_p(opt) if sys.version_info[0] == 2 else c_char_p(bytes(opt, 'ascii'))
         dll.iris_graph_task(self.handle, task.handle, c_int(device), c_opt)
+
+    def reset_memories(self):
+        dll.iris_graph_reset_memories(self.handle)
+
+    def enable_mem_profiling(self):
+        dll.iris_graph_enable_mem_profiling(self.handle)
+
+    def set_order(self, order):
+        dll.call(dll.iris_graph_tasks_order, self.handle, order)
+
     def get_tasks(self):
         dll.iris_graph_tasks_count.restype = c_int
         ntasks = dll.iris_graph_tasks_count(self.handle)
@@ -755,6 +997,7 @@ class graph:
         dll.iris_graph_get_tasks(self.handle, tasks)
         ptasks = convert_ctasks(tasks)
         return ntasks, ptasks
+
     def get_task_names(self):
         ntasks, tasks = self.get_tasks()
         task_names = [ task.name() for task in tasks]
@@ -765,30 +1008,27 @@ class graph:
         ntasks, tasks = self.get_tasks()
         task_uids = [0] + [ task.uid() for task in tasks]
         return task_uids
-    def get_dependency_graph(self, pdf=False):
+
+    def tasks_execution_schedule(self, kernel_profile=False):
+        # Order should not be changed
+        ptr = dll.call_ret(dll.iris_get_graph_tasks_execution_schedule, POINTER(TaskProfile), self.handle, np.int32(kernel_profile))
+        total = dll.call_ret(dll.iris_get_graph_tasks_execution_schedule_count, c_size_t, self.handle)
+        ptr_list = [ ptr[i] for i in range(total) ]
+        return ptr_list
+
+    def mems_execution_schedule(self):
+        # Order should not be changed
+        ptr = dll.call_ret(dll.iris_get_graph_dataobjects_execution_schedule, POINTER(DataObjectProfile), self.handle)
+        total = dll.call_ret(dll.iris_get_graph_dataobjects_execution_schedule_count, c_size_t, self.handle)
+        ptr_list = [ ptr[i] for i in range(total) ]
+        return ptr_list
+
+    def get_dependency_matrix(self, pdf=False):
         ntasks, tasks = self.get_tasks()
-        dep_graph = np.zeros((len(tasks)+1, len(tasks)+1), np.int8)
-        task_index_hash = {}
-        for index, each_task in enumerate(tasks):
-            task_index_hash[each_task.uid()] = index
-        task_outputs = np.zeros(len(tasks))
-        for index, each_task in enumerate(tasks):
-            n_depends, dep_tasks = each_task.get_depends()
-            for d_task in dep_tasks:
-                d_index = task_index_hash[d_task.uid()]
-                task_outputs[d_index] += 1
-        for index, each_task in enumerate(tasks):
-            n_depends, dep_tasks = each_task.get_depends()
-            if n_depends == 0:
-                dep_graph[index+1][0] += 1
-            if index == 0:
-                dep_tasks = []
-                for d_index, n_outs in enumerate(task_outputs):
-                    if n_outs == 1:
-                        dep_tasks.append(tasks[d_index])
-            for d_task in dep_tasks:
-                d_index = task_index_hash[d_task.uid()]
-                dep_graph[index+1][d_index+1] = 1
+        SIZE = ntasks+1
+        dep_graph, dep_graph_2d_ptr = dll.alloc_int8((SIZE,SIZE))
+        dll.call_ret_ptr(dll.iris_get_graph_dependency_adj_matrix, self.handle, dep_graph)
+        print("Dependency matrix", dep_graph)
         if pdf:
             task_names = self.get_task_names()
             task_uids =  self.get_task_uids()
@@ -886,90 +1126,66 @@ class graph:
                         mem_serial_index = mem_serial_index_hash[mem_index]
                         dep_graph[index+1][0][mem_serial_index] += size
         return dep_graph
+
     def get_2d_cost_communication_matrix(self, pdf=False):
         ntasks, tasks = self.get_tasks()
-        dep_graph = np.zeros((len(tasks)+1, len(tasks)+1), np.int64)
-        task_index_hash = {}
-        task_input_mems = []
-        task_output_mems = []
-        mem_index_hash = {}
-        mem_regions_2_dmem_hash = {}
-        mem_dmem_2_regions = {}
-        for index, each_task in enumerate(tasks):
-            task_index_hash[each_task.uid()] = index
-            inputs = each_task.get_input_mems()
-            outputs = each_task.get_output_mems()
-            task_input_mems.append([])
-            task_output_mems.append([])
-            for inp in inputs:
-                if inp.uid() not in mem_index_hash:
-                    mem_index_hash[inp.uid()] = {'mem': inp, 'inputs':[], 'outputs':[]}
-                mem_index_hash[inp.uid()]['inputs'].append(each_task.uid())
-                task_input_mems[index].append(inp.uid())
-            for outp in outputs:
-                if outp.uid() not in mem_index_hash:
-                    mem_index_hash[outp.uid()] = {'mem': outp, 'inputs':[], 'outputs':[]}
-                mem_index_hash[outp.uid()]['outputs'].append(each_task.uid())
-                task_output_mems[index].append(outp.uid())
-                if outp.type == IRIS_DMEM_REGION:
-                    if outp.uid() not in mem_regions_2_dmem_hash:
-                        mem_regions_2_dmem_hash[outp.uid()] = outp.mem.uid()
-                    if outp.mem.uid() not in mem_dmem_2_regions:
-                        mem_dmem_2_regions[outp.mem.uid()] = []
-                    mem_dmem_2_regions[outp.mem.uid()].append(outp.uid())
-        task_outputs = np.zeros(len(tasks))
-        for index, each_task in enumerate(tasks):
-            n_depends, dep_tasks = each_task.get_depends()
-            for d_task in dep_tasks:
-                d_index = task_index_hash[d_task.uid()]
-                task_outputs[d_index] += 1
-        for index, each_task in enumerate(tasks):
-            lst1 = task_input_mems[index]
-            n_depends, dep_tasks = each_task.get_depends()
-            if index == 0:
-                # End Task
-                dep_tasks = []
-                for d_index, n_outs in enumerate(task_outputs):
-                    if n_outs == 1:
-                        dep_tasks.append(tasks[d_index])
-            added_mems = []
-            for d_task in dep_tasks:
-                d_index = task_index_hash[d_task.uid()]
-                lst2 = task_output_mems[d_index]
-                mem_list = lst2
-                if len(lst1) > 0:
-                    mem_list = list(set(lst1) & set(lst2))
-                added_mems = mem_list
-                size = 0
-                for mem_index in mem_list:
-                    size += mem_index_hash[mem_index]['mem'].size()
-                for mem_index in lst2:
-                    if mem_index in mem_regions_2_dmem_hash:
-                        dmem_index = mem_regions_2_dmem_hash[mem_index]
-                        if dmem_index in lst1:
-                            size += mem_index_hash[mem_index]['mem'].size()
-                            added_mems.append(dmem_index)
-                dep_graph[index+1][d_index+1] = dep_graph[index+1][d_index+1] + size
-            size = 0
-            for mem_index in lst1:
-                if mem_index not in added_mems:
-                    mem_obj = mem_index_hash[mem_index]['mem']
-                    if mem_index in mem_regions_2_dmem_hash:
-                        dmem_index = mem_regions_2_dmem_hash[mem_index]
-                        dmem_obj = mem_index_hash[dmem_index]['mem']
-                        if not dmem_obj.is_reset():
-                            size += mem_obj.size()
-                    elif not mem_obj.is_reset():
-                        size += mem_obj.size()
-            dep_graph[index+1][0] = dep_graph[index+1][0] + size
+        SIZE = ntasks+1
+        comm_2d, comm_2d_ptr = dll.alloc_size_t((SIZE,SIZE))
+        dll.call_ret_ptr(dll.iris_get_graph_2d_comm_adj_matrix, self.handle, comm_2d)
+        print("Communication cost matrix", comm_2d)
         if pdf:
             task_names = self.get_task_names()
             task_uids =  self.get_task_uids()
             import pandas as pd
-            df = pd.DataFrame(dep_graph, columns=task_names)
+            df = pd.DataFrame(comm_2d, columns=task_names)
             df['task_name'] = task_names
             df['task_uid'] = task_uids
-            df['parent_count'] = dep_graph.sum(axis=1)
-            df['child_count'] = dep_graph.sum(axis=0)
+            df['parent_count'] = comm_2d.sum(axis=1)
+            df['child_count'] = comm_2d.sum(axis=0)
             return df
-        return dep_graph
+        return comm_2d
+
+    def get_3d_cost_comm_time(self, iterations=1, pin_memory=True):
+        print("Extracting 3d communication cost for each object")
+        n_mems = dll.call_ret(dll.iris_count_mems, c_size_t, self.handle)
+        ndevs = device_count()+1
+        time_data = np.zeros(n_mems*ndevs*ndevs, np.double)
+        mem_ids = np.zeros(n_mems, np.int32)
+        dll.call(dll.iris_get_graph_3d_comm_time, self.handle, time_data, mem_ids, np.int32(iterations), np.int32(pin_memory))
+        return time_data.reshape((n_mems, ndevs, ndevs)), mem_ids 
+
+    def get_3d_cost_comm_data(self):
+        print("Extracting communication data 3d list of (task from id, task to id, mem_id, size)")
+        dll.call(dll.iris_get_graph_3d_comm_data, self.handle)
+        total = dll.call_ret(dll.iris_get_graph_3d_comm_data_size, c_size_t, self.handle)
+        ptr = dll.call_ret(dll.iris_get_graph_3d_comm_data_ptr, POINTER(CommData3D), self.handle)
+        ptr_list = [ ptr[i] for i in range(total) ]
+        return ptr_list
+
+    def calibrate_compute_cost_adj_matrix(self, pdf=False, only_device_type=False):
+        print("Calibrating computation cost for each task and for each processor type")
+        ntasks, tasks = self.get_tasks()
+        ndevs = device_count()
+        dev_names = all_device_info()
+        SIZE = ntasks+1
+        cols = ndevs
+        col_names = dev_names
+        if only_device_type:
+            cols = platform_count()
+            col_names = all_platform_info()
+        comp_2d, comp_2d_ptr = dll.alloc_double((SIZE, cols))
+        if only_device_type:
+            dll.call_ret_ptr(dll.iris_calibrate_compute_cost_adj_matrix_only_for_types, self.handle, comp_2d)
+        else:
+            dll.call_ret_ptr(dll.iris_calibrate_compute_cost_adj_matrix, self.handle, comp_2d)
+        print("Computation cost matrix", comp_2d)
+        if pdf:
+            task_names = self.get_task_names()
+            task_uids =  self.get_task_uids()
+            import pandas as pd
+            df = pd.DataFrame(comp_2d, columns=col_names)
+            df['task_name'] = task_names
+            df['task_uid'] = task_uids
+            return df
+        return comp_2d
+

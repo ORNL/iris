@@ -52,6 +52,31 @@ add_custom_command(
   COMMAND echo "echo \"*************************************************************\"" >> ${CMAKE_BINARY_DIR}/setup.source
   )
 add_custom_command(
+  OUTPUT ${CMAKE_BINARY_DIR}/setup.zsh
+  WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+  COMMAND echo "SCRIPT_FILE=\${(%):-%N}" > ${CMAKE_BINARY_DIR}/setup.zsh VERBATIM
+  COMMAND echo "PYTHON_EXE=python" >> ${CMAKE_BINARY_DIR}/setup.zsh VERBATIM
+  COMMAND echo "version=\$(python -V 2>&1 | grep -Po '(?<=Python )(.+)')" >> ${CMAKE_BINARY_DIR}/setup.zsh VERBATIM
+  COMMAND echo "if [[ -z \"\$version\" ]]" >> ${CMAKE_BINARY_DIR}/setup.zsh VERBATIM
+  COMMAND echo "then" >> ${CMAKE_BINARY_DIR}/setup.zsh VERBATIM
+  COMMAND echo "    PYTHON_EXE=python3" >> ${CMAKE_BINARY_DIR}/setup.zsh VERBATIM
+  COMMAND echo "    version=\$(python3 -V 2>&1 | grep -Po '(?<=Python )(.+)')" >> ${CMAKE_BINARY_DIR}/setup.zsh VERBATIM
+  COMMAND echo "    if [[ -z \"\$version\" ]]" >> ${CMAKE_BINARY_DIR}/setup.zsh VERBATIM
+  COMMAND echo "    then" >> ${CMAKE_BINARY_DIR}/setup.zsh VERBATIM
+  COMMAND echo "    echo \"No Python is detected! Cannot source\" " >> ${CMAKE_BINARY_DIR}/setup.zsh VERBATIM
+  COMMAND echo "    return" >> ${CMAKE_BINARY_DIR}/setup.zsh VERBATIM
+  COMMAND echo "    fi" >> ${CMAKE_BINARY_DIR}/setup.zsh VERBATIM
+  COMMAND echo "fi" >> ${CMAKE_BINARY_DIR}/setup.zsh VERBATIM
+  COMMAND echo "SCRIPT=$(\$PYTHON_EXE -c \"import os,sys; print(os.path.realpath(os.path.expanduser(sys.argv[1])))\" \${SCRIPT_FILE})" >> ${CMAKE_BINARY_DIR}/setup.zsh VERBATIM
+  COMMAND echo "export IRIS=$(dirname -- \${SCRIPT})" >> ${CMAKE_BINARY_DIR}/setup.zsh
+  COMMAND echo "export LD_LIBRARY_PATH=.:\$IRIS/lib:\$IRIS/lib64:\$LD_LIBRARY_PATH" >> ${CMAKE_BINARY_DIR}/setup.zsh
+  COMMAND echo "export CPATH=$IRIS/include:$CPATH" >> ${CMAKE_BINARY_DIR}/setup.zsh
+  COMMAND echo "export PYTHONPATH=\$IRIS/include/iris:\$PYTHONPATH" >> ${CMAKE_BINARY_DIR}/setup.zsh
+  COMMAND echo "echo \"*********************** IRIS Environent *********************\"" >> ${CMAKE_BINARY_DIR}/setup.zsh
+  COMMAND echo "echo \"IRIS: \$IRIS\"" >> ${CMAKE_BINARY_DIR}/setup.zsh
+  COMMAND echo "echo \"*************************************************************\"" >> ${CMAKE_BINARY_DIR}/setup.zsh
+  )
+add_custom_command(
   OUTPUT ${CMAKE_BINARY_DIR}/setup.fish
   WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
   COMMAND echo "set SCRIPT_FILE (status filename)" > ${CMAKE_BINARY_DIR}/setup.fish VERBATIM

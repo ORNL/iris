@@ -14,9 +14,25 @@ class Kernel;
 class Platform;
 class Task;
 
+struct TaskProfile
+{
+    uint32_t task_id;  
+    uint32_t device_id;  
+    double start;
+    double end;
+};
+struct DataObjectProfile {
+  uint32_t  task_id_;
+  uint32_t  mem_id_;
+  uint32_t datatransfer_type_;
+  uint32_t from_dev_id_;
+  uint32_t dev_id_;
+  double start_;
+  double end_;
+};
 class History {
 public:
-  History(Kernel* kernel);
+  History(Platform* platform);
   ~History();
 
   void AddKernel(Command* cmd, Device* dev, double time);
@@ -56,7 +72,6 @@ private:
   size_t total(size_t* s);
 
 private:
-  Kernel* kernel_;
   Platform* platform_;
   int ndevs_;
 

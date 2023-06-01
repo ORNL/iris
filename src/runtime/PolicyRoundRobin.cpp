@@ -26,15 +26,18 @@ void PolicyRoundRobin::GetDevices(Task* task, Device** devs, int* ndevs) {
 }
 
 void PolicyRoundRobin::GetDevice(Task* task, Device** devs, int* ndevs) {
-  devs[0] = devs_[index_];
-  *ndevs = 1;
-  if (++index_ == ndevs_) index_ = 0;
+    for(int i=0; i<ndevs_; i++) {
+        devs[0] = devs_[index_];
+        *ndevs = 1;
+        if (++index_ == ndevs_) index_ = 0;
+        if (IsKernelSupported(task, devs[0])) break;
+    }
 }
 
 void PolicyRoundRobin::GetDeviceType(Task* task, Device** devs, int* ndevs) {
   int policy = task->brs_policy();
   for (int i = 0; i < ndevs_; i++) {
-    if (devs_[index_]->type() & policy) {
+    if ((devs_[index_]->type() & policy) && IsKernelSupported(task, devs_[index_])) {
       devs[0] = devs_[index_];
       *ndevs = 1;
       if (++index_ == ndevs_) index_ = 0;

@@ -18,14 +18,16 @@ public:
   int Compile(char* src);
   int Init();
   int ResetMemory(BaseMem *mem, uint8_t reset_value);
+  void RegisterPin(void *host, size_t size);
   int MemAlloc(void** mem, size_t size, bool reset);
   int MemFree(void* mem);
   int MemD2D(Task *task, BaseMem *mem, void *dst, void *src, size_t size);
   int MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag="");
   int MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag="");
-  int KernelGet(Kernel *kernel, void** kernel_bin, const char* name);
+  int KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bool report_error=true);
   int KernelSetArg(Kernel* kernel, int idx, int kindex, size_t size, void* value);
   int KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, size_t off);
+  void CheckVendorSpecificKernel(Kernel* kernel);
   int KernelLaunchInit(Kernel* kernel);
   int KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws);
   int Synchronize();
@@ -37,6 +39,7 @@ public:
   const char* kernel_bin() { return "KERNEL_BIN_HIP"; }
   void ResetContext();
   bool IsContextChangeRequired();
+  void SetContextToCurrentThread();
 
 private:
   LoaderHIP* ld_;
@@ -54,6 +57,7 @@ private:
   void* params_[IRIS_MAX_KERNEL_NARGS];
   int max_arg_idx_;
   std::map<hipFunction_t, hipFunction_t> kernels_offs_;
+  bool atleast_one_command_;
 };
 
 } /* namespace rt */

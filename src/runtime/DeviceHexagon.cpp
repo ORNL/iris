@@ -78,7 +78,7 @@ int DeviceHexagon::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_si
   return IRIS_SUCCESS;
 }
 
-int DeviceHexagon::KernelGet(Kernel *kernel, void** kernel_bin, const char* name) {
+int DeviceHexagon::KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bool report_error) {
   return IRIS_SUCCESS;
 }
 
@@ -86,7 +86,6 @@ int DeviceHexagon::KernelLaunchInit(Kernel* kernel) {
   if (ld_->iris_hexagon_kernel_with_obj) {
       if (ld_->iris_hexagon_kernel_with_obj(
               kernel->GetParamWrapperMemory(), kernel->name())==IRIS_SUCCESS) {
-          ld_->SetKernelPtr(kernel->GetParamWrapperMemory(), kernel->name());
           return IRIS_SUCCESS;
       }
   }
@@ -110,9 +109,11 @@ int DeviceHexagon::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* me
 
 int DeviceHexagon::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws) {
   _trace("kernel[%s] dim[%d] off[%zu] gws[%zu]", kernel->name(), dim, off[0], gws[0]);
-  if (ld_->iris_hexagon_launch_with_obj)
+  if (ld_->iris_hexagon_launch_with_obj) {
+      ld_->SetKernelPtr(kernel->GetParamWrapperMemory(), kernel->name());
       return ld_->iris_hexagon_launch_with_obj(
               kernel->GetParamWrapperMemory(), 0, dim, off[0], gws[0]);
+  }
   return ld_->iris_hexagon_launch(dim, off[0], gws[0]);
 }
 

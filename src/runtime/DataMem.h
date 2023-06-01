@@ -64,6 +64,7 @@ public:
   void dev_lock(int devno) {
     pthread_mutex_lock(&dev_mutex_[devno]);
   }
+  void clear();
   size_t *off() { return off_; }
   size_t *local_off() { return off_; }
   size_t *host_size() { return host_size_; }

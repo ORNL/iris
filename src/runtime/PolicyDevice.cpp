@@ -18,7 +18,7 @@ void PolicyDevice::GetDevices(Task* task, Device** devs, int* ndevs) {
   int n = 0;
   for (int i = 0; i < ndevs_; i++) {
     Device* dev = devs_[i];
-    if ((dev->type() & brs_policy) == dev->type()) {
+    if (((dev->type() & brs_policy) == dev->type()) && IsKernelSupported(task, dev)) {
       devs[n++] = dev;
     }
   }
