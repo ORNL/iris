@@ -215,10 +215,11 @@ extern int iris_platform_count(int* nplatforms);
  */
 extern int iris_platform_info(int platform, int param, void* value, size_t* size);
 
-/**
- * UPDATED
- * @brief Sets shared memory model
+//UPDATED
+/**@brief Sets shared memory model
+ *
  * Using this function shared memory model can be set
+ *
  * @param flag 0: non shared memory, 1: shared memory 
  * @return This function returns an integer indicating IRIS STATUS.
  */
@@ -247,20 +248,22 @@ extern int iris_device_count(int* ndevs);
 extern int iris_device_info(int device, int param, void* value, size_t* size);
 
 
-/**
- * UPDATED
- * @brief Sets the default device
+//UPDATED
+/**@brief Sets the default device
+ *
  * Using this function default device can be set
+ *
  * @param device integer value representing the desired default device 
  * @return This function returns an integer indicating IRIS STATUS.
  */
 extern int iris_device_set_default(int device);
 
 
-/**
- * UPDATED
- * @brief Gets the default device
+//UPDATED
+/**@brief Gets the default device
+ *
  * Using this function default device can be obtained
+ *
  * @param device IRIS returns the default device on this variable 
  * @return This function returns an integer indicating IRIS STATUS.
  */
@@ -301,21 +304,23 @@ extern int iris_kernel_release(iris_kernel kernel);
  */
 extern int iris_task_create(iris_task* task);
 
-/**
- * UPDATED
- * QUESTION
- * @brief Creates a task with PERM????
+//UPDATED
+//QUESTION
+/**@brief Creates a task with PERM????
+ *
  * Using this function IRIS creates a task???
+ *
  * @param task the task pointer
  * @return This function returns an integer indicating IRIS STATUS.
  */
 extern int iris_task_create_perm(iris_task* task);
 
 
-/**
- * UPDATED
- * @brief Creates a task with a given name
+//UPDATED
+/**@brief Creates a task with a given name
+ *
  * Using this function IRIS creates a task object where the name is set from the function argument
+ *
  * @param name name of the task
  * @param task the task pointer
  * @return This function returns an integer indicating IRIS STATUS.
@@ -333,20 +338,22 @@ extern int iris_task_depend(iris_task task, int ntasks, iris_task* tasks);
 extern int iris_task_malloc(iris_task task, iris_mem mem);
 extern int iris_task_cmd_reset_mem(iris_task task, iris_mem mem, uint8_t reset);
 
-/**
- * UPDATED
- * @brief Gets task meta data
+//UPDATED
+/**@brief Gets task meta data
+ * 
  * This function used for getting optional task metadata through the specified index
+ *
  * @param brs_task iris task object
  * @param index index to obtain the correct meta data
  * @return returns the metadata for that index
  */
 extern int iris_task_get_metadata(iris_task brs_task, int index);
 
-/**
- * UPDATED
- * @brief Sets task meta data
+//UPDATED
+/**@brief Sets task meta data
+ *
  * This function used for setting optional task metadata through the specified index
+ *
  * @param brs_task iris task object
  * @param index index to set the correct meta data
  * @param meta_data the meta data needs to be saved
@@ -403,10 +410,11 @@ extern int iris_task_d2h(iris_task task, iris_mem mem, size_t off, size_t size, 
 extern int iris_task_d2h_offsets(iris_task task, iris_mem mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, void* host);
 
 
-/**
- * UPDATED
- * @brief Adds a flush command to a task
+//UPDATED
+/**@brief Adds a flush command to a task
+ *
  * This function flushes the given memory object to host
+ *
  * @param task iris task object
  * @param mem iris memory object that is specifed to the flush to host side
  * @return This function returns an integer indicating IRIS STATUS.
@@ -465,10 +473,11 @@ extern int iris_task_custom(iris_task task, int tag, void* params, size_t params
 extern int iris_task_submit(iris_task task, int device, const char* opt, int sync);
 
 
-/**
- * UPDATED
- * @brief Sets a scheduling policy for a task
+//UPDATED
+/**@brief Sets a scheduling policy for a task
+ *
  * This function sets scheduling policy for a task 
+ *
  * @param task iris task object
  * @param device device or scheduling policy
  * @return This function returns an integer indicating IRIS STATUS.
@@ -490,20 +499,22 @@ extern int iris_task_wait(iris_task task);
  */
 extern int iris_task_wait_all(int ntasks, iris_task* tasks);
 
-/**
- * UPDATED
- * @brief Adds a subtask for a task
+//UPDATED
+/**@brief Adds a subtask for a task
+ *
  * This function adds a subtask for a task
+ *
  * @param task iris task object
  * @param subtask the subtask that is going to be added
  * @return This function returns an integer indicating IRIS STATUS.
  */
 extern int iris_task_add_subtask(iris_task task, iris_task subtask);
 
-/**
- * UPDATED
- * @brief Retruns whether a task only has kernel command
+//UPDATED
+/**@brief Retruns whether a task only has kernel command
+ *
  * This function returns whether a task has only kernel command or not 
+ *
  * @param task iris task object
  * @return returns true if only kernel present in the task otherwise false
  */
@@ -519,40 +530,44 @@ extern int iris_task_release_mem(iris_task task, iris_mem mem);
 extern int iris_params_map(iris_task task, int *params_map);
 extern int iris_task_info(iris_task task, int param, void* value, size_t* size);
 
-/**
- * UPDATED
- * @brief Registers pin memory
+//UPDATED
+/**@brief Registers pin memory
+ *
  * This function enables pinning of host memory
+ *
  * @param host host pointer of the data structure
  * @param size size of the memory
  * @return This function returns an integer indicating IRIS STATUS.
  */
 extern int iris_register_pin_memory(void *host, size_t size);
 
-/**
- * UPDATED
- * @brief Cretes IRIS memory object
+//UPDATED
+/**@brief Cretes IRIS memory object
+ *
  * This function creates IRIS memory object for a given size
+ *
  * @param size size of the memory
  * @param mem pointer to the memory object
  * @return This function returns an integer indicating IRIS STATUS.
  */
 extern int iris_mem_create(size_t size, iris_mem* mem);
 
-/**
- * UPDATED
- * @brief Resets a memory object by setting the dirty flag for host
+//UPDATED
+/**@brief Resets a memory object by setting the dirty flag for host
+ *
  * This function resets a memory object by setting the dirty flag for host
+ *
  * @param mem pointer to the memory object
  * @param reset 0: no reseting 1: reset
  * @return This function returns an integer indicating IRIS STATUS.
  */
 extern int iris_data_mem_init_reset(iris_mem mem, int reset);
 
-/**
- * UPDATED
- * @brief Cretes IRIS data memory object
+//UPDATED
+/**@brief Cretes IRIS data memory object
+ *
  * This function creates IRIS data memory object for a given size
+ *
  * @param mem pointer to the memory object
  * @param host host pointer of the data structure
  * @param size size of the memory
@@ -560,21 +575,23 @@ extern int iris_data_mem_init_reset(iris_mem mem, int reset);
  */
 extern int iris_data_mem_create(iris_mem* mem, void *host, size_t size);
 
-/**
- * UPDATED
- * @brief Frees memory for a DMEM object for all the devices
+//UPDATED
+/**@brief Frees memory for a DMEM object for all the devices
+ *
  * This function Resets a memory object by setting the dirty flag for host
+ *
  * @param mem pointer to the memory object
  * @return This function returns an integer indicating IRIS STATUS.
  */
 extern int iris_data_mem_clear(iris_mem mem);
 
 
-/**
- * UPDATED
- * QUESTION : it pins a host memory for all the available platforms
+//UPDATED
+/**QUESTION : it pins a host memory for all the available platforms
  * @brief  Pins a host memory for all the available platforms
+ *
  * This function pins a host memory for all the available platforms
+ *
  * @param mem pointer to the memory object
  * @return This function returns an integer indicating IRIS STATUS.
  */
@@ -614,16 +631,16 @@ extern int iris_record_stop();
 extern int iris_timer_now(double* time);
 
 
-/**
- * UPDATED
- * @brief Enables peer to peer transfer
+//UPDATED
+/**@brief Enables peer to peer transfer
+ *
  * This function enables peer to peer transfer
  */
 extern void iris_enable_d2d();
 
-/**
- * UPDATED
- * @brief Disables peer to peer transfer
+//UPDATED
+/**@brief Disables peer to peer transfer
+ *
  * This function disables peer to peer transfer
  */
 extern void iris_disable_d2d();
@@ -631,36 +648,57 @@ extern void iris_disable_consistency_check();
 extern void iris_enable_consistency_check();
 
 
-/**
- * UPDATED
- * @brief Returns a kernel name
+//UPDATED
+/**@brief Returns a kernel name
+ *
  * This function returns a kernel name
+ *
  * @param brs_kernel kernel object
  * @return This function returns name of the kernel.
  */
 extern char *iris_kernel_get_name(iris_kernel brs_kernel);
 
 
-/**
- * UPDATED
- * @brief Retruns a task name
+//UPDATED
+/**@brief Retruns a task name
+ *
  * This function returns a task name
+ *
  * @param brs_task task object
  * @return This function returns name of the task.
  */
 extern char *iris_task_get_name(iris_task brs_task);
 
 
-/**
- * UPDATED
- * @brief Sets a task name
+//UPDATED
+/**@brief Sets a task name
+ *
  * This function Sets a task name
+ *
  * @param brs_task task object
  * @param name name of the task
  * @return This function returns an integer indicating IRIS STATUS.
  */
 extern void iris_task_set_name(iris_task brs_task, const char *name);
+
+//UPDATED
+/**@brief Gets dependency counts for a task
+ *
+ * This function returns dependency count for a task
+ *
+ * @param brs_task task object
+ * @return This function returns dependency count for a task
+ */
 extern int iris_task_get_dependency_count(iris_task brs_task);
+
+//UPDATED
+/**@brief Gets dependency counts for a task
+ *
+ * This function returns dependency count for a task
+ *
+ * @param brs_task task object
+ * @return This function returns dependency count for a task
+ */
 extern void iris_task_get_dependencies(iris_task brs_task, iris_task *tasks);
 extern unsigned long iris_task_get_uid(iris_task brs_task);
 extern unsigned long iris_kernel_get_uid(iris_kernel brs_kernel);
