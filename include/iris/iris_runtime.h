@@ -692,16 +692,44 @@ extern void iris_task_set_name(iris_task brs_task, const char *name);
 extern int iris_task_get_dependency_count(iris_task brs_task);
 
 //UPDATED
-/**@brief Gets dependency counts for a task
+/**@brief Gets all the dependent tasks for a given task
  *
- * This function returns dependency count for a task
+ * This function provide all the dependent tasks for a given task
  *
  * @param brs_task task object
- * @return This function returns dependency count for a task
+ * @param task a list of dependent task for brs_task
+ * @return This function returns an integer indicating IRIS STATUS.
  */
 extern void iris_task_get_dependencies(iris_task brs_task, iris_task *tasks);
+
+//UPDATED
+/**@brief Gets unique ID for a task
+ *
+ * This function provides IRIS generated unique ID for a given task object
+ *
+ * @param brs_task task object
+ * @return This function returns the unique id
+ */
 extern unsigned long iris_task_get_uid(iris_task brs_task);
+
+//UPDATED
+/**@brief Gets unique ID for a kernel
+ *
+ * This function provides IRIS generated unique ID for a given kernel object
+ *
+ * @param brs_kernel kernel object
+ * @return This function returns the unique id for the kernel
+ */
 extern unsigned long iris_kernel_get_uid(iris_kernel brs_kernel);
+
+//UPDATED
+/**@brief Returns kernel for a task
+ *
+ * This function returns kernel for a given task
+ *
+ * @param brs_task kernel object
+ * @return This function returns the kernel object extracted from a given task
+ */
 extern iris_kernel iris_task_get_kernel(iris_task brs_task);
 extern int iris_task_kernel_dmem_fetch_order(iris_task brs_task, int *order);
 extern int iris_task_disable_consistency(iris_task brs_task);
@@ -747,31 +775,304 @@ extern int iris_calibrate_communication_cost(double *data, size_t data_size, int
 extern int iris_get_graph_3d_comm_time(iris_graph brs_graph, double *comm_time, int *mem_ids, int iterations, int pin_memory_flag);
 extern size_t iris_count_mems(iris_graph brs_graph);
 extern void iris_free_array(void *ptr);
+
+
+//UPDATED
+/**@brief Mallocs int8_t type array for a given size with a given initial value
+ *
+ * This function mallocs int8_t type array for a given size with a given initial value
+ *
+ * @param SIZE size of the array
+ * @param init initialization value
+ * @return This function returns the pointer to the newly allocated array
+ */
 extern int8_t *iris_allocate_array_int8_t(int SIZE, int8_t init);
+
+
+//UPDATED
+/**@brief Mallocs int16_t type array for a given size with a given initial value
+ *
+ * This function mallocs int16_t type array for a given size with a given initial value
+ *
+ * @param SIZE size of the array
+ * @param init initialization value
+ * @return This function returns the pointer to the newly allocated array
+ */
 extern int16_t *iris_allocate_array_int16_t(int SIZE, int16_t init);
+
+//UPDATED
+/**@brief Mallocs int32_t type array for a given size with a given initial value
+ *
+ * This function mallocs int32_t type array for a given size with a given initial value
+ *
+ * @param SIZE size of the array
+ * @param init initialization value
+ * @return This function returns the pointer to the newly allocated array
+ */
 extern int32_t *iris_allocate_array_int32_t(int SIZE, int32_t init);
+
+//UPDATED
+/**@brief Mallocs int64_t type array for a given size with a given initial value
+ *
+ * This function mallocs int64_t type array for a given size with a given initial value
+ *
+ * @param SIZE size of the array
+ * @param init initialization value
+ * @return This function returns the pointer to the newly allocated array
+ */
 extern int64_t *iris_allocate_array_int64_t(int SIZE, int64_t init);
+
+//UPDATED
+/**@brief Mallocs size_t type array for a given size with a given initial value
+ *
+ * This function mallocs size_t type array for a given size with a given initial value
+ *
+ * @param SIZE size of the array
+ * @param init initialization value
+ * @return This function returns the pointer to the newly allocated array
+ */
 extern size_t *iris_allocate_array_size_t(int SIZE, size_t init);
+
+//UPDATED
+/**@brief Mallocs float type array for a given size with a given initial value
+ *
+ * This function mallocs float type array for a given size with a given initial value
+ *
+ * @param SIZE size of the array
+ * @param init initialization value
+ * @return This function returns the pointer to the newly allocated array
+ */
 extern float *iris_allocate_array_float(int SIZE, float init);
+
+//UPDATED
+/**@brief Mallocs double type array for a given size with a given initial value
+ *
+ * This function mallocs double type array for a given size with a given initial value
+ *
+ * @param SIZE size of the array
+ * @param init initialization value
+ * @return This function returns the pointer to the newly allocated array
+ */
 extern double *iris_allocate_array_double(int SIZE, double init);
+
+//UPDATED
+/**@brief Mallocs int8_t type array for a given size with a random value
+ *
+ * This function mallocs int8_t type array for a given size with a random value
+ *
+ * @param SIZE size of the array
+ * @return This function returns the pointer to the newly allocated array
+ */
 extern int8_t *iris_allocate_random_array_int8_t(int SIZE);
+
+//UPDATED
+/**@brief Mallocs int16_t type array for a given size with a random value
+ *
+ * This function mallocs int16_t type array for a given size with a random value
+ *
+ * @param SIZE size of the array
+ * @return This function returns the pointer to the newly allocated array
+ */
 extern int16_t *iris_allocate_random_array_int16_t(int SIZE);
+
+//UPDATED
+/**@brief Mallocs int32_t type array for a given size with a random value
+ *
+ * This function mallocs int32_t type array for a given size with a random value
+ *
+ * @param SIZE size of the array
+ * @return This function returns the pointer to the newly allocated array
+ */
 extern int32_t *iris_allocate_random_array_int32_t(int SIZE);
+
+//UPDATED
+/**@brief Mallocs int64_t type array for a given size with a random value
+ *
+ * This function mallocs int64_t type array for a given size with a random value
+ *
+ * @param SIZE size of the array
+ * @return This function returns the pointer to the newly allocated array
+ */
 extern int64_t *iris_allocate_random_array_int64_t(int SIZE);
+
+//UPDATED
+/**@brief Mallocs size_t type array for a given size with a random value
+ *
+ * This function mallocs size_t type array for a given size with a random value
+ *
+ * @param SIZE size of the array
+ * @return This function returns the pointer to the newly allocated array
+ */
 extern size_t *iris_allocate_random_array_size_t(int SIZE);
+
+//UPDATED
+/**@brief Mallocs float type array for a given size with a random value
+ *
+ * This function mallocs float type array for a given size with a random value
+ *
+ * @param SIZE size of the array
+ * @return This function returns the pointer to the newly allocated array
+ */
 extern float *iris_allocate_random_array_float(int SIZE);
+
+//UPDATED
+/**@brief Mallocs double type array for a given size with a random value
+ *
+ * This function mallocs double type array for a given size with a random value
+ *
+ * @param SIZE size of the array
+ * @return This function returns the pointer to the newly allocated array
+ */
 extern double *iris_allocate_random_array_double(int SIZE);
+
+//UPDATED
+/**@brief Prints a full matrix data structure of double type
+ *
+ * This function prints a full matrix data structure of double type of M rows and N columns with a provided description
+ *
+ * @param data pointer to the matrix
+ * @param M rows of the matrix
+ * @param N columns of the matrix
+ * @param description input string for description
+ */
 extern void iris_print_matrix_full_double(double *data, int M, int N, const char *description);
+
+//UPDATED
+/**@brief Prints a matrix data structure of double type for a given limit of rows and columns
+ *
+ * This function prints a matrix data structure of double type for limited rows and columns with a provided description
+ *
+ * @param data pointer to the matrix
+ * @param M rows of the matrix
+ * @param N columns of the matrix
+ * @param description input string for description
+ * @param limit printing limit for rows and columns
+ */
 extern void iris_print_matrix_limited_double(double *data, int M, int N, const char *description, int limit);
+
+//UPDATED
+/**@brief Prints a full matrix data structure of float type
+ *
+ * This function prints a full matrix data structure of float type of M rows and N columns with a provided description
+ *
+ * @param data pointer to the matrix
+ * @param M rows of the matrix
+ * @param N columns of the matrix
+ * @param description input string for description
+ */
 extern void iris_print_matrix_full_float(float *data, int M, int N, const char *description);
+
+//UPDATED
+/**@brief Prints a matrix data structure of float type for a given limit of rows and columns
+ *
+ * This function prints a matrix data structure of float type for limited rows and columns with a provided description
+ *
+ * @param data pointer to the matrix
+ * @param M rows of the matrix
+ * @param N columns of the matrix
+ * @param description input string for description
+ * @param limit printing limit for rows and columns
+ */
 extern void iris_print_matrix_limited_float(float *data, int M, int N, const char *description, int limit);
+
+//UPDATED
+/**@brief Prints a full matrix data structure of int64_t type
+ *
+ * This function prints a full matrix data structure of int64_t type of M rows and N columns with a provided description
+ *
+ * @param data pointer to the matrix
+ * @param M rows of the matrix
+ * @param N columns of the matrix
+ * @param description input string for description
+ */
 extern void iris_print_matrix_full_int64_t(int64_t *data, int M, int N, const char *description);
+
+//UPDATED
+/**@brief Prints a matrix data structure of int64_t type for a given limit of rows and columns
+ *
+ * This function prints a matrix data structure of int64_t type for limited rows and columns with a provided description
+ *
+ * @param data pointer to the matrix
+ * @param M rows of the matrix
+ * @param N columns of the matrix
+ * @param description input string for description
+ * @param limit printing limit for rows and columns
+ */
 extern void iris_print_matrix_limited_int64_t(int64_t *data, int M, int N, const char *description, int limit);
+
+//UPDATED
+/**@brief Prints a full matrix data structure of int32_t type
+ *
+ * This function prints a full matrix data structure of int32_t type of M rows and N columns with a provided description
+ *
+ * @param data pointer to the matrix
+ * @param M rows of the matrix
+ * @param N columns of the matrix
+ * @param description input string for description
+ */
 extern void iris_print_matrix_full_int32_t(int32_t *data, int M, int N, const char *description);
+
+//UPDATED
+/**@brief Prints a matrix data structure of int32_t type for a given limit of rows and columns
+ *
+ * This function prints a matrix data structure of int32_t type for limited rows and columns with a provided description
+ *
+ * @param data pointer to the matrix
+ * @param M rows of the matrix
+ * @param N columns of the matrix
+ * @param description input string for description
+ * @param limit printing limit for rows and columns
+ */
 extern void iris_print_matrix_limited_int32_t(int32_t *data, int M, int N, const char *description, int limit);
+
+//UPDATED
+/**@brief Prints a full matrix data structure of int16_t type
+ *
+ * This function prints a full matrix data structure of int16_t type of M rows and N columns with a provided description
+ *
+ * @param data pointer to the matrix
+ * @param M rows of the matrix
+ * @param N columns of the matrix
+ * @param description input string for description
+ */
 extern void iris_print_matrix_full_int16_t(int16_t *data, int M, int N, const char *description);
+
+//UPDATED
+/**@brief Prints a matrix data structure of int16_t type for a given limit of rows and columns
+ *
+ * This function prints a matrix data structure of int16_t type for limited rows and columns with a provided description
+ *
+ * @param data pointer to the matrix
+ * @param M rows of the matrix
+ * @param N columns of the matrix
+ * @param description input string for description
+ * @param limit printing limit for rows and columns
+ */
 extern void iris_print_matrix_limited_int16_t(int16_t *data, int M, int N, const char *description, int limit);
+
+//UPDATED
+/**@brief Prints a full matrix data structure of int8_t type
+ *
+ * This function prints a full matrix data structure of int8_t type of M rows and N columns with a provided description
+ *
+ * @param data pointer to the matrix
+ * @param M rows of the matrix
+ * @param N columns of the matrix
+ * @param description input string for description
+ */
 extern void iris_print_matrix_full_int8_t(int8_t *data, int M, int N, const char *description);
+
+//UPDATED
+/**@brief Prints a matrix data structure of int8_t type for a given limit of rows and columns
+ *
+ * This function prints a matrix data structure of int8_t type for limited rows and columns with a provided description
+ *
+ * @param data pointer to the matrix
+ * @param M rows of the matrix
+ * @param N columns of the matrix
+ * @param description input string for description
+ * @param limit printing limit for rows and columns
+ */
 extern void iris_print_matrix_limited_int8_t(int8_t *data, int M, int N, const char *description, int limit);
 #ifdef __cplusplus
 } /* end of extern "C" */
