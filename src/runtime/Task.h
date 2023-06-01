@@ -115,7 +115,8 @@ public:
 #ifdef AUTO_FLUSH
   Graph* get_graph(){return graph_;}
   void set_graph(Graph* graph){graph_ = graph;}
-  void EraseDepend();
+  //void EraseDepend();
+  void ReplaceDependFlushTask(Task * task);
 #endif
 #endif
 

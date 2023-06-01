@@ -261,12 +261,13 @@ void Task::AddDepend(Task* task) {
 
 #ifdef AUTO_PAR
 #ifdef AUTO_FLUSH
-void Task::EraseDepend() {
-  for (int i = 0; i < ndepends_; i++) {
-      delete depends_[i];
-      ndepends_--;
-      //task->Release();
-    }
+void Task::ReplaceDependFlushTask(Task * task) {
+    if (ndepends_ > 1) 
+        _error("Flush task should not have more than one dependency:%ld:%s\n", this->uid(), this->name());
+
+    depends_[0]->Release();
+    ndepends_ = 0;
+    this->AddDepend(task);
 }
 #endif
 #endif
