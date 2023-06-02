@@ -28,11 +28,12 @@ build-job:
 docs-job:
   tags: [devdocs]
   stage: docs
-  needs: []
+  needs: [build-job]
   before_script:
     - source $CONDA_ROOT/etc/profile.d/conda.sh
     - conda env create --force -p ./envs -f docs/sphinx/environment.yml
     - conda activate ./envs
+    - source $IRIS_INSTALL_ROOT/setup.source
   script:
     - cd docs/sphinx/source
     - python -m sphinx -T -E -b html -d _build/doctrees -D language=en . _build/html
