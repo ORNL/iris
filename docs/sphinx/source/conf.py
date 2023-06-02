@@ -36,7 +36,8 @@ extensions = [
     'sphinx_rtd_theme',
     'sphinxcontrib.contentui',
     'breathe',
-    'sphinx.ext.viewcode'
+    'sphinx.ext.viewcode',
+    'sphinx.ext.autodoc'
 ]
 
 subprocess.call('cd ../../doxygen/; doxygen Doxyfile.in', shell=True)

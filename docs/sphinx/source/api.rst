@@ -30,6 +30,5 @@ Fortran API
 Python API
 ==================
 
-..doxygenfile:: iris.py
-  :project: python
-
+.. automodule:: iris
+      :members:
