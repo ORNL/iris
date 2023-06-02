@@ -55,7 +55,9 @@ struct _iris_graph {
 #ifdef __cplusplus
 extern "C" {
 #else
+#ifndef DOXYGEN_SHOULD_SKIP_THIS
 typedef int8_t bool;
+#endif
 #endif
 
 #ifndef UNDEF_IRIS_MACROS
@@ -1055,6 +1057,7 @@ extern unsigned long iris_task_get_uid(iris_task brs_task);
 extern unsigned long iris_kernel_get_uid(iris_kernel brs_kernel);
 
 
+#ifndef DOXYGEN_SHOULD_SKIP_THIS
 /**@brief Returns kernel for a task
  *
  * This function returns kernel for a given task
@@ -1092,13 +1095,64 @@ extern int iris_graph_reset_memories(iris_graph graph);
 extern int iris_graph_get_tasks(iris_graph graph, iris_task *tasks);
 extern int iris_graph_tasks_count(iris_graph graph);
 extern int iris_get_graph_dependency_adj_list(iris_graph brs_graph, int8_t *dep_matrix);
+
+/**@brief Get dependency graph for the given input graph
+  *
+  * @param brs_graph Input IRIS task graph
+  * @param dep_matris A pointer which will be returned with 2D Dependency matrix ( Task x Task)  data
+  * @return This functions return an error value. IRIS_SUCCESS, IRIS_ERROR
+  */
 extern int iris_get_graph_dependency_adj_matrix(iris_graph brs_graph, int8_t *dep_matrix);
+
+/**@brief Fetch number of formmatted task communication data (Used in Python API)
+  *
+  * @param brs_graph Input IRIS task graph
+  * @return Number of formatted tuple array of communication data (parent-task-id, child-task-id, memory-id, data-size)
+  */
 extern size_t iris_get_graph_3d_comm_data_size(iris_graph brs_graph);
+
+/**@brief Fetch formmatted task communication data (Used in Python API)
+  *
+  * @param brs_graph Input IRIS task graph
+  * @return Formatted tuple array of communication data (parent-task-id, child-task-id, memory-id, data-size)
+  */
 extern void *iris_get_graph_3d_comm_data_ptr(iris_graph brs_graph);
+
+/**@brief Fetch formmatted task graph execution schedules (Used in Python API)
+  *
+  * @param brs_graph Input IRIS task graph
+  * @param kernel_profile 1: Returns only kernel profile, 0: Incldues data transfers 
+  * @return Formatted task execution schedule 
+  */
 extern void *iris_get_graph_tasks_execution_schedule(iris_graph brs_graph, int kernel_profile);
+
+/**@brief Fetch number of task graph execution schedules (Used in Python API)
+  *
+  * @param brs_graph Input IRIS task graph
+  * @return Number of task execution schedule count
+  */
 extern size_t iris_get_graph_tasks_execution_schedule_count(iris_graph brs_graph);
+
+/**@brief Fetch formatted data objects execution schedules after execution of task graph (Used in Python API)
+  *
+  * @param brs_graph Input IRIS graph
+  * @return Formatted data objects scheduled
+  */
 extern void *iris_get_graph_dataobjects_execution_schedule(iris_graph brs_graph);
+
+/**@brief Fetch number of data objects execution schedules after execution of task graph (Used in Python API)
+  *
+  * @param brs_graph Input IRIS graph
+  * @return Number of data objects scheduled
+  */
 extern size_t iris_get_graph_dataobjects_execution_schedule_count(iris_graph brs_graph);
+
+/**@brief Fetch a tuple array of communication data (Used in Python API) 
+  * 
+  * @param brs_graph Input IRIS graph
+  * @param comm_data A tuple array of formatted communication data
+  * @return This functions return an error value. IRIS_SUCCESS, IRIS_ERROR
+  */
 extern int iris_get_graph_3d_comm_data(iris_graph brs_graph, void *comm_data);
 
 /**@brief Fetch 2D communication data size matrix for the input IRIS graph 
@@ -1145,6 +1199,7 @@ extern int iris_calibrate_communication_cost(double *data, size_t data_size, int
   * @return This functions return an error value. IRIS_SUCCESS, IRIS_ERROR
   */
 extern int iris_get_graph_3d_comm_time(iris_graph brs_graph, double *comm_time, int *mem_ids, int iterations, int pin_memory_flag);
+#endif // DOXYGEN_SHOULD_SKIP_THIS
 
 /**@brief Count number of memory objects used in the IRIS graph
   * 
