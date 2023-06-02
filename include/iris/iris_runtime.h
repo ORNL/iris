@@ -19,36 +19,36 @@ class Graph;
 
 struct _iris_task {
 #ifdef __cplusplus
-  //iris::rt::Task* class_obj;
+  iris::rt::Task* class_obj;
 #else
-  //void *class_obj;
+  void *class_obj;
 #endif
   unsigned long uid;
 };
 
 struct _iris_kernel {
 #ifdef __cplusplus
-  //iris::rt::Kernel* class_obj;
+  iris::rt::Kernel* class_obj;
 #else
-  //void *class_obj;
+  void *class_obj;
 #endif
   unsigned long uid;
 };
 
 struct _iris_mem {
 #ifdef __cplusplus
-    //iris::rt::BaseMem* class_obj;
+  iris::rt::BaseMem* class_obj;
 #else
-  //void *class_obj;
+  void *class_obj;
 #endif
   unsigned long uid;
 };
 
 struct _iris_graph {
 #ifdef __cplusplus
-  //iris::rt::Graph* class_obj;
+  iris::rt::Graph* class_obj;
 #else
-  //void *class_obj;
+  void *class_obj;
 #endif
   unsigned long uid;
 };
@@ -302,23 +302,21 @@ extern int iris_device_synchronize(int ndevs, int* devices);
  */
 extern int iris_register_policy(const char* lib, const char* name, void* params);
 
-
-//QUESTION
-/**@brief Registers a command
+//UPDATED
+/**@brief Registers a custom command specific to the device with the given command handler
  *
- * @param tag ??
- * @param device ??
- * @param handler handler for the command
+ * @param tag unique identification to register the custom command
+ * @param device device selection (iris_openmp, iris_cuda, iris_hip, iris_levelzero, iris_opencl)
+ * @param handler handler function for the command
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
  */
 extern int iris_register_command(int tag, int device, command_handler handler);
 
-
-//QUESTION
-/**@brief ??
+//UPDATED
+/**@brief Register functions to be called for each task before execution and after execution
  *
- * @param pre ??
- * @param post ??
+ * @param pre Function with signature int (*function)(void *task) to be called before task execution
+ * @param post Function with signature int (*function)(void *task) to be called after task execution
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
  */
 extern int iris_register_hooks_task(hook_task pre, hook_task post);

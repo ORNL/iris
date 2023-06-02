@@ -832,7 +832,7 @@ int Platform::CalibrateCommunicationMatrix(double *comm_time, size_t data_size, 
 
 int Platform::RegisterCommand(int tag, int device, command_handler handler) {
   for (int i = 0; i < ndevs_; i++)
-    if (devs_[i]->type() == device) devs_[i]->RegisterCommand(tag, handler);
+    if (devs_[i]->model() == device) devs_[i]->RegisterCommand(tag, handler);
   return IRIS_SUCCESS;
 }
 
