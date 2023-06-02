@@ -329,11 +329,10 @@ extern int iris_register_command(int tag, int device, command_handler handler);
 extern int iris_register_hooks_task(hook_task pre, hook_task post);
 
 //UPDATED
-//QUESTION
-/**@brief ??
+/**@brief Register functions to be called for each command before execution and after execution
  *
- * @param pre ??
- * @param post ??
+ * @param pre Function with signature int (*function)(void *task) to be called before command execution
+ * @param post Function with signature int (*function)(void *task) to be called after command execution
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
  */
 extern int iris_register_hooks_command(hook_command pre, hook_command post);
