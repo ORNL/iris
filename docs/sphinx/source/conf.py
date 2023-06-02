@@ -20,8 +20,8 @@ import subprocess
 # -- Project information -----------------------------------------------------
 
 project = 'IRIS'
-copyright = '2021, Oak Ridge National Laboratory'
-author = 'Jungwon Kim'
+copyright = '2023, Oak Ridge National Laboratory'
+author = 'Programming Systems Group'
 
 # The full version, including alpha/beta/rc tags
 # release = '1.0.0'
@@ -36,12 +36,16 @@ extensions = [
     'sphinx_rtd_theme',
     'sphinxcontrib.contentui',
     'breathe',
-    'sphinx.ext.viewcode'
+    'sphinx.ext.viewcode',
+    'sphinx.ext.autodoc'
 ]
 
 subprocess.call('cd ../../doxygen/; doxygen Doxyfile.in', shell=True)
 
-breathe_projects = {"C": "../../../docs/doxygen/build/xml/"}
+breathe_projects = {"C": "../../../docs/doxygen/build/xml/",
+                    "Cpp":"../../../docs/doxygen/build/xml/",
+                    "Py":"../../../docs/doxygen/build/xml/",
+                    "F90":"../../../docs/doxygen/build/xml/"}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
