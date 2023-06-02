@@ -105,7 +105,7 @@ namespace iris {
     };
 
     /**
-      * Mem Class for IRIS classic memory objects. It is a derived from the BaseMem class
+      * Mem class for IRIS classic memory objects. It is a derived from the BaseMem class
       */
     class Mem : public BaseMem {
         public:
@@ -118,13 +118,49 @@ namespace iris {
              */
             virtual ~Mem();
     };
+    /**
+      * DMem class for IRIS (Novel data memory) memory objects. It is a derived from the BaseMem class
+      */
     class DMem : public BaseMem {
         public:
+            /**@brief DMem Classs constructor.
+             *
+             * Creates IRIS data memory object for a given size
+             *
+             * @param host host pointer of the data structure
+             * @param size size of the memory
+             */
             DMem(void *host, size_t size);
+            /**@brief DMem Classs constructor.
+             *
+             * @param host host memory pointer
+             * @param off host memory pointer
+             * @param host_size indexes to specify sizes from host memory
+             * @param dev_size indexes to specify sizes from device memory
+             * @param elem_size element size
+             * @param dim dimension
+             */
             DMem(void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim);
+            /**@brief DMem Classs destructor.
+             *
+             */
             virtual ~DMem();
+            /**@brief Update DMem object with new host memory pointer
+             *
+             * @param host host memory pointer
+             * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+             */
             int update(void *host);
+            /**@brief Update DMem object with new host memory pointer
+             *
+             * @param reset the data memory object and all its internal dirty bit flags
+             * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+             */
             int reset(bool reset);
+            /**@brief enable decomposition along the outer dimension
+             *
+             * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+             */
             int enable_outer_dim_regions();
     };
     class DMemRegion : public BaseMem {
