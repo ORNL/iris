@@ -36,7 +36,7 @@ int main(int argc, char** argv) {
   setenv("IRIS_ARCHS", "cuda", 1);
   iris_init(&argc, &argv, true);
 
-  iris_register_command(0xdeadcafe, iris_nvidia, cmd_handler_nv);
+  iris_register_command(0xdeadcafe, iris_cuda, cmd_handler_nv);
 
   const char* name = "Yahoo";
   size_t name_len = strlen(name) + 1;

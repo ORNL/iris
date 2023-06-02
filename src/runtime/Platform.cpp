@@ -832,7 +832,7 @@ int Platform::CalibrateCommunicationMatrix(double *comm_time, size_t data_size, 
 
 int Platform::RegisterCommand(int tag, int device, command_handler handler) {
   for (int i = 0; i < ndevs_; i++)
-    if (devs_[i]->type() == device) devs_[i]->RegisterCommand(tag, handler);
+    if (devs_[i]->model() == device) devs_[i]->RegisterCommand(tag, handler);
   return IRIS_SUCCESS;
 }
 
@@ -903,8 +903,8 @@ int Platform::KernelRelease(iris_kernel brs_kernel) {
 
 int Platform::TaskCreate(const char* name, bool perm, iris_task* brs_task) {
   Task* task = Task::Create(this, perm ? IRIS_TASK_PERM : IRIS_TASK, name);
+  if (perm) task->DisableRelease();
   if (brs_task) task->SetStructObject(brs_task);
-  //*brs_task = task->struct_obj();
   return IRIS_SUCCESS;
 }
 

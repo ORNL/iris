@@ -56,6 +56,6 @@ int main(int argc, char** argv) {
 
   printf("IRIS Finalize\n");
   iris_finalize();
-
+  printf("Number of errors:%d\n", iris_error_count());
   return iris_error_count();
 }
