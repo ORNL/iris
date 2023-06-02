@@ -35,8 +35,8 @@ int main(int argc, char** argv) {
   iris_task_create_perm(&task2);
 #else
   iris_task_create(&task2);
-#endif
   iris_task_retain(task2, true);
+#endif
   iris_task_kernel(task2, "process", 1, NULL, &SIZE, NULL, 1, params, params_info);
   for (int i = 0; i < LOOP; i++) iris_task_submit(task2, iris_any, NULL, true);
 

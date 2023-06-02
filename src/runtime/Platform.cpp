@@ -903,8 +903,8 @@ int Platform::KernelRelease(iris_kernel brs_kernel) {
 
 int Platform::TaskCreate(const char* name, bool perm, iris_task* brs_task) {
   Task* task = Task::Create(this, perm ? IRIS_TASK_PERM : IRIS_TASK, name);
+  if (perm) task->DisableRelease();
   if (brs_task) task->SetStructObject(brs_task);
-  //*brs_task = task->struct_obj();
   return IRIS_SUCCESS;
 }
 

@@ -38,7 +38,7 @@ public:
   void SetStructObject(struct_type *obj)
   {
       struct_obj_ = obj;
-      //struct_obj_->class_obj = (class_type*) this;
+      struct_obj_->class_obj = (class_type*) this;
       struct_obj_->uid = uid_;
   }
   bool IsRelease() { return is_release_; }

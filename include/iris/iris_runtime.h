@@ -370,9 +370,7 @@ extern int iris_task_create(iris_task* task);
 
 //UPDATED
 //QUESTION
-/**@brief Creates a task with PERM????
- *
- * Using this function IRIS creates a task???
+/**@brief Creates a task with permanent life time. Task memory won't be released after execution. It can't be used to submit the task again and again. Application programmer make sure to release the task after successful completion of the task executions. 
  *
  * @param task the task pointer
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .

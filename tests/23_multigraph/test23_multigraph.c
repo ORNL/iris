@@ -23,7 +23,7 @@ double now() {
 
 void build_graph(iris_mem mem_A, iris_mem mem_B, iris_mem mem_C, iris_graph G) {
   iris_task task1;
-  iris_task_create_perm(&task1);
+  iris_task_create(&task1);
   iris_task_h2d_full(task1, mem_A, A);
   iris_task_h2d_full(task1, mem_B, B);
   iris_graph_task(G, task1, iris_default, NULL);
@@ -34,14 +34,14 @@ void build_graph(iris_mem mem_A, iris_mem mem_B, iris_mem mem_C, iris_graph G) {
   int pinfo[3] = { iris_w, iris_r, iris_r };
   iris_task task2;
   iris_task task2_dep[] = { task1 };
-  iris_task_create_perm(&task2);
+  iris_task_create(&task2);
   iris_task_depend(task2, 1, task2_dep);
   iris_task_kernel(task2, "ijk", 2, NULL, gws, lws, 3, params, pinfo);
   iris_graph_task(G, task2, iris_depend, NULL);
 
   iris_task task3;
   iris_task task3_dep[] = { task2 };
-  iris_task_create_perm(&task3);
+  iris_task_create(&task3);
   iris_task_depend(task3, 1, task3_dep);
   iris_task_d2h_full(task3, mem_C, C);
   iris_graph_task(G, task3, iris_depend, NULL);
