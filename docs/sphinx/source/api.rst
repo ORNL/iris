@@ -21,8 +21,8 @@ C++ API
 Fortran API
 ==================
 
-..doxygenfile:: FortranAPI-IRIS.f90
-  :project: fortran
+.. doxygenfile:: FortranAPI-IRIS.f90
+  :project: F90
 
 
 .. _python-api:
@@ -31,5 +31,5 @@ Python API
 ==================
 
 ..doxygenfile:: iris.py
-  :project: python
+  :project: Py
 
