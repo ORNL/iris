@@ -22,20 +22,42 @@ typedef shared_ptr<RetainableBase> iris_mem_sp;
 #define iris_task_type iris_task
 #endif //ENABLE_SMART_PTR
 namespace iris {
+    /**
+      * IRIS Platform Class for application
+      */
     class Platform {
         public:
+            /**@brief Platform Classs constructor.
+             *
+             */
             Platform() {
                 finalized_ = false;
             }
 
+            /**@brief Platform Classs destructor
+             *
+             */
             ~Platform() {
                 if (!finalized_) finalize();
             }
 
-            int init(int* argc, char*** argv, bool sync) {
+            /**@brief Initialize IRIS platform 
+              *
+              * @param argc pointer to the number of arguments
+              * @param argv argument array
+              * @param sync 0: non-blocking, 1: blocking
+              * @return This functions return an error value. IRIS_SUCCESS, IRIS_ERROR
+              */
+            int init(int* argc, char*** argv, bool sync=false) {
                 return iris_init(argc, argv, sync ? 1 : 0);
             }
 
+            /**@brief Terminates the IRIS platform .
+             *
+             * this funciton put end to IRIS execution environment.
+             *
+             * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+             */
             int finalize() {
                 if (finalized_) return IRIS_ERROR;
                 int ret = iris_finalize();
@@ -43,6 +65,10 @@ namespace iris {
                 return ret;
             }
 
+            /**@brief Return number of errors occurred in IRIS
+             *
+             * @return This function returns the number of errors
+             */
             int error_count() {
                 return iris_error_count();
             }
@@ -51,10 +77,23 @@ namespace iris {
             bool finalized_;
 
     };
+    /**
+      * BaseMem Class for IRIS memory objects. It is a base class IRIS memory objects 
+      */
     class BaseMem {
         public:
+            /**@brief BaseMem Classs constructor.
+             *
+             */
             BaseMem() {} 
+            /**@brief BaseMem Classs destructor.
+             *
+             */
             virtual ~BaseMem() {} 
+            /**@brief get C structure IRIS memory object 
+             *
+             * @return C structure IRIS memory object
+             */
             iris_mem_type mem() { return mem_; }
             iris_mem_type *mem_ptr() { return &mem_; }
         protected:
