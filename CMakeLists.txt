@@ -70,6 +70,7 @@ add_custom_command(
   COMMAND echo "SCRIPT=$(\$PYTHON_EXE -c \"import os,sys; print(os.path.realpath(os.path.expanduser(sys.argv[1])))\" \${SCRIPT_FILE})" >> ${CMAKE_BINARY_DIR}/setup.zsh VERBATIM
   COMMAND echo "export IRIS=$(dirname -- \${SCRIPT})" >> ${CMAKE_BINARY_DIR}/setup.zsh
   COMMAND echo "export LD_LIBRARY_PATH=.:\$IRIS/lib:\$IRIS/lib64:\$LD_LIBRARY_PATH" >> ${CMAKE_BINARY_DIR}/setup.zsh
+  COMMAND echo "export LIBRARY_PATH=.:\$IRIS/lib:\$IRIS/lib64:\$LIBRARY_PATH" >> ${CMAKE_BINARY_DIR}/setup.zsh
   COMMAND echo "export CPATH=$IRIS/include:$CPATH" >> ${CMAKE_BINARY_DIR}/setup.zsh
   COMMAND echo "export PYTHONPATH=\$IRIS/include/iris:\$PYTHONPATH" >> ${CMAKE_BINARY_DIR}/setup.zsh
   COMMAND echo "echo \"*********************** IRIS Environent *********************\"" >> ${CMAKE_BINARY_DIR}/setup.zsh
@@ -99,6 +100,8 @@ add_custom_command(
   COMMAND echo "echo \"*************************************************************\"" >> ${CMAKE_BINARY_DIR}/setup.fish
   )
 add_custom_target(setup.source ALL DEPENDS ${CMAKE_BINARY_DIR}/setup.source)
+add_custom_target(setup.zsh ALL DEPENDS ${CMAKE_BINARY_DIR}/setup.zsh)
 add_custom_target(setup.fish ALL DEPENDS ${CMAKE_BINARY_DIR}/setup.fish)
 install(FILES ${CMAKE_BINARY_DIR}/setup.source DESTINATION ${CMAKE_INSTALL_PREFIX})
+install(FILES ${CMAKE_BINARY_DIR}/setup.zsh DESTINATION ${CMAKE_INSTALL_PREFIX})
 install(FILES ${CMAKE_BINARY_DIR}/setup.fish DESTINATION ${CMAKE_INSTALL_PREFIX})
