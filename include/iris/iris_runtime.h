@@ -1031,8 +1031,27 @@ extern size_t iris_get_graph_3d_comm_data_size(iris_graph brs_graph);
 extern void *iris_get_graph_3d_comm_data_ptr(iris_graph brs_graph);
 extern void *iris_get_graph_tasks_execution_schedule(iris_graph brs_graph, int kernel_profile);
 extern size_t iris_get_graph_tasks_execution_schedule_count(iris_graph brs_graph);
+
+/**@brief Fetch formatted data objects execution schedules after execution of task graph (Used in Python API)
+  *
+  * @param brs_graph Input IRIS graph
+  * @return Formatted data objects scheduled
+  */
 extern void *iris_get_graph_dataobjects_execution_schedule(iris_graph brs_graph);
+
+/**@brief Fetch number of data objects execution schedules after execution of task graph (Used in Python API)
+  *
+  * @param brs_graph Input IRIS graph
+  * @return Number of data objects scheduled
+  */
 extern size_t iris_get_graph_dataobjects_execution_schedule_count(iris_graph brs_graph);
+
+/**@brief Fetch a tuple array of communication data (Used in Python API) 
+  * 
+  * @param brs_graph Input IRIS graph
+  * @param comm_data A tuple array of formatted communication data
+  * @return This functions return an error value. IRIS_SUCCESS, IRIS_ERROR
+  */
 extern int iris_get_graph_3d_comm_data(iris_graph brs_graph, void *comm_data);
 
 /**@brief Fetch 2D communication data size matrix for the input IRIS graph 
