@@ -1026,13 +1026,27 @@ extern size_t iris_get_graph_tasks_execution_schedule_count(iris_graph brs_graph
 extern void *iris_get_graph_dataobjects_execution_schedule(iris_graph brs_graph);
 extern size_t iris_get_graph_dataobjects_execution_schedule_count(iris_graph brs_graph);
 extern int iris_get_graph_3d_comm_data(iris_graph brs_graph, void *comm_data);
+
+/**@brief Fetch 2D communication data size matrix for the input IRIS graph 
+  *
+  * @param brs_graph IRIS graph object
+  * @param size_data A 2-D matrix to return with task to task communication data size
+  * @return This functions return an error value. IRIS_SUCCESS, IRIS_ERROR
+  */
 extern int iris_get_graph_2d_comm_adj_matrix(iris_graph brs_graph, size_t *size_data);
-extern int iris_calibrate_compute_cost_adj_matrix(iris_graph brs_graph, double *comp_data);
 
 /**@brief Calibrate computation cost matrix for the given input graph
   *
   * @param brs_graph Input IRIS Graph object
   * @param comp_data A 2D array object to hold computation cost matrix (Task x Device) 
+  * @return This functions return an error value. IRIS_SUCCESS, IRIS_ERROR
+  */
+extern int iris_calibrate_compute_cost_adj_matrix(iris_graph brs_graph, double *comp_data);
+
+/**@brief Calibrate computation cost matrix for the given input graph only for device types 
+  *
+  * @param brs_graph Input IRIS Graph object
+  * @param comp_data A 2D array object to hold computation cost matrix (Task x Devicetype ) 
   * @return This functions return an error value. IRIS_SUCCESS, IRIS_ERROR
   */
 extern int iris_calibrate_compute_cost_adj_matrix_only_for_types(iris_graph brs_graph, double *comp_data);
