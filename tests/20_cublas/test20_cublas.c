@@ -90,11 +90,11 @@ int main(int argc, char** argv) {
   iris_mem_create(nbytes, &memC);
 
   iris_task task0;
-  iris_task_create(&task0);
+  iris_task_create_name("h2d", &task0);
   iris_task_h2d_full(task0, memA, A);
   iris_task_h2d_full(task0, memB, B);
   iris_task_h2d_full(task0, memC, C);
-  iris_task_submit(task0, iris_cuda, NULL, 1);
+  iris_task_submit(task0, iris_nvidia, NULL, 1);
 
   cublas0_params task1_params;
   task1_params.SIZE = SIZE;
@@ -103,16 +103,16 @@ int main(int argc, char** argv) {
   task1_params.memC = memC;
 
   iris_task task1;
-  iris_task_create(&task1);
+  iris_task_create_name("cublas0_task", &task1);
   iris_task_host(task1, cublas0, &task1_params);
   iris_task_depend(task1, 1, &task0);
-  iris_task_submit(task1, iris_cuda, NULL, 1);
+  iris_task_submit(task1, iris_nvidia, NULL, 1);
 
   iris_task task9;
-  iris_task_create(&task9);
+  iris_task_create_name("d2h", &task9);
   iris_task_d2h_full(task9, memC, C);
   iris_task_depend(task9, 1, &task1);
-  iris_task_submit(task9, iris_cuda, NULL, 1);
+  iris_task_submit(task9, iris_nvidia, NULL, 1);
 
   for (int i = 0; i < SIZE * SIZE; i++) {
     printf("%10.1lf", C[i]);

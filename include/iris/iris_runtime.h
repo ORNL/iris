@@ -754,7 +754,7 @@ extern size_t iris_cmd_kernel_get_arg_mem_size(void *cmd, int index);
 extern size_t iris_cmd_kernel_get_arg_off(void *cmd, int index);
 extern int    iris_cmd_kernel_get_arg_mode(void *cmd, int index);
 
-// Graph data 
+// Graph data
 extern int iris_graph_enable_mem_profiling(iris_graph brs_graph);
 extern int iris_graph_reset_memories(iris_graph graph);
 extern int iris_graph_get_tasks(iris_graph graph, iris_task *tasks);

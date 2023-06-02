@@ -664,8 +664,11 @@ int JSON::RecordTask(Task* task) {
   //depends
   rapidjson::Value _depends(rapidjson::kArrayType);
   for (int i = 0; i < task->ndepends(); i++) {
-    rapidjson::Value depend(rapidjson::StringRef(task->depend(i)->name()));
-    _depends.PushBack(depend, iris_output_document_.GetAllocator());
+    Task *dep = task->depend(i);
+    if (dep != NULL) {
+        rapidjson::Value depend(rapidjson::StringRef(dep->name()));
+        _depends.PushBack(depend, iris_output_document_.GetAllocator());
+    }
   }
   _task.AddMember("depends",_depends,iris_output_document_.GetAllocator());
   iris_output_tasks_.PushBack(_task, iris_output_document_.GetAllocator());
