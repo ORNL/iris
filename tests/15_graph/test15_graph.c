@@ -22,7 +22,7 @@ int main(int argc, char** argv) {
   iris_graph_create(&graph);
 
   iris_task task1;
-  iris_task_create_perm(&task1);
+  iris_task_create(&task1);
   iris_task_set_name(task1, "task1");
 
   iris_task_h2d_full(task1, mem, A);
@@ -32,7 +32,7 @@ int main(int argc, char** argv) {
   int params_info[1] = { iris_rw };
   iris_task task2;
   iris_task task2_dep[] = { task1 };
-  iris_task_create_perm(&task2);
+  iris_task_create(&task2);
   iris_task_set_name(task2, "task2");
   iris_task_depend(task2, 1, task2_dep);
   iris_task_kernel(task2, "process", 1, NULL, &SIZE, NULL, 1, params, params_info);
@@ -40,7 +40,7 @@ int main(int argc, char** argv) {
 
   iris_task task3;
   iris_task task3_dep[] = { task2 };
-  iris_task_create_perm(&task3);
+  iris_task_create(&task3);
   iris_task_set_name(task3, "task3");
   iris_task_depend(task3, 1, task3_dep);
   iris_task_d2h_full(task3, mem, B);
