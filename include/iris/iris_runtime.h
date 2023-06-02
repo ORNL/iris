@@ -682,6 +682,14 @@ extern int iris_task_kernel_selector(iris_task task, iris_selector_kernel func, 
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_task_kernel_launch_disabled(iris_task task, int flag);
+
+/**@brief executes a function at the host side
+ *
+ * @param task target task
+ * @param func function to be executed 
+ * @param params kernel parameters
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
 extern int iris_task_host(iris_task task, iris_host_task func, void* params);
 extern int iris_task_custom(iris_task task, int tag, void* params, size_t params_size);
 
