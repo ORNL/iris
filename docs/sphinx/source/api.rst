@@ -13,13 +13,26 @@ C API
 C++ API
 ==================
 
+.. doxygenfile:: iris_runtime.h
+  :project: CPP
+  :path: ../../include/iris/iris.hpp
+
 
 .. _fortran-api:
 
 Fortran API
 ==================
 
+..doxygenfile:: 
+  :project: fortran
+  :path: ../../src/runtime/FortranAPI-IRIS.f90
+
 .. _python-api:
 
 Python API
 ==================
+
+..doxygenfile:: 
+  :project: python
+  :path: ../../src/runtime/iris.py
+
