@@ -610,9 +610,6 @@ extern int iris_task_d2h_full(iris_task task, iris_mem mem, void* host);
  * @param off global workitem space offsets
  * @param gws global workitem space
  * @param lws local workitem space
- * @param nparams number of kernel parameters
- * @param params kernel parameters
- * @param params_info kernel parameters information
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_task_kernel_object(iris_task task, iris_kernel kernel, int dim, size_t* off, size_t* gws, size_t* lws);
@@ -632,9 +629,58 @@ extern int iris_task_kernel_object(iris_task task, iris_kernel kernel, int dim, 
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_task_kernel(iris_task task, const char* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, int* params_info);
+
+/**@brief Launches a kernel with parameter offset
+ *
+ * @param task target task
+ * @param kernel kernel name
+ * @param dim dimension
+ * @param off global workitem space offsets
+ * @param gws global workitem space
+ * @param lws local workitem space
+ * @param nparams number of kernel parameters
+ * @param params kernel parameters
+ * @param params_off kernel parameters offset
+ * @param params_info kernel parameters information
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
 extern int iris_task_kernel_v2(iris_task task, const char* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, size_t* params_off, int* params_info);
+
+/**@brief Launches a kernel with parameter offset and memory ranges
+ *
+ * @param task target task
+ * @param kernel kernel name
+ * @param dim dimension
+ * @param off global workitem space offsets
+ * @param gws global workitem space
+ * @param lws local workitem space
+ * @param nparams number of kernel parameters
+ * @param params kernel parameters
+ * @param params_off kernel parameters offset
+ * @param params_info kernel parameters information
+ * @param memranges sizes of the memory object from the offset     
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
 extern int iris_task_kernel_v3(iris_task task, const char* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, size_t* params_off, int* params_info, size_t* memranges);
+
+/**@brief passes a kernel selector function for selecting a kernel from a task 
+ *
+ * @param task target task
+ * @param func function to select a kernel from task
+ * @param params kernel parameters
+ * @param params_size size of the parameters
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
 extern int iris_task_kernel_selector(iris_task task, iris_selector_kernel func, void* params, size_t params_size);
+
+/**@brief disable kernel launch from a task 
+ *
+ * @param task target task
+ * @param flag bool value, 0: launch enable, 1: launch disable
+ * @param params kernel parameters
+ * @param params_size size of the parameters
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
 extern int iris_task_kernel_launch_disabled(iris_task task, int flag);
 extern int iris_task_host(iris_task task, iris_host_task func, void* params);
 extern int iris_task_host(iris_task task, iris_host_task func, void* params);
