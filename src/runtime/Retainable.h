@@ -28,7 +28,7 @@ public:
   Retainable(struct_type obj) {
     uid_ = iris_create_new_uid();
     struct_obj_ = obj;
-    //struct_obj_->class_obj = (class_type*) this;
+    struct_obj_->class_obj = (class_type*) this;
     track_ = NULL;
     struct_obj_->uid = uid_;
     ref_cnt_ = 1;
