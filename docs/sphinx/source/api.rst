@@ -5,7 +5,6 @@ C API
 
 .. doxygenfile:: iris_runtime.h
   :project: C
-  :path: ../../include/iris/iris_runtime.h
 
 
 .. _cpp-api:
@@ -13,9 +12,8 @@ C API
 C++ API
 ==================
 
-.. doxygenfile:: iris_runtime.h
-  :project: CPP
-  :path: ../../include/iris/iris.hpp
+.. doxygenfile:: iris.hpp
+  :project: Cpp
 
 
 .. _fortran-api:
@@ -23,16 +21,15 @@ C++ API
 Fortran API
 ==================
 
-..doxygenfile:: 
+..doxygenfile:: FortranAPI-IRIS.f90
   :project: fortran
-  :path: ../../src/runtime/FortranAPI-IRIS.f90
+
 
 .. _python-api:
 
 Python API
 ==================
 
-..doxygenfile:: 
+..doxygenfile:: iris.py
   :project: python
-  :path: ../../src/runtime/iris.py
 
