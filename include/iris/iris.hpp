@@ -1,7 +1,9 @@
 #ifndef IRIS_INCLUDE_IRIS_IRIS_HPP
 #define IRIS_INCLUDE_IRIS_IRIS_HPP
 
+#ifndef DOXYGEN_SHOULD_SKIP_THIS
 #include <iris/iris_runtime.h>
+#endif
 #include <assert.h>
 #include <vector>
 #ifdef ENABLE_SMART_PTR
