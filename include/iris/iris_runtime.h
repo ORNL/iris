@@ -529,6 +529,19 @@ extern int iris_task_d2d(iris_task task, iris_mem mem, size_t off, size_t size, 
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_task_h2d(iris_task task, iris_mem mem, size_t off, size_t size, void* host);
+
+/**@brief Adds a H2D command to the target task for a portion of the memory
+ *
+ * @param task target task
+ * @param mem target memory object
+ * @param off offset in bytes
+ * @param host_sizes indexes for specifying host memory size
+ * @param dev_sizes indexes for specifying device memory size
+ * @param elem_size size of each element
+ * @param dim dimension of the memory object
+ * @param host source host address
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
 extern int iris_task_h2d_offsets(iris_task task, iris_mem mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, void* host);
 
 
@@ -542,8 +555,20 @@ extern int iris_task_h2d_offsets(iris_task task, iris_mem mem, size_t *off, size
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_task_d2h(iris_task task, iris_mem mem, size_t off, size_t size, void* host);
-extern int iris_task_d2h_offsets(iris_task task, iris_mem mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, void* host);
 
+/**@brief Adds a D2H command to the target task for a portion of the memory
+ *
+ * @param task target task
+ * @param mem target memory object
+ * @param off offset in bytes
+ * @param host_sizes indexes for specifying host memory size
+ * @param dev_sizes indexes for specifying device memory size
+ * @param elem_size size of each element
+ * @param dim dimension of the memory object
+ * @param host source host address
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_task_d2h_offsets(iris_task task, iris_mem mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, void* host);
 
 
 /**@brief Adds a flush command to a task
@@ -575,6 +600,21 @@ extern int iris_task_h2d_full(iris_task task, iris_mem mem, void* host);
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_task_d2h_full(iris_task task, iris_mem mem, void* host);
+
+
+/**@brief Launches a kernel
+ *
+ * @param task target task
+ * @param kernel kernel name
+ * @param dim dimension
+ * @param off global workitem space offsets
+ * @param gws global workitem space
+ * @param lws local workitem space
+ * @param nparams number of kernel parameters
+ * @param params kernel parameters
+ * @param params_info kernel parameters information
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
 extern int iris_task_kernel_object(iris_task task, iris_kernel kernel, int dim, size_t* off, size_t* gws, size_t* lws);
 
 
@@ -730,12 +770,12 @@ extern int iris_data_mem_clear(iris_mem mem);
 
 
 
-/**QUESTION : it pins a host memory for all the available platforms
- * @brief  Pins a host memory for all the available platforms
+/**@brief  Pins a host memory for all the available devices
  *
- * This function pins a host memory for all the available platforms
+ * This function pins a host memory for all the available devices
  *
  * @param mem pointer to the memory object
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_data_mem_pin(iris_mem mem);
 extern int iris_data_mem_update(iris_mem mem, void *host);
