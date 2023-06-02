@@ -1,0 +1,14 @@
+name: IRIS-docs
+
+channels:
+  - conda-forge
+  - defaults
+
+dependencies:
+  - python
+  - breathe
+  - pip
+  - pip:
+    - sphinxcontrib-contentui
+    - sphinx_rtd_theme
+

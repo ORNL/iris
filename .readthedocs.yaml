@@ -1,0 +1,7 @@
+version: 2
+
+sphinx:
+  configuration: docs/sphinx/source/conf.py
+
+conda:
+  environment: docs/sphinx/environment.yml
