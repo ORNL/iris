@@ -308,11 +308,54 @@ extern int iris_device_synchronize(int ndevs, int* devices);
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
  */
 extern int iris_register_policy(const char* lib, const char* name, void* params);
+
+//UPDATED
+//QUESTION
+/**@brief Registers a command
+ *
+ * @param tag ??
+ * @param device ??
+ * @param handler handler for the command
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ */
 extern int iris_register_command(int tag, int device, command_handler handler);
+
+//UPDATED
+//QUESTION
+/**@brief ??
+ *
+ * @param pre ??
+ * @param post ??
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ */
 extern int iris_register_hooks_task(hook_task pre, hook_task post);
+
+//UPDATED
+//QUESTION
+/**@brief ??
+ *
+ * @param pre ??
+ * @param post ??
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ */
 extern int iris_register_hooks_command(hook_command pre, hook_command post);
 
+//UPDATED
+/**@brief Creates a kernel with a given name
+ *
+ * @param name kernel name string
+ * @param kernel
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ */
 extern int iris_kernel_create(const char* name, iris_kernel* kernel);
+
+//UPDATED
+/**@brief Creates a kernel with a given name
+ *
+ * @param name kernel name string
+ * @param kernel a pointer to a kernel object
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ */
 extern int iris_kernel_get(const char* name, iris_kernel* kernel);
 extern int iris_kernel_setarg(iris_kernel kernel, int idx, size_t size, void* value);
 extern int iris_kernel_setmem(iris_kernel kernel, int idx, iris_mem mem, size_t mode);
