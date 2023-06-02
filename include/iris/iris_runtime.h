@@ -149,7 +149,7 @@ typedef int (*iris_selector_kernel)(iris_task task, void* params, char* kernel_n
  * @param argc pointer to the number of arguments
  * @param argv argument array
  * @param sync 0: non-blocking, 1: blocking
- * @return This functions return an error value. IRIS_SUCCESS, IRIS_ERR
+ * @return This functions return an error value. IRIS_SUCCESS, IRIS_ERROR
  */
 extern int iris_init(int* argc, char*** argv, int sync);
 
@@ -165,7 +165,7 @@ extern int iris_error_count();
  *
  * this funciton put end to IRIS execution environment.
  *
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_finalize();
 
@@ -174,7 +174,7 @@ extern int iris_finalize();
  *
  * This function makes IRIS Wait for all the submitted tasks to complete.
  *
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_synchronize();
 
@@ -183,7 +183,7 @@ extern int iris_synchronize();
  *
  * This function makes a task with an option to be submitted again and again.
  *
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern void iris_task_retain(iris_task task, bool flag);
 
@@ -192,7 +192,7 @@ extern void iris_task_retain(iris_task task, bool flag);
  *
  * @param key key string
  * @param value value to be stored into key
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_env_set(const char* key, const char* value);
 
@@ -202,7 +202,7 @@ extern int iris_env_set(const char* key, const char* value);
  * @param key key string
  * @param value pointer to the value to be retrieved
  * @param vallen size in bytes of value
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_env_get(const char* key, char** value, size_t* vallen);
 
@@ -210,7 +210,7 @@ extern int iris_env_get(const char* key, char** value, size_t* vallen);
 /**@brief Returns the number of platforms.
  *
  * @param nplatforms pointer to the number of platform
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_platform_count(int* nplatforms);
 
@@ -221,7 +221,7 @@ extern int iris_platform_count(int* nplatforms);
  * @param param information type
  * @param value information value
  * @param size size in bytes of value
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_platform_info(int platform, int param, void* value, size_t* size);
 
@@ -231,14 +231,14 @@ extern int iris_platform_info(int platform, int param, void* value, size_t* size
  * Using this function shared memory model can be set
  *
  * @param flag 0: non shared memory, 1: shared memory 
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_set_shared_memory_model(int flag);
 
 
 /**@brief Enable/disable profiler
  *
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern void iris_set_enable_profiler(int flag);
 
@@ -246,7 +246,7 @@ extern void iris_set_enable_profiler(int flag);
 /**@brief Returns the number of devices.
  *
  * @param ndevs pointer to the number of devices
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_device_count(int* ndevs);
 
@@ -257,7 +257,7 @@ extern int iris_device_count(int* ndevs);
  * @param param information type
  * @param value information value
  * @param size size in bytes of value
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_device_info(int device, int param, void* value, size_t* size);
 
@@ -268,7 +268,7 @@ extern int iris_device_info(int device, int param, void* value, size_t* size);
  * Using this function default device can be set
  *
  * @param device integer value representing the desired default device 
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_device_set_default(int device);
 
@@ -279,7 +279,7 @@ extern int iris_device_set_default(int device);
  * Using this function default device can be obtained
  *
  * @param device IRIS returns the default device on this variable 
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_device_get_default(int* device);
 
@@ -288,7 +288,7 @@ extern int iris_device_get_default(int* device);
  *
  * @param ndevs number of devices
  * @param devices device array
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_device_synchronize(int ndevs, int* devices);
 
@@ -298,7 +298,7 @@ extern int iris_device_synchronize(int ndevs, int* devices);
  * @param lib shared library path
  * @param name selector name
  * @param params parameter to the selector init function
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_register_policy(const char* lib, const char* name, void* params);
 
@@ -308,7 +308,7 @@ extern int iris_register_policy(const char* lib, const char* name, void* params)
  * @param tag unique identification to register the custom command
  * @param device device selection (iris_openmp, iris_cuda, iris_hip, iris_levelzero, iris_opencl)
  * @param handler handler function for the command
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_register_command(int tag, int device, command_handler handler);
 
@@ -317,7 +317,7 @@ extern int iris_register_command(int tag, int device, command_handler handler);
  *
  * @param pre Function with signature int (*function)(void *task) to be called before task execution
  * @param post Function with signature int (*function)(void *task) to be called after task execution
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_register_hooks_task(hook_task pre, hook_task post);
 
@@ -326,7 +326,7 @@ extern int iris_register_hooks_task(hook_task pre, hook_task post);
  *
  * @param pre Function with signature int (*function)(void *task) to be called before command execution
  * @param post Function with signature int (*function)(void *task) to be called after command execution
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_register_hooks_command(hook_command pre, hook_command post);
 
@@ -335,7 +335,7 @@ extern int iris_register_hooks_command(hook_command pre, hook_command post);
  *
  * @param name kernel name string
  * @param kernel
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_kernel_create(const char* name, iris_kernel* kernel);
 
@@ -344,7 +344,7 @@ extern int iris_kernel_create(const char* name, iris_kernel* kernel);
  *
  * @param name kernel name string
  * @param kernel a pointer to a kernel object
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_kernel_get(const char* name, iris_kernel* kernel);
 
@@ -355,7 +355,7 @@ extern int iris_kernel_get(const char* name, iris_kernel* kernel);
  * @param idx index of the parameter
  * @param size size of the argument
  * @param value value that needs to be set
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_kernel_setarg(iris_kernel kernel, int idx, size_t size, void* value);
 
@@ -366,7 +366,7 @@ extern int iris_kernel_setarg(iris_kernel kernel, int idx, size_t size, void* va
  * @param idx index of the parameter
  * @param mem iris memory object 
  * @param mode specifying the mode of the memory object iris_r, iris_w, or iris_rw
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_kernel_setmem(iris_kernel kernel, int idx, iris_mem mem, size_t mode);
 
@@ -378,7 +378,7 @@ extern int iris_kernel_setmem(iris_kernel kernel, int idx, iris_mem mem, size_t 
  * @param mem iris memory object 
  * @param off offset for the memory object
  * @param mode specifying the mode of the memory object iris_r, iris_w, or iris_rw
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_kernel_setmem_off(iris_kernel kernel, int idx, iris_mem mem, size_t off, size_t mode);
 
@@ -386,7 +386,7 @@ extern int iris_kernel_setmem_off(iris_kernel kernel, int idx, iris_mem mem, siz
 /**@brief Release a kernel
  *
  * @param kernel a kernel object that is to be releases
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_kernel_release(iris_kernel kernel);
 
@@ -394,7 +394,7 @@ extern int iris_kernel_release(iris_kernel kernel);
 /**@brief Creates a new task.
  *
  * @param task pointer of the new task
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_task_create(iris_task* task);
 
@@ -402,7 +402,7 @@ extern int iris_task_create(iris_task* task);
 /**@brief Creates a task with permanent life time. Task memory won't be released after execution. It can't be used to submit the task again and again. Application programmer should call task release API after successful completion of the task executions. 
  *
  * @param task the task pointer
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_task_create_perm(iris_task* task);
 
@@ -414,7 +414,7 @@ extern int iris_task_create_perm(iris_task* task);
  *
  * @param name name of the task
  * @param task the task pointer
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_task_create_name(const char* name, iris_task* task);
 
@@ -425,7 +425,7 @@ extern int iris_task_create_name(const char* name, iris_task* task);
  * @param task source task
  * @param ntasks number of tasks
  * @param tasks target tasks array
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_task_depend(iris_task task, int ntasks, iris_task* tasks);
 
@@ -434,7 +434,7 @@ extern int iris_task_depend(iris_task task, int ntasks, iris_task* tasks);
  *
  * @param task iris task object
  * @param mem memory object
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_task_malloc(iris_task task, iris_mem mem);
 
@@ -443,7 +443,7 @@ extern int iris_task_malloc(iris_task task, iris_mem mem);
  * @param task iris task object
  * @param mem memory object
  * @param reset using the value the memory object is initialized
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_task_cmd_reset_mem(iris_task task, iris_mem mem, uint8_t reset);
 
@@ -466,7 +466,7 @@ extern int iris_task_get_metadata(iris_task brs_task, int index);
  * @param brs_task iris task object
  * @param index index to set the correct meta data
  * @param meta_data the meta data needs to be saved
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_task_set_metadata(iris_task brs_task, int index, int metadata);
 
@@ -478,7 +478,7 @@ extern int iris_task_set_metadata(iris_task brs_task, int index, int metadata);
  * @param off offset in bytes
  * @param size size in bytes
  * @param host source host address
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_task_h2broadcast(iris_task task, iris_mem mem, size_t off, size_t size, void* host);
 
@@ -492,7 +492,7 @@ extern int iris_task_h2broadcast(iris_task task, iris_mem mem, size_t off, size_
  * @param elem_size size of an element
  * @param dim dimension of the memory
  * @param host source host address
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_task_h2broadcast_offsets(iris_task task, iris_mem mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, void* host);
 
@@ -501,7 +501,7 @@ extern int iris_task_h2broadcast_offsets(iris_task task, iris_mem mem, size_t *o
  * @param task target task
  * @param mem target memory object
  * @param host source host address
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_task_h2broadcast_full(iris_task task, iris_mem mem, void* host);
 
@@ -514,7 +514,7 @@ extern int iris_task_h2broadcast_full(iris_task task, iris_mem mem, void* host);
  * @param size size in bytes
  * @param host source host address
  * @param src_dev
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_task_d2d(iris_task task, iris_mem mem, size_t off, size_t size, void* host, int src_dev);
 
@@ -526,7 +526,7 @@ extern int iris_task_d2d(iris_task task, iris_mem mem, size_t off, size_t size, 
  * @param off offset in bytes
  * @param size size in bytes
  * @param host source host address
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_task_h2d(iris_task task, iris_mem mem, size_t off, size_t size, void* host);
 extern int iris_task_h2d_offsets(iris_task task, iris_mem mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, void* host);
@@ -539,7 +539,7 @@ extern int iris_task_h2d_offsets(iris_task task, iris_mem mem, size_t *off, size
  * @param off offset in bytes
  * @param size size in bytes
  * @param host target host address
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_task_d2h(iris_task task, iris_mem mem, size_t off, size_t size, void* host);
 extern int iris_task_d2h_offsets(iris_task task, iris_mem mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, void* host);
@@ -552,7 +552,7 @@ extern int iris_task_d2h_offsets(iris_task task, iris_mem mem, size_t *off, size
  *
  * @param task iris task object
  * @param mem iris memory object that is specifed to the flush to host side
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_task_dmem_flush_out(iris_task task, iris_mem mem);
 
@@ -562,7 +562,7 @@ extern int iris_task_dmem_flush_out(iris_task task, iris_mem mem);
  * @param task target task
  * @param mem target memory object
  * @param host source host address
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_task_h2d_full(iris_task task, iris_mem mem, void* host);
 
@@ -572,7 +572,7 @@ extern int iris_task_h2d_full(iris_task task, iris_mem mem, void* host);
  * @param task target task
  * @param mem source memory object
  * @param host target host address
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_task_d2h_full(iris_task task, iris_mem mem, void* host);
 extern int iris_task_kernel_object(iris_task task, iris_kernel kernel, int dim, size_t* off, size_t* gws, size_t* lws);
@@ -589,7 +589,7 @@ extern int iris_task_kernel_object(iris_task task, iris_kernel kernel, int dim, 
  * @param nparams number of kernel parameters
  * @param params kernel parameters
  * @param params_info kernel parameters information
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_task_kernel(iris_task task, const char* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, int* params_info);
 extern int iris_task_kernel_v2(iris_task task, const char* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, size_t* params_off, int* params_info);
@@ -607,7 +607,7 @@ extern int iris_task_custom(iris_task task, int tag, void* params, size_t params
  * @param device device_selector
  * @param opt option string
  * @param sync 0: non-blocking, 1: blocking
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_task_submit(iris_task task, int device, const char* opt, int sync);
 
@@ -619,7 +619,7 @@ extern int iris_task_submit(iris_task task, int device, const char* opt, int syn
  *
  * @param task iris task object
  * @param device device or scheduling policy
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_task_set_policy(iris_task task, int device);
 
@@ -627,7 +627,7 @@ extern int iris_task_set_policy(iris_task task, int device);
 /**@brief  Waits for the task to complete.
  *
  * @param task target task
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_task_wait(iris_task task);
 
@@ -636,7 +636,7 @@ extern int iris_task_wait(iris_task task);
  *
  * @param ntasks number of tasks
  * @param tasks target tasks array
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_task_wait_all(int ntasks, iris_task* tasks);
 
@@ -647,7 +647,7 @@ extern int iris_task_wait_all(int ntasks, iris_task* tasks);
  *
  * @param task iris task object
  * @param subtask the subtask that is going to be added
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_task_add_subtask(iris_task task, iris_task subtask);
 
@@ -666,7 +666,7 @@ extern int iris_task_kernel_cmd_only(iris_task task);
  *
  * Releases a target.
  * @param task target task
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_task_release(iris_task task);
 extern int iris_task_release_mem(iris_task task, iris_mem mem);
@@ -680,7 +680,7 @@ extern int iris_task_info(iris_task task, int param, void* value, size_t* size);
  *
  * @param host host pointer of the data structure
  * @param size size of the memory
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_register_pin_memory(void *host, size_t size);
 
@@ -691,7 +691,7 @@ extern int iris_register_pin_memory(void *host, size_t size);
  *
  * @param size size of the memory
  * @param mem pointer to the memory object
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_mem_create(size_t size, iris_mem* mem);
 
@@ -702,7 +702,7 @@ extern int iris_mem_create(size_t size, iris_mem* mem);
  *
  * @param mem pointer to the memory object
  * @param reset 0: no reseting 1: reset
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_data_mem_init_reset(iris_mem mem, int reset);
 
@@ -714,7 +714,7 @@ extern int iris_data_mem_init_reset(iris_mem mem, int reset);
  * @param mem pointer to the memory object
  * @param host host pointer of the data structure
  * @param size size of the memory
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_data_mem_create(iris_mem* mem, void *host, size_t size);
 
@@ -724,7 +724,7 @@ extern int iris_data_mem_create(iris_mem* mem, void *host, size_t size);
  * This function Resets a memory object by setting the dirty flag for host
  *
  * @param mem pointer to the memory object
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_data_mem_clear(iris_mem mem);
 
@@ -758,11 +758,36 @@ extern int iris_graph_release(iris_graph graph);
 extern int iris_graph_submit(iris_graph graph, int device, int sync);
 extern int iris_graph_submit_with_order(iris_graph graph, int *order, int device, int sync);
 extern int iris_graph_submit_with_order_and_time(iris_graph graph, int *order, double *time, int device, int sync);
+
+/**@brief Submit the IRIS graph and returns the time along with state 
+  *
+  * @param graph iris_graph (IRIS Graph) object 
+  * @param time  Time pointer, in which the graph execution time is returned
+  * @param device IRIS device selection policy 
+  * @param sync 0: non-blocking, 1: blocking
+  * @return This functions return an error value. IRIS_SUCCESS, IRIS_ERROR
+  */
 extern int iris_graph_submit_with_time(iris_graph graph, double *time, int device, int sync);
+
 extern int iris_graph_wait(iris_graph graph);
+/**@brief Wait for the completion of all array of IRIS graphs
+  *
+  * @param ngraphs Number of graphs
+  * @param graphs Array of iris_graph (IRIS Graph) objects
+  * @return This functions return an error value. IRIS_SUCCESS, IRIS_ERROR
+  */
 extern int iris_graph_wait_all(int ngraphs, iris_graph* graphs);
 
+/**@brief Start recording task graph to generate JSON graph
+  *
+  * @return This functions return an error value. IRIS_SUCCESS, IRIS_ERROR
+  */
 extern int iris_record_start();
+
+/**@brief Stop recording task graph to generate JSON graph
+  *
+  * @return This functions return an error value. IRIS_SUCCESS, IRIS_ERROR
+  */
 extern int iris_record_stop();
 
 
