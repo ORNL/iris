@@ -141,7 +141,7 @@ typedef int (*hook_command)(void* command);
 
 typedef int (*iris_selector_kernel)(iris_task task, void* params, char* kernel_name);
 
-//UPDATED
+
 /**@brief Initializes the IRIS execution environment.
  *
  * This function initializes the IRIS execution environment.
@@ -153,14 +153,14 @@ typedef int (*iris_selector_kernel)(iris_task task, void* params, char* kernel_n
  */
 extern int iris_init(int* argc, char*** argv, int sync);
 
-//UPDATED
+
 /**@brief Return number of errors occurred in IRIS
  *
  * @return This function returns the number of errors
  */
 extern int iris_error_count();
 
-//UPDATED
+
 /**@brief Terminates the IRIS execution environment.
  *
  * this funciton put end to IRIS execution environment.
@@ -169,7 +169,7 @@ extern int iris_error_count();
  */
 extern int iris_finalize();
 
-//UPDATED
+
 /**@brief Puts a synchronization for tasks to complete
  *
  * This function makes IRIS Wait for all the submitted tasks to complete.
@@ -178,7 +178,7 @@ extern int iris_finalize();
  */
 extern int iris_synchronize();
 
-//UPDATED
+
 /**@brief Makes sure a can be submitted again and again.
  *
  * This function makes a task with an option to be submitted again and again.
@@ -187,7 +187,7 @@ extern int iris_synchronize();
  */
 extern void iris_task_retain(iris_task task, bool flag);
 
-//UPDATED
+
 /**@brief Sets an IRIS environment variable.
  *
  * @param key key string
@@ -196,7 +196,7 @@ extern void iris_task_retain(iris_task task, bool flag);
  */
 extern int iris_env_set(const char* key, const char* value);
 
-//UPDATED
+
 /**@brief Gets an IRIS environment variable.
  *
  * @param key key string
@@ -206,14 +206,7 @@ extern int iris_env_set(const char* key, const char* value);
  */
 extern int iris_env_get(const char* key, char** value, size_t* vallen);
 
-//UPDATED
-/**@brief Gets the number of errors encountered during the IRIS environments history.
- *
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
- */
-extern int iris_error_count();
 
-//UPDATED
 /**@brief Returns the number of platforms.
  *
  * @param nplatforms pointer to the number of platform
@@ -221,7 +214,7 @@ extern int iris_error_count();
  */
 extern int iris_platform_count(int* nplatforms);
 
-//UPDATED
+
 /**@brief Returns the platform information.
  *
  * @param platform platform number
@@ -232,7 +225,7 @@ extern int iris_platform_count(int* nplatforms);
  */
 extern int iris_platform_info(int platform, int param, void* value, size_t* size);
 
-//UPDATED
+
 /**@brief Sets shared memory model
  *
  * Using this function shared memory model can be set
@@ -242,14 +235,14 @@ extern int iris_platform_info(int platform, int param, void* value, size_t* size
  */
 extern int iris_set_shared_memory_model(int flag);
 
-//UPDATED
+
 /**@brief Enable/disable profiler
  *
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
  */
 extern void iris_set_enable_profiler(int flag);
 
-//UPDATED
+
 /**@brief Returns the number of devices.
  *
  * @param ndevs pointer to the number of devices
@@ -257,7 +250,7 @@ extern void iris_set_enable_profiler(int flag);
  */
 extern int iris_device_count(int* ndevs);
 
-//UPDATED
+
 /**@brief Returns the device information.
  *
  * @param device device number
@@ -269,7 +262,7 @@ extern int iris_device_count(int* ndevs);
 extern int iris_device_info(int device, int param, void* value, size_t* size);
 
 
-//UPDATED
+
 /**@brief Sets the default device
  *
  * Using this function default device can be set
@@ -280,7 +273,7 @@ extern int iris_device_info(int device, int param, void* value, size_t* size);
 extern int iris_device_set_default(int device);
 
 
-//UPDATED
+
 /**@brief Gets the default device
  *
  * Using this function default device can be obtained
@@ -290,7 +283,7 @@ extern int iris_device_set_default(int device);
  */
 extern int iris_device_get_default(int* device);
 
-//UPDATED
+
 /**@brief Waits for all the submitted tasks in a device to complete.
  *
  * @param ndevs number of devices
@@ -299,7 +292,7 @@ extern int iris_device_get_default(int* device);
  */
 extern int iris_device_synchronize(int ndevs, int* devices);
 
-//UPDATED
+
 /**@brief Registers a new device selector
  *
  * @param lib shared library path
@@ -337,7 +330,7 @@ extern int iris_register_hooks_task(hook_task pre, hook_task post);
  */
 extern int iris_register_hooks_command(hook_command pre, hook_command post);
 
-//UPDATED
+
 /**@brief Creates a kernel with a given name
  *
  * @param name kernel name string
@@ -346,7 +339,7 @@ extern int iris_register_hooks_command(hook_command pre, hook_command post);
  */
 extern int iris_kernel_create(const char* name, iris_kernel* kernel);
 
-//UPDATED
+
 /**@brief Creates a kernel with a given name
  *
  * @param name kernel name string
@@ -354,13 +347,63 @@ extern int iris_kernel_create(const char* name, iris_kernel* kernel);
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
  */
 extern int iris_kernel_get(const char* name, iris_kernel* kernel);
+
+
+/**@brief Sets the arguments for a given kernel
+ *
+ * @param kernel a kernel object
+ * @param idx index of the parameter
+ * @param size size of the argument
+ * @param value value that needs to be set
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ */
 extern int iris_kernel_setarg(iris_kernel kernel, int idx, size_t size, void* value);
+
+
+/**@brief Sets memory object as an arguments for a given kernel
+ *
+ * @param kernel a kernel object
+ * @param idx index of the parameter
+ * @param mem iris memory object 
+ * @param mode specifying the mode of the memory object iris_r, iris_w, or iris_rw
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ */
 extern int iris_kernel_setmem(iris_kernel kernel, int idx, iris_mem mem, size_t mode);
+
+
+/**@brief Sets memory object as an arguments with an offset for a given kernel
+ *
+ * @param kernel a kernel object
+ * @param idx index of the parameter
+ * @param mem iris memory object 
+ * @param off offset for the memory object
+ * @param mode specifying the mode of the memory object iris_r, iris_w, or iris_rw
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ */
 extern int iris_kernel_setmem_off(iris_kernel kernel, int idx, iris_mem mem, size_t off, size_t mode);
+
+
+//QUESTION
+/**@brief ??? implementation does not esist
+ *
+ * @param kernel a kernel object
+ * @param idx index of the parameter
+ * @param mem iris memory object 
+ * @param off offset for the memory object
+ * @param mode specifying the mode of the memory object iris_r, iris_w, or iris_rw
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ */
 extern int iris_kernel_setmap(iris_kernel kernel, int idx, void* host, size_t mode);
+
+
+/**@brief Release a kernel
+ *
+ * @param kernel a kernel object that is to be releases
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ */
 extern int iris_kernel_release(iris_kernel kernel);
 
-//UPDATED
+
 /**@brief Creates a new task.
  *
  * @param task pointer of the new task
@@ -368,7 +411,7 @@ extern int iris_kernel_release(iris_kernel kernel);
  */
 extern int iris_task_create(iris_task* task);
 
-//UPDATED
+
 //QUESTION
 /**@brief Creates a task with permanent life time. Task memory won't be released after execution. It can't be used to submit the task again and again. Application programmer make sure to release the task after successful completion of the task executions. 
  *
@@ -378,7 +421,7 @@ extern int iris_task_create(iris_task* task);
 extern int iris_task_create_perm(iris_task* task);
 
 
-//UPDATED
+
 /**@brief Creates a task with a given name
  *
  * Using this function IRIS creates a task object where the name is set from the function argument
@@ -389,7 +432,7 @@ extern int iris_task_create_perm(iris_task* task);
  */
 extern int iris_task_create_name(const char* name, iris_task* task);
 
-//UPDATED
+
 /**@brief Adds a dependency to a task.
  *
  * Adds a dependency to a task.
@@ -399,10 +442,26 @@ extern int iris_task_create_name(const char* name, iris_task* task);
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
  */
 extern int iris_task_depend(iris_task task, int ntasks, iris_task* tasks);
+
+
+/**@brief Mallocs for a memory object in a given task
+ *
+ * @param task iris task object
+ * @param mem memory object
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ */
 extern int iris_task_malloc(iris_task task, iris_mem mem);
+
+/**@brief Resets a memory object for a given task
+ *
+ * @param task iris task object
+ * @param mem memory object
+ * @param reset using the value the memory object is initialized
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ */
 extern int iris_task_cmd_reset_mem(iris_task task, iris_mem mem, uint8_t reset);
 
-//UPDATED
+
 /**@brief Gets task meta data
  * 
  * This function used for getting optional task metadata through the specified index
@@ -413,7 +472,7 @@ extern int iris_task_cmd_reset_mem(iris_task task, iris_mem mem, uint8_t reset);
  */
 extern int iris_task_get_metadata(iris_task brs_task, int index);
 
-//UPDATED
+
 /**@brief Sets task meta data
  *
  * This function used for setting optional task metadata through the specified index
@@ -425,7 +484,7 @@ extern int iris_task_get_metadata(iris_task brs_task, int index);
  */
 extern int iris_task_set_metadata(iris_task brs_task, int index, int metadata);
 
-//UPDATED
+
 /**@brief Adds a H2Broadcast command to the target task.
  *
  * @param task target task
@@ -436,10 +495,31 @@ extern int iris_task_set_metadata(iris_task brs_task, int index, int metadata);
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
  */
 extern int iris_task_h2broadcast(iris_task task, iris_mem mem, size_t off, size_t size, void* host);
+
+/**@brief Adds a H2Broadcast command to the target task that broadcast a portion of the memory 
+ *
+ * @param task target task
+ * @param mem target memory object
+ * @param off offset in bytes
+ * @param host_sizes size in bytes for host
+ * @param dev_sizes size in bytes for host
+ * @param elem_size size of an element
+ * @param dim dimension of the memory
+ * @param host source host address
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ */
 extern int iris_task_h2broadcast_offsets(iris_task task, iris_mem mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, void* host);
+
+/**@brief Adds a H2Broadcast command to the target task that broadcasts the full host memory
+ *
+ * @param task target task
+ * @param mem target memory object
+ * @param host source host address
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ */
 extern int iris_task_h2broadcast_full(iris_task task, iris_mem mem, void* host);
 
-//UPDATED
+
 /**@brief Adds a D2D command to the target task.
  *
  * @param task target task
@@ -452,7 +532,7 @@ extern int iris_task_h2broadcast_full(iris_task task, iris_mem mem, void* host);
  */
 extern int iris_task_d2d(iris_task task, iris_mem mem, size_t off, size_t size, void* host, int src_dev);
 
-//UPDATED
+
 /**@brief Adds a H2D command to the target task.
  *
  * @param task target task
@@ -465,7 +545,7 @@ extern int iris_task_d2d(iris_task task, iris_mem mem, size_t off, size_t size, 
 extern int iris_task_h2d(iris_task task, iris_mem mem, size_t off, size_t size, void* host);
 extern int iris_task_h2d_offsets(iris_task task, iris_mem mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, void* host);
 
-//UPDATED
+
 /**@brief Adds a D2H command to the target task.
  *
  * @param task target task
@@ -479,7 +559,7 @@ extern int iris_task_d2h(iris_task task, iris_mem mem, size_t off, size_t size, 
 extern int iris_task_d2h_offsets(iris_task task, iris_mem mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, void* host);
 
 
-//UPDATED
+
 /**@brief Adds a flush command to a task
  *
  * This function flushes the given memory object to host
@@ -490,7 +570,7 @@ extern int iris_task_d2h_offsets(iris_task task, iris_mem mem, size_t *off, size
  */
 extern int iris_task_dmem_flush_out(iris_task task, iris_mem mem);
 
-//UPDATED
+
 /**@brief Adds a H2D command with the size of the target memory to the target task.
  *
  * @param task target task
@@ -500,7 +580,7 @@ extern int iris_task_dmem_flush_out(iris_task task, iris_mem mem);
  */
 extern int iris_task_h2d_full(iris_task task, iris_mem mem, void* host);
 
-//UPDATED
+
 /**@brief Adds a D2H command with the size of the source memory to the target task.
  *
  * @param task target task
@@ -511,7 +591,7 @@ extern int iris_task_h2d_full(iris_task task, iris_mem mem, void* host);
 extern int iris_task_d2h_full(iris_task task, iris_mem mem, void* host);
 extern int iris_task_kernel_object(iris_task task, iris_kernel kernel, int dim, size_t* off, size_t* gws, size_t* lws);
 
-//UPDATED
+
 /**@brief Launches a kernel
  *
  * @param task target task
@@ -534,7 +614,7 @@ extern int iris_task_host(iris_task task, iris_host_task func, void* params);
 extern int iris_task_host(iris_task task, iris_host_task func, void* params);
 extern int iris_task_custom(iris_task task, int tag, void* params, size_t params_size);
 
-//UPDATED
+
 /**@brief Submits a task.
  *
  * @param task target task
@@ -546,7 +626,7 @@ extern int iris_task_custom(iris_task task, int tag, void* params, size_t params
 extern int iris_task_submit(iris_task task, int device, const char* opt, int sync);
 
 
-//UPDATED
+
 /**@brief Sets a scheduling policy for a task
  *
  * This function sets scheduling policy for a task 
@@ -557,7 +637,7 @@ extern int iris_task_submit(iris_task task, int device, const char* opt, int syn
  */
 extern int iris_task_set_policy(iris_task task, int device);
 
-//UPDATED
+
 /**@brief  Waits for the task to complete.
  *
  * @param task target task
@@ -565,7 +645,7 @@ extern int iris_task_set_policy(iris_task task, int device);
  */
 extern int iris_task_wait(iris_task task);
 
-//UPDATED
+
 /**@brief Waits for all the tasks to complete.
  *
  * @param ntasks number of tasks
@@ -574,7 +654,7 @@ extern int iris_task_wait(iris_task task);
  */
 extern int iris_task_wait_all(int ntasks, iris_task* tasks);
 
-//UPDATED
+
 /**@brief Adds a subtask for a task
  *
  * This function adds a subtask for a task
@@ -585,7 +665,7 @@ extern int iris_task_wait_all(int ntasks, iris_task* tasks);
  */
 extern int iris_task_add_subtask(iris_task task, iris_task subtask);
 
-//UPDATED
+
 /**@brief Retruns whether a task only has kernel command
  *
  * This function returns whether a task has only kernel command or not 
@@ -595,7 +675,7 @@ extern int iris_task_add_subtask(iris_task task, iris_task subtask);
  */
 extern int iris_task_kernel_cmd_only(iris_task task);
 
-//UPDATED
+
 /**@brief Releases a target.
  *
  * Releases a target.
@@ -607,7 +687,7 @@ extern int iris_task_release_mem(iris_task task, iris_mem mem);
 extern int iris_params_map(iris_task task, int *params_map);
 extern int iris_task_info(iris_task task, int param, void* value, size_t* size);
 
-//UPDATED
+
 /**@brief Registers pin memory
  *
  * This function enables pinning of host memory
@@ -618,7 +698,7 @@ extern int iris_task_info(iris_task task, int param, void* value, size_t* size);
  */
 extern int iris_register_pin_memory(void *host, size_t size);
 
-//UPDATED
+
 /**@brief Cretes IRIS memory object
  *
  * This function creates IRIS memory object for a given size
@@ -629,7 +709,7 @@ extern int iris_register_pin_memory(void *host, size_t size);
  */
 extern int iris_mem_create(size_t size, iris_mem* mem);
 
-//UPDATED
+
 /**@brief Resets a memory object by setting the dirty flag for host
  *
  * This function resets a memory object by setting the dirty flag for host
@@ -640,7 +720,7 @@ extern int iris_mem_create(size_t size, iris_mem* mem);
  */
 extern int iris_data_mem_init_reset(iris_mem mem, int reset);
 
-//UPDATED
+
 /**@brief Cretes IRIS data memory object
  *
  * This function creates IRIS data memory object for a given size
@@ -652,7 +732,7 @@ extern int iris_data_mem_init_reset(iris_mem mem, int reset);
  */
 extern int iris_data_mem_create(iris_mem* mem, void *host, size_t size);
 
-//UPDATED
+
 /**@brief Frees memory for a DMEM object for all the devices
  *
  * This function Resets a memory object by setting the dirty flag for host
@@ -663,7 +743,7 @@ extern int iris_data_mem_create(iris_mem* mem, void *host, size_t size);
 extern int iris_data_mem_clear(iris_mem mem);
 
 
-//UPDATED
+
 /**QUESTION : it pins a host memory for all the available platforms
  * @brief  Pins a host memory for all the available platforms
  *
@@ -699,7 +779,7 @@ extern int iris_graph_wait_all(int ngraphs, iris_graph* graphs);
 extern int iris_record_start();
 extern int iris_record_stop();
 
-//UPDATED
+
 /**@brief Returns current time in seconds.
  *
  * Returns current time in seconds.
@@ -709,14 +789,14 @@ extern int iris_record_stop();
 extern int iris_timer_now(double* time);
 
 
-//UPDATED
+
 /**@brief Enables peer to peer transfer
  *
  * This function enables peer to peer transfer
  */
 extern void iris_enable_d2d();
 
-//UPDATED
+
 /**@brief Disables peer to peer transfer
  *
  * This function disables peer to peer transfer
@@ -726,7 +806,7 @@ extern void iris_disable_consistency_check();
 extern void iris_enable_consistency_check();
 
 
-//UPDATED
+
 /**@brief Returns a kernel name
  *
  * This function returns a kernel name
@@ -737,7 +817,7 @@ extern void iris_enable_consistency_check();
 extern char *iris_kernel_get_name(iris_kernel brs_kernel);
 
 
-//UPDATED
+
 /**@brief Retruns a task name
  *
  * This function returns a task name
@@ -748,7 +828,7 @@ extern char *iris_kernel_get_name(iris_kernel brs_kernel);
 extern char *iris_task_get_name(iris_task brs_task);
 
 
-//UPDATED
+
 /**@brief Sets a task name
  *
  * This function Sets a task name
@@ -758,7 +838,7 @@ extern char *iris_task_get_name(iris_task brs_task);
  */
 extern void iris_task_set_name(iris_task brs_task, const char *name);
 
-//UPDATED
+
 /**@brief Gets dependency counts for a task
  *
  * This function returns dependency count for a task
@@ -768,7 +848,7 @@ extern void iris_task_set_name(iris_task brs_task, const char *name);
  */
 extern int iris_task_get_dependency_count(iris_task brs_task);
 
-//UPDATED
+
 /**@brief Gets all the dependent tasks for a given task
  *
  * This function provide all the dependent tasks for a given task
@@ -778,7 +858,7 @@ extern int iris_task_get_dependency_count(iris_task brs_task);
  */
 extern void iris_task_get_dependencies(iris_task brs_task, iris_task *tasks);
 
-//UPDATED
+
 /**@brief Gets unique ID for a task
  *
  * This function provides IRIS generated unique ID for a given task object
@@ -788,7 +868,7 @@ extern void iris_task_get_dependencies(iris_task brs_task, iris_task *tasks);
  */
 extern unsigned long iris_task_get_uid(iris_task brs_task);
 
-//UPDATED
+
 /**@brief Gets unique ID for a kernel
  *
  * This function provides IRIS generated unique ID for a given kernel object
@@ -798,7 +878,7 @@ extern unsigned long iris_task_get_uid(iris_task brs_task);
  */
 extern unsigned long iris_kernel_get_uid(iris_kernel brs_kernel);
 
-//UPDATED
+
 /**@brief Returns kernel for a task
  *
  * This function returns kernel for a given task
@@ -853,7 +933,7 @@ extern size_t iris_count_mems(iris_graph brs_graph);
 extern void iris_free_array(void *ptr);
 
 
-//UPDATED
+
 /**@brief Mallocs int8_t type array for a given size with a given initial value
  *
  * This function mallocs int8_t type array for a given size with a given initial value
@@ -865,7 +945,7 @@ extern void iris_free_array(void *ptr);
 extern int8_t *iris_allocate_array_int8_t(int SIZE, int8_t init);
 
 
-//UPDATED
+
 /**@brief Mallocs int16_t type array for a given size with a given initial value
  *
  * This function mallocs int16_t type array for a given size with a given initial value
@@ -876,7 +956,7 @@ extern int8_t *iris_allocate_array_int8_t(int SIZE, int8_t init);
  */
 extern int16_t *iris_allocate_array_int16_t(int SIZE, int16_t init);
 
-//UPDATED
+
 /**@brief Mallocs int32_t type array for a given size with a given initial value
  *
  * This function mallocs int32_t type array for a given size with a given initial value
@@ -887,7 +967,7 @@ extern int16_t *iris_allocate_array_int16_t(int SIZE, int16_t init);
  */
 extern int32_t *iris_allocate_array_int32_t(int SIZE, int32_t init);
 
-//UPDATED
+
 /**@brief Mallocs int64_t type array for a given size with a given initial value
  *
  * This function mallocs int64_t type array for a given size with a given initial value
@@ -898,7 +978,7 @@ extern int32_t *iris_allocate_array_int32_t(int SIZE, int32_t init);
  */
 extern int64_t *iris_allocate_array_int64_t(int SIZE, int64_t init);
 
-//UPDATED
+
 /**@brief Mallocs size_t type array for a given size with a given initial value
  *
  * This function mallocs size_t type array for a given size with a given initial value
@@ -909,7 +989,7 @@ extern int64_t *iris_allocate_array_int64_t(int SIZE, int64_t init);
  */
 extern size_t *iris_allocate_array_size_t(int SIZE, size_t init);
 
-//UPDATED
+
 /**@brief Mallocs float type array for a given size with a given initial value
  *
  * This function mallocs float type array for a given size with a given initial value
@@ -920,7 +1000,7 @@ extern size_t *iris_allocate_array_size_t(int SIZE, size_t init);
  */
 extern float *iris_allocate_array_float(int SIZE, float init);
 
-//UPDATED
+
 /**@brief Mallocs double type array for a given size with a given initial value
  *
  * This function mallocs double type array for a given size with a given initial value
@@ -931,7 +1011,7 @@ extern float *iris_allocate_array_float(int SIZE, float init);
  */
 extern double *iris_allocate_array_double(int SIZE, double init);
 
-//UPDATED
+
 /**@brief Mallocs int8_t type array for a given size with a random value
  *
  * This function mallocs int8_t type array for a given size with a random value
@@ -941,7 +1021,7 @@ extern double *iris_allocate_array_double(int SIZE, double init);
  */
 extern int8_t *iris_allocate_random_array_int8_t(int SIZE);
 
-//UPDATED
+
 /**@brief Mallocs int16_t type array for a given size with a random value
  *
  * This function mallocs int16_t type array for a given size with a random value
@@ -951,7 +1031,7 @@ extern int8_t *iris_allocate_random_array_int8_t(int SIZE);
  */
 extern int16_t *iris_allocate_random_array_int16_t(int SIZE);
 
-//UPDATED
+
 /**@brief Mallocs int32_t type array for a given size with a random value
  *
  * This function mallocs int32_t type array for a given size with a random value
@@ -961,7 +1041,7 @@ extern int16_t *iris_allocate_random_array_int16_t(int SIZE);
  */
 extern int32_t *iris_allocate_random_array_int32_t(int SIZE);
 
-//UPDATED
+
 /**@brief Mallocs int64_t type array for a given size with a random value
  *
  * This function mallocs int64_t type array for a given size with a random value
@@ -971,7 +1051,7 @@ extern int32_t *iris_allocate_random_array_int32_t(int SIZE);
  */
 extern int64_t *iris_allocate_random_array_int64_t(int SIZE);
 
-//UPDATED
+
 /**@brief Mallocs size_t type array for a given size with a random value
  *
  * This function mallocs size_t type array for a given size with a random value
@@ -981,7 +1061,7 @@ extern int64_t *iris_allocate_random_array_int64_t(int SIZE);
  */
 extern size_t *iris_allocate_random_array_size_t(int SIZE);
 
-//UPDATED
+
 /**@brief Mallocs float type array for a given size with a random value
  *
  * This function mallocs float type array for a given size with a random value
@@ -991,7 +1071,7 @@ extern size_t *iris_allocate_random_array_size_t(int SIZE);
  */
 extern float *iris_allocate_random_array_float(int SIZE);
 
-//UPDATED
+
 /**@brief Mallocs double type array for a given size with a random value
  *
  * This function mallocs double type array for a given size with a random value
@@ -1001,7 +1081,7 @@ extern float *iris_allocate_random_array_float(int SIZE);
  */
 extern double *iris_allocate_random_array_double(int SIZE);
 
-//UPDATED
+
 /**@brief Prints a full matrix data structure of double type
  *
  * This function prints a full matrix data structure of double type of M rows and N columns with a provided description
@@ -1013,7 +1093,7 @@ extern double *iris_allocate_random_array_double(int SIZE);
  */
 extern void iris_print_matrix_full_double(double *data, int M, int N, const char *description);
 
-//UPDATED
+
 /**@brief Prints a matrix data structure of double type for a given limit of rows and columns
  *
  * This function prints a matrix data structure of double type for limited rows and columns with a provided description
@@ -1026,7 +1106,7 @@ extern void iris_print_matrix_full_double(double *data, int M, int N, const char
  */
 extern void iris_print_matrix_limited_double(double *data, int M, int N, const char *description, int limit);
 
-//UPDATED
+
 /**@brief Prints a full matrix data structure of float type
  *
  * This function prints a full matrix data structure of float type of M rows and N columns with a provided description
@@ -1038,7 +1118,7 @@ extern void iris_print_matrix_limited_double(double *data, int M, int N, const c
  */
 extern void iris_print_matrix_full_float(float *data, int M, int N, const char *description);
 
-//UPDATED
+
 /**@brief Prints a matrix data structure of float type for a given limit of rows and columns
  *
  * This function prints a matrix data structure of float type for limited rows and columns with a provided description
@@ -1051,7 +1131,7 @@ extern void iris_print_matrix_full_float(float *data, int M, int N, const char *
  */
 extern void iris_print_matrix_limited_float(float *data, int M, int N, const char *description, int limit);
 
-//UPDATED
+
 /**@brief Prints a full matrix data structure of int64_t type
  *
  * This function prints a full matrix data structure of int64_t type of M rows and N columns with a provided description
@@ -1063,7 +1143,7 @@ extern void iris_print_matrix_limited_float(float *data, int M, int N, const cha
  */
 extern void iris_print_matrix_full_int64_t(int64_t *data, int M, int N, const char *description);
 
-//UPDATED
+
 /**@brief Prints a matrix data structure of int64_t type for a given limit of rows and columns
  *
  * This function prints a matrix data structure of int64_t type for limited rows and columns with a provided description
@@ -1076,7 +1156,7 @@ extern void iris_print_matrix_full_int64_t(int64_t *data, int M, int N, const ch
  */
 extern void iris_print_matrix_limited_int64_t(int64_t *data, int M, int N, const char *description, int limit);
 
-//UPDATED
+
 /**@brief Prints a full matrix data structure of int32_t type
  *
  * This function prints a full matrix data structure of int32_t type of M rows and N columns with a provided description
@@ -1088,7 +1168,7 @@ extern void iris_print_matrix_limited_int64_t(int64_t *data, int M, int N, const
  */
 extern void iris_print_matrix_full_int32_t(int32_t *data, int M, int N, const char *description);
 
-//UPDATED
+
 /**@brief Prints a matrix data structure of int32_t type for a given limit of rows and columns
  *
  * This function prints a matrix data structure of int32_t type for limited rows and columns with a provided description
@@ -1101,7 +1181,7 @@ extern void iris_print_matrix_full_int32_t(int32_t *data, int M, int N, const ch
  */
 extern void iris_print_matrix_limited_int32_t(int32_t *data, int M, int N, const char *description, int limit);
 
-//UPDATED
+
 /**@brief Prints a full matrix data structure of int16_t type
  *
  * This function prints a full matrix data structure of int16_t type of M rows and N columns with a provided description
@@ -1113,7 +1193,7 @@ extern void iris_print_matrix_limited_int32_t(int32_t *data, int M, int N, const
  */
 extern void iris_print_matrix_full_int16_t(int16_t *data, int M, int N, const char *description);
 
-//UPDATED
+
 /**@brief Prints a matrix data structure of int16_t type for a given limit of rows and columns
  *
  * This function prints a matrix data structure of int16_t type for limited rows and columns with a provided description
@@ -1126,7 +1206,7 @@ extern void iris_print_matrix_full_int16_t(int16_t *data, int M, int N, const ch
  */
 extern void iris_print_matrix_limited_int16_t(int16_t *data, int M, int N, const char *description, int limit);
 
-//UPDATED
+
 /**@brief Prints a full matrix data structure of int8_t type
  *
  * This function prints a full matrix data structure of int8_t type of M rows and N columns with a provided description
@@ -1138,7 +1218,7 @@ extern void iris_print_matrix_limited_int16_t(int16_t *data, int M, int N, const
  */
 extern void iris_print_matrix_full_int8_t(int8_t *data, int M, int N, const char *description);
 
-//UPDATED
+
 /**@brief Prints a matrix data structure of int8_t type for a given limit of rows and columns
  *
  * This function prints a matrix data structure of int8_t type for limited rows and columns with a provided description
