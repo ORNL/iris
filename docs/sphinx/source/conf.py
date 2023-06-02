@@ -44,8 +44,8 @@ subprocess.call('cd ../../doxygen/; doxygen Doxyfile.in', shell=True)
 
 breathe_projects = {"C": "../../../docs/doxygen/build/xml/",
                     "Cpp":"../../../docs/doxygen/build/xml/",
-                    "python":"../../../docs/doxygen/build/xml/",
-                    "fortran":"../../../docs/doxygen/build/xml/"}
+                    "Py":"../../../docs/doxygen/build/xml/",
+                    "F90":"../../../docs/doxygen/build/xml/"}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
