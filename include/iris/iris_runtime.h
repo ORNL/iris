@@ -310,8 +310,7 @@ extern int iris_device_synchronize(int ndevs, int* devices);
 extern int iris_register_policy(const char* lib, const char* name, void* params);
 
 //UPDATED
-//QUESTION
-/**@brief Registers a custom command specific to the device with command handler
+/**@brief Registers a custom command specific to the device with the given command handler
  *
  * @param tag unique identification to register the custom command
  * @param device device selection (iris_openmp, iris_cuda, iris_hip, iris_levelzero, iris_opencl)
@@ -321,11 +320,10 @@ extern int iris_register_policy(const char* lib, const char* name, void* params)
 extern int iris_register_command(int tag, int device, command_handler handler);
 
 //UPDATED
-//QUESTION
-/**@brief ??
+/**@brief Register functions to be called for each task before execution and after execution
  *
- * @param pre ??
- * @param post ??
+ * @param pre Function with signature int (*function)(void *task) to be called before task execution
+ * @param post Function with signature int (*function)(void *task) to be called after task execution
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
  */
 extern int iris_register_hooks_task(hook_task pre, hook_task post);
