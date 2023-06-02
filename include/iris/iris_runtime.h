@@ -879,6 +879,11 @@ extern int iris_data_mem_update(iris_mem mem, void *host);
  */
 extern int iris_data_mem_create_region(iris_mem* mem, iris_mem root_mem, int region);
 
+/**@brief enable decomposition along the outer dimension
+ *
+ * @param mem memory object
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
 extern int iris_data_mem_enable_outer_dim_regions(iris_mem mem);
 
 /**@brief Creates a memory tile from host memory
