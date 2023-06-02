@@ -691,6 +691,15 @@ extern int iris_task_kernel_launch_disabled(iris_task task, int flag);
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_task_host(iris_task task, iris_host_task func, void* params);
+
+//QUESTION
+/**@brief Custom command??????
+ *
+ * @param task target task
+ * @param func function to be executed 
+ * @param params kernel parameters
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
 extern int iris_task_custom(iris_task task, int tag, void* params, size_t params_size);
 
 
@@ -755,15 +764,37 @@ extern int iris_task_add_subtask(iris_task task, iris_task subtask);
 extern int iris_task_kernel_cmd_only(iris_task task);
 
 
-/**@brief Releases a target.
+/**@brief Releases a task.
  *
- * Releases a target.
  * @param task target task
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_task_release(iris_task task);
+
+/**@brief Releases memory from a task
+ *
+ * @param task target task
+ * @param mem memory object
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
 extern int iris_task_release_mem(iris_task task, iris_mem mem);
+
+/**@brief Adds parameter map for a kernel in a task
+ *
+ * @param task target task
+ * @param params_map parameter map
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
 extern int iris_params_map(iris_task task, int *params_map);
+
+/**@brief Gets parameter info for a task  
+ *
+ * @param task target task
+ * @param params parameter type
+ * @param value gets the value
+ * @param size gets the size
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
 extern int iris_task_info(iris_task task, int param, void* value, size_t* size);
 
 
