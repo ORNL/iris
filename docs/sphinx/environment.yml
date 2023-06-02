@@ -8,6 +8,7 @@ dependencies:
   - python
   - breathe
   - pip
+  - numpy
   - pip:
     - sphinxcontrib-contentui
     - sphinx_rtd_theme
