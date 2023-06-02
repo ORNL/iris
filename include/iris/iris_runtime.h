@@ -683,12 +683,11 @@ extern int iris_task_kernel_selector(iris_task task, iris_selector_kernel func, 
  */
 extern int iris_task_kernel_launch_disabled(iris_task task, int flag);
 
-/**@brief disable kernel launch from a task 
+/**@brief executes a function at the host side
  *
  * @param task target task
- * @param flag bool value, 0: launch enable, 1: launch disable
+ * @param func function to be executed 
  * @param params kernel parameters
- * @param params_size size of the parameters
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_task_host(iris_task task, iris_host_task func, void* params);
@@ -1037,10 +1036,47 @@ extern size_t iris_get_graph_dataobjects_execution_schedule_count(iris_graph brs
 extern int iris_get_graph_3d_comm_data(iris_graph brs_graph, void *comm_data);
 extern int iris_get_graph_2d_comm_adj_matrix(iris_graph brs_graph, size_t *size_data);
 extern int iris_calibrate_compute_cost_adj_matrix(iris_graph brs_graph, double *comp_data);
+
+/**@brief Calibrate computation cost matrix for the given input graph
+  *
+  * @param brs_graph Input IRIS Graph object
+  * @param comp_data A 2D array object to hold computation cost matrix (Task x Device) 
+  * @return This functions return an error value. IRIS_SUCCESS, IRIS_ERROR
+  */
 extern int iris_calibrate_compute_cost_adj_matrix_only_for_types(iris_graph brs_graph, double *comp_data);
+
+/**@brief Calibrate communication cost matrix for the given input data size.
+  *
+  * @param data Returns communication cost in 2D (device x device) array
+  * @param data_size Input data size for calibration
+  * @param iterations Number of iterations used in the calibration of communication time for each combination of memory object x device x devicea
+  * @param pin_memory_flag Enable/Disable PIN memory 
+  * @return This functions return an error value. IRIS_SUCCESS, IRIS_ERROR
+  */
 extern int iris_calibrate_communication_cost(double *data, size_t data_size, int iterations, int pin_memory_flag);
+
+/**@brief Calibrate communication time for all data memory objects of the graph 
+  * 
+  * @param brs_graph IRIS graph object
+  * @param comp_time Returns A 3-dimensional (Memory Object x Device x Device) communication time in the comp_time array pointer
+  * @param mem_ids Returns the IRIS memory object IDs in the mem_ids array pointer
+  * @param iterations Number of iterations used in the calibration of communication time for each combination of memory object x device x devicea
+  * @param pin_memory_flag Enable/Disable PIN memory 
+  * @return This functions return an error value. IRIS_SUCCESS, IRIS_ERROR
+  */
 extern int iris_get_graph_3d_comm_time(iris_graph brs_graph, double *comm_time, int *mem_ids, int iterations, int pin_memory_flag);
+
+/**@brief Count number of memory objects used in the IRIS graph
+  * 
+  * @param brs_graph IRIS graph object
+  * @return return number of memory objects used in iris_graph
+  */
 extern size_t iris_count_mems(iris_graph brs_graph);
+
+/**@brief Free memory location using IRIS api
+  * 
+  * @param ptr Input pointer of the object
+  */
 extern void iris_free_array(void *ptr);
 
 
