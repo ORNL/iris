@@ -60,6 +60,7 @@ typedef int8_t bool;
 #endif
 #endif
 
+#ifndef DOXYGEN_SHOULD_SKIP_THIS
 #ifndef UNDEF_IRIS_MACROS
 #define IRIS_MAX_NPLATFORMS     32
 #define IRIS_MAX_NDEVS          (1 << 5) - 1
@@ -130,6 +131,7 @@ typedef int8_t bool;
 #define iris_cmds               4
 
 #endif // UNDEF_IRIS_MACROS
+#endif // DOXYGEN_SHOULD_SKIP_THIS
 
 typedef struct _iris_task      iris_task;
 typedef struct _iris_mem       iris_mem;

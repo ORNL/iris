@@ -95,14 +95,27 @@ namespace iris {
              * @return C structure IRIS memory object
              */
             iris_mem_type mem() { return mem_; }
+            /**@brief get C structure IRIS memory object pointer
+             *
+             * @return C structure IRIS memory object pointer
+             */
             iris_mem_type *mem_ptr() { return &mem_; }
         protected:
             iris_mem_type mem_;
     };
 
+    /**
+      * Mem Class for IRIS classic memory objects. It is a derived from the BaseMem class
+      */
     class Mem : public BaseMem {
         public:
+            /**@brief Mem Classs constructor.
+             *
+             */
             Mem(size_t size);
+            /**@brief Mem Classs destructor.
+             *
+             */
             virtual ~Mem();
     };
     class DMem : public BaseMem {
