@@ -55,7 +55,9 @@ struct _iris_graph {
 #ifdef __cplusplus
 extern "C" {
 #else
+#ifndef DOXYGEN_SHOULD_SKIP_THIS
 typedef int8_t bool;
+#endif
 #endif
 
 #ifndef UNDEF_IRIS_MACROS

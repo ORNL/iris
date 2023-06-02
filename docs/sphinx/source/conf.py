@@ -20,8 +20,8 @@ import subprocess
 # -- Project information -----------------------------------------------------
 
 project = 'IRIS'
-copyright = '2021, Oak Ridge National Laboratory'
-author = 'Jungwon Kim'
+copyright = '2023, Oak Ridge National Laboratory'
+author = 'Programming Systems Group'
 
 # The full version, including alpha/beta/rc tags
 # release = '1.0.0'
