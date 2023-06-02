@@ -862,10 +862,45 @@ extern int iris_data_mem_clear(iris_mem mem);
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_data_mem_pin(iris_mem mem);
+
+/**@brief data memory object update for a task
+ *
+ * @param mem memory object
+ * @param host host pointer to the memory
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
 extern int iris_data_mem_update(iris_mem mem, void *host);
+
+/**@brief creates data memory region 
+ *
+ * @param mem pointer to a memory object
+ * @param root_mem root memory object 
+ * @param region index for the region
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
 extern int iris_data_mem_create_region(iris_mem* mem, iris_mem root_mem, int region);
+
 extern int iris_data_mem_enable_outer_dim_regions(iris_mem mem);
+
+/**@brief Creates a memory tile from host memory
+ *
+ * @param mem memory object
+ * @param host host memory pointer
+ * @param off host memory pointer
+ * @param host_size indexes to specify sizes from host memory
+ * @param dev_size indexes to specify sizes from device memory
+ * @param elem_size element size
+ * @param dim dimension
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
 extern int iris_data_mem_create_tile(iris_mem* mem, void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim);
+
+//QUESTION
+/**@brief ??? 
+ *
+ * @param mem
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
 extern int iris_data_mem_n_regions(iris_mem brs_mem);
 extern unsigned long iris_data_mem_get_region_uid(iris_mem brs_mem, int region);
 extern int iris_mem_arch(iris_mem mem, int device, void** arch);
