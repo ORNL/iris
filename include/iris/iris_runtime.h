@@ -304,7 +304,6 @@ extern int iris_device_synchronize(int ndevs, int* devices);
  */
 extern int iris_register_policy(const char* lib, const char* name, void* params);
 
-//UPDATED
 /**@brief Registers a custom command specific to the device with the given command handler
  *
  * @param tag unique identification to register the custom command
@@ -314,7 +313,6 @@ extern int iris_register_policy(const char* lib, const char* name, void* params)
  */
 extern int iris_register_command(int tag, int device, command_handler handler);
 
-//UPDATED
 /**@brief Register functions to be called for each task before execution and after execution
  *
  * @param pre Function with signature int (*function)(void *task) to be called before task execution
@@ -323,7 +321,6 @@ extern int iris_register_command(int tag, int device, command_handler handler);
  */
 extern int iris_register_hooks_task(hook_task pre, hook_task post);
 
-//UPDATED
 /**@brief Register functions to be called for each command before execution and after execution
  *
  * @param pre Function with signature int (*function)(void *task) to be called before command execution
@@ -694,12 +691,12 @@ extern int iris_task_kernel_launch_disabled(iris_task task, int flag);
  */
 extern int iris_task_host(iris_task task, iris_host_task func, void* params);
 
-//QUESTION
-/**@brief Custom command??????
+/**@brief add a custom command to the task which specified registerng a command 
  *
  * @param task target task
- * @param func function to be executed 
- * @param params kernel parameters
+ * @param tag custom command tag id
+ * @param params parameters
+ * @param param_size parameter size
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_task_custom(iris_task task, int tag, void* params, size_t params_size);
@@ -897,27 +894,116 @@ extern int iris_data_mem_enable_outer_dim_regions(iris_mem mem);
  */
 extern int iris_data_mem_create_tile(iris_mem* mem, void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim);
 
-//QUESTION
-/**@brief ??? 
- *
- * @param mem
+#ifndef DOXYGEN_SHOULD_SKIP_THIS
+extern int iris_data_mem_n_regions(iris_mem brs_mem);
+
+extern unsigned long iris_data_mem_get_region_uid(iris_mem brs_mem, int region);
+#endif
+
+/**@brief returns the device pointer for a memory object
+*
+ * @param mem iris memory object
+ * @param device device id 
+ * @param arch device pointer
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
-extern int iris_data_mem_n_regions(iris_mem brs_mem);
-extern unsigned long iris_data_mem_get_region_uid(iris_mem brs_mem, int region);
 extern int iris_mem_arch(iris_mem mem, int device, void** arch);
+
+#ifndef DOXYGEN_SHOULD_SKIP_THIS
 extern int iris_mem_reduce(iris_mem mem, int mode, int type);
+#endif
+
+/**@brief releases memory object
+*
+ * @param mem iris memory object
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
 extern int iris_mem_release(iris_mem mem);
 
+/**@brief Creates a graph
+ *
+ * @param graph pointer to the graph
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
 extern int iris_graph_create(iris_graph* graph);
+
+/**@brief Frees a graph
+ *
+ * @param graph graph object
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
 extern int iris_graph_free(iris_graph graph);
+
+/**@brief submits a graph with given order
+*
+ * @param graph graph object
+ * @param order array of indexes of the tasks in that graph
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
 extern int iris_graph_tasks_order(iris_graph brs_graph, int *order);
+
+/**@brief Creates json for a graph
+ *
+ * @param json file path to json file
+ * @param params parameters
+ * @param graph a pointer to the graph data structure that has the generated graph
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
 extern int iris_graph_create_json(const char* json, void** params, iris_graph* graph);
+
+/**@brief Adds a task to a graph
+ *
+ * @param graph graph object
+ * @param task task object to be added
+ * @param device policy/device id
+ * @param opt optional parameter for custom policy
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
 extern int iris_graph_task(iris_graph graph, iris_task task, int device, const char* opt);
+
+/**@brief Retain a graph object for the next submission
+ *
+ * @param graph graph object
+ * @param flag 0: not retain, 1:retain
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
 extern int iris_graph_retain(iris_graph graph, bool flag);
+
+/**@brief Releases a graph object
+ *
+ * @param graph graph object
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
 extern int iris_graph_release(iris_graph graph);
+
+/**@brief submits a graph object for execution
+ *
+ * @param graph graph object
+ * @param device policy/device id
+ * @param sync 0: non-blocking, 1: blocking
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
 extern int iris_graph_submit(iris_graph graph, int device, int sync);
+
+/**@brief submits a graph with order defined
+ *
+ * @param graph graph object
+ * @param order array of task index specifying the order
+ * @param device policy/device id
+ * @param sync 0: non-blocking, 1: blocking
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
 extern int iris_graph_submit_with_order(iris_graph graph, int *order, int device, int sync);
+
+/**@brief submits a graph with order defined and it returns the time
+ *
+ * @param graph graph object
+ * @param order array of task index specifying the order
+ * @param time  Time pointer, in which the graph execution time is returned
+ * @param device policy/device id
+ * @param sync 0: non-blocking, 1: blocking
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
 extern int iris_graph_submit_with_order_and_time(iris_graph graph, int *order, double *time, int device, int sync);
 
 /**@brief Submit the IRIS graph and returns the time along with state 
