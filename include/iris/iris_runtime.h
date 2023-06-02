@@ -383,19 +383,6 @@ extern int iris_kernel_setmem(iris_kernel kernel, int idx, iris_mem mem, size_t 
 extern int iris_kernel_setmem_off(iris_kernel kernel, int idx, iris_mem mem, size_t off, size_t mode);
 
 
-//QUESTION
-/**@brief ??? implementation does not esist
- *
- * @param kernel a kernel object
- * @param idx index of the parameter
- * @param mem iris memory object 
- * @param off offset for the memory object
- * @param mode specifying the mode of the memory object iris_r, iris_w, or iris_rw
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
- */
-extern int iris_kernel_setmap(iris_kernel kernel, int idx, void* host, size_t mode);
-
-
 /**@brief Release a kernel
  *
  * @param kernel a kernel object that is to be releases
@@ -412,8 +399,7 @@ extern int iris_kernel_release(iris_kernel kernel);
 extern int iris_task_create(iris_task* task);
 
 
-//QUESTION
-/**@brief Creates a task with permanent life time. Task memory won't be released after execution. It can't be used to submit the task again and again. Application programmer make sure to release the task after successful completion of the task executions. 
+/**@brief Creates a task with permanent life time. Task memory won't be released after execution. It can't be used to submit the task again and again. Application programmer should call task release API after successful completion of the task executions. 
  *
  * @param task the task pointer
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
