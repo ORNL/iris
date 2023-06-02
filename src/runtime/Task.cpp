@@ -41,8 +41,8 @@ Task::Task(Platform* platform, int type, const char* name) {
   ndepends_ = 0;
   given_name_ = name != NULL;
   profile_data_transfers_ = false;
-  name_[0]='\0';
-  if (name) strcpy(name_, name);
+  name_="";
+  if (name) {name_ = const_cast<char*>(std::string(name).c_str());}
   status_ = IRIS_NONE;
 
   pthread_mutex_init(&mutex_pending_, NULL);
@@ -77,10 +77,8 @@ double Task::TimeInc(double t) {
 }
 
 void Task::set_name(const char* name) {
-  if (name) {
-    strcpy(name_, name);
-    given_name_ = true;
-  }
+  name_ = name;
+  given_name_ = true;
 }
 
 void Task::set_parent(Task* task) {
@@ -140,7 +138,7 @@ void Task::AddCommand(Command* cmd) {
   if (cmd->type() == IRIS_CMD_KERNEL) {
     if (cmd_kernel_) _error("kernel[%s] is already set", cmd->kernel()->name());
     if (!given_name_) {
-      strcpy(name_, cmd->kernel()->name());
+      name_ = cmd->kernel()->name();
       given_name_ = true;
     }
     cmd_kernel_ = cmd;
@@ -238,7 +236,7 @@ void Task::Complete() {
       for (int i = 0; i < ndepends_; i++)
           if (platform_->task_track().IsObjectExists(depends_uids_[i])) {
              Task *dep = platform_->get_task_object(depends_uids_[i]);
-             if(dep != NULL && dep->user()) dep->Release();
+             //if(dep != NULL && dep->user()) dep->Release();
           }
       if (is_user_task) Release();
   }

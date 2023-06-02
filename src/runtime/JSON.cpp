@@ -122,30 +122,38 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
       }
     }
     //target
-    if(!iris_tasks_[i].HasMember("target") or !iris_tasks_[i]["target"].IsString()){
+    if(!iris_tasks_[i].HasMember("target")){
       _error("malformed task target in file[%s]", path);
       platform_->IncrementErrorCount();
       return IRIS_ERROR;
     }
     int target = iris_default;
-    const char* target_str = iris_tasks_[i]["target"].GetString();
-    void* p_target = GetParameterInput(params,target_str);
-    if (p_target) target = (*(int*) p_target);
-    //device only policies
-    else if(strcmp(target_str, "cpu") == 0) target = iris_cpu;
-    else if(strcmp(target_str, "gpu") == 0) target = iris_gpu;
-    //iris policies
-    else if(strcmp(target_str, "all") == 0) target = iris_all;
-    else if(strcmp(target_str, "any") == 0) target = iris_any;
-    else if(strcmp(target_str, "data") == 0) target = iris_data;
-    else if(strcmp(target_str, "default")== 0) target = iris_default;
-    else if(strcmp(target_str, "depend") == 0) target = iris_depend;
-    else if(strcmp(target_str, "profile") == 0) target = iris_profile;
-    else if(strcmp(target_str, "random") == 0) target = iris_random;
-    else if(strcmp(target_str, "roundrobin") == 0) target = iris_roundrobin;
-    //the policy can also just be the actual device id!
-    else if(isdigit(target_str[0])){
-      target = atoi(target_str);
+    if(iris_tasks_[i]["target"].IsString()){
+      const char* target_str = iris_tasks_[i]["target"].GetString();
+      void* p_target = GetParameterInput(params,target_str);
+      if (p_target) target = (*(int*) p_target);
+      //device only policies
+      else if(strcmp(target_str, "cpu") == 0) target = iris_cpu;
+      else if(strcmp(target_str, "gpu") == 0) target = iris_gpu;
+      //iris policies
+      else if(strcmp(target_str, "all") == 0) target = iris_all;
+      else if(strcmp(target_str, "any") == 0) target = iris_any;
+      else if(strcmp(target_str, "data") == 0) target = iris_data;
+      else if(strcmp(target_str, "default")== 0) target = iris_default;
+      else if(strcmp(target_str, "depend") == 0) target = iris_depend;
+      else if(strcmp(target_str, "profile") == 0) target = iris_profile;
+      else if(strcmp(target_str, "random") == 0) target = iris_random;
+      else if(strcmp(target_str, "roundrobin") == 0) target = iris_roundrobin;
+      //the policy can also just be the actual device id!
+      else if(isdigit(target_str[0])){
+        target = atoi(target_str);
+      }
+    } else if (iris_tasks_[i]["target"].IsInt()) {
+      target = iris_tasks_[i]["target"].GetInt();
+    } else {
+      _error("malformed task target (not a string or int) in file[%s]", path);
+      platform_->IncrementErrorCount();
+      return IRIS_ERROR;
     }
     task->set_brs_policy(target);
     //commands (populate each task with assigned commands)
@@ -485,6 +493,14 @@ void* JSON::GetParameterInput(void** params, const char* buf){
 }
 
 int JSON::RecordFlush() {
+
+  for(vector<Task*>::iterator task = tracked_tasks_.begin(); task != tracked_tasks_.end(); task++){
+    ProcessTask(*task);
+    (*task)->Release();
+  }
+  while (!tracked_tasks_.empty())
+    tracked_tasks_.pop_back();
+
   rapidjson::Value json_d(rapidjson::kObjectType);
   rapidjson::Value iris_graph(rapidjson::kObjectType);
   //inputs
@@ -549,18 +565,14 @@ int JSON::UniqueUIDFromDevicePointer(Mem* dev_ptr){
 
 int JSON::RecordTask(Task* task) {
   if(task->ncmds() == 0) return IRIS_SUCCESS;//skip recording IRIS_MARKER tasks
+  task->Retain();
+  tracked_tasks_.push_back(task);
+}
+
+int JSON::ProcessTask(Task* task){
   rapidjson::Value _task(rapidjson::kObjectType);
   //name
-  //rapidjson::Value _name(rapidjson::StringRef(task->name()));
-  std::string nbuffer = std::string(task->name());
-  rapidjson::Value _name;
-  _name.SetString(nbuffer.c_str(),nbuffer.size(),iris_output_document_.GetAllocator());
-  if(_name == ""){
-    char buffer[64];
-    int len = sprintf(buffer, "task-%lu", task->uid()); // dynamically created string.
-    _name.SetString(buffer, len, iris_output_document_.GetAllocator());
-  }
-  _task.AddMember("name",_name,iris_output_document_.GetAllocator());
+  _task.AddMember("name",rapidjson::StringRef(task->name()),iris_output_document_.GetAllocator());
   if (task->ncmds() == 0) {
     //it's and empty (likely checkpointing) task, so don't record it.
     //just discard empty tasks (tasks without any commands)
@@ -604,13 +616,8 @@ int JSON::RecordTask(Task* task) {
       printf("recorded d2h\n");    }
     else if (cmd->type() == IRIS_CMD_KERNEL) {
       rapidjson::Value kernel_(rapidjson::kObjectType);
-      //kernel name (TODO: implement the long term solution issue #24)[https://code.ornl.gov/brisbane/iris/-/issues/24]
-      std::string buffer = std::string(cmd->name());
-      rapidjson::Value name_;
-      name_.SetString(buffer.c_str(),buffer.size(),iris_output_document_.GetAllocator());
-      kernel_.AddMember("name",name_,iris_output_document_.GetAllocator());
-      //raise(SIGINT);
-      //kernel_.AddMember("name",rapidjson::StringRef(cmd->name()),iris_output_document_.GetAllocator());
+      //name
+      kernel_.AddMember("name",rapidjson::StringRef(cmd->name()),iris_output_document_.GetAllocator());
       //global_size
       rapidjson::Value gs_(rapidjson::kArrayType);
       for(int i = 0; i < cmd->dim(); i ++)
@@ -662,7 +669,8 @@ int JSON::RecordTask(Task* task) {
   //target
   rapidjson::Value _target;
   if (task->dev()) {
-    _target.SetString(rapidjson::StringRef(std::to_string(task->devno()).c_str()),iris_output_document_.GetAllocator());
+    _target.SetInt(task->devno());
+    //_target.SetString(rapidjson::StringRef(std::to_string(task->devno()).c_str()),iris_output_document_.GetAllocator());
   }
   else {
     const char* tmp = task->brs_policy_string();

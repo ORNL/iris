@@ -948,7 +948,8 @@ int Platform::TaskKernel(iris_task brs_task, const char* name, int dim, size_t* 
   assert(task != NULL);
   Kernel* kernel = GetKernel(name);
   //_trace("Adding kernel:%s:%p to task:%s\n", name, kernel, task->name());
-  kernel->set_task_name(task->name());
+  kernel->set_task_name(name);
+  task->set_name(name);
   Command* cmd = Command::CreateKernel(task, kernel, dim, off, gws, lws, nparams, params, params_off, params_info, memranges);
   task->AddCommand(cmd);
   return IRIS_SUCCESS;
@@ -1169,9 +1170,9 @@ int Platform::NumErrors(){
 int Platform::TaskSubmit(iris_task brs_task, int brs_policy, const char* opt, int sync) {
   Task *task = get_task_object(brs_task);
   assert(task != NULL);
+  if (recording_) json_->RecordTask(task);
   task->Submit(brs_policy, opt, sync);
   _trace(" successfully submitted task:%lu:%s", task->uid(), task->name());
-  if (recording_) json_->RecordTask(task);
   if (scheduler_) {
     FilterSubmitExecute(task);
     scheduler_->Enqueue(task);

@@ -256,7 +256,7 @@ int iris_task_disable_consistency(iris_task brs_task) {
 
 char *iris_task_get_name(iris_task brs_task) {
     Task *task = Platform::GetPlatform()->get_task_object(brs_task);
-    return task->name();
+    return const_cast<char*>(task->name());
 }
 
 int iris_task_get_dependency_count(iris_task brs_task) {

@@ -37,6 +37,7 @@ Worker::~Worker() {
 void Worker::TaskComplete(Task* task) {
   //_trace("now invoke scheduler after task:%lu:%s qsize:%lu", task->uid(), task->name(), queue_->Size());
   if (scheduler_) scheduler_->Invoke();
+  task->set_devno(dev_->devno());
   //_trace("now invoke worker after task:%lu:%s qsize:%lu", task->uid(), task->name(), queue_->Size());
   Invoke();
 }

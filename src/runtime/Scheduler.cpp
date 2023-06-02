@@ -57,6 +57,7 @@ void Scheduler::CompleteTask(Task* task, Worker* worker) {
   //task->set_time_end(timer_->Now());
   Device* dev = worker->device();
   int devno = dev->devno();
+  task->set_devno(dev->devno());
   if (hub_available_) hub_client_->TaskDec(devno, 1);
   //if (enable_profiler_ & !task->system()) {
     //pthread_mutex_lock(&mutex_);

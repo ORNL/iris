@@ -49,8 +49,9 @@ public:
   double TimeInc(double t);
 
   int type() { return type_; }
-  char* name() { return name_; }
+  const char* name() { return name_; }
   void set_name(const char* name);
+  bool given_name(){return given_name_;}
   bool user() { return user_; }
   void set_user(bool flag=true) { user_ = flag; }
   bool disable_consistency() { return disable_consistency_; }
@@ -115,7 +116,7 @@ private:
   void CompleteSub();
 
 private:
-  char name_[128];
+  const char* name_;
   bool given_name_;
   unsigned long parent_;
   bool parent_exist_;
