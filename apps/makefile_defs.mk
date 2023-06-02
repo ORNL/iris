@@ -1,4 +1,4 @@
-IRIS_INSTALL_ROOT ?= $(HOME)/.local
+IRIS_INSTALL_ROOT ?= $(HOME)/.iris
 IRIS=$(IRIS_INSTALL_ROOT)
 
 CC ?= gcc

@@ -855,7 +855,13 @@ extern int iris_graph_submit_with_order_and_time(iris_graph graph, int *order, d
   */
 extern int iris_graph_submit_with_time(iris_graph graph, double *time, int device, int sync);
 
+/**@brief Wait for the completion of IRIS graph
+  * 
+  * @param graphs iris_graph (IRIS Graph) object 
+  * @return This functions return an error value. IRIS_SUCCESS, IRIS_ERROR
+  */
 extern int iris_graph_wait(iris_graph graph);
+
 /**@brief Wait for the completion of all array of IRIS graphs
   *
   * @param ngraphs Number of graphs

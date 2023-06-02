@@ -9,8 +9,18 @@ IRIS uses `CMake (>= 2.8) <https://cmake.org>`_ for building, testing, and insta
   $ cd iris
   $ mkdir build
   $ cd build
-  $ cmake .. -DCMAKE_INSTALL_PREFIX=<install_path> # $HOME/.local is good for install_path.
+  $ cmake .. -DCMAKE_INSTALL_PREFIX=<install_path> # $HOME/.iris is good for the install_path.
   $ make -j
-  $ ctest # Running tests is optional.
   $ make install
+
+To run the tests
+
+.. code-block:: bash
+   
+  $ cd ../tests
+  $ mkdir build
+  $ cd build
+  $ cmake ..
+  $ make -j
+  $ make test
 
