@@ -540,7 +540,7 @@ extern int iris_task_h2d(iris_task task, iris_mem mem, size_t off, size_t size, 
  * @param elem_size size of each element
  * @param dim dimension of the memory object
  * @param host source host address
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_task_h2d_offsets(iris_task task, iris_mem mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, void* host);
 
@@ -566,7 +566,7 @@ extern int iris_task_d2h(iris_task task, iris_mem mem, size_t off, size_t size, 
  * @param elem_size size of each element
  * @param dim dimension of the memory object
  * @param host source host address
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_task_d2h_offsets(iris_task task, iris_mem mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, void* host);
 
@@ -613,7 +613,7 @@ extern int iris_task_d2h_full(iris_task task, iris_mem mem, void* host);
  * @param nparams number of kernel parameters
  * @param params kernel parameters
  * @param params_info kernel parameters information
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_task_kernel_object(iris_task task, iris_kernel kernel, int dim, size_t* off, size_t* gws, size_t* lws);
 
@@ -775,7 +775,7 @@ extern int iris_data_mem_clear(iris_mem mem);
  * This function pins a host memory for all the available devices
  *
  * @param mem pointer to the memory object
- * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERR .
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_data_mem_pin(iris_mem mem);
 extern int iris_data_mem_update(iris_mem mem, void *host);
