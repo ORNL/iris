@@ -945,9 +945,11 @@ extern void iris_enable_d2d();
  * This function disables peer to peer transfer
  */
 extern void iris_disable_d2d();
+
+#ifndef DOXYGEN_SHOULD_SKIP_THIS
 extern void iris_disable_consistency_check();
 extern void iris_enable_consistency_check();
-
+#endif
 
 
 /**@brief Returns a kernel name
