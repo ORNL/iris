@@ -9,7 +9,7 @@ iris.init()
 
 SIZE = 8 if len(sys.argv) == 1 else int(sys.argv[1])
 A = 10
-SIZEK=np.int(8)
+SIZEK=np.int32(8)
 
 x = np.arange(SIZE, dtype=np.int32)
 y = np.arange(SIZE, dtype=np.int32)

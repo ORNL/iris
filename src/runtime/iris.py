@@ -259,16 +259,16 @@ IRIS_DMEM = 0x2
 IRIS_DMEM_REGION = 0x4
 
 class iris_kernel(Structure):
-    _fields_ = [("class_obj", c_void_p)]
+    _fields_ = [("class_obj", c_void_p), ("uid", c_ulong)]
 
 class iris_mem(Structure):
-    _fields_ = [("class_obj", c_void_p)]
+    _fields_ = [("class_obj", c_void_p), ("uid", c_ulong)]
 
 class iris_task(Structure):
-    _fields_ = [("class_obj", c_void_p)]
+    _fields_ = [("class_obj", c_void_p), ("uid", c_ulong)]
 
 class iris_graph(Structure):
-    _fields_ = [("class_obj", c_void_p)]
+    _fields_ = [("class_obj", c_void_p), ("uid", c_ulong)]
 
 def init(sync = 1):
     return dll.iris_init(0, None, c_int(sync))
