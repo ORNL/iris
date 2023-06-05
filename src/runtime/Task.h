@@ -49,7 +49,7 @@ public:
   double TimeInc(double t);
 
   int type() { return type_; }
-  const char* name() { return name_; }
+  const char* name() { return name_.c_str(); }
   void set_name(const char* name);
   bool given_name(){return given_name_;}
   bool user() { return user_; }
@@ -116,7 +116,7 @@ private:
   void CompleteSub();
 
 private:
-  const char* name_;
+  std::string name_;
   bool given_name_;
   unsigned long parent_;
   bool parent_exist_;

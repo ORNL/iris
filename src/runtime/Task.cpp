@@ -42,7 +42,7 @@ Task::Task(Platform* platform, int type, const char* name) {
   given_name_ = name != NULL;
   profile_data_transfers_ = false;
   name_="";
-  if (name) {name_ = const_cast<char*>(std::string(name).c_str());}
+  if (name) name_ = std::string(name);
   status_ = IRIS_NONE;
 
   pthread_mutex_init(&mutex_pending_, NULL);
@@ -236,7 +236,7 @@ void Task::Complete() {
       for (int i = 0; i < ndepends_; i++)
           if (platform_->task_track().IsObjectExists(depends_uids_[i])) {
              Task *dep = platform_->get_task_object(depends_uids_[i]);
-             //if(dep != NULL && dep->user()) dep->Release();
+             if(dep != NULL && dep->user()) dep->Release();
           }
       if (is_user_task) Release();
   }
