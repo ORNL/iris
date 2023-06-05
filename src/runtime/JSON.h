@@ -35,8 +35,10 @@ private:
   int UniqueUIDFromDevicePointer(Mem* dev_ptr);
   const std::string NameFromHostPointer(void*host_ptr);
   const std::string NameFromDeviceMem(Mem* dev_mem);
+  int ProcessTask(Task* task);
 
   Platform* platform_;
+  std::vector<Task*> tracked_tasks_;
   std::vector<const char*> inputs_;
   std::vector<Task*> tasks_;
   Timer* timer_;

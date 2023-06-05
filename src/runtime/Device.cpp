@@ -255,7 +255,7 @@ void Device::ExecuteMemResetInput(Task *task, Command* cmd) {
     BaseMem* bmem = (BaseMem *)cmd->mem();
     if (bmem->GetMemHandlerType() != IRIS_DMEM &&
         bmem->GetMemHandlerType() != IRIS_DMEM_REGION) {
-        _error("Reset input is called for unssuported memory handler task:%ld:%s\n", cmd->task()->uid(), cmd->task()->name());
+        _error("Reset input is called for unsupported memory handler task:%ld:%s\n", cmd->task()->uid(), cmd->task()->name());
         return;
     }
     if (bmem->GetMemHandlerType() == IRIS_DMEM) {
