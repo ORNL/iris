@@ -40,6 +40,7 @@ extensions = [
     'sphinx.ext.autodoc'
 ]
 
+subprocess.call('cd ../../../; bash build.sh', shell=True)
 subprocess.call('cd ../../doxygen/; doxygen Doxyfile.in', shell=True)
 
 breathe_projects = {"C": "../../../docs/doxygen/build/xml/",
