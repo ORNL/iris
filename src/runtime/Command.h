@@ -165,12 +165,12 @@ public:
   static Command* CreateHost(Task* task, iris_host_task func, void* params);
   static Command* CreateCustom(Task* task, int tag, void* params, size_t params_size);
   static void Release(Command* cmd);
-
+/*
 #ifdef AUTO_PAR
   static void create_dependency(Command* cmd, Task* task, int param_info, 
 		  BaseMem* mem, Task* task_prev);
 #endif
-
+*/
 
 };
 

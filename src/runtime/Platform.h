@@ -46,6 +46,7 @@ class Task;
 class Timer;
 class Worker;
 class SchedulingHistory;
+class AutoDAG;
 
 class Platform {
 private:
@@ -202,6 +203,8 @@ public:
   shared_ptr<History> CreateHistory(string kname);
 
 #ifdef AUTO_PAR
+  AutoDAG* get_auto_dag(){return auto_dag_;}
+  void set_auto_dag(AutoDAG* auto_dag){auto_dag_ = auto_dag;}
 #ifdef AUTO_FLUSH
   Graph* get_current_graph(){return current_graph_;}
   void set_current_graph(Graph* current_graph){
@@ -285,6 +288,7 @@ private:
   Kernel* null_kernel_;
 
 #ifdef AUTO_PAR
+  AutoDAG* auto_dag_;
 #ifdef AUTO_FLUSH
   Graph* current_graph_;
 #endif

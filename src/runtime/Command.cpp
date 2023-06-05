@@ -6,6 +6,7 @@
 #include "Timer.h"
 #include "Mem.h"
 #include "DataMem.h"
+#include "AutoDAG.h"
 
 namespace iris {
 namespace rt {
@@ -137,7 +138,7 @@ Command* Command::CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off,
   }
   return cmd;
 }
-
+/*
 #ifdef AUTO_PAR
 void Command::create_dependency(Command* cmd, Task* task, 
 		int param_info, 
@@ -228,6 +229,8 @@ void Command::create_dependency(Command* cmd, Task* task,
 }
 #endif
 
+*/
+
 Command* Command::CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, size_t* params_off, int* params_info, size_t* memranges) {
   Command* cmd = Create(task, IRIS_CMD_KERNEL);
   cmd->kernel_ = kernel;
@@ -265,7 +268,8 @@ Command* Command::CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off,
     BaseMem* mem = cmd->platform_->GetMem((iris_mem) param);
 
 #ifdef AUTO_PAR
-    create_dependency(cmd, task, param_info, mem, task_prev);
+    cmd->platform_->get_auto_dag()->create_dependency(cmd, task, param_info, mem, task_prev);
+    //create_dependency(cmd, task, param_info, mem, task_prev);
 #endif
 /*
 #ifdef AUTO_PAR

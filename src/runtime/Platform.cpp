@@ -39,6 +39,9 @@
 #include "Task.h"
 #include "Timer.h"
 #include "Worker.h"
+#ifdef AUTO_PAR
+#include "AutoDAG.h"
+#endif
 #include <unistd.h>
 #include <algorithm>
 #include <fstream>
@@ -91,12 +94,11 @@ Platform::Platform() {
   scheduling_history_ = NULL;
   pthread_mutex_init(&mutex_, NULL);
 #ifdef AUTO_PAR
+  auto_dag_ = NULL;
 #ifdef AUTO_FLUSH
   current_graph_ = NULL;
 #endif
 #endif
- 
-
 }
 
 Platform::~Platform() {
@@ -113,6 +115,9 @@ Platform::~Platform() {
       sprintf(cmd, "rm -rf %s", tmp_dir_);
       system(cmd);
   }
+#ifdef AUTO_PAR
+  delete auto_dag_;
+#endif
   /*
   for (std::set<Mem*>::iterator I = mems_.begin(), E = mems_.end(); I != E; ++I) {
       Mem *mem = *I;
@@ -160,6 +165,10 @@ int Platform::Init(int* argc, char*** argv, int sync) {
   sig_handler_ = new SigHandler();
 
   json_ = new JSON(this);
+
+#ifdef AUTO_PAR
+  auto_dag_ = new AutoDAG(this);
+#endif
 
   EnvironmentInit();
 
