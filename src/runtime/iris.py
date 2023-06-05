@@ -801,17 +801,17 @@ class task:
                     cparams[i] = ctypes.addressof(pobj[0].handle)
                     params_info.append(pobj[1])
                     if len(pobj) == 3 and pobj[2] == iris_flush:
-                        flush_objs.append(cparams[i])
+                        flush_objs.append(pobj[0].handle)
                 else:
                     # (NUMPY Object, modes of use, <optional flush>)
                     # Should be numpy array
                     host = pobj[0]
                     dobj = dmem(host)
                     self.params.append(dobj)
-                    cparams[i] = dobj.handle.uid
+                    cparams[i] = ctypes.addressof(dobj.handle)
                     params_info.append(pobj[1])
                     if len(pobj) == 3 and pobj[2] == iris_flush:
-                        flush_objs.append(cparams[i])
+                        flush_objs.append(dobj.handle)
             elif pobj == None:
                 p = c_void_p(0)
                 self.params.append(p)
