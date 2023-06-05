@@ -1182,9 +1182,9 @@ int Platform::TaskSubmit(iris_task brs_task, int brs_policy, const char* opt, in
 }
 
 int Platform::TaskSubmit(Task *task, int brs_policy, const char* opt, int sync) {
-  _trace(" successfully submitted task:%lu:%s", task->uid(), task->name());
   if (recording_) json_->RecordTask(task);
   task->Submit(brs_policy, opt, sync);
+  _trace(" successfully submitted task:%lu:%s", task->uid(), task->name());
   if (scheduler_) {
     FilterSubmitExecute(task);
     scheduler_->Enqueue(task);
