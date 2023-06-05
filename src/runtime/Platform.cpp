@@ -948,8 +948,8 @@ int Platform::TaskKernel(iris_task brs_task, const char* name, int dim, size_t* 
   assert(task != NULL);
   Kernel* kernel = GetKernel(name);
   //_trace("Adding kernel:%s:%p to task:%s\n", name, kernel, task->name());
-  kernel->set_task_name(name);
   if (!task->given_name()) task->set_name(name);
+  kernel->set_task_name(task->name());
   Command* cmd = Command::CreateKernel(task, kernel, dim, off, gws, lws, nparams, params, params_off, params_info, memranges);
   task->AddCommand(cmd);
   return IRIS_SUCCESS;
