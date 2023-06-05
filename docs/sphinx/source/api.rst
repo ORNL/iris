@@ -5,7 +5,7 @@ C API
 
 .. doxygenfile:: iris_runtime.h
   :project: C
-  :path: ../../../include/iris/iris.h
+  :path: ../../../include/iris/iris_runtime.h
 
 .. _cpp-api:
 
