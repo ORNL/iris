@@ -33,9 +33,3 @@ Python API
 .. automodule:: iris
       :members:
 
-Python API Test 2
-====================
-
-.. doxygenfile:: iris.py
-  :project: Py
-  :path: ../../../src/runtime/iris.py
