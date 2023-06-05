@@ -4,12 +4,12 @@ import sys
 import numpy as np
 import pdb
 import os
-import struct 
+import struct
 
 class CommData3D(Structure):
     _fields_ = [
         ("from_id", c_uint),
-        ("to_id", c_uint), 
+        ("to_id", c_uint),
         ("mem_id", c_uint),
         ("size", c_size_t)
     ]
@@ -59,17 +59,17 @@ class library(CDLL):
         return U
 
     def call_ret_ptr(self, fn_name, *args):
-        conv_args = [] 
+        conv_args = []
         for each_arg in args:
             conv_args.append(convert_obj_ctype(each_arg)[0])
         if type(fn_name) == str:
             fn_name = self.__getitem__(fn_name)
         fn_name.restype = POINTER(c_void_p)
         r = fn_name(*conv_args)
-        return r 
+        return r
 
     def call_ret(self, fn_name, restype, *args):
-        conv_args = [] 
+        conv_args = []
         for each_arg in args:
             conv_args.append(convert_obj_ctype(each_arg)[0])
         if type(fn_name) == str:
@@ -78,7 +78,7 @@ class library(CDLL):
         return fn_name(*conv_args)
 
     def call(self, fn_name, *args):
-        conv_args = [] 
+        conv_args = []
         for each_arg in args:
             conv_args.append(convert_obj_ctype(each_arg)[0])
         if type(fn_name) == str:
@@ -87,7 +87,13 @@ class library(CDLL):
 
 class IRIS(library):
     def __init__(self):
-        super(IRIS, self).__init__("libiris.so")
+        # Do not error on import when Iris is not built. This is needed for Read the Docs to create the API documentation.
+        try:
+            super(IRIS, self).__init__("libiris.so")
+        except OSError as e:
+            print(e)
+            print('libiris.so not found. Please install IRIS library.', file=sys.stderr)
+
     def get_numpy_size(self, size):
         if type(size) != np.ndarray:
             size = np.array(size)
@@ -98,28 +104,28 @@ class IRIS(library):
         c_ptr = dll.call_ret_ptr(dll.iris_allocate_random_array_size_t, np.int32(total_size), init)
         np_data = dll.convert_c_pointer_to_numpy(c_ptr, size, ctypes.c_size_t)
         return np_data, c_ptr
-        
+
     def alloc_random_float(self, size, init=np.float32(0.0)):
         size = self.get_numpy_size(size)
         total_size = size.prod()
         c_ptr = dll.call_ret_ptr(dll.iris_allocate_random_array_float, np.int32(total_size), init)
         np_data = dll.convert_c_pointer_to_numpy(c_ptr, size, ctypes.c_float)
         return np_data, c_ptr
-        
+
     def alloc_random_double(self, size, init=np.float64(0.0)):
         size = self.get_numpy_size(size)
         total_size = size.prod()
         c_ptr = dll.call_ret_ptr(dll.iris_allocate_random_array_double, np.int32(total_size), init)
         np_data = dll.convert_c_pointer_to_numpy(c_ptr, size, ctypes.c_double)
         return np_data, c_ptr
-        
+
     def alloc_random_int64(self, size, init=np.int64(0)):
         size = self.get_numpy_size(size)
         total_size = size.prod()
         c_ptr = dll.call_ret_ptr(dll.iris_allocate_random_array_int64_t, np.int32(total_size), init)
         np_data = dll.convert_c_pointer_to_numpy(c_ptr, size, ctypes.c_int64)
         return np_data, c_ptr
-        
+
     def alloc_random_int32(self, size, init=np.int32(0)):
         size = self.get_numpy_size(size)
         total_size = size.prod()
@@ -140,42 +146,42 @@ class IRIS(library):
         c_ptr = dll.call_ret_ptr(dll.iris_allocate_random_array_int8_t, np.int32(total_size), init)
         np_data = dll.convert_c_pointer_to_numpy(c_ptr, size, ctypes.c_byte)
         return np_data, c_ptr
-        
+
     def alloc_size_t(self, size, init=np.int64(0)):
         size = self.get_numpy_size(size)
         total_size = size.prod()
         c_ptr = dll.call_ret_ptr(dll.iris_allocate_array_size_t, np.int32(total_size), init)
         np_data = dll.convert_c_pointer_to_numpy(c_ptr, size, ctypes.c_size_t)
         return np_data, c_ptr
-        
+
     def alloc_float(self, size, init=np.float32(0.0)):
         size = self.get_numpy_size(size)
         total_size = size.prod()
         c_ptr = dll.call_ret_ptr(dll.iris_allocate_array_float, np.int32(total_size), init)
         np_data = dll.convert_c_pointer_to_numpy(c_ptr, size, ctypes.c_float)
         return np_data, c_ptr
-        
+
     def alloc_double(self, size, init=np.float64(0.0)):
         size = self.get_numpy_size(size)
         total_size = size.prod()
         c_ptr = dll.call_ret_ptr(dll.iris_allocate_array_double, np.int32(total_size), init)
         np_data = dll.convert_c_pointer_to_numpy(c_ptr, size, ctypes.c_double)
         return np_data, c_ptr
-        
+
     def alloc_int64(self, size, init=np.int64(0)):
         size = self.get_numpy_size(size)
         total_size = size.prod()
         c_ptr = dll.call_ret_ptr(dll.iris_allocate_array_int64_t, np.int32(total_size), init)
         np_data = dll.convert_c_pointer_to_numpy(c_ptr, size, ctypes.c_int64)
         return np_data, c_ptr
-        
+
     def alloc_int32(self, size, init=np.int32(0)):
         size = self.get_numpy_size(size)
         total_size = size.prod()
         c_ptr = dll.call_ret_ptr(dll.iris_allocate_array_int32_t, np.int32(total_size), init)
         np_data = dll.convert_c_pointer_to_numpy(c_ptr, size, ctypes.c_int32)
         return np_data, c_ptr
-        
+
     def alloc_int16(self, size, init=np.int16(0)):
         size = self.get_numpy_size(size)
         total_size = size.prod()
@@ -192,7 +198,7 @@ class IRIS(library):
 
     def free(self, c_ptr):
         dll.call(dll.iris_free_array, c_ptr)
-        
+
 dll = IRIS()
 
 def call(fn_name, *args):
@@ -318,9 +324,9 @@ def calibrate_communication_cost_matrix(data_size, iterations=1, pin_memory=True
     data_np = np.zeros(ndevs*ndevs).astype(np.double)
     data_np_cp = convert_obj_ctype(data_np)[0]
     iterations = np.int32(iterations)
-    dll.iris_calibrate_communication_cost(data_np_cp, 
-            convert_obj_ctype(size_t(data_size))[0], 
-            convert_obj_ctype(iterations)[0], 
+    dll.iris_calibrate_communication_cost(data_np_cp,
+            convert_obj_ctype(size_t(data_size))[0],
+            convert_obj_ctype(iterations)[0],
             convert_obj_ctype(np.int32(pin_memory))[0])
     np.seterr(divide='ignore')
     out_data_np = data_size / data_np.reshape((ndevs, ndevs))
@@ -437,7 +443,7 @@ def task_kernel(task, kernel, dim, off, gws, lws, params, params_info, hold_para
             p = byref(c_double(params[i]))
             cparams[i] = cast(p, c_void_p)
             hold_params.append(p)
-        else: 
+        else:
             print("error")
 
     cparams_info = (c_int * nparams)(*params_info)
@@ -677,7 +683,7 @@ def convert_obj_ctype(pobj):
         c_host = pobj
         c_size = sizeof(pobj)
         return c_host, c_size
-     
+
 class kernel_arg:
     def __init__(self, is_mem, size, value, mem_obj, mem_off, mem_size, off, mode):
         self.is_mem = is_mem
@@ -720,7 +726,7 @@ class kernel_arg:
     def is_output(self):
         return self.is_mode_w() or self.is_mode_rw()
     def param_value(self, pack_type='f'):
-        [ value ] = struct.unpack(pack_type, bytes(self.value.contents)) 
+        [ value ] = struct.unpack(pack_type, bytes(self.value.contents))
         return value
     def display(self):
         print(self.is_mem, self.size, self.value, self.mem, self.mem_off, self.mem_size, self.off, self.mode)
@@ -764,7 +770,7 @@ class task:
             self.params = []
             self.handle = task_create()
             task_handle_2_pobj[self.handle.class_obj] = self
-            return 
+            return
         (kernel, dim, off, gws, lws, params_list) = args
         coff = (c_size_t * dim)(*off)
         cgws = (c_size_t * dim)(*gws)
@@ -811,7 +817,7 @@ class task:
                 self.params.append(p)
                 cparams[i] = cast(p, c_void_p)
                 params_info.append(sizeof(cobj))
-            else: 
+            else:
                 print("error")
         cparams_info = (c_int * nparams)(*params_info)
         kernel_name = c_char_p(kernel) if sys.version_info[0] == 2 else c_char_p(bytes(kernel, 'ascii'))
@@ -894,7 +900,7 @@ class task:
         dll.iris_task_get_dependencies(self.handle, tasks)
         ptasks = convert_ctasks(tasks)
         return ntasks, ptasks
-        
+
     def depends(self, tasks_list):
         if type(tasks_list) != list:
             tasks_list = [ tasks_list ]
@@ -1152,7 +1158,7 @@ class graph:
         time_data = np.zeros(n_mems*ndevs*ndevs, np.double)
         mem_ids = np.zeros(n_mems, np.int32)
         dll.call(dll.iris_get_graph_3d_comm_time, self.handle, time_data, mem_ids, np.int32(iterations), np.int32(pin_memory))
-        return time_data.reshape((n_mems, ndevs, ndevs)), mem_ids 
+        return time_data.reshape((n_mems, ndevs, ndevs)), mem_ids
 
     def get_3d_cost_comm_data(self):
         print("Extracting communication data 3d list of (task from id, task to id, mem_id, size)")
