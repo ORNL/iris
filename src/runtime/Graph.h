@@ -7,7 +7,6 @@
 #include <pthread.h>
 #include <vector>
 #include <memory>
-
 using namespace std;
 namespace iris {
 namespace rt {
@@ -15,6 +14,15 @@ class BaseMem;
 class GraphMetadata;
 class TaskProfile;
 class DataObjectProfile;
+
+#ifdef AUTO_PAR
+#ifdef AUTO_FLUSH
+class AutoDAG;
+#endif
+#endif
+
+
+
 class Graph: public Retainable<struct _iris_graph, Graph> {
 public:
   Graph(Platform* platform);

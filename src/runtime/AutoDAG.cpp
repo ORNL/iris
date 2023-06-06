@@ -10,6 +10,9 @@ namespace rt {
 
 AutoDAG::AutoDAG(Platform* platform){ 
     platform_ = platform;
+#ifdef AUTO_FLUSH
+  current_graph_ = NULL;
+#endif
 }
 
 //AutoDAG::platform_ = NULL;
@@ -72,7 +75,7 @@ void AutoDAG::create_auto_flush(Command* cmd, Task* task,
     	//sprintf(tn, "%s-flush-out", mem->get_flush_task();
 	//cmd->platform_->TaskCreate(tn, false, mem->get_flush_task())
 	Task* task_flush = mem->get_flush_task();
-	Graph* graph_flush = platform_->get_current_graph();
+	Graph* graph_flush = current_graph_;
 	//Graph* graph_flush = cmd->platform_->get_current_graph();
 	//printf("-------Flush task Name: %s----------\n", task_flush->name());
     	//char tn[256];

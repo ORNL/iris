@@ -95,9 +95,6 @@ Platform::Platform() {
   pthread_mutex_init(&mutex_, NULL);
 #ifdef AUTO_PAR
   auto_dag_ = NULL;
-#ifdef AUTO_FLUSH
-  current_graph_ = NULL;
-#endif
 #endif
 }
 

@@ -17,6 +17,12 @@
 #include <typeinfo>
 #include <bits/stdc++.h>
 
+#ifdef AUTO_PAR
+#ifdef AUTO_FLUSH
+#include "AutoDAG.h"
+#endif
+#endif
+ 
 #define GET2D_INDEX(NCOL, I, J)  ((I)*(NCOL)+(J))
 #define PRUNE_EDGES //Prunes end node incoming edges
 using namespace std;
@@ -38,7 +44,7 @@ Graph::Graph(Platform* platform) {
 
 #ifdef AUTO_PAR
 #ifdef AUTO_FLUSH
-  platform_->set_current_graph(this);
+  platform_->get_auto_dag()->set_current_graph(this);
 #endif
 #endif
   

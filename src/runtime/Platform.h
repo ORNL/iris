@@ -205,11 +205,6 @@ public:
 #ifdef AUTO_PAR
   AutoDAG* get_auto_dag(){return auto_dag_;}
   void set_auto_dag(AutoDAG* auto_dag){auto_dag_ = auto_dag;}
-#ifdef AUTO_FLUSH
-  Graph* get_current_graph(){return current_graph_;}
-  void set_current_graph(Graph* current_graph){
-	  current_graph_ = current_graph;}
-#endif
 #endif
 
 private:
@@ -289,9 +284,6 @@ private:
 
 #ifdef AUTO_PAR
   AutoDAG* auto_dag_;
-#ifdef AUTO_FLUSH
-  Graph* current_graph_;
-#endif
 #endif
   pthread_mutex_t mutex_;
   hook_task hook_task_pre_;

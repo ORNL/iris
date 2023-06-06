@@ -22,11 +22,17 @@ public:
   void create_auto_flush(Command* cmd, Task* task, 
 		  int param_info, 
 		  BaseMem* mem, Task* task_prev);
+  Graph* get_current_graph(){return current_graph_;}
+  void set_current_graph(Graph* current_graph){
+	  current_graph_ = current_graph;}
 #endif
 
 private:
   Platform* platform_;
   char tn[256];
+#ifdef AUTO_FLUSH
+  Graph* current_graph_;
+#endif
 };
 
 } /* namespace rt */
