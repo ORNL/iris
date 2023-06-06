@@ -29,7 +29,10 @@ void AutoDAG::create_dependency(Command* cmd, Task* task,
             	    task->AddDepend(mem->get_current_writing_task());	
 	    }
     	} else if (  mem->get_read_task_list()->size() != 0 ){
-  	    std::vector<Task*>* read_list =  mem->get_read_task_list();
+#ifndef AUTO_SHADOW
+	    create_multi_read_dependency(task, mem);
+  	    /*std::vector<Task*>* read_list =  
+		    mem->get_read_task_list();
 	    Task* read_task;
             for( int i = 0 ; i < read_list->size(); i++){
             //for( auto & read_task : read_list){
@@ -38,7 +41,10 @@ void AutoDAG::create_dependency(Command* cmd, Task* task,
 	    	if (read_task != task) {
                 	task->AddDepend(read_task);	
 	    	}
-	    }
+	    }*/ // Delete later Monil
+#else
+
+#endif 
         }
  
 	//printf("Seting current task info %d\n", param_info);
@@ -66,6 +72,22 @@ void AutoDAG::create_dependency(Command* cmd, Task* task,
     }
 
 }
+
+void AutoDAG::create_multi_read_dependency(Task* task, 
+		BaseMem* mem) {
+    std::vector<Task*>* read_list =  
+	    mem->get_read_task_list();
+    Task* read_task;
+    for( int i = 0 ; i < read_list->size(); i++){
+        //for( auto & read_task : read_list){
+        //for( auto & read_task : mem->get_read_task_list()){
+        read_task = read_list->at(i);
+        if (read_task != task) {
+            task->AddDepend(read_task);	
+	}
+    }
+}
+
 
 #ifdef AUTO_FLUSH
 void AutoDAG::create_auto_flush(Command* cmd, Task* task, 

@@ -18,6 +18,10 @@ public:
 		  int param_info, 
 		  BaseMem* mem, Task* task_prev);
 
+  void create_multi_read_dependency(Task* task, 
+		  BaseMem* mem);
+
+
 #ifdef AUTO_FLUSH
   void create_auto_flush(Command* cmd, Task* task, 
 		  int param_info, 
@@ -26,6 +30,11 @@ public:
   void set_current_graph(Graph* current_graph){
 	  current_graph_ = current_graph;}
 #endif
+#ifdef AUTO_SHADOW
+  void create_auto_shadow(Command* cmd, Task* task, 
+		  int param_info, 
+		  BaseMem* mem, Task* task_prev);
+#endif
 
 private:
   Platform* platform_;
@@ -33,6 +42,11 @@ private:
 #ifdef AUTO_FLUSH
   Graph* current_graph_;
 #endif
+#ifdef AUTO_SHADOW
+   Map<Dmem>  current_graph_;
+#endif
+
+
 };
 
 } /* namespace rt */
