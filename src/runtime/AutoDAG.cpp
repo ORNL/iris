@@ -19,8 +19,8 @@ AutoDAG::AutoDAG(Platform* platform){
 
 void AutoDAG::create_dependency(Command* cmd, Task* task, 
 		int param_info, 
-		BaseMem* mem, Task* task_prev) {
-
+		BaseMem* mem) {
+    Task* task_prev = NULL;
     if (param_info == iris_w || param_info == iris_rw) {
 
     	if(mem->get_current_writing_task() != NULL 
@@ -31,18 +31,8 @@ void AutoDAG::create_dependency(Command* cmd, Task* task,
     	} else if (  mem->get_read_task_list()->size() != 0 ){
 #ifndef AUTO_SHADOW
 	    create_multi_read_dependency(task, mem);
-  	    /*std::vector<Task*>* read_list =  
-		    mem->get_read_task_list();
-	    Task* read_task;
-            for( int i = 0 ; i < read_list->size(); i++){
-            //for( auto & read_task : read_list){
-            //for( auto & read_task : mem->get_read_task_list()){
-	        read_task = read_list->at(i);
-	    	if (read_task != task) {
-                	task->AddDepend(read_task);	
-	    	}
-	    }*/ // Delete later Monil
 #else
+	    create_auto_shadow(task, mem);
 
 #endif 
         }
@@ -54,7 +44,7 @@ void AutoDAG::create_dependency(Command* cmd, Task* task,
   	task->add_to_write_list(mem);
 
 #ifdef AUTO_FLUSH
- 	create_auto_flush(cmd, task, param_info, mem, task_prev);
+ 	create_auto_flush(cmd, task, param_info, mem);
 #endif
     }
     if (param_info == iris_r) {
@@ -92,10 +82,7 @@ void AutoDAG::create_multi_read_dependency(Task* task,
 #ifdef AUTO_FLUSH
 void AutoDAG::create_auto_flush(Command* cmd, Task* task, 
 		int param_info, 
-		BaseMem* mem, Task* task_prev) {
-
-    	//sprintf(tn, "%s-flush-out", mem->get_flush_task();
-	//cmd->platform_->TaskCreate(tn, false, mem->get_flush_task())
+		BaseMem* mem) {
 	Task* task_flush = mem->get_flush_task();
 	Graph* graph_flush = current_graph_;
 	//Graph* graph_flush = cmd->platform_->get_current_graph();
@@ -126,12 +113,6 @@ void AutoDAG::create_auto_flush(Command* cmd, Task* task,
 	task_flush->set_opt(task->get_opt());
 	task_flush->set_brs_policy(task->get_brs_policy());
 	
-  	//platform_->GraphTask(get_graph(), mem->get_flush_task(), 1, NULL);
-        //platform_->TaskMemFlushOut(mem->get_flush_task(), mem) {
-        //task->AddDepend(mem->get_flush_task());	
-    	//iris_graph_task( graph, mem->get_flush_task(), 1, NULL );
-  	//platform_->GraphTask(get_graph(), mem->get_flush_task(), 1, NULL);
-    	//mem->get_flush_task(
 }
 #endif
 

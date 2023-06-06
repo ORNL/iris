@@ -16,7 +16,7 @@ public:
 
   void create_dependency(Command* cmd, Task* task, 
 		  int param_info, 
-		  BaseMem* mem, Task* task_prev);
+		  BaseMem* mem);
 
   void create_multi_read_dependency(Task* task, 
 		  BaseMem* mem);
@@ -25,15 +25,14 @@ public:
 #ifdef AUTO_FLUSH
   void create_auto_flush(Command* cmd, Task* task, 
 		  int param_info, 
-		  BaseMem* mem, Task* task_prev);
+		  BaseMem* mem);
   Graph* get_current_graph(){return current_graph_;}
   void set_current_graph(Graph* current_graph){
 	  current_graph_ = current_graph;}
 #endif
 #ifdef AUTO_SHADOW
   void create_auto_shadow(Command* cmd, Task* task, 
-		  int param_info, 
-		  BaseMem* mem, Task* task_prev);
+		  BaseMem* mem);
 #endif
 
 private:
