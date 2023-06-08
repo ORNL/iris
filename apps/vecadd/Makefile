@@ -15,7 +15,7 @@ kernel.hip: kernel.hip.cpp
 	$(HIPCC) --genco -o $@ $^
 
 kernel.openmp.so: kernel.openmp.c
-	$(CC) $(CFLAGS) -O3 -fopenmp -fPIC -shared -I. -o $@ $^
+	$(CC) $(CFLAGS) -O3 -lgomp -fPIC -shared -I. -o $@ $^
 
 clean:
 	rm -f vecadd vecadd-iris vecadd-m kernel.ptx kernel.openmp.so kernel.hip
