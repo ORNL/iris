@@ -86,6 +86,7 @@ public:
   int *get_params_map() { return params_map_; }
   const char* type_name() { return type_name_.c_str(); }
   const char* name() { return name_.c_str(); }
+  void set_name(std::string name) { name_ = name; }
   void set_name(const char* name) { name_ = std::string(name); }
   uint8_t reset_value() { return reset_value_; }
   double SetTime(double t, bool incr=true);

@@ -33,11 +33,11 @@ Scheduler::Scheduler(Platform* platform) {
 }
 
 Scheduler::~Scheduler() {
-  if (sleeping_) {
+  //if (sleeping_) {
     running_ = false;
     Invoke();
     while(running_);
-  }
+  //}
   delete consistency_;
   delete policies_;
   delete hub_client_;

@@ -8,7 +8,7 @@ namespace rt {
 QueueTask::QueueTask(Platform* platform) {
   platform_ = platform;
   enable_profiler_ = platform->enable_profiler();
-  last_sync_task_ = NULL;
+  //last_sync_task_ = NULL;
   pthread_mutex_init(&mutex_, NULL);
 }
 
