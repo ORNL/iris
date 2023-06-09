@@ -18,8 +18,9 @@ export WORKING_DIRECTORY=`pwd`
 #ssh -l 9bj explorer "cd $WORKING_DIRECTORY && ./task-latency-scripts/run-kernel-launch-overhead-hip.sh"
 #ssh -l 9bj explorer "cd $WORKING_DIRECTORY && ./task-latency-scripts/run-kernel-launch-overhead-opencl.sh"
 
-#ssh -l 9bj zenith   "cd $WORKING_DIRECTORY && ./task-latency-scripts/run-kernel-launch-overhead-cuda.sh"
-#ssh -l 9bj zenith   "cd $WORKING_DIRECTORY && ./task-latency-scripts/run-kernel-launch-overhead-hip.sh"
+ssh -l 9bj zenith   "cd $WORKING_DIRECTORY && ./task-latency-scripts/run-kernel-launch-overhead-cuda.sh"
+ssh -l 9bj zenith   "cd $WORKING_DIRECTORY && ./task-latency-scripts/run-kernel-launch-overhead-hip.sh"
 ssh -l 9bj zenith   "cd $WORKING_DIRECTORY && ./task-latency-scripts/run-kernel-launch-overhead-opencl.sh"
+ssh -l 9bj zenith   "cd $WORKING_DIRECTORY && ./task-latency-scripts/run-kernel-launch-overhead-openmp.sh"
 
 mkdir -p task-latency-results && mv kernellaunch-*.csv task-latency-results

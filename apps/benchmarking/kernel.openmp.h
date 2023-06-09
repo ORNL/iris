@@ -3,7 +3,7 @@
 static void saxpy(float* Z, float A, float* X, float* Y, IRIS_OPENMP_KERNEL_ARGS) {
   size_t _id;
 #pragma omp parallel for shared(Z, A, X, Y) private(_id)
-  IRIS_OPENMP_KERNEL_BEGIN
+  IRIS_OPENMP_KERNEL_BEGIN(_id)
   Z[_id] = A * X[_id] + Y[_id];
   IRIS_OPENMP_KERNEL_END
 }
@@ -11,7 +11,7 @@ static void saxpy(float* Z, float A, float* X, float* Y, IRIS_OPENMP_KERNEL_ARGS
 static void ijk(double* C, double* A, double* B, IRIS_OPENMP_KERNEL_ARGS) {
   size_t _id;
 #pragma omp parallel for shared(C, A, B) private(_id)
-  IRIS_OPENMP_KERNEL_BEGIN
+  IRIS_OPENMP_KERNEL_BEGIN(_id)
   size_t SIZE = _ndr;
   size_t j, k;
   for (size_t j = 0; j < SIZE; j++) {
