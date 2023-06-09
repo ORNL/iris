@@ -26,11 +26,11 @@ Worker::Worker(Device* dev, Platform* platform, bool single) {
 
 Worker::~Worker() {
   _trace("Worker is destroyed");
-  if (sleeping_) {
+  //if (sleeping_) {
       running_ = false;
       Invoke();
       while(running_);
-  }
+  //}
   if (!single_) delete queue_;
 }
 

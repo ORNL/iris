@@ -80,6 +80,10 @@ void Task::set_name(const char* name) {
   name_ = name;
   given_name_ = true;
 }
+void Task::set_name(std::string name) {
+  name_ = name;
+  given_name_ = true;
+}
 
 void Task::set_parent(Task* task) {
   parent_exist_ = true;
@@ -174,10 +178,8 @@ bool Task::Dispatchable() {
   if (status_ == IRIS_PENDING) return false;
   if (depends_uids_ == NULL) return true;
   for (int i = 0; i < ndepends_; i++) {
-    if (platform_->task_track().IsObjectExists(depends_uids_[i])) {
-        Task *dep = platform_->get_task_object(depends_uids_[i]);
-        if ( dep != NULL && dep->status() != IRIS_COMPLETE) return false;
-    }
+      Task *dep = platform_->get_task_object(depends_uids_[i]);
+      if ( dep != NULL && dep->status() != IRIS_COMPLETE) return false;
   }
   _trace("Task task:%lu:%s is ready to run", uid(), name());
   return true;
@@ -201,7 +203,7 @@ void Task::DispatchDependencies() {
 bool Task::Executable() {
   _trace("Task executable check %lu %s %p", uid(), name(), this);
   pthread_mutex_lock(&mutex_executable_);
-  if (status_ == IRIS_NONE) {
+  if (status_ == IRIS_NONE && subtasks_complete_ == subtasks_.size()) {
     status_ = IRIS_RUNNING;
     pthread_mutex_unlock(&mutex_executable_);
     return true;
@@ -233,22 +235,20 @@ void Task::Complete() {
   if (!is_user_task) return;
   _trace(" trying to release task:%lu:%s ref_cnt:%d", uid(), name(), ref_cnt());
   if (platform_->release_task_flag()) {
-      for (int i = 0; i < ndepends_; i++)
-          if (platform_->task_track().IsObjectExists(depends_uids_[i])) {
-             Task *dep = platform_->get_task_object(depends_uids_[i]);
-             if(dep != NULL && dep->user()) dep->Release();
-          }
+      for (int i = 0; i < ndepends_; i++) {
+          Task *dep = platform_->get_task_object(depends_uids_[i]);
+          if(dep != NULL && dep->user()) dep->Release();
+      }
       if (is_user_task) Release();
   }
 }
 
 void Task::TryReleaseTask()
 {
-    for (int i = 0; i < ndepends_; i++)
-        if (platform_->task_track().IsObjectExists(depends_uids_[i])) {
-           Task *dep = platform_->get_task_object(depends_uids_[i]);
-           if(dep != NULL && dep->user()) dep->Release();
-        }
+    for (int i = 0; i < ndepends_; i++) {
+        Task *dep = platform_->get_task_object(depends_uids_[i]);
+        if(dep != NULL && dep->user()) dep->Release();
+    }
     if (user_) Release();
 }
 
@@ -287,9 +287,6 @@ bool Task::HasSubtasks() {
 // Hence, validate the parent task not only from whether object exists or not, but also by
 // comparing the actual parent task uid.
 void Task::AddDepend(Task* task, unsigned long uid) {
-  if (task == NULL) return;
-  if (!platform_->task_track().IsObjectExists(uid)) 
-      return;
   if (depends_uids_ == NULL) {
       depends_uids_ = new unsigned long[depends_max_];
   }
@@ -301,11 +298,10 @@ void Task::AddDepend(Task* task, unsigned long uid) {
     memcpy(depends_uids_, old_uids, ndepends_*sizeof(unsigned long));
     delete [] old_uids;
   } 
-  if (task->uid() == uid) {
-      depends_uids_[ndepends_] = uid;
-      ndepends_++;
+  depends_uids_[ndepends_] = uid;
+  ndepends_++;
+  if (platform_->task_track().IsObjectExists(uid)) 
       task->Retain();
-  }
 }
 
 /*

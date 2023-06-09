@@ -19,7 +19,7 @@ Kernel::Kernel(const char* name, Platform* platform) {
   profile_data_transfers_ = false;
   platform_ = platform;
   history_ = platform->CreateHistory(name);
-  for (int i = 0; i < IRIS_MAX_NDEVS; i++) {
+  for (size_t i = 0; i < IRIS_MAX_NDEVS; i++) {
     archs_[i] = NULL;
     archs_devs_[i] = NULL;
     set_vendor_specific_kernel(i, false);
@@ -41,7 +41,7 @@ Kernel::~Kernel() {
 }
 
 int Kernel::set_order(int *order) {
-  for(int index = 0; index < data_mems_in_.size(); index++) {
+  for(size_t index = 0; index < data_mems_in_.size(); index++) {
     data_mems_in_order_.push_back(order[index]);
   }
   return IRIS_SUCCESS;

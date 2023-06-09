@@ -291,7 +291,7 @@ void Device::ExecuteMemIn(Task *task, Command* cmd) {
             if (params_map != NULL && 
                     (params_map[idx] & iris_all) == 0 && 
                     !(params_map[idx] & type_) ) continue;
-            if (idx < all_data_mems_in.size()) {
+            if ((size_t)idx < all_data_mems_in.size()) {
                 if (all_data_mems_in[idx]->GetMemHandlerType() == IRIS_DMEM) {
                     DataMem *mem = (DataMem*)all_data_mems_in[idx];
                     ExecuteMemInDMemIn(task, cmd, mem);

@@ -30,13 +30,16 @@ namespace iris {
                     return flag;
                 }
                 virtual void *GetObject(unsigned long uid) {
+                    void *obj = NULL;
+                    pthread_mutex_lock(&track_lock_);
                     if (allocated_objects_.find(uid) != allocated_objects_.end())
-                        return allocated_objects_[uid];
-                    return NULL;
+                        obj = allocated_objects_[uid];
+                    pthread_mutex_unlock(&track_lock_);
+                    return obj;
                 }
                 virtual void UntrackObject(void *p, unsigned long uid) {
                     pthread_mutex_lock(&track_lock_);
-                    allocated_objects_[uid] = 0;
+                    allocated_objects_[uid] = NULL;
                     _trace("Untracking object: %lu: %p", uid, p);
                     //printf("Untracking object: %lu: %p\n", uid, p);
                     pthread_mutex_unlock(&track_lock_);
@@ -51,18 +54,20 @@ namespace iris {
                     pthread_mutex_unlock(&track_lock_);
 #if 0
                     if (freed_objects > 2048) {
-                        _trace("Freeing uncleared objects size before: %lu", allocated_objects_.size());
-                        for (auto i = allocated_objects_.begin(), last = allocated_objects_.end(); i != last; ) {
-                            if (! (*i).second) i = allocated_objects_.erase(i);
-                            else ++i;
-                        }
-                        _trace("Size after free: %lu", allocated_objects_.size());
+                        Clear();
                         freed_objects = 0;
                     }
 #endif
                 }
                 virtual void Clear() {
-                    allocated_objects_.clear();
+                    //allocated_objects_.clear();
+                    pthread_mutex_lock(&track_lock_);
+                    for (auto i = allocated_objects_.begin(), 
+                            last = allocated_objects_.end(); i != last; ) {
+                        if ((*i).second == NULL) i = allocated_objects_.erase(i);
+                        else ++i;
+                    }
+                    pthread_mutex_unlock(&track_lock_);
                 }
                 void Print(const char *data="Task track") {
                     printf("%s\n", data);
