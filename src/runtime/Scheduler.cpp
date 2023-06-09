@@ -33,11 +33,11 @@ Scheduler::Scheduler(Platform* platform) {
 }
 
 Scheduler::~Scheduler() {
-  if (sleeping_) {
+  //if (sleeping_) {
     running_ = false;
     Invoke();
     while(running_);
-  }
+  //}
   delete consistency_;
   delete policies_;
   delete hub_client_;
@@ -89,7 +89,7 @@ void Scheduler::Run() {
   while (true) {
     _trace("Scheduler entering into sleep mode qsize:%lu", queue_->Size());
     Sleep();
-    _trace("Scheduler invoked qsize:%lu", queue_->Size());
+    _trace("Scheduler invoked");
     if (!running_) break;
     _trace("Scheduler in running state qsize:%lu", queue_->Size());
     Task* task = NULL;

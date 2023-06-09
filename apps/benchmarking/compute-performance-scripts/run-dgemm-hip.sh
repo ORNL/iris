@@ -1,6 +1,7 @@
 #!/bin/bash
 
-source ./setup.sh
+source /auto/software/iris/setup_system.source
+source ~/.iris/setup.source
 
 export WORKING_DIR=`pwd`
 

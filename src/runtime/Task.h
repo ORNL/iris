@@ -6,6 +6,7 @@
 #include "Platform.h"
 #include <pthread.h>
 #include <vector>
+#include <string>
 
 #define IRIS_COMPLETE   0x0
 #define IRIS_RUNNING    0x1
@@ -50,6 +51,7 @@ public:
 
   int type() { return type_; }
   const char* name() { return name_.c_str(); }
+  void set_name(std::string name);
   void set_name(const char* name);
   bool given_name(){return given_name_;}
   bool user() { return user_; }
@@ -165,6 +167,9 @@ private:
 
 public:
   static Task* Create(Platform* platform, int type, const char* name);
+  static Task* Create(Platform* platform, int type, std::string name) {
+    return Create(platform, type, name.c_str());
+  }
 };
 
 } /* namespace rt */

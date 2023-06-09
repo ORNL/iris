@@ -568,6 +568,7 @@ int JSON::RecordTask(Task* task) {
   if(task->ncmds() == 0) return IRIS_SUCCESS;//skip recording IRIS_MARKER tasks
   task->Retain();
   tracked_tasks_.push_back(task);
+  return IRIS_SUCCESS;
 }
 
 int JSON::ProcessTask(Task* task){

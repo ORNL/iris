@@ -1,5 +1,5 @@
-#include "timer.h"
-#include "utils.h"
+#include "../timer.h"
+#include "../utils.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <CL/cl.h>
@@ -123,7 +123,6 @@ int main(int argc, char** argv) {
     REPEATS = atoi(argv[3]);
     LOGFILE = argv[4];
   }
-
   printf("[%s:%d] SIZE[%d][%luB] LOOP[%d] REPEATS[%d]\n", __FILE__, __LINE__, SIZE, nbytes, LOOP,REPEATS);
   t0 = now();
 
