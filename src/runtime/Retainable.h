@@ -20,26 +20,28 @@ public:
   Retainable() {
     uid_ = iris_create_new_uid();
     ref_cnt_ = 1;
-    struct_obj_ = NULL;
+    struct_obj_.uid = uid_;
+    struct_obj_.class_obj = (class_type*) this;
     is_release_ = true;
     track_ = NULL;
     pthread_mutex_init(&delete_lock_, NULL);
   }
   Retainable(struct_type obj) {
     uid_ = iris_create_new_uid();
-    struct_obj_ = obj;
-    struct_obj_->class_obj = (class_type*) this;
+    struct_obj_.uid = uid_;
+    struct_obj_.class_obj = (class_type*) this;
+    obj.uid = uid_;
+    obj.class_obj = (class_type*) this;
     track_ = NULL;
-    struct_obj_->uid = uid_;
+    obj->uid = uid_;
     ref_cnt_ = 1;
     is_release_ = true;
     pthread_mutex_init(&delete_lock_, NULL);
   }
   void SetStructObject(struct_type *obj)
   {
-      struct_obj_ = obj;
-      struct_obj_->class_obj = (class_type*) this;
-      struct_obj_->uid = uid_;
+      obj->uid = uid_;
+      obj->class_obj = (class_type*) this;
   }
   bool IsRelease() { return is_release_; }
   void DisableRelease() { is_release_ = false; }
@@ -47,7 +49,7 @@ public:
   virtual ~Retainable() { pthread_mutex_destroy(&delete_lock_); }
 
   unsigned long uid() { return uid_; }
-  struct_type *struct_obj() { return struct_obj_; }
+  struct_type *struct_obj() { return &struct_obj_; }
 
   void Retain() {
     int i;
@@ -82,7 +84,7 @@ private:
   unsigned long uid_;
   int ref_cnt_;
   bool is_release_;
-  struct_type *struct_obj_;
+  struct_type struct_obj_;
   ObjectTrack *track_;
   pthread_mutex_t delete_lock_;
 };
