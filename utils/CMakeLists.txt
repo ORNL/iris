@@ -669,7 +669,7 @@ add_custom_command(
   OUTPUT ${CMAKE_BINARY_DIR}/kernel.hip
   WORKING_DIRECTORY ${PROJECT_SOURCE_DIR} 
   COMMAND cat ${HIP_KERNEL_SOURCES} > ${CMAKE_CURRENT_BINARY_DIR}/__iris_kernel.hip.cpp
-  COMMAND hipcc --genco ${hip_flags} -o ${CMAKE_BINARY_DIR}/kernel.hip ${CMAKE_CURRENT_BINARY_DIR}/__iris_kernel.hip.cpp
+  COMMAND hipcc --genco ${HIP_FLAGS} -o ${CMAKE_BINARY_DIR}/kernel.hip ${CMAKE_CURRENT_BINARY_DIR}/__iris_kernel.hip.cpp
   BYPRODUCTS ${CMAKE_BINARY_DIR}/kernel.hip
   )
 add_custom_target(kernel.hip DEPENDS ${CMAKE_BINARY_DIR}/kernel.hip)
