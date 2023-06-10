@@ -124,13 +124,14 @@ list(APPEND TEST_EXES "34_set_mem" "test34_set_mem" " ")
 
 # Run each test in TEST_EXES
 list(LENGTH TEST_EXES count)
+math(EXPR TEST_REPEAT 4)
 math(EXPR count "${count}-1")
 foreach(i RANGE 0 ${count} 3)
   math(EXPR ii "${i}+1")
-	math(EXPR iii "${i}+2")
+  math(EXPR iii "${i}+2")
 
-	list(GET TEST_EXES ${i} dir)
-	list(GET TEST_EXES ${ii} exes)
+  list(GET TEST_EXES ${i} dir)
+  list(GET TEST_EXES ${ii} exes)
   list(GET TEST_EXES ${iii} args)
   separate_arguments(args)
 
@@ -153,20 +154,23 @@ foreach(i RANGE 0 ${count} 3)
 
    string(REPLACE "::" ";" exe_list ${exes})
    message(STATUS "**LD_LIBRARY_PATH** : ${LD_LIBRARY_PATH}")
-   FOREACH(exe ${exe_list})
-      if(${exe} STREQUAL " ") # Space is used for an empty test.
-         continue()
-      endif()
-      message(STATUS "**Test Added** Dir: ${dir} Exe: ${exe} Arg: ${args}")
-      add_test(
-         NAME ${exe}
-         COMMAND ${exe} ${args}
-         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${dir}
-         )
-      if (CUDAToolkit_FOUND OR HIP_ROOT_DIR)
-        set_property(TEST ${exe} PROPERTY ENVIRONMENT ${TEST_PROP})
-      endif()
-      #some tests use .so resources that are local (in the same directory), i.e. 07_policy_register, so add it to the LD_LIBRARY_PATH
-      set_property(TEST ${exe} PROPERTY ENVIRONMENT "LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${CMAKE_CURRENT_SOURCE_DIR}/${dir}")
+   FOREACH(index RANGE 1 ${TEST_REPEAT} 1)
+      FOREACH(exe ${exe_list})
+         if(${exe} STREQUAL " ") # Space is used for an empty test.
+            continue()
+         endif()
+         message(STATUS "**Test Added** Dir: ${dir} Exe: ${exe} Iteration:${index} Arg: ${args}")
+         set(exe_it "${exe}_i${index}")
+         add_test(
+            NAME ${exe_it}
+            COMMAND ${exe} ${args}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${dir}
+            )
+         if (CUDAToolkit_FOUND OR HIP_ROOT_DIR)
+           set_property(TEST ${exe_it} PROPERTY ENVIRONMENT ${TEST_PROP})
+         endif()
+         #some tests use .so resources that are local (in the same directory), i.e. 07_policy_register, so add it to the LD_LIBRARY_PATH
+         set_property(TEST ${exe_it} PROPERTY ENVIRONMENT "LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${CMAKE_CURRENT_SOURCE_DIR}/${dir}")
+      ENDFOREACH()
    ENDFOREACH()
 ENDFOREACH()
