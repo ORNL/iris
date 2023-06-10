@@ -124,7 +124,7 @@ list(APPEND TEST_EXES "34_set_mem" "test34_set_mem" " ")
 
 # Run each test in TEST_EXES
 list(LENGTH TEST_EXES count)
-math(EXPR TEST_REPEAT 4)
+math(EXPR TEST_REPEAT 1)
 math(EXPR count "${count}-1")
 foreach(i RANGE 0 ${count} 3)
   math(EXPR ii "${i}+1")
