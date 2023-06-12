@@ -1422,7 +1422,8 @@ int Platform::GraphTask(iris_graph brs_graph, iris_task brs_task, int brs_policy
   assert(task != NULL);
   task->set_brs_policy(brs_policy);
   task->set_opt(opt);
-  graph->AddTask(task, brs_task.uid);
+  if (graph != NULL) graph->AddTask(task, brs_task.uid);
+  else TaskSubmit(task, brs_policy, opt, 0);
   return IRIS_SUCCESS;
 }
 
