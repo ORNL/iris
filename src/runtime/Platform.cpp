@@ -1467,6 +1467,7 @@ int Platform::GraphRetain(iris_graph brs_graph, bool flag) {
 
 int Platform::GraphSubmit(iris_graph brs_graph, int brs_policy, int sync) {
   Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
+  if (graph == NULL) return IRIS_SUCCESS;
   std::vector<Task*>* tasks = graph->tasks();
   //graph->RecordStartTime(devs_[0]->Now());
   for (std::vector<Task*>::iterator I = tasks->begin(), E = tasks->end(); I != E; ++I) {
@@ -1486,6 +1487,7 @@ int Platform::GraphSubmit(iris_graph brs_graph, int brs_policy, int sync) {
 
 int Platform::GraphSubmit(iris_graph brs_graph, int *order, int brs_policy, int sync) {
   Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
+  if (graph == NULL) return IRIS_SUCCESS;
   std::vector<Task*> & tasks = graph->tasks_list();
   //graph->RecordStartTime(devs_[0]->Now());
   for(size_t i=0; i<tasks.size(); i++) {
@@ -1811,10 +1813,12 @@ Platform* Platform::GetPlatform() {
 }
 int Platform::GetGraphTasksCount(iris_graph brs_graph) {
     Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
+    if (graph == NULL) return 0;
     return graph->tasks_count();
 }
 int Platform::GetGraphTasks(iris_graph brs_graph, iris_task *tasks) {
   Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
+  if (graph == NULL) return 0;
   return graph->iris_tasks(tasks);
 }
 
