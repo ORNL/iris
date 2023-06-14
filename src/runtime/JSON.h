@@ -25,11 +25,6 @@ public:
   int RecordFlush();
 
 private:
-  int LoadInputs(char* src, void* tok, int i, int r);
-  int LoadTasks(Graph* graph, void** params, char* src, void* tok, int i, int r);
-  int LoadTask(Graph* graph, void** params, char* src, void* tok, int j, int r);
-
-private:
   void* GetParameterInput(void** params, const char* string_to_lookup);
   int UniqueUIDFromHostPointer(void*host_ptr);
   int UniqueUIDFromDevicePointer(Mem* dev_ptr);
