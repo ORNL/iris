@@ -205,6 +205,7 @@ public:
 #ifdef AUTO_PAR
   AutoDAG* get_auto_dag(){return auto_dag_;}
   void set_auto_dag(AutoDAG* auto_dag){auto_dag_ = auto_dag;}
+  void insert_into_mems(BaseMem* mem){ mems_.insert(mem); }
 #endif
 
 private:

@@ -85,6 +85,11 @@ void Command::Set(Task* task, int type) {
     case IRIS_CMD_H2DNP:       type_name_= const_cast<char*>("H2DNP");   break;
     case IRIS_CMD_D2H:         type_name_= const_cast<char*>("D2H");     break;
     case IRIS_CMD_MEM_FLUSH:   type_name_= const_cast<char*>("MemFlush");     break;
+#ifdef AUTO_PAR
+#ifdef AUTO_SHADOW
+    case IRIS_CMD_MEM_FLUSH_TO_SHADOW:   type_name_= const_cast<char*>("MemFlushToShadow");     break;
+#endif
+#endif
     case IRIS_CMD_MAP:         type_name_= const_cast<char*>("Map");     break;
     case IRIS_CMD_RELEASE_MEM: type_name_= const_cast<char*>("Release"); break;
     case IRIS_CMD_HOST:        type_name_= const_cast<char*>("Host");    break;
@@ -173,10 +178,14 @@ Command* Command::CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off,
     }
     size_t mem_off = 0ULL;
     BaseMem* mem = cmd->platform_->GetMem((iris_mem) param);
-
 #ifdef AUTO_PAR
+#ifdef AUTO_SHADOW
+    if (mem->GetMemHandlerType() == IRIS_DMEM)
+        if(((DataMem*)mem)->get_has_shadow()){
+            mem = (BaseMem*)(((DataMem*)mem)->get_current_dmem_shadow());
+    }
+#endif
     cmd->platform_->get_auto_dag()->create_dependency(cmd, task, param_info, mem);
-    //create_dependency(cmd, task, param_info, mem, task_prev);
 #endif
     //_trace_debug("Param %d", param_info);
     if (!mem) mem = cmd->platform_->GetMem(param, &mem_off);
@@ -255,6 +264,16 @@ Command* Command::CreateMemFlushOut(Task* task, DataMem* mem) {
   cmd->mem_ = mem;
   return cmd;
 }
+
+#ifdef AUTO_PAR
+#ifdef AUTO_SHADOW
+Command* Command::CreateMemFlushOutToShadow(Task* task, DataMem* mem) {
+  Command* cmd = Create(task, IRIS_CMD_MEM_FLUSH_TO_SHADOW);
+  cmd->mem_ = mem;
+  return cmd;
+}
+#endif
+#endif
 
 Command* Command::CreateMemResetInput(Task* task, BaseMem *mem, uint8_t reset_value) {
   Command* cmd = Create(task, IRIS_CMD_RESET_INPUT);

@@ -41,9 +41,16 @@ void DataMem::Init(Platform *platform, void *host_ptr, size_t size)
 #ifdef AUTO_FLUSH
   flush_task_ = NULL;
 #endif
+#ifdef AUTO_SHADOW
+  host_shadow_dirty_flag_ = true; //initially the shadow is dirty
+  current_dmem_shadow_ = NULL; //initially the shadow is dirty
+  is_shadow_ = 0; // 0: not a shadow, 1: a shadow
+  main_dmem_ = NULL; // 0: not a shadow, 1: a shadow
+  has_shadow_ = 0; // 0: does not have a shadow, 1: has a shadow
 #endif
- 
+#endif
 }
+
 void DataMem::UpdateHost(void *host_ptr)
 {
     if (host_ptr_owner_ && host_ptr_ != NULL) free(host_ptr_);

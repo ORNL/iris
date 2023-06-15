@@ -8,6 +8,7 @@ class Platform;
 class Command;
 class Task;
 class BaseMem;
+class DataMem;
 class Graph; 
 class AutoDAG {
 public:
@@ -24,7 +25,6 @@ public:
 
 #ifdef AUTO_FLUSH
   void create_auto_flush(Command* cmd, Task* task, 
-		  int param_info, 
 		  BaseMem* mem);
   Graph* get_current_graph(){return current_graph_;}
   void set_current_graph(Graph* current_graph){
@@ -33,6 +33,9 @@ public:
 #ifdef AUTO_SHADOW
   void create_auto_shadow(Command* cmd, Task* task, 
 		  BaseMem* mem);
+  void create_shadow_flush(Command* cmd, Task* task, 
+		  BaseMem* mem);
+
 #endif
 
 private:
@@ -42,7 +45,7 @@ private:
   Graph* current_graph_;
 #endif
 #ifdef AUTO_SHADOW
-   Map<Dmem>  current_graph_;
+   //Map<Dmem>  current_graph_;
 #endif
 
 

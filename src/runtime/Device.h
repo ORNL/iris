@@ -47,7 +47,11 @@ public:
   void ExecuteMemInDMemRegionIn(Task *task, Command* cmd, DataMemRegion *mem);
   void ExecuteMemOut(Task *task, Command* cmd);
   void ExecuteMemFlushOut(Command* cmd);
-
+#ifdef AUTO_PAR
+#ifdef AUTO_SHADOW
+  void ExecuteMemFlushOutToShadow(Command* cmd);
+#endif
+#endif
   void ExecuteD2D(Command* cmd, Device *dev=NULL);
   void ExecuteH2D(Command* cmd, Device *dev=NULL);
   void ExecuteH2BroadCast(Command* cmd);

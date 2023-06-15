@@ -1429,6 +1429,12 @@ int Platform::GraphSubmit(iris_graph brs_graph, int brs_policy, int sync) {
     else workers_[0]->Enqueue(task);
   }
   if (sync) graph->Wait();
+#ifdef AUTO_PAR
+#ifdef AUTO_FLUSH
+  printf("-------------------------------------------------------\n");
+  auto_dag_->set_current_graph(NULL);
+#endif
+#endif
   return IRIS_SUCCESS;
 }
 
