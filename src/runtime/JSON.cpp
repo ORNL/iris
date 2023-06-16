@@ -216,6 +216,8 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
               return IRIS_ERROR;
             }
             kparams[l] = GetParameterInput(params,param_["value"].GetString());
+            //if it isn't a string to look up or be resolved as an input, it could just be a value (garbled from the recording process) Don't panic! Let the kernel typecasting do the work!
+            if (!kparams[l]) kparams[l] = (void*)param_["value"].GetString();
             //Note: the type of the scalar argument can be set 3 different ways--we can statically set the data_type (the data type used, expressed as a string), or data_size (integer denoting the number of bytes), or dynamically as an input argument (again as an integer to denote the number of bytes).
             if (param_.HasMember("data_type") && param_["data_type"].IsString()) {
               const char* data_type_str = param_["data_type"].GetString();
@@ -677,13 +679,12 @@ int JSON::ProcessTask(Task* task){
           else if (arg->mode == iris_w) param_.AddMember("permissions",rapidjson::StringRef("w"),iris_output_document_.GetAllocator());
           else if (arg->mode == iris_rw) param_.AddMember("permissions",rapidjson::StringRef("rw"),iris_output_document_.GetAllocator());
           else _error("not valid mode[%d]", arg->mode);
-          //param_.AddMember("name",,iris_output_document_.GetAllocator());//we said this was optional. But currently the Mem.h class doesn't have a name member function. 
         }else{//scalar
-          param_.AddMember("type",rapidjson::StringRef("scalar"),iris_output_document_.GetAllocator());
-          _error("scalar support is currently unimplemented! @JSON.cpp : line %d", __LINE__);
-          //param_.AddMember("name",,iris_output_document_.GetAllocator());//again still optional
-          //param_.AddMember("data_type",,iris_output_document_.GetAllocator());
-          //param_.AddMember("value",,iris_output_document_.GetAllocator());
+          param_.AddMember("type","scalar",iris_output_document_.GetAllocator());
+          rapidjson::Value _value;
+          _value.SetString(arg->value,arg->size,iris_output_document_.GetAllocator());
+          param_.AddMember("value",_value,iris_output_document_.GetAllocator());
+          param_.AddMember("data_size",arg->size,iris_output_document_.GetAllocator());
         }
         params_.PushBack(param_,iris_output_document_.GetAllocator());
       }
