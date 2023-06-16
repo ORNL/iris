@@ -122,6 +122,8 @@ endif()
 list(APPEND TEST_EXES "32_json3" "test32_json3" "--kernels=ijk --duplicates=0 --buffers-per-kernel=\"ijk:w-r-r\" --kernel-dimensions=ijk:2 --kernel-split=100 --depth=10 --num-tasks=10 --min-width=1 --max-width=1 --logfile=log.txt --repeats=1 --scheduling-policy=any --size=128")
 list(APPEND TEST_EXES "33_graph_cpp" "test33_graph_cpp" " ")
 list(APPEND TEST_EXES "34_set_mem" "test34_set_mem" " ")
+list(APPEND TEST_EXES "35_json_mixed_args_record_replay" "test35_json_mixed_args_record_replay" " ")
+list(APPEND TEST_EXES "36_double_json_mixed_args_record_replay" "test36_double_json_mixed_args_record_replay" " ")
 
 # Run each test in TEST_EXES
 list(LENGTH TEST_EXES count)
