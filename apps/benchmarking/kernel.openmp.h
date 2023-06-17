@@ -24,3 +24,14 @@ static void ijk(double* C, double* A, double* B, IRIS_OPENMP_KERNEL_ARGS) {
   IRIS_OPENMP_KERNEL_END
 }
 
+static void nothing(int* A, IRIS_OPENMP_KERNEL_ARGS) {
+}
+
+static void add_id(int* A, IRIS_OPENMP_KERNEL_ARGS) {
+  size_t i;
+#pragma omp parallel for shared(A) private(i)
+  IRIS_OPENMP_KERNEL_BEGIN(i)
+  A[i] = A[i] + i;
+  IRIS_OPENMP_KERNEL_END
+}
+
