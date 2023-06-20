@@ -665,10 +665,8 @@ void Device::ExecuteD2D(Command* cmd, Device *dev) {
 void Device::ExecuteH2D(Command* cmd, Device *dev) {
   if (dev == NULL) dev = this;
   BaseMem* dmem = (BaseMem *)cmd->mem();
-  if (dmem->GetMemHandlerType() == IRIS_DMEM){
-    return;//we're using datamem so there is no need to execute this memory transfer
-  }
-  //if (cmd->datamem()) return;//we're using datamem so there is no need to execute this memory transfer
+  //we're using datamem so there is no need to execute this memory transfer
+  if (dmem->GetMemHandlerType() == IRIS_DMEM) return;
   Mem* mem = cmd->mem();
   size_t off = cmd->off(0);
   size_t *ptr_off = cmd->off();

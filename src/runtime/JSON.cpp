@@ -19,7 +19,7 @@
 #include "rapidjson/filewritestream.h"
 #include "rapidjson/writer.h"
 #include "rapidjson/error/en.h"
-#include <csignal>
+
 #ifdef RAPIDJSON_ALIGN
 #undef RAPIDJSON_ALIGN
 #endif //RAPIDJSON_ALIGN
@@ -78,7 +78,6 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
   for (rapidjson::SizeType i = 0; i < iris_inputs_.Size(); i++){
     inputs_.push_back(iris_inputs_[i].GetString());
   }
-
   //load tasks
   if(!iris_graph_.HasMember("graph") or !iris_graph_["graph"].HasMember("tasks") or !iris_graph_["graph"]["tasks"].IsArray()){
     _error("malformed tasks in file[%s]", path);
@@ -105,7 +104,6 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
     for (rapidjson::SizeType j = 0; j < iris_tasks_[i]["depends"].Size(); j++){
       //auto tmp = iris_tasks_[i]["depends"][j].GetType();
       if(iris_tasks_[i]["depends"][j].IsNull()){
-        //raise(SIGINT);
         continue;
       }
       if(!iris_tasks_[i]["depends"][j].IsString()){
@@ -212,16 +210,44 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
           //parameters (scalar)
           if (strcmp("scalar",param_["type"].GetString()) == 0){
             //name
-            if (!param_.HasMember("name")){
+            if (!param_.HasMember("value")){
               _error("malformed command kernel parameters scalar name in file[%s]", path);
               platform_->IncrementErrorCount();
               return IRIS_ERROR;
             }
-            kparams[l] = GetParameterInput(params,param_["name"].GetString());
-            //data_type
-            //value   
-            printf("parameter no:%i is scalar\n",l);
-            raise(SIGINT);
+            kparams[l] = GetParameterInput(params,param_["value"].GetString());
+            //if it isn't a string to look up or be resolved as an input, it could just be a value (garbled from the recording process) Don't panic! Let the kernel typecasting do the work!
+            if (!kparams[l]) kparams[l] = (void*)param_["value"].GetString();
+            //Note: the type of the scalar argument can be set 3 different ways--we can statically set the data_type (the data type used, expressed as a string), or data_size (integer denoting the number of bytes), or dynamically as an input argument (again as an integer to denote the number of bytes).
+            if (param_.HasMember("data_type") && param_["data_type"].IsString()) {
+              const char* data_type_str = param_["data_type"].GetString();
+              if (strcmp(data_type_str,"int") == 0) kparams_info[l] = sizeof(int);
+              else if(strcmp(data_type_str,"short") == 0) kparams_info[l] = sizeof(short);
+              else if(strcmp(data_type_str,"long") == 0) kparams_info[l] = sizeof(long);
+              else if(strcmp(data_type_str,"char") == 0) kparams_info[l] = sizeof(char);
+              else if(strcmp(data_type_str,"float") == 0) kparams_info[l] = sizeof(float);
+              else if(strcmp(data_type_str,"double") == 0) kparams_info[l] = sizeof(double);
+              else if(strcmp(data_type_str,"long double") == 0) kparams_info[l] = sizeof(long double);
+              else {
+                _error("malformed command kernel parameters scalar data_type in file[%s] -- we must know the number of bytes this data type uses!", path);
+                platform_->IncrementErrorCount();
+                return IRIS_ERROR;
+              }
+            } else if(param_.HasMember("data_size") && param_["data_size"].IsInt()){
+              kparams_info[l] = param_["data_size"].GetInt();
+            } else if(param_.HasMember("data_size") && param_["data_size"].IsString()){
+              //the dynamic option
+              kparams_info[l] = *(int*)GetParameterInput(params,param_["data_size"].GetString());
+              if(!kparams_info[l] && kparams_info[l] != 0){
+                _error("malformed command kernel parameters scalar data_size (dynamic) in file[%s]. Can be data_size (int, in bytes) when provided this way must be an **input** argument", path);
+                platform_->IncrementErrorCount();
+                return IRIS_ERROR;
+              }
+            } else {
+              _error("malformed command kernel parameters scalar data_type in file[%s]. Can be data_size (int, in bytes), or data_type (as a string)", path);
+              platform_->IncrementErrorCount();
+              return IRIS_ERROR;
+            }
           }
           //parameters (memory_object)
           else if (strcmp("memory_object",param_["type"].GetString()) == 0){
@@ -653,13 +679,12 @@ int JSON::ProcessTask(Task* task){
           else if (arg->mode == iris_w) param_.AddMember("permissions",rapidjson::StringRef("w"),iris_output_document_.GetAllocator());
           else if (arg->mode == iris_rw) param_.AddMember("permissions",rapidjson::StringRef("rw"),iris_output_document_.GetAllocator());
           else _error("not valid mode[%d]", arg->mode);
-          //param_.AddMember("name",,iris_output_document_.GetAllocator());//we said this was optional. But currently the Mem.h class doesn't have a name member function. 
         }else{//scalar
-          param_.AddMember("type",rapidjson::StringRef("scalar"),iris_output_document_.GetAllocator());
-          _error("scalar support is currently unimplemented! @JSON.cpp : line %d", __LINE__);
-          //param_.AddMember("name",,iris_output_document_.GetAllocator());//again still optional
-          //param_.AddMember("data_type",,iris_output_document_.GetAllocator());
-          //param_.AddMember("value",,iris_output_document_.GetAllocator());
+          param_.AddMember("type","scalar",iris_output_document_.GetAllocator());
+          rapidjson::Value _value;
+          _value.SetString(arg->value,arg->size,iris_output_document_.GetAllocator());
+          param_.AddMember("value",_value,iris_output_document_.GetAllocator());
+          param_.AddMember("data_size",arg->size,iris_output_document_.GetAllocator());
         }
         params_.PushBack(param_,iris_output_document_.GetAllocator());
       }
