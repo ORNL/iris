@@ -84,7 +84,7 @@ deploy_docs_manual-job:
     - cd ../..
     - python3 -m venv .venv
     - source .venv/bin/activate
-    - pip install jsoncomment
+    - pip install jsoncomment jsonschema
     - bash .gitlab-ci-scripts/schema_check.sh
   after_script:
     - pip install gcovr==5.0 # There seems to be a bug for newer versions of gcovr.
