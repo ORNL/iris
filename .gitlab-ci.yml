@@ -81,6 +81,7 @@ deploy_docs_manual-job:
     - make --ignore-errors
     - echo IRIS_ARCHS is $IRIS_ARCHS
     - ctest --output-junit testRes.xml
+    - bash .gitlab-ci-scripts/schema_check.sh
   after_script:
     - python3 -m venv .venv
     - source .venv/bin/activate
