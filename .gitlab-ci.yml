@@ -82,10 +82,11 @@ deploy_docs_manual-job:
     - echo IRIS_ARCHS is $IRIS_ARCHS
     - ctest --output-junit testRes.xml
     - cd ../..
-    - bash .gitlab-ci-scripts/schema_check.sh
-  after_script:
     - python3 -m venv .venv
     - source .venv/bin/activate
+    - pip install jsoncomment
+    - bash .gitlab-ci-scripts/schema_check.sh
+  after_script:
     - pip install gcovr==5.0 # There seems to be a bug for newer versions of gcovr.
     - gcovr --xml-pretty --exclude-unreachable-branches --print-summary -o coverage.xml --gcov-ignore-parse-errors
   coverage: /^\s*lines:\s*\d+.\d+\%/
