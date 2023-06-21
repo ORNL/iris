@@ -10,6 +10,7 @@ __author__ = "Beau Johnston"
 __copyright__ = "Copyright (c) 2020-2022, Oak Ridge National Laboratory (ORNL) Programming Systems Research Group. All rights reserved."
 __license__ = "GPL"
 __version__ = "1.0"
+__schema__ = "https://raw.githubusercontent.com/ORNL/iris/v2.0.0/schema/dagger.schema.json"
 
 import json
 import argparse
@@ -465,7 +466,7 @@ def get_task_to_json(dag,deps):
     inputs = determine_iris_inputs()
     dag = determine_and_prepend_iris_h2d_transfers(dag)
     dag = determine_and_append_iris_d2h_transfers(dag)
-    final_json = {"iris-graph":{"inputs":inputs,"graph":{"tasks":dag}}}
+    final_json = {"$schema": __schema__, "iris-graph":{"inputs":inputs,"graph":{"tasks":dag}}}
     f.write(json.dumps(final_json,indent = 2))
     f.close()
 

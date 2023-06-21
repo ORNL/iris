@@ -1,8 +1,8 @@
 {
     "$schema": "https://json-schema.org/draft-07/schema",
-    "$id": "https://github.com/ORNL/iris/schema/dagger.schema.json",
-    "title": "DAGGER JSON",
-    "description": "JSON output from DAGGER",
+    "$id": "https://github.com/ORNL/iris/schema/record.schema.json",
+    "title": "IRIS Record JSON",
+    "description": "JSON output from IRIS record",
     "type": "object",
     "properties": {
         "iris-graph": {
