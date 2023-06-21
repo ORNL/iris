@@ -502,6 +502,15 @@ add_custom_command(
   COMMAND echo "echo \"*********************** ${APP_ENVNAME} Environent *********************\"" >> ${CMAKE_BINARY_DIR}/setup.source
   COMMAND echo "echo \"${APP_ENVNAME}: \$${APP_ENVNAME}\"" >> ${CMAKE_BINARY_DIR}/setup.source
   COMMAND echo "echo \"*************************************************************\"" >> ${CMAKE_BINARY_DIR}/setup.source
+  COMMAND echo "if [[ -d \"\$${APP_ENVNAME}/lib64\" ]] " >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
+  COMMAND echo "then" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
+  COMMAND echo "    export EMCONFIG_PATH=\$${APP_ENVNAME}/lib64" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
+  COMMAND echo "else" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
+  COMMAND echo "    if [[ -d \"\$${APP_ENVNAME}/lib\" ]] " >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
+  COMMAND echo "    then" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
+  COMMAND echo "        export EMCONFIG_PATH=\$${APP_ENVNAME}/lib" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
+  COMMAND echo "    fi" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
+  COMMAND echo "fi" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
   )
 add_custom_target(setup.source ALL DEPENDS ${CMAKE_BINARY_DIR}/setup.source)
 install(FILES ${CMAKE_BINARY_DIR}/setup.source DESTINATION ${CMAKE_INSTALL_PREFIX})
@@ -669,7 +678,7 @@ add_custom_command(
   OUTPUT ${CMAKE_BINARY_DIR}/kernel.hip
   WORKING_DIRECTORY ${PROJECT_SOURCE_DIR} 
   COMMAND cat ${HIP_KERNEL_SOURCES} > ${CMAKE_CURRENT_BINARY_DIR}/__iris_kernel.hip.cpp
-  COMMAND hipcc --genco ${hip_flags} ${HIP_FLAGS} -o ${CMAKE_BINARY_DIR}/kernel.hip ${CMAKE_CURRENT_BINARY_DIR}/__iris_kernel.hip.cpp
+  COMMAND hipcc --genco ${HIP_FLAGS} -o ${CMAKE_BINARY_DIR}/kernel.hip ${CMAKE_CURRENT_BINARY_DIR}/__iris_kernel.hip.cpp
   BYPRODUCTS ${CMAKE_BINARY_DIR}/kernel.hip
   )
 add_custom_target(kernel.hip DEPENDS ${CMAKE_BINARY_DIR}/kernel.hip)

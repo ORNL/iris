@@ -304,7 +304,7 @@ int DeviceCUDA::MemD2D(Task *task, BaseMem *mem, void *dst, void *src, size_t si
   }
 #ifndef IRIS_SYNC_EXECUTION
   q_ = task->uid() % nqueues_; 
-  err_ = ld_->cuMemcpyDtoDAsync(dst_cumem, src_cumem, size, streams_[q_]);
+  err_ = ld_->cudaMemcpyAsync((void *)dst_cumem, (void *)src_cumem, size, streams_[q_]);
 #else
   err_ = ld_->cudaMemcpy((void *)dst_cumem, (void *)src_cumem, size, cudaMemcpyDeviceToDevice);
 #endif
