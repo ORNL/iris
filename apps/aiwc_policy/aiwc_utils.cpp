@@ -18,7 +18,7 @@ namespace rt {
 namespace plugin {
 
 bool AIWC_Utils::IsAIWCDevice(char* name,char* vendor){
-    if (strstr(name,"Oclgrind Simulator") != NULL && strstr(vendor,"University of Bristol") != NULL){ //strstr(version,"Oclgrind 19.10") != NULL)
+    if (strstr(name,"Oclgrind Simulator") != NULL && strstr(vendor,"Oclgrind") != NULL){ //strstr(version,"Oclgrind 19.10") != NULL)
         return true;
     }
     return false;
