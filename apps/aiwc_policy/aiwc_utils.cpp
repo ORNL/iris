@@ -77,7 +77,7 @@ const char* AIWC_Utils::MetricLocation(char* digest){
   }
   //ensure the existence of our AIWC metrics kernel storage directory.
   struct stat st;
-  const char* metric_dir = "/etc/iris/";
+  const char* metric_dir = "/tmp/iris/";
   if (stat(metric_dir,&st) != 0){
      if(mkdir(metric_dir,  S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)!=0){
         std::cerr << "Cannot create AIWC metric storage at " << metric_dir << std::endl;
@@ -85,7 +85,7 @@ const char* AIWC_Utils::MetricLocation(char* digest){
      }
   }
 
-  metric_dir = "/etc/iris/aiwc/";
+  metric_dir = "/tmp/iris/aiwc/";
   if (stat(metric_dir,&st) != 0){
      if(mkdir(metric_dir,  S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)!=0){
        printf("Cannot create AIWC metric storage at %s",metric_dir);
@@ -93,7 +93,7 @@ const char* AIWC_Utils::MetricLocation(char* digest){
      }
   }
   char* metric_path = new char[100];
-  strcpy(metric_path,"/etc/iris/aiwc/");
+  strcpy(metric_path,"/tmp/iris/aiwc/");
   strcat(metric_path,digest);
   return metric_path;
 }

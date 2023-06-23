@@ -116,7 +116,8 @@ public:
               std::cout << names[i-predictions.begin()] << " predicted: " << *i << " us" << std::endl;
           }
           */
-          std::cout << "TODO: query model here" << std::endl;
+          std::cout << "TODO: query model here (and don't run AIWC again)!!!" << std::endl;
+
           // for starters let's just select the device with the shortest predicted time.
           //int index = std::min_element(predicted_us.begin(),predicted_us.end()) - predicted_us.begin();
           //for (int i = 0; i < ndevs_; i++){
@@ -125,10 +126,15 @@ public:
           //        *ndevs = 1;
           //    }
           //}
-          int index = 0;
-          devs[0] = devs_[index];
+          //int index = 0;
+          //devs[0] = devs_[index];
+          //*ndevs = 1;
+          //assert(*ndevs == 1);
+
+          aiwc_dev->RecreateContext();
+          devs[0] = aiwc_dev;
           *ndevs = 1;
-          assert(*ndevs == 1);
+
           std::cout << "Selected " << devs[0]->name() << " for this kernel." << std::endl;
 
           //TODO: we could add some logic to inform scheduling policy -- if the device is free only consider it, or back-fill it in the scheduler queue.
