@@ -594,7 +594,11 @@ void Device::ExecuteMemFlushOutToShadow(Command* cmd) {
     int dim = mem->dim();
     size_t size = mem->size();
     //void* host = mem->host_memory(); // It should work even if host_ptr is null
-    void* host = mem->get_current_dmem_shadow()->host_memory(); // get the host of shadow 
+    void* host;
+    if(mem->get_is_shadow() == false)
+        host = mem->get_current_dmem_shadow()->host_memory(); // get the host of shadow 
+    else 
+        host = mem->get_main_dmem()->host_memory(); // get the host of main 
     //void* host = mem->get_host_shadow_ptr(); // It is getting the shadow host pointer 
     double start = timer_->Now();
     Task *task = cmd->task();
@@ -618,7 +622,11 @@ void Device::ExecuteMemFlushOutToShadow(Command* cmd) {
     }
     if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
     //mem->get_current_dmem_shadow()->clear_host_shadow_dirty();
-    mem->get_current_dmem_shadow()->clear_host_dirty();
+    if(mem->get_is_shadow() == false)
+        mem->get_current_dmem_shadow()->clear_host_dirty();
+    else 
+        mem->get_main_dmem()->clear_host_dirty();
+
     //mem->clear_host_shadow_dirty();
     //// Now need to set the shadow dmem to clear the host dirty
     //need to create map both in Task and AutoDAG to recover the shadow object associated with this
@@ -632,7 +640,7 @@ void Device::ExecuteMemFlushOutToShadow(Command* cmd) {
         memcpy(mem->get_current_dmem_shadow()->host_memory(), mem->host_memory(), mem->size());
         _trace("MemShadowFlushout is copying host to host of shadow:%ld:%s\n", cmd->task()->uid(), cmd->task()->name());
     }*/
-    void* p = mem->get_current_dmem_shadow()->host_memory(); 
+    /*void* p = mem->get_current_dmem_shadow()->host_memory(); 
     void* q = mem->host_memory(); 
     for(int i = 0; i < 32; i=i+8){
         double * a = (double*) (p + i);
@@ -640,7 +648,7 @@ void Device::ExecuteMemFlushOutToShadow(Command* cmd) {
         std::cout << *a << std::endl;
         std::cout << *b << std::endl;
         //std::cout << ((double)mem->host_memory())[i] << std::endl
-    }
+    }*/
 }
 #endif
 #endif

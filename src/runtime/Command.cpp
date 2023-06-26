@@ -180,9 +180,10 @@ Command* Command::CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off,
     BaseMem* mem = cmd->platform_->GetMem((iris_mem) param);
 #ifdef AUTO_PAR
 #ifdef AUTO_SHADOW
-    if (mem->GetMemHandlerType() == IRIS_DMEM)
+    if (mem->GetMemHandlerType() == IRIS_DMEM){
         if(((DataMem*)mem)->get_has_shadow()){
-            mem = (BaseMem*)(((DataMem*)mem)->get_current_dmem_shadow());
+            mem = (BaseMem*)(((DataMem*)mem)->get_current_dmem_shadow()); // need to fix this
+        }
     }
 #endif
     cmd->platform_->get_auto_dag()->create_dependency(cmd, task, param_info, mem);

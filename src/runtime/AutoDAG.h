@@ -32,6 +32,7 @@ public:
 #endif
 #ifdef AUTO_SHADOW
   void create_auto_shadow(Command* cmd, Task* task, 
+		  //BaseMem& mem);
 		  BaseMem* mem);
   void create_shadow_flush(Command* cmd, Task* task, 
 		  BaseMem* mem);

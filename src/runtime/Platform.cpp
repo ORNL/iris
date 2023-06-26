@@ -1419,6 +1419,9 @@ int Platform::GraphSubmit(iris_graph brs_graph, int brs_policy, int sync) {
   //graph->RecordStartTime(devs_[0]->Now());
   for (std::vector<Task*>::iterator I = tasks->begin(), E = tasks->end(); I != E; ++I) {
     Task* task = *I;
+    printf("Task name %s depend count %d\n", task->name(), task->ndepends());
+    for(int i = 0; i < task->ndepends(); i++)
+        printf("    depend %d - %s\n", i, task->depend(i)->name());
     //preference is to honour the policy embedded in the task-graph.
     if (task->brs_policy() == iris_default) {
       task->set_brs_policy(brs_policy);
