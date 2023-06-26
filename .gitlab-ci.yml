@@ -36,19 +36,25 @@ docs-job:
     - conda env create --force -p ./envs -f docs/sphinx/environment.yml
     - conda activate ./envs
     - source $IRIS_INSTALL_ROOT/setup.source
+    - pip install json-schema-for-humans
   script:
-    - cd docs/sphinx/source
+    - pushd docs/sphinx/source
     - python -m sphinx -T -E -b html -d _build/doctrees -D language=en . _build/html
+    - popd
+    - mkdir schema-docs
+    - generate-schema-doc --expand-buttons schema schema-docs
   artifacts:
     paths:
       - docs/sphinx/source/_build/html
+      - schema-docs
 
 .deploy_docs_common:
   tags: [devdocs]
   stage: deploy_docs
   needs: [docs-job]
   script:
-    rsync -a --delete docs/sphinx/source/_build/html/ ~/www/brisbane/iris
+    - rsync -a --delete docs/sphinx/source/_build/html/ ~/www/brisbane/iris
+    - rsync -a --delete schema-docs/ ~/www/brisbane/schema-docs
 
 deploy_docs-job:
   extends: .deploy_docs_common
