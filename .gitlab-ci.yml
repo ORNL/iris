@@ -54,7 +54,7 @@ docs-job:
   needs: [docs-job]
   script:
     - rsync -a --delete docs/sphinx/source/_build/html/ ~/www/brisbane/iris
-    - rsync -a --delete schema-docs ~/www/brisbane/schema-docs
+    - rsync -a --delete schema-docs/ ~/www/brisbane/schema-docs
 
 deploy_docs-job:
   extends: .deploy_docs_common
