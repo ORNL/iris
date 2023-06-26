@@ -4,7 +4,7 @@ errors=0
 total=0
 
 # Validate against record schema.
-for f in tests/18_record/*.json tests/28_json2/*.json tests/32_json3/*.json tests/35_json_mixed_args_record_replay/*.json tests/36_double_json_mixed_args_record_replay/*.json
+for f in tests/**/output.json
 do
    echo python utils/validate_schema.py -i $f -s schema/record.schema.json
    python utils/validate_schema.py -i $f -s schema/record.schema.json
@@ -17,7 +17,7 @@ do
 done
 
 # Validate against dagger schema.
-for f in tests/22_json_mixed_args/*.json
+for f in tests/**/*.json
 do
    echo python utils/validate_schema.py -i $f -s schema/dagger.schema.json
    python utils/validate_schema.py -i $f -s schema/dagger.schema.json
