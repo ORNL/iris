@@ -77,7 +77,7 @@
                                                                     "type": {"type": "string"},
                                                                     "name": {"type": "string"},
                                                                     "value": {"type": "string"},
-                                                                    "permission": {"type": "string"},
+                                                                    "permission": {"type": "string", "pattern":"^((r)|(rw)|(w))$"},
                                                                     "size_bytes": {"type": "integer"},
                                                                     "data_size": {"type": "integer"},
                                                                     "data_type": {"type": "string"}
