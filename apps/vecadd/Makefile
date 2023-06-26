@@ -17,5 +17,8 @@ kernel.hip: kernel.hip.cpp
 kernel.openmp.so: kernel.openmp.c
 	$(CC) $(CFLAGS) -O3 -lgomp -fPIC -shared -I. -o $@ $^
 
+vecadd-sycl: vecadd-sycl.cpp
+	$(CHARMSYCL)/bin/cscc --targets=cpu-c,nvidia-cuda -o $@ $^
+
 clean:
 	rm -f vecadd vecadd-iris vecadd-m kernel.ptx kernel.openmp.so kernel.hip
