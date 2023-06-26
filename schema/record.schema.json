@@ -10,7 +10,7 @@
             "type": "object",
             "properties": {
                 "inputs": {
-                    "description": "An array of inputs the JSON graph will resolve to the json_inputs during the iris_graph_create_json function call. These values are substituted throughout the entire DAG. The order of the arguments is important; for instance, if the JSON is expecting 3 host memory pointers followed by 3 device memory pointers, these need be passed exactly during the runtime (host) API arguments.",
+                    "description": "An array of inputs the JSON graph will resolve to the `json_inputs` during the `iris_graph_create_json` function call. These values are substituted throughout the entire DAG. The order of the arguments is important; for instance, if the JSON is expecting 3 host memory pointers followed by 3 device memory pointers, these need be passed exactly during the runtime (host) API arguments.",
                     "type": "array",
                     "items": {
                         "type": "string"
