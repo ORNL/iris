@@ -39,15 +39,60 @@ Or:
   CHARM_SYCL_RTS=IRIS IRIS_ARCHS=cuda ./vecadd-sycl
 ```
 
+# Performance Evaluation
+
+Run `benchmark_performance.sh`
+This generates the samples into the `results` directory.
+
+# Figure Generation
+
+Converts the samples from the `results` directory into box-and-whisker plots and saves them in the `figures` directory.
+
+Activate the plotting environment with:
+
+`mamba activate plotting`
+
+To create the mamba/conda environment:
+
+`mamba env create --force ./plotting.yaml`
+
+All conversion is performed by running:
+
+`./plot_results.sh`
+
 # Setup
 
-OpenSYCL was installed (on zenith) with:
+## Charm-SYCL
+
+Charm-SYCL was install with: `build.sh` as was IRIS from their respective top level directories.
+
+## DPC++
+
+DPC++ was installed (on zenith) with:
 
 ```
+module load nvhpc/22.11 gnu/11.3.0
+
+export DPCPP_HOME=$HOME/dpc++-workspace
+mkdir $DPCPP_HOME
+cd $DPCPP_HOME
+git clone https://github.com/intel/llvm -b sycl
+CC=gcc CXX=g++ python $DPCPP_HOME/llvm/buildbot/configure.py --cuda
+CC=gcc CXX=g++ python $DPCPP_HOME/llvm/buildbot/compile.py
+```
+
+## OpenSYCL
+
+OpenSYCL was installed (on zenith) with:
+**BROKEN**
+```
+    module load gcc/12.1.0
+
     module load llvm/13.0.1
     git clone https://github.com/OpenSYCL/OpenSYCL
     cd OpenSYCL
     cmake -DCMAKE_INSTALL_PREFIX=/home/9bj/.opensycl -DLLVM_ROOT=/auto/software/swtree/ubuntu20.04/x86_64/llvm/13.0.1/ -DLLVM_DIR=/auto/software/swtree/ubuntu20.04/x86_64/llvm/13.0.1/lib/cmake -DWITH_ACCELERATED_CPU=ON -DCUDA_TOOLKIT_ROOT_DIR=/opt/nvidia/hpc_sdk/Linux_x86_64/22.11/cuda -DWITH_CUDA_BACKEND=ON
     make install
 ```
+
 
