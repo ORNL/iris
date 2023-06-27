@@ -39,3 +39,15 @@ Or:
   CHARM_SYCL_RTS=IRIS IRIS_ARCHS=cuda ./vecadd-sycl
 ```
 
+# Setup
+
+OpenSYCL was installed (on zenith) with:
+
+```
+    module load llvm/13.0.1
+    git clone https://github.com/OpenSYCL/OpenSYCL
+    cd OpenSYCL
+    cmake -DCMAKE_INSTALL_PREFIX=/home/9bj/.opensycl -DLLVM_ROOT=/auto/software/swtree/ubuntu20.04/x86_64/llvm/13.0.1/ -DLLVM_DIR=/auto/software/swtree/ubuntu20.04/x86_64/llvm/13.0.1/lib/cmake -DWITH_ACCELERATED_CPU=ON -DCUDA_TOOLKIT_ROOT_DIR=/opt/nvidia/hpc_sdk/Linux_x86_64/22.11/cuda -DWITH_CUDA_BACKEND=ON
+    make install
+```
+

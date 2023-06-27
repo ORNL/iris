@@ -20,22 +20,22 @@ int main(int argc, char** argv) {
     B[i] = i;
     C[i] = 0;
   }
+  {
+    sycl::buffer<int, 1> mem_A(A, {SIZE});
+    sycl::buffer<int, 1> mem_B(B, {SIZE});
+    sycl::buffer<int, 1> mem_C(C, {SIZE});
+    sycl::queue q;
 
-  sycl::buffer<int, 1> mem_A(A, {SIZE});
-  sycl::buffer<int, 1> mem_B(B, {SIZE});
-  sycl::buffer<int, 1> mem_C(C, {SIZE});
-  sycl::queue q;
-
-  q.submit([&](sycl::handler& h) {
-      sycl::accessor<int, 1, sycl::access_mode::read>  d_a(mem_A, h);
-      sycl::accessor<int, 1, sycl::access_mode::read>  d_b(mem_B, h);
-      sycl::accessor<int, 1, sycl::access_mode::write> d_c(mem_C, h);
-      h.parallel_for(sycl::range{SIZE}, [=](sycl::id<1> i) {
-          d_c[i] = d_a[i] + d_b[i];
+    q.submit([&](sycl::handler& h) {
+        sycl::accessor<int, 1, sycl::access_mode::read>  d_a(mem_A, h);
+        sycl::accessor<int, 1, sycl::access_mode::read>  d_b(mem_B, h);
+        sycl::accessor<int, 1, sycl::access_mode::write> d_c(mem_C, h);
+        h.parallel_for(sycl::range{SIZE}, [=](sycl::id<1> i) {
+            d_c[i] = d_a[i] + d_b[i];
+          });
         });
-      });
-  q.wait();
-
+    q.wait();
+  }
   for (int i = 0; i < SIZE; i++) {
     printf("C[%d] = %d\n", i, C[i]);
     if (C[i] != (A[i] + B[i])) ERROR++;
