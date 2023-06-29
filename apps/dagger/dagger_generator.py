@@ -248,16 +248,12 @@ def gen_attr(tasks,kernel_names,kernel_probs):
         #task_instance_name = tname
         #if ck != 0: #if we're supporting concurrent tasks, all but the first instance should have a unique name
         #    task_instance_name += '-' + str(ck)
-        #TODO may need to undo the following:
         parameters = []
         for i,m in enumerate(mobs):
-          parameters.append({"type":"memory_object","name":m,"permission":mper[i]})
-        #for m in mper:
-        #  parameters.append({"type":"scalar","name":m})
+            #NOTE: there is currently a restriction that all memory objects passed into the kernel are the same size (in user-size-cb-{kernel-name})
+            parameters.append({"type":"memory_object","value":m,"size_bytes":"user-size-cb-{}".format(kname),"permissions":mper[i]})
         task = {"name":tname,"commands":[{"kernel":{"name":kname,"global_size":kernel_dimension,"parameters":parameters}}],"depends":deps,"target":"user-target-data"}
-        #task = {"name":tname,"commands":[{"kernel":kname,["user-size"],mobs,mper]}],"depends":deps,"target":"user-target-data"}
-        #was:
-        #task = {"name":tname,"kernel":[kname,"user-size",["user-mem"],["rw"] ],"depends":deps,"target":"user-target"}
+        #TODO: what about local_size or offset
         dag.append(task)
 
     return dag
@@ -289,7 +285,7 @@ def duplicate_for_concurrency(task_dag,edges):
             x['name'] = "task"+str(y)
             #update the instance buffers used in this concurrent instance
             for zi, z in enumerate(x['commands'][0]['kernel']['parameters']):
-                old_instance_buffer_name = re.findall(r'(.*instance)\d+$',z['name'])
+                old_instance_buffer_name = re.findall(r'(.*instance)\d+$',z['value'])
                 old_instance_buffer_name = old_instance_buffer_name[0]
                 nib = (old_instance_buffer_name + str(c))
                 x['commands'][0]['kernel']['parameters'][zi]['name'] = nib
@@ -402,7 +398,7 @@ def determine_and_prepend_iris_h2d_transfers(dag):
                     if 'kernel' not in t['commands'][0]:
                         continue
                     for p in t['commands'][0]['kernel']['parameters']:
-                      if buffer_name == p['name']:
+                      if buffer_name == p['value']:
                           memory_instance_in_use = True
                           #TODO: sort out concurrency
                           if transfer["name"] not in dag[m]['depends']:
@@ -439,7 +435,7 @@ def determine_and_append_iris_d2h_transfers(dag):
                     if 'kernel' not in t['commands'][0]:
                         continue
                     for p in t['commands'][0]['kernel']['parameters']:
-                      if buffer_name == p['name']:
+                      if buffer_name == p['value']:
                           memory_instance_in_use = True
                           transfer["depends"].append(t["name"])
                 transfer["target"] = "user-target-control"

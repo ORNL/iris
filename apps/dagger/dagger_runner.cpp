@@ -20,6 +20,7 @@ void ShowUsage(){
   printf("This runner will run the generated DAG from DAGGER on IRIS. It can be immediately after DAGGER has been run and accepts the same arguments as those supplied to DAGGER.\nThe required additional arguments include:\n\tthe size of the memory buffers to use in this IRIS test (\"--size\"),\n\tthe number of repeats (\"--repeats\"),\n\tand the location to log the timing results (\"--logfile\")");
   printf("For instance:\n");
   printf("./dagger_runner\t --kernels=\"process,ijk\"\n");
+  printf("\t\t --graph=\"linear10.json\"\n");
   printf("\t\t --buffers-per-kernel=\"process: rw,ijk: r r w rw\"\n");
   printf("\t\t --duplicates=\"2\"\n");
   printf("\t\t --concurrent-kernels=**UNSUPPORTED**\"process:2,ijk:4\"\n");
@@ -41,17 +42,17 @@ int main(int argc, char** argv) {
   int REPEATS;
   char* POLICY;
   char* LOGFILE = NULL;
-  FILE* LF_HANDLE;
+  char* GRAPHFILE = NULL;
   char LOG_BUFFER[32];
   LOG_BUFFER[0] = '\0';
-  double *A, *B;
   int retcode;
-  int task_target = -1;//this is set by setting the scheduling-policy e.g. --scheduling-policy="roundrobin"
+  int task_target = -1;//this is set in the scheduling-policy e.g. --scheduling-policy="roundrobin"
   int memory_task_target = iris_pending;
   int duplicates = 0;
 
   std::map<std::string,bool> required_arguments_set = {
     {"kernels", false},
+    {"graph",false},
     {"buffers-per-kernel", false},
     {"duplicates", false},
     //{"concurrent-kernels", false},
@@ -83,10 +84,10 @@ int main(int argc, char** argv) {
   std::vector<kernel_parameters> kernels;
   int num_kernels = 0;
   int num_tasks = 0;
-
   int opt_char;
   int option_index;
   static struct option long_options[] = {
+    {"graph", required_argument, 0, 'g'},
     {"kernels", required_argument, 0, 'k'},
     {"buffers-per-kernel", required_argument, 0, 'b'},
     {"duplicates", required_argument, 0, 'z'},
@@ -108,6 +109,14 @@ int main(int argc, char** argv) {
 
   while((opt_char = getopt_long(argc, argv, "s=", long_options, &option_index)) != -1) {
     switch(opt_char){
+
+      case (int)'g':{//graph_file
+          GRAPHFILE = optarg;
+          if (GRAPHFILE != NULL){
+            required_arguments_set["graph"] = true;
+          }
+        } break;
+
       case (int)'k':{//kernels
           //split all kernels by ,
           char* x = strtok(optarg,",");
@@ -390,7 +399,7 @@ int indexer = 0;
     json_inputs[indexer] = &task_target; indexer++;
 
     iris_graph graph;
-    retcode = iris_graph_create_json("graph.json", json_inputs, &graph);
+    retcode = iris_graph_create_json(GRAPHFILE, json_inputs, &graph);
     assert(retcode == IRIS_SUCCESS && "Failed to create IRIS graph");
     for(auto i = 0; i < indexer; i++){
       json_inputs[i] = NULL;
