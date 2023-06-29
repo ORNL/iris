@@ -72,7 +72,7 @@ void Worker::Execute(Task* task) {
   if (consistency_) consistency_->Resolve(task);
   bool task_cmd_last = task->cmd_last();
   dev_->Execute(task);
-  if (!task_cmd_last) {
+  if (task_cmd_last) {
     if (scheduler_) scheduler_->CompleteTask(task, this);
     //task->Complete();
   }

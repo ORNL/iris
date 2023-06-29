@@ -132,7 +132,7 @@ void Device::ExecuteInit(Command* cmd) {
   cmd->set_time_end(timer_->Now());
   double time = timer_->Stop(IRIS_TIMER_INIT);
   cmd->SetTime(time);
-  if (Platform::GetPlatform()->enable_scheduling_history()) Platform::GetPlatform()->scheduling_history()->AddKernel(cmd);
+  if (Platform::GetPlatform()->is_scheduling_history_enabled()) Platform::GetPlatform()->scheduling_history()->AddKernel(cmd);
   enable_ = true;
 }
 
@@ -219,7 +219,7 @@ void Device::ExecuteKernel(Command* cmd) {
   cmd->SetTime(time);
   //printf("Task:%s time:%f ktime:%f init:%f atime:%f setmemtime:%f\n", cmd->task()->name(), time, ktime, ltime, atime, set_mem_time);
   cmd->kernel()->history()->AddKernel(cmd, this, time);
-  if (Platform::GetPlatform()->enable_scheduling_history()) Platform::GetPlatform()->scheduling_history()->AddKernel(cmd);
+  if (Platform::GetPlatform()->is_scheduling_history_enabled()) Platform::GetPlatform()->scheduling_history()->AddKernel(cmd);
 }
 
 void Device::ExecuteMalloc(Command* cmd) {
@@ -227,7 +227,7 @@ void Device::ExecuteMalloc(Command* cmd) {
   Mem* mem = cmd->mem();
   void* arch = mem->arch(this);
   cmd->set_time_end(timer_->Now());
-  if (Platform::GetPlatform()->enable_scheduling_history()) Platform::GetPlatform()->scheduling_history()->AddH2D(cmd);
+  if (Platform::GetPlatform()->is_scheduling_history_enabled()) Platform::GetPlatform()->scheduling_history()->AddH2D(cmd);
   _trace("dev[%d] malloc[%p]", devno_, arch);
 }
 
@@ -696,7 +696,7 @@ void Device::ExecuteH2D(Command* cmd, Device *dev) {
   else {
       Platform::GetPlatform()->null_kernel()->history()->AddH2D(cmd, dev, time, size);
   }
-  if (Platform::GetPlatform()->enable_scheduling_history()) Platform::GetPlatform()->scheduling_history()->AddH2D(cmd);
+  if (Platform::GetPlatform()->is_scheduling_history_enabled()) Platform::GetPlatform()->scheduling_history()->AddH2D(cmd);
 }
 
 void Device::ExecuteH2DNP(Command* cmd) {
@@ -745,7 +745,7 @@ void Device::ExecuteD2H(Command* cmd) {
           cmd_kernel->kernel()->history()->AddD2H(cmd, this, time, size);
   }
   else Platform::GetPlatform()->null_kernel()->history()->AddD2H(cmd, this, time, size);
-  if (Platform::GetPlatform()->enable_scheduling_history()) Platform::GetPlatform()->scheduling_history()->AddD2H(cmd);
+  if (Platform::GetPlatform()->is_scheduling_history_enabled()) Platform::GetPlatform()->scheduling_history()->AddD2H(cmd);
 }
 
 void Device::ExecuteMap(Command* cmd) {

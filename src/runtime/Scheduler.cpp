@@ -59,6 +59,7 @@ void Scheduler::CompleteTask(Task* task, Worker* worker) {
   int devno = dev->devno();
   task->set_devno(dev->devno());
   if (hub_available_) hub_client_->TaskDec(devno, 1);
+  if (platform_->is_scheduling_history_enabled()) platform_->scheduling_history()->AddTask(task);
   //if (enable_profiler_ & !task->system()) {
     //pthread_mutex_lock(&mutex_);
     //_todo("remove lock profile[%d]", enable_profiler_);

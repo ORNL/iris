@@ -22,8 +22,8 @@ public:
 
 private:
   void Add(Command* cmd);
-  virtual int CompleteTask(Task* task);
   int CompleteCommand(Command* command);
+  int CompleteTask(Task* task);
 
 protected:
   virtual int Main();

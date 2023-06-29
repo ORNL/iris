@@ -78,7 +78,26 @@ int SchedulingHistory::CompleteCommand(Command* command) {
 }
 
 int SchedulingHistory::CompleteTask(Task* task) {
-    return IRIS_SUCCESS;
+  if (task->type() == IRIS_TASK_PERM){
+    if(task->cmd_last()->type_kernel()){
+      if(!task->name()) {
+
+        raise(SIGINT);
+      }
+      char s[512];
+      size_t ksize  = task->cmd_last()->ws();
+
+      sprintf(s, "%s,%s,%f,%f,%f,%zu,%s,%s #%i\n",task->name(),task->cmd_last()->type_name(),task->cmd_last()->time_start(),task->cmd_last()->time_end(),task->cmd_last()->time_duration(),ksize,policy_str(task->brs_policy()),task->dev()->name(),task->dev()->devno());
+      Write(s);
+    }
+    else if (task->cmd_last()->type_h2d())
+      AddH2D(task->cmd_last());
+    else if (task->cmd_last()->type_d2h())
+      AddD2H(task->cmd_last());
+    else
+      return IRIS_ERROR;
+  }
+  return IRIS_SUCCESS;
 }
 
 const char* SchedulingHistory::FileExtension() {
