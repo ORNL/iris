@@ -136,9 +136,13 @@ echo "*******************************************************************"
 for POLICY in roundrobin depend profile random any all
 do
   echo "Running IRIS on Linear 10 with Policy: $POLICY"
-  IRIS_HISTORY=1 IRIS_ARCHS=opencl ./dagger_runner --graph="dagger-payloads/linear10-graph.json" --logfile="time.csv" --repeats=1 --scheduling-policy="$POLICY" --size=256  --kernels="ijk" --duplicates="0" --buffers-per-kernel="ijk:w r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=10 --num-tasks=10 --min-width=1 --max-width=1
+  IRIS_HISTORY=1 IRIS_ARCHS=opencl gdb --args ./dagger_runner --graph="dagger-payloads/linear10-graph.json" --logfile="time.csv" --repeats=1 --scheduling-policy="$POLICY" --size=256  --kernels="ijk" --duplicates="0" --buffers-per-kernel="ijk:w r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=10 --num-tasks=10 --min-width=1 --max-width=1
   [ $? -ne 0 ] && echo "Linear 10 Failed with Policy: $POLICY" &&  exit 1
+  #archive result
   mv dagger_runner-$SYSTEM*.csv $RESULTS_DIR/linear-10-$POLICY-$SYSTEM.csv
+  #plot timeline with gantt
+  python ./gantt/gantt.py --dag=./dagger-payloads/linear10-graph.json --timeline=$RESULTS_DIR/linear-10-$POLICY-$SYSTEM.csv --combined-out=$GRAPHS_DIR/linear-10-$POLICY-$SYSTEM.pdf# --drop="Initialize-0,Initialize-1" #--title-string="Linear 10 dataset with RANDOM scheduling policy" --drop="Init"
+  [ $? -ne 0 ] && echo "Failed Combined Plotting of Linear 10 with Policy: $POLICY" &&  exit 1
 done
 
 # Parallel 2-by-10
