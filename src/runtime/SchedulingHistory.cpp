@@ -79,14 +79,14 @@ int SchedulingHistory::CompleteCommand(Command* command) {
 
 int SchedulingHistory::CompleteTask(Task* task) {
   if (task->type() == IRIS_TASK_PERM){
-    if(task->cmd_last()->type_kernel()){
-      if(!task->name()) {
+    //if the task is named prioritize using that in the log
+    if (task->given_name()){
+      task->cmd_last()->set_name(task->name());
+    }
 
-        raise(SIGINT);
-      }
+    if(task->cmd_last()->type_kernel()){
       char s[512];
       size_t ksize  = task->cmd_last()->ws();
-
       sprintf(s, "%s,%s,%f,%f,%f,%zu,%s,%s #%i\n",task->name(),task->cmd_last()->type_name(),task->cmd_last()->time_start(),task->cmd_last()->time_end(),task->cmd_last()->time_duration(),ksize,policy_str(task->brs_policy()),task->dev()->name(),task->dev()->devno());
       Write(s);
     }
