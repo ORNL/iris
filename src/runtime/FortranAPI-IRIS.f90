@@ -4,14 +4,12 @@ MODULE IRIS
     IMPLICIT NONE
 
     TYPE, BIND(C) :: iris_mem
-        !TYPE(C_PTR) :: class_obj
-        INTEGER(C_LONG) :: class_obj
+        TYPE(C_PTR) :: class_obj
         INTEGER(C_LONG) :: uid
     END TYPE iris_mem
 
     TYPE, BIND(C) :: iris_task
-        !TYPE(C_PTR) :: class_obj
-        INTEGER(C_LONG) :: class_obj
+        TYPE(C_PTR) :: class_obj
         INTEGER(C_LONG) :: uid
     END TYPE iris_task
 
