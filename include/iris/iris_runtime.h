@@ -17,7 +17,7 @@ class Graph;
 } /* namespace iris */
 #endif
 
-struct _iris_task {
+struct __attribute__ ((packed)) alignas(1) _iris_task {
 #ifdef __cplusplus
   iris::rt::Task* class_obj;
 #else
@@ -26,7 +26,7 @@ struct _iris_task {
   unsigned long uid;
 };
 
-struct _iris_kernel {
+struct __attribute__ ((packed)) alignas(1) _iris_kernel {
 #ifdef __cplusplus
   iris::rt::Kernel* class_obj;
 #else
@@ -35,7 +35,7 @@ struct _iris_kernel {
   unsigned long uid;
 };
 
-struct _iris_mem {
+struct __attribute__ ((packed)) alignas(1) _iris_mem {
 #ifdef __cplusplus
   iris::rt::BaseMem* class_obj;
 #else
@@ -44,7 +44,7 @@ struct _iris_mem {
   unsigned long uid;
 };
 
-struct _iris_graph {
+struct __attribute__ ((packed)) alignas(1) _iris_graph {
 #ifdef __cplusplus
   iris::rt::Graph* class_obj;
 #else
