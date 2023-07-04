@@ -60,3 +60,7 @@ export LD_LIBRARY_PATH=$DPCPP_HOME/llvm/build/lib:$LD_LIBRARY_PATH
 execute_over_range "./vecadd-sycl-dpc++"
 mkdir results/dpc++_cuda; mv *.csv results/dpc++_cuda
 
+#opensycl (openmp)
+execute_over_range "./vecadd-opensycl-openmp"
+mkdir results/opensycl_openmp; mv *.csv results/opensycl_openmp
+

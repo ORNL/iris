@@ -84,6 +84,18 @@ CC=gcc CXX=g++ python $DPCPP_HOME/llvm/buildbot/compile.py
 ## OpenSYCL
 
 OpenSYCL was installed (on zenith) with:
+
+```
+  spack install llvm@13.0.1
+  #installs llvm to the following location:
+  export LLVM_DIR=/home/9bj/spack/opt/spack/linux-ubuntu22.04-zen2/gcc-12.1.0/llvm-13.0.1-2a5yipjwa6bco5vymttszyqauqzainuc
+  export CC=$LLVM_DIR/bin/clang ; export CXX=$LLVM_DIR/bin/clang++ ; export LDFLAGS=-L$LLVM_DIR/lib ; export CPPFLAGS="-I$LLVM_DIR/include"
+  git clone https://github.com/OpenSYCL/OpenSYCL ; cd OpenSYCL ; rm -rf ~/.opensycl
+  cmake -DCMAKE_INSTALL_PREFIX=/home/9bj/.opensycl -DCMAKE_C_COMPILER=$LLVM_DIR/bin/clang -DCMAKE_CXX_COMPILER=$LLVM_DIR/bin/clang++ -DWITH_ROCM_BACKEND=OFF -DWITH_CUDA_BACKEND=OFF -DWITH_ACCELERATED_CPU=OFF -DBUILD_CLANG_PLUGIN=OFF -DCLANG_INCLUDE_PATH=$LLVM_DIR/include -DCLANG_EXECUTABLE_PATH=$LLVM_DIR/bin/clang++ -DCMAKE_CXX_FLAGS="-fuse-ld=lld"
+  make -j`nproc`
+  make install
+```
+
 **BROKEN**
 ```
     module load gcc/12.1.0

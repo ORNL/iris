@@ -24,16 +24,22 @@ DPCPP_HOME=/home/9bj/dpc++-workspace
 vecadd-sycl-dpc++: vecadd-sycl.cpp
 	$(DPCPP_HOME)/llvm/build/bin/clang++ -std=c++17 -fsycl -fsycl-targets=nvptx64-nvidia-cuda -o $@ $^
 
+vecadd-opensycl-openmp: vecadd-sycl.cpp
+	$(OPENSYCL)/bin/syclcc --opensycl-targets="omp" -pthread -lgomp -O3 -o $@ $^
+
+
 #broken
 LLVM_DIR=/home/9bj/spack/opt/spack/linux-ubuntu22.04-zen2/gcc-12.1.0/llvm-13.0.1-2a5yipjwa6bco5vymttszyqauqzainuc
 vecadd-opensycl-cuda: vecadd-sycl.cpp
-	$(OPENSYCL)/bin/syclcc --opensycl-targets="cuda:sm_86" -L$(OPENSYCL)/lib/hipSYCL -lrt-backend-cuda -L$(OPENSYCL)/lib -lhipSYCL-rt -lopensycl-common -stdlib=libc++ -lstdc++ -lm  -o $@ $^
+	$(OPENSYCL)/bin/syclcc --opensycl-targets="cuda:sm_80" -stdlib=libc++  -o $@ $^
+#	$(OPENSYCL)/bin/syclcc --opensycl-targets="cuda:sm_80" -L$(OPENSYCL)/lib -L$(OPENSYCL)/lib/hipSYCL -L$(LLVM_DIR)/lib/x86_64-unknown-linux-gnu -stdlib=libc++ -std=c++17 -lc++ -lm -lhipSYCL-rt -lrt-backend-cuda -lopensycl-common -Wl,--rpath=$(LLVM_DIR)/lib/x86_64-unknown-linux-gnu -o $@ $^
+#	$(OPENSYCL)/bin/syclcc --opensycl-targets="cuda:sm_80" -L$(OPENSYCL)/lib -L$(OPENSYCL)/lib/hipSYCL -stdlib=libc++ -lhipSYCL-rt -lrt-backend-cuda -lopensycl-common -lopensycl-clang -o $@ $^
+	#$(OPENSYCL)/bin/syclcc --opensycl-targets="cuda:sm_86" -L$(OPENSYCL)/lib/hipSYCL -lrt-backend-cuda -L$(OPENSYCL)/lib -lhipSYCL-rt -lopensycl-common -stdlib=libc++ -lstdc++ -lm -o $@ $^
 	#$(OPENSYCL)/bin/syclcc --opensycl-targets="cuda:sm_86" --hipsycl-platform=cuda --hipsycl-gpu-arch=sm_62 -stdlib=libc++ -Wl,--rpath=$(LLVM_DIR)/lib/x87_64-unknown-linux-gnu -lstdc++ -lm -L$(OPENSYCL)/lib -L$(OPENSYCL)/lib/hipSYCL -lhipSYCL-rt -lrt-backend-cuda -L$(LLVM_DIR)/lib -o $@ $^
 
 #broken
-vecadd-opensycl-openmp: vecadd-sycl.cpp
-	$(OPENSYCL)/bin/syclcc --opensycl-targets="omp" -Wl,--rpath=/auto/software/swtree/ubuntu20.04/x86_64/gcc/12.1.0/lib64 -Wl,--dynamic-linker=/auto/software/swtree/ubuntu20.04/x86_64/gcc/12.1.0/lib64 -L/auto/software/swtree/ubuntu20.04/x86_64/gcc/12.1.0/lib64 -L/usr/lib -nostdlib -lpthread -pthread -lgomp -o $@ $^
-	#$(OPENSYCL)/bin/syclcc --opensycl-targets="omp" -stdlib=libc++ -I$(OPENMP_PATH)/include -Wl,-rpath=$(OPENMP_PATH) -I/usr/lib/gcc/x86_64-linux-gnu/11/include -lgomp -o $@ $^
+vecadd-opensycl-hip: vecadd-sycl.cpp
+	$(OPENSYCL)/bin/syclcc --opensycl-targets="hip:gfx908:sramecc+:xnack-" -stdlib=libc++  -o $@ $^
 
 #broken
 vecadd-computecpp: vecadd-sycl.cpp
