@@ -92,7 +92,9 @@ def run(args):
         json_inputs.append(iris.iris_pending)
         json_inputs.append(args.task_target)
 
-        print(json_inputs)
+        print("JSON input parameters")
+        for index, inp in enumerate(json_inputs):
+            print(index,':', inp)
 
         graph = iris.graph()
         graph.load(args.graph, json_inputs)
