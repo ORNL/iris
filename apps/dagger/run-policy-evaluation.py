@@ -116,6 +116,7 @@ def main(argv):
         from dagger_runner import run as run_dagger
         from dagger_runner import create_graph
         from dagger_runner import parse_args as run_dagger_parse_args
+        os.environ["IRIS_KERNEL_DIR"] = SCRIPT_DIR
         rargs = run_dagger_parse_args(f'{_payloads[payload]["runner_args"]} --graph={graph_path} --scheduling-policy={args.policy}')
         # run_dagger(rargs)
         iris.init()
