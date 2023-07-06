@@ -93,9 +93,9 @@ def run(args):
 
         print(json_inputs)
 
-        # TODO: Add iris run
-        # graph = iris.graph()
-        # graph.load('graph.json', json_inputs)
+        graph = iris.graph()
+        graph.load(args.graph, json_inputs)
+        graph.submit()
 
 
 def main(argv):
