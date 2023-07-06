@@ -17,7 +17,7 @@ elif [ "$SYSTEM" = "zenith" ] ; then
 elif [ "$SYSTEM" = "orc-open-hyp" ] ; then
   rm -f *.csv ; make dagger_runner kernel.hip kernel.ptx
 else
-  echo "Unknown system." && exit 1
+   echo "Unknown system ($SYSTEM)." && exit 1
 fi
 
 # exit 1 if the last program run wasn't successful
