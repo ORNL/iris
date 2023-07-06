@@ -409,8 +409,9 @@ int DeviceOpenCL::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws
           return IRIS_SUCCESS; 
       }
   }
+  size_t block[3] = { lws ? lws[0] : 1, lws ?  lws[1] : 1, lws ?  lws[2] : 1 };
   cl_kernel clkernel = (cl_kernel) kernel->arch(this);
-  err_ = ld_->clEnqueueNDRangeKernel(clcmdq_, clkernel, (cl_uint) dim, (const size_t*) off, (const size_t*) gws, (const size_t*) lws, 0, NULL, NULL);
+  err_ = ld_->clEnqueueNDRangeKernel(clcmdq_, clkernel, (cl_uint) dim, (const size_t*) off, (const size_t*) gws, (const size_t*) block, 0, NULL, NULL);
   _clerror(err_);
   if (err_ != CL_SUCCESS){
     worker_->platform()->IncrementErrorCount();

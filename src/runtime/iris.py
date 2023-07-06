@@ -421,42 +421,50 @@ def task_create(name = None):
 def task_depend(task, ntasks, tasks):
     return dll.iris_task_depend(task, c_int(ntasks), (iris_task * len(tasks))(*tasks))
 
-def task_kernel(task, kernel, dim, off, gws, lws, params, params_info, hold_params):
-    coff = (c_size_t * dim)(*off)
-    cgws = (c_size_t * dim)(*gws)
-    clws = (c_size_t * dim)(*lws)
+def convert_params(params, params_info=[], hold_params=[]):
     nparams = len(params)
     cparams = (c_void_p * nparams)()
     hold_params.clear()
+    def check_size(i, s):
+        if i < len(params_info) and params_info[i] != s:
+            return False
+        return True    
     for i in range(nparams):
         if hasattr(params[i], 'handle') and isinstance(params[i].handle, iris_mem):
             cparams[i] = ctypes.addressof(params[i].handle)
-        elif isinstance(params[i], int) and params_info[i] == 1:
+        elif (isinstance(params[i], np.uint8) or isinstance(params[i], np.int8) or isinstance(params[i], int)) and check_size(i, 1):
             p = byref(c_int8(params[i]))
             hold_params.append(p)
             cparams[i] = cast(p, c_void_p)
-        elif isinstance(params[i], int) and params_info[i] == 2:
+        elif (isinstance(params[i], np.uint16) or isinstance(params[i], np.int16) or isinstance(params[i], int)) and check_size(i, 2):
             p = byref(c_short(params[i]))
             hold_params.append(p)
             cparams[i] = cast(p, c_void_p)
-        elif isinstance(params[i], int) and params_info[i] == 4:
+        elif (isinstance(params[i], np.uint32) or isinstance(params[i], np.int32) or isinstance(params[i], int)) and check_size(i, 4):
             p = byref(c_int32(params[i]))
             hold_params.append(p)
             cparams[i] = cast(p, c_void_p)
-        elif isinstance(params[i], int) and params_info[i] == 8:
+        elif isinstance(params[i], np.uint64) or isinstance(params[i], np.int64) or (isinstance(params[i], int)) and check_size(i, 8):
             p = byref(c_int64(params[i]))
             hold_params.append(p)
             cparams[i] = cast(p, c_void_p)
-        elif isinstance(params[i], float) and params_info[i] == 4:
+        elif (isinstance(params[i], np.float32) or isinstance(params[i], float)) and check_size(i, 4):
             p = byref(c_float(params[i]))
             cparams[i] = cast(p, c_void_p)
             hold_params.append(p)
-        elif isinstance(params[i], float) and params_info[i] == 8:
+        elif (isinstance(params[i], np.float64) or isinstance(params[i], np.double) or isinstance(params[i], float)) and check_size(i, 8):
             p = byref(c_double(params[i]))
             cparams[i] = cast(p, c_void_p)
             hold_params.append(p)
         else:
             print("error")
+    return cparams
+def task_kernel(task, kernel, dim, off, gws, lws, params, params_info, hold_params):
+    coff = (c_size_t * dim)(*off)
+    cgws = (c_size_t * dim)(*gws)
+    clws = (c_size_t * dim)(*lws)
+    nparams = len(params)
+    cparams = convert_params(params, params_info, hold_params)
 
     cparams_info = (c_int * nparams)(*params_info)
     kernel_name = c_char_p(kernel) if sys.version_info[0] == 2 else c_char_p(bytes(kernel, 'ascii'))
@@ -960,6 +968,12 @@ class graph:
         self.handle = graph_create()
         for each_task in tasks:
             self.add_task(each_task, device, opt)
+    def load(self, json_file='graph.json', params=[]):
+        c_json_file = c_char_p(json_file) if sys.version_info[0] == 2 else c_char_p(bytes(json_file, 'ascii'))
+        self.handle = iris_graph()
+        cparams = convert_params(params, params_info=[], hold_params=[])
+        d = self.call_ret(dll.iris_graph_create_json, np.int32, c_json_file, cparams, self.handle)
+        return d
     def retain(self):
         dll.iris_graph_retain(self.handle)
     def release(self):
@@ -1206,4 +1220,7 @@ class graph:
             df['task_uid'] = task_uids
             return df
         return comp_2d
+class json_graph(graph):
+    def __init__(self, json_file='graph.json', params=[]):
+        self.load(self, json_file, params, self.handle)
 

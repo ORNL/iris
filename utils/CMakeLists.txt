@@ -502,6 +502,15 @@ add_custom_command(
   COMMAND echo "echo \"*********************** ${APP_ENVNAME} Environent *********************\"" >> ${CMAKE_BINARY_DIR}/setup.source
   COMMAND echo "echo \"${APP_ENVNAME}: \$${APP_ENVNAME}\"" >> ${CMAKE_BINARY_DIR}/setup.source
   COMMAND echo "echo \"*************************************************************\"" >> ${CMAKE_BINARY_DIR}/setup.source
+  COMMAND echo "if [[ -d \"\$${APP_ENVNAME}/lib64\" ]] " >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
+  COMMAND echo "then" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
+  COMMAND echo "    export EMCONFIG_PATH=\$${APP_ENVNAME}/lib64" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
+  COMMAND echo "else" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
+  COMMAND echo "    if [[ -d \"\$${APP_ENVNAME}/lib\" ]] " >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
+  COMMAND echo "    then" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
+  COMMAND echo "        export EMCONFIG_PATH=\$${APP_ENVNAME}/lib" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
+  COMMAND echo "    fi" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
+  COMMAND echo "fi" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
   )
 add_custom_target(setup.source ALL DEPENDS ${CMAKE_BINARY_DIR}/setup.source)
 install(FILES ${CMAKE_BINARY_DIR}/setup.source DESTINATION ${CMAKE_INSTALL_PREFIX})
@@ -669,7 +678,7 @@ add_custom_command(
   OUTPUT ${CMAKE_BINARY_DIR}/kernel.hip
   WORKING_DIRECTORY ${PROJECT_SOURCE_DIR} 
   COMMAND cat ${HIP_KERNEL_SOURCES} > ${CMAKE_CURRENT_BINARY_DIR}/__iris_kernel.hip.cpp
-  COMMAND hipcc --genco ${hip_flags} ${HIP_FLAGS} -o ${CMAKE_BINARY_DIR}/kernel.hip ${CMAKE_CURRENT_BINARY_DIR}/__iris_kernel.hip.cpp
+  COMMAND hipcc --genco ${HIP_FLAGS} -o ${CMAKE_BINARY_DIR}/kernel.hip ${CMAKE_CURRENT_BINARY_DIR}/__iris_kernel.hip.cpp
   BYPRODUCTS ${CMAKE_BINARY_DIR}/kernel.hip
   )
 add_custom_target(kernel.hip DEPENDS ${CMAKE_BINARY_DIR}/kernel.hip)
@@ -789,16 +798,6 @@ if (HOST2ROC_KERNEL_SOURCES AND USE_HIP)
 addKernelRule(kernel.host2roc "${HOST2ROC_KERNEL_SOURCES}" ${HOST2ROC_FLAGS} ${HOST2ROC_LDFLAGS} "${HOST2ROC_LIBRARIES}")
 endif() #HOST2ROC_KERNEL_SOURCES
 
-if (EXISTS "$ENV{IRIS}/lib64/libiris.so")
-install(CODE "EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E create_symlink $ENV{IRIS}/lib64/libiris.so ${LIB_INSTALL_PATH}/libiris.so)")
-#install(FILES $ENV{IRIS}/lib64/libiris.so DESTINATION ${LIB_INSTALL_PATH})
-endif()
-
-if (EXISTS "$ENV{IRIS}/lib/libiris.so")
-install(CODE "EXECUTE_PROCESS(COMMAND  ${CMAKE_COMMAND} -E create_symlink $ENV{IRIS}/lib/libiris.so ${LIB_INSTALL_PATH}/libiris.so)")
-#install(FILES $ENV{IRIS}/lib/libiris.so DESTINATION ${LIB_INSTALL_PATH})
-endif()
-
 #printf "0x%x\n" `adb shell cat /sys/devices/soc0/serial_number` > serial
 install_iris_files("${PROJECT_SOURCE_DIR}/src/*.cl" ${KERNEL_INSTALL_PATH})
 ##install(DIRECTORY ${PROJECT_SOURCE_DIR}/src/ DESTINATION ${KERNEL_INSTALL_PATH}/   FILES_MATCHING PATTERN "*.cl")
@@ -911,3 +910,14 @@ if (APP_SOURCES AND OPENMP_KERNEL_SOURCES)
 target_link_libraries(${APP_EXECUTABLE} kernel.openmp)
 add_dependencies(${APP_EXECUTABLE} kernel.openmp)
 endif()
+
+if (EXISTS "$ENV{IRIS}/lib64/libiris.so")
+install(CODE "EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E create_symlink $ENV{IRIS}/lib64/libiris.so ${LIB_INSTALL_PATH}/libiris.so)")
+#install(FILES $ENV{IRIS}/lib64/libiris.so DESTINATION ${LIB_INSTALL_PATH})
+endif()
+
+if (EXISTS "$ENV{IRIS}/lib/libiris.so")
+install(CODE "EXECUTE_PROCESS(COMMAND  ${CMAKE_COMMAND} -E create_symlink $ENV{IRIS}/lib/libiris.so ${LIB_INSTALL_PATH}/libiris.so)")
+#install(FILES $ENV{IRIS}/lib/libiris.so DESTINATION ${LIB_INSTALL_PATH})
+endif()
+
