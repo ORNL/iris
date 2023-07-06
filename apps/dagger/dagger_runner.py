@@ -99,6 +99,9 @@ def run(args):
         graph = iris.graph()
         graph.load(args.graph, json_inputs)
         graph.submit()
+        graph.wait()
+        iris.finalize()
+        print("Success")
 
 
 def main(argv):

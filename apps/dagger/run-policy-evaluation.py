@@ -109,9 +109,9 @@ def main(argv):
         print(f"Running IRIS on {payload} with Policy: {args.policy}.")
         graph_path = os.path.join(args.payload_dir, _payloads[payload]['file']+'.json')
         results_path = f'{args.results_dir}/{_payloads[payload]["file"]}-{args.policy}-{os.getenv("SYSTEM")}.csv'
-        run(f'{SCRIPT_DIR}/dagger_runner.py {_payloads[payload]["runner_args"]} --graph={graph_path} --scheduling-policy={args.policy}')
+        run(f'IRIS_HISTORY=1 {SCRIPT_DIR}/dagger_runner.py {_payloads[payload]["runner_args"]} --graph={graph_path} --scheduling-policy={args.policy}')
 
-        run(f'mv dagger_runner-{os.getenv("SYSTEM")}*.csv {results_path}')
+        run(f'mv app-{os.getenv("SYSTEM")}*.csv {results_path}')
         #plot timeline with gantt
         run(f'python {SCRIPT_DIR}/gantt/gantt.py --dag={graph_path} --timeline={results_path} --combined-out={args.graphs_dir}/{_payloads[payload]["file"]}-{args.policy}-{os.getenv("SYSTEM")}.pdf')
 
