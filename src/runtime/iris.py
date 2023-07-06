@@ -972,7 +972,7 @@ class graph:
         c_json_file = c_char_p(json_file) if sys.version_info[0] == 2 else c_char_p(bytes(json_file, 'ascii'))
         self.handle = iris_graph()
         cparams = convert_params(params, params_info=[], hold_params=[])
-        d = self.call_ret(dll.iris_graph_create_json, np.int32, c_json_file, cparams, self.handle)
+        d = dll.iris_graph_create_json(c_json_file, cparams, byref(self.handle))
         return d
     def retain(self):
         dll.iris_graph_retain(self.handle)
@@ -1222,5 +1222,5 @@ class graph:
         return comp_2d
 class json_graph(graph):
     def __init__(self, json_file='graph.json', params=[]):
-        self.load(self, json_file, params, self.handle)
+        self.load(json_file, params)
 
