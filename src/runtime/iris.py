@@ -1,3 +1,13 @@
+#!/usr/bin/env python3
+
+"""
+IRIS Python interface
+"""
+__author__ = "Narasinga Rao Miniskar"
+__copyright__ = "Copyright (c) 2020-2023, Oak Ridge National Laboratory (ORNL) Programming Systems Research Group. All rights reserved."
+__license__ = "UT Battelle Open Source"
+__version__ = "1.0"
+
 import ctypes
 from ctypes import *
 import sys
@@ -437,16 +447,16 @@ def convert_params(params, params_info=[], hold_params=[]):
             hold_params.append(pobj)
         elif hasattr(params[i], 'handle') and isinstance(params[i].handle, iris_mem):
             cparams[i] = ctypes.addressof(params[i].handle)
+        elif (isinstance(params[i], np.uint32) or isinstance(params[i], np.int32) or isinstance(params[i], int)) and check_size(i, 4):
+            p = byref(c_int32(params[i]))
+            hold_params.append(p)
+            cparams[i] = cast(p, c_void_p)
         elif (isinstance(params[i], np.uint8) or isinstance(params[i], np.int8) or isinstance(params[i], int)) and check_size(i, 1):
             p = byref(c_int8(params[i]))
             hold_params.append(p)
             cparams[i] = cast(p, c_void_p)
         elif (isinstance(params[i], np.uint16) or isinstance(params[i], np.int16) or isinstance(params[i], int)) and check_size(i, 2):
             p = byref(c_short(params[i]))
-            hold_params.append(p)
-            cparams[i] = cast(p, c_void_p)
-        elif (isinstance(params[i], np.uint32) or isinstance(params[i], np.int32) or isinstance(params[i], int)) and check_size(i, 4):
-            p = byref(c_int32(params[i]))
             hold_params.append(p)
             cparams[i] = cast(p, c_void_p)
         elif isinstance(params[i], np.uint64) or isinstance(params[i], np.int64) or (isinstance(params[i], int)) and check_size(i, 8):
@@ -474,7 +484,7 @@ def convert_params(params, params_info=[], hold_params=[]):
             cobj = s.ctypes.data_as(c_void_p)
             hold_params.append(s)
             cparams[i] = cobj
-        elif type(pobj) == np.darray:
+        elif type(pobj) == np.ndarray:
             cobj = pobj.ctypes.data_as(c_void_p)
             hold_params.append(pobj)
             cparams[i] = cobj

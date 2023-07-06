@@ -14,6 +14,7 @@ import re
 import numpy as np
 import sys
 import dagger_generator as dg
+import pdb
 
 EXIT_FAILURE = 1
 
