@@ -36,75 +36,87 @@ def init_parser(parser):
     parser.add_argument("--scheduling-policy",default='roundrobin',help="all options include (roundrobin, depend, profile, random, any, all, custom) or any integer [0-9] denoting the device id to run all tasks on.")
     parser.add_argument("--attach-debugger",action='store_true',help="Attach debugger on port 5678.")
 
+def create_graph(args):
+
+    num_buffers_used = 0
+    host_mem = []
+    buffer_type = []
+    dev_mem = []
+    sizecb = []
+    input_arrays = {
+        "host_mem": host_mem,
+        "buffer_type": buffer_type,
+        "dev_mem": dev_mem,
+        "sizecb": sizecb,
+    }
+
+    for kernel in dg._kernels:
+        for concurrent_device in range(dg._duplicates):
+            argument_index = 0
+            for buffer in dg._kernel_buffs[kernel]:
+                # Create and add the host-side buffer based on it's type
+                if buffer == 'r':
+                    # Create and populate memory
+                    tmp = np.arange(args.size**dg._dimensionality[kernel], dtype=np.double)
+                    for i in range(args.size**dg._dimensionality[kernel]):
+                        tmp[i] = i
+                    host_mem.append(tmp)
+                    num_buffers_used += 1
+                elif buffer == 'w':
+                    tmp = np.arange(args.size**dg._dimensionality[kernel], dtype=np.double)
+                    host_mem.append(tmp)
+                    num_buffers_used += 1
+                elif buffer == 'rw':
+                    # Create and populate memory
+                    tmp = np.arange(args.size**dg._dimensionality[kernel], dtype=np.double)
+                    for i in range(args.size**dg._dimensionality[kernel]):
+                        tmp[i] = i
+                    host_mem.append(tmp)
+                    num_buffers_used += 1
+                else:
+                    print(f"\033[41mInvalid memory argument! Kernel {kernel} has a buffer of memory type {buffer} but only r,w or rw are allowed.\n\033[0m")
+                    exit(EXIT_FAILURE)
+                buffer_type.append(buffer)
+                iris_mem = iris.mem(host_mem[-1].nbytes)
+                dev_mem.append(iris_mem)
+
+        sizecb.append(args.size**dg._dimensionality[kernel]*np.double(0).itemsize)
+        print(f"SIZE[{args.size}] MATRIX_SIZE[{sizecb[-1]/1024/1024}]MB")
+
+    json_inputs = []
+
+    json_inputs.append(args.size)
+    json_inputs.extend(sizecb)
+    json_inputs.extend(host_mem)
+    json_inputs.extend(dev_mem)
+    json_inputs.append(iris.iris_pending)
+    json_inputs.append(args.task_target)
+
+    print("JSON input parameters")
+    for index, inp in enumerate(json_inputs):
+        print(index,':', inp)
+
+    graph = iris.graph()
+    graph.load(args.graph, json_inputs)
+    return graph, input_arrays
+
 def run(args):
-    iris.init()
     print(f"REPEATS:{args.repeats} LOGFILE:{args.logfile} POLICY:{args.scheduling_policy}")
 
     for k in dg._kernels:
         print(f"KERNEL: {k} available on {dg._concurrent_kernels[k]} devices concurrently")
 
+    iris.init()
     for t in range(args.repeats):
-        num_buffers_used = 0
-        host_mem = []
-        buffer_type = []
-        dev_mem = []
-        sizecb = []
-
-        for kernel in dg._kernels:
-            for concurrent_device in range(dg._duplicates):
-                argument_index = 0
-                for buffer in dg._kernel_buffs[kernel]:
-                    # Create and add the host-side buffer based on it's type
-                    if buffer == 'r':
-                        # Create and populate memory
-                        tmp = np.arange(args.size**dg._dimensionality[kernel], dtype=np.double)
-                        for i in range(args.size**dg._dimensionality[kernel]):
-                            tmp[i] = i
-                        host_mem.append(tmp)
-                        num_buffers_used += 1
-                    elif buffer == 'w':
-                        tmp = np.arange(args.size**dg._dimensionality[kernel], dtype=np.double)
-                        host_mem.append(tmp)
-                        num_buffers_used += 1
-                    elif buffer == 'rw':
-                        # Create and populate memory
-                        tmp = np.arange(args.size**dg._dimensionality[kernel], dtype=np.double)
-                        for i in range(args.size**dg._dimensionality[kernel]):
-                            tmp[i] = i
-                        host_mem.append(tmp)
-                        num_buffers_used += 1
-                    else:
-                        print(f"\033[41mInvalid memory argument! Kernel {kernel} has a buffer of memory type {buffer} but only r,w or rw are allowed.\n\033[0m")
-                        exit(EXIT_FAILURE)
-                    buffer_type.append(buffer)
-                    iris_mem = iris.mem(host_mem[-1].nbytes)
-                    dev_mem.append(iris_mem)
-
-            sizecb.append(args.size**dg._dimensionality[kernel]*np.double(0).itemsize)
-            print(f"SIZE[{args.size}] MATRIX_SIZE[{sizecb[-1]/1024/1024}]MB")
-
-        json_inputs = []
-
-        json_inputs.append(args.size)
-        json_inputs.extend(sizecb)
-        json_inputs.extend(host_mem)
-        json_inputs.extend(dev_mem)
-        json_inputs.append(iris.iris_pending)
-        json_inputs.append(args.task_target)
-
-        print("JSON input parameters")
-        for index, inp in enumerate(json_inputs):
-            print(index,':', inp)
-
-        graph = iris.graph()
-        graph.load(args.graph, json_inputs)
+        graph, input_arrays = create_graph(args)
         graph.submit()
         graph.wait()
-        iris.finalize()
-        print("Success")
+    print("Success")
+    iris.finalize()
 
 
 def main(argv):
+
     # Parse the arguments
     args = dg.parse_args(additional_arguments=[init_parser])
 
