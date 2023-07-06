@@ -16,8 +16,8 @@ s = np.arange(SIZE, dtype=np.float32)
 print('X', x)
 print('Y', y)
 
-old_way = True
-disable = True
+old_way = False
+disable = False
 if not disable:
     if old_way:
         mem_x = iris.mem(x.nbytes)
@@ -40,7 +40,7 @@ if not disable:
                 ])
         task.submit(iris.iris_gpu)
     
-print('S =', A, '* X + Y', s)
+    print('S =', A, '* X + Y', 'A:', A, 'X:',x, 'Y:', y, 'S:', s)
 
 s0 = np.arange(SIZE, dtype=np.float32)
 s1 = np.arange(SIZE, dtype=np.float32)
@@ -73,20 +73,21 @@ x = x*100
 mem_x.update(x)
 
 graph = iris.graph([task0, task1])
+graph.retain()
 graph.submit()
 graph.wait()
 
-print('S =', A, '* X + Y', x, y, s0)
-print('S =', A, '* X + Y', s0, s0, s1)
+print('S0 =', A, '* X + Y', 'A:', A, 'x:', x, 'y:', y, 'S0:',s0)
+print('S1 =', A, '* S0 + S0', 'A:', A, 'S0:', s0, 'S1:', s1)
 
 x = x*100
 mem_x.update(x)
 graph.submit()
 graph.wait()
 
+print('S0 =', A, '* X + Y', 'A:', A, 'x:', x, 'y:', y, 'S0:',s0)
+print('S1 =', A, '* S0 + S0', 'A:', A, 'S0:', s0, 'S1:', s1)
 ntasks, tasks = graph.get_tasks()
-print('S =', A, '* X + Y', x, y, s0)
-print('S =', A, '* X + Y', s0, s0, s1)
 
 
 
