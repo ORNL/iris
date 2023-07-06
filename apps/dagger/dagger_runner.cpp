@@ -17,7 +17,7 @@
 double t0, t1;
 
 void ShowUsage(){
-  printf("This runner will run the generated DAG from DAGGER on IRIS. It can be immediately after DAGGER has been run and accepts the same arguments as those supplied to DAGGER.\nThe required additional arguments include:\n\tthe size of the memory buffers to use in this IRIS test (\"--size\"),\n\tthe number of repeats (\"--repeats\"),\n\tand the location to log the timing results (\"--logfile\")");
+  printf("This runner will run the generated DAG from DAGGER on IRIS. It can be immediately after DAGGER has been run and accepts the same arguments as those supplied to DAGGER.\nThe required additional arguments include:\n\tthe size of the memory buffers to use in this IRIS test (\"--size\"),\n\tthe number of repeats (\"--repeats\"),\n\tand the location to log the timing results (\"--logfile\")\n");
   printf("For instance:\n");
   printf("./dagger_runner\t --kernels=\"process,ijk\"\n");
   printf("\t\t --graph=\"linear10.json\"\n");
