@@ -1,6 +1,9 @@
 #ifndef __IRIS_MACROS_H
 #define __IRIS_MACROS_H
 
+#define PARAM_MEM(X)              &(X)
+#define IRIS_PTR(X)               X *
+
 #ifndef UNDEF_IRIS_MACROS
 #define CONCATENATE(arg1, arg2)   CONCATENATE1(arg1, arg2)
 #define CONCATENATE1(arg1, arg2)  CONCATENATE2(arg1, arg2)

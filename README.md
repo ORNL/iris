@@ -24,4 +24,4 @@ Jungwon Kim, Seyong Lee, Beau Johnston, and Jeffrey S. Vetter. 2021. IRIS: A Por
 ```
 # More Information
 
-If you would like more information on IRIS, please either submit an issue at https://github.com/ORNL/iris/issues or email vetter@computer.org. 
+If you would like more information on IRIS, please either submit an issue at https://github.com/ORNL/iris/issues, start a discussion at https://github.com/ORNL/iris/discussions, or email vetter@computer.org. 

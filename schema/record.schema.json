@@ -1,8 +1,8 @@
 {
     "$schema": "https://json-schema.org/draft-07/schema",
-    "$id": "https://github.com/ORNL/iris/schema/dagger.schema.json",
-    "title": "DAGGER JSON",
-    "description": "JSON output from DAGGER",
+    "$id": "https://github.com/ORNL/iris/schema/record.schema.json",
+    "title": "IRIS Record JSON",
+    "description": "JSON output from IRIS record",
     "type": "object",
     "properties": {
         "iris-graph": {
@@ -44,8 +44,8 @@
                                                         "name": {"type": "string"},
                                                         "device_memory": {"type": "string"},
                                                         "host_memory": {"type": "string"},
-                                                        "offset": {"type": ["string", "integer"]},
-                                                        "size": {"type": ["string", "integer"]}
+                                                        "offset": {"type": "integer"},
+                                                        "size": {"type": "integer"}
                                                     },
                                                     "required": ["name", "device_memory", "host_memory", "offset", "size"]
                                                 },
@@ -56,8 +56,8 @@
                                                         "name": {"type": "string"},
                                                         "device_memory": {"type": "string"},
                                                         "host_memory": {"type": "string"},
-                                                        "offset": {"type": ["string", "integer"]},
-                                                        "size": {"type": ["string", "integer"]}
+                                                        "offset": {"type": "integer"},
+                                                        "size": {"type": "integer"}
                                                     },
                                                     "required": ["name", "device_memory", "host_memory", "offset", "size"]
                                                 },
@@ -66,9 +66,9 @@
                                                     "type": "object",
                                                     "properties": {
                                                         "name": {"type":"string"},
-                                                        "global_size": {"type":"array", "items": {"type": ["string", "integer"]}},
-                                                        "local_size": {"type":"array", "items": {"type": ["string", "integer"]}},
-                                                        "offset": {"type":"array", "items": {"type": ["string", "integer"]}},
+                                                        "global_size": {"type":"array", "items": {"type": "integer"}},
+                                                        "local_size": {"type":"array", "items": {"type": "integer"}},
+                                                        "offset": {"type":"array", "items": {"type": "integer"}},
                                                         "parameters": {
                                                             "type":"array", "items": {
                                                                 "description": "Kernel Parameters",
@@ -78,8 +78,8 @@
                                                                     "name": {"type": "string"},
                                                                     "value": {"type": "string"},
                                                                     "permission": {"type": "string", "pattern":"^((r)|(rw)|(w))$"},
-                                                                    "size_bytes": {"type": ["integer", "string"]},
-                                                                    "data_size": {"type": ["integer", "string"]},
+                                                                    "size_bytes": {"type": "integer"},
+                                                                    "data_size": {"type": "integer"},
                                                                     "data_type": {"type": "string"}
                                                                 }
                                                             }

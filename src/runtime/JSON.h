@@ -4,6 +4,8 @@
 #include <string>
 #include <vector>
 
+#define SCHEMA "https://raw.githubusercontent.com/ORNL/iris/v2.0.0/schema/dagger.schema.json"
+
 namespace iris {
 namespace rt {
 

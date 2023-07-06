@@ -548,6 +548,7 @@ int JSON::RecordFlush() {
   tasks_.AddMember("tasks",iris_output_tasks_,iris_output_document_.GetAllocator());
   iris_graph.AddMember("graph",tasks_,iris_output_document_.GetAllocator());
   iris_output_document_.SetObject();
+  iris_output_document_.AddMember("$schema", SCHEMA, iris_output_document_.GetAllocator());
   iris_output_document_.AddMember("iris-graph",iris_graph,iris_output_document_.GetAllocator());
   struct Stream {
     std::ofstream of {"output.json"};

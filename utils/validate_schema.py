@@ -33,9 +33,12 @@ def run_task(argv):
     with open(args.schema, 'r') as fd:
         json_schema = json.load(fd)
 
-    validate_schema(json_schema)
-
-    validate_json_data(json_data, json_schema)
+    try:
+        validate_schema(json_schema)
+        validate_json_data(json_data, json_schema)
+    except Exception as e:
+        print(e)
+        exit(1)
 
 if __name__ == '__main__':
     run_task(sys.argv)

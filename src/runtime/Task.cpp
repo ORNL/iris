@@ -160,7 +160,7 @@ void Task::print_incomplete_tasks()
   for (int i = 0; i < ndepends_; i++) {
     Task *dep= depend(i);
     if (dep!= NULL) 
-        printf("      Running dependent task: %d:%ld:%ld:%s Status:%s object exists:%d %p\n", i, depends_uids_[i], dep->uid(), dep->name(), dep->task_status_string(), dep);
+        printf("      Running dependent task: %d:%ld:%ld:%s Status:%s object exists task:%p\n", i, depends_uids_[i], dep->uid(), dep->name(), dep->task_status_string(), dep);
     else
         printf("      Running dependent task: %d:%ld object not exists\n", i, depends_uids_[i]);
   }
