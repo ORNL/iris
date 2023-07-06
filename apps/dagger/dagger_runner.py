@@ -14,6 +14,7 @@ import re
 import numpy as np
 import sys
 import dagger_generator as dg
+import pdb
 
 EXIT_FAILURE = 1
 
@@ -91,7 +92,9 @@ def run(args):
         json_inputs.append(iris.iris_pending)
         json_inputs.append(args.task_target)
 
-        print(json_inputs)
+        print("JSON input parameters")
+        for index, inp in enumerate(json_inputs):
+            print(index,':', inp)
 
         graph = iris.graph()
         graph.load(args.graph, json_inputs)

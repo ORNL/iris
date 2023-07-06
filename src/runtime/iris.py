@@ -1,3 +1,13 @@
+#!/usr/bin/env python3
+
+"""
+IRIS Python interface
+"""
+__author__ = "Narasinga Rao Miniskar"
+__copyright__ = "Copyright (c) 2020-2023, Oak Ridge National Laboratory (ORNL) Programming Systems Research Group. All rights reserved."
+__license__ = "UT Battelle Open Source"
+__version__ = "1.0"
+
 import ctypes
 from ctypes import *
 import sys
@@ -430,18 +440,23 @@ def convert_params(params, params_info=[], hold_params=[]):
             return False
         return True    
     for i in range(nparams):
-        if hasattr(params[i], 'handle') and isinstance(params[i].handle, iris_mem):
+        pobj = params[i]
+        if type(pobj) != np.ndarray and pobj == None:
+            cobj = c_void_p(0)
+            cparams[i] = cobj
+            hold_params.append(pobj)
+        elif hasattr(params[i], 'handle') and isinstance(params[i].handle, iris_mem):
             cparams[i] = ctypes.addressof(params[i].handle)
+        elif (isinstance(params[i], np.uint32) or isinstance(params[i], np.int32) or isinstance(params[i], int)) and check_size(i, 4):
+            p = byref(c_int32(params[i]))
+            hold_params.append(p)
+            cparams[i] = cast(p, c_void_p)
         elif (isinstance(params[i], np.uint8) or isinstance(params[i], np.int8) or isinstance(params[i], int)) and check_size(i, 1):
             p = byref(c_int8(params[i]))
             hold_params.append(p)
             cparams[i] = cast(p, c_void_p)
         elif (isinstance(params[i], np.uint16) or isinstance(params[i], np.int16) or isinstance(params[i], int)) and check_size(i, 2):
             p = byref(c_short(params[i]))
-            hold_params.append(p)
-            cparams[i] = cast(p, c_void_p)
-        elif (isinstance(params[i], np.uint32) or isinstance(params[i], np.int32) or isinstance(params[i], int)) and check_size(i, 4):
-            p = byref(c_int32(params[i]))
             hold_params.append(p)
             cparams[i] = cast(p, c_void_p)
         elif isinstance(params[i], np.uint64) or isinstance(params[i], np.int64) or (isinstance(params[i], int)) and check_size(i, 8):
@@ -456,6 +471,23 @@ def convert_params(params, params_info=[], hold_params=[]):
             p = byref(c_double(params[i]))
             cparams[i] = cast(p, c_void_p)
             hold_params.append(p)
+        elif type(params[i]) == size_t:
+            p = byref(c_size_t(params[i]))
+            hold_params.append(p)
+            cparams[i] = cast(p, c_void_p)
+        elif type(pobj) == np.ndarray and pobj.size > 1 and type(pobj[0]) == np.str_:
+            str_list = []
+            for s in str_list:
+                c_str = c_char_p(s) if sys.version_info[0] == 2 else c_char_p(bytes(s, 'ascii'))
+                s.append(c_str)
+            s = np.array(str_list)
+            cobj = s.ctypes.data_as(c_void_p)
+            hold_params.append(s)
+            cparams[i] = cobj
+        elif type(pobj) == np.ndarray:
+            cobj = pobj.ctypes.data_as(c_void_p)
+            hold_params.append(pobj)
+            cparams[i] = cobj
         else:
             print("error")
     return cparams
