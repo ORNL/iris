@@ -14,6 +14,7 @@ import subprocess
 import time
 import functools
 import random
+import iris
 import re
 import traceback
 from multiprocessing import Pool
@@ -109,7 +110,21 @@ def main(argv):
         print(f"Running IRIS on {payload} with Policy: {args.policy}.")
         graph_path = os.path.join(args.payload_dir, _payloads[payload]['file']+'.json')
         results_path = f'{args.results_dir}/{_payloads[payload]["file"]}-{args.policy}-{os.getenv("SYSTEM")}.csv'
-        run(f'IRIS_HISTORY=1 {SCRIPT_DIR}/dagger_runner.py {_payloads[payload]["runner_args"]} --graph={graph_path} --scheduling-policy={args.policy}')
+        os.environ["IRIS_HISTORY"] = '1'
+
+        # run(f'{SCRIPT_DIR}/dagger_runner.py {_payloads[payload]["runner_args"]} --graph={graph_path} --scheduling-policy={args.policy}')
+        from dagger_runner import run as run_dagger
+        from dagger_runner import create_graph
+        from dagger_runner import parse_args as run_dagger_parse_args
+        rargs = run_dagger_parse_args(f'{_payloads[payload]["runner_args"]} --graph={graph_path} --scheduling-policy={args.policy}')
+        # run_dagger(rargs)
+        iris.init()
+        for t in range(rargs.repeats):
+            graph, input = create_graph(rargs)
+            graph.submit()
+            graph.wait()
+        print("Success")
+        iris.finalize()
 
         run(f'mv app-{os.getenv("SYSTEM")}*.csv {results_path}')
         #plot timeline with gantt

@@ -16,6 +16,7 @@ import json
 import argparse
 import numpy
 import random
+import shlex
 from bokeh.palettes import brewer
 from functools import reduce
 import networkx as nx
@@ -61,7 +62,10 @@ def parse_args(pargs=None,additional_arguments=[]):
     for init in additional_arguments:
         init(parser)
 
-    args = parser.parse_args(args=pargs)
+    if pargs is None:
+        args = parser.parse_args()
+    else:
+        args = parser.parse_args(shlex.split(pargs))
 
     global _kernels, _k_probs, _depth, _num_tasks, _min_width, _max_width, _mean, _std_dev, _skips, _seed, _sandwich, _concurrent_kernels, _duplicates, _dimensionality, _graph
 

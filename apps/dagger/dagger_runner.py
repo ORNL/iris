@@ -114,25 +114,22 @@ def run(args):
     print("Success")
     iris.finalize()
 
-
-def main(argv):
-
+def parse_args(pargs=None):
     # Parse the arguments
-    args = dg.parse_args(additional_arguments=[init_parser])
+    args = dg.parse_args(pargs=pargs, additional_arguments=[init_parser])
+    args.task_target = scheduling_policy_lookup[args.scheduling_policy]
+    return args
 
+def main():
+
+    args = parse_args() 
     if args.attach_debugger:
         import debugpy
         debugpy.listen(5678)
         print("Waiting for debugger attach")
         debugpy.wait_for_client()
         # debugpy.breakpoint()
-
-    args.task_target = scheduling_policy_lookup[args.scheduling_policy]
-
-    print(args)
-    print (dg._graph,dg._depth,dg._num_tasks,dg._min_width,dg._max_width)
-
     run(args)
 
 if __name__ == '__main__':
-    main(sys.argv)
+    main()
