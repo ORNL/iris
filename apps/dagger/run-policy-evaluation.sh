@@ -14,6 +14,8 @@ elif [ "$SYSTEM" = "radeon" ] ; then
   rm -f *.csv ; make dagger_runner kernel.hip
 elif [ "$SYSTEM" = "zenith" ] ; then
   rm -f *.csv ; make dagger_runner kernel.hip kernel.ptx
+elif [ "$SYSTEM" = "orc-open-hyp" ] ; then
+  rm -f *.csv ; make dagger_runner kernel.hip kernel.ptx
 else
   echo "Unknown system." && exit 1
 fi
