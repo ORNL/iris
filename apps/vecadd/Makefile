@@ -29,9 +29,10 @@ vecadd-opensycl-openmp: vecadd-sycl.cpp
 
 
 #broken
-LLVM_DIR=/home/9bj/spack/opt/spack/linux-ubuntu22.04-zen2/gcc-12.1.0/llvm-13.0.1-2a5yipjwa6bco5vymttszyqauqzainuc
+#LLVM_DIR=/home/9bj/spack/opt/spack/linux-ubuntu22.04-zen2/gcc-12.1.0/llvm-13.0.1-2a5yipjwa6bco5vymttszyqauqzainuc
+CUDA_DIR=/opt/nvidia/hpc_sdk/Linux_x86_64/22.11/cuda
 vecadd-opensycl-cuda: vecadd-sycl.cpp
-	$(OPENSYCL)/bin/syclcc --opensycl-targets="cuda:sm_80" -stdlib=libc++  -o $@ $^
+	$(OPENSYCL)/bin/syclcc -fuse-ld=lld --opensycl-targets="cuda:sm_80" -stdlib=libc++ -I$(LLVM_DIR)/include -L$(LLVM_DIR)/lib -L$(CUDA_DIR)/lib64 -I$(OPENSYCL)/include -L$(OPENSYCL)/lib -L$(OPENSYCL)/lib/hipSYCL -L. -Wl,--rpath=$(LLVM_DIR)/lib/x86_64-unknown-linux-gnu -Wl,--rpath=$(LLVM_DIR)/lib -lc++ -lc++abi -lunwind -stdlib=libc++ -std=c++17 -lopensycl-clang -lLLVM -o $@ $^
 #	$(OPENSYCL)/bin/syclcc --opensycl-targets="cuda:sm_80" -L$(OPENSYCL)/lib -L$(OPENSYCL)/lib/hipSYCL -L$(LLVM_DIR)/lib/x86_64-unknown-linux-gnu -stdlib=libc++ -std=c++17 -lc++ -lm -lhipSYCL-rt -lrt-backend-cuda -lopensycl-common -Wl,--rpath=$(LLVM_DIR)/lib/x86_64-unknown-linux-gnu -o $@ $^
 #	$(OPENSYCL)/bin/syclcc --opensycl-targets="cuda:sm_80" -L$(OPENSYCL)/lib -L$(OPENSYCL)/lib/hipSYCL -stdlib=libc++ -lhipSYCL-rt -lrt-backend-cuda -lopensycl-common -lopensycl-clang -o $@ $^
 	#$(OPENSYCL)/bin/syclcc --opensycl-targets="cuda:sm_86" -L$(OPENSYCL)/lib/hipSYCL -lrt-backend-cuda -L$(OPENSYCL)/lib -lhipSYCL-rt -lopensycl-common -stdlib=libc++ -lstdc++ -lm -o $@ $^
