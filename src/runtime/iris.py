@@ -1092,7 +1092,7 @@ class graph:
         SIZE = ntasks+1
         dep_graph, dep_graph_2d_ptr = dll.alloc_int8((SIZE,SIZE))
         dll.call_ret_ptr(dll.iris_get_graph_dependency_adj_matrix, self.handle, dep_graph)
-        print("Dependency matrix", dep_graph)
+        #print("Dependency matrix", dep_graph)
         if pdf:
             task_names = self.get_task_names()
             task_uids =  self.get_task_uids()
@@ -1196,7 +1196,8 @@ class graph:
         SIZE = ntasks+1
         comm_2d, comm_2d_ptr = dll.alloc_size_t((SIZE,SIZE))
         dll.call_ret_ptr(dll.iris_get_graph_2d_comm_adj_matrix, self.handle, comm_2d)
-        print("Communication cost matrix", comm_2d)
+        print("Extracting 2d communication cost")
+        #print("Communication cost matrix", comm_2d)
         if pdf:
             task_names = self.get_task_names()
             task_uids =  self.get_task_uids()
@@ -1242,7 +1243,7 @@ class graph:
             dll.call_ret_ptr(dll.iris_calibrate_compute_cost_adj_matrix_only_for_types, self.handle, comp_2d)
         else:
             dll.call_ret_ptr(dll.iris_calibrate_compute_cost_adj_matrix, self.handle, comp_2d)
-        print("Computation cost matrix", comp_2d)
+        #print("Computation cost matrix", comp_2d)
         if pdf:
             task_names = self.get_task_names()
             task_uids =  self.get_task_uids()
