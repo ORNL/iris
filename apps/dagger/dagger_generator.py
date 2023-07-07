@@ -480,8 +480,7 @@ def get_task_to_json(dag,deps):
     f.write(json.dumps(final_json,indent = 2))
     f.close()
 
-if __name__ == '__main__':
-    parse_args()
+def main():
     random.seed(_seed)
     task_per_level, level_per_task = gen_task_nodes(_depth,_num_tasks,_min_width,_max_width)
     edges,neighs_top_down,neighs_down_top = gen_task_links(_mean,_std_dev,task_per_level,level_per_task,delta_lvl=_skips)
@@ -504,4 +503,11 @@ if __name__ == '__main__':
     #get_task_to_dummy_app()
     #get_task_to_generate_file(dag)
     get_task_to_json(task_dag,edges)
+
+
+if __name__ == '__main__':
+    parse_args()
+
+    main()
+
     print('done')

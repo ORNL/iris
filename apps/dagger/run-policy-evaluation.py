@@ -112,20 +112,20 @@ def main(argv):
         results_path = f'{args.results_dir}/{_payloads[payload]["file"]}-{args.policy}-{os.getenv("SYSTEM")}.csv'
         os.environ["IRIS_HISTORY"] = '1'
 
-        # run(f'{SCRIPT_DIR}/dagger_runner.py {_payloads[payload]["runner_args"]} --graph={graph_path} --scheduling-policy={args.policy}')
-        from dagger_runner import run as run_dagger
-        from dagger_runner import create_graph
-        from dagger_runner import parse_args as run_dagger_parse_args
-        os.environ["IRIS_KERNEL_DIR"] = SCRIPT_DIR
-        rargs = run_dagger_parse_args(f'{_payloads[payload]["runner_args"]} --graph={graph_path} --scheduling-policy={args.policy}')
-        # run_dagger(rargs)
-        iris.init()
-        for t in range(rargs.repeats):
-            graph, input = create_graph(rargs)
-            graph.submit()
-            graph.wait()
-        print("Success")
-        iris.finalize()
+        run(f'{SCRIPT_DIR}/dagger_runner.py {_payloads[payload]["runner_args"]} --graph={graph_path} --scheduling-policy={args.policy}')
+        # from dagger_runner import run as run_dagger
+        # from dagger_runner import create_graph
+        # from dagger_runner import parse_args as run_dagger_parse_args
+        # os.environ["IRIS_KERNEL_DIR"] = SCRIPT_DIR
+        # rargs = run_dagger_parse_args(f'{_payloads[payload]["runner_args"]} --graph={graph_path} --scheduling-policy={args.policy}')
+        # # run_dagger(rargs)
+        # iris.init()
+        # for t in range(rargs.repeats):
+        #     graph, input = create_graph(rargs)
+        #     graph.submit()
+        #     graph.wait()
+        # print("Success")
+        # iris.finalize()
 
         run(f'mv app-{os.getenv("SYSTEM")}*.csv {results_path}')
         #plot timeline with gantt
