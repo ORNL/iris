@@ -604,7 +604,9 @@ void GraphMetadata::get_2d_comm_adj_matrix(size_t *comm_task_adj_matrix)
             comm_task_adj_matrix[GET2D_INDEX(ntasks, index+1, 0)] += size;
         }
     }
+#ifdef ENABLE_DEBUG
     Utils::PrintMatrixLimited<size_t>(comm_task_adj_matrix, ntasks, ntasks, "Task Communication data(C++)");
+#endif
 }
 void GraphMetadata::get_3d_comm_time(double *obj_2_dev_dev_time, int *mem_ids, int iterations, bool pin_memory_flag)
 {
@@ -621,7 +623,7 @@ void GraphMetadata::get_3d_comm_time(double *obj_2_dev_dev_time, int *mem_ids, i
             mem = mem_index_hash_valid_[mem_flash_out_new_id_2_mid_map_[mid]];
         }
         size_t size = mem->size();
-        printf("Mem id:%d size:%lu uid:%lu\n", index, size, mem->uid());
+        //printf("Mem id:%d size:%lu uid:%lu\n", index, size, mem->uid());
         double *comp_time_matrix = obj_2_dev_dev_time + GET2D_INDEX(ndevs * ndevs, index, 0);
         if (processed.find(size) != processed.end()) {
             memcpy(comp_time_matrix, processed[size], sizeof(double)*ndevs*ndevs);
@@ -630,7 +632,7 @@ void GraphMetadata::get_3d_comm_time(double *obj_2_dev_dev_time, int *mem_ids, i
             graph_->platform()->CalibrateCommunicationMatrix(comp_time_matrix, size, iterations, pin_memory_flag);
             processed[size] = comp_time_matrix;
         }
-        printf("        Completed Mem id:%d size:%lu uid:%lu\n", index, size, mem->uid());
+        //printf("        Completed Mem id:%d size:%lu uid:%lu\n", index, size, mem->uid());
         index++;
     }
 }
@@ -749,7 +751,9 @@ void GraphMetadata::get_3d_comm_data()
     }
     comm_task_data_size_ = results.size();
     std::copy(results.begin(), results.end(), comm_task_data);
-    //Utils::PrintMatrixLimited<size_t>(comm_task_data, ntasks, ntasks, "Task Communication data(C++)");
+#ifdef ENABLE_DEBUG
+    Utils::PrintMatrixLimited<size_t>(comm_task_data, ntasks, ntasks, "Task Communication data(C++)");
+#endif
 }
 
 } /* namespace rt */
