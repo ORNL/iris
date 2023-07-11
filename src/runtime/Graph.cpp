@@ -314,6 +314,7 @@ void GraphMetadata::map_task_inputs_outputs()
         Task *task = tasks[index];
         unsigned long uid = task->uid();
         vector<unsigned long> input_mems;
+        set<unsigned long> reset_mems;
         vector<unsigned long> flush_input_mems;
         vector<unsigned long> output_mems;
         for(int di=0; di<task->ndepends(); di++) {
@@ -321,6 +322,10 @@ void GraphMetadata::map_task_inputs_outputs()
             if (output_tasks_map_.find(duid) == output_tasks_map_.end()) 
                 output_tasks_map_.insert(make_pair(duid, vector<unsigned long>()));
             output_tasks_map_[duid].push_back(uid);
+        }
+        for(Command *cmd : task->reset_mems()) {
+            BaseMem *mem = (BaseMem *)cmd->mem();
+            reset_mems.insert(mem->uid());
         }
         for(int ci=0; ci<task->ncmds(); ci++) {
             Command *cmd = task->cmd(ci);
@@ -334,7 +339,7 @@ void GraphMetadata::map_task_inputs_outputs()
                       mem_index_hash_[muid] = cmd->mem(); 
                   //_info(" mid:%lu is added", uid);
                   break;
-              case IRIS_CMD_MEM_FLUSH:    // Fallthrough case
+              case IRIS_CMD_MEM_FLUSH:    
                   // Special case
                   muid = cmd->mem()->uid();       
                   if (mem_flash_out_2_task_map_.find(muid) == mem_flash_out_2_task_map_.end())
@@ -398,7 +403,9 @@ void GraphMetadata::map_task_inputs_outputs()
                 //_info(" mid:%lu is added", mid);
                 int mode = arg->mode;
                 if (mode == iris_r || mode == iris_rw) {
-                    if (input_mems_set.find(mid) == input_mems_set.end())
+                    // If task is having reset command, its associated memory object will get reset and 
+                    // it doesn't require data transfer
+                    if (input_mems_set.find(mid) == input_mems_set.end() && reset_mems.find(mid) == reset_mems.end())
                         task_inputs_map_[uid].push_back(mid);
                 }
                 if (mode == iris_w || mode == iris_rw) {
