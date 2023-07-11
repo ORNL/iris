@@ -1,7 +1,7 @@
 #!/bin/bash
 
-#This script compares the performance of vector addition over inceasing sized vectors (powers of 2**5..2**16) 
-# initially cuda vs openmp in IRIS, then charm-sycl cuda vs iris cuda, finally dpc++ vs charm-sycl
+#This script compares the performance of vector addition over increasing sized vectors (powers of 2**5..2**16) 
+# initially cuda vs openmp in IRIS, then charm-sycl cuda vs iris cuda, finally dpc++ vs charm-sycl vs opensycl
 REPEATS=25
 
 execute_over_range () {
@@ -13,8 +13,9 @@ execute_over_range () {
   done
 }
 
+make clean
 # ensure we have all the binaries
-make kernel.ptx kernel.openmp.so vecadd-iris vecadd-sycl vecadd-sycl-dpc++
+make kernel.ptx kernel.openmp.so vecadd-iris vecadd-sycl vecadd-sycl-dpc++ vecadd-opensycl-openmp
 [ $? -ne 0 ] && exit
 
 #start with a clean log
@@ -63,4 +64,8 @@ mkdir results/dpc++_cuda; mv *.csv results/dpc++_cuda
 #opensycl (openmp)
 execute_over_range "./vecadd-opensycl-openmp"
 mkdir results/opensycl_openmp; mv *.csv results/opensycl_openmp
+
+##opensycl (cuda)
+#execute_over_range "./vecadd-opensycl-cuda"
+#mkdir results/opensycl_cuda; mv *.csv results/opensycl_cuda
 
