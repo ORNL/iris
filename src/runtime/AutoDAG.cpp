@@ -3,6 +3,7 @@
 #include "DataMem.h"
 #include "Debug.h"
 #include "Platform.h"
+#include "Kernel.h"
 #include <stdlib.h>
 
 #include <iostream>
@@ -20,12 +21,15 @@ AutoDAG::AutoDAG(Platform* platform){
 //AutoDAG::platform_ = NULL;
 
 void AutoDAG::create_dependency(Command* cmd, Task* task, 
-		int param_info, 
-		BaseMem* mem) {
+		int param_info, BaseMem* mem, 
+        Kernel* kernel, int idx) {
+    current_kernel_ = kernel;
+    current_idx_ = idx;
+    current_param_info_ = param_info;
     //printf(" Task %s param_info %d\n", task->name(), param_info);
     printf(" Task %s , mem read count %d\n", 
         task->name(), mem->get_read_task_list()->size());
-    Task* task_prev = NULL;
+    //Task* task_prev = NULL;
     if (param_info == iris_w || param_info == iris_rw) {
     	if(mem->get_current_writing_task() != NULL 
 		    && mem->get_read_task_list()->size() == 0 ){
@@ -37,24 +41,30 @@ void AutoDAG::create_dependency(Command* cmd, Task* task,
 	        create_multi_read_dependency(task, mem);
 #else
 	        create_auto_shadow(cmd, task, mem);
-            if(((DataMem*)mem)->get_is_shadow() == false) 
-                printf("I am not shadow\n");
-            else
-                printf("I am a shadow\n");
 #endif 
  	        mem->erase_all_read_task_list();
         }
  
     //printf("Seting current task info %d\n", param_info);
+#ifndef AUTO_SHADOW
  	mem->set_current_writing_task(task);
-	task_prev = mem->get_current_writing_task();
-  	task->add_to_write_list(mem);
+#else
+ 	if(((DataMem*)mem)->get_has_shadow() == true)  {
+        ((DataMem*)mem)->get_current_dmem_shadow()->set_current_writing_task(task);
+  	    task->add_to_write_list(((DataMem*)mem)->get_current_dmem_shadow());
+    }else {
+ 	    mem->set_current_writing_task(task);
+  	    task->add_to_write_list(mem);
+    }
+#endif
+
+	//task_prev = mem->get_current_writing_task();
 
 #ifdef AUTO_FLUSH
  	create_auto_flush(cmd, task, mem);
 #endif
     }
-    if (param_info == iris_r) {
+    else if (param_info == iris_r) {
     	if(mem->get_current_writing_task() != NULL) {
     	    if (mem->get_current_writing_task() != task) {
                 task->AddDepend(mem->get_current_writing_task());	
@@ -109,23 +119,28 @@ void AutoDAG::create_auto_shadow(Command* cmd, Task* task,
         ((DataMem*)mem)->set_current_dmem_shadow(mem_shadow);
         mem_shadow->set_main_dmem((DataMem*)mem);
         mem_shadow->set_is_shadow(true);
-
-        create_shadow_flush(cmd, task, mem); // flushes to shadow host pointer
-
+        ((DataMem*)mem)->set_has_shadow(true);
+        //current_kernel_->replace_with_shadow_dmem(mem_shadow, current_idx_, current_param_info_);
         Task* current_writing_task = mem->get_current_writing_task(); 
+
+        create_shadow_flush(cmd, current_writing_task, mem); // flushes to shadow host pointer
+
         std::cout << " Current Writing Task " << current_writing_task->name() << std::endl;
-	    Task* task_shadow_flush = mem->get_flush_task();
-        task->AddDepend(task_shadow_flush);	
+	    //Task* task_shadow_flush = mem->get_flush_task();
+        task->AddDepend(mem->get_flush_task());	
+        //task_shadow_flush->AddDepend(current_writing_task);	
+        
+        //current_writing_task->AddDepend(task_shadow_flush);	
  	    //create_auto_flush(cmd, task, mem);
-	    Task* task_flush = mem->get_flush_task();
-	    if ( task_flush == NULL)
-            std::cout << " before switch Task flush " << task_flush << std::endl;
+	    //Task* task_flush = mem->get_flush_task();
+	    //if ( task_flush == NULL)
+        //    std::cout << " before switch Task flush " << task_flush << std::endl;
 
         //std::cout << " before switch main handlertype %d " << mem->GetMemHandlerType() << std::endl;
         //std::cout << " before switch shadow handlertype %d " << mem_shadow->GetMemHandlerType() << std::endl;
 
         //mem = mem_shadow; // making the switch
-        *((DataMem*)mem) = *mem_shadow; // making the switch
+        //*((DataMem*)mem) = *mem_shadow; // making the switch
         //*mem = *((BaseMem*)mem_shadow); // making the switch
         //*((DataMem*)mem) = *((DataMem*)mem_shadow); // making the switch
         //std::cout << " after switch from main is_shadow %d " << static_cast<DataMem*>(mem)->get_is_shadow() << std::endl;
@@ -158,7 +173,13 @@ void AutoDAG::create_shadow_flush(Command* cmd, Task* task, BaseMem* mem) {
 void AutoDAG::create_auto_flush(Command* cmd, Task* task, 
 		BaseMem* mem) {
 
+#ifndef AUTO_SHADOW
 	Task* task_flush = mem->get_flush_task();
+#else
+    if(((DataMem*)mem)->get_has_shadow() == true)
+        mem =((BaseMem*)((DataMem*)mem)->get_current_dmem_shadow());
+	Task* task_flush = mem->get_flush_task();
+#endif
 	Graph* graph_flush = current_graph_;
 	if(graph_flush == NULL) return;
 	//Graph* graph_flush = cmd->platform_->get_current_graph();

@@ -10,14 +10,15 @@ class Task;
 class BaseMem;
 class DataMem;
 class Graph; 
+class Kernel; 
 class AutoDAG {
 public:
   AutoDAG(Platform* platform);
   ~AutoDAG(){};
 
   void create_dependency(Command* cmd, Task* task, 
-		  int param_info, 
-		  BaseMem* mem);
+		  int param_info, BaseMem* mem, 
+          Kernel* kernel, int idx);
 
   void create_multi_read_dependency(Task* task, 
 		  BaseMem* mem);
@@ -41,6 +42,11 @@ public:
 
 private:
   Platform* platform_;
+  Task* current_task_;
+  Kernel* current_kernel_;
+  //BaseMem* current_mem_;
+  int current_param_info_;
+  int current_idx_;
   char tn[256];
 #ifdef AUTO_FLUSH
   Graph* current_graph_;

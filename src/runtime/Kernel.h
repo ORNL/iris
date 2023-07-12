@@ -62,6 +62,13 @@ public:
   int isSupported(Device* dev);
   void add_dmem(DataMem *mem, int idx, int mode);
   void add_dmem_region(DataMemRegion *mem, int idx, int mode);
+/*
+#ifdef AUTO_PAR
+#ifdef AUTO_SHADOW
+  void replace_with_shadow_dmem(DataMem *mem, int idx, int mode);
+#endif
+#endif
+*/
 
 private:
   char name_[256];

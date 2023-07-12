@@ -36,6 +36,7 @@ void DataMem::Init(Platform *platform, void *host_ptr, size_t size)
     }
     dim_ = 1;
     host_ptr_ = host_ptr;
+    printf("host pointer %p\n", host_ptr_);
 #ifdef AUTO_PAR
   current_writing_task_ = NULL;
 #ifdef AUTO_FLUSH
