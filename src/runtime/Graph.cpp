@@ -304,6 +304,7 @@ void GraphMetadata::fetch_task_execution_schedules(int kernel_profile)
 void GraphMetadata::map_task_inputs_outputs()
 {
     vector<Task *> tasks = graph_->formatted_tasks();
+    set<unsigned long> init_reset_mems_covered;
     for(unsigned long index=0; index<tasks.size(); index++) {
         Task *task = tasks[index];
         task_uid_2_index_hash_[task->uid()] = index; 
@@ -313,6 +314,7 @@ void GraphMetadata::map_task_inputs_outputs()
     for(uint32_t index=0; index<(uint32_t)tasks.size(); index++) {
         Task *task = tasks[index];
         unsigned long uid = task->uid();
+        //printf("Task: %lu\n", uid);
         vector<unsigned long> input_mems;
         set<unsigned long> reset_mems;
         vector<unsigned long> flush_input_mems;
@@ -346,7 +348,10 @@ void GraphMetadata::map_task_inputs_outputs()
                       mem_flash_out_2_task_map_.insert(make_pair(muid, set<unsigned long>()));
                   mem_flash_out_2_task_map_[muid].insert(uid);
                   if (mem_flash_out_2_new_id_map_.find(muid) == mem_flash_out_2_new_id_map_.end()) {
-                      mem_flash_out_2_new_id_map_[muid] = iris_create_new_uid();
+                      if (task->cmd_kernel() == NULL) 
+                          mem_flash_out_2_new_id_map_[muid] = iris_create_new_uid();
+                      else
+                          mem_flash_out_2_new_id_map_[muid] = muid;
                       mem_flash_out_new_id_2_mid_map_[mem_flash_out_2_new_id_map_[muid]] = muid;
                       //printf("MEM FLASH %ld %ld\n", mem_flash_out_2_new_id_map_[muid], muid);
                   }
@@ -398,6 +403,7 @@ void GraphMetadata::map_task_inputs_outputs()
                 if (arg->mem == NULL) continue;
                 BaseMem *mem = arg->mem;
                 unsigned long mid = mem->uid();
+                //printf("        Accessing mid:%lu\n", mid);
                 if (mem_index_hash_.find(mid) == mem_index_hash_.end())
                     mem_index_hash_[mid] = mem;
                 //_info(" mid:%lu is added", mid);
@@ -405,8 +411,53 @@ void GraphMetadata::map_task_inputs_outputs()
                 if (mode == iris_r || mode == iris_rw) {
                     // If task is having reset command, its associated memory object will get reset and 
                     // it doesn't require data transfer
-                    if (input_mems_set.find(mid) == input_mems_set.end() && reset_mems.find(mid) == reset_mems.end())
-                        task_inputs_map_[uid].push_back(mid);
+                    bool is_init_reset = mem->is_reset();
+                    if (mem->GetMemHandlerType() == IRIS_DMEM) {
+                        DataMem *dmem = (DataMem *)mem;
+                        bool has_regions = dmem->is_regions_enabled();
+                        if (has_regions) {
+                            for(int k=0; k<dmem->get_n_regions(); k++) {
+                                DataMemRegion *rdmem = dmem->get_region(k);
+                                unsigned long rdmem_id = rdmem->uid();
+                                if (input_mems_set.find(rdmem_id) == input_mems_set.end() && 
+                                        reset_mems.find(rdmem_id) == reset_mems.end() &&
+                                        (!is_init_reset || 
+                                         (is_init_reset && 
+                                          init_reset_mems_covered.find(rdmem_id) != init_reset_mems_covered.end()))) {
+                                    task_inputs_map_[uid].push_back(rdmem_id);
+                                }
+                                if (is_init_reset)
+                                    init_reset_mems_covered.insert(rdmem_id); 
+                            }
+                        }
+                        else {
+                            if (input_mems_set.find(mid) == input_mems_set.end() && 
+                                    reset_mems.find(mid) == reset_mems.end() &&
+                                    (!is_init_reset || 
+                                     (is_init_reset && 
+                                      init_reset_mems_covered.find(mid) != init_reset_mems_covered.end()))) {
+                                task_inputs_map_[uid].push_back(mid);
+                            }
+                            if (is_init_reset)
+                                init_reset_mems_covered.insert(mid); 
+                        }
+                    }
+                    else {
+                        if (mem->GetMemHandlerType() == IRIS_DMEM_REGION) {
+                            DataMemRegion *rdmem = (DataMemRegion *) mem;
+                            DataMem *dmem = rdmem->get_dmem();
+                            is_init_reset = dmem->is_reset();
+                        }
+                        if (input_mems_set.find(mid) == input_mems_set.end() && 
+                                reset_mems.find(mid) == reset_mems.end() &&
+                                (!is_init_reset || 
+                                 (is_init_reset && 
+                                  init_reset_mems_covered.find(mid) != init_reset_mems_covered.end()))) {
+                            task_inputs_map_[uid].push_back(mid);
+                        }
+                        if (is_init_reset)
+                            init_reset_mems_covered.insert(mid); 
+                    }
                 }
                 if (mode == iris_w || mode == iris_rw) {
                     if (output_mems_set.find(mid) == output_mems_set.end())
@@ -424,7 +475,6 @@ void GraphMetadata::map_task_inputs_outputs()
                 }
             }
         }
-        //printf("%s:%d Task:%s:%lu ndepends:%lu in:%lu out:%lu\n", __func__, __LINE__, task->name(), task->uid(), task->ndepends(), task_inputs_map_[uid].size(), task_outputs_map_[uid].size());
     }
     if (tasks.size()>0) {
         int index = tasks.size()-1;
@@ -447,8 +497,24 @@ void GraphMetadata::map_task_inputs_outputs()
         mem_index_hash_valid_[i.first] = i.second;
     }
     for(auto i : mem_flash_out_2_new_id_map_) {
-        mem_index_hash_valid_[i.second] = NULL;
+        if (mem_flash_out_2_new_id_map_[i.first] != i.second)
+            mem_index_hash_valid_[i.second] = NULL;
     }
+#ifdef ENABLE_DEBUG
+    for(uint32_t index=0; index<(uint32_t)tasks.size(); index++) {
+        Task *task = tasks[index];
+        unsigned long uid = task->uid();
+        printf("%s:%d Task:%s:%lu ndepends:%lu in:%lu out:%lu\n", __func__, __LINE__, task->name(), task->uid(), task->ndepends(), task_inputs_map_[uid].size(), task_outputs_map_[uid].size());
+        for(unsigned long mid : task_inputs_map_[uid]) {
+            //BaseMem *mem = mem_index_hash_[mid];
+            printf("                Input mem:%lu size:%lu\n", mid, 0);
+        }
+        for(unsigned long mid : task_outputs_map_[uid]) {
+            //BaseMem *mem = mem_index_hash_[mid];
+            printf("                Output mem:%lu size:%lu\n", mid, 0);
+        }
+    }
+#endif
 }
 void GraphMetadata::get_dependency_matrix(int8_t *dep_matrix, bool adj_matrix) {
   vector<Task *> tasks = graph_->formatted_tasks();
@@ -604,7 +670,9 @@ void GraphMetadata::get_2d_comm_adj_matrix(size_t *comm_task_adj_matrix)
             comm_task_adj_matrix[GET2D_INDEX(ntasks, index+1, 0)] += size;
         }
     }
+#ifdef ENABLE_DEBUG
     Utils::PrintMatrixLimited<size_t>(comm_task_adj_matrix, ntasks, ntasks, "Task Communication data(C++)");
+#endif
 }
 void GraphMetadata::get_3d_comm_time(double *obj_2_dev_dev_time, int *mem_ids, int iterations, bool pin_memory_flag)
 {
@@ -621,7 +689,7 @@ void GraphMetadata::get_3d_comm_time(double *obj_2_dev_dev_time, int *mem_ids, i
             mem = mem_index_hash_valid_[mem_flash_out_new_id_2_mid_map_[mid]];
         }
         size_t size = mem->size();
-        printf("Mem id:%d size:%lu uid:%lu\n", index, size, mem->uid());
+        //printf("Mem id:%d size:%lu uid:%lu\n", index, size, mem->uid());
         double *comp_time_matrix = obj_2_dev_dev_time + GET2D_INDEX(ndevs * ndevs, index, 0);
         if (processed.find(size) != processed.end()) {
             memcpy(comp_time_matrix, processed[size], sizeof(double)*ndevs*ndevs);
@@ -630,7 +698,7 @@ void GraphMetadata::get_3d_comm_time(double *obj_2_dev_dev_time, int *mem_ids, i
             graph_->platform()->CalibrateCommunicationMatrix(comp_time_matrix, size, iterations, pin_memory_flag);
             processed[size] = comp_time_matrix;
         }
-        printf("        Completed Mem id:%d size:%lu uid:%lu\n", index, size, mem->uid());
+        //printf("        Completed Mem id:%d size:%lu uid:%lu\n", index, size, mem->uid());
         index++;
     }
 }
@@ -749,7 +817,9 @@ void GraphMetadata::get_3d_comm_data()
     }
     comm_task_data_size_ = results.size();
     std::copy(results.begin(), results.end(), comm_task_data);
-    //Utils::PrintMatrixLimited<size_t>(comm_task_data, ntasks, ntasks, "Task Communication data(C++)");
+#ifdef ENABLE_DEBUG
+    Utils::PrintMatrixLimited<size_t>(comm_task_data, ntasks, ntasks, "Task Communication data(C++)");
+#endif
 }
 
 } /* namespace rt */
