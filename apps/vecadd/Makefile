@@ -26,7 +26,7 @@ vecadd-iris: vecadd-iris.cpp
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 # Charm-SYCL
 vecadd-sycl: vecadd-sycl.cpp
-	$(CHARMSYCL)/bin/cscc --targets=cpu-c,nvidia-cuda $(CXXFLAGS) -o $@ $^
+	$(CHARMSYCL)/bin/cscc --targets=cpu-openmp,nvidia-cuda $(CXXFLAGS) -o $@ $^
 # DPC++ (CUDA)
 vecadd-sycl-dpc++: vecadd-sycl.cpp
 	$(DPCPP)/llvm/build/bin/clang++ -std=c++17 -fsycl -fsycl-targets=nvptx64-nvidia-cuda $(CXXFLAGS) -o $@ $^
@@ -66,7 +66,7 @@ vecadd-iris-data-memory: vecadd-iris-data-memory.cpp
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 # Charm-SYCL
 vecadd-sycl-discard-write: vecadd-sycl-discard-write.cpp
-	$(CHARMSYCL)/bin/cscc --targets=cpu-c,nvidia-cuda $(CXXFLAGS) -o $@ $^
+	$(CHARMSYCL)/bin/cscc --targets=cpu-openmp,nvidia-cuda $(CXXFLAGS) -o $@ $^
 # DPC++ (CUDA)
 vecadd-sycl-dpc++-discard-write: vecadd-sycl-discard-write.cpp
 	$(DPCPP)/llvm/build/bin/clang++ -std=c++17 -fsycl -fsycl-targets=nvptx64-nvidia-cuda $(CXXFLAGS) -o $@ $^
@@ -84,7 +84,7 @@ empty-iris: empty-iris.cpp
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 # Charm-SYCL
 empty-sycl: empty-sycl.cpp
-	$(CHARMSYCL)/bin/cscc --targets=cpu-c,nvidia-cuda $(CXXFLAGS) -o $@ $^
+	$(CHARMSYCL)/bin/cscc --targets=all $(CXXFLAGS) -o $@ $^
 # DPC++ (CUDA)
 empty-sycl-dpc++: empty-sycl.cpp
 	$(DPCPP)/llvm/build/bin/clang++ -std=c++17 -fsycl -fsycl-targets=nvptx64-nvidia-cuda $(CXXFLAGS) -o $@ $^
