@@ -13,6 +13,7 @@ NVCC ?= $(CUDA_PATH)/bin/nvcc
 HIPCC ?= hipcc
 CHARMSYCL ?= $(HOME)/.charm-sycl
 CHARMSYCL_LDFLAGS ?= -L$(CHARMSYCL)/lib -L$(CHARMSYCL)/lib64 -lcharm -lpthread -ldl
+DPCPP ?= $(HOME)/dpc++-workspace
 
 CFLAGS=-I$(IRIS)/include/ -O3 -std=c99
 CXXFLAGS=-I$(IRIS)/include/ -O3

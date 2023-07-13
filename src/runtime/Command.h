@@ -4,6 +4,7 @@
 #include <iris/iris_poly_types.h>
 #include "BaseMem.h"
 #include "Kernel.h"
+#include "Timer.h"
 #include <stddef.h>
 
 #define IRIS_CMD_NOP            0x1000
@@ -91,11 +92,13 @@ public:
   uint8_t reset_value() { return reset_value_; }
   double SetTime(double t, bool incr=true);
   double time() { return time_; }
-  void set_time_start(double d) { time_start_ = d; }
-  void set_time_end(double d) { time_end_ = d; }
+  void set_time_start(Timer* d);
+  void set_time_end(Timer* d);
   double time_start() { return time_start_; }
   double time_end() { return time_end_; }
   double time_duration() { return time_end_-time_start_; }
+  size_t ns_time_start() { return ns_time_start_; }
+  size_t ns_time_end() { return ns_time_end_; }
   int get_access_index() { return access_index_; }
   int src_dev() { return src_dev_; }
   void set_src_dev(int devno) { src_dev_ = devno; }
@@ -120,6 +123,8 @@ private:
   double time_;
   double time_start_;
   double time_end_;
+  size_t ns_time_start_;
+  size_t ns_time_end_;
   bool last_;
   bool exclusive_;
   KernelArg* kernel_args_;

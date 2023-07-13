@@ -8,3 +8,6 @@ static void vecadd(int* A, int* B, int* C, IRIS_OPENMP_KERNEL_ARGS) {
   IRIS_OPENMP_KERNEL_END
 }
 
+static void empty(int* A, int* B, int* C, IRIS_OPENMP_KERNEL_ARGS) {
+}
+

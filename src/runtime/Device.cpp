@@ -45,7 +45,7 @@ void Device::Execute(Task* task) {
   busy_ = true;
   if (hook_task_pre_) hook_task_pre_(task);
   TaskPre(task);
-  task->set_time_start(timer_->Now());
+  task->set_time_start(timer_);
   //printf("================== Task:%s =====================\n", task->name());
   _trace("task[%lu:%s] started execution on dev[%d][%s] time[%lf] start:[%lf]", task->uid(), task->name(), devno(), name(), task->time(), task->time_start());
   for(Command *cmd : task->reset_mems()) {
@@ -55,7 +55,7 @@ void Device::Execute(Task* task) {
   for (int i = 0; i < task->ncmds(); i++) {
     Command* cmd = task->cmd(i);
     if (hook_command_pre_) hook_command_pre_(cmd);
-    cmd->set_time_start(timer_->Now());
+    cmd->set_time_start(timer_);
     switch (cmd->type()) {
       case IRIS_CMD_INIT:         ExecuteInit(cmd);       break;
       case IRIS_CMD_KERNEL:       {
@@ -76,13 +76,13 @@ void Device::Execute(Task* task) {
       case IRIS_CMD_CUSTOM:       ExecuteCustom(cmd);     break;
       default: {_error("cmd type[0x%x]", cmd->type());  printf("TODO: determine why name (%s) is set, but type isn't\n",cmd->type_name());};
     }
-    cmd->set_time_end(timer_->Now());
+    cmd->set_time_end(timer_);
     if (hook_command_post_) hook_command_post_(cmd);
 #ifndef IRIS_SYNC_EXECUTION
     if (cmd->last()) AddCallback(task);
 #endif
   }
-  task->set_time_end(timer_->Now());
+  task->set_time_end(timer_);
   TaskPost(task);
   if (hook_task_post_) hook_task_post_(task);
 //  if (++q_ >= nqueues_) q_ = 0;
@@ -95,7 +95,7 @@ void Device::Execute(Task* task) {
 
 void Device::ExecuteInit(Command* cmd) {
   timer_->Start(IRIS_TIMER_INIT);
-  cmd->set_time_start(timer_->Now());
+  cmd->set_time_start(timer_);
   native_kernel_not_exists_ = false;
   if (SupportJIT()) {
     char* tmpdir = NULL;
@@ -129,7 +129,7 @@ void Device::ExecuteInit(Command* cmd) {
   }
   errid_ = Init();
   if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
-  cmd->set_time_end(timer_->Now());
+  cmd->set_time_end(timer_);
   double time = timer_->Stop(IRIS_TIMER_INIT);
   cmd->SetTime(time);
   if (Platform::GetPlatform()->enable_scheduling_history()) Platform::GetPlatform()->scheduling_history()->AddKernel(cmd);
@@ -138,7 +138,7 @@ void Device::ExecuteInit(Command* cmd) {
 
 void Device::ExecuteKernel(Command* cmd) {
   timer_->Start(IRIS_TIMER_KERNEL);
-  cmd->set_time_start(timer_->Now());
+  cmd->set_time_start(timer_);
   Kernel* kernel = ExecuteSelectorKernel(cmd);
   int dim = cmd->dim();
   size_t* off = cmd->off();
@@ -214,7 +214,7 @@ void Device::ExecuteKernel(Command* cmd) {
   if (enabled)
       errid_ = KernelLaunch(kernel, dim, off, gws, lws[0] > 0 ? lws : NULL);
   //double ktime = timer_->GetCurrentTime() - ktime_start;
-  cmd->set_time_end(timer_->Now());
+  cmd->set_time_end(timer_);
   double time = timer_->Stop(IRIS_TIMER_KERNEL);
   cmd->SetTime(time);
   //printf("Task:%s time:%f ktime:%f init:%f atime:%f setmemtime:%f\n", cmd->task()->name(), time, ktime, ltime, atime, set_mem_time);
@@ -223,10 +223,10 @@ void Device::ExecuteKernel(Command* cmd) {
 }
 
 void Device::ExecuteMalloc(Command* cmd) {
-  cmd->set_time_start(timer_->Now());
+  cmd->set_time_start(timer_);
   Mem* mem = cmd->mem();
   void* arch = mem->arch(this);
-  cmd->set_time_end(timer_->Now());
+  cmd->set_time_end(timer_);
   if (Platform::GetPlatform()->enable_scheduling_history()) Platform::GetPlatform()->scheduling_history()->AddH2D(cmd);
   _trace("dev[%d] malloc[%p]", devno_, arch);
 }
@@ -627,8 +627,8 @@ void Device::ExecuteD2D(Command* cmd, Device *dev) {
     if (exclusive) mem->SetOwner(off, size, this);
     else mem->AddOwner(off, size, this);
     Device *src_dev = Platform::GetPlatform()->device(cmd->src_dev());
+    cmd->set_time_start(timer_);
     double start = timer_->Now();
-    cmd->set_time_start(start);
     if (src_dev->type() == type()) {
         // Invoke D2D
         void* dst_arch = mem->arch(this);
@@ -648,18 +648,18 @@ void Device::ExecuteD2D(Command* cmd, Device *dev) {
                 gws, lws, elem_size, dim, size, host, "D2H->H2D(2) ");
         if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
     }
+    cmd->set_time_end(timer_);
     double end = timer_->Now();
-    cmd->set_time_end(end);
     cmd->SetTime(end-start);
     Kernel *kernel = Platform::GetPlatform()->null_kernel();
     Command *cmd_kernel = cmd->task()->cmd_kernel();
     if (cmd_kernel != NULL) 
         kernel = cmd_kernel->kernel();
     if (src_dev->type() == type()) {
-        kernel->history()->AddD2D(cmd, this, end, size);
+        kernel->history()->AddD2D(cmd, this, cmd->time_end(), size);
     }
     else {
-        kernel->history()->AddD2H_H2D(cmd, this, end, size);
+        kernel->history()->AddD2H_H2D(cmd, this, cmd->time_end(), size);
     }
 }
 void Device::ExecuteH2D(Command* cmd, Device *dev) {
@@ -680,10 +680,10 @@ void Device::ExecuteH2D(Command* cmd, Device *dev) {
   if (exclusive) mem->SetOwner(off, size, this);
   else mem->AddOwner(off, size, this);
   timer_->Start(IRIS_TIMER_H2D);
-  cmd->set_time_start(timer_->Now());
+  cmd->set_time_start(timer_);
   errid_ = dev->MemH2D(cmd->task(), mem, ptr_off, gws, lws, elem_size, dim, size, host);
   if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
-  cmd->set_time_end(timer_->Now());
+  cmd->set_time_end(timer_);
   double time = timer_->Stop(IRIS_TIMER_H2D);
   cmd->SetTime(time);
   Command* cmd_kernel = cmd->task()->cmd_kernel();
@@ -726,7 +726,7 @@ void Device::ExecuteD2H(Command* cmd) {
   int mode = mem->mode();
   int expansion = mem->expansion();
   timer_->Start(IRIS_TIMER_D2H);
-  cmd->set_time_start(timer_->Now());
+  cmd->set_time_start(timer_);
   errid_ = IRIS_SUCCESS;
 
   if (mode & iris_reduction) {
@@ -734,7 +734,7 @@ void Device::ExecuteD2H(Command* cmd) {
     Reduction::GetInstance()->Reduce(mem, host, size);
   } else errid_ = MemD2H(cmd->task(), mem, ptr_off, gws, lws, elem_size, dim, size, host);
   if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
-  cmd->set_time_end(timer_->Now());
+  cmd->set_time_end(timer_);
   double time = timer_->Stop(IRIS_TIMER_D2H);
   cmd->SetTime(time);
   Command* cmd_kernel = cmd->task()->cmd_kernel();

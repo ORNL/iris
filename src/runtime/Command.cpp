@@ -32,6 +32,16 @@ void Command::set_params_map(int *pmap) {
     memcpy(params_map_, pmap, sizeof(int)*kernel_nargs_); 
 }
 
+void Command::set_time_start(Timer* d) {
+  time_start_ = d->Now();
+  ns_time_start_ = d->NowNS();
+}
+
+void Command::set_time_end(Timer* d) {
+  time_end_ = d->Now();
+  ns_time_end_ = d->NowNS();
+}
+
 void Command::Clear(bool init) {
   host_ = NULL;
   params_map_ = NULL;
@@ -47,6 +57,8 @@ void Command::Clear(bool init) {
   name_ = "";
   selector_kernel_params_ = NULL;
   time_ = 0.0;
+  ns_time_start_ = 0;
+  ns_time_end_ = 0;
   internal_memory_transfer_ = false;
   kernel_args_ = NULL;
   kernel_nargs_ = 0;
