@@ -31,7 +31,7 @@ mkdir results/iris_cuda_data_memory; mv *.csv results/iris_cuda_data_memory
 #charm-sycl (openmp)
 export CHARM_SYCL_RTS=CPU
 execute_over_range "./vecadd-sycl-discard-write"
-mkdir results/charmsycl_cpu_directly_discard_write; mv *.csv results/charmsycl_cpu_directly_discard_write
+mkdir results/charmsycl_openmp_directly_discard_write; mv *.csv results/charmsycl_openmp_directly_discard_write
 
 #charm-sycl (cuda)
 export CHARM_SYCL_RTS=CUDA

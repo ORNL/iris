@@ -34,7 +34,7 @@ mkdir results/iris_cuda; mv *.csv results/iris_cuda
 #charm-sycl (openmp)
 export CHARM_SYCL_RTS=CPU
 execute_over_range "./vecadd-sycl"
-mkdir results/charmsycl_cpu_directly; mv *.csv results/charmsycl_cpu_directly
+mkdir results/charmsycl_openmp_directly; mv *.csv results/charmsycl_openmp_directly
 
 #charm-sycl (cuda)
 export CHARM_SYCL_RTS=CUDA
