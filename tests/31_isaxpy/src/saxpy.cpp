@@ -13,6 +13,11 @@ typedef int8_t boolean;
 #define TRUE 1
 #define FALSE 0
 #define MIN(X, Y) ((X)<(Y) ? (X) : (Y))
+void saxpy_ref(int32_t *Z,
+               int32_t *X,
+               int32_t *Y,
+               int32_t A, 
+               int32_t size);
 int main(int argc, char** argv) {
   iris_init(&argc, &argv, 1);
 

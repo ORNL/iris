@@ -14,14 +14,22 @@ set(IRIS_BIN_DIR ${PROJECT_BINARY_DIR}/src)
 option(DEBUG_DISABLE "Disable debug messages"     ON)
 option(TRACE_DISABLE "Disable trace messages"     ON)
 option(INFO_DISABLE "Disable info messages"     OFF )
+option(DISABLE_DYNAMIC_LINKING "Disable dynamic linking"     OFF )
 option(DISABLE_CONSISTENCY_CHECK "Disable memry consistency checks "     OFF )
 option(ENABLE_SINGLE_DEVICE_PER_CU "Enable single device per compute unit "     OFF )
 option(USE_PYTHON       "Enable support for Python"     ON )
+option(USE_RISCV        "Enable support for RISCV"      ON )
 option(USE_FORTRAN      "Enable support for Fortran 90" OFF)
 
 option(USE_SIGHANDLER   "Enable signal handler"         OFF)
 option(USE_HUB          "Enable hub"                    OFF)
 option(IRIS_ASYNC_STREAMING "Enable IRIS CUDA/HIP Asynchronous streaming"                    OFF)
+
+if (USE_RISCV)
+set(CMAKE_C_COMPILER   riscv64-unknown-linux-gnu-gcc)
+set(CMAKE_CXX_COMPILER riscv64-unknown-linux-gnu-g++)
+set(DISABLE_DYNAMIC_LINKING  ON)
+endif() # USE_RISCV
 
 add_subdirectory(include)
 add_subdirectory(src)
