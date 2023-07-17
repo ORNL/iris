@@ -340,7 +340,7 @@ if (SDHEXAGON_SOURCES)
 set(SKEL_CSRCS_STR "SKEL_CSRCS=\"${SDHEXAGON_SOURCES}\"")
 endif() # SDHEXAGON_SOURCES
 if (USE_RISCV)
-set(OPENMP_FLAGS "${OPENMP_FLAGS}  -fopenmp  -DOPENMP -static")
+set(OPENMP_FLAGS "${OPENMP_FLAGS}  -DDISABLE_DYNAMIC_LINKING -fopenmp  -DOPENMP -static")
 set(OPENMP_LDFLAGS "${OPENMP_LDFLAGS} -static -lgomp -lpthread -ldl")
 endif() # USE_RISCV
 
@@ -459,7 +459,7 @@ function(extractIRISAPIs)
         list(APPEND src_iris_files "${CMAKE_BINARY_DIR}/${rule_name}.iris")
    endwhile()
    add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/iris_app_cpu_dsp_interface.h
-           COMMAND python3 $ENV{IRIS}/utils/extract_iris_task_calls.py -input ${src_iris_files} -output ${CMAKE_BINARY_DIR}/iris_app_cpu_dsp_interface.h -generate
+           COMMAND python3 $ENV{IRIS}/utils/extract_iris_task_calls.py -input ${src_iris_files} -output ${CMAKE_BINARY_DIR}/iris_app_cpu_dsp_interface.h -generate 
            DEPENDS ${src_rules}
            )
     add_custom_target(iris_app_cpu_dsp_interface.h DEPENDS ${CMAKE_BINARY_DIR}/iris_app_cpu_dsp_interface.h)

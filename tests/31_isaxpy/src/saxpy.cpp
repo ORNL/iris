@@ -84,7 +84,6 @@ int main(int argc, char** argv) {
 #if 0
   saxpy(Z, X, Y, SIZE, A, cuUsecPtr, cuCycPtr); // CPU, DSP
 #else
-  printf("Calling IRIS kernel\n");
   //printf("X:%p Y:%p Z:%p\n", X, Y, Z);
   IRIS_SINGLE_TASK(task0, "saxpy", target_dev, 1,
           NULL_OFFSET, GWS(SIZE), NULL_LWS,
@@ -96,7 +95,6 @@ int main(int argc, char** argv) {
           PARAM(cuUsecPtr, int32_t*, iris_dsp),
           PARAM(cuCycPtr, int32_t*, iris_dsp));
 #endif
-
   unsigned long long t2 = GetTime();
   unsigned int rpcOverhead = (unsigned int) (t2 - t1 - cuUsec);
   printf("total time %d uSec, DSP-measured %d uSec and %d cyc (IRIS+RPC overhead %d uSec), observed clock %d MHz\n",

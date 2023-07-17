@@ -17,6 +17,7 @@ namespace CLinkage {
     int iris_openmp_setarg(int idx, size_t size, void* value);
     int iris_openmp_setmem(int idx, void* mem);
     int iris_openmp_launch(int dim, size_t off, size_t gws);
+    void *iris_openmp_get_kernel_ptr(const char* name);
     int iris_openmp_kernel_with_obj(void *obj, const char* name);
     int iris_openmp_setarg_with_obj(void *obj, int idx, size_t size, void* value);
     int iris_openmp_setmem_with_obj(void *obj, int idx, void* mem);
@@ -35,6 +36,7 @@ LoaderOpenMP::LoaderOpenMP() : Loader() {
     iris_openmp_setarg = NULL;
     iris_openmp_setmem = NULL;
     iris_openmp_launch = NULL;
+    iris_openmp_get_kernel_ptr = NULL;
     iris_openmp_kernel_with_obj = NULL;
     iris_openmp_setarg_with_obj = NULL;
     iris_openmp_setmem_with_obj = NULL;
@@ -43,6 +45,35 @@ LoaderOpenMP::LoaderOpenMP() : Loader() {
 
 LoaderOpenMP::~LoaderOpenMP() {
 }
+
+#ifdef DISABLE_DYNAMIC_LINKING
+bool LoaderOpenMP::IsFunctionExists(const char *kernel_name) {
+    int kernel_idx = -1;
+    if (this->iris_openmp_kernel_with_obj != NULL && 
+            this->iris_openmp_kernel_with_obj(&kernel_idx, kernel_name) == IRIS_SUCCESS) {
+        return true;
+    }
+    if (this->iris_openmp_kernel != NULL && 
+            this->iris_openmp_kernel(kernel_name) == IRIS_SUCCESS)
+        return true;
+    return false;
+}
+void *LoaderOpenMP::GetFunctionPtr(const char *kernel_name) {
+    void *kptr = this->iris_openmp_get_kernel_ptr(kernel_name);
+    return kptr;
+}
+int LoaderOpenMP::SetKernelPtr(void *obj, char *kernel_name)
+{
+    if (iris_set_kernel_ptr_with_obj) {
+        __iris_kernel_ptr kptr;
+        kptr = (__iris_kernel_ptr) GetFunctionPtr(kernel_name);
+        iris_set_kernel_ptr_with_obj(obj, kptr);
+        if (kptr != NULL) return IRIS_SUCCESS;
+    }
+    return IRIS_ERROR;
+}
+
+#endif
 
 const char* LoaderOpenMP::library() {
   char* path = NULL;
@@ -60,6 +91,7 @@ int LoaderOpenMP::LoadFunctions() {
   LOADFUNCSYM_OPTIONAL(iris_openmp_setarg,   iris_openmp_setarg);
   LOADFUNCSYM_OPTIONAL(iris_openmp_setmem,   iris_openmp_setmem);
   LOADFUNCSYM_OPTIONAL(iris_openmp_launch,   iris_openmp_launch);
+  LOADFUNCSYM_OPTIONAL(iris_openmp_get_kernel_ptr,    iris_openmp_get_kernel_ptr);
   LOADFUNCSYM_OPTIONAL(iris_openmp_kernel_with_obj,   iris_openmp_kernel_with_obj);
   LOADFUNCSYM_OPTIONAL(iris_openmp_setarg_with_obj,   iris_openmp_setarg_with_obj);
   LOADFUNCSYM_OPTIONAL(iris_openmp_setmem_with_obj,   iris_openmp_setmem_with_obj);

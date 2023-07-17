@@ -1,4 +1,3 @@
-#include "Loader.h"
 #include "Debug.h"
 #ifndef __APPLE__
 #include <link.h>
@@ -6,6 +5,17 @@
 #include <dlfcn.h>
 #include <stdlib.h>
 
+#ifdef DISABLE_DYNAMIC_LINKING
+#define ENABLE_STATIC_LINKING
+#endif
+#include "Loader.h"
+
+namespace CLinkage {
+    extern "C" {
+        void iris_set_kernel_ptr_with_obj(void *obj, __iris_kernel_ptr ptr);
+        c_string_array iris_get_kernel_names();
+    }
+}
 namespace iris {
 namespace rt {
 

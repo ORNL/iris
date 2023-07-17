@@ -318,6 +318,7 @@ static int iris_kernel_idx = -1;
 #define iris_setarg iris_hexagon_setarg
 #define iris_setmem iris_hexagon_setmem
 #define iris_launch iris_hexagon_launch
+#define iris_get_kernel_ptr  iris_hexagon_get_kernel_ptr
 #define iris_kernel_with_obj iris_hexagon_kernel_with_obj
 #define iris_setarg_with_obj iris_hexagon_setarg_with_obj 
 #define iris_setmem_with_obj iris_hexagon_setmem_with_obj 
@@ -355,6 +356,7 @@ static int iris_kernel_idx = -1;
 #define iris_setarg iris_openmp_setarg
 #define iris_setmem iris_openmp_setmem
 #define iris_launch iris_openmp_launch
+#define iris_get_kernel_ptr  iris_openmp_get_kernel_ptr
 #define iris_kernel_with_obj iris_openmp_kernel_with_obj
 #define iris_setarg_with_obj iris_openmp_setarg_with_obj 
 #define iris_setmem_with_obj iris_openmp_setmem_with_obj 
@@ -380,6 +382,7 @@ static int iris_kernel_idx = -1;
 #define iris_setarg iris_host2opencl_setarg
 #define iris_setmem iris_host2opencl_setmem
 #define iris_launch iris_host2opencl_launch
+#define iris_get_kernel_ptr  iris_host2opencl_get_kernel_ptr
 #define iris_kernel_with_obj iris_host2opencl_kernel_with_obj
 #define iris_setarg_with_obj iris_host2opencl_setarg_with_obj 
 #define iris_setmem_with_obj iris_host2opencl_setmem_with_obj 
@@ -411,6 +414,7 @@ static int iris_kernel_idx = -1;
 #define iris_setarg iris_host2hip_setarg
 #define iris_setmem iris_host2hip_setmem
 #define iris_launch iris_host2hip_launch
+#define iris_get_kernel_ptr  iris_host2hip_get_kernel_ptr
 #define iris_kernel_with_obj iris_host2hip_kernel_with_obj
 #define iris_setarg_with_obj iris_host2hip_setarg_with_obj 
 #define iris_setmem_with_obj iris_host2hip_setmem_with_obj 
@@ -445,6 +449,7 @@ static int iris_kernel_idx = -1;
 #define iris_setarg iris_host2cuda_setarg
 #define iris_setmem iris_host2cuda_setmem
 #define iris_launch iris_host2cuda_launch
+#define iris_get_kernel_ptr  iris_host2cuda_get_kernel_ptr
 #define iris_kernel_with_obj iris_host2cuda_kernel_with_obj
 #define iris_setarg_with_obj iris_host2cuda_setarg_with_obj 
 #define iris_setmem_with_obj iris_host2cuda_setmem_with_obj 
@@ -471,6 +476,14 @@ static int iris_kernel_idx = -1;
 #endif //ENABLE_IRIS_HOST2CUDA_APIS
             ''')
     appendKernelSignature(args, lines, data_hash, k_hash)
+    lines.append(f'''
+#ifdef DISABLE_DYNAMIC_LINKING
+            ''')
+    appendKernelSignature(args, lines, data_hash, k_hash, False)
+    appendGetKernelPtrFunction(args, lines, data_hash)
+    lines.append(f'''
+#endif
+            ''')
     sig_lines = []
     cu_type_lines = {}
     appendKernelSignatureHeaderFile(args, sig_lines, header_data_hash)
@@ -1436,7 +1449,7 @@ int {func_name}("""
         if hdr_type == CPP_CORE_API or hdr_type == CPP_TASK_API:
             lines.append("#endif // __cplusplus")
 
-def appendKernelSignature(args, lines, data_hash, k_hash):
+def appendKernelSignature(args, lines, data_hash, k_hash, dynamic_linking=True):
     global valid_params, global_res
     def InsertConditionalDeclarations(k, expr, fdt, params, lines):
         appendConditionalParameters(expr, fdt, params, lines)
@@ -1445,6 +1458,8 @@ def appendKernelSignature(args, lines, data_hash, k_hash):
         func_sig = "int iris_kernel_"+k+"(HANDLETYPE"
         if args.thread_safe:
             func_sig = "typedef int (* __iris_kernel_"+k+"_ptr)(HANDLETYPE DEVICE_NUM_TYPE"
+        if not dynamic_linking:
+            func_sig = "int "+k+"(HANDLETYPE"
         params = []
         lines.append(func_sig)
         arguments_start_index = find_start_index(v)
@@ -1552,23 +1567,28 @@ def appendKernelSignature(args, lines, data_hash, k_hash):
         lines.append(");")
 
 def appendSetKernelWrapperFunctions(args, lines, data_hash, k_hash):
-    lines.append('''
-void iris_set_kernel_ptr_with_obj(void *obj, __iris_kernel_ptr ptr) {
+    print_stmt='printf("%s:%d (%s) is called\\n", __FILE__, __LINE__, __func__); printf("kernel:%p\\n", ptr);' 
+    lines.append(f"""
+void iris_set_kernel_ptr_with_obj(void *obj, __iris_kernel_ptr ptr) {{
     iris_base_pack *bobj = (iris_base_pack *)obj;
+    {f'{print_stmt}' if args.verbose else ''}
     bobj->__iris_kernel = ptr;
-}
-            ''')
+}}
+            """)
 
 def appendHandleWrapperFunctions(args, lines, data_hash, k_hash):
-    lines.append('''
-void iris_kernel_set_queue_with_obj(void *obj, void *queue) {
+    print_stmt='printf("%s:%d (%s) is called\\n", __FILE__, __LINE__, __func__);' 
+    lines.append(f'''
+void iris_kernel_set_queue_with_obj(void *obj, void *queue) {{
     iris_base_pack *bobj = (iris_base_pack *)obj;
+    {f'{print_stmt}' if args.verbose else ''}
     bobj->__iris_handle = queue;
-}
-void *iris_kernel_get_queue_with_obj(void *obj) {
+}}
+void *iris_kernel_get_queue_with_obj(void *obj) {{
     iris_base_pack *bobj = (iris_base_pack *)obj;
+    {f'{print_stmt}' if args.verbose else ''}
     return bobj->__iris_handle;
-}
+}}
             ''')
 
 def appendKernelNamesFunction(args, lines, data_hash, k_hash):
@@ -1640,6 +1660,8 @@ def appendKernelSetArgMemParamFunctions(args, lines, kernel, data):
     global valid_params
     kvar = getKernelParamVairable(kernel)
     lines.append("static int "+kernel+"_setarg(void *obj, int idx, size_t size, void* value) {")
+    if args.verbose:
+        lines.append('printf("%s:%d (%s) is called\\n", __FILE__, __LINE__, __func__);')
     lines.append('''
   switch (idx) {
     ''')
@@ -1666,6 +1688,8 @@ def appendKernelSetArgMemParamFunctions(args, lines, kernel, data):
 }
         ''')
     lines.append("static int "+kernel+"_setmem(void *obj, int idx, void *mem, int size) {")
+    if args.verbose:
+        lines.append('printf("%s:%d (%s) is called\\n", __FILE__, __LINE__, __func__);')
     lines.append('''
   switch (idx) {
     ''')
@@ -1698,7 +1722,10 @@ def appendKernelSetArgMemGlobalFunctions(args, lines, data_hash, k_hash):
     if args.thread_safe == 1:
         lines.append('''
 int iris_setarg_with_obj(void *obj, int idx, size_t size, void* value) {
-  int kernel_idx = *((int *)obj); // First argument should be kernel index
+  int kernel_idx = *((int *)obj); // First argument should be kernel index''')
+        if args.verbose:
+            lines.append('printf("%s:%d (%s) is called\\n", __FILE__, __LINE__, __func__);')
+        lines.append('''
   switch (kernel_idx) {
         ''')
         for k,v in data_hash.items():
@@ -1711,7 +1738,10 @@ int iris_setarg_with_obj(void *obj, int idx, size_t size, void* value) {
         ''')
         lines.append('''
 int iris_setmem_with_obj(void *obj, int idx, void *mem, int size) {
-  int kernel_idx = *((int *)obj); // First argument should be kernel index
+  int kernel_idx = *((int *)obj); // First argument should be kernel index''')
+        if args.verbose:
+            lines.append('printf("%s:%d (%s) is called\\n", __FILE__, __LINE__, __func__);')
+        lines.append('''
   switch (kernel_idx) {
     ''')
         for k,v in data_hash.items():
@@ -1724,7 +1754,10 @@ int iris_setmem_with_obj(void *obj, int idx, void *mem, int size) {
         ''')
     else:
         lines.append('''
-int iris_setarg(int idx, size_t size, void* value) {
+int iris_setarg(int idx, size_t size, void* value) {''')
+        if args.verbose:
+            lines.append('printf("%s:%d (%s) is called\\n", __FILE__, __LINE__, __func__);')
+        lines.append('''
   switch (iris_kernel_idx) {
     ''')
         for k,v in data_hash.items():
@@ -1737,7 +1770,10 @@ int iris_setarg(int idx, size_t size, void* value) {
 }
         ''')
         lines.append('''
-int iris_setmem(int idx, void *mem, int size) {
+int iris_setmem(int idx, void *mem, int size) {''')
+        if args.verbose:
+            lines.append('printf("%s:%d (%s) is called\\n", __FILE__, __LINE__, __func__);')
+        lines.append('''
   switch (iris_kernel_idx) {
     ''')
         for k,v in data_hash.items():
@@ -1750,6 +1786,22 @@ int iris_setmem(int idx, void *mem, int size) {
 }
         ''')
 
+def appendGetKernelPtrFunction(args, lines, data_hash):
+    global valid_params
+    lines.append('''
+void *iris_get_kernel_ptr(const char* name) {
+    ''')
+    if args.verbose:
+        lines.append('printf("%s:%d (%s) is called\\n", __FILE__, __LINE__, __func__);')
+    for k,v in data_hash.items():
+        lines.append("\t if (strcmp(name, \""+k+"\") == 0) {")
+        lines.append("\t\t return (void *)"+k+";")
+        lines.append("\t }")
+    lines.append('''
+    return NULL;
+}
+        ''')
+
 def appendKernelLaunchFunction(args, lines, data_hash, k_hash):
     global valid_params
     if args.thread_safe == 1:
@@ -1757,6 +1809,8 @@ def appendKernelLaunchFunction(args, lines, data_hash, k_hash):
 int iris_kernel_with_obj(void *obj, const char* name) {
     int *kernel_idx_p = ((int *)obj); // First argument should be kernel index
     ''')
+        if args.verbose:
+            lines.append('printf("%s:%d (%s) is called\\n", __FILE__, __LINE__, __func__);')
         for k,v in data_hash.items():
             kvar = getKernelParamVairable(k)
             lines.append("\t if (strcmp(name, \""+k+"\") == 0) {")
@@ -1773,6 +1827,8 @@ int iris_kernel_with_obj(void *obj, const char* name) {
 int iris_kernel(const char* name) {
     iris_kernel_lock();
     ''')
+        if args.verbose:
+            lines.append('printf("%s:%d (%s) is called\\n", __FILE__, __LINE__, __func__);')
         for k,v in data_hash.items():
             lines.append("\t if (strcmp(name, \""+k+"\") == 0) {")
             lines.append("\t\t iris_kernel_idx = "+str(k_hash[k])+";")
@@ -1834,6 +1890,9 @@ int iris_launch_with_obj(
         int devno, 
         int dim, size_t off, size_t ndr) {
         ''')
+        if args.verbose:
+            lines.append('printf("%s:%d (%s) is called\\n", __FILE__, __LINE__, __func__);')
+            lines.append('printf("kernel launch ptr:%p\\n", ((iris___k_saxpy_args*)obj)->__iris_kernel);')
         InsertKernelLaunchSwith(lines, data_hash, True)
         lines.append('''
         return IRIS_SUCCESS;
@@ -1847,6 +1906,8 @@ int iris_launch(
 #endif
         int dim, size_t off, size_t ndr) {
         ''')
+        if args.verbose:
+            lines.append('printf("%s:%d (%s) is called\\n", __FILE__, __LINE__, __func__);')
         InsertKernelLaunchSwith(lines, data_hash)
         lines.append('''
         iris_kernel_unlock();
@@ -1864,6 +1925,7 @@ def InitParser(parser):
     parser.add_argument("-output", dest="output", default="iris_app_cpu_dsp_interface.h")
     parser.add_argument("-extract", dest="extract", action="store_true")
     parser.add_argument("-generate", dest="generate", action="store_true")
+    parser.add_argument("-verbose", dest="verbose", action="store_true")
     parser.add_argument("-thread_safe", dest="thread_safe", type=int, default=1)
     parser.add_argument("-compile_options", dest="compile_options", default="")
     parser.add_argument("-signature_file", dest="signature_file", default="app.h")
