@@ -84,6 +84,7 @@ int main(int argc, char** argv) {
 #if 0
   saxpy(Z, X, Y, SIZE, A, cuUsecPtr, cuCycPtr); // CPU, DSP
 #else
+  printf("Calling IRIS kernel\n");
   //printf("X:%p Y:%p Z:%p\n", X, Y, Z);
   IRIS_SINGLE_TASK(task0, "saxpy", target_dev, 1,
           NULL_OFFSET, GWS(SIZE), NULL_LWS,

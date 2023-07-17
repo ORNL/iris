@@ -18,7 +18,7 @@ option(DISABLE_DYNAMIC_LINKING "Disable dynamic linking"     OFF )
 option(DISABLE_CONSISTENCY_CHECK "Disable memry consistency checks "     OFF )
 option(ENABLE_SINGLE_DEVICE_PER_CU "Enable single device per compute unit "     OFF )
 option(USE_PYTHON       "Enable support for Python"     ON )
-option(USE_RISCV        "Enable support for RISCV"      ON )
+option(USE_RISCV        "Enable support for RISCV"      OFF )
 option(USE_FORTRAN      "Enable support for Fortran 90" OFF)
 
 option(USE_SIGHANDLER   "Enable signal handler"         OFF)
