@@ -13,13 +13,22 @@ typedef int8_t boolean;
 #define TRUE 1
 #define FALSE 0
 #define MIN(X, Y) ((X)<(Y) ? (X) : (Y))
+extern "C" void saxpy(int32_t *Z,
+               int32_t *X,
+               int32_t *Y,
+               int32_t size, 
+               int32_t A, 
+               size_t, size_t);
 void saxpy_ref(int32_t *Z,
                int32_t *X,
                int32_t *Y,
                int32_t A, 
                int32_t size);
+//#define DISABLE_IRIS
 int main(int argc, char** argv) {
+#ifndef DISABLE_IRIS
   iris_init(&argc, &argv, 1);
+#endif
 
   int SIZE;
   int TARGET, target_dev;
@@ -77,12 +86,14 @@ int main(int argc, char** argv) {
 #endif
   //printf("Enabled shared memory model\n");
   unsigned long long t1 = GetTime();
+#ifndef DISABLE_IRIS
   if (TARGET / 10 > 0)
       iris_set_shared_memory_model(1);
+#endif
 //#define ORIGINAL
 //#define ALL_APIS
-#if 0
-  saxpy(Z, X, Y, SIZE, A, cuUsecPtr, cuCycPtr); // CPU, DSP
+#ifdef DISABLE_IRIS
+  saxpy(Z, X, Y, SIZE, A, (size_t)0, (size_t)0); // CPU, DSP
 #else
   //printf("X:%p Y:%p Z:%p\n", X, Y, Z);
   IRIS_SINGLE_TASK(task0, "saxpy", target_dev, 1,
@@ -123,7 +134,9 @@ int main(int argc, char** argv) {
   free(Z);
 
 
+#ifndef DISABLE_IRIS
   iris_finalize();
+#endif
   bail:
 
   return 0;
