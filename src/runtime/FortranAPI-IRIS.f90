@@ -6,12 +6,12 @@ MODULE IRIS
     TYPE, BIND(C) :: iris_mem
         TYPE(C_PTR) :: class_obj
         INTEGER(C_LONG) :: uid
-    END TYPE iris_mem
+    END TYPE 
 
     TYPE, BIND(C) :: iris_task
         TYPE(C_PTR) :: class_obj
         INTEGER(C_LONG) :: uid
-    END TYPE iris_task
+    END TYPE 
 
     INTEGER, PARAMETER :: IRIS_SUCCESS  = 0
     INTEGER, PARAMETER :: IRIS_ERROR    = -1
