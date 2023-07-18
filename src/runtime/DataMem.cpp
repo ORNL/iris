@@ -36,7 +36,7 @@ void DataMem::Init(Platform *platform, void *host_ptr, size_t size)
     }
     dim_ = 1;
     host_ptr_ = host_ptr;
-    printf("host pointer %p\n", host_ptr_);
+    //printf("host pointer %p\n", host_ptr_);
 #ifdef AUTO_PAR
   current_writing_task_ = NULL;
 #ifdef AUTO_FLUSH
@@ -45,9 +45,9 @@ void DataMem::Init(Platform *platform, void *host_ptr, size_t size)
 #ifdef AUTO_SHADOW
   host_shadow_dirty_flag_ = true; //initially the shadow is dirty
   current_dmem_shadow_ = NULL; //initially the shadow is dirty
-  is_shadow_ = 0; // 0: not a shadow, 1: a shadow
+  is_shadow_ = false; // 0: not a shadow, 1: a shadow
   main_dmem_ = NULL; // 0: not a shadow, 1: a shadow
-  has_shadow_ = 0; // 0: does not have a shadow, 1: has a shadow
+  has_shadow_ = false; // 0: does not have a shadow, 1: has a shadow
 #endif
 #endif
 }
