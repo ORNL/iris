@@ -6,6 +6,7 @@
 typedef char (*c_string_array)[256] ;
 typedef void (*__iris_kernel_ptr)();
 
+#ifndef ENABLE_STATIC_LINKING
 #define LOADFUNC(FUNC)          *(void**) (&FUNC) = dlsym(handle_, #FUNC);      \
                                 if (!FUNC) _error("%s", dlerror())
 #define LOADFUNC_OPTIONAL(FUNC) *(void**) (&FUNC) = dlsym(handle_, #FUNC);      
@@ -15,7 +16,14 @@ typedef void (*__iris_kernel_ptr)();
 #define LOADFUNCSILENT(FUNC)    *(void**) (&FUNC) = dlsym(handle_, #FUNC);
 #define LOADFUNCEXT(FUNC)       *(void**) (&FUNC) = dlsym(handle_ext_, #FUNC);  \
                                 if (!FUNC) _error("%s", dlerror())
-
+#else
+#define LOADFUNC(FUNC)                   FUNC = CLinkage::FUNC;
+#define LOADFUNC_OPTIONAL(FUNC)          FUNC = CLinkage::FUNC;
+#define LOADFUNCSYM(FUNC, SYM)           FUNC = CLinkage::SYM;
+#define LOADFUNCSYM_OPTIONAL(FUNC, SYM)  FUNC = CLinkage::SYM;
+#define LOADFUNCSILENT(FUNC)             FUNC = CLinkage::FUNC;
+#define LOADFUNCEXT(FUNC)                FUNC = CLinkage::FUNC;
+#endif
 namespace iris {
 namespace rt {
 

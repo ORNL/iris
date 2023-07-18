@@ -27,8 +27,8 @@ set(CUDA_KERNEL_SOURCES
    )
 
 set(APP_SOURCES
-   src/saxpy.c
-   src/saxpy_ref.c
+   src/saxpy.cpp
+   src/saxpy_ref.cpp
    )
 
 set(HEXAGON_KERNEL_SOURCES 

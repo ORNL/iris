@@ -194,7 +194,10 @@ int Platform::Init(int* argc, char*** argv, int sync) {
   }
   if (ndevs_enabled_ > ndevs_) ndevs_enabled_ = ndevs_;
   polyhedral_ = new Polyhedral();
+  polyhedral_available_ = false;
+#ifndef ENABLE_RISCV
   polyhedral_available_ = polyhedral_->Load() == IRIS_SUCCESS;
+#endif
   if (polyhedral_available_)
     filter_task_split_ = new FilterTaskSplit(polyhedral_, this);
 
@@ -246,7 +249,11 @@ int Platform::EnvironmentInit() {
   char *tmp_dir = mkdtemp(tmp_dir_str);
   strcpy(tmp_dir_, tmp_dir);
   //printf("Temp directory:%s\n", tmp_dir_);
+#ifdef ENABLE_RISCV
+  EnvironmentSet("ARCHS",  "openmp",  false);
+#else
   EnvironmentSet("ARCHS",  "openmp:cuda:hip:levelzero:hexagon:opencl",  false);
+#endif
   EnvironmentSet("TMPDIR", tmp_dir_,                                 false);
 
   EnvironmentSet("KERNEL_DIR",      "",                   false);
