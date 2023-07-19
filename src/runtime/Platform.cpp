@@ -988,6 +988,14 @@ int Platform::TaskKernelSelector(iris_task brs_task, iris_selector_kernel func, 
   return IRIS_SUCCESS;
 }
 
+int Platform::TaskHost(iris_task brs_task, iris_host_python_task func, int64_t params_id) {
+  Task *task = get_task_object(brs_task);
+  assert(task != NULL);
+  Command* cmd = Command::CreateHost(task, func, params_id);
+  task->AddCommand(cmd);
+  return IRIS_SUCCESS;
+}
+
 int Platform::TaskHost(iris_task brs_task, iris_host_task func, void* params) {
   Task *task = get_task_object(brs_task);
   assert(task != NULL);

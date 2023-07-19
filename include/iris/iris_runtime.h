@@ -147,6 +147,7 @@ typedef struct _iris_kernel    iris_kernel;
 typedef struct _iris_graph     iris_graph;
 
 typedef int (*iris_host_task)(void* params, const int* device);
+typedef int (*iris_host_python_task)(int64_t* params_id, const int* device);
 typedef int (*command_handler)(void* params, void* device);
 typedef int (*hook_task)(void* task);
 typedef int (*hook_command)(void* command);
@@ -691,6 +692,15 @@ extern int iris_task_kernel_selector(iris_task task, iris_selector_kernel func, 
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_task_kernel_launch_disabled(iris_task task, int flag);
+
+/**@brief executes a function at the host side
+ *
+ * @param task target task
+ * @param func function to be executed
+ * @param params kernel parameters
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_task_python_host(iris_task task, iris_host_python_task func, int64_t params_id);
 
 /**@brief executes a function at the host side
  *

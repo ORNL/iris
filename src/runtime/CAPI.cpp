@@ -198,6 +198,10 @@ int iris_params_map(iris_task task, int *params_map) {
   return Platform::GetPlatform()->SetParamsMap(task, params_map);
 }
 
+int iris_task_python_host(iris_task task, iris_host_python_task func, int64_t params_id) {
+  return Platform::GetPlatform()->TaskHost(task, func, params_id);
+}
+
 int iris_task_host(iris_task task, iris_host_task func, void* params) {
   return Platform::GetPlatform()->TaskHost(task, func, params);
 }

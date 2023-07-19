@@ -502,12 +502,25 @@ def task_kernel(task, kernel, dim, off, gws, lws, params, params_info, hold_para
     kernel_name = c_char_p(kernel) if sys.version_info[0] == 2 else c_char_p(bytes(kernel, 'ascii'))
     return dll.iris_task_kernel(task, kernel_name, c_int(dim), coff, cgws, clws, c_int(nparams), cparams, cparams_info)
 
+def iris2py_dev(dev):
+    return dev.contents.value
+
+def iris2py(params):
+    return ctypes.cast(params.contents.value, ctypes.py_object).value
+
+def python_task_host(task, func, params):
+    CWRAPPER = CFUNCTYPE(c_int, POINTER(c_int64), POINTER(c_int))
+    wrapped_py_func = CWRAPPER(func)
+    task.params = params
+    cparams = id(task.params) #(c_void_p * nparams)(*params)
+    return dll.iris_task_python_host(task, cast(wrapped_py_func, c_void_p), c_int64(cparams))
+
 def task_host(task, func, params):
-  CWRAPPER = CFUNCTYPE(c_int, c_void_p, POINTER(c_int))
-  wrapped_py_func = CWRAPPER(func)
-  nparams = len(params)
-  cparams = (c_void_p * nparams)(*params)
-  return dll.iris_task_host(task, cast(wrapped_py_func, c_void_p), cparams)
+    CWRAPPER = CFUNCTYPE(c_int, c_void_p, POINTER(c_int))
+    wrapped_py_func = CWRAPPER(func)
+    nparams = len(params)
+    cparams = (c_void_p * nparams)(*params)
+    return dll.iris_task_host(task, cast(wrapped_py_func, c_void_p), cparams)
 
 def task_h2d(task, mem, off, size, host):
     return dll.iris_task_h2d(task, mem, c_size_t(off), c_size_t(size), host.ctypes.data_as(c_void_p))
@@ -970,6 +983,8 @@ class task:
         task_d2h_full(self.handle, mem.handle, host)
     def kernel(self, kernel, dim, off, gws, lws, params, params_info):
         task_kernel(self.handle, kernel, dim, off, gws, lws, params, params_info, self.params)
+    def pyhost(self, func, params):
+        python_task_host(self.handle, func, params)
     def host(self, func, params):
         task_host(self.handle, func, params)
     def submit(self, device, sync = 1):

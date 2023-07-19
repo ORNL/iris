@@ -759,11 +759,21 @@ void Device::ExecuteReleaseMem(Command* cmd) {
 }
 
 void Device::ExecuteHost(Command* cmd) {
-  iris_host_task func = cmd->func();
   void* params = cmd->func_params();
-  const int dev = devno_;
-  _trace("dev[%d][%s] func[%p] params[%p]", devno_, name_, func, params);
-  func(params, &dev);
+  if (params != NULL) {
+      iris_host_task func = cmd->func();
+      const int dev = devno_;
+      _trace("dev[%d][%s] func[%p] params[%p]", devno_, name_, func, params);
+      func(params, &dev);
+  }
+  else {
+      // For python interface
+      iris_host_python_task func = cmd->py_func();
+      const int dev = devno_;
+      int64_t params_id = cmd->func_params_id();
+      _trace("dev[%d][%s] func[%p] params[%ld]", devno_, name_, func, params_id);
+      func(&params_id, &dev);
+  }
 }
 
 void Device::ExecuteCustom(Command* cmd) {

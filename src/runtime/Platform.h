@@ -94,6 +94,7 @@ public:
   int TaskKernel(iris_task brs_task, iris_kernel brs_kernel, int dim, size_t* off, size_t* gws, size_t* lws);
   int TaskKernel(iris_task task, const char* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, size_t* params_off, int* params_info, size_t* memranges);
   int TaskKernelSelector(iris_task task, iris_selector_kernel func, void* params, size_t params_size);
+  int TaskHost(iris_task task, iris_host_python_task func, int64_t params_id);
   int TaskHost(iris_task task, iris_host_task func, void* params);
   int TaskCustom(iris_task task, int tag, void* params, size_t params_size);
   int TaskMalloc(iris_task brs_task, iris_mem brs_mem);
