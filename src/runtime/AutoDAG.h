@@ -37,6 +37,7 @@ public:
 		  BaseMem* mem);
   void create_shadow_flush(Command* cmd, Task* task, 
 		  BaseMem* mem);
+  int get_number_of_shadow(){ return number_of_shadow_;}
 
 #endif
 
@@ -53,6 +54,7 @@ private:
 #endif
 #ifdef AUTO_SHADOW
    //Map<Dmem>  current_graph_;
+  int number_of_shadow_;
 #endif
 
 

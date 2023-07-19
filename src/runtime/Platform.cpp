@@ -113,6 +113,10 @@ Platform::~Platform() {
       system(cmd);
   }
 #ifdef AUTO_PAR
+#ifdef AUTO_SHADOW
+  printf("Total Shadow created %d\n", auto_dag_->get_number_of_shadow());
+  _trace("Total Shadow created[%d]", auto_dag_->get_number_of_shadow());
+#endif
   delete auto_dag_;
 #endif
   /*
@@ -1434,7 +1438,7 @@ int Platform::GraphSubmit(iris_graph brs_graph, int brs_policy, int sync) {
   if (sync) graph->Wait();
 #ifdef AUTO_PAR
 #ifdef AUTO_FLUSH
-  printf("-------------------------------------------------------\n");
+  //printf("-------------------------------------------------------\n");
   auto_dag_->set_current_graph(NULL);
 #endif
 #endif

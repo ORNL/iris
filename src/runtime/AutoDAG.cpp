@@ -16,6 +16,9 @@ AutoDAG::AutoDAG(Platform* platform){
 #ifdef AUTO_FLUSH
     current_graph_ = NULL;
 #endif
+#ifdef AUTO_SHADOW
+  number_of_shadow_ = 0;
+#endif
 }
 
 //AutoDAG::platform_ = NULL;
@@ -133,6 +136,7 @@ void AutoDAG::create_auto_shadow(Command* cmd, Task* task,
                 NULL, mem->size()); // TODO try with NULL
                 //host_ptr_shadow, mem->size()); // TODO try with NULL
         platform_->insert_into_mems(mem_shadow);
+        number_of_shadow_++;
 
         //mem_shadow->set_host_ptr_shadow(((DataMem*)mem)->host_ptr());
 

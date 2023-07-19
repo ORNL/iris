@@ -544,6 +544,8 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
         size_t elem_size = mem->elem_size();
         int dim = mem->dim();
         size_t size = mem->size();
+        printf("Pointer offset %d, gws %d lws %d elem_size %d dim %d size %d\n", 
+            *ptr_off, *gws, *lws, elem_size, dim, size);
         void* host = mem->host_memory(); // It should work even if host_ptr is null
         double start = timer_->Now();
         Task *task = cmd->task();
@@ -587,12 +589,27 @@ void Device::ExecuteMemFlushOutToShadow(Command* cmd) {
     }
     DataMem* mem = (DataMem *)cmd->mem();
     //if (mem->is_host_dirty()) {
-    size_t *ptr_off = mem->off();
-    size_t *gws = mem->host_size();
-    size_t *lws = mem->dev_size();
-    size_t elem_size = mem->elem_size();
-    int dim = mem->dim();
-    size_t size = mem->size();
+    size_t *ptr_off, *gws, *lws, elem_size, size;
+    int dim;
+    if(mem->get_is_shadow() == false) {
+        ptr_off = mem->get_current_dmem_shadow()->off();
+        gws = mem->get_current_dmem_shadow()->host_size();
+        lws = mem->get_current_dmem_shadow()->dev_size();
+        elem_size = mem->get_current_dmem_shadow()->elem_size();
+        dim = mem->get_current_dmem_shadow()->dim();
+        size = mem->get_current_dmem_shadow()->size();
+    }
+    else {
+        ptr_off = mem->get_main_dmem()->off();
+        gws = mem->get_main_dmem()->host_size();
+        lws = mem->get_main_dmem()->dev_size();
+        elem_size = mem->get_main_dmem()->elem_size();
+        dim = mem->get_main_dmem()->dim();
+        size = mem->get_main_dmem()->size();
+    }
+
+    printf("Pointer offset %d, gws %d lws %d elem_size %d dim %d size %d\n", 
+            *ptr_off, *gws, *lws, elem_size, dim, size);
     //void* host = mem->host_memory(); // It should work even if host_ptr is null
     void* host;
     if(mem->get_is_shadow() == false)
@@ -619,13 +636,15 @@ void Device::ExecuteMemFlushOutToShadow(Command* cmd) {
         src_dev = Platform::GetPlatform()->device(nddevs[0]);
         // D2H should be issued from target src (remote) device
         bool context_shift = src_dev->IsContextChangeRequired();
-        errid_ = src_dev->MemD2H(task, mem, ptr_off, 
-                    gws, lws, elem_size, dim, size, host, "MemShadowFlushOut ");
+        errid_ = src_dev->MemD2H(task, mem, 
+                ptr_off, gws, lws, elem_size, dim, size, host, "MemShadowFlushOut ");
+                //ptr_off, gws, lws, elem_size, dim, size, host, "MemShadowFlushOut ");
         if (context_shift) ResetContext();
     }
     else {
-        errid_ = MemD2H(task, mem, ptr_off, 
-                    gws, lws, elem_size, dim, size, host, "MemShadowFlushOut ");
+        errid_ = MemD2H(task, mem, 
+                ptr_off, gws, lws, elem_size, dim, size, host, "MemShadowFlushOut ");
+                //ptr_off, gws, lws, elem_size, dim, size, host, "MemShadowFlushOut ");
     }
     if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
     //mem->get_current_dmem_shadow()->clear_host_shadow_dirty();
