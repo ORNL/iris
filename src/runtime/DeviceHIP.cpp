@@ -371,9 +371,6 @@ int DeviceHIP::KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bo
   if (err_ == hipSuccess) {
       kernels_offs_.insert(std::pair<hipFunction_t, hipFunction_t>(*hipkernel, hipkernel_off));
   }
-  else {
-      return IRIS_ERROR;
-  }
   return IRIS_SUCCESS;
 }
 

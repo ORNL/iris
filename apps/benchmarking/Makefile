@@ -10,6 +10,8 @@ OPENCL_CFLAGS			?= -I$(OPENCL_PATH)/include
 OPENCL_LDFLAGS		?= -L$(OPENCL_PATH)/lib -L$(OPENCL_PATH)/lib64 -lOpenCL
 IRIS					:=$(HOME)/.iris
 IRIS_LDFLAGS	:=-L$(IRIS)/lib -L$(IRIS)/lib64 -liris -lpthread -ldl
+CHARMSYCL 		:=$(HOME)/.charm-sycl
+CHARMSYCL_LDFLAGS	:=-L$(CHARMSYCL)/lib -L$(CHARMSYCL)/lib64 -lcharm -lpthread -ldl
 
 kernels: kernel.ptx kernel.hip kernel.openmp.so
 
@@ -42,6 +44,9 @@ compute-performance-iris: compute-performance-codes/flops-dgemm-iris-profiling.c
 
 memory-performance-iris: memory-performance-codes/membench-iris-profiling.cpp
 	$(CXX) -I$(IRIS)/include -o $@ $^ $(IRIS_LDFLAGS)
+
+memory-performance-sycl: memory-performance-codes/membench-charmsycl-profiling.cpp
+	$(CHARMSYCL)/bin/cscc --targets=cpu-c,nvidia-cuda -o $@ $^
 
 kernel.ptx: kernel.cu
 	$(NVCC) $(NVCC_FLAGS) -ptx $^

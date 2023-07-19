@@ -92,7 +92,7 @@ int main(int argc, char** argv) {
       iris_task_h2d_full(task[y], mem_B[y], B);
       size_t ijk_idx[2] = { SIZE, SIZE };
       //size_t ijk_lws[2] = { 32, 32 };
-      void* params[3] = { mem_C[y], mem_A[y], mem_B[y] };
+      void* params[3] = { &mem_C[y], &mem_A[y], &mem_B[y] };
       int pinfo[3] = { iris_w, iris_r, iris_r };
       //iris_task_kernel(task[y], "ijk", 2, NULL, ijk_idx, ijk_lws, 3, params, pinfo);
       iris_task_kernel(task[y], "ijk", 2, NULL, ijk_idx, NULL, 3, params, pinfo);

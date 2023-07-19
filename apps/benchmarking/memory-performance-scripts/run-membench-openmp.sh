@@ -10,24 +10,24 @@ export LD_LIBRARY_PATH=$IRIS_INSTALL_ROOT/lib64:$IRIS_INSTALL_ROOT/lib:$LD_LIBRA
 export WORKING_DIR=`pwd`
 
 make clean
-make memory-performance-iris
+make memory-performance-iris kernel.openmp.so
 
 #exit if the last program run wasn't successful
 [ $? -ne 0 ] && exit
 
 #don't proceed if the target failed to build
-if ! [ -f memory-performance-iris ] ; then
+if ! [ -f memory-performance-iris ] || ! [ -f kernel.openmp.so ] ; then
   exit
 fi
 
-export RUNTIME=opencl
+export RUNTIME=openmp
 # Final experiment: Lock the number of transfers and increase the buffer-size---starting from 1KiB onwards
 for SIZE in {1..25}
 do
   ((ELEMENTS=2**${SIZE}))
   echo ${ELEMENTS}
   echo ${KIB}
-  IRIS_ARCHS=opencl ./memory-performance-iris ${ELEMENTS} 1000 1000 membench-${RUNTIME}-${HOST}-${ELEMENTS}.csv
+  IRIS_ARCHS=openmp ./memory-performance-iris ${ELEMENTS} 1000 1000 membench-${RUNTIME}-${HOST}-${ELEMENTS}.csv
 done
 
 source ./setup.sh
