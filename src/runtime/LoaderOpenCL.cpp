@@ -1,6 +1,7 @@
 #include "LoaderOpenCL.h"
 #include "Debug.h"
 #include "Utils.h"
+#include <fstream>
 
 namespace iris {
 namespace rt {
@@ -13,33 +14,38 @@ LoaderOpenCL::~LoaderOpenCL() {
 
 const char* LoaderOpenCL::library() {
   std::string* return_string = new std::string();
-  bool proper_file_path = false;
-  const char* icd_vendors = getenv("OCL_ICD_VENDORS");
-  const char* icd_preferred_path = getenv("OPENCL_VENDOR_PATH");
+  const char* icd_preferred_path = getenv("OPENCL_VENDOR_PATH");//OPENCL_VENDOR_PATH=/my/local/icd/file/path/libOpenCL.so
+  if(icd_preferred_path){
+    ifstream f(icd_preferred_path);
+    if (f.good()) return(icd_preferred_path);
+  }
+  //else use OpenCL ICD Loader logic
+  const char* icd_vendors = getenv("OCL_ICD_VENDORS"); //OCL_ICD_VENDORS=/my/local/icd/search/path
+  const char* icd_filenames = getenv("OCL_ICD_FILENAMES");//OCL_ICD_FILENAMES=libVendorA.so:libVendorB.so
 
   if(icd_vendors){
-    bool empty_vendor_lib = !strcmp(icd_vendors, "");
+    bool empty_vendor_lib = (0 == strcmp(icd_vendors, ""));
     if (empty_vendor_lib) icd_vendors = nullptr;
   }
-  if(icd_preferred_path){
-    bool empty_path = !strcmp(icd_preferred_path, "");
-    if (empty_path) icd_preferred_path = nullptr;
-    std::string buf(icd_preferred_path);
-    std::string ending = "/";
-    proper_file_path = std::equal(ending.rbegin(), ending.rend(), buf.rbegin());
+  if(icd_filenames){
+    bool empty_vendor_filename = (0 == strcmp(icd_filenames, ""));
+    if (empty_vendor_filename) icd_filenames = nullptr;
   }
+  if (icd_vendors && icd_filenames){
+    *return_string = std::string(icd_vendors) + "/" + std::string(icd_filenames);
+  }
+  else if (icd_filenames){ *return_string = icd_filenames;}
+  else if (icd_vendors){
+    *return_string = std::string(icd_vendors) + "/" + "libOpenCL.so";
+  }
+  else {*return_string = "libOpenCL.so";}
+  //printf("using : %s\n",return_string->c_str());
 
-  if (icd_vendors && icd_preferred_path){
-    if (proper_file_path) *return_string = std::string(icd_preferred_path) + std::string(icd_vendors);
-    else *return_string = std::string(icd_preferred_path) + "/" + std::string(icd_vendors);
-  }
-  else if (icd_vendors) *return_string = icd_vendors;
-  else if (icd_preferred_path){
-    if(proper_file_path) *return_string = std::string(icd_preferred_path) + "libOpenCL.so";
-    else *return_string = std::string(icd_preferred_path) + "/" + "libOpenCL.so";
-  }
-  else *return_string = "libOpenCL.so";
-  //printf("using path = %s\n",return_string->c_str());
+  //clear the use of the ICD loader at other levels
+  unsetenv("OCL_ICD_VENDORS");
+  unsetenv("OCL_ICD_FILENAMES");
+  //if it's a good value force all the OpenCL worker devices to use the same backend
+  if(strcmp(return_string->c_str(),"libOpenCL.so") != 0) setenv("OPENCL_VENDOR_PATH",return_string->c_str(),1);
   return return_string->c_str();
 }
 

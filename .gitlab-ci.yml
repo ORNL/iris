@@ -237,6 +237,40 @@ test-backends-34:
         coverage_format: cobertura
         path: coverage.xml
 
+test-backends-37:
+  tags: [zenith]
+  needs: []
+  stage: test
+  allow_failure: true
+  before_script:
+    - source /auto/software/iris/setup_system.source
+  script:
+    - echo "Installing iris to $IRIS_INSTALL_ROOT"
+    - bash build-coverage.sh
+    - echo $CI_REPOSITORY_URL
+    - echo $CI_PROJECT_PATH
+    - source $IRIS_INSTALL_ROOT/setup.source
+    - echo $PATH
+    - echo $LD_LIBRARY_PATH
+    - echo $HIP_ROOT
+    - cd tests
+    - echo "Test backends for test 37"
+    - cd 37_opencl_icd
+    - bash test_backends.sh
+  after_script:
+    - python3 -m venv .venv
+    - source .venv/bin/activate
+    - pip install gcovr==5.0 # There seems to be a bug for newer versions of gcovr.
+    - gcovr --xml-pretty --exclude-unreachable-branches --print-summary -o coverage.xml --gcov-ignore-parse-errors
+  coverage: /^\s*lines:\s*\d+.\d+\%/
+  artifacts:
+    when: always
+    paths:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+
 .dagger:
   tags: [slurm]
   stage: dagger
