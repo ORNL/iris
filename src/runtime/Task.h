@@ -118,6 +118,10 @@ public:
   //void EraseDepend();
   void ReplaceDependFlushTask(Task * task);
 #endif
+#ifdef AUTO_SHADOW
+  void set_shadow_dep_added(bool shadow_dep_added){ shadow_dep_added_ = shadow_dep_added;}
+  bool get_shadow_dep_added(){ return shadow_dep_added_;}
+#endif
 #endif
 
 private:
@@ -143,6 +147,9 @@ private:
   std::vector<BaseMem*> read_list_;
 #ifdef AUTO_FLUSH
   Graph* graph_;
+#endif
+#ifdef AUTO_SHADOW
+  bool shadow_dep_added_;
 #endif
 #endif
   size_t subtasks_complete_;

@@ -47,13 +47,15 @@ void AutoDAG::create_dependency(Command* cmd, Task* task,
     	} else if (  mem->get_read_task_list()->size() != 0 ){
 #ifndef AUTO_SHADOW
 	        create_multi_read_dependency(task, mem);
+ 	        mem->erase_all_read_task_list();
 #else
             if( mem->GetMemHandlerType() == IRIS_DMEM)
 	            create_auto_shadow(cmd, task, mem);
-            else
+            else{
 	            create_multi_read_dependency(task, mem);
+ 	            mem->erase_all_read_task_list();
+            }
 #endif 
- 	        mem->erase_all_read_task_list();
         }
  
     //printf("Seting current task info %d\n", param_info);
@@ -117,7 +119,7 @@ void AutoDAG::create_auto_shadow(Command* cmd, Task* task,
     std::vector<Task*>* read_list =  
 	    mem->get_read_task_list();
     //if( read_list->size() < 1) {
-    if( read_list->size() < 5 || ((DataMem*)mem)->get_is_shadow() == true) {
+    if( read_list->size() < 1 || ((DataMem*)mem)->get_is_shadow() == true) {
 	    create_multi_read_dependency(task, mem);
     } else {
         std::cout << "For " << task->name() << " shadow creation " << std::endl;
@@ -128,7 +130,8 @@ void AutoDAG::create_auto_shadow(Command* cmd, Task* task,
         //((DataMem*)mem)->set_host_ptr_shadow(host_ptr_shadow);
         
         DataMem* mem_shadow = new DataMem(platform_, 
-                host_ptr_shadow, mem->size()); // TODO try with NULL
+                NULL, mem->size()); // TODO try with NULL
+                //host_ptr_shadow, mem->size()); // TODO try with NULL
         platform_->insert_into_mems(mem_shadow);
 
         //mem_shadow->set_host_ptr_shadow(((DataMem*)mem)->host_ptr());
@@ -175,8 +178,9 @@ void AutoDAG::create_auto_flush(Command* cmd, Task* task,
 #ifndef AUTO_SHADOW
 	Task* task_flush = mem->get_flush_task();
 #else
-    if(((DataMem*)mem)->get_has_shadow() == true)
-        mem =((BaseMem*)((DataMem*)mem)->get_current_dmem_shadow());
+    if(((DataMem*)mem)->get_has_shadow() == true) {
+        mem = ((BaseMem*)((DataMem*)mem)->get_current_dmem_shadow());
+    }
 	Task* task_flush = mem->get_flush_task();
 #endif
 	Graph* graph_flush = current_graph_;
@@ -184,11 +188,11 @@ void AutoDAG::create_auto_flush(Command* cmd, Task* task,
 	//Graph* graph_flush = cmd->platform_->get_current_graph();
 	//printf("-------Flush task Name: %s----------\n", task_flush->name());
     //char tn[256];
-#ifdef AUTO_SHADOW
+#ifndef AUTO_SHADOW
+    sprintf(tn, "%s-auto-flushed-out", task->name());
+#else
     if(((DataMem*)mem)->get_is_shadow() == false) 
-#endif
         sprintf(tn, "%s-auto-flushed-out", task->name());
-#ifdef AUTO_SHADOW
     else
         sprintf(tn, "%s-from-shadow-flushed-out", task->name());
 #endif
@@ -198,11 +202,11 @@ void AutoDAG::create_auto_flush(Command* cmd, Task* task,
 	    //task_flush = Task::Create(cmd->platform_, IRIS_TASK, tn);
         Command* cmd_flush;
 
-#ifdef AUTO_SHADOW
+#ifndef AUTO_SHADOW
+        cmd_flush = Command::CreateMemFlushOut(task_flush, (DataMem *) mem);
+#else
         if(((DataMem*)mem)->get_is_shadow() == false) 
-#endif
             cmd_flush = Command::CreateMemFlushOut(task_flush, (DataMem *) mem);
-#ifdef AUTO_SHADOW
         else
             cmd_flush = Command::CreateMemFlushOutToShadow(task_flush, (DataMem *) mem);
 #endif
@@ -226,6 +230,16 @@ void AutoDAG::create_auto_flush(Command* cmd, Task* task,
         //task_flush->EraseDepend();
 	    //printf("Total dependency %d\n",task_flush->ndepends());
 	}
+
+#ifdef AUTO_SHADOW
+    if(((DataMem*)mem)->get_is_shadow() == true) {
+        //if(task_flush->get_shadow_dep_added() == false){
+	        create_multi_read_dependency(task_flush, ((DataMem*)mem)->get_main_dmem());
+            //task_flush->set_shadow_dep_added(true);
+        //}
+    }
+#endif
+
 	task_flush->set_opt(task->get_opt());
 	task_flush->set_brs_policy(task->get_brs_policy());
 }

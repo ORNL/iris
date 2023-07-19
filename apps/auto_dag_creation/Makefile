@@ -1,6 +1,6 @@
 include ../makefile_defs.mk
 
-all: auto_dag kernel.openmp.so
+all: auto_dag kernel.openmp.so kernel.ptx
 
 auto_dag: auto_dag.c
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)

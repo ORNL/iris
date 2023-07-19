@@ -53,6 +53,9 @@ Task::Task(Platform* platform, int type, const char* name) {
 #ifdef AUTO_FLUSH
   graph_ = NULL;
 #endif
+#ifdef AUTO_SHADOW
+  shadow_dep_added_ = false;
+#endif
 #endif
 }
 
@@ -262,8 +265,8 @@ void Task::AddDepend(Task* task) {
 #ifdef AUTO_PAR
 #ifdef AUTO_FLUSH
 void Task::ReplaceDependFlushTask(Task * task) {
-    if (ndepends_ > 1) 
-        _error("Flush task should not have more than one dependency:%ld:%s\n", this->uid(), this->name());
+    //if (ndepends_ > 1) 
+        //_error("Flush task should not have more than one dependency:%ld:%s\n", this->uid(), this->name());
 
     depends_[0]->Release();
     ndepends_ = 0;

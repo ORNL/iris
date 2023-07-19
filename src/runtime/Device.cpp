@@ -602,8 +602,8 @@ void Device::ExecuteMemFlushOutToShadow(Command* cmd) {
     //void* host = mem->get_host_shadow_ptr(); // It is getting the shadow host pointer 
     
     std::cout << "Before " <<  cmd->task()->name()<< " : ";
-    for(int i = 0; i < 32; i=i+4){
-        std::cout << *((float*) (host + i)) << " "; 
+    for(int i = 0; i < 32; i=i+8){
+        std::cout << *((double*) (host + i)) << " "; 
     }
     std::cout << std::endl;
    
@@ -654,8 +654,8 @@ void Device::ExecuteMemFlushOutToShadow(Command* cmd) {
     //void* p = mem->get_current_dmem_shadow()->host_memory(); 
     //void* q = mem->host_memory(); 
     std::cout << "After " <<  cmd->task()->name()<< " : ";
-    for(int i = 0; i < 32; i=i+4){
-        std::cout << *((float*) (host + i)) << " "; 
+    for(int i = 0; i < 32; i=i+8){
+        std::cout << *((double*) (host + i)) << " "; 
     }
     std::cout << std::endl;
 }
