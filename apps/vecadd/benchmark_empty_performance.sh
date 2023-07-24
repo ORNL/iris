@@ -2,7 +2,7 @@
 
 #This script compares the performance of empty tasks but increasing sized memory objects (powers of 2**5..2**16) 
 # initially cuda vs openmp in IRIS, then charm-sycl cuda vs iris cuda, finally dpc++ vs charm-sycl vs opensycl
-REPEATS=25
+REPEATS=100
 
 execute_over_range () {
   for i in {5..16}
@@ -15,7 +15,7 @@ execute_over_range () {
 
 make clean
 # ensure we have all the binaries
-make kernel.ptx kernel.openmp.so empty-iris empty-sycl empty-sycl-dpc++ empty-opensycl-openmp
+make kernel.ptx kernel.openmp.so kernel.hip empty-iris empty-sycl empty-sycl-dpc++ empty-opensycl-openmp
 [ $? -ne 0 ] && exit
 
 #start with a clean log
@@ -31,6 +31,11 @@ export IRIS_ARCHS=cuda
 execute_over_range "./empty-iris"
 mkdir results/empty/iris_cuda; mv *.csv results/empty/iris_cuda
 
+# IRIS (HIP)
+export IRIS_ARCHS=hip
+execute_over_range "./empty-iris"
+mkdir results/empty/iris_hip; mv *.csv results/empty/iris_hip
+
 #charm-sycl (openmp)
 export CHARM_SYCL_RTS=CPU
 execute_over_range "./empty-sycl"
@@ -40,6 +45,11 @@ mkdir results/empty/charmsycl_openmp_directly; mv *.csv results/empty/charmsycl_
 export CHARM_SYCL_RTS=CUDA
 execute_over_range "./empty-sycl"
 mkdir results/empty/charmsycl_cuda_directly; mv *.csv results/empty/charmsycl_cuda_directly
+
+#charm-sycl (hip)
+export CHARM_SYCL_RTS=HIP
+execute_over_range "./empty-sycl"
+mkdir results/empty/charmsycl_hip_directly; mv *.csv results/empty/charmsycl_hip_directly
 
 #charm-sycl (openmp)
 export CHARM_SYCL_RTS=IRIS
@@ -54,6 +64,13 @@ export CHARM_SYCL_RTS=IRIS
 export IRIS_ARCHS=cuda
 execute_over_range "./empty-sycl"
 mkdir results/empty/charmsycl_cuda; mv *.csv results/empty/charmsycl_cuda
+
+#charm-sycl (hip)
+export CHARM_SYCL_RTS=IRIS
+#export CHARM_SYCL_IRIS_POLICY=all -- zenith only has one device
+export IRIS_ARCHS=hip
+execute_over_range "./empty-sycl"
+mkdir results/empty/charmsycl_hip; mv *.csv results/empty/charmsycl_hip
 
 #dpc++ (cuda)
 export DPCPP_HOME=$HOME/dpc++-workspace
