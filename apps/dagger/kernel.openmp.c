@@ -113,7 +113,7 @@ int iris_openmp_launch(int dim, size_t off, size_t ndr) {
   switch (iris_openmp_kernel_idx) {
     case 0: process(process_args.A, off, ndr); break;
     case 1: ijk(ijk_args.C, ijk_args.A, ijk_args.B, off, ndr); break;
-    case 2: bigk(ijk_args.C, ijk_args.A, ijk_args.B, off, ndr); break;
+    case 2: bigk(bigk_args.C, bigk_args.A, bigk_args.B, off, ndr); break;
 }
   iris_openmp_unlock();
   return IRIS_SUCCESS;
