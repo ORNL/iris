@@ -30,17 +30,10 @@ __kernel void bigk(__global double* restrict C, __global double* restrict A, __g
   size_t j = get_global_id(0);
   size_t SIZE = get_global_size(0);
 
-  //logic to span over local area as separate threads
-  for (;i < SIZE;i++){
-    for (;j < SIZE;j++){
-
-      double sum = 0.0;
-      for (size_t l = 0; l < SIZE; l++)
-      for (size_t k = 0; k < SIZE; k++) {
-        sum += A[i * SIZE + k] * B[k * SIZE + j];
-      }
-      C[i * SIZE + j] = sum;
-
-    }
+  double sum = 0.0;
+  for (size_t k = 0; k < SIZE; k++) {
+    sum += A[i * SIZE + k] * B[k * SIZE + j];
   }
+  C[i * SIZE + j] += sum;
+
 }
