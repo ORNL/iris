@@ -57,11 +57,14 @@ if [[ -z "${AIWC}" ]] ; then
   export AIWC_INSTALL_ROOT=$HOME/.aiwc
   export AIWC=$AIWC_INSTALL_ROOT
 fi
+module load llvm/13.0.1
+export LLVM_ROOT=/auto/software/swtree/ubuntu20.04/x86_64/llvm/13.0.1
 #confirm we have Oclgrind with AIWC installed
 echo "Looking for AIWC in: $AIWC ..."
 if [ ! -d "$AIWC" ] 
 then
     echo "Not found. Installing to: $AIWC..."
+    export WORKING_DIR=`pwd`
     export OCLGRIND_SRC=aiwc-src
     git clone https://github.com/BeauJoh/AIWC.git $OCLGRIND_SRC
     [ $? -ne 0 ] && exit 1
@@ -69,7 +72,7 @@ then
     [ $? -ne 0 ] && exit 1
     cd $OCLGRIND_SRC/build ;
     [ $? -ne 0 ] && exit 1
-    cmake .. -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_INSTALL_PREFIX=$AIWC -DBUILD_SHARED_LIBS=ON ;
+    cmake .. -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_INSTALL_PREFIX=$AIWC -DBUILD_SHARED_LIBS=ON -DLLVM_ROOT_DIR=$LLVM_ROOT;
     [ $? -ne 0 ] && exit 1
     make -j$(nproc)
     [ $? -ne 0 ] && exit 1
