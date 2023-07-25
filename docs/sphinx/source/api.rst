@@ -21,9 +21,9 @@ C++ API
 Fortran API
 ==================
 
-.. doxygenfile:: FortranAPI-IRIS.f90
-  :project: F90
-  :path: ../../../src/runtime/FortranAPI-IRIS.f90
+.. .. doxygenfile:: FortranAPI-IRIS.f90
+..   :project: F90
+..   :path: ../../../src/runtime/FortranAPI-IRIS.f90
 
 .. _python-api:
 

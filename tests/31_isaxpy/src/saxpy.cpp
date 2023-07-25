@@ -9,6 +9,8 @@
 #include "iris/hexagon/stub.h"
 #endif
 #include "iris/iris_macros.h"
+#include "saxpy.iris.h"
+
 typedef int8_t boolean;
 #define TRUE 1
 #define FALSE 0
@@ -58,7 +60,7 @@ int main(int argc, char** argv) {
       TARGET = atoi(arch);
   target_dev = TARGET == 0 ? iris_cpu : TARGET == 1 ? iris_gpu : TARGET == 2 ? iris_dsp : iris_fpga;
 
-  printf("[%s:%d] SIZE[%zu] TARGET[%d][0,1,2][cpu,gpu,dsp] MUL[%d]\n", __FILE__, __LINE__, SIZE, TARGET, MUL);
+  printf("[%s:%d] SIZE[%d] TARGET[%d][0,1,2][cpu,gpu,dsp] MUL[%d]\n", __FILE__, __LINE__, SIZE, TARGET, MUL);
 
   X = (int32_t*) malloc(SIZE * sizeof(int32_t));
   Y = (int32_t*) malloc(SIZE * sizeof(int32_t));
@@ -96,6 +98,7 @@ int main(int argc, char** argv) {
   saxpy(Z, X, Y, SIZE, A, (size_t)0, (size_t)0); // CPU, DSP
 #else
   //printf("X:%p Y:%p Z:%p\n", X, Y, Z);
+#if 0
   IRIS_SINGLE_TASK(task0, "saxpy", target_dev, 1,
           NULL_OFFSET, GWS(SIZE), NULL_LWS,
           OUT_TASK(Z, int32_t *, int32_t, Z, sizeof(int32_t)*SIZE),
@@ -105,6 +108,9 @@ int main(int argc, char** argv) {
           PARAM(A, int32_t),
           PARAM(cuUsecPtr, int32_t*, iris_dsp),
           PARAM(cuCycPtr, int32_t*, iris_dsp));
+#else
+  isaxpy_cpp(target_dev, Z, X, Y, SIZE, A, cuUsecPtr, cuCycPtr);
+#endif
 #endif
   unsigned long long t2 = GetTime();
   unsigned int rpcOverhead = (unsigned int) (t2 - t1 - cuUsec);
