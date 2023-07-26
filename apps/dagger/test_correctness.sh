@@ -10,7 +10,7 @@ elif [ "$SYSTEM" = "explorer" ] ; then
 elif [ "$SYSTEM" = "radeon" ] ; then
   rm -f *.csv ; make dagger_test kernel.hip;
 elif [ "$SYSTEM" = "zenith" ] ; then
-  rm -f *.csv ; make dagger_test kernel.hip kernel.ptx kernel.openmp.so; export IRIS_ARCHS=cuda,hip,opencl
+  rm -f *.csv ; make dagger_test kernel.hip kernel.ptx kernel.openmp.so;
 else
   echo "Unknown system." && exit
 fi
