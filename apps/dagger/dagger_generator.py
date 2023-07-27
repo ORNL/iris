@@ -34,6 +34,7 @@ _kernel_buffs = {}
 _concurrent_kernels = {}
 _dimensionality = {}
 _graph = None
+_memory_object_pool = None
 
 def init_parser(parser):
     parser.add_argument("--graph",default="graph.json",type=str,help="The DAGGER json graph file to load, e.g. \"graph.json\".")
@@ -52,6 +53,7 @@ def init_parser(parser):
     parser.add_argument("--skips",required=False,type=int,help="Maximum number of jumps down the DAG levels (Delta) between tasks, default=1.",default=1)
     parser.add_argument("--seed",required=False,type=int,help="Seed for the random number generator, default is current system time.", default=None)
     parser.add_argument("--sandwich",help="Sandwich the DAG between a lead in and terminating task (akin to a scatter-gather).", action='store_true')
+    parser.add_argument("--num-memory-objects",required=False,type=int,help="Enables sharing of memory objects dealt between tasks! It is the total number of memory objects to be passed around in the DAG between tasks (allows greater task interactions).", default=None)
 
 def parse_args(pargs=None,additional_arguments=[]):
     parser = argparse.ArgumentParser(description='DAGGER: Directed Acyclic Graph Generator for Evaluating Runtimes')
@@ -67,7 +69,7 @@ def parse_args(pargs=None,additional_arguments=[]):
     else:
         args = parser.parse_args(shlex.split(pargs))
 
-    global _kernels, _k_probs, _depth, _num_tasks, _min_width, _max_width, _mean, _std_dev, _skips, _seed, _sandwich, _concurrent_kernels, _duplicates, _dimensionality, _graph
+    global _kernels, _k_probs, _depth, _num_tasks, _min_width, _max_width, _mean, _std_dev, _skips, _seed, _sandwich, _concurrent_kernels, _duplicates, _dimensionality, _graph, _memory_object_pool
 
     _graph = args.graph
     _depth = args.depth
@@ -107,7 +109,21 @@ def parse_args(pargs=None,additional_arguments=[]):
             _kernel_buffs[kernel_name] = memory_buffers
         except:
             assert False, "Incorrect arguments given to --buffers-per-kernel. Broken on {}".format(i)
-    #parser.add_argument("--buffers-per-kernel",required=True,type=str,help="The number and type of buffers of buffers required for each kernel, stored as a key value pair, with each buffer separated by white-space, e.g. \"process:r r w rw\" indicates that the kernel called \"process\" requires four separate buffers with read, read, write and read/write permissions respectively")
+    if args.num_memory_objects is not None:
+        num_provided_memory_objects = 0
+        for k in _kernel_buffs:
+            num_provided_memory_objects += len(_kernel_buffs[k])
+        assert args.num_memory_objects < num_provided_memory_objects, "Incorrect arguments given to --num-memory-objects. The number should be less than the default {} . Broken on {}".format(num_provided_memory_objects,i)
+        _memory_object_pool = []
+        n = 0 
+        for kname in _kernel_buffs:
+            kinstk = 0
+            for i,j in enumerate(_kernel_buffs[kname]):
+                if n >= args.num_memory_objects:
+                    break
+                #"devicemem-{}-buffer{}-instance{}".format(kname,i,kinst)
+                _memory_object_pool.append("devicemem-{}-buffer{}-instance{}".format(kname,i,kinstk))
+                n += 1
 
     #process concurrent-kernels
     if args.concurrent_kernels is None:
@@ -250,9 +266,20 @@ def gen_attr(tasks,kernel_names,kernel_probs):
         mobs = []
         mper = []
 
-        for i,j in enumerate(_kernel_buffs[kname]):
-            mobs.append("devicemem-{}-buffer{}-instance{}".format(kname,i,kinst))
-            mper.append(j)
+        #time to use the new experimental shared memory objects to interact between tasks
+        if _memory_object_pool is not None:
+            samp = random.sample(_memory_object_pool,k=len(_kernel_buffs[kname]))
+            for j,s in enumerate(samp):
+                mobs.append(s)
+                #TODO: some magic here based on random.choices for memory object names
+                #import ipdb
+                #ipdb.set_trace()
+                #print("figuring out proper permissions")
+                mper.append(_kernel_buffs[kname][j])
+        else:
+            for i,j in enumerate(_kernel_buffs[kname]):
+                mobs.append("devicemem-{}-buffer{}-instance{}".format(kname,i,kinst))
+                mper.append(j)
 
         if mobs == []:
             assert False, "kernel {} hasn't been given any memory to work on! This can be rectified by setting --buffers-per-kernel.".format(kname)
