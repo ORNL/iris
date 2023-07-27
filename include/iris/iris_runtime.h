@@ -952,6 +952,13 @@ extern int iris_mem_release(iris_mem mem);
  */
 extern int iris_graph_create(iris_graph* graph);
 
+/**@brief Creates a null graph
+ *
+ * @param graph pointer to the graph
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_graph_create_null(iris_graph* graph);
+
 /**@brief Frees a graph
  *
  * @param graph graph object

@@ -449,6 +449,14 @@ int iris_graph_create(iris_graph* graph) {
   return Platform::GetPlatform()->GraphCreate(graph);
 }
 
+int iris_graph_create_null(iris_graph* graph) {
+  iris_graph null_graph;
+  null_graph.uid = (unsigned long) -1;
+  null_graph.class_obj = NULL;
+  *graph = null_graph;
+  return IRIS_SUCCESS;
+}
+
 int iris_graph_create_json(const char* json, void** params, iris_graph* graph) {
   return Platform::GetPlatform()->GraphCreateJSON(json, params, graph);
 }
