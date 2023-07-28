@@ -4,6 +4,7 @@
 #include "Retainable.h"
 #include "Command.h"
 #include "Platform.h"
+#include "History.h"
 #include <pthread.h>
 #include <vector>
 #include <string>

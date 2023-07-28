@@ -44,7 +44,8 @@ void AutoDAG::create_dependency(Command* cmd, Task* task,
     	if(mem->get_current_writing_task() != NULL 
 		    && mem->get_read_task_list()->size() == 0 ){
     	    if (mem->get_current_writing_task() != task) {
-           	    task->AddDepend(mem->get_current_writing_task());	
+           	    //task->AddDepend(mem->get_current_writing_task());	
+                task->AddDepend(mem->get_current_writing_task(), mem->get_current_writing_task()->uid());
                 printf("For %s -> parent %s main w or wr\n", task->name(), mem->get_current_writing_task()->name());
 	        }
     	} else if (  mem->get_read_task_list()->size() != 0 ){
@@ -85,7 +86,8 @@ void AutoDAG::create_dependency(Command* cmd, Task* task,
     else if (param_info == iris_r) {
     	if(mem->get_current_writing_task() != NULL) {
     	    if (mem->get_current_writing_task() != task) {
-                task->AddDepend(mem->get_current_writing_task());	
+                //task->AddDepend(mem->get_current_writing_task());	
+                task->AddDepend(mem->get_current_writing_task(), mem->get_current_writing_task()->uid());
                 //printf("For %s -> parent %s main r shadow: %d\n", task->name(), mem->get_current_writing_task()->name(), ((DataMem*)mem)->get_is_shadow() );
 	        }
 	    }
@@ -108,7 +110,8 @@ void AutoDAG::create_multi_read_dependency(Task* task,
         //for( auto & read_task : mem->get_read_task_list()){
         read_task = read_list->at(i);
         if (read_task != task) {
-            task->AddDepend(read_task);	
+            //task->AddDepend(read_task);	
+            task->AddDepend(read_task, read_task->uid());
             printf("For %s -> parent %s multiread\n", task->name(), read_task->name());
 	    }
     }
@@ -135,7 +138,7 @@ void AutoDAG::create_auto_shadow(Command* cmd, Task* task,
         DataMem* mem_shadow = new DataMem(platform_, 
                 NULL, mem->size()); // TODO try with NULL
                 //host_ptr_shadow, mem->size()); // TODO try with NULL
-        platform_->insert_into_mems(mem_shadow);
+        //platform_->insert_into_mems(mem_shadow);
         number_of_shadow_++;
 
         //mem_shadow->set_host_ptr_shadow(((DataMem*)mem)->host_ptr());
@@ -151,7 +154,8 @@ void AutoDAG::create_auto_shadow(Command* cmd, Task* task,
 
         //std::cout << "Current Task "<< task->name() << "Current Writing Task " << current_writing_task->name() << std::endl;
 	    //Task* task_shadow_flush = mem->get_flush_task();
-        task->AddDepend(mem->get_flush_task());	
+        task->AddDepend(mem->get_flush_task(), mem->get_flush_task()->uid());
+        //task->AddDepend(mem->get_flush_task());	
         printf("For %s -> parent %s auto shadow\n", task->name(), mem->get_flush_task()->name());
         //task_shadow_flush->AddDepend(current_writing_task);	
         
@@ -216,10 +220,12 @@ void AutoDAG::create_auto_flush(Command* cmd, Task* task,
 #endif
         task_flush->AddCommand(cmd_flush);
    	    mem->set_flush_task(task_flush);
-        task_flush->AddDepend(task);	
+        //task_flush->AddDepend(task);	
+        task_flush->AddDepend(task, task->uid());
         printf("For %s -> parent %s auto flush\n", task_flush->name(), task->name());
 	    if(graph_flush != NULL) {
-		    graph_flush->AddTask(task_flush);
+		    //graph_flush->AddTask(task_flush);
+            graph_flush->AddTask(task_flush, task_flush->uid());
 	    }else {
 		printf("-------Graph NULL----------\n");
         	_error("Graph is NULL:%ld:%s\n", task->uid(), task->name());
@@ -245,7 +251,8 @@ void AutoDAG::create_auto_flush(Command* cmd, Task* task,
 #endif
 
 	task_flush->set_opt(task->get_opt());
-	task_flush->set_brs_policy(task->get_brs_policy());
+	task_flush->set_brs_policy(task->brs_policy());
+	//task_flush->set_brs_policy(task->get_brs_policy());
 }
 #endif
 

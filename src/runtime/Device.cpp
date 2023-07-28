@@ -642,8 +642,8 @@ void Device::ExecuteMemFlushOutToShadow(Command* cmd) {
         size = mem->get_main_dmem()->size();
     }
 
-    printf("Pointer offset %d, gws %d lws %d elem_size %d dim %d size %d\n", 
-            *ptr_off, *gws, *lws, elem_size, dim, size);
+    //printf("Pointer offset %d, gws %d lws %d elem_size %d dim %d size %d\n", 
+            //*ptr_off, *gws, *lws, elem_size, dim, size);
     //void* host = mem->host_memory(); // It should work even if host_ptr is null
     void* host;
     if(mem->get_is_shadow() == false)

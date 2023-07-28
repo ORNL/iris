@@ -318,9 +318,10 @@ void Task::ReplaceDependFlushTask(Task * task) {
     //if (ndepends_ > 1) 
         //_error("Flush task should not have more than one dependency:%ld:%s\n", this->uid(), this->name());
 
-    depends_[0]->Release();
+    platform_->get_task_object(depends_uids_[0])->Release();
     ndepends_ = 0;
-    this->AddDepend(task);
+    this->AddDepend(task, task->uid());
+
 }
 #endif
 #endif
