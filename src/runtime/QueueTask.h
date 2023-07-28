@@ -18,6 +18,7 @@ public:
   bool Peek(Task** task, int index);
   bool Enqueue(Task* task);
   bool Dequeue(Task** task);
+  bool Dequeue(pair<unsigned long, Task*>* task) { return Dequeue(task); }
   size_t Size();
   bool Empty();
 
@@ -25,7 +26,7 @@ private:
   Platform* platform_;
   std::list<Task*> tasks_;
   pthread_mutex_t mutex_;
-  Task* last_sync_task_;
+  //Task* last_sync_task_;
   bool enable_profiler_;
 };
 

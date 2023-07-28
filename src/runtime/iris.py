@@ -4,12 +4,12 @@ import sys
 import numpy as np
 import pdb
 import os
-import struct 
+import struct
 
 class CommData3D(Structure):
     _fields_ = [
         ("from_id", c_uint),
-        ("to_id", c_uint), 
+        ("to_id", c_uint),
         ("mem_id", c_uint),
         ("size", c_size_t)
     ]
@@ -59,17 +59,17 @@ class library(CDLL):
         return U
 
     def call_ret_ptr(self, fn_name, *args):
-        conv_args = [] 
+        conv_args = []
         for each_arg in args:
             conv_args.append(convert_obj_ctype(each_arg)[0])
         if type(fn_name) == str:
             fn_name = self.__getitem__(fn_name)
         fn_name.restype = POINTER(c_void_p)
         r = fn_name(*conv_args)
-        return r 
+        return r
 
     def call_ret(self, fn_name, restype, *args):
-        conv_args = [] 
+        conv_args = []
         for each_arg in args:
             conv_args.append(convert_obj_ctype(each_arg)[0])
         if type(fn_name) == str:
@@ -78,7 +78,7 @@ class library(CDLL):
         return fn_name(*conv_args)
 
     def call(self, fn_name, *args):
-        conv_args = [] 
+        conv_args = []
         for each_arg in args:
             conv_args.append(convert_obj_ctype(each_arg)[0])
         if type(fn_name) == str:
@@ -87,7 +87,13 @@ class library(CDLL):
 
 class IRIS(library):
     def __init__(self):
-        super(IRIS, self).__init__("libiris.so")
+        # Do not error on import when Iris is not built. This is needed for Read the Docs to create the API documentation.
+        try:
+            super(IRIS, self).__init__("libiris.so")
+        except OSError as e:
+            print(e)
+            print('libiris.so not found. Please install IRIS library.', file=sys.stderr)
+
     def get_numpy_size(self, size):
         if type(size) != np.ndarray:
             size = np.array(size)
@@ -98,28 +104,28 @@ class IRIS(library):
         c_ptr = dll.call_ret_ptr(dll.iris_allocate_random_array_size_t, np.int32(total_size), init)
         np_data = dll.convert_c_pointer_to_numpy(c_ptr, size, ctypes.c_size_t)
         return np_data, c_ptr
-        
+
     def alloc_random_float(self, size, init=np.float32(0.0)):
         size = self.get_numpy_size(size)
         total_size = size.prod()
         c_ptr = dll.call_ret_ptr(dll.iris_allocate_random_array_float, np.int32(total_size), init)
         np_data = dll.convert_c_pointer_to_numpy(c_ptr, size, ctypes.c_float)
         return np_data, c_ptr
-        
+
     def alloc_random_double(self, size, init=np.float64(0.0)):
         size = self.get_numpy_size(size)
         total_size = size.prod()
         c_ptr = dll.call_ret_ptr(dll.iris_allocate_random_array_double, np.int32(total_size), init)
         np_data = dll.convert_c_pointer_to_numpy(c_ptr, size, ctypes.c_double)
         return np_data, c_ptr
-        
+
     def alloc_random_int64(self, size, init=np.int64(0)):
         size = self.get_numpy_size(size)
         total_size = size.prod()
         c_ptr = dll.call_ret_ptr(dll.iris_allocate_random_array_int64_t, np.int32(total_size), init)
         np_data = dll.convert_c_pointer_to_numpy(c_ptr, size, ctypes.c_int64)
         return np_data, c_ptr
-        
+
     def alloc_random_int32(self, size, init=np.int32(0)):
         size = self.get_numpy_size(size)
         total_size = size.prod()
@@ -140,42 +146,42 @@ class IRIS(library):
         c_ptr = dll.call_ret_ptr(dll.iris_allocate_random_array_int8_t, np.int32(total_size), init)
         np_data = dll.convert_c_pointer_to_numpy(c_ptr, size, ctypes.c_byte)
         return np_data, c_ptr
-        
+
     def alloc_size_t(self, size, init=np.int64(0)):
         size = self.get_numpy_size(size)
         total_size = size.prod()
         c_ptr = dll.call_ret_ptr(dll.iris_allocate_array_size_t, np.int32(total_size), init)
         np_data = dll.convert_c_pointer_to_numpy(c_ptr, size, ctypes.c_size_t)
         return np_data, c_ptr
-        
+
     def alloc_float(self, size, init=np.float32(0.0)):
         size = self.get_numpy_size(size)
         total_size = size.prod()
         c_ptr = dll.call_ret_ptr(dll.iris_allocate_array_float, np.int32(total_size), init)
         np_data = dll.convert_c_pointer_to_numpy(c_ptr, size, ctypes.c_float)
         return np_data, c_ptr
-        
+
     def alloc_double(self, size, init=np.float64(0.0)):
         size = self.get_numpy_size(size)
         total_size = size.prod()
         c_ptr = dll.call_ret_ptr(dll.iris_allocate_array_double, np.int32(total_size), init)
         np_data = dll.convert_c_pointer_to_numpy(c_ptr, size, ctypes.c_double)
         return np_data, c_ptr
-        
+
     def alloc_int64(self, size, init=np.int64(0)):
         size = self.get_numpy_size(size)
         total_size = size.prod()
         c_ptr = dll.call_ret_ptr(dll.iris_allocate_array_int64_t, np.int32(total_size), init)
         np_data = dll.convert_c_pointer_to_numpy(c_ptr, size, ctypes.c_int64)
         return np_data, c_ptr
-        
+
     def alloc_int32(self, size, init=np.int32(0)):
         size = self.get_numpy_size(size)
         total_size = size.prod()
         c_ptr = dll.call_ret_ptr(dll.iris_allocate_array_int32_t, np.int32(total_size), init)
         np_data = dll.convert_c_pointer_to_numpy(c_ptr, size, ctypes.c_int32)
         return np_data, c_ptr
-        
+
     def alloc_int16(self, size, init=np.int16(0)):
         size = self.get_numpy_size(size)
         total_size = size.prod()
@@ -192,7 +198,7 @@ class IRIS(library):
 
     def free(self, c_ptr):
         dll.call(dll.iris_free_array, c_ptr)
-        
+
 dll = IRIS()
 
 def call(fn_name, *args):
@@ -259,16 +265,16 @@ IRIS_DMEM = 0x2
 IRIS_DMEM_REGION = 0x4
 
 class iris_kernel(Structure):
-    _fields_ = [("class_obj", c_void_p)]
+    _fields_ = [("class_obj", c_void_p), ("uid", c_ulong)]
 
 class iris_mem(Structure):
-    _fields_ = [("class_obj", c_void_p)]
+    _fields_ = [("class_obj", c_void_p), ("uid", c_ulong)]
 
 class iris_task(Structure):
-    _fields_ = [("class_obj", c_void_p)]
+    _fields_ = [("class_obj", c_void_p), ("uid", c_ulong)]
 
 class iris_graph(Structure):
-    _fields_ = [("class_obj", c_void_p)]
+    _fields_ = [("class_obj", c_void_p), ("uid", c_ulong)]
 
 def init(sync = 1):
     return dll.iris_init(0, None, c_int(sync))
@@ -318,9 +324,9 @@ def calibrate_communication_cost_matrix(data_size, iterations=1, pin_memory=True
     data_np = np.zeros(ndevs*ndevs).astype(np.double)
     data_np_cp = convert_obj_ctype(data_np)[0]
     iterations = np.int32(iterations)
-    dll.iris_calibrate_communication_cost(data_np_cp, 
-            convert_obj_ctype(size_t(data_size))[0], 
-            convert_obj_ctype(iterations)[0], 
+    dll.iris_calibrate_communication_cost(data_np_cp,
+            convert_obj_ctype(size_t(data_size))[0],
+            convert_obj_ctype(iterations)[0],
             convert_obj_ctype(np.int32(pin_memory))[0])
     np.seterr(divide='ignore')
     out_data_np = data_size / data_np.reshape((ndevs, ndevs))
@@ -424,9 +430,21 @@ def task_kernel(task, kernel, dim, off, gws, lws, params, params_info, hold_para
     hold_params.clear()
     for i in range(nparams):
         if hasattr(params[i], 'handle') and isinstance(params[i].handle, iris_mem):
-            cparams[i] = params[i].handle.class_obj
+            cparams[i] = ctypes.addressof(params[i].handle)
+        elif isinstance(params[i], int) and params_info[i] == 1:
+            p = byref(c_int8(params[i]))
+            hold_params.append(p)
+            cparams[i] = cast(p, c_void_p)
+        elif isinstance(params[i], int) and params_info[i] == 2:
+            p = byref(c_short(params[i]))
+            hold_params.append(p)
+            cparams[i] = cast(p, c_void_p)
         elif isinstance(params[i], int) and params_info[i] == 4:
-            p = byref(c_int(params[i]))
+            p = byref(c_int32(params[i]))
+            hold_params.append(p)
+            cparams[i] = cast(p, c_void_p)
+        elif isinstance(params[i], int) and params_info[i] == 8:
+            p = byref(c_int64(params[i]))
             hold_params.append(p)
             cparams[i] = cast(p, c_void_p)
         elif isinstance(params[i], float) and params_info[i] == 4:
@@ -437,7 +455,7 @@ def task_kernel(task, kernel, dim, off, gws, lws, params, params_info, hold_para
             p = byref(c_double(params[i]))
             cparams[i] = cast(p, c_void_p)
             hold_params.append(p)
-        else: 
+        else:
             print("error")
 
     cparams_info = (c_int * nparams)(*params_info)
@@ -498,7 +516,7 @@ class dmem_null:
     c_host = c_void_p(0)
     dll.iris_data_mem_create(byref(m), c_host, c_size_t(size))
     self.handle = m
-    mem_handle_2_pobj[self.handle.class_obj] = self
+    mem_handle_2_pobj[self.handle.uid] = self
   def size(self):
     dll.iris_mem_get_size.restype = c_size_t
     return dll.iris_mem_get_size(self.handle)
@@ -510,7 +528,7 @@ class dmem:
   def __init__(self, *args):
     self.handle = dmem_create(args)
     self.type = IRIS_DMEM
-    mem_handle_2_pobj[self.handle.class_obj] = self
+    mem_handle_2_pobj[self.handle.uid] = self
   def is_reset(self):
     dll.iris_mem_is_reset.restype = c_int
     return dll.iris_mem_is_reset(self.handle)
@@ -523,6 +541,12 @@ class dmem:
   def update(self, host):
     c_host = host.ctypes.data_as(c_void_p)
     dll.iris_data_mem_update(self.handle, c_host)
+  def get_region_uids(self):
+    n_regions = dll.call_ret(dll.iris_data_mem_n_regions(self.handle), np.int32)
+    output = []
+    for i in range(n_regions):
+      output.append(dll.call_ret(dll.iris_data_mem_get_region_uid, np.uint32, self.handle, np.int32(i)))
+    return output
 class dmem_region:
   def __init__(self, *args):
     self.handle = dmem_create(args)
@@ -531,15 +555,15 @@ class dmem_region:
   def fetch_dmem(self, handle=None):
     if handle == None:
         handle = self.handle
-    mem_handle_2_pobj[handle.class_obj] = self
+    mem_handle_2_pobj[handle.uid] = self
     dll.iris_get_dmem_for_region.restype = iris_mem
     mem_obj = dll.iris_get_dmem_for_region(handle)
-    if mem_obj.class_obj not in mem_handle_2_pobj:
+    if mem_obj.uid not in mem_handle_2_pobj:
         pmem = dmem.__new__(dmem)
         pmem.type = IRIS_DMEM
         pmem.handle = mem_obj
-        mem_handle_2_pobj[mem_obj.class_obj] = pmem
-    pmem = mem_handle_2_pobj[mem_obj.class_obj]
+        mem_handle_2_pobj[mem_obj.uid] = pmem
+    pmem = mem_handle_2_pobj[mem_obj.uid]
     uid = pmem.uid()
     self.mem = pmem
   def is_reset(self):
@@ -560,7 +584,7 @@ class mem:
   def __init__(self, size):
     self.handle = mem_create(size)
     self.type = IRIS_MEM
-    mem_handle_2_pobj[self.handle.class_obj] = self
+    mem_handle_2_pobj[self.handle.uid] = self
   def is_reset(self):
     dll.iris_mem_is_reset.restype = c_int
     return dll.iris_mem_is_reset(self.handle)
@@ -579,7 +603,7 @@ kernel_handle_2_pobj = {}
 class kernel:
   def __init__(self, name):
     self.handle = kernel_create(name)
-    kernel_handle_2_pobj[self.handle.class_obj] = self
+    kernel_handle_2_pobj[self.handle.uid] = self
   def name(self):
       dll.iris_kernel_get_name.restype = c_char_p
       kname = dll.iris_kernel_get_name(self.handle)
@@ -671,7 +695,7 @@ def convert_obj_ctype(pobj):
         c_host = pobj
         c_size = sizeof(pobj)
         return c_host, c_size
-     
+
 class kernel_arg:
     def __init__(self, is_mem, size, value, mem_obj, mem_off, mem_size, off, mode):
         self.is_mem = is_mem
@@ -680,7 +704,7 @@ class kernel_arg:
         if not is_mem:
             self.value = cast(value, ctypes.POINTER(ctypes.c_ubyte * self.size))
         pmem = None
-        if is_mem and mem_obj.class_obj not in mem_handle_2_pobj:
+        if is_mem and mem_obj.uid not in mem_handle_2_pobj:
             dll.iris_mem_get_type.restype = c_int
             mem_type = dll.iris_mem_get_type(mem_obj)
             if mem_type == IRIS_DMEM_REGION:
@@ -693,12 +717,12 @@ class kernel_arg:
                 pmem = mem.__new__(mem)
                 pmem.type = IRIS_MEM
             pmem.handle = mem_obj
-            mem_handle_2_pobj[mem_obj.class_obj] = pmem
+            mem_handle_2_pobj[mem_obj.uid] = pmem
             if pmem.type == IRIS_DMEM_REGION:
                 pmem.fetch_dmem()
         self.mem = None
         if is_mem:
-            self.mem = mem_handle_2_pobj[mem_obj.class_obj]
+            self.mem = mem_handle_2_pobj[mem_obj.uid]
         self.mem_off = mem_off
         self.mem_size = mem_size
         self.off = off
@@ -714,7 +738,7 @@ class kernel_arg:
     def is_output(self):
         return self.is_mode_w() or self.is_mode_rw()
     def param_value(self, pack_type='f'):
-        [ value ] = struct.unpack(pack_type, bytes(self.value.contents)) 
+        [ value ] = struct.unpack(pack_type, bytes(self.value.contents))
         return value
     def display(self):
         print(self.is_mem, self.size, self.value, self.mem, self.mem_off, self.mem_size, self.off, self.mode)
@@ -757,8 +781,8 @@ class task:
         if len(args) == 0:
             self.params = []
             self.handle = task_create()
-            task_handle_2_pobj[self.handle.class_obj] = self
-            return 
+            task_handle_2_pobj[self.handle.uid] = self
+            return
         (kernel, dim, off, gws, lws, params_list) = args
         coff = (c_size_t * dim)(*off)
         cgws = (c_size_t * dim)(*gws)
@@ -767,27 +791,27 @@ class task:
         self.params = []
         cparams = (c_void_p * nparams)()
         self.handle = task_create(kernel)
-        task_handle_2_pobj[self.handle.class_obj] = self
+        task_handle_2_pobj[self.handle.uid] = self
         params_info = []
         flush_objs = []
         for i, pobj in enumerate(params_list):
             if type(pobj) == tuple:
                 if hasattr(pobj[0], 'handle') and isinstance(pobj[0].handle, iris_mem):
                     self.params.append(pobj[0])
-                    cparams[i] = pobj[0].handle.class_obj
+                    cparams[i] = ctypes.addressof(pobj[0].handle)
                     params_info.append(pobj[1])
                     if len(pobj) == 3 and pobj[2] == iris_flush:
-                        flush_objs.append(cparams[i])
+                        flush_objs.append(pobj[0].handle)
                 else:
                     # (NUMPY Object, modes of use, <optional flush>)
                     # Should be numpy array
                     host = pobj[0]
                     dobj = dmem(host)
                     self.params.append(dobj)
-                    cparams[i] = dobj.handle.class_obj
+                    cparams[i] = ctypes.addressof(dobj.handle)
                     params_info.append(pobj[1])
                     if len(pobj) == 3 and pobj[2] == iris_flush:
-                        flush_objs.append(cparams[i])
+                        flush_objs.append(dobj.handle)
             elif pobj == None:
                 p = c_void_p(0)
                 self.params.append(p)
@@ -805,7 +829,7 @@ class task:
                 self.params.append(p)
                 cparams[i] = cast(p, c_void_p)
                 params_info.append(sizeof(cobj))
-            else: 
+            else:
                 print("error")
         cparams_info = (c_int * nparams)(*params_info)
         kernel_name = c_char_p(kernel) if sys.version_info[0] == 2 else c_char_p(bytes(kernel, 'ascii'))
@@ -816,6 +840,10 @@ class task:
         dll.iris_task_get_name.restype = c_char_p
         kname = dll.iris_task_get_name(self.handle)
         return kname.decode('ascii')
+
+    def set_order(self, order):
+        dll.call(dll.iris_task_kernel_dmem_fetch_order, self.handle, order)
+
     def set_name(self, name):
         c_name = c_char_p(name) if sys.version_info[0] == 2 else c_char_p(bytes(name, 'ascii'))
         dll.iris_task_set_name(self.handle, c_name)
@@ -864,11 +892,11 @@ class task:
     def get_kernel(self):
         dll.iris_task_get_kernel.restype = iris_kernel
         ckernel = dll.iris_task_get_kernel(self.handle)
-        if ckernel.class_obj not in kernel_handle_2_pobj:
+        if ckernel.uid not in kernel_handle_2_pobj:
             pkernel = kernel.__new__(kernel)
             pkernel.handle = ckernel
-            kernel_handle_2_pobj[ckernel.class_obj] = pkernel
-        return kernel_handle_2_pobj[ckernel.class_obj]
+            kernel_handle_2_pobj[ckernel.uid] = pkernel
+        return kernel_handle_2_pobj[ckernel.uid]
 
     def get_ndepends(self):
         dll.iris_task_get_dependency_count.restype = c_int
@@ -884,7 +912,7 @@ class task:
         dll.iris_task_get_dependencies(self.handle, tasks)
         ptasks = convert_ctasks(tasks)
         return ntasks, ptasks
-        
+
     def depends(self, tasks_list):
         if type(tasks_list) != list:
             tasks_list = [ tasks_list ]
@@ -920,12 +948,12 @@ class task:
 def convert_ctasks(c_tasks):
     ptasks = []
     for c_task in c_tasks:
-        if c_task.class_obj not in task_handle_2_pobj:
+        if c_task.uid not in task_handle_2_pobj:
             p_task = task.__new__(task)
             p_task.params = []
             p_task.handle = c_task
-            task_handle_2_pobj[c_task.class_obj] = p_task
-        ptasks.append(task_handle_2_pobj[c_task.class_obj])
+            task_handle_2_pobj[c_task.uid] = p_task
+        ptasks.append(task_handle_2_pobj[c_task.uid])
     return ptasks
 class graph:
     def __init__(self, tasks=[], device=iris_default, opt=None):
@@ -974,6 +1002,9 @@ class graph:
 
     def enable_mem_profiling(self):
         dll.iris_graph_enable_mem_profiling(self.handle)
+
+    def set_order(self, order):
+        dll.call(dll.iris_graph_tasks_order, self.handle, order)
 
     def get_tasks(self):
         dll.iris_graph_tasks_count.restype = c_int
@@ -1139,7 +1170,7 @@ class graph:
         time_data = np.zeros(n_mems*ndevs*ndevs, np.double)
         mem_ids = np.zeros(n_mems, np.int32)
         dll.call(dll.iris_get_graph_3d_comm_time, self.handle, time_data, mem_ids, np.int32(iterations), np.int32(pin_memory))
-        return time_data.reshape((n_mems, ndevs, ndevs)), mem_ids 
+        return time_data.reshape((n_mems, ndevs, ndevs)), mem_ids
 
     def get_3d_cost_comm_data(self):
         print("Extracting communication data 3d list of (task from id, task to id, mem_id, size)")

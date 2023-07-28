@@ -22,6 +22,7 @@ int main(int argc, char** argv) {
   for (int i = 0; i < SIZE; i++) {
     A[i] = i;
     B[i] = i * 10;
+    C[i] = 0;
   }
 
   iris_mem memA;
@@ -31,17 +32,23 @@ int main(int argc, char** argv) {
   iris_mem_create(SIZE * sizeof(int), &memB);
   iris_mem_create(SIZE * sizeof(int), &memC);
 
-  void* json_inputs[10] = { &SIZE, &SIZECB, C, A, B, memC, memA, memB, &target1, &target2 };
+  void* json_inputs[10] = { &SIZE, &SIZECB, C, A, B, &memC, &memA, &memB, &target1, &target2 };
 
   iris_graph graph;
   iris_graph_create_json("graph.json", json_inputs, &graph);
 
-  iris_graph_submit(graph, iris_default, 1);
+  iris_graph_submit(graph, iris_any, 1);
 
-  for (int i = 0; i < SIZE; i++) printf("[%3d] %3d\n", i, C[i]);
+  iris_synchronize();
+  int errs = 0;
+  for (int i = 0; i < SIZE; i++) {
+    if (C[i] != (A[i] + B[i])*10)//for ten iterations (see graph.json for the number of ijk kernels invoked)
+      errs++;
+    printf("[%3d] %3d\n", i, C[i]);
+  }
 
   iris_finalize();
 
-  return iris_error_count();
+  return iris_error_count()+errs;
 }
 

@@ -5,10 +5,11 @@ all: $(TEST) kernel.openmp.so
 include ../Makefile.tests
 
 kernel.ptx: kernel.cu
-	nvcc -ptx $^
+	$(NVCC) -ptx $^
 
 kernel.hip: kernel.hip.cpp
-	hipcc --genco -o $@ $^
+	$(HIPCC) --genco -o $@ $^
 
-kernel.openmp.so: kernel.cl.openmp.h
-	gcc -g -fopenmp -fPIC -shared -I. $(CFLAGS) -o $@ kernel.cl.openmp.c
+kernel.openmp.so: kernel.cl.openmp.c
+	$(CC) -g -lgomp -Wl,-rpath=$(OPENMP_PATH) -fPIC -shared -I. $(CFLAGS) -o $@ $^
+

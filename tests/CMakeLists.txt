@@ -86,8 +86,9 @@ list(APPEND TEST_EXES "09_dataflow" "test09_dataflow" "")
 if (CUDAToolkit_FOUND)
 list(APPEND TEST_EXES "10_multikernelexecution" "test10_multikernelexecution" "")
 endif()
-list(APPEND TEST_EXES "11_deadlock" "test11_deadlock" "")
-list(APPEND TEST_EXES "12_task_custom" "test12_task_custom" "")
+#list(APPEND TEST_EXES "11_deadlock" "test11_deadlock" "")
+#[REMOVE] CUDA specific and interfaces directly with the CUDA loader
+#list(APPEND TEST_EXES "12_task_custom" "test12_task_custom" "")
 list(APPEND TEST_EXES "13_hooks" "test13_hooks" "")
 if (CUDAToolkit_FOUND)
 list(APPEND TEST_EXES "14_permanent_task" "test14_permanent_task" "")
@@ -100,9 +101,10 @@ list(APPEND TEST_EXES "18_record" "test18_record" "")
 list(APPEND TEST_EXES "19_replay" "test19_replay" "")
 #[DEBUG] Remove test20 due to dependency to cublas.
 if (CUDAToolkit_FOUND)
-list(APPEND TEST_EXES "20_cublas" "test20_cublas" "")
+  #list(APPEND TEST_EXES "20_cublas" "test20_cublas" "")
 list(APPEND TEST_EXES "21_task_malloc" "test21_task_malloc" "")
 endif()
+list(APPEND TEST_EXES "22_json_mixed_args" "test22_json_mixed_args" "")
 list(APPEND TEST_EXES "23_multigraph" "test23_multigraph" "")
 list(APPEND TEST_EXES "24_multi_kernels" "test24_multi_kernels" "")
 if (CUDAToolkit_FOUND)
@@ -111,8 +113,7 @@ endif()
 list(APPEND TEST_EXES "26_env_set" "test26_env_set" "")
 list(APPEND TEST_EXES "27_deadlock2" "test27_deadlock2" "")
 list(APPEND TEST_EXES "28_json2" "test28_json2" "")
-#[DEBUG] Remove this test since exclusive memory has been removed.
-#list(APPEND TEST_EXES "29_exclusive_mem" "test29_exclusive_mem" "")
+list(APPEND TEST_EXES "29_data_mem" "test29_data_mem" "")
 if (CUDAToolkit_FOUND)
 list(APPEND TEST_EXES "30_task_info" "test30_task_info" " ")
 endif()
@@ -120,16 +121,20 @@ endif()
 #list(APPEND TEST_EXES "31_isaxpy" "test31_isaxpy" "")
 list(APPEND TEST_EXES "32_json3" "test32_json3" "--kernels=ijk --duplicates=0 --buffers-per-kernel=\"ijk:w-r-r\" --kernel-dimensions=ijk:2 --kernel-split=100 --depth=10 --num-tasks=10 --min-width=1 --max-width=1 --logfile=log.txt --repeats=1 --scheduling-policy=any --size=128")
 list(APPEND TEST_EXES "33_graph_cpp" "test33_graph_cpp" " ")
+list(APPEND TEST_EXES "34_set_mem" "test34_set_mem" " ")
+list(APPEND TEST_EXES "35_json_mixed_args_record_replay" "test35_json_mixed_args_record_replay" " ")
+list(APPEND TEST_EXES "36_double_json_mixed_args_record_replay" "test36_double_json_mixed_args_record_replay" " ")
 
 # Run each test in TEST_EXES
 list(LENGTH TEST_EXES count)
+math(EXPR TEST_REPEAT 1)
 math(EXPR count "${count}-1")
 foreach(i RANGE 0 ${count} 3)
   math(EXPR ii "${i}+1")
-	math(EXPR iii "${i}+2")
+  math(EXPR iii "${i}+2")
 
-	list(GET TEST_EXES ${i} dir)
-	list(GET TEST_EXES ${ii} exes)
+  list(GET TEST_EXES ${i} dir)
+  list(GET TEST_EXES ${ii} exes)
   list(GET TEST_EXES ${iii} args)
   separate_arguments(args)
 
@@ -138,34 +143,37 @@ foreach(i RANGE 0 ${count} 3)
    add_custom_target(
       ${dir}
       ALL
-      COMMAND make IRIS=${IRIS} EXT_INCLUDE="${EXT_INCLUDE}" EXT_LDFLAGS="${EXT_LDFLAGS}"
+      COMMAND make IRIS=${IRIS} CC=${CMAKE_C_COMPILER} CXX=${CMAKE_CXX_COMPILER} EXT_INCLUDE="${EXT_INCLUDE}" EXT_LDFLAGS="${EXT_LDFLAGS}"
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${dir}
    )
    else()
    add_custom_target(
       ${dir}
       ALL
-      COMMAND make EXT_INCLUDE="${EXT_INCLUDE}" EXT_LDFLAGS="${EXT_LDFLAGS}"
+      COMMAND make CC=${CMAKE_C_COMPILER} CXX=${CMAKE_CXX_COMPILER} EXT_INCLUDE="${EXT_INCLUDE}" EXT_LDFLAGS="${EXT_LDFLAGS}"
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${dir}
    )
    endif()
 
    string(REPLACE "::" ";" exe_list ${exes})
    message(STATUS "**LD_LIBRARY_PATH** : ${LD_LIBRARY_PATH}")
-   FOREACH(exe ${exe_list})
-      if(${exe} STREQUAL " ") # Space is used for an empty test.
-         continue()
-      endif()
-      message(STATUS "**Test Added** Dir: ${dir} Exe: ${exe} Arg: ${args}")
-      add_test(
-         NAME ${exe}
-         COMMAND ${exe} ${args}
-         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${dir}
-         )
-      if (CUDAToolkit_FOUND OR HIP_ROOT_DIR)
-        set_property(TEST ${exe} PROPERTY ENVIRONMENT ${TEST_PROP})
-      endif()
-      #some tests use .so resources that are local (in the same directory), i.e. 07_policy_register, so add it to the LD_LIBRARY_PATH
-      set_property(TEST ${exe} PROPERTY ENVIRONMENT "LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${CMAKE_CURRENT_SOURCE_DIR}/${dir}")
+   FOREACH(index RANGE 1 ${TEST_REPEAT} 1)
+      FOREACH(exe ${exe_list})
+         if(${exe} STREQUAL " ") # Space is used for an empty test.
+            continue()
+         endif()
+         message(STATUS "**Test Added** Dir: ${dir} Exe: ${exe} Iteration:${index} Arg: ${args}")
+         set(exe_it "${exe}_i${index}")
+         add_test(
+            NAME ${exe_it}
+            COMMAND ${exe} ${args}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${dir}
+            )
+         if (CUDAToolkit_FOUND OR HIP_ROOT_DIR)
+           set_property(TEST ${exe_it} PROPERTY ENVIRONMENT ${TEST_PROP})
+         endif()
+         #some tests use .so resources that are local (in the same directory), i.e. 07_policy_register, so add it to the LD_LIBRARY_PATH
+         set_property(TEST ${exe_it} PROPERTY ENVIRONMENT "LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${CMAKE_CURRENT_SOURCE_DIR}/${dir}")
+      ENDFOREACH()
    ENDFOREACH()
 ENDFOREACH()

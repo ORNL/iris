@@ -15,10 +15,10 @@ __kernel void ijk(__global double* restrict C, __global double* restrict A, __gl
   C[i * SIZE + j] = sum;
 }
 
-__kernel__ void nothing(__global int* A) {
+__kernel void nothing(__global int* A) {
 }
 
-__kernel__ void add_id(__global int* A) {
+__kernel void add_id(__global int* A) {
   size_t i = get_global_id(0);
   A[i] = A[i] + i;
 }

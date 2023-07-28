@@ -6,6 +6,7 @@
 #include "Platform.h"
 #include <pthread.h>
 #include <vector>
+#include <string>
 
 #define IRIS_COMPLETE   0x0
 #define IRIS_RUNNING    0x1
@@ -36,7 +37,7 @@ public:
   void AddSubtask(Task* subtask);
   bool HasSubtasks();
 
-  void AddDepend(Task* task);
+  void AddDepend(Task* task, unsigned long uid);
 //  void RemoveDepend(Task* task);
 
   void Submit(int brs_policy, const char* opt, int sync);
@@ -50,8 +51,10 @@ public:
   double TimeInc(double t);
 
   int type() { return type_; }
-  char* name() { return name_; }
+  const char* name() { return name_.c_str(); }
+  void set_name(std::string name);
   void set_name(const char* name);
+  bool given_name(){return given_name_;}
   bool user() { return user_; }
   void set_user(bool flag=true) { user_ = flag; }
   bool disable_consistency() { return disable_consistency_; }
@@ -60,7 +63,7 @@ public:
   void set_system() { system_ = true; }
   bool marker() { return type_ == IRIS_MARKER; }
   int status() { return status_; }
-  Task* parent() { return parent_; }
+  Task* parent() { return platform_->get_task_object(parent_); }
   Command* cmd(int i) { return cmds_[i]; }
   Command* cmd_kernel() { return cmd_kernel_; }
   Command* cmd_last() { return cmd_last_; }
@@ -80,22 +83,28 @@ public:
   double time_end() { return time_end_; }
   void set_parent(Task* task);
   void set_brs_policy(int brs_policy);
-  int get_brs_policy(){return brs_policy_;}
+  void set_profile_data_transfers(bool flag=true) { profile_data_transfers_ = flag; }
+  bool is_profile_data_transfers() { return profile_data_transfers_; }
+  void AddOutDataObjectProfile(DataObjectProfile hist) { out_dataobject_profiles.push_back(hist); }
+  void ClearMemOutProfile() { out_dataobject_profiles.clear(); }
+  vector<DataObjectProfile> & out_mem_profiles() { return out_dataobject_profiles; }
   void set_opt(const char* opt);
   const char* get_opt(){return opt_;}
   char* opt() { return opt_; }
   int brs_policy() { return brs_policy_; }
   const char* brs_policy_string();
+  const char* task_status_string();
   bool sync() { return sync_; }
   std::vector<Task*>* subtasks() { return &subtasks_; }
   Task* subtask(int i) { return subtasks_[i]; }
-  bool is_subtask() { return parent_ != NULL; }
+  bool is_subtask() { return parent_exist_; }
   bool is_kernel_launch_disabled() { return is_kernel_launch_disabled_; }
   void set_kernel_launch_disabled(bool flag=true) { is_kernel_launch_disabled_ = flag; }
   int ndepends() { return ndepends_; }
   void set_ndepends(int n) { ndepends_ = n; }
-  Task** depends() { return depends_; }
-  Task* depend(int i) { return depends_[i]; }
+  //Task** depends() { return depends_; }
+  unsigned long* depends() { return depends_uids_; }
+  Task* depend(int i) { return platform_->get_task_object(depends_uids_[i]); }
   void* arch() { return arch_; }
   void set_arch(void* arch) { arch_ = arch; }
   void set_pending();
@@ -128,9 +137,10 @@ private:
   void CompleteSub();
 
 private:
-  char name_[128];
+  std::string name_;
   bool given_name_;
-  Task* parent_;
+  unsigned long parent_;
+  bool parent_exist_;
   int ncmds_;
   Command* cmds_[64];
   Command* cmd_kernel_;
@@ -155,7 +165,8 @@ private:
   size_t subtasks_complete_;
   void* arch_;
 
-  Task** depends_;
+  //Task** depends_;
+  unsigned long* depends_uids_;
   int depends_max_;
   int ndepends_;
 
@@ -170,6 +181,7 @@ private:
   bool disable_consistency_;
   bool internal_memory_transfer_;
   bool is_kernel_launch_disabled_;
+  bool profile_data_transfers_;
 
   double time_;
   double time_start_;
@@ -180,9 +192,13 @@ private:
   pthread_mutex_t mutex_complete_;
   pthread_mutex_t mutex_subtasks_;
   pthread_cond_t complete_cond_;
+  vector<DataObjectProfile>       out_dataobject_profiles;
 
 public:
   static Task* Create(Platform* platform, int type, const char* name);
+  static Task* Create(Platform* platform, int type, std::string name) {
+    return Create(platform, type, name.c_str());
+  }
 };
 
 } /* namespace rt */

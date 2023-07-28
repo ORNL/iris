@@ -30,7 +30,9 @@ void Thread::Stop() {
 }
 
 void Thread::Sleep() {
+  sleeping_ = true;
   sem_wait(&sem_);
+  sleeping_ = false;
 }
 
 void Thread::Invoke() {

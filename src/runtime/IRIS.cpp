@@ -86,8 +86,11 @@ Task::Task(const char *name, bool perm, bool retainable)
     if (retainable) platform->set_release_task_flag(!retainable, task_);
 #else
     assert(PlatformIRIS::GetPlatform()->TaskCreate(name, perm, &task_) == IRIS_SUCCESS);
-    if (retainable) iris_task_set_retain_flag(!retainable, task_);
+    if (retainable) iris_task_retain(task_, !retainable);
 #endif
+}
+int Task::set_order(int *order) {
+    return iris_task_kernel_dmem_fetch_order(task_, order);
 }
 int Task::h2d(Mem* mem, size_t off, size_t size, void* host) {
 #ifdef ENABLE_SMART_PTR_TASK
@@ -155,7 +158,7 @@ int Task::kernel(const char* kernel, int dim, size_t* off, size_t* gws, size_t* 
             iris_mem_type dpmem = ((iris::BaseMem*) params[i])->mem();
             new_params[i] = (BaseMemIRIS*)(dpmem.get());
 #else
-            new_params[i] = ((BaseMem*) params[i])->mem();
+            new_params[i] = ((BaseMem*) params[i])->mem_ptr();
 #endif
         } else new_params[i] = params[i];
     }
@@ -178,11 +181,11 @@ void Task::depends_on(int ntasks, Task **tasks) {
 #ifdef ENABLE_SMART_PTR_TASK
     _error("Task::Depend is not supported for smart pointer\n");
 #else
-    TaskIRIS *c_task = (TaskIRIS *)(task()->class_obj);
+    TaskIRIS *c_task = (TaskIRIS *)(PlatformIRIS::GetPlatform()->get_task_object(task()));
     for (int i=0; i<ntasks; i++) {
         if (tasks[i] != NULL)  {
-            TaskIRIS *i_task = (TaskIRIS*)(tasks[i]->task()->class_obj);
-            c_task->AddDepend(i_task);
+            TaskIRIS *i_task = (TaskIRIS*)(PlatformIRIS::GetPlatform()->get_task_object(tasks[i]->task()));
+            c_task->AddDepend(i_task, tasks[i]->task().uid);
         }
     }
 #endif
@@ -191,22 +194,22 @@ void Task::depends_on(vector<Task *> tasks) {
 #ifdef ENABLE_SMART_PTR_TASK
     _error("Task::Depend is not supported for smart pointer\n");
 #else
-    TaskIRIS *c_task = (TaskIRIS *)(task()->class_obj);
+    TaskIRIS *c_task = (TaskIRIS *)(PlatformIRIS::GetPlatform()->get_task_object(task()));
     for (Task *d_task : tasks) {
-        TaskIRIS *i_task = (TaskIRIS*)(d_task->task()->class_obj);
-        c_task->AddDepend(i_task);
+        TaskIRIS *i_task = (TaskIRIS*)(PlatformIRIS::GetPlatform()->get_task_object(d_task->task()));
+        c_task->AddDepend(i_task, d_task->task().uid);
     }
 #endif
 }
 void Task::depends_on(Task & d_task) {
-    TaskIRIS *c_task = (TaskIRIS *)(task()->class_obj);
-    TaskIRIS *i_task = (TaskIRIS*)(d_task.task()->class_obj);
-    c_task->AddDepend(i_task);
+    TaskIRIS *c_task = (TaskIRIS *)(PlatformIRIS::GetPlatform()->get_task_object(task()));
+    TaskIRIS *i_task = (TaskIRIS*)(PlatformIRIS::GetPlatform()->get_task_object(d_task.task()));
+    c_task->AddDepend(i_task, d_task.task().uid);
 }
 Graph::Graph(bool retainable) {
     retainable_ = retainable;
     iris_graph_create(&graph_);
-    if (retainable) iris_graph_retain(graph_);
+    if (retainable) iris_graph_retain(graph_, retainable);
     is_released_ = false;
 }
 Graph::~Graph() {
@@ -215,7 +218,7 @@ Graph::~Graph() {
 }
 void Graph::retainable() {
     retainable_ = true;
-    iris_graph_retain(graph_);
+    iris_graph_retain(graph_, true);
 }
 int Graph::add_task(Task & task, int device, const char *opt) {
 #ifdef ENABLE_SMART_PTR_TASK
@@ -228,6 +231,9 @@ int Graph::add_task(Task & task, int device, const char *opt) {
 int Graph::release() {
     is_released_ = true;
     return iris_graph_release(graph_);
+}
+int Graph::set_order(int *order) {
+    return iris_graph_tasks_order(graph_, order);
 }
 int Graph::submit(int device, int sync) {
     return iris_graph_submit(graph_, device, sync);

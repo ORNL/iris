@@ -10,9 +10,9 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-# import os
-# import sys
-# sys.path.insert(0, os.path.abspath('.'))
+import os
+import sys
+sys.path.insert(0, os.path.abspath('../../../src/runtime'))
 
 import sphinx_rtd_theme
 import subprocess
@@ -20,8 +20,8 @@ import subprocess
 # -- Project information -----------------------------------------------------
 
 project = 'IRIS'
-copyright = '2021, Oak Ridge National Laboratory'
-author = 'Jungwon Kim'
+copyright = '2023, Oak Ridge National Laboratory'
+author = 'Programming Systems Group'
 
 # The full version, including alpha/beta/rc tags
 # release = '1.0.0'
@@ -35,12 +35,17 @@ author = 'Jungwon Kim'
 extensions = [
     'sphinx_rtd_theme',
     'sphinxcontrib.contentui',
-    'breathe'
+    'breathe',
+    'sphinx.ext.viewcode',
+    'sphinx.ext.autodoc'
 ]
 
 subprocess.call('cd ../../doxygen/; doxygen Doxyfile.in', shell=True)
 
-breathe_projects = {"C": "../../../docs/doxygen/build/xml/"}
+breathe_projects = {"C": "../../../docs/doxygen/build/xml/",
+                    "Cpp":"../../../docs/doxygen/build/xml/",
+                    "Py":"../../../docs/doxygen/build/xml/",
+                    "F90":"../../../docs/doxygen/build/xml/"}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -79,5 +84,6 @@ html_theme_options = {
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+# html_static_path = ['_static']
+html_static_path = []
 

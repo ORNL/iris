@@ -329,6 +329,10 @@ int DeviceHIP::KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bo
       _trace("Context wrong for Kernel launch Context Switch: %p %p", ctx, ctx_);
   }
 #endif
+  if (IsContextChangeRequired()) {
+      _trace("Changed Context for HIP resetting context switch dev[%d][%s] worker:%d self:%p thread:%p", devno(), name_, worker()->device()->devno(), (void *)worker()->self(), (void *)worker()->thread());
+      ld_->hipCtxSetCurrent(ctx_);
+  }
   if (!kernel->vendor_specific_kernel_check_flag(devno_))
       CheckVendorSpecificKernel(kernel);
   int kernel_idx = -1;
@@ -342,28 +346,30 @@ int DeviceHIP::KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bo
       *kernel_bin = host2hip_ld_->GetFunctionPtr(name);
       return IRIS_SUCCESS;
   }
-  if (report_error) {
-      hipFunction_t* hipkernel = (hipFunction_t*) kernel_bin;
-      err_ = ld_->hipModuleGetFunction(hipkernel, module_, name);
-      if (report_error) _hiperror(err_);
-      if (err_ != hipSuccess){
-          if (report_error) {
-              _error("HIP kernel:%s not found !", name);
-              worker_->platform()->IncrementErrorCount();
-          }
-          return IRIS_ERROR;
+  if (native_kernel_not_exists()) {
+      if (report_error) {
+          _error("HIP kernel:%s not found !", name);
+          worker_->platform()->IncrementErrorCount();
       }
-      char name_off[256];
-      memset(name_off, 0, sizeof(name_off));
-      sprintf(name_off, "%s_with_offsets", name);
-      hipFunction_t hipkernel_off;
-      err_ = ld_->hipModuleGetFunction(&hipkernel_off, module_, name_off);
-      if (err_ == hipSuccess) {
-          kernels_offs_.insert(std::pair<hipFunction_t, hipFunction_t>(*hipkernel, hipkernel_off));
+      return IRIS_ERROR;
+  }
+  hipFunction_t* hipkernel = (hipFunction_t*) kernel_bin;
+  err_ = ld_->hipModuleGetFunction(hipkernel, module_, name);
+  if (report_error) _hiperror(err_);
+  if (err_ != hipSuccess){
+      if (report_error) {
+          _error("HIP kernel:%s not found !", name);
+          worker_->platform()->IncrementErrorCount();
       }
-      else {
-          return IRIS_ERROR;
-      }
+      return IRIS_ERROR;
+  }
+  char name_off[256];
+  memset(name_off, 0, sizeof(name_off));
+  sprintf(name_off, "%s_with_offsets", name);
+  hipFunction_t hipkernel_off;
+  err_ = ld_->hipModuleGetFunction(&hipkernel_off, module_, name_off);
+  if (err_ == hipSuccess) {
+      kernels_offs_.insert(std::pair<hipFunction_t, hipFunction_t>(*hipkernel, hipkernel_off));
   }
   return IRIS_SUCCESS;
 }

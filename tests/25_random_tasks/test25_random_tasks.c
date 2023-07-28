@@ -12,6 +12,7 @@ iris_task* tasks;
 
 int main(int argc, char** argv) {
   iris_init(&argc, &argv, 1);
+  setenv("IRIS_ARCHS", "cuda", 1);
 
   time_t t;
   srand((unsigned int) time(&t));
@@ -43,7 +44,7 @@ int main(int argc, char** argv) {
 
   for (int i = 0; i < NTASKS; i++) {
     iris_task_create(tasks + i);
-    void* params[1] = { mem_A };
+    void* params[1] = { &mem_A };
     int params_info[1] = { iris_w };
     iris_task_kernel(tasks[i], "add1", 1, NULL, &SIZE, NULL, 1, params, params_info);
     for (int j = 0; j < i; j++) {
@@ -69,6 +70,6 @@ int main(int argc, char** argv) {
 
   free(A);
   free(tasks);
-
+  printf("IRIS error count:%d\n", iris_error_count());
   return iris_error_count();
 }

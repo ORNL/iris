@@ -1,10 +1,10 @@
-IRIS_INSTALL_ROOT ?= $(HOME)/.local
+IRIS_INSTALL_ROOT ?= $(HOME)/.iris
 IRIS=$(IRIS_INSTALL_ROOT)
 
 CC ?= gcc
 CXX ?= g++
 FORTRAN ?= gfortran
-NVCC ?= nvcc
+NVCC?=$(CUDA_PATH)/bin/nvcc
 HIPCC ?= hipcc
 
 CFLAGS=-I$(IRIS)/include/ -O3 -std=c99

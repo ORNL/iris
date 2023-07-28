@@ -409,8 +409,9 @@ int DeviceOpenCL::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws
           return IRIS_SUCCESS; 
       }
   }
+  size_t block[3] = { lws ? lws[0] : 1, lws ?  lws[1] : 1, lws ?  lws[2] : 1 };
   cl_kernel clkernel = (cl_kernel) kernel->arch(this);
-  err_ = ld_->clEnqueueNDRangeKernel(clcmdq_, clkernel, (cl_uint) dim, (const size_t*) off, (const size_t*) gws, (const size_t*) lws, 0, NULL, NULL);
+  err_ = ld_->clEnqueueNDRangeKernel(clcmdq_, clkernel, (cl_uint) dim, (const size_t*) off, (const size_t*) gws, (const size_t*) block, 0, NULL, NULL);
   _clerror(err_);
   if (err_ != CL_SUCCESS){
     worker_->platform()->IncrementErrorCount();
@@ -535,6 +536,35 @@ int DeviceOpenCL::CreateProgram(const char* suffix, char** src, size_t* srclen) 
   if (*srclen > 0) {
     _trace("dev[%d][%s] kernels[%s]", devno_, name_, p);
     return IRIS_SUCCESS;
+  }
+  if (type_ == iris_fpga) {
+      if (p != NULL) { free(p); p = NULL; }
+      if (strcmp("aocx", fpga_bin_suffix_.c_str()) == 0 && 
+              Platform::GetPlatform()->GetFilePath("KERNEL_INTEL_AOCX", &p, NULL) == IRIS_SUCCESS) {
+          Utils::ReadFile(p, src, srclen);
+          if (*srclen > 0) {
+              _trace("dev[%d][%s] kernels[%s]", devno_, name_, p);
+              return IRIS_SUCCESS;
+          }
+      }
+      if (p != NULL) { free(p); p = NULL; }
+      if (strcmp("xclbin", fpga_bin_suffix_.c_str()) == 0 && 
+              Platform::GetPlatform()->GetFilePath("KERNEL_XILINX_XCLBIN", &p, NULL) == IRIS_SUCCESS) {
+          Utils::ReadFile(p, src, srclen);
+          if (*srclen > 0) {
+              _trace("dev[%d][%s] kernels[%s]", devno_, name_, p);
+              return IRIS_SUCCESS;
+          }
+      }
+      if (p != NULL) { free(p); p = NULL; }
+      if (strcmp("xclbin", fpga_bin_suffix_.c_str()) == 0 && 
+              Platform::GetPlatform()->GetFilePath("KERNEL_FPGA_XCLBIN", &p, NULL) == IRIS_SUCCESS) {
+          Utils::ReadFile(p, src, srclen);
+          if (*srclen > 0) {
+              _trace("dev[%d][%s] kernels[%s]", devno_, name_, p);
+              return IRIS_SUCCESS;
+          }
+      }
   }
 
   char path[256];

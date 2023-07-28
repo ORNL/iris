@@ -6,7 +6,7 @@
 #define SIZE 128
 #define LOOP 20
 
-static void* run(void* argp) {
+static void run(void* argp) {
   int id = *((int*) argp);
   printf("[%s:%d] id[%d]\n", __FILE__, __LINE__, id);
   iris_init(NULL, NULL, 1);
@@ -28,7 +28,7 @@ static void* run(void* argp) {
   }
 
   free(host);
-  iris_finalize();
+  //iris_finalize();
 }
 
 pthread_t t[256];

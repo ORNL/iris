@@ -11,17 +11,25 @@ set(IRIS_SRC_DIR ${PROJECT_SOURCE_DIR}/src)
 set(IRIS_INC_DIR ${PROJECT_SOURCE_DIR}/include)
 set(IRIS_BIN_DIR ${PROJECT_BINARY_DIR}/src)
 
-option(DEBUG_DISABLE "Disable debug messages"     OFF )
-option(TRACE_DISABLE "Disable trace messages"     OFF )
+option(DEBUG_DISABLE "Disable debug messages"     ON)
+option(TRACE_DISABLE "Disable trace messages"     ON)
 option(INFO_DISABLE "Disable info messages"     OFF )
+option(DISABLE_DYNAMIC_LINKING "Disable dynamic linking"     OFF )
 option(DISABLE_CONSISTENCY_CHECK "Disable memry consistency checks "     OFF )
 option(ENABLE_SINGLE_DEVICE_PER_CU "Enable single device per compute unit "     OFF )
 option(USE_PYTHON       "Enable support for Python"     ON )
+option(USE_RISCV        "Enable support for RISCV"      OFF )
 option(USE_FORTRAN      "Enable support for Fortran 90" OFF)
 
 option(USE_SIGHANDLER   "Enable signal handler"         OFF)
 option(USE_HUB          "Enable hub"                    OFF)
 option(IRIS_ASYNC_STREAMING "Enable IRIS CUDA/HIP Asynchronous streaming"                    OFF)
+
+if (USE_RISCV)
+set(CMAKE_C_COMPILER   riscv64-unknown-linux-gnu-gcc)
+set(CMAKE_CXX_COMPILER riscv64-unknown-linux-gnu-g++)
+set(DISABLE_DYNAMIC_LINKING  ON)
+endif() # USE_RISCV
 
 add_subdirectory(include)
 add_subdirectory(src)
@@ -52,6 +60,32 @@ add_custom_command(
   COMMAND echo "echo \"*************************************************************\"" >> ${CMAKE_BINARY_DIR}/setup.source
   )
 add_custom_command(
+  OUTPUT ${CMAKE_BINARY_DIR}/setup.zsh
+  WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+  COMMAND echo "SCRIPT_FILE=\${(%):-%N}" > ${CMAKE_BINARY_DIR}/setup.zsh VERBATIM
+  COMMAND echo "PYTHON_EXE=python" >> ${CMAKE_BINARY_DIR}/setup.zsh VERBATIM
+  COMMAND echo "version=\$(python -V 2>&1 | grep -Po '(?<=Python )(.+)')" >> ${CMAKE_BINARY_DIR}/setup.zsh VERBATIM
+  COMMAND echo "if [[ -z \"\$version\" ]]" >> ${CMAKE_BINARY_DIR}/setup.zsh VERBATIM
+  COMMAND echo "then" >> ${CMAKE_BINARY_DIR}/setup.zsh VERBATIM
+  COMMAND echo "    PYTHON_EXE=python3" >> ${CMAKE_BINARY_DIR}/setup.zsh VERBATIM
+  COMMAND echo "    version=\$(python3 -V 2>&1 | grep -Po '(?<=Python )(.+)')" >> ${CMAKE_BINARY_DIR}/setup.zsh VERBATIM
+  COMMAND echo "    if [[ -z \"\$version\" ]]" >> ${CMAKE_BINARY_DIR}/setup.zsh VERBATIM
+  COMMAND echo "    then" >> ${CMAKE_BINARY_DIR}/setup.zsh VERBATIM
+  COMMAND echo "    echo \"No Python is detected! Cannot source\" " >> ${CMAKE_BINARY_DIR}/setup.zsh VERBATIM
+  COMMAND echo "    return" >> ${CMAKE_BINARY_DIR}/setup.zsh VERBATIM
+  COMMAND echo "    fi" >> ${CMAKE_BINARY_DIR}/setup.zsh VERBATIM
+  COMMAND echo "fi" >> ${CMAKE_BINARY_DIR}/setup.zsh VERBATIM
+  COMMAND echo "SCRIPT=$(\$PYTHON_EXE -c \"import os,sys; print(os.path.realpath(os.path.expanduser(sys.argv[1])))\" \${SCRIPT_FILE})" >> ${CMAKE_BINARY_DIR}/setup.zsh VERBATIM
+  COMMAND echo "export IRIS=$(dirname -- \${SCRIPT})" >> ${CMAKE_BINARY_DIR}/setup.zsh
+  COMMAND echo "export LD_LIBRARY_PATH=.:\$IRIS/lib:\$IRIS/lib64:\$LD_LIBRARY_PATH" >> ${CMAKE_BINARY_DIR}/setup.zsh
+  COMMAND echo "export LIBRARY_PATH=.:\$IRIS/lib:\$IRIS/lib64:\$LIBRARY_PATH" >> ${CMAKE_BINARY_DIR}/setup.zsh
+  COMMAND echo "export CPATH=$IRIS/include:$CPATH" >> ${CMAKE_BINARY_DIR}/setup.zsh
+  COMMAND echo "export PYTHONPATH=\$IRIS/include/iris:\$PYTHONPATH" >> ${CMAKE_BINARY_DIR}/setup.zsh
+  COMMAND echo "echo \"*********************** IRIS Environent *********************\"" >> ${CMAKE_BINARY_DIR}/setup.zsh
+  COMMAND echo "echo \"IRIS: \$IRIS\"" >> ${CMAKE_BINARY_DIR}/setup.zsh
+  COMMAND echo "echo \"*************************************************************\"" >> ${CMAKE_BINARY_DIR}/setup.zsh
+  )
+add_custom_command(
   OUTPUT ${CMAKE_BINARY_DIR}/setup.fish
   WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
   COMMAND echo "set SCRIPT_FILE (status filename)" > ${CMAKE_BINARY_DIR}/setup.fish VERBATIM
@@ -74,6 +108,8 @@ add_custom_command(
   COMMAND echo "echo \"*************************************************************\"" >> ${CMAKE_BINARY_DIR}/setup.fish
   )
 add_custom_target(setup.source ALL DEPENDS ${CMAKE_BINARY_DIR}/setup.source)
+add_custom_target(setup.zsh ALL DEPENDS ${CMAKE_BINARY_DIR}/setup.zsh)
 add_custom_target(setup.fish ALL DEPENDS ${CMAKE_BINARY_DIR}/setup.fish)
 install(FILES ${CMAKE_BINARY_DIR}/setup.source DESTINATION ${CMAKE_INSTALL_PREFIX})
+install(FILES ${CMAKE_BINARY_DIR}/setup.zsh DESTINATION ${CMAKE_INSTALL_PREFIX})
 install(FILES ${CMAKE_BINARY_DIR}/setup.fish DESTINATION ${CMAKE_INSTALL_PREFIX})

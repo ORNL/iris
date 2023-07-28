@@ -16,12 +16,20 @@ if (COVERAGE)
    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage")
 endif()
 
+if (USE_RISCV) 
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DENABLE_RISCV")
+endif()
+
 if (IRIS_ASYNC_STREAMING) 
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DIRIS_ASYNC_STREAMING")
 endif()
 
 if (ENABLE_SINGLE_DEVICE_PER_CU) 
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DENABLE_SINGLE_DEVICE_PER_CU")
+endif()
+
+if (DISABLE_DYNAMIC_LINKING) 
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDISABLE_DYNAMIC_LINKING")
 endif()
 
 if (DISABLE_CONSISTENCY_CHECK) 
@@ -144,6 +152,7 @@ set(IRIS_RUNTIME_HEADERS
   Mem.h
   MemRange.h
   Platform.h
+  ObjectTrack.h
   Policies.h
   Policy.h
   PolicyAll.h

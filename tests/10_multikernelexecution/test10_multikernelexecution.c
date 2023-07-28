@@ -11,7 +11,7 @@ int main(int argc, char** argv) {
   iris_init(&argc, &argv, 1);
 
   SIZE = argc > 1 ? atol(argv[1]) : 128;
-  LOOP = argc > 2 ? atoi(argv[2]) : 10000;
+  LOOP = argc > 2 ? atoi(argv[2]) : 100;
   printf("SIZE[%lu] LOOP[%d]\n", SIZE, LOOP);
 
   iris_mem mem0, mem1, mem2, mem3;
@@ -56,6 +56,6 @@ int main(int argc, char** argv) {
 
   printf("IRIS Finalize\n");
   iris_finalize();
-
+  printf("Number of errors:%d\n", iris_error_count());
   return iris_error_count();
 }

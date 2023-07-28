@@ -10,6 +10,7 @@ __author__ = "Beau Johnston"
 __copyright__ = "Copyright (c) 2020-2022, Oak Ridge National Laboratory (ORNL) Programming Systems Research Group. All rights reserved."
 __license__ = "GPL"
 __version__ = "1.0"
+__schema__ = "https://raw.githubusercontent.com/ORNL/iris/v2.0.0/schema/dagger.schema.json"
 
 import json
 import argparse
@@ -390,7 +391,7 @@ def determine_and_prepend_iris_h2d_transfers(dag):
                 transfer["name"] = "transferto-{}-buffer{}-instance{}".format(k,j,ck)
                 buffer_name = "devicemem-{}-buffer{}-instance{}".format(k,j,ck)
                 commands = {}
-                commands["h2d"] = {"name":"d2h-buffer{}-instance{}".format(j,ck),"device_memory":buffer_name,"host_memory":"hostmem-{}-buffer{}-instance{}".format(k,j,ck),"offset":"0","size":"user-size-cb-{}".format(k)}
+                commands["h2d"] = {"name":"h2d-buffer{}-instance{}".format(j,ck),"device_memory":buffer_name,"host_memory":"hostmem-{}-buffer{}-instance{}".format(k,j,ck),"offset":"0","size":"user-size-cb-{}".format(k)}
                 #commands["h2d"] = buffer_name, "hostmem-{}-buffer{}-instance{}".format(k,j,ck), "0", "user-size-cb-{}".format(k)
                 transfer["commands"] = [commands]
                 #transfer["h2d"] = [buffer_name, "hostmem-{}-buffer{}-instance{}".format(k,j,ck), "0", "user-size-cb-{}".format(k)]
@@ -465,7 +466,7 @@ def get_task_to_json(dag,deps):
     inputs = determine_iris_inputs()
     dag = determine_and_prepend_iris_h2d_transfers(dag)
     dag = determine_and_append_iris_d2h_transfers(dag)
-    final_json = {"iris-graph":{"inputs":inputs,"graph":{"tasks":dag}}}
+    final_json = {"$schema": __schema__, "iris-graph":{"inputs":inputs,"graph":{"tasks":dag}}}
     f.write(json.dumps(final_json,indent = 2))
     f.close()
 

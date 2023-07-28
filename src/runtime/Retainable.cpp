@@ -1,5 +1,5 @@
 unsigned long iris_create_new_uid() {
-  static unsigned long uid = 0UL;
+  static unsigned long uid = 1UL;
   unsigned long new_uid;
   do {
     new_uid = uid + 1;

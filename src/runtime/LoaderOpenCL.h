@@ -13,7 +13,7 @@ public:
   LoaderOpenCL();
   ~LoaderOpenCL();
 
-  const char* library() { return "libOpenCL.so"; }
+  const char* library();
   int LoadFunctions();
 
 cl_int

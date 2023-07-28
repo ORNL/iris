@@ -28,7 +28,7 @@ public:
   Graph(Platform* platform);
   virtual ~Graph();
 
-  void AddTask(Task* task);
+  void AddTask(Task* task, unsigned long uid);
   void Submit();
   void Complete();
   void Wait();
@@ -40,6 +40,7 @@ public:
   std::vector<Task*> & tasks_list() { return tasks_; }
   std::vector<Task*> formatted_tasks();
   int iris_tasks(iris_task *pv);
+  void set_order(int *order);
   int tasks_count() { return tasks_.size(); }
   bool is_retainable() { return retain_tasks_; }
   void enable_retainable() { retain_tasks_ = true; }
@@ -59,6 +60,7 @@ private:
   pthread_mutex_t mutex_complete_;
   pthread_cond_t complete_cond_;
   shared_ptr<GraphMetadata> graph_metadata_;
+  vector<int> tasks_order_;
 public:
   static Graph* Create(Platform* platform);
   Task* end() { return end_; }
@@ -121,6 +123,8 @@ private:
     size_t comm_task_data_size_;
     size_t *comm_task_adj_matrix_;
     double *comp_task_adj_matrix_;
+    map<unsigned long, unsigned long> mem_flash_out_2_new_id_map_;
+    map<unsigned long, unsigned long> mem_flash_out_new_id_2_mid_map_;
     map<unsigned long, set<unsigned long>> mem_flash_out_2_task_map_;
     map<unsigned long, set<unsigned long>> mem_flash_task_2_mem_ids_;
     map<unsigned long, unsigned long> task_uid_2_index_hash_;

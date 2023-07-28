@@ -77,7 +77,7 @@ int Utils::ReadFile(char* path, char** string, size_t* len) {
     return IRIS_ERROR;
   }
   off_t s = lseek(fd, 0, SEEK_END);
-  *string = (char*) malloc(s+1);
+  *string = (char*) calloc(sizeof(char),s+1);
   *len = s;
   lseek(fd, 0, SEEK_SET);
   ssize_t r = read(fd, *string, s);

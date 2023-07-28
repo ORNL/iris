@@ -106,6 +106,7 @@ public:
   bool busy() { return busy_; }
   bool idle() { return !busy_; }
   bool enable() { return enable_; }
+  bool native_kernel_not_exists() { return native_kernel_not_exists_; }
   void enableD2D() { is_d2d_possible_ = true; }
   bool isD2DEnabled() { return is_d2d_possible_; }
   int ok() { return errid_; }
@@ -136,6 +137,7 @@ protected:
   bool shared_memory_buffers_;
   bool can_share_host_memory_;
   bool is_d2d_possible_;
+  bool native_kernel_not_exists_;
 
   Worker* worker_;
   Timer* timer_;

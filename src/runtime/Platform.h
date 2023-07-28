@@ -6,6 +6,7 @@
 #include <stddef.h>
 #include <vector>
 #include <set>
+#include <assert.h>
 #include <map>
 #include <mutex>
 #include <string>
@@ -13,6 +14,7 @@
 
 #include "Config.h"
 #include "SchedulingHistory.h"
+#include "ObjectTrack.h"
 using namespace std;
 
 namespace iris {
@@ -88,6 +90,7 @@ public:
   int KernelRelease(iris_kernel brs_kernel);
 
   int TaskCreate(const char* name, bool perm, iris_task* brs_task);
+  int TaskDepend(iris_task brs_task, int ntasks, iris_task** brs_tasks);
   int TaskDepend(iris_task brs_task, int ntasks, iris_task* brs_tasks);
   int TaskKernel(iris_task brs_task, iris_kernel brs_kernel, int dim, size_t* off, size_t* gws, size_t* lws);
   int TaskKernel(iris_task task, const char* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, size_t* params_off, int* params_info, size_t* memranges);
@@ -146,9 +149,9 @@ public:
   int GraphCreateJSON(const char* json, void** params,  iris_graph* brs_graph);
   int GraphTask(iris_graph brs_graph, iris_task brs_task, int brs_policy, const char* opt);
   int GraphSubmit(iris_graph brs_graph, int brs_policy, int sync);
+  int GraphRetain(iris_graph brs_graph, bool flag);
   int GraphSubmit(iris_graph brs_graph, int *order, int brs_policy, int sync);
   int GraphRelease(iris_graph brs_graph);
-  int GraphRetain(iris_graph brs_graph);
   int GraphWait(iris_graph brs_graph);
   int GraphWaitAll(int ngraphs, iris_graph* brs_graphs);
   int GetGraphTasks(iris_graph graph, iris_task *tasks);
@@ -167,7 +170,7 @@ public:
   int nplatforms() { return nplatforms_; }
   int device_default() { return dev_default_; }
   bool release_task_flag() { return release_task_flag_; }
-  void set_release_task_flag(bool flag) { release_task_flag_ = flag; }
+  //void set_release_task_flag(bool flag) { release_task_flag_ = flag; }
   void set_release_task_flag(bool flag, iris_task task);
   Device** devices() { return devs_; }
   Device* device(int devno) { return devs_[devno]; }
@@ -182,6 +185,45 @@ public:
   char* app() { return app_; }
   char* host() { return host_; }
   Profiler** profilers() { return profilers_; }
+  //ObjectTrack & track() { return object_track_; }
+  ObjectTrack * task_track_ptr() { return &task_track_; }
+  ObjectTrack * graph_track_ptr() { return &graph_track_; }
+  ObjectTrack * mem_track_ptr() { return &mem_track_; }
+  ObjectTrack * kernel_track_ptr() { return &kernel_track_; }
+  ObjectTrack & task_track() { return task_track_; }
+  ObjectTrack & graph_track() { return graph_track_; }
+  ObjectTrack & mem_track() { return mem_track_; }
+  ObjectTrack & kernel_track() { return kernel_track_; }
+  bool is_task_exist(unsigned long uid) { return task_track_.IsObjectExists(uid); }
+  bool is_mem_exist(unsigned long uid) { return mem_track_.IsObjectExists(uid); }
+  bool is_kernel_exist(unsigned long uid) { return kernel_track_.IsObjectExists(uid); }
+  bool is_graph_exist(unsigned long uid) { return graph_track_.IsObjectExists(uid); }
+  Task *get_task_object(unsigned long uid) { 
+      //task_track_.Print("Task track"); 
+      Task *task = (Task *)task_track_.GetObject(uid); 
+      return task;
+  }
+  Task *get_task_object(iris_task brs_task) { 
+      //task_track_.Print("Task track"); 
+      Task *task = (Task *)task_track_.GetObject(brs_task.uid); 
+      return task;
+  }
+  BaseMem *get_mem_object(unsigned long uid) { 
+      //mem_track_.Print("Mem track"); 
+      BaseMem *mem = (BaseMem *)mem_track_.GetObject(uid); 
+      assert(mem != NULL);
+      return mem; 
+  }
+  BaseMem *get_mem_object(iris_mem brs_mem) { 
+      //mem_track_.Print("Mem track"); 
+      BaseMem *mem = (BaseMem *)mem_track_.GetObject(brs_mem.uid); 
+      assert(mem != NULL);
+      return mem; 
+  }
+  Graph *get_graph_object(unsigned long uid) { return (Graph *)graph_track_.GetObject(uid); }
+  Graph *get_graph_object(iris_graph brs_graph) { return (Graph *)graph_track_.GetObject(brs_graph.uid); }
+  Kernel *get_kernel_object(unsigned long uid) { return (Kernel *)kernel_track_.GetObject(uid); }
+  Kernel *get_kernel_object(iris_kernel brs_kernel) { return (Kernel *)kernel_track_.GetObject(brs_kernel.uid); }
   int nprofilers() { return nprofilers_; }
   bool enable_scheduling_history() { return enable_scheduling_history_; }
   SchedulingHistory* scheduling_history() { return scheduling_history_; }
@@ -254,8 +296,12 @@ private:
 
   std::map<std::string, std::vector<Kernel*> > kernels_;
   std::map<std::string, vector<shared_ptr<History> > > kernel_history_;
-  std::set<BaseMem*> mems_;
+  //std::set<BaseMem*> mems_;
   std::map<std::string, std::string> env_;
+  ObjectTrack task_track_;
+  ObjectTrack mem_track_;
+  ObjectTrack kernel_track_;
+  ObjectTrack graph_track_;
 
   PresentTable* present_table_;
   Pool* pool_;

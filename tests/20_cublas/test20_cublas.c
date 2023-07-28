@@ -52,6 +52,19 @@ int main(int argc, char** argv) {
   //setenv("IRIS_ARCHS", "cuda", 1);
   iris_init(&argc, &argv, 1);
 
+  int ndevs;
+  bool is_nvidia_device=0;
+  iris_device_count(&ndevs);
+  for (int d = 0; d < ndevs; d++){
+    int backend_worker;
+    iris_device_info(d, iris_backend, &backend_worker, NULL);
+    if (backend_worker == iris_cuda) is_nvidia_device = 1;
+  }
+  if(!is_nvidia_device){
+    printf("Skipping this test because it is only designed to test NVIDIA GPUs with CUDA.\n");
+    return 0;
+  }
+
   size_t SIZE, nbytes;
   double *A, *B, *C;
 
@@ -77,11 +90,11 @@ int main(int argc, char** argv) {
   iris_mem_create(nbytes, &memC);
 
   iris_task task0;
-  iris_task_create(&task0);
+  iris_task_create_name("h2d", &task0);
   iris_task_h2d_full(task0, memA, A);
   iris_task_h2d_full(task0, memB, B);
   iris_task_h2d_full(task0, memC, C);
-  iris_task_submit(task0, iris_cuda, NULL, 1);
+  iris_task_submit(task0, iris_nvidia, NULL, 1);
 
   cublas0_params task1_params;
   task1_params.SIZE = SIZE;
@@ -90,16 +103,16 @@ int main(int argc, char** argv) {
   task1_params.memC = memC;
 
   iris_task task1;
-  iris_task_create(&task1);
+  iris_task_create_name("cublas0_task", &task1);
   iris_task_host(task1, cublas0, &task1_params);
   iris_task_depend(task1, 1, &task0);
-  iris_task_submit(task1, iris_cuda, NULL, 1);
+  iris_task_submit(task1, iris_nvidia, NULL, 1);
 
   iris_task task9;
-  iris_task_create(&task9);
+  iris_task_create_name("d2h", &task9);
   iris_task_d2h_full(task9, memC, C);
   iris_task_depend(task9, 1, &task1);
-  iris_task_submit(task9, iris_cuda, NULL, 1);
+  iris_task_submit(task9, iris_nvidia, NULL, 1);
 
   for (int i = 0; i < SIZE * SIZE; i++) {
     printf("%10.1lf", C[i]);
@@ -112,5 +125,6 @@ int main(int argc, char** argv) {
 
   iris_finalize();
 
+  printf("Errors:%d\n", iris_error_count());
   return iris_error_count();
 }

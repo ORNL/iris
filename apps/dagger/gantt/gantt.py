@@ -13,7 +13,11 @@ class Gantt():
     import pandas as pandas
     from bokeh import palettes
 
-    def _createGanttChart(self, timings, title=None, edgepalette=None, insidepalette=None, time_range=None, zoom=False, drop=[], outline=True, inner_label=False):
+    def __init__(self, device_colour_palette=None, use_device_background_colour=False):
+        self.device_colour_palette = device_colour_palette
+        self.use_device_background_colour = use_device_background_colour
+
+    def _createGanttChart(self, timings, title=None, edgepalette=None, insidepalette=None, time_range=None, zoom=False, drop=[], outline=True, inner_label=False, timeline_output_file=None):
         import numpy as np
         timings['taskname'] = np.where(~timings['taskname'].isnull(),timings['taskname'],timings['type'])
 
@@ -21,10 +25,10 @@ class Gantt():
           timings = timings[timings.taskname != d]
 
         from natsort import humansorted
-        processors = sorted(list(set(timings['acclname'])))
+        processors = sorted(list(set(timings['acclname'])),reverse=True)
 
         proc_names = [p for p in processors]
-
+        
         # color_choices = ['red', 'blue', 'green', 'cyan', 'magenta']
         # Assign colors based on the palette or default to a palette.
         unique_kernels = humansorted(set(timings['taskname']))
@@ -64,7 +68,7 @@ class Gantt():
 
         ilen=len(processors)
         pos = self.np.arange(0.5,ilen*0.5+0.5,0.5)
-        fig = self.plt.figure(figsize=(15,6)) # orig
+        fig = self.plt.figure(figsize=(12,6)) # orig
         ax = fig.add_subplot(111)
         used_labels = []
         for idx, proc in enumerate(processors):
@@ -81,16 +85,21 @@ class Gantt():
                     ax.text(job['start'] + (.05*(job['end']-job['start'])), (idx*0.5)+0.5 - 0.03125, job['taskname'].values[0], fontweight='bold', fontsize=9, alpha=0.75, rotation=90)
 
         locsy, labelsy = self.plt.yticks(pos, proc_names)
-        self.plt.ylabel('Accelerator', fontsize=10)
+        self.plt.ylabel('Devices', fontsize=10)
         self.plt.xlabel('Time (s)', fontsize=10)
         self.plt.setp(labelsy, fontsize = 8)
-        ax.set_ylim(ymin = -0.1, ymax = ilen*0.5+0.5)
+        #ax.set_ylim(ymin = -0.1, ymax = ilen*0.5+0.5)
         ax.set_xlim(xmin = -0.1, xmax = max(timings['end'])+0.1)
-
+        #TODO: move this to kwargs
+        if self.use_device_background_colour:
+            for tl in ax.get_yticklabels():
+                txt = tl.get_text()
+                tl.set_backgroundcolor(self.device_colour_palette[txt])
+                tl.set_text(txt)
         # sort both labels and handles by labels
         handles, labels = ax.get_legend_handles_labels()
         neworder = dict(humansorted(zip(labels, handles)))
-        ax.legend(neworder.values(), neworder.keys(), bbox_to_anchor=(1.15, 1), ncol = 1)
+        ax.legend(neworder.values(), neworder.keys(), title="Tasks",fontsize=8)#bbox_to_anchor=(0, .5), ncol = 1,
 
         if time_range and not zoom:
             ax.set_xlim(time_range)
@@ -99,13 +108,15 @@ class Gantt():
             ax.set_xlim(xmin=min(timings['start'])-padding,xmax=max(timings['end'])+padding)
         ax.grid(color = 'g', linestyle = ':', alpha=0.5)
 
+        ax.invert_yaxis()
         if title:
             self.plt.title(str(title))
         self.plt.tight_layout()
 
         font = self.font_manager.FontProperties(size='small')
+        return fig
 
-    def showGanttChart(self,timing_log,title=None, **kargs):
+    def plotGanttChart(self,timing_log,title=None, **kargs):
         """
             Given a dictionary of processor-task schedules, displays a Gantt chart generated using Matplotlib
         """  
@@ -117,35 +128,19 @@ class Gantt():
         else:
             print("File format for {} is {} and unsupported, please provide the url to the timing log instead.".format(timing_log,type(timing_log)))
             return
-        self._createGanttChart(timing_content,title, **kargs)
+        fig = self._createGanttChart(timing_content,title, **kargs)
         self.plt.show()
-        return self.plt
-
-    def saveGanttChart(self,timing_log,file,title=None,**kargs):
-        """
-            Given a dictionary of processor-task schedules, displays a Gantt chart generated using Matplotlib
-        """  
-        timing_content = None
-        if type(timing_log) is str:
-            timing_content = self.pandas.read_csv(timing_log)
-        elif type(timing_log) is self.pandas.core.frame.DataFrame:
-            timing_content = timing_log
-        else:
-            print("File format for {} is {} and unsupported, please provide the url to the timing log instead.".format(timing_log,type(timing_log)))
-            return
-
-        self._createGanttChart(timing_content,title,**kargs)
-        self.plt.savefig(file)
-        #self.plt.savefig(file + '.svg')
-        #self.plt.savefig(file + '.pdf')
-        #self.plt.savefig(file + '.png')
+        if timeline_output_file is not None:
+          self.plt.savefig(timeline_output_file)
+          print("timeline written to "+str(timeline_output_file))
+        return fig
 
 class DAG():
 
     def __init__(self, dag_file, timeline_file):
-        print("initializing dag")
         self.tasks, self.edges = self.getJsonToTask(dag_file)
         self.timeline = self.getTimelineFromFile(timeline_file)
+        self.device_colour_palette = None
 
     def getJsonToTask(self, dag_file):
         tasks, edges = [],[]
@@ -170,7 +165,7 @@ class DAG():
         timing_content = read_csv(timeline_file)
         return timing_content
 
-    def plotDag(self, dag_path_plot=None):
+    def plotDag(self, dag_path_plot=None, show_device_legend=True):
         import networkx as nx
         from networkx.drawing.nx_agraph import graphviz_layout
         #from bokeh.palettes import Turbo256
@@ -226,6 +221,7 @@ class DAG():
         device_colour = {}
         for i,d in enumerate(unique_devices):
             device_colour[d] = palette[i]
+        self.device_colour_palette = device_colour #save the colour palette for later--incase the timeline plot should use it
         #if there are edges, create the DAG from it, otherwise just the nodes (there are no edges in the DAG, and so the draw call will fail)
         node_d = [(str(e['name']),{"label":e['name'], "position":(i,0), "marker":kernel_shapes[e['kernel']]}) for i, e in enumerate(task_dag)]
         dag.add_nodes_from(node_d)
@@ -250,7 +246,8 @@ class DAG():
                 kernel_name = kernel_name[0]
             node_shapes.append(kernel_shapes[kernel_name])
 
-        fig, ax = plt.subplots()
+        fig = plt.figure(figsize=(3,6))
+        ax = fig.add_subplot(111)
         nx.draw(dag,pos=pos,labels=node_labels,font_size=8,node_color=node_colours,  ax=ax,node_shape=node_shapes)
         #failed attempt at using generic networkx package---rather than my own modification in python -m pip install "networkx @ git+https://github.com/BeauJoh/networkx.git@main"
         #for i, (n, s) in enumerate(zip(dag, node_shapes)):
@@ -264,28 +261,48 @@ class DAG():
         legend_handles = []
         for i,d in enumerate(unique_devices):
             legend_handles.append(patch.Patch(color=device_colour[d], label=d))
-        ax.legend(handles=legend_handles,loc=3,title="Devices",fontsize=8)
+        if show_device_legend:
+          #ax.legend(handles=legend_handles,loc=3,title="Devices",fontsize=8)
+          ax.legend(handles=legend_handles,loc='upper center', bbox_to_anchor=(0.5, 0.0),title="Devices",fontsize=8)
         plt.gca().add_artist(kernel_legend)
-        if dag_plot_path is not None:
+        if dag_path_plot is not None:
             plt.savefig(dag_path_plot)
-        return plt
+            print("dag written to "+str(dag_path_plot))
+        return fig
 
 
 class CombinePlots():
-    def __init__(self, timeline_file,dag_file,output_file,timeline_output_file=None,dag_output_file=None,**kargs):
-        print("initializing combineplots")
+    def __init__(self, timeline_file=None,dag_file=None,combined_output_file=None,timeline_output_file=None,dag_output_file=None,title_string=None,drop=None,**kargs):
+        assert timeline_file is not None, f"timeline file not provided"
+        assert dag_file is not None, f"dag file not provided"
+        if combined_output_file is None and timeline_output_file is None and dag_output_file is None:
+            print("Error: *at least* one output file must be specified (either combined_output_file, timeline_output_file or dag_output_file.")
+            import sys
+            sys.exit(1)
         self.timeline_file = timeline_file
         self.dag_file = dag_file
-        self.output_file = output_file
+        self.output_file = combined_output_file
         self.timeline_output_file = timeline_output_file
         self.dag_output_file = dag_output_file
+        self.drop = drop
+        self.title_string = title_string
         self.kargs = kargs
+        self.PlotBoth()
+
+    def write_pdf(self,figures):
+        from matplotlib.backends.backend_pdf import PdfPages
+        fname = self.output_file
+        doc = PdfPages(fname)
+        for fig in figures:
+            fig.savefig(doc, format='pdf')
+            print("combined plots written to "+str(fname))
+        doc.close()
 
     def PlotBoth(self):
         x = pandas.read_csv(self.timeline_file)
         # drop entries without
         x = x.dropna()
-        print(list(set(x['acclname'])))
+        #print(list(set(x['acclname'])))
         # drop Init
         # x = x[x.taskname != 'Init']
         # get the minimum and maximum time values---to show a consistent time range in the plot
@@ -297,47 +314,50 @@ class CombinePlots():
         window_buffer = (maxt-mint)/10
         time_range = [mint-window_buffer, maxt+window_buffer]
 
-        # generate the timeline/gantt plot
-        gantt = Gantt()
-        if self.timeline_output_file is not None:
-            gantt.saveGanttChart(timing_log=timeline_file,file=timeline_output_file,drop=dropsy,title=title_string,time_range=time_range,outline=False)
-            print("gantt written to "+str(timeline_output_file))
-        else:
-            left = gantt.showGanttChart(timing_log=timeline_file,drop=dropsy,title=title_string,time_range=time_range,outline=False)
         # generate the dag/graph plot
         dag = DAG(self.dag_file,timeline_file=self.timeline_file)
-        right = dag.plotDag(self.dag_output_file)
-        import ipdb
-        ipdb.set_trace()
-        print("dag written to "+str(self.dag_output_file))
-       
+        right = dag.plotDag(self.dag_output_file,show_device_legend=True)
+        # generate the timeline/gantt plot
+        use_device_background_colour = False
+        if 'use_device_background_colour' in self.kargs:
+            use_device_background_colour = self.kargs['use_device_background_colour']
+        gantt = Gantt(device_colour_palette=dag.device_colour_palette,use_device_background_colour=use_device_background_colour)
+        left = gantt.plotGanttChart(timing_log=self.timeline_file,drop=self.drop,title=self.title_string,time_range=time_range,outline=False,timeline_output_file=self.timeline_output_file)
+        if self.output_file is not None:
+            self.write_pdf([left, right])
         return
 
 if __name__ == '__main__':
     import os
     import sys
     import pandas as pandas
+    import argparse
 
-    if len(sys.argv) < 4:
-        print("Incorrect arguments. Please provide ./combined_plotter.py <dag.json> <log.csv> <output.png> [optional:dag_output.png] [optional:timeline_output.png] [optional:title string] [optional:elements to drop, eg:(\"Init,H2D\")]\n Aborting...")
-        sys.exit(0)
+    parser = argparse.ArgumentParser(
+        prog='IRIS Plotter',
+        description='This program takes IRIS DAGs (in JSON format) and/or execution timelines (csv) to visually present the Graph of dependencies and timeline GANTT. It shows the impact of IRIS secheduling on different DAG payloads.')
+    parser.add_argument('--timeline',dest="timeline",type=str,help="filepath to execution log from IRIS run (.csv)")
+    parser.add_argument('--dag',dest="dag",type=str,help="filepath to dag dependency file (.json)")
+    parser.add_argument('--combined-out',dest="combinedout",type=str,default=None,help="filepath for where you would like to store the combined visual plot, both dag and timeline gantt (.pdf/.png)")
+    parser.add_argument('--timeline-out',dest="timelineout",type=str,default=None,help="filepath for where you would like to store the timeline gantt (.pdf/.png)")
+    parser.add_argument('--dag-out',dest="dagout",type=str,default=None,help="filepath for where you would like to store the dag visual plot (.pdf/.png)")
 
-    dag_file = sys.argv[1]
-    timeline_file = sys.argv[2]
-    output_file = sys.argv[3]
-    timeline_output_file = sys.argv[4]
-    dag_output_file = sys.argv[5]
-    print("length of arguments"+str(len(sys.argv)))
-    title_string=""
-    if len(sys.argv) >= 7:
-      title_string = sys.argv[6]
-      print("using title_string "+title_string)
+    parser.add_argument('--title-string',dest="titlestring",type=str,default="",help="the title string for the plot(s)")
+    parser.add_argument('--drop',dest="drop",type=str,default=None,help="elements to drop/exclude from the timeline plots")
+
+    args = parser.parse_args()
+    timeline_file = args.timeline
+    dag_file      = args.dag
+    output_file   = args.combinedout
+    timeline_output_file  = args.timelineout
+    dag_output_file       = args.dagout
+    title_string  = args.titlestring
     dropsy = []
-    if len(sys.argv) >= 8:
-      dropsy = str(sys.argv[7]).split(',')
-      print("and dropping")
-      print(dropsy)
-    #TODO: move this to the main function of the gantt (combined plotter)
-    cp = CombinePlots(timeline_file,dag_file, output_file, timeline_output_file, dag_output_file, title_string=title_string,dropsy=dropsy)
-    cp.PlotBoth()
+    if args.drop is not None:
+      dropsy = str(args.drop).split(',')
+
+    if output_file is None and timeline_output_file is None and dag_output_file is None:
+        print("Incorrect Arguments. Please provide *at least* one output medium (--combined-out, --timeline-out, --dag-out)")
+        sys.exit(1)
+    cp = CombinePlots(timeline_file=timeline_file, dag_file=dag_file, combined_output_file=output_file, timeline_output_file=timeline_output_file, dag_output_file=dag_output_file, title_string=title_string, drop=dropsy, use_device_background_colour=True)
 

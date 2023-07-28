@@ -19,6 +19,7 @@ Device::Device(int devno, int platform) {
   platform_ = platform;
   busy_ = false;
   enable_ = false;
+  native_kernel_not_exists_ = false;
   is_d2d_possible_ = false;
   shared_memory_buffers_ = false;
   can_share_host_memory_ = false;
@@ -100,6 +101,7 @@ void Device::Execute(Task* task) {
 void Device::ExecuteInit(Command* cmd) {
   timer_->Start(IRIS_TIMER_INIT);
   cmd->set_time_start(timer_->Now());
+  native_kernel_not_exists_ = false;
   if (SupportJIT()) {
     char* tmpdir = NULL;
     char* src = NULL;
@@ -112,6 +114,7 @@ void Device::ExecuteInit(Command* cmd) {
     errid_ = IRIS_SUCCESS;
     if (!stat_src && !stat_bin) {
       _error("NO KERNEL SRC[%s] NO KERNEL BIN[%s]", src, bin);
+      native_kernel_not_exists_ = true;
     } else if (!stat_src && stat_bin) {
       strncpy(kernel_path_, bin, strlen(bin));
     } else if (stat_src && !stat_bin) {
@@ -257,7 +260,7 @@ void Device::ExecuteMemResetInput(Task *task, Command* cmd) {
     BaseMem* bmem = (BaseMem *)cmd->mem();
     if (bmem->GetMemHandlerType() != IRIS_DMEM &&
         bmem->GetMemHandlerType() != IRIS_DMEM_REGION) {
-        _error("Reset input is called for unssuported memory handler task:%ld:%s\n", cmd->task()->uid(), cmd->task()->name());
+        _error("Reset input is called for unsupported memory handler task:%ld:%s\n", cmd->task()->uid(), cmd->task()->name());
         return;
     }
     if (bmem->GetMemHandlerType() == IRIS_DMEM) {
@@ -283,24 +286,51 @@ void Device::ExecuteMemIn(Task *task, Command* cmd) {
     int *params_map = cmd->get_params_map();
     //int nargs = cmd->kernel_nargs();
     Kernel *kernel = cmd->kernel();
+    vector<int> data_mems_in_order = kernel->data_mems_in_order();
+    vector<BaseMem *> & all_data_mems_in = kernel->all_data_mems_in();
     if (kernel->is_profile_data_transfers()) {
         kernel->ClearMemInProfile();
     }
-    for(pair<int, DataMem *> it : cmd->kernel()->data_mems_in()) {
-        int idx = it.first;
-        DataMem *mem = it.second;
-        if (params_map != NULL && 
-                (params_map[idx] & iris_all) == 0 && 
-                !(params_map[idx] & type_) ) continue;
-        ExecuteMemInDMemIn(task, cmd, mem);
+    if (kernel->data_mems_in_order().size() > 0) {
+        for(int idx : kernel->data_mems_in_order()) {
+            if (params_map != NULL && 
+                    (params_map[idx] & iris_all) == 0 && 
+                    !(params_map[idx] & type_) ) continue;
+            if ((size_t)idx < all_data_mems_in.size()) {
+                if (all_data_mems_in[idx]->GetMemHandlerType() == IRIS_DMEM) {
+                    DataMem *mem = (DataMem*)all_data_mems_in[idx];
+                    ExecuteMemInDMemIn(task, cmd, mem);
+                }
+                else if (all_data_mems_in[idx]->GetMemHandlerType() == IRIS_DMEM_REGION) {
+                    DataMemRegion *mem = (DataMemRegion*)all_data_mems_in[idx];
+                    ExecuteMemInDMemRegionIn(task, cmd, mem);
+                }
+                else {
+                    _error("Couldn't find idx:%d in data_mems_in_ or data_mem_regions_in_ for task:%s:%ld", idx, task->name(), task->uid());
+                }
+            }
+            else {
+                _error("Couldn't find idx:%d<size:%ld in data_mems_in_ or data_mem_regions_in_ for task:%s:%ld", idx, all_data_mems_in.size(), task->name(), task->uid());
+            }
+        }
     }
-    for(pair<int, DataMemRegion *> it : cmd->kernel()->data_mem_regions_in()) {
-        int idx = it.first;
-        DataMemRegion *mem = it.second;
-        if (params_map != NULL && 
-                (params_map[idx] & iris_all) == 0 && 
-                !(params_map[idx] & type_) ) continue;
-        ExecuteMemInDMemRegionIn(task, cmd, mem);
+    else {
+        for(pair<int, DataMem *> it : kernel->data_mems_in()) {
+            int idx = it.first;
+            DataMem *mem = it.second;
+            if (params_map != NULL && 
+                    (params_map[idx] & iris_all) == 0 && 
+                    !(params_map[idx] & type_) ) continue;
+            ExecuteMemInDMemIn(task, cmd, mem);
+        }
+        for(pair<int, DataMemRegion *> it : kernel->data_mem_regions_in()) {
+            int idx = it.first;
+            DataMemRegion *mem = it.second;
+            if (params_map != NULL && 
+                    (params_map[idx] & iris_all) == 0 && 
+                    !(params_map[idx] & type_) ) continue;
+            ExecuteMemInDMemRegionIn(task, cmd, mem);
+        }
     }
 }
 
@@ -350,7 +380,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem)
         d2dtime = end - start;
         d2d_enabled = true;
     }
-    else if (cpu_dev >= 0) {
+    else if (!Platform::GetPlatform()->is_d2d_disabled() && cpu_dev >= 0) {
         // You didn't find data in peer device, 
         // but you found it in neighbouring CPU (OpenMP) device.
         // Fetch it through H2D
@@ -372,7 +402,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem)
         }
         o2d_enabled = true;
     }
-    else if (this->type() == iris_cpu && non_cpu_dev >= 0) {
+    else if (!Platform::GetPlatform()->is_d2d_disabled() && this->type() == iris_cpu && non_cpu_dev >= 0) {
         // You found data in non-CPU/OpenMP device, but this device is CPU/OpenMP
         // Use target D2H transfer 
         //_trace("explore Device2Device(OpenMP) (D2O) dev[%d][%s] task[%ld:%s] mem[%lu]", devno_, name_, task->uid(), task->name(), mem->uid());
@@ -544,8 +574,8 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
         size_t elem_size = mem->elem_size();
         int dim = mem->dim();
         size_t size = mem->size();
-        printf("Pointer offset %d, gws %d lws %d elem_size %d dim %d size %d\n", 
-            *ptr_off, *gws, *lws, elem_size, dim, size);
+        //printf("Pointer offset %d, gws %d lws %d elem_size %d dim %d size %d\n", 
+            //*ptr_off, *gws, *lws, elem_size, dim, size);
         void* host = mem->host_memory(); // It should work even if host_ptr is null
         double start = timer_->Now();
         Task *task = cmd->task();
@@ -569,10 +599,14 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
         }
         if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
         mem->clear_host_dirty();
-        double d2htime = timer_->Now() - start;
+        double end = timer_->Now();
+        double d2htime = end - start;
         Command* cmd_kernel = cmd->task()->cmd_kernel();
         if (cmd_kernel) cmd_kernel->kernel()->history()->AddD2H(cmd_kernel, src_dev, d2htime, size);
         else Platform::GetPlatform()->null_kernel()->history()->AddD2H(cmd, this, d2htime, size);
+        if (task->is_profile_data_transfers()) {
+            task->AddOutDataObjectProfile({(uint32_t) task->uid(), (uint32_t) mem->uid(), (uint32_t) iris_dt_d2h_h2d, (uint32_t) devno_, (uint32_t) -1, start, end});
+        }
     }
     else {
         _trace("MemFlushout is skipped as host already having valid data for task:%ld:%s\n", cmd->task()->uid(), cmd->task()->name());
@@ -739,6 +773,9 @@ void Device::ExecuteD2D(Command* cmd, Device *dev) {
 }
 void Device::ExecuteH2D(Command* cmd, Device *dev) {
   if (dev == NULL) dev = this;
+  BaseMem* dmem = (BaseMem *)cmd->mem();
+  //we're using datamem so there is no need to execute this memory transfer
+  if (dmem->GetMemHandlerType() == IRIS_DMEM) return;
   Mem* mem = cmd->mem();
   size_t off = cmd->off(0);
   size_t *ptr_off = cmd->off();
@@ -780,6 +817,12 @@ void Device::ExecuteH2DNP(Command* cmd) {
 }
 
 void Device::ExecuteD2H(Command* cmd) {
+  BaseMem* dmem = (BaseMem *)cmd->mem();
+  if (dmem && dmem->GetMemHandlerType() == IRIS_DMEM) {
+    //we're using datamem so there is no need to execute this memory transfer -- just flush
+    ExecuteMemFlushOut(cmd);
+    return;
+  }
   Mem* mem = cmd->mem();
   //size_t off = cmd->off(0);
   size_t *ptr_off = cmd->off();
@@ -846,7 +889,7 @@ Kernel* Device::ExecuteSelectorKernel(Command* cmd) {
   char kernel_name[256];
   memset(kernel_name, 0, 256);
   strcpy(kernel_name, kernel->name());
-  func(cmd->task()->struct_obj(), params, kernel_name);
+  func(*(cmd->task()->struct_obj()), params, kernel_name);
   return Platform::GetPlatform()->GetKernel(kernel_name);
 }
 

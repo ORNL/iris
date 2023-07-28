@@ -12,6 +12,9 @@
 #include <cstring>
 #include <unistd.h>
 
+#include <string>
+using namespace std;
+
 namespace iris {
 namespace rt {
 
@@ -77,10 +80,10 @@ void Consistency::ResolveKernelWithPolymem(Task* task, Command* cmd, Mem* mem, K
   Device* owner = mem->Owner(off, size);
   if (!owner || mem->IsOwner(off, size, dev)) return;
 
-  const char *d2h_tn = "Internal-D2H";
-  Task* task_d2h = new Task(scheduler_->platform(), IRIS_TASK, d2h_tn);
+  string d2h_tn = "Internal-D2H:" + string(task->name());
+  Task* task_d2h = Task::Create(scheduler_->platform(), IRIS_TASK, d2h_tn);
   task_d2h->set_system();
-  Command* d2h = Command::CreateD2H(task, mem, off, size, (char*) mem->host_inter() + off);
+  Command* d2h = Command::CreateD2H(task_d2h, mem, off, size, (char*) mem->host_inter() + off);
   task_d2h->AddCommand(d2h);
   scheduler_->SubmitTaskDirect(task_d2h, owner);
   task_d2h->Wait();
@@ -104,9 +107,9 @@ void Consistency::ResolveKernelWithoutPolymem(Task* task, Command* cmd, Mem* mem
   if (!owner || dev == owner || mem->IsOwner(0, mem->size(), dev)) return;
   pthread_mutex_lock(&mutex_);
   //issue the first stage (d2h); get the data from the other device
-  const char* d2h_tn = "Internal-D2H";
-  Task* task_d2h = new Task(scheduler_->platform(), IRIS_TASK, d2h_tn);
-  Command* d2h = Command::CreateD2H(task, mem, 0, mem->size(), mem->host_inter());
+  string d2h_tn = "Internal-D2H:" + string(task->name());
+  Task* task_d2h = Task::Create(scheduler_->platform(), IRIS_TASK, d2h_tn);
+  Command* d2h = Command::CreateD2H(task_d2h, mem, 0, mem->size(), mem->host_inter());
   d2h->set_name(d2h_tn);
   task_d2h->set_name(d2h_tn);
   task_d2h->set_system();
@@ -119,9 +122,9 @@ void Consistency::ResolveKernelWithoutPolymem(Task* task, Command* cmd, Mem* mem
   task_d2h->Wait();
   if (context_shift) dev->ResetContext();
 
-  const char *h2d_tn = "Internal-H2D";
-  Task* task_h2d = new Task(scheduler_->platform(), IRIS_TASK, h2d_tn);
-  Command* h2d = Command::CreateH2D(task, mem, 0, mem->size(), mem->host_inter());
+  string h2d_tn = "Internal-H2D:" + string(task->name());
+  Task* task_h2d = Task::Create(scheduler_->platform(), IRIS_TASK, h2d_tn);
+  Command* h2d = Command::CreateH2D(task_h2d, mem, 0, mem->size(), mem->host_inter());
   h2d->set_name(h2d_tn);
   h2d->set_internal_memory_transfer();
   task_h2d->set_name(h2d_tn);
@@ -140,11 +143,17 @@ void Consistency::ResolveKernelWithoutPolymem(Task* task, Command* cmd, Mem* mem
 
 void Consistency::ResolveD2H(Task* task, Command* cmd) {
   Device* dev = task->dev();
+  BaseMem* dmem = (BaseMem *)cmd->mem();
+  if (dmem && dmem->GetMemHandlerType() == IRIS_DMEM) {
+    //we're using datamem so there is no need to execute this memory transfer --- just flush
+    dev->ExecuteMemFlushOut(cmd);
+    return;
+  }
   Mem* mem = (Mem *)cmd->mem();
   Device* owner = mem->Owner();
   if (!owner || dev == owner || mem->IsOwner(0, mem->size(), dev)) return;
-  const char *d2h_tn = "Internal-D2H";
-  Task* task_d2h = new Task(scheduler_->platform(), IRIS_TASK, d2h_tn);
+  string d2h_tn = "Internal-D2H:" + string(task->name());
+  Task* task_d2h = Task::Create(scheduler_->platform(), IRIS_TASK, d2h_tn);
   task_d2h->set_system();
   Command* d2h = Command::CreateD2H(task_d2h, mem, 0, mem->size(), mem->host_inter());
   task_d2h->AddCommand(d2h);

@@ -1,0 +1,128 @@
+{
+  "iris-graph": {
+    "inputs": [
+      "user-size",
+      "user-size-cb-saxpy",
+      "hostmem-saxpy-bufferZ-instance0",
+      "hostmem-saxpy-bufferX-instance0",
+      "hostmem-saxpy-bufferY-instance0",
+      "devicemem-saxpy-bufferZ-instance0",
+      "devicemem-saxpy-bufferX-instance0",
+      "devicemem-saxpy-bufferY-instance0",
+      "A",
+      "user-target-control",
+      "user-target-data"
+    ],
+    "graph": {
+      "tasks": [
+        {
+          "name": "transferto-saxpy-bufferZ-instance0",
+          "commands": [
+            {
+              "h2d": {
+                "name": "h2d-bufferZ-instance0",
+                "device_memory": "devicemem-saxpy-bufferZ-instance0",
+                "host_memory": "hostmem-saxpy-bufferZ-instance0",
+                "offset": "0",
+                "size": "user-size-cb-saxpy"
+              }
+            }
+          ],
+          "target": "user-target-control",
+          "depends": []
+        },
+        {
+          "name": "transferto-saxpy-bufferX-instance0",
+          "commands": [
+            {
+              "h2d": {
+                "name": "h2d-bufferX-instance0",
+                "device_memory": "devicemem-saxpy-bufferX-instance0",
+                "host_memory": "hostmem-saxpy-bufferX-instance0",
+                "offset": "0",
+                "size": "user-size-cb-saxpy"
+              }
+            }
+          ],
+          "target": "user-target-control",
+          "depends": []
+        },
+        {
+          "name": "transferto-saxpy-bufferY-instance0",
+          "commands": [
+            {
+              "h2d": {
+                "name": "h2d-bufferY-instance0",
+                "device_memory": "devicemem-saxpy-bufferY-instance0",
+                "host_memory": "hostmem-saxpy-bufferY-instance0",
+                "offset": "0",
+                "size": "user-size-cb-saxpy"
+              }
+            }
+          ],
+          "target": "user-target-control",
+          "depends": []
+        },
+        {
+          "name": "task0",
+          "commands": [
+            {
+              "kernel": {
+                "name": "saxpy",
+                "global_size": [
+                  "user-size"
+                ],
+                "parameters": [
+                  {
+                    "type": "memory_object",
+                    "value": "devicemem-saxpy-bufferZ-instance0",
+                    "permissions": "w"
+                  },
+                  {
+                    "type": "memory_object",
+                    "value": "devicemem-saxpy-bufferX-instance0",
+                    "permissions": "r"
+                  },
+                  {
+                    "type": "memory_object",
+                    "value": "devicemem-saxpy-bufferY-instance0",
+                    "permissions": "r"
+                  },
+                  {
+                    "type": "scalar",
+                    "value": "A",
+                    "data_type": "int"
+                  }
+                ]
+              }
+            }
+          ],
+          "depends": [
+            "transferto-saxpy-bufferZ-instance0",
+            "transferto-saxpy-bufferX-instance0",
+            "transferto-saxpy-bufferY-instance0"
+          ],
+          "target": "user-target-data"
+        },
+        {
+          "name": "transferfrom-saxpy-bufferZ-instance0",
+          "commands": [
+            {
+              "d2h": {
+                "name": "d2h-bufferZ-instance0",
+                "device_memory": "devicemem-saxpy-bufferZ-instance0",
+                "host_memory": "hostmem-saxpy-bufferZ-instance0",
+                "offset": "0",
+                "size": "user-size-cb-saxpy"
+              }
+            }
+          ],
+          "depends": [
+            "task0"
+          ],
+          "target": "user-target-control"
+        }
+      ]
+    }
+  }
+}

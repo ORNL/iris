@@ -91,9 +91,10 @@ public:
   char* params() { return params_; }
   void set_params_map(int *pmap);
   int *get_params_map() { return params_map_; }
-  char* type_name() { return type_name_; }
-  const char* name() { return name_; }
-  void set_name(const char* name) { name_ = name; }
+  const char* type_name() { return type_name_.c_str(); }
+  const char* name() { return name_.c_str(); }
+  void set_name(std::string name) { name_ = name; }
+  void set_name(const char* name) { name_ = std::string(name); }
   uint8_t reset_value() { return reset_value_; }
   double SetTime(double t, bool incr=true);
   double time() { return time_; }
@@ -139,8 +140,8 @@ private:
   iris_host_task func_;
   void* func_params_;
   char* params_;
-  char* type_name_;
-  const char* name_;
+  std::string type_name_;
+  std::string name_;
   int access_index_;
   bool internal_memory_transfer_;
   uint8_t reset_value_;

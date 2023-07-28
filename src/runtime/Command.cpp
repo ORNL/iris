@@ -44,8 +44,8 @@ void Command::Clear(bool init) {
   polymems_ = NULL;
   func_params_ = NULL;
   params_ = NULL;
-  type_name_ = NULL;
-  name_ = NULL;
+  type_name_ = std::string();
+  name_ = "";
   selector_kernel_params_ = NULL;
   time_ = 0.0;
   internal_memory_transfer_ = false;
@@ -57,7 +57,6 @@ void Command::Clear(bool init) {
   polymems_ = NULL;
   npolymems_ = 0;
   params_map_ = NULL;
-  name_ = NULL;
   off_[0] = 0; off_[1] = 0; off_[2] = 0;
   gws_[0] = 0; gws_[1] = 1; gws_[2] = 1;
   lws_[0] = 0; lws_[1] = 1; lws_[2] = 1;
@@ -76,25 +75,25 @@ void Command::Set(Task* task, int type) {
   task_ = task;
   type_ = type;
   switch(type){
-    case IRIS_CMD_INIT:        type_name_= const_cast<char*>("Init");    break;
-    case IRIS_CMD_KERNEL:      type_name_= const_cast<char*>("Kernel");  break;
-    case IRIS_CMD_MALLOC:      type_name_= const_cast<char*>("Malloc");  break;
-    case IRIS_CMD_H2D:         type_name_= const_cast<char*>("H2D");     break;
-    case IRIS_CMD_D2D:         type_name_= const_cast<char*>("D2D");     break;
-    case IRIS_CMD_H2BROADCAST: type_name_= const_cast<char*>("H2Broadcast");     break;
-    case IRIS_CMD_H2DNP:       type_name_= const_cast<char*>("H2DNP");   break;
-    case IRIS_CMD_D2H:         type_name_= const_cast<char*>("D2H");     break;
-    case IRIS_CMD_MEM_FLUSH:   type_name_= const_cast<char*>("MemFlush");     break;
+    case IRIS_CMD_INIT:        type_name_= std::string("Init");    break;
+    case IRIS_CMD_KERNEL:      type_name_= std::string("Kernel");  break;
+    case IRIS_CMD_MALLOC:      type_name_= std::string("Malloc");  break;
+    case IRIS_CMD_H2D:         type_name_= std::string("H2D");     break;
+    case IRIS_CMD_D2D:         type_name_= std::string("D2D");     break;
+    case IRIS_CMD_H2BROADCAST: type_name_= std::string("H2Broadcast");     break;
+    case IRIS_CMD_H2DNP:       type_name_= std::string("H2DNP");   break;
+    case IRIS_CMD_D2H:         type_name_= std::string("D2H");     break;
+    case IRIS_CMD_MEM_FLUSH:   type_name_= std::string("MemFlush");     break;
 #ifdef AUTO_PAR
 #ifdef AUTO_SHADOW
-    case IRIS_CMD_MEM_FLUSH_TO_SHADOW:   type_name_= const_cast<char*>("MemFlushToShadow");     break;
+    case IRIS_CMD_MEM_FLUSH_TO_SHADOW:   type_name_= std::string("MemFlushToShadow");     break;
 #endif
 #endif
-    case IRIS_CMD_MAP:         type_name_= const_cast<char*>("Map");     break;
-    case IRIS_CMD_RELEASE_MEM: type_name_= const_cast<char*>("Release"); break;
-    case IRIS_CMD_HOST:        type_name_= const_cast<char*>("Host");    break;
-    case IRIS_CMD_CUSTOM:      type_name_= const_cast<char*>("Custom");  break;
-    case IRIS_CMD_RESET_INPUT: type_name_= const_cast<char*>("ResetMem");  break;
+    case IRIS_CMD_MAP:         type_name_= std::string("Map");     break;
+    case IRIS_CMD_RELEASE_MEM: type_name_= std::string("Release"); break;
+    case IRIS_CMD_HOST:        type_name_= std::string("Host");    break;
+    case IRIS_CMD_CUSTOM:      type_name_= std::string("Custom");  break;
+    case IRIS_CMD_RESET_INPUT: type_name_= std::string("ResetMem");  break;
     default: _error("cmd type[0x%x]", type);
   }
   if (task->ncmds() == 0 && task->name()){ 
@@ -148,6 +147,7 @@ Command* Command::CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off,
   Command* cmd = Create(task, IRIS_CMD_KERNEL);
   cmd->kernel_ = kernel;
   cmd->dim_ = dim;
+  cmd->name_ = kernel->name();
   for (int i = 0; i < dim; i++) {
     cmd->off_[i] = off ? off[i] : 0ULL;
     cmd->gws_[i] = gws[i];
@@ -177,7 +177,7 @@ Command* Command::CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off,
       continue;
     }
     size_t mem_off = 0ULL;
-    BaseMem* mem = cmd->platform_->GetMem((iris_mem) param);
+    BaseMem* mem = cmd->platform_->GetMem(*((iris_mem*) param));
 #ifdef AUTO_PAR
 #ifdef AUTO_SHADOW
     if (mem->GetMemHandlerType() == IRIS_DMEM){
@@ -200,7 +200,7 @@ Command* Command::CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off,
     //_trace_debug("Param %d", param_info);
     if (!mem) mem = cmd->platform_->GetMem(param, &mem_off);
     if (!mem) {
-      _error("no mem[%p] task[%ld:%s]", param, task->uid(), task->name());
+      _error("no mem[%p] task[%ld:%s]", ((iris_mem*) param), task->uid(), task->name());
       continue;
     }
     if (mem->GetMemHandlerType() == IRIS_DMEM) kernel->add_dmem((DataMem *)mem, i, param_info);

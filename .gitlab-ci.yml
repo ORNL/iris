@@ -4,6 +4,8 @@ stages:
   - deploy_docs
   - test
   - dagger
+  - coverage
+  - deploy_coverage
 
 .excl_runner:
   tags: [excl]
@@ -28,24 +30,31 @@ build-job:
 docs-job:
   tags: [devdocs]
   stage: docs
-  needs: []
+  needs: [build-job]
   before_script:
     - source $CONDA_ROOT/etc/profile.d/conda.sh
     - conda env create --force -p ./envs -f docs/sphinx/environment.yml
     - conda activate ./envs
+    - source $IRIS_INSTALL_ROOT/setup.source
+    - pip install json-schema-for-humans
   script:
-    - cd docs/sphinx/source
+    - pushd docs/sphinx/source
     - python -m sphinx -T -E -b html -d _build/doctrees -D language=en . _build/html
+    - popd
+    - mkdir schema-docs
+    - generate-schema-doc --expand-buttons schema schema-docs
   artifacts:
     paths:
       - docs/sphinx/source/_build/html
+      - schema-docs
 
 .deploy_docs_common:
   tags: [devdocs]
   stage: deploy_docs
   needs: [docs-job]
   script:
-    rsync -a --delete docs/sphinx/source/_build/html/ ~/www/brisbane/iris
+    - rsync -a --delete docs/sphinx/source/_build/html/ ~/www/brisbane/iris
+    - rsync -a --delete schema-docs/ ~/www/brisbane/schema-docs
 
 deploy_docs-job:
   extends: .deploy_docs_common
@@ -57,45 +66,7 @@ deploy_docs_manual-job:
   extends: .deploy_docs_common
   when: manual
 
-test-job:
-  extends: [.excl_runner]
-  needs: []
-  stage: test
-  allow_failure: true
-  before_script:
-    - module load cmake
-    - module load gnu
-  script:
-    - echo "Installing iris to $CI_PROJECT_DIR/install"
-    - bash build-coverage.sh
-    - echo $CI_REPOSITORY_URL
-    - echo $CI_PROJECT_PATH
-    - source $IRIS_INSTALL_ROOT/setup.source
-    - cd tests
-    - mkdir build
-    - cd build
-    - cmake ..
-    - make --ignore-errors
-    - make test
-  after_script:
-    - module load cmake
-    - module load gnu
-    - module load python
-    - python3 -m venv .venv
-    - source .venv/bin/activate
-    - pip install gcovr==5.0 # There seems to be a bug for newer versions of gcovr.
-    - gcovr --xml-pretty --exclude-unreachable-branches --print-summary -o coverage.xml --gcov-ignore-parse-errors
-  coverage: /^\s*lines:\s*\d+.\d+\%/
-  artifacts:
-    when: always
-    paths:
-      - tests/build/Testing/Temporary/LastTest.log
-    reports:
-      coverage_report:
-        coverage_format: cobertura
-        path: coverage.xml
-
-test-job-zenith:
+.test-job:
   tags: [zenith]
   needs: []
   stage: test
@@ -108,12 +79,184 @@ test-job-zenith:
     - echo $CI_REPOSITORY_URL
     - echo $CI_PROJECT_PATH
     - source $IRIS_INSTALL_ROOT/setup.source
+    - echo $PATH
+    - echo $LD_LIBRARY_PATH
+    - echo $HIP_ROOT
     - cd tests
     - mkdir build
     - cd build
-    - cmake ..
+    - cmake .. -DIRIS=$IRIS
     - make --ignore-errors
-    - make test
+    - echo IRIS_ARCHS is $IRIS_ARCHS
+    - ctest --output-junit testRes.xml
+    - cd ../..
+    - python3 -m venv .venv-schema
+    - source .venv-schema/bin/activate
+    - pip install jsoncomment jsonschema
+    - bash .gitlab-ci-scripts/schema_check.sh
+  after_script:
+    - python3 -m venv .venv-gcovr
+    - source .venv-gcovr/bin/activate
+    - pip install gcovr
+    - gcovr --xml-pretty --exclude-unreachable-branches --print-summary -o coverage.xml --gcov-ignore-parse-errors --json ${CI_JOB_NAME}-coverage.json --html-details coverage.html
+  coverage: /^\s*lines:\s*\d+.\d+\%/
+  artifacts:
+    name: "$CI_JOB_NAME"
+    when: always
+    paths:
+      - tests/build/Testing/Temporary/LastTest.log
+      - tests/build/testRes.xml
+      - ${CI_JOB_NAME}-coverage.json
+      - coverage.xml
+      - coverage*.html
+      - coverage.css
+    reports:
+      junit: tests/build/testRes.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+
+test-job-zenith-all:
+  extends: .test-job
+  before_script:
+    - source /auto/software/iris/setup_system.source
+    - export IRIS_ARCHS=cuda,hip,openmp,opencl
+    - echo "Running All version of the tests..."
+
+test-job-zenith-cuda:
+  extends: .test-job
+  before_script:
+    - source /auto/software/iris/setup_system.source
+    - export IRIS_ARCHS=cuda
+    - echo "Running CUDA version of the tests..."
+
+test-job-zenith-hip:
+  extends: .test-job
+  before_script:
+    - source /auto/software/iris/setup_system.source
+    - export IRIS_ARCHS=hip
+    - echo "Running CUDA version of the tests..."
+
+test-job-zenith-openmp:
+  extends: .test-job
+  before_script:
+    - source /auto/software/iris/setup_system.source
+    - export IRIS_ARCHS=openmp
+    - echo "Running OpenMP version of the tests..."
+
+test-job-zenith-opencl:
+  extends: .test-job
+  before_script:
+    - source /auto/software/iris/setup_system.source
+    - export IRIS_ARCHS=opencl
+    - echo "Running OpenCL version of the tests..."
+
+test-job-explorer:
+  extends: .test-job
+  tags: [explorer]
+
+# test-job-leconte:
+#   extends: .test-job
+#   tags: [leconte]
+
+test-backends-29:
+  tags: [zenith]
+  needs: []
+  stage: test
+  allow_failure: true
+  before_script:
+    - source /auto/software/iris/setup_system.source
+  script:
+    - echo "Installing iris to $IRIS_INSTALL_ROOT"
+    - bash build-coverage.sh
+    - echo $CI_REPOSITORY_URL
+    - echo $CI_PROJECT_PATH
+    - source $IRIS_INSTALL_ROOT/setup.source
+    - echo $PATH
+    - echo $LD_LIBRARY_PATH
+    - echo $HIP_ROOT
+    - cd tests
+    - echo "Test backends for test 29"
+    - cd 29_data_mem
+    - bash test_backends.sh
+  after_script:
+    - python3 -m venv .venv
+    - source .venv/bin/activate
+    - pip install gcovr
+    - gcovr --xml-pretty --exclude-unreachable-branches --print-summary -o coverage.xml --gcov-ignore-parse-errors --json ${CI_JOB_NAME}-coverage.json --html-details coverage.html
+  coverage: /^\s*lines:\s*\d+.\d+\%/
+  artifacts:
+    name: "$CI_JOB_NAME"
+    when: always
+    paths:
+      - ${CI_JOB_NAME}-coverage.json
+      - coverage.xml
+      - coverage*.html
+      - coverage.css
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+
+test-backends-34:
+  tags: [zenith]
+  needs: []
+  stage: test
+  allow_failure: true
+  before_script:
+    - source /auto/software/iris/setup_system.source
+  script:
+    - echo "Installing iris to $IRIS_INSTALL_ROOT"
+    - bash build-coverage.sh
+    - echo $CI_REPOSITORY_URL
+    - echo $CI_PROJECT_PATH
+    - source $IRIS_INSTALL_ROOT/setup.source
+    - echo $PATH
+    - echo $LD_LIBRARY_PATH
+    - echo $HIP_ROOT
+    - cd tests
+    - echo "Test backends for test 34"
+    - cd 34_set_mem
+    - bash test_backends.sh
+  after_script:
+    - python3 -m venv .venv
+    - source .venv/bin/activate
+    - pip install gcovr
+    - gcovr --xml-pretty --exclude-unreachable-branches --print-summary -o coverage.xml --gcov-ignore-parse-errors --json ${CI_JOB_NAME}-coverage.json --html-details coverage.html
+  coverage: /^\s*lines:\s*\d+.\d+\%/
+  artifacts:
+    name: "$CI_JOB_NAME"
+    when: always
+    paths:
+      - ${CI_JOB_NAME}-coverage.json
+      - coverage.xml
+      - coverage*.html
+      - coverage.css
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+
+test-backends-37:
+  tags: [zenith]
+  needs: []
+  stage: test
+  allow_failure: true
+  before_script:
+    - source /auto/software/iris/setup_system.source
+  script:
+    - echo "Installing iris to $IRIS_INSTALL_ROOT"
+    - bash build-coverage.sh
+    - echo $CI_REPOSITORY_URL
+    - echo $CI_PROJECT_PATH
+    - source $IRIS_INSTALL_ROOT/setup.source
+    - echo $PATH
+    - echo $LD_LIBRARY_PATH
+    - echo $HIP_ROOT
+    - cd tests
+    - echo "Test backends for test 37"
+    - cd 37_opencl_icd
+    - bash test_backends.sh
   after_script:
     - python3 -m venv .venv
     - source .venv/bin/activate
@@ -123,7 +266,6 @@ test-job-zenith:
   artifacts:
     when: always
     paths:
-      - tests/build/Testing/Temporary/LastTest.log
     reports:
       coverage_report:
         coverage_format: cobertura
@@ -164,3 +306,56 @@ dagger-zenith-test-correctness:
     - echo "Errors $(wc -l errors.txt)"
     - cat errors.txt
     - if [ -s errors.txt ]; then exit 1; fi
+
+coverage-collect:
+  tags: [zenith]
+  stage: coverage
+  needs:
+    - test-job-zenith-all
+    - test-job-zenith-cuda
+    - test-job-zenith-hip
+    - test-job-zenith-openmp
+    - test-job-zenith-opencl
+    - test-job-explorer
+    - test-backends-29
+    - test-backends-34
+  before_script:
+    - source /auto/software/iris/setup_system.source
+  script:
+    - echo "Installing iris to $IRIS_INSTALL_ROOT"
+    - bash build-coverage.sh
+    - source $IRIS_INSTALL_ROOT/setup.source
+    - python3 -m venv .venv
+    - source .venv/bin/activate
+    - pip install gcovr
+    - gcovr --xml-pretty --exclude-unreachable-branches --print-summary -o coverage.xml --gcov-ignore-parse-errors --json ${CI_JOB_NAME}-coverage.json --html-details coverage.html -a '*coverage.json'
+  coverage: /^\s*lines:\s*\d+.\d+\%/
+  artifacts:
+    name: "$CI_JOB_NAME"
+    when: always
+    paths:
+      - ${CI_JOB_NAME}-coverage.json
+      - coverage.xml
+      - coverage*.html
+      - coverage.css
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+
+.deploy_coverage_common:
+  tags: [devdocs]
+  stage: deploy_coverage
+  needs: [coverage-collect]
+  script:
+    rsync -a --delete *.html *.css ~/www/brisbane/iris-coverage
+
+deploy_coverage-job:
+  extends: .deploy_coverage_common
+  only:
+    refs:
+      - ornl_main
+
+deploy_coverage_manual-job:
+  extends: .deploy_coverage_common
+  when: manual

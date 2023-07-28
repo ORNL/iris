@@ -23,14 +23,9 @@ int iris_error_count() {
   return platform->NumErrors();
 }
 
-void iris_task_set_retain_flag(bool flag, iris_task task) {
+void iris_task_retain(iris_task task, bool flag) {
   Platform *platform = Platform::GetPlatform(); 
   platform->set_release_task_flag(!flag, task);
-}
-
-void iris_set_release_task_flag(bool flag) {
-  Platform *platform = Platform::GetPlatform(); 
-  platform->set_release_task_flag(flag);
 }
 
 int iris_finalize() {
@@ -118,12 +113,12 @@ int iris_task_cmd_reset_mem(iris_task task, iris_mem mem, uint8_t reset) {
 }
 
 int iris_task_get_metadata(iris_task brs_task, int index) {
-    Task* task = brs_task->class_obj;
+    Task *task = Platform::GetPlatform()->get_task_object(brs_task);
     return task->metadata(index);
 }
 
 int iris_task_set_metadata(iris_task brs_task, int index, int metadata) {
-    Task* task = brs_task->class_obj;
+    Task *task = Platform::GetPlatform()->get_task_object(brs_task);
     task->set_metadata(index, metadata);
     return IRIS_SUCCESS;
 }
@@ -194,7 +189,7 @@ int iris_task_kernel_selector(iris_task task, iris_selector_kernel func, void* p
 }
 int iris_task_kernel_launch_disabled(iris_task brs_task, int flag)
 {
-    Task *task = brs_task->class_obj;
+    Task *task = Platform::GetPlatform()->get_task_object(brs_task);
     task->set_kernel_launch_disabled((bool)flag);
     return IRIS_SUCCESS;
 }   
@@ -244,34 +239,34 @@ int iris_task_release_mem(iris_task task, iris_mem mem) {
 }
 
 void iris_task_set_name(iris_task brs_task, const char *name) {
-   Task *task = brs_task->class_obj;
+   Task *task = Platform::GetPlatform()->get_task_object(brs_task);
    task->set_name(name);
 }
 
 char *iris_kernel_get_name(iris_kernel brs_kernel) {
-    Kernel *k= brs_kernel->class_obj;
+    Kernel *k= Platform::GetPlatform()->get_kernel_object(brs_kernel);
     return k->name();
 }
 
 int iris_task_disable_consistency(iris_task brs_task) {
-    Task *task = brs_task->class_obj;
+    Task *task = Platform::GetPlatform()->get_task_object(brs_task);
     task->set_disable_consistency(true);
     return IRIS_SUCCESS;
 }
 
 char *iris_task_get_name(iris_task brs_task) {
-    Task *task = brs_task->class_obj;
-    return task->name();
+    Task *task = Platform::GetPlatform()->get_task_object(brs_task);
+    return const_cast<char*>(task->name());
 }
 
 int iris_task_get_dependency_count(iris_task brs_task) {
-    Task *task = brs_task->class_obj;
+    Task *task = Platform::GetPlatform()->get_task_object(brs_task);
     return task->ndepends();
 }
 void iris_task_get_dependencies(iris_task brs_task, iris_task *tasks) {
-    Task *task = brs_task->class_obj;
+    Task *task = Platform::GetPlatform()->get_task_object(brs_task);
     for(int i=0; i<task->ndepends(); i++) {
-        tasks[i] = task->depend(i)->struct_obj();
+        tasks[i] = *(task->depend(i)->struct_obj());
     }
 }
 int iris_cmd_kernel_get_nargs(void *cmd_p) {
@@ -292,7 +287,7 @@ void  *iris_cmd_kernel_get_arg_value(void *cmd_p, int index) {
 }
 iris_mem iris_cmd_kernel_get_arg_mem(void *cmd_p, int index) {
     Command *cmd = (Command *)cmd_p;
-    return cmd->kernel_arg(index)->mem->struct_obj();
+    return *(cmd->kernel_arg(index)->mem->struct_obj());
 }
 size_t iris_cmd_kernel_get_arg_mem_off(void *cmd_p, int index) {
     Command *cmd = (Command *)cmd_p;
@@ -310,48 +305,54 @@ int    iris_cmd_kernel_get_arg_mode(void *cmd_p, int index) {
     Command *cmd = (Command *)cmd_p;
     return cmd->kernel_arg(index)->mode;
 }
+int iris_task_kernel_dmem_fetch_order(iris_task brs_task, int *order) {
+    Task *task = Platform::GetPlatform()->get_task_object(brs_task);
+    if (task->cmd_kernel() && task->cmd_kernel()->kernel()) 
+        task->cmd_kernel()->kernel()->set_order(order);
+    return IRIS_SUCCESS;
+}
 iris_kernel iris_task_get_kernel(iris_task brs_task)
 {
-    Task *task = brs_task->class_obj;
-    return task->cmd_kernel()->kernel()->struct_obj();
+    Task *task = Platform::GetPlatform()->get_task_object(brs_task);
+    return *(task->cmd_kernel()->kernel()->struct_obj());
 }
 int iris_task_is_cmd_kernel_exists(iris_task brs_task)
 {
-    Task *task = brs_task->class_obj;
+    Task *task = Platform::GetPlatform()->get_task_object(brs_task);
     return task->cmd_kernel() != NULL;
 }
 
 void *iris_task_get_cmd_kernel(iris_task brs_task)
 {
-    Task *task = brs_task->class_obj;
+    Task *task = Platform::GetPlatform()->get_task_object(brs_task);
     return task->cmd_kernel();
 }
 
 unsigned long iris_kernel_get_uid(iris_kernel brs_kernel)
 {
-  return brs_kernel->class_obj->uid();
+  return brs_kernel.uid;
 }
 unsigned long iris_task_get_uid(iris_task brs_task) {
-  return brs_task->class_obj->uid();
+  return brs_task.uid;
 }
 
 int iris_mem_create(size_t size, iris_mem* mem) {
   return Platform::GetPlatform()->MemCreate(size, mem);
 }
 size_t iris_mem_get_size(iris_mem mem) {
-  return mem->class_obj->size();
+  return Platform::GetPlatform()->get_mem_object(mem)->size();
 }
 
 int iris_mem_get_type(iris_mem mem) {
-  return mem->class_obj->GetMemHandlerType();
+  return Platform::GetPlatform()->get_mem_object(mem)->GetMemHandlerType();
 }
 
 int iris_mem_get_uid(iris_mem mem) {
-  return mem->class_obj->uid();
+  return Platform::GetPlatform()->get_mem_object(mem)->uid();
 }
 
 int iris_mem_is_reset(iris_mem mem) {
-  return mem->class_obj->is_reset();
+  return Platform::GetPlatform()->get_mem_object(mem)->is_reset();
 }
 
 int iris_data_mem_init_reset(iris_mem mem, int reset) {
@@ -364,7 +365,7 @@ int iris_data_mem_create(iris_mem *mem, void *host, size_t size) {
   return Platform::GetPlatform()->DataMemCreate(mem, host, size);
 }
 int iris_data_mem_clear(iris_mem brs_mem) {
-  DataMem* mem = (DataMem *)brs_mem->class_obj;
+  DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
   mem->clear();
   return IRIS_SUCCESS;
 }
@@ -380,12 +381,20 @@ int iris_data_mem_pin(iris_mem mem) {
 int iris_data_mem_create_region(iris_mem *mem, iris_mem root_mem, int region) {
   return Platform::GetPlatform()->DataMemCreate(mem, root_mem, region);
 }
+int iris_data_mem_n_regions(iris_mem brs_mem) {
+  DataMem *mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  return mem->get_n_regions();
+}
+unsigned long iris_data_mem_get_region_uid(iris_mem brs_mem, int region) {
+  DataMem *mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  return mem->get_region(region)->uid();
+}
 int iris_data_mem_enable_outer_dim_regions(iris_mem mem) {
   return Platform::GetPlatform()->DataMemEnableOuterDimRegions(mem);
 }
 iris_mem iris_get_dmem_for_region(iris_mem brs_mem) {
-    DataMemRegion *obj = (DataMemRegion*)brs_mem->class_obj;
-    return obj->get_dmem()->struct_obj();
+    DataMemRegion *obj = (DataMemRegion*)Platform::GetPlatform()->get_mem_object(brs_mem);
+    return *(obj->get_dmem()->struct_obj());
 }
 
 int iris_mem_arch(iris_mem mem, int device, void** arch) {
@@ -443,14 +452,19 @@ int iris_graph_create_json(const char* json, void** params, iris_graph* graph) {
 int iris_graph_task(iris_graph graph, iris_task task, int device, const char* opt) {
   return Platform::GetPlatform()->GraphTask(graph, task, device, opt);
 }
+int iris_graph_tasks_order(iris_graph brs_graph, int *order) {
+    Graph *graph = Platform::GetPlatform()->get_graph_object(brs_graph);
+    graph->set_order(order);
+    return IRIS_SUCCESS;
+}
 
 int iris_graph_reset_memories(iris_graph brs_graph) {
-  Graph* graph = brs_graph->class_obj;
+  Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
   graph->ResetMemories();
   return IRIS_SUCCESS;
 }
-int iris_graph_retain(iris_graph graph) {
-  return Platform::GetPlatform()->GraphRetain(graph);
+int iris_graph_retain(iris_graph graph, bool flag) {
+  return Platform::GetPlatform()->GraphRetain(graph, flag);
 }
 
 int iris_graph_release(iris_graph graph) {
@@ -525,7 +539,7 @@ int iris_timer_now(double* time) {
 
 int iris_graph_enable_mem_profiling(iris_graph brs_graph)
 {
-    Graph* graph = brs_graph->class_obj;
+    Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
     graph->enable_mem_profiling();
     return IRIS_SUCCESS;
 }
@@ -538,7 +552,7 @@ int iris_graph_tasks_count(iris_graph graph)
 }
 int iris_get_graph_max_theoretical_parallelism(iris_graph brs_graph)
 {
-    Graph* graph = brs_graph->class_obj;
+    Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
     shared_ptr<GraphMetadata> gm = graph->get_metadata();
     gm->get_max_parallelism();
     return IRIS_SUCCESS;
@@ -546,40 +560,40 @@ int iris_get_graph_max_theoretical_parallelism(iris_graph brs_graph)
 
 int iris_get_graph_dependency_adj_matrix(iris_graph brs_graph, int8_t *dep_matrix)
 {
-    Graph* graph = brs_graph->class_obj;
+    Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
     shared_ptr<GraphMetadata> gm = graph->get_metadata();
     gm->get_dependency_matrix(dep_matrix, true);
     return IRIS_SUCCESS;
 }
 int iris_get_graph_dependency_adj_list(iris_graph brs_graph, int8_t *dep_matrix)
 {
-    Graph* graph = brs_graph->class_obj;
+    Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
     shared_ptr<GraphMetadata> gm = graph->get_metadata();
     gm->get_dependency_matrix(dep_matrix, false);
     return IRIS_SUCCESS;
 }
 size_t iris_get_graph_3d_comm_data_size(iris_graph brs_graph)
 {
-    Graph* graph = brs_graph->class_obj;
+    Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
     shared_ptr<GraphMetadata> gm = graph->get_metadata();
     return gm->comm_task_data_size();
 }
 void *iris_get_graph_3d_comm_data_ptr(iris_graph brs_graph)
 {
-    Graph* graph = brs_graph->class_obj;
+    Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
     shared_ptr<GraphMetadata> gm = graph->get_metadata();
     CommData3D *comm_data = gm->comm_task_data();
     return comm_data;
 }
 size_t iris_get_graph_tasks_execution_schedule_count(iris_graph brs_graph)
 {
-    Graph* graph = brs_graph->class_obj;
+    Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
     shared_ptr<GraphMetadata> gm = graph->get_metadata();
     return gm->task_schedule_count();
 }
 void *iris_get_graph_tasks_execution_schedule(iris_graph brs_graph, int kernel_profile)
 {
-    Graph* graph = brs_graph->class_obj;
+    Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
     shared_ptr<GraphMetadata> gm = graph->get_metadata();
     gm->fetch_task_execution_schedules(kernel_profile);
     TaskProfile *tasks_data = gm->task_schedule_data();
@@ -587,13 +601,13 @@ void *iris_get_graph_tasks_execution_schedule(iris_graph brs_graph, int kernel_p
 }
 size_t iris_get_graph_dataobjects_execution_schedule_count(iris_graph brs_graph)
 {
-    Graph* graph = brs_graph->class_obj;
+    Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
     shared_ptr<GraphMetadata> gm = graph->get_metadata();
     return gm->dataobject_schedule_count();
 }
 void *iris_get_graph_dataobjects_execution_schedule(iris_graph brs_graph)
 {
-    Graph* graph = brs_graph->class_obj;
+    Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
     shared_ptr<GraphMetadata> gm = graph->get_metadata();
     gm->fetch_dataobject_execution_schedules();
     DataObjectProfile *mems_data = gm->dataobject_schedule_data();
@@ -601,41 +615,41 @@ void *iris_get_graph_dataobjects_execution_schedule(iris_graph brs_graph)
 }
 size_t iris_count_mems(iris_graph brs_graph)
 {
-    Graph* graph = brs_graph->class_obj;
+    Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
     shared_ptr<GraphMetadata> gm = graph->get_metadata();
     return gm->count_mems();
 }
 int iris_get_graph_3d_comm_time(iris_graph brs_graph, double *comm_time, int *mem_ids, int iterations, int pin_memory_flag)
 {
-    Graph* graph = brs_graph->class_obj;
+    Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
     shared_ptr<GraphMetadata> gm = graph->get_metadata();
     gm->get_3d_comm_time(comm_time, mem_ids, iterations, pin_memory_flag);
     return IRIS_SUCCESS;
 }
 int iris_get_graph_3d_comm_data(iris_graph brs_graph, void *comm_data)
 {
-    Graph* graph = brs_graph->class_obj;
+    Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
     shared_ptr<GraphMetadata> gm = graph->get_metadata();
     gm->get_3d_comm_data();
     return IRIS_SUCCESS;
 }
 int iris_get_graph_2d_comm_adj_matrix(iris_graph brs_graph, size_t *size_data)
 {
-    Graph* graph = brs_graph->class_obj;
+    Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
     shared_ptr<GraphMetadata> gm = graph->get_metadata();
     gm->get_2d_comm_adj_matrix(size_data);
     return IRIS_SUCCESS;
 }
 int iris_calibrate_compute_cost_adj_matrix_only_for_types(iris_graph brs_graph, double *comp_data)
 {
-    Graph* graph = brs_graph->class_obj;
+    Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
     shared_ptr<GraphMetadata> gm = graph->get_metadata();
     gm->calibrate_compute_cost_adj_matrix(comp_data, true);
     return IRIS_SUCCESS;
 }
 int iris_calibrate_compute_cost_adj_matrix(iris_graph brs_graph, double *comp_data)
 {
-    Graph* graph = brs_graph->class_obj;
+    Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
     shared_ptr<GraphMetadata> gm = graph->get_metadata();
     gm->calibrate_compute_cost_adj_matrix(comp_data);
     return IRIS_SUCCESS;

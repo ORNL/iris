@@ -34,7 +34,7 @@ int main(int argc, char** argv) {
   iris_task task0;
   iris_task_create(&task0);
   iris_task_h2d_full(task0, mem_X, X);
-  void* task0_params[2] = { mem_Z, mem_X };
+  void* task0_params[2] = { &mem_Z, &mem_X };
   int task0_params_info[2] = { iris_w, iris_r };
   iris_task_kernel(task0, "kernel0", 1, NULL, &SIZE, NULL, 2, task0_params, task0_params_info);
   iris_task_submit(task0, iris_gpu, NULL, 1);
@@ -42,7 +42,7 @@ int main(int argc, char** argv) {
   iris_task task1;
   iris_task_create(&task1);
   iris_task_h2d_full(task1, mem_Y, Y);
-  void* task1_params[2] = { mem_Z, mem_Y };
+  void* task1_params[2] = { &mem_Z, &mem_Y };
   int task1_params_info[2] = { iris_rw, iris_r };
   iris_task_kernel(task1, "kernel1", 1, NULL, &SIZE, NULL, 2, task1_params, task1_params_info);
   iris_task_d2h_full(task1, mem_Z, Z);

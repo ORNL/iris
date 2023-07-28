@@ -1,4 +1,3 @@
-#include "Loader.h"
 #include "Debug.h"
 #ifndef __APPLE__
 #include <link.h>
@@ -6,6 +5,17 @@
 #include <dlfcn.h>
 #include <stdlib.h>
 
+#ifdef DISABLE_DYNAMIC_LINKING
+#define ENABLE_STATIC_LINKING
+#endif
+#include "Loader.h"
+
+namespace CLinkage {
+    extern "C" {
+        void iris_set_kernel_ptr_with_obj(void *obj, __iris_kernel_ptr ptr);
+        c_string_array iris_get_kernel_names();
+    }
+}
 namespace iris {
 namespace rt {
 
@@ -28,6 +38,7 @@ int Loader::Load() {
 }
 
 int Loader::LoadExtHandle(const char *libname) {
+#ifndef DISABLE_DYNAMIC_LINKING
   handle_ext_ = dlopen(libname, RTLD_GLOBAL | RTLD_NOW);
   if (handle_ext_) {
 #if 0
@@ -39,10 +50,14 @@ int Loader::LoadExtHandle(const char *libname) {
     _trace("%s", dlerror());
     return IRIS_ERROR;
   }
+#else
+  _info("Dynamic linking is disabled. Skipped loading of library:%s\n", library());
+#endif
   return IRIS_SUCCESS;
 }
 
 int Loader::LoadHandle() {
+#ifndef DISABLE_DYNAMIC_LINKING
   if (library_precheck() && dlsym(RTLD_DEFAULT, library_precheck())) {
     handle_ = RTLD_DEFAULT;
     return IRIS_SUCCESS;
@@ -58,6 +73,9 @@ int Loader::LoadHandle() {
     _trace("%s", dlerror());
     return IRIS_ERROR;
   }
+#else
+  _info("Dynamic linking is disabled. Skipped loading of library:%s\n", library());
+#endif
   return IRIS_SUCCESS;
 }
 

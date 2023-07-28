@@ -3,12 +3,13 @@
 #include <iris/rt/Device.h>
 #include <iris/rt/Kernel.h>
 #include <iris/rt/Task.h>
+#include <iris/rt/Platform.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 int my_kernel_selector(iris_task task, void* params, char* kernel_name) {
   size_t threshold = *((size_t*) params);
-  iris::rt::Task* t = task->class_obj;
+  iris::rt::Task* t = iris::rt::Platform::GetPlatform()->get_task_object(task);
   iris::rt::Device* d = t->dev();
   iris::rt::Command* c = t->cmd_kernel();
   iris::rt::Kernel* k = c->kernel();
@@ -24,6 +25,19 @@ int my_kernel_selector(iris_task task, void* params, char* kernel_name) {
 
 int main(int argc, char** argv) {
   iris_init(&argc, &argv, 1);
+
+  int ndevs;
+  bool is_opencl_device=false;
+  iris_device_count(&ndevs);
+  for (int d = 0; d < ndevs; d++){
+    int backend_worker;
+    iris_device_info(d, iris_backend, &backend_worker, nullptr);
+    if (backend_worker == iris_opencl) is_opencl_device = true;
+  }
+  if(!(is_opencl_device)){
+    printf("Skipping this test because it is only designed to test on OpenCL backends.\n");
+    return 0;
+  }
 
   size_t SIZE;
   int TARGET;
@@ -50,7 +64,7 @@ int main(int argc, char** argv) {
   iris_task task;
   iris_task_create(&task);
   iris_task_h2d_full(task, mem_A, A);
-  void* params[1] = { mem_A };
+  void* params[1] = { &mem_A };
   int params_info[1] = { iris_rw };
   size_t threshold = 16;
   iris_task_kernel(task, "add1", 1, NULL, &SIZE, NULL, 1, params, params_info);
@@ -69,6 +83,7 @@ int main(int argc, char** argv) {
 
   free(A);
 
+  printf("IRIS error count:%d\n", iris_error_count());
   return iris_error_count();
 }
 
