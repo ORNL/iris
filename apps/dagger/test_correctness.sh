@@ -8,9 +8,9 @@ elif [ "$SYSTEM" = "equinox" ] ; then
 elif [ "$SYSTEM" = "explorer" ] ; then
   rm -f *.csv ; make dagger_test kernel.hip
 elif [ "$SYSTEM" = "radeon" ] ; then
-  rm -f *.csv ; make dagger_test kernel.hip
+  rm -f *.csv ; make dagger_test kernel.hip;
 elif [ "$SYSTEM" = "zenith" ] ; then
-  rm -f *.csv ; make dagger_test kernel.hip kernel.ptx
+  rm -f *.csv ; make dagger_test kernel.hip kernel.ptx kernel.openmp.so;
 else
   echo "Unknown system." && exit
 fi
@@ -26,7 +26,6 @@ fi
 #ensure libiris.so is in the shared library path
   echo "ADDING $HOME/.local/lib64 to LD_LIBRARY_PATH"
 export LD_LIBRARY_PATH=$HOME/.local/lib64:$HOME/.local/lib:$LD_LIBRARY_PATH
-
 echo "*******************************************************************"
 echo "*                          Linear 50                              *"
 echo "*******************************************************************"

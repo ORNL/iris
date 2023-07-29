@@ -42,6 +42,9 @@ void Command::Clear(bool init) {
   kernel_args_ = NULL;
   polymems_ = NULL;
   func_params_ = NULL;
+  func_ = NULL;
+  py_func_ = NULL;
+  func_params_id_ = 0;
   params_ = NULL;
   type_name_ = std::string();
   name_ = "";
@@ -387,6 +390,13 @@ Command* Command::CreateMapFrom(Task* task, void* host) {
 Command* Command::CreateReleaseMem(Task* task, Mem* mem) {
   Command* cmd = Create(task, IRIS_CMD_RELEASE_MEM);
   cmd->mem_ = mem;
+  return cmd;
+}
+
+Command* Command::CreateHost(Task* task, iris_host_python_task func, int64_t params_id) {
+  Command* cmd = Create(task, IRIS_CMD_HOST);
+  cmd->py_func_ = func;
+  cmd->func_params_id_ = params_id;
   return cmd;
 }
 

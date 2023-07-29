@@ -17,9 +17,10 @@
 double t0, t1;
 
 void ShowUsage(){
-  printf("This runner will run the generated DAG from DAGGER on IRIS. It can be immediately after DAGGER has been run and accepts the same arguments as those supplied to DAGGER.\nThe required additional arguments include:\n\tthe size of the memory buffers to use in this IRIS test (\"--size\"),\n\tthe number of repeats (\"--repeats\"),\n\tand the location to log the timing results (\"--logfile\")");
+  printf("This runner will run the generated DAG from DAGGER on IRIS. It can be immediately after DAGGER has been run and accepts the same arguments as those supplied to DAGGER.\nThe required additional arguments include:\n\tthe size of the memory buffers to use in this IRIS test (\"--size\"),\n\tthe number of repeats (\"--repeats\"),\n\tand the location to log the timing results (\"--logfile\")\n");
   printf("For instance:\n");
   printf("./dagger_runner\t --kernels=\"process,ijk\"\n");
+  printf("\t\t --graph=\"linear10.json\"\n");
   printf("\t\t --buffers-per-kernel=\"process: rw,ijk: r r w rw\"\n");
   printf("\t\t --duplicates=\"2\"\n");
   printf("\t\t --concurrent-kernels=**UNSUPPORTED**\"process:2,ijk:4\"\n");
@@ -29,10 +30,10 @@ void ShowUsage(){
   printf("\t\t --repeats=\"100\"\n");
   printf("\t\t --logfile=\"log.csv\"\n");
   printf("\t\t --scheduling-policy=\"roundrobin\"\t all options include (roundrobin, depend, profile, random, any, all, custom) or any integer [0-9] denoting the device id to run all tasks on\n");
-  printf("\t\t --num-tasks=\"6\"\t (optional) only used for throughput computation\n");
-  printf("\t\t --sandwich\t\t (optional) determines if there are the beginning and terminating nodes\n");
-
-  //printf("\t\t --kernel-split=\"70,30\"\n");//optional
+  //printf("\t\t --num-tasks=\"6\"\t (optional) only used for throughput computation\n");
+  //printf("\t\t --sandwich\t\t (optional) determines if there are the beginning and terminating nodes\n");
+  //printf("\t\t --kernel-split=\"70,30\"\t (optional) list of probabilities of each kernel being used\n");
+  //printf("\t\t --num-memory-objects=\"5\"\t (optional) the total number of memory objects to be passed around in the DAG between tasks (allows greater task interactions).\n");
 }
 
 int main(int argc, char** argv) {
@@ -41,17 +42,18 @@ int main(int argc, char** argv) {
   int REPEATS;
   char* POLICY;
   char* LOGFILE = NULL;
-  FILE* LF_HANDLE;
+  char* GRAPHFILE = NULL;
   char LOG_BUFFER[32];
   LOG_BUFFER[0] = '\0';
-  double *A, *B;
   int retcode;
-  int task_target = -1;//this is set by setting the scheduling-policy e.g. --scheduling-policy="roundrobin"
+  int task_target = -1;//this is set in the scheduling-policy e.g. --scheduling-policy="roundrobin"
   int memory_task_target = iris_pending;
   int duplicates = 0;
+  bool use_data_memory = false;
 
   std::map<std::string,bool> required_arguments_set = {
     {"kernels", false},
+    {"graph",false},
     {"buffers-per-kernel", false},
     {"duplicates", false},
     //{"concurrent-kernels", false},
@@ -83,10 +85,10 @@ int main(int argc, char** argv) {
   std::vector<kernel_parameters> kernels;
   int num_kernels = 0;
   int num_tasks = 0;
-
   int opt_char;
   int option_index;
   static struct option long_options[] = {
+    {"graph", required_argument, 0, 'g'},
     {"kernels", required_argument, 0, 'k'},
     {"buffers-per-kernel", required_argument, 0, 'b'},
     {"duplicates", required_argument, 0, 'z'},
@@ -104,10 +106,19 @@ int main(int argc, char** argv) {
     {"min-width", required_argument, 0, 'i'},
     {"max-width", required_argument, 0, 'x'},
     {"sandwich", no_argument, 0, 'y'},
+    {"num-memory-objects",required_argument, 0,'a'}
   };
 
   while((opt_char = getopt_long(argc, argv, "s=", long_options, &option_index)) != -1) {
     switch(opt_char){
+
+      case (int)'g':{//graph_file
+          GRAPHFILE = optarg;
+          if (GRAPHFILE != NULL){
+            required_arguments_set["graph"] = true;
+          }
+        } break;
+
       case (int)'k':{//kernels
           //split all kernels by ,
           char* x = strtok(optarg,",");
@@ -274,6 +285,10 @@ int main(int argc, char** argv) {
 
       case (int)'p'://kernel-split
         break;
+
+      case (int)'a':{//num-memory-objects
+        //use_data_memory = true;//**NOTE** temporarily disabled to avoid use of iris_data_memory
+        } break;
     };
   }
 
@@ -360,7 +375,10 @@ int main(int argc, char** argv) {
           iris_mem x;
           char buffer_name[80];
           sprintf(buffer_name,"%s-%s-%d",kernel.name,buf.c_str(),argument_index);
-          retcode = iris_mem_create( (int)pow(SIZE,kernel.dimensions)*sizeof(double), &x);//, (char*)buffer_name);
+          if (use_data_memory)
+            retcode = iris_data_mem_create(&x,host_mem[0], (int)pow(SIZE,kernel.dimensions)*sizeof(double));
+          else
+            retcode = iris_mem_create( (int)pow(SIZE,kernel.dimensions)*sizeof(double), &x);//, (char*)buffer_name);
           assert (retcode == IRIS_SUCCESS && "Failed to create IRIS memory buffer");
           dev_mem.push_back(x);
           //and update the count of buffers used
@@ -390,7 +408,7 @@ int indexer = 0;
     json_inputs[indexer] = &task_target; indexer++;
 
     iris_graph graph;
-    retcode = iris_graph_create_json("graph.json", json_inputs, &graph);
+    retcode = iris_graph_create_json(GRAPHFILE, json_inputs, &graph);
     assert(retcode == IRIS_SUCCESS && "Failed to create IRIS graph");
     for(auto i = 0; i < indexer; i++){
       json_inputs[i] = NULL;

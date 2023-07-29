@@ -1,3 +1,13 @@
+#!/usr/bin/env python3
+
+"""
+IRIS Python interface
+"""
+__author__ = "Narasinga Rao Miniskar"
+__copyright__ = "Copyright (c) 2020-2023, Oak Ridge National Laboratory (ORNL) Programming Systems Research Group. All rights reserved."
+__license__ = "UT Battelle Open Source"
+__version__ = "1.0"
+
 import ctypes
 from ctypes import *
 import sys
@@ -421,53 +431,96 @@ def task_create(name = None):
 def task_depend(task, ntasks, tasks):
     return dll.iris_task_depend(task, c_int(ntasks), (iris_task * len(tasks))(*tasks))
 
+def convert_params(params, params_info=[], hold_params=[]):
+    nparams = len(params)
+    cparams = (c_void_p * nparams)()
+    hold_params.clear()
+    def check_size(i, s):
+        if i < len(params_info) and params_info[i] != s:
+            return False
+        return True    
+    for i in range(nparams):
+        pobj = params[i]
+        if type(pobj) != np.ndarray and pobj == None:
+            cobj = c_void_p(0)
+            cparams[i] = cobj
+            hold_params.append(pobj)
+        elif hasattr(params[i], 'handle') and isinstance(params[i].handle, iris_mem):
+            cparams[i] = ctypes.addressof(params[i].handle)
+        elif (isinstance(params[i], np.uint32) or isinstance(params[i], np.int32) or isinstance(params[i], int)) and check_size(i, 4):
+            p = byref(c_int32(params[i]))
+            hold_params.append(p)
+            cparams[i] = cast(p, c_void_p)
+        elif (isinstance(params[i], np.uint8) or isinstance(params[i], np.int8) or isinstance(params[i], int)) and check_size(i, 1):
+            p = byref(c_int8(params[i]))
+            hold_params.append(p)
+            cparams[i] = cast(p, c_void_p)
+        elif (isinstance(params[i], np.uint16) or isinstance(params[i], np.int16) or isinstance(params[i], int)) and check_size(i, 2):
+            p = byref(c_short(params[i]))
+            hold_params.append(p)
+            cparams[i] = cast(p, c_void_p)
+        elif isinstance(params[i], np.uint64) or isinstance(params[i], np.int64) or (isinstance(params[i], int)) and check_size(i, 8):
+            p = byref(c_int64(params[i]))
+            hold_params.append(p)
+            cparams[i] = cast(p, c_void_p)
+        elif (isinstance(params[i], np.float32) or isinstance(params[i], float)) and check_size(i, 4):
+            p = byref(c_float(params[i]))
+            cparams[i] = cast(p, c_void_p)
+            hold_params.append(p)
+        elif (isinstance(params[i], np.float64) or isinstance(params[i], np.double) or isinstance(params[i], float)) and check_size(i, 8):
+            p = byref(c_double(params[i]))
+            cparams[i] = cast(p, c_void_p)
+            hold_params.append(p)
+        elif type(params[i]) == size_t:
+            p = byref(c_size_t(params[i]))
+            hold_params.append(p)
+            cparams[i] = cast(p, c_void_p)
+        elif type(pobj) == np.ndarray and pobj.size > 1 and type(pobj[0]) == np.str_:
+            str_list = []
+            for s in str_list:
+                c_str = c_char_p(s) if sys.version_info[0] == 2 else c_char_p(bytes(s, 'ascii'))
+                s.append(c_str)
+            s = np.array(str_list)
+            cobj = s.ctypes.data_as(c_void_p)
+            hold_params.append(s)
+            cparams[i] = cobj
+        elif type(pobj) == np.ndarray:
+            cobj = pobj.ctypes.data_as(c_void_p)
+            hold_params.append(pobj)
+            cparams[i] = cobj
+        else:
+            print("error")
+    return cparams
 def task_kernel(task, kernel, dim, off, gws, lws, params, params_info, hold_params):
     coff = (c_size_t * dim)(*off)
     cgws = (c_size_t * dim)(*gws)
     clws = (c_size_t * dim)(*lws)
     nparams = len(params)
-    cparams = (c_void_p * nparams)()
-    hold_params.clear()
-    for i in range(nparams):
-        if hasattr(params[i], 'handle') and isinstance(params[i].handle, iris_mem):
-            cparams[i] = ctypes.addressof(params[i].handle)
-        elif isinstance(params[i], int) and params_info[i] == 1:
-            p = byref(c_int8(params[i]))
-            hold_params.append(p)
-            cparams[i] = cast(p, c_void_p)
-        elif isinstance(params[i], int) and params_info[i] == 2:
-            p = byref(c_short(params[i]))
-            hold_params.append(p)
-            cparams[i] = cast(p, c_void_p)
-        elif isinstance(params[i], int) and params_info[i] == 4:
-            p = byref(c_int32(params[i]))
-            hold_params.append(p)
-            cparams[i] = cast(p, c_void_p)
-        elif isinstance(params[i], int) and params_info[i] == 8:
-            p = byref(c_int64(params[i]))
-            hold_params.append(p)
-            cparams[i] = cast(p, c_void_p)
-        elif isinstance(params[i], float) and params_info[i] == 4:
-            p = byref(c_float(params[i]))
-            cparams[i] = cast(p, c_void_p)
-            hold_params.append(p)
-        elif isinstance(params[i], float) and params_info[i] == 8:
-            p = byref(c_double(params[i]))
-            cparams[i] = cast(p, c_void_p)
-            hold_params.append(p)
-        else:
-            print("error")
+    cparams = convert_params(params, params_info, hold_params)
 
     cparams_info = (c_int * nparams)(*params_info)
     kernel_name = c_char_p(kernel) if sys.version_info[0] == 2 else c_char_p(bytes(kernel, 'ascii'))
     return dll.iris_task_kernel(task, kernel_name, c_int(dim), coff, cgws, clws, c_int(nparams), cparams, cparams_info)
 
+def iris2py_dev(dev):
+    return dev.contents.value
+
+def iris2py(params):
+    return ctypes.cast(params.contents.value, ctypes.py_object).value
+
+def python_task_host(task, func, params):
+    CWRAPPER = CFUNCTYPE(c_int, POINTER(c_int64), POINTER(c_int))
+    wrapped_py_func = CWRAPPER(func)
+    task.params = params
+    cparams = id(task.params) #(c_void_p * nparams)(*params)
+    return dll.iris_task_python_host(task, cast(wrapped_py_func, c_void_p), c_int64(cparams))
+
 def task_host(task, func, params):
-  CWRAPPER = CFUNCTYPE(c_int, c_void_p, POINTER(c_int))
-  wrapped_py_func = CWRAPPER(func)
-  nparams = len(params)
-  cparams = (c_void_p * nparams)(*params)
-  return dll.iris_task_host(task, cast(wrapped_py_func, c_void_p), cparams)
+    CWRAPPER = CFUNCTYPE(c_int, c_void_p, POINTER(c_int))
+    wrapped_py_func = CWRAPPER(func)
+    nparams = len(params)
+    cparams = (c_void_p * nparams)(*params)
+    return dll.iris_task_host(task, cast(wrapped_py_func, c_void_p), cparams)
 
 def task_h2d(task, mem, off, size, host):
     return dll.iris_task_h2d(task, mem, c_size_t(off), c_size_t(size), host.ctypes.data_as(c_void_p))
@@ -930,6 +983,8 @@ class task:
         task_d2h_full(self.handle, mem.handle, host)
     def kernel(self, kernel, dim, off, gws, lws, params, params_info):
         task_kernel(self.handle, kernel, dim, off, gws, lws, params, params_info, self.params)
+    def pyhost(self, func, params):
+        python_task_host(self.handle, func, params)
     def host(self, func, params):
         task_host(self.handle, func, params)
     def submit(self, device, sync = 1):
@@ -960,6 +1015,12 @@ class graph:
         self.handle = graph_create()
         for each_task in tasks:
             self.add_task(each_task, device, opt)
+    def load(self, json_file='graph.json', params=[]):
+        c_json_file = c_char_p(json_file) if sys.version_info[0] == 2 else c_char_p(bytes(json_file, 'ascii'))
+        self.handle = iris_graph()
+        cparams = convert_params(params, params_info=[], hold_params=[])
+        d = dll.iris_graph_create_json(c_json_file, cparams, byref(self.handle))
+        return d
     def retain(self):
         dll.iris_graph_retain(self.handle)
     def release(self):
@@ -1046,7 +1107,7 @@ class graph:
         SIZE = ntasks+1
         dep_graph, dep_graph_2d_ptr = dll.alloc_int8((SIZE,SIZE))
         dll.call_ret_ptr(dll.iris_get_graph_dependency_adj_matrix, self.handle, dep_graph)
-        print("Dependency matrix", dep_graph)
+        #print("Dependency matrix", dep_graph)
         if pdf:
             task_names = self.get_task_names()
             task_uids =  self.get_task_uids()
@@ -1150,7 +1211,8 @@ class graph:
         SIZE = ntasks+1
         comm_2d, comm_2d_ptr = dll.alloc_size_t((SIZE,SIZE))
         dll.call_ret_ptr(dll.iris_get_graph_2d_comm_adj_matrix, self.handle, comm_2d)
-        print("Communication cost matrix", comm_2d)
+        print("Extracting 2d communication cost")
+        #print("Communication cost matrix", comm_2d)
         if pdf:
             task_names = self.get_task_names()
             task_uids =  self.get_task_uids()
@@ -1196,7 +1258,7 @@ class graph:
             dll.call_ret_ptr(dll.iris_calibrate_compute_cost_adj_matrix_only_for_types, self.handle, comp_2d)
         else:
             dll.call_ret_ptr(dll.iris_calibrate_compute_cost_adj_matrix, self.handle, comp_2d)
-        print("Computation cost matrix", comp_2d)
+        #print("Computation cost matrix", comp_2d)
         if pdf:
             task_names = self.get_task_names()
             task_uids =  self.get_task_uids()
@@ -1206,4 +1268,7 @@ class graph:
             df['task_uid'] = task_uids
             return df
         return comp_2d
+class json_graph(graph):
+    def __init__(self, json_file='graph.json', params=[]):
+        self.load(json_file, params)
 

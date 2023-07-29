@@ -28,6 +28,7 @@ set(CUDA_KERNEL_SOURCES
 
 set(APP_SOURCES
    src/saxpy.cpp
+   src/saxpy.iris.cpp
    src/saxpy_ref.cpp
    )
 

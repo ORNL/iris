@@ -130,8 +130,13 @@ void DataMem::create_dev_mem(Device *dev, int devno, void *host)
     //printf(" Dev: %d is shared:%d host:%p host_ptr_:%p\n", devno, dev->is_shared_memory_buffers(), host, host_ptr_);
     if (dev->is_shared_memory_buffers() && (host != NULL || host_ptr_ != NULL)) 
         archs_[devno] = (host == NULL) ? host_ptr_ : host;
-    else
+    else {
         dev->MemAlloc(archs_ + devno, size_, is_reset());
+        if (is_reset()) {
+            dirty_flag_[devno] = false;
+            host_dirty_flag_ = true;
+        }
+    }
 }
 
 void** DataMem::arch_ptr(Device *dev, void *host) {

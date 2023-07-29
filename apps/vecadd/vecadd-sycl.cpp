@@ -1,12 +1,12 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <malloc.h>
 #include <chrono>
 #include <fstream>
 #include <iterator>
 #include <string>
 #include <vector>
-#include <stdio.h>
-#include <stdlib.h>
-#include <malloc.h>
-#include <iris/iris.h>
+#include <sycl/sycl.hpp>
 
 int main(int argc, char** argv) {
   size_t SIZE;
@@ -23,12 +23,8 @@ int main(int argc, char** argv) {
   std::vector<std::string> timings;
   printf("SIZE[%lu]\n", SIZE);
 
-  iris_init(&argc, &argv, true);
-
-  char info[256];
-  size_t size;
-  iris_device_info(0, iris_name, &info, &size);
-  printf("Running on %s\n",info);
+  sycl::queue q;
+  printf("Running on %s\n",q.get_device().get_info<sycl::info::device::name>().c_str());
 
   for (int reps = 0; reps < REPEATS; reps++){
     A = (int*) valloc(SIZE * sizeof(int));
@@ -40,23 +36,22 @@ int main(int argc, char** argv) {
       B[i] = i;
       C[i] = 0;
     }
-
     auto const t_start = std::chrono::high_resolution_clock::now();
-    iris_mem mem_A;
-    iris_mem mem_B;
-    iris_mem mem_C;
-    iris_data_mem_create(&mem_A, A, SIZE * sizeof(int));
-    iris_data_mem_create(&mem_B, B, SIZE * sizeof(int));
-    iris_data_mem_create(&mem_C, C, SIZE * sizeof(int));
+    {
+      sycl::buffer<int, 1> mem_A(A, {SIZE});
+      sycl::buffer<int, 1> mem_B(B, {SIZE});
+      sycl::buffer<int, 1> mem_C(C, {SIZE});
 
-    iris_task task0;
-    iris_task_create(&task0);
-    void* params0[3] = { &mem_A, &mem_B, &mem_C };
-    int pinfo0[3] = { iris_r, iris_r, iris_w };
-    iris_task_kernel(task0, "vecadd", 1, NULL, &SIZE, NULL, 3, params0, pinfo0);
-    iris_task_dmem_flush_out(task0,mem_C);
-    iris_task_submit(task0, iris_any,nullptr, true);
-    iris_synchronize();
+      q.submit([&](sycl::handler& h) {
+          sycl::accessor<int, 1, sycl::access_mode::read>  d_a(mem_A, h);
+          sycl::accessor<int, 1, sycl::access_mode::read>  d_b(mem_B, h);
+          sycl::accessor<int, 1, sycl::access_mode::write> d_c(mem_C, h);
+          h.parallel_for(sycl::range{SIZE}, [=](sycl::id<1> i) {
+              d_c[i] = d_a[i] + d_b[i];
+            });
+          });
+      q.wait();
+    }
     auto const t_end = std::chrono::high_resolution_clock::now();
     timings.push_back(std::to_string(std::chrono::duration_cast<std::chrono::nanoseconds>(t_end - t_start).count()));
     if(VERIFY){
@@ -66,11 +61,10 @@ int main(int argc, char** argv) {
       }
     }
   }
+
   std::ofstream output_file(LOG_FILENAME);
   std::ostream_iterator<std::string> output_iterator(output_file, "\n");
   std::copy(timings.begin(), timings.end(), output_iterator);
-  
-  iris_finalize();
-  printf("ERROR_COUNT[%d]\n", ERROR_COUNT+iris_error_count());
-  return ERROR_COUNT+iris_error_count();
+  return ERROR_COUNT;
 }
+

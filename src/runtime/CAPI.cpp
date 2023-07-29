@@ -198,6 +198,10 @@ int iris_params_map(iris_task task, int *params_map) {
   return Platform::GetPlatform()->SetParamsMap(task, params_map);
 }
 
+int iris_task_python_host(iris_task task, iris_host_python_task func, int64_t params_id) {
+  return Platform::GetPlatform()->TaskHost(task, func, params_id);
+}
+
 int iris_task_host(iris_task task, iris_host_task func, void* params) {
   return Platform::GetPlatform()->TaskHost(task, func, params);
 }
@@ -443,6 +447,14 @@ int iris_kernel_release(iris_kernel kernel) {
 
 int iris_graph_create(iris_graph* graph) {
   return Platform::GetPlatform()->GraphCreate(graph);
+}
+
+int iris_graph_create_null(iris_graph* graph) {
+  iris_graph null_graph;
+  null_graph.uid = (unsigned long) -1;
+  null_graph.class_obj = NULL;
+  *graph = null_graph;
+  return IRIS_SUCCESS;
 }
 
 int iris_graph_create_json(const char* json, void** params, iris_graph* graph) {

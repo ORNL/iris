@@ -16,6 +16,7 @@ import json
 import argparse
 import numpy
 import random
+import shlex
 from bokeh.palettes import brewer
 from functools import reduce
 import networkx as nx
@@ -32,30 +33,45 @@ _seed = None
 _kernel_buffs = {}
 _concurrent_kernels = {}
 _dimensionality = {}
+_graph = None
+_memory_object_pool = None
 
-def parse_args():
-
-    parser = argparse.ArgumentParser(description='DAGGER: Directed Acyclic Graph Generator for Evaluating Runtimes')
-    parser.add_argument("--kernels",required=True,type=str,help="The kernel names --in the current directory-- to generate tasks, presented as a comma separated value string e.g. \"process,matmul\"")
+def init_parser(parser):
+    parser.add_argument("--graph",default="graph.json",type=str,help="The DAGGER json graph file to load, e.g. \"graph.json\".")
+    parser.add_argument("--kernels",required=True,type=str,help="The kernel names --in the current directory-- to generate tasks, presented as a comma separated value string e.g. \"process,matmul\".")
     parser.add_argument("--kernel-split",required=False,type=str,help="The percentage of each kernel being assigned to the task, presented as a comma separated value string e.g. \"80,20\".")
-    parser.add_argument("--duplicates",required=False,type=int,help="Duplicate the generated DAG horizontally the given number across (to increase concurrency)", default=0)
+    parser.add_argument("--duplicates",required=False,type=int,help="Duplicate the generated DAG horizontally the given number across (to increase concurrency).", default=0)
     parser.add_argument("--concurrent-kernels",required=False,type=str,help="**UNIMPLEMENTED**The number of duplicate/concurrent memory buffers allowed for each kernel, stored as a key value pair, e.g. \"process:2\" indicates that the kernel called \"process\" will only allow two unique sets of memory buffers in the generated DAG, effectively limiting concurrency by indicating a data dependency.",default=None)
-    parser.add_argument("--buffers-per-kernel",required=True,type=str,help="The number and type of buffers of buffers required for each kernel, stored as a key value pair, with each buffer separated by white-space, e.g. \"process:r r w rw\" indicates that the kernel called \"process\" requires four separate buffers with read, read, write and read/write permissions respectively")
+    parser.add_argument("--buffers-per-kernel",required=True,type=str,help="The number and type of buffers of buffers required for each kernel, stored as a key value pair, with each buffer separated by white-space, e.g. \"process:r r w rw\" indicates that the kernel called \"process\" requires four separate buffers with read, read, write and read/write permissions respectively.")
     parser.add_argument("--kernel-dimensions",required=True,type=str,help="The dimensionality of each kernel, presented as a key-value store, multiple kernels are specified as a comma-separated-value string e.g. \"process:1,matmul:2\". indicates that kernel \"process\" is 1-D while \"matmul\" uses 2-D workgroups.")
     parser.add_argument("--depth",required=True,type=int,help="Depth of tree, e.g. 10.")
     parser.add_argument("--num-tasks",required=True,type=int,help="Total number of tasks to build in the DAG, e.g. 100.")
     parser.add_argument("--min-width",required=True,type=int,help="Minimum width of the DAG, e.g. 1.")
     parser.add_argument("--max-width",required=True,type=int,help="Maximum width of the DAG, e.g. 10.")
-    parser.add_argument("--cdf-mean",required=False,type=float,help="Mu of the Cumulative Distribution Function, default=0",default=0)
-    parser.add_argument("--cdf-std-dev",required=False,type=float,help="Sigma^2 of the Cumulative Distribution Function, default=0.2",default=0.2)
-    parser.add_argument("--skips",required=False,type=int,help="Maximum number of jumps down the DAG levels (Delta) between tasks, default=1",default=1)
-    parser.add_argument("--seed",required=False,type=int,help="Seed for the random number generator, default is current system time", default=None)
-    parser.add_argument("--sandwich",help="Sandwich the DAG between a lead in and terminating task (akin to a scatter-gather)", action='store_true')
+    parser.add_argument("--cdf-mean",required=False,type=float,help="Mu of the Cumulative Distribution Function, default=0.",default=0)
+    parser.add_argument("--cdf-std-dev",required=False,type=float,help="Sigma^2 of the Cumulative Distribution Function, default=0.2.",default=0.2)
+    parser.add_argument("--skips",required=False,type=int,help="Maximum number of jumps down the DAG levels (Delta) between tasks, default=1.",default=1)
+    parser.add_argument("--seed",required=False,type=int,help="Seed for the random number generator, default is current system time.", default=None)
+    parser.add_argument("--sandwich",help="Sandwich the DAG between a lead in and terminating task (akin to a scatter-gather).", action='store_true')
+    parser.add_argument("--num-memory-objects",required=False,type=int,help="Enables sharing of memory objects dealt between tasks! It is the total number of memory objects to be passed around in the DAG between tasks (allows greater task interactions).", default=None)
 
-    args = parser.parse_args()
+def parse_args(pargs=None,additional_arguments=[]):
+    parser = argparse.ArgumentParser(description='DAGGER: Directed Acyclic Graph Generator for Evaluating Runtimes')
 
-    global _kernels, _k_probs, _depth, _num_tasks, _min_width, _max_width, _mean, _std_dev, _skips, _seed, _sandwich, _concurrent_kernels, _duplicates, _dimensionality
+    init_parser(parser)
 
+    # Allow other arguments to be added.
+    for init in additional_arguments:
+        init(parser)
+
+    if pargs is None:
+        args = parser.parse_args()
+    else:
+        args = parser.parse_args(shlex.split(pargs))
+
+    global _kernels, _k_probs, _depth, _num_tasks, _min_width, _max_width, _mean, _std_dev, _skips, _seed, _sandwich, _concurrent_kernels, _duplicates, _dimensionality, _graph, _memory_object_pool
+
+    _graph = args.graph
     _depth = args.depth
     _num_tasks = args.num_tasks
     _min_width = args.min_width
@@ -93,7 +109,21 @@ def parse_args():
             _kernel_buffs[kernel_name] = memory_buffers
         except:
             assert False, "Incorrect arguments given to --buffers-per-kernel. Broken on {}".format(i)
-    #parser.add_argument("--buffers-per-kernel",required=True,type=str,help="The number and type of buffers of buffers required for each kernel, stored as a key value pair, with each buffer separated by white-space, e.g. \"process:r r w rw\" indicates that the kernel called \"process\" requires four separate buffers with read, read, write and read/write permissions respectively")
+    if args.num_memory_objects is not None:
+        num_provided_memory_objects = 0
+        for k in _kernel_buffs:
+            num_provided_memory_objects += len(_kernel_buffs[k])
+        assert args.num_memory_objects < num_provided_memory_objects, "Incorrect arguments given to --num-memory-objects. The number should be less than the default {} . Broken on {}".format(num_provided_memory_objects,i)
+        _memory_object_pool = []
+        n = 0 
+        for kname in _kernel_buffs:
+            kinstk = 0
+            for i,j in enumerate(_kernel_buffs[kname]):
+                if n >= args.num_memory_objects:
+                    break
+                #"devicemem-{}-buffer{}-instance{}".format(kname,i,kinst)
+                _memory_object_pool.append("devicemem-{}-buffer{}-instance{}".format(kname,i,kinstk))
+                n += 1
 
     #process concurrent-kernels
     if args.concurrent_kernels is None:
@@ -114,7 +144,7 @@ def parse_args():
             _dimensionality[kernel_name] = int(kernel_dimensionality)
         except:
             assert False, "Incorrect arguments given to --kernel-dimensions. Broken on {}".format(i)
-    return
+    return args
 
 def random_list(depth,total_num,width_min,width_max):
     list_t = []
@@ -236,9 +266,20 @@ def gen_attr(tasks,kernel_names,kernel_probs):
         mobs = []
         mper = []
 
-        for i,j in enumerate(_kernel_buffs[kname]):
-            mobs.append("devicemem-{}-buffer{}-instance{}".format(kname,i,kinst))
-            mper.append(j)
+        #time to use the new experimental shared memory objects to interact between tasks
+        if _memory_object_pool is not None:
+            samp = random.sample(_memory_object_pool,k=len(_kernel_buffs[kname]))
+            for j,s in enumerate(samp):
+                mobs.append(s)
+                #TODO: some magic here based on random.choices for memory object names
+                #import ipdb
+                #ipdb.set_trace()
+                #print("figuring out proper permissions")
+                mper.append(_kernel_buffs[kname][j])
+        else:
+            for i,j in enumerate(_kernel_buffs[kname]):
+                mobs.append("devicemem-{}-buffer{}-instance{}".format(kname,i,kinst))
+                mper.append(j)
 
         if mobs == []:
             assert False, "kernel {} hasn't been given any memory to work on! This can be rectified by setting --buffers-per-kernel.".format(kname)
@@ -249,16 +290,12 @@ def gen_attr(tasks,kernel_names,kernel_probs):
         #task_instance_name = tname
         #if ck != 0: #if we're supporting concurrent tasks, all but the first instance should have a unique name
         #    task_instance_name += '-' + str(ck)
-        #TODO may need to undo the following:
         parameters = []
         for i,m in enumerate(mobs):
-          parameters.append({"type":"memory_object","name":m,"permission":mper[i]})
-        #for m in mper:
-        #  parameters.append({"type":"scalar","name":m})
+            #NOTE: there is currently a restriction that all memory objects passed into the kernel are the same size (in user-size-cb-{kernel-name})
+            parameters.append({"type":"memory_object","value":m,"size_bytes":"user-size-cb-{}".format(kname),"permissions":mper[i]})
         task = {"name":tname,"commands":[{"kernel":{"name":kname,"global_size":kernel_dimension,"parameters":parameters}}],"depends":deps,"target":"user-target-data"}
-        #task = {"name":tname,"commands":[{"kernel":kname,["user-size"],mobs,mper]}],"depends":deps,"target":"user-target-data"}
-        #was:
-        #task = {"name":tname,"kernel":[kname,"user-size",["user-mem"],["rw"] ],"depends":deps,"target":"user-target"}
+        #TODO: what about local_size or offset
         dag.append(task)
 
     return dag
@@ -290,7 +327,7 @@ def duplicate_for_concurrency(task_dag,edges):
             x['name'] = "task"+str(y)
             #update the instance buffers used in this concurrent instance
             for zi, z in enumerate(x['commands'][0]['kernel']['parameters']):
-                old_instance_buffer_name = re.findall(r'(.*instance)\d+$',z['name'])
+                old_instance_buffer_name = re.findall(r'(.*instance)\d+$',z['value'])
                 old_instance_buffer_name = old_instance_buffer_name[0]
                 nib = (old_instance_buffer_name + str(c))
                 x['commands'][0]['kernel']['parameters'][zi]['name'] = nib
@@ -403,7 +440,7 @@ def determine_and_prepend_iris_h2d_transfers(dag):
                     if 'kernel' not in t['commands'][0]:
                         continue
                     for p in t['commands'][0]['kernel']['parameters']:
-                      if buffer_name == p['name']:
+                      if buffer_name == p['value']:
                           memory_instance_in_use = True
                           #TODO: sort out concurrency
                           if transfer["name"] not in dag[m]['depends']:
@@ -440,7 +477,7 @@ def determine_and_append_iris_d2h_transfers(dag):
                     if 'kernel' not in t['commands'][0]:
                         continue
                     for p in t['commands'][0]['kernel']['parameters']:
-                      if buffer_name == p['name']:
+                      if buffer_name == p['value']:
                           memory_instance_in_use = True
                           transfer["depends"].append(t["name"])
                 transfer["target"] = "user-target-control"
@@ -462,7 +499,7 @@ def get_task_to_json(dag,deps):
     for t in dag:
         t['depends']=list(dict.fromkeys(t['depends']))
         #print(t['depends'])
-    f = open("graph.json", 'w')
+    f = open(_graph, 'w')
     inputs = determine_iris_inputs()
     dag = determine_and_prepend_iris_h2d_transfers(dag)
     dag = determine_and_append_iris_d2h_transfers(dag)
@@ -470,8 +507,7 @@ def get_task_to_json(dag,deps):
     f.write(json.dumps(final_json,indent = 2))
     f.close()
 
-if __name__ == '__main__':
-    parse_args()
+def main():
     random.seed(_seed)
     task_per_level, level_per_task = gen_task_nodes(_depth,_num_tasks,_min_width,_max_width)
     edges,neighs_top_down,neighs_down_top = gen_task_links(_mean,_std_dev,task_per_level,level_per_task,delta_lvl=_skips)
@@ -494,4 +530,11 @@ if __name__ == '__main__':
     #get_task_to_dummy_app()
     #get_task_to_generate_file(dag)
     get_task_to_json(task_dag,edges)
+
+
+if __name__ == '__main__':
+    parse_args()
+
+    main()
+
     print('done')

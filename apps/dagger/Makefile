@@ -1,30 +1,18 @@
-IRIS_INSTALL_ROOT?=$(HOME)/.local
-CC=gcc
-CXX=g++
-NVCC?=$(CUDA_PATH)/bin/nvcc
-FORTRAN=gfortran
-CFLAGS=-g -std=c11 -I$(IRIR)/include -L$(IRIS)/lib
-CXXFLAGS=-g  -std=c++11 -I$(IRIS)/include -L$(IRIS)/lib
-FFLAGS=-g -I$(IRIS)/include/iris
-LDFLAGS=-L$(IRIS)/lib64 -liris -lpthread -ldl
+include ../makefile_defs.mk
 
 all: dagger_runner dagger_test
 
-dagger: dagger.cpp timer.h
+dagger: dagger.cpp
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
-dagger_dgemm: dagger_dgemm.cpp timer.h
+dagger_dgemm: dagger_dgemm.cpp
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
-#the final implementation?
-dagger_runner: dagger_runner.cpp timer.h
+dagger_runner: dagger_runner.cpp
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
-dagger_test: dagger_test_concurrent_linear_chains.cpp timer.h
+dagger_test: dagger_test_concurrent_linear_chains.cpp
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
-
-#dagger_coarse: dagger_coarse.cpp timer.h
-#	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
 kernel.ptx: kernel.cu
 	$(NVCC) -ptx $^
@@ -34,12 +22,10 @@ kernel.spv: kernel.cl
 	llvm-spirv kernel.bc -o $@
 
 kernel.hip: kernel.hip.cpp
-	#hipcc --genco --targets gfx906 -o $@ $^
-	hipcc --genco -o $@ $^
+	$(HIPCC) --genco -o $@ $^
 
-kernel.openmp.so: kernel.cl.openmp.c
-	#$(CC) -g -qsmp -fPIC -shared -I. -o $@ $^
-	$(CC) -g -fopenmp -fPIC -shared -I. -o $@ $^
+kernel.openmp.so: kernel.openmp.c
+	$(CC) $(CFLAGS) -O3 -lgomp -fPIC -shared -I. -o $@ $^
 
 clean:
 	rm -f dagger_runner dagger_test dagger dagger_dgemm dagger_coarse kernel.ptx kernel.spv kernel.hip kernel.openmp.so

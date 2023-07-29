@@ -80,7 +80,9 @@ public:
   bool is_internal_memory_transfer() { return internal_memory_transfer_;}
   void set_internal_memory_transfer() { internal_memory_transfer_ = true;}
   iris_host_task func() { return func_; }
+  iris_host_python_task py_func() { return py_func_; }
   void* func_params() { return func_params_; }
+  int64_t func_params_id() { return func_params_id_; }
   char* params() { return params_; }
   void set_params_map(int *pmap);
   int *get_params_map() { return params_map_; }
@@ -131,7 +133,9 @@ private:
   iris_selector_kernel selector_kernel_;
   void* selector_kernel_params_;
   iris_host_task func_;
+  iris_host_python_task py_func_;
   void* func_params_;
+  int64_t func_params_id_;
   char* params_;
   std::string type_name_;
   std::string name_;
@@ -161,6 +165,7 @@ public:
   static Command* CreateMapTo(Task* task, void* host);
   static Command* CreateMapFrom(Task* task, void* host);
   static Command* CreateReleaseMem(Task* task, Mem* mem);
+  static Command* CreateHost(Task* task, iris_host_python_task func, int64_t params_id);
   static Command* CreateHost(Task* task, iris_host_task func, void* params);
   static Command* CreateCustom(Task* task, int tag, void* params, size_t params_size);
   static void Release(Command* cmd);

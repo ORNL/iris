@@ -5,14 +5,14 @@ PROGRAM SAXPY
     INTEGER :: I, IERROR
     INTEGER(8) :: SIZE
 
-    REAL(4),DIMENSION(:),ALLOCATABLE :: Z
-    REAL(4),DIMENSION(:),ALLOCATABLE :: X
-    REAL(4),DIMENSION(:),ALLOCATABLE :: Y
-    REAL(4) :: A
+    REAL(4),DIMENSION(:),ALLOCATABLE, target :: Z
+    REAL(4),DIMENSION(:),ALLOCATABLE, target :: X
+    REAL(4),DIMENSION(:),ALLOCATABLE, target :: Y
+    REAL(4), target :: A
 
-    TYPE(iris_mem) :: MEM_Z
-    TYPE(iris_mem) :: MEM_X
-    TYPE(iris_mem) :: MEM_Y
+    TYPE(iris_mem), target :: MEM_Z
+    TYPE(iris_mem), target :: MEM_X
+    TYPE(iris_mem), target :: MEM_Y
 
     INTEGER(8),DIMENSION(3) :: OFF
     INTEGER(8),DIMENSION(3) :: GWS
@@ -21,7 +21,7 @@ PROGRAM SAXPY
     TYPE(C_PTR), DIMENSION(4) :: PARAMS
     INTEGER,DIMENSION(4) :: PARAMS_INFO
 
-    TYPE(iris_task) :: TASK
+    TYPE(iris_task), target :: TASK
 
     CALL IRIS_INIT(.TRUE., IERROR)
     IF (IERROR /= IRIS_SUCCESS) THEN
