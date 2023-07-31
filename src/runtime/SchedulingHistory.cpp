@@ -19,7 +19,11 @@ namespace iris {
 namespace rt {
 
 SchedulingHistory::SchedulingHistory(Platform* platform) : Profiler(platform, "SchedulingHistory") {
-  OpenFD();
+  char* provided_filepath = getenv("IRIS_HISTORY_FILE");
+  if (provided_filepath)
+    OpenFD(provided_filepath);
+  else
+    OpenFD();
   Main();
 }
 
@@ -65,10 +69,12 @@ int SchedulingHistory::Exit() {
 }
 
 int SchedulingHistory::CompleteCommand(Command* command) {
-  //don't use named kernels (that's propagated to the command name anyway) and omit unnamed h2d/d2h transfers (these are unnamed and would inherit the wrong kernel command name instead)
-  if(!command->name()) {
+  if(command->type_kernel()){//use task name rather than kernel name
+    command->set_name(command->task()->name());
+  }else{
     command->set_name(command->type_name());
   }
+
   char s[512];
   size_t ksize  = command->type_kernel() ? command->ws() : command->size();//
 
