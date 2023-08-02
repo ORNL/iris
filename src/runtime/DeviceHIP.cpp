@@ -578,6 +578,35 @@ int DeviceHIP::AddCallback(Task* task) {
   task->Complete();
   return task->Ok();
 }
+void DeviceHIP::CreateEvent(void **event, int flags)
+{
+    if (IsContextChangeRequired()) {
+        ld_->hipCtxSetCurrent(ctx_);
+    }
+    ld_->hipEventCreateWithFlags((hipEvent_t *)event, flags);   
+}
+void DeviceHIP::RecordEvent(void *event, int stream)
+{
+    if (IsContextChangeRequired()) {
+        ld_->hipCtxSetCurrent(ctx_);
+    }
+    ld_->hipEventRecord((hipEvent_t)event, streams_[stream]);
+}
+void DeviceHIP::WaitForEvent(void *event, int stream, int flags)
+{
+    if (IsContextChangeRequired()) {
+        ld_->hipCtxSetCurrent(ctx_);
+    }
+    ld_->hipStreamWaitEvent(streams_[stream], (hipEvent_t)event, flags);
+}
+void DeviceHIP::DestroyEvent(void *event)
+{
+    if (IsContextChangeRequired()) {
+        ld_->hipCtxSetCurrent(ctx_);
+    }
+    ld_->hipEventDestroy((hipEvent_t) event);
+}
+
 
 } /* namespace rt */
 } /* namespace iris */

@@ -69,6 +69,7 @@ public:
   CUresult (*cuEventSynchronize)(CUevent hEvent);
   CUresult (*cuEventElapsedTime)(float *pMilliseconds, CUevent hStart, CUevent hEnd);
   CUresult (*cuEventQuery)(CUevent hEvent);
+  CUresult (*cuStreamWaitEvent)(CUstream hStream, CUevent hEvent, unsigned int Flags);
 };
 
 } /* namespace rt */

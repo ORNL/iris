@@ -40,6 +40,10 @@ public:
   void ResetContext();
   bool IsContextChangeRequired();
   void SetContextToCurrentThread();
+  void CreateEvent(void **event, int flags);
+  void RecordEvent(void *event, int stream);
+  void WaitForEvent(void *event, int stream, int flags=0);
+  void DestroyEvent(void *event);
 
 private:
   LoaderHIP* ld_;

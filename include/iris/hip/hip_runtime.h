@@ -36,6 +36,27 @@ typedef enum hipMemcpyKind {
  /** Coarse Grained host memory lock.*/
 #define hipExtHostRegisterCoarseGrained 0x8
 
+//Flags that can be used with hipEventCreateWithFlags.
+/** Default flags.*/
+#define hipEventDefault 0x0
+
+/** Waiting will yield CPU. Power-friendly and usage-friendly but may increase latency.*/
+#define hipEventBlockingSync 0x1
+
+/** Disable event's capability to record timing information. May improve performance.*/
+#define hipEventDisableTiming  0x2
+
+/** Event can support IPC. Warnig: It is not supported in HIP.*/
+#define hipEventInterprocess 0x4
+
+/** Use a device-scope release when recording this event. This flag is useful to obtain more
+ * precise timings of commands between events.  The flag is a no-op on CUDA platforms.*/
+#define hipEventReleaseToDevice  0x40000000
+
+/** Use a system-scope release when recording this event. This flag is useful to make
+ * non-coherent host memory visible to the host. The flag is a no-op on CUDA platforms.*/
+#define hipEventReleaseToSystem  0x80000000
+
 typedef enum hipDeviceAttribute_t {
     hipDeviceAttributeMaxThreadsPerBlock,       ///< Maximum number of threads per block.
     hipDeviceAttributeMaxBlockDimX,             ///< Maximum x-dimension of a block.

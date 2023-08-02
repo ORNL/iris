@@ -63,6 +63,7 @@ int LoaderCUDA::LoadFunctions() {
   LOADFUNC(cuEventSynchronize);
   LOADFUNC(cuEventElapsedTime);
   LOADFUNC(cuEventQuery);
+  LOADFUNC(cuStreamWaitEvent);
   return IRIS_SUCCESS;
 }
 

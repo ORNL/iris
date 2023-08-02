@@ -81,6 +81,16 @@ DataMem::~DataMem() {
     delete [] dep_events_;
     delete [] completion_events_;
 }
+void DataMem::RecordEvent(int devno, int stream) {
+    if (completion_events_[devno] != NULL)
+        archs_dev_[devno]->CreateEvent(completion_events_+devno, iris_event_disable_timing);
+    archs_dev_[devno]->RecordEvent(completion_events_[devno], stream);
+}
+void DataMem::WaitForEvent(int devno, int stream, int dep_devno) {
+    assert(completion_events_[dep_devno] != NULL);
+    archs_dev_[devno]->WaitForEvent(completion_events_[dep_devno], stream, iris_event_disable_timing);
+}
+
 void DataMem::UpdateHost(void *host_ptr)
 {
     if (host_ptr_owner_ && host_ptr_ != NULL) free(host_ptr_);

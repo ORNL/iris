@@ -743,7 +743,34 @@ void DeviceCUDA::Callback(CUstream stream, CUresult status, void* data) {
 void DeviceCUDA::TaskPre(Task* task) {
   ClearGarbage();
 }
-
+void DeviceCUDA::CreateEvent(void **event, int flags)
+{
+    if (IsContextChangeRequired()) {
+        ld_->cuCtxSetCurrent(ctx_);
+    }
+    ld_->cuEventCreate((CUevent *)event, flags);   
+}
+void DeviceCUDA::RecordEvent(void *event, int stream)
+{
+    if (IsContextChangeRequired()) {
+        ld_->cuCtxSetCurrent(ctx_);
+    }
+    ld_->cuEventRecord((CUevent)event, streams_[stream]);
+}
+void DeviceCUDA::WaitForEvent(void *event, int stream, int flags)
+{
+    if (IsContextChangeRequired()) {
+        ld_->cuCtxSetCurrent(ctx_);
+    }
+    ld_->cuStreamWaitEvent(streams_[stream], (CUevent)event, flags);
+}
+void DeviceCUDA::DestroyEvent(void *event)
+{
+    if (IsContextChangeRequired()) {
+        ld_->cuCtxSetCurrent(ctx_);
+    }
+    ld_->cuEventDestroy((CUevent) event);
+}
 } /* namespace rt */
 } /* namespace iris */
 

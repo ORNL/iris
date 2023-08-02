@@ -25,6 +25,8 @@ public:
   virtual ~DataMem();
   void UpdateHost(void *host);
   void EnableOuterDimensionRegions();
+  void RecordEvent(int devno, int stream);
+  void WaitForEvent(int devno, int stream, int dep_devno);
   void init_reset(bool reset=true);
   bool is_host_dirty() { return host_dirty_flag_; }
   void clear_host_dirty() { host_dirty_flag_ = false; }

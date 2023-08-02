@@ -138,6 +138,12 @@ typedef int8_t bool;
 #define iris_ncmds_memcpy       3
 #define iris_cmds               4
 
+// The event flags aligned with HIP and CUDA
+#define iris_event_default          0
+#define iris_event_blocking_sync    1
+#define iris_event_disable_timing   2
+#define iris_event_interprocess     3
+
 #endif // UNDEF_IRIS_MACROS
 #endif // DOXYGEN_SHOULD_SKIP_THIS
 
