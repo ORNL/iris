@@ -11,6 +11,7 @@
 #include "Task.h"
 #include "Timer.h"
 #include "Utils.h"
+#include "Worker.h"
 
 namespace iris {
 namespace rt {
@@ -807,6 +808,22 @@ int Device::RegisterHooks() {
   hook_command_pre_ = Platform::GetPlatform()->hook_command_pre();
   hook_command_post_ = Platform::GetPlatform()->hook_command_post();
   return IRIS_SUCCESS;
+}
+void Device::CreateEvent(void **event, int flags) { 
+    _error("Device:%d:%s Invalid function call!", devno_, name()); 
+    worker_->platform()->IncrementErrorCount();
+}
+void Device::RecordEvent(void *event, int stream) {
+    _error("Device:%d:%s Invalid function call!", devno_, name()); 
+    worker_->platform()->IncrementErrorCount();
+}
+void Device::WaitForEvent(void *event, int stream, int flags) {
+    _error("Device:%d:%s Invalid function call!", devno_, name()); 
+    worker_->platform()->IncrementErrorCount();
+}
+void Device::DestroyEvent(void *event) {
+    _error("Device:%d:%s Invalid function call!", devno_, name()); 
+    worker_->platform()->IncrementErrorCount();
 }
 
 } /* namespace rt */
