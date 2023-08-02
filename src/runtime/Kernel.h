@@ -49,6 +49,8 @@ public:
   bool is_vendor_specific_kernel(int devno) { return is_vendor_specific_kernel_[devno]; }
   void set_vendor_specific_kernel(int devno, bool flag=true) { is_vendor_specific_kernel_[devno] = flag; }
   void set_task_name(const char *name) { strcpy(task_name_, name); }
+  void set_task(Task *task) { task_ = task; }
+  Task *task() { return task_; }
   char *get_task_name() { return task_name_; }
   Platform* platform() { return platform_; }
   shared_ptr<History> history() { return history_; }
@@ -69,6 +71,7 @@ public:
 private:
   char name_[256];
   char task_name_[256];
+  Task *task_;
   std::map<int, KernelArg*> args_;
   void* archs_[IRIS_MAX_NDEVS];
   Device* archs_devs_[IRIS_MAX_NDEVS];

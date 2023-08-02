@@ -127,6 +127,7 @@ Command* Command::CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off,
   cmd->kernel_nargs_max_ = kernel->nargs();
   cmd->kernel_nargs_ = kernel->nargs();
   cmd->dim_ = dim;
+  kernel->set_task(task);
   for (int i = 0; i < dim; i++) {
     cmd->off_[i] = off ? off[i] : 0ULL;
     cmd->gws_[i] = gws[i];
@@ -145,6 +146,7 @@ Command* Command::CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off,
   cmd->kernel_ = kernel;
   cmd->dim_ = dim;
   cmd->name_ = kernel->name();
+  kernel->set_task(task);
   for (int i = 0; i < dim; i++) {
     cmd->off_[i] = off ? off[i] : 0ULL;
     cmd->gws_[i] = gws[i];

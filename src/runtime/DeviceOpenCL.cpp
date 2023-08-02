@@ -400,7 +400,7 @@ int DeviceOpenCL::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws
   if (kernel->is_vendor_specific_kernel(devno_)) {
       if (host2opencl_ld_->iris_host2opencl_launch_with_obj) {
           host2opencl_ld_->SetKernelPtr(kernel->GetParamWrapperMemory(), kernel->name());
-          host2opencl_ld_->iris_host2opencl_launch_with_obj(
+          host2opencl_ld_->iris_host2opencl_launch_with_obj(NULL,
                   kernel->GetParamWrapperMemory(), ocldevno_, dim, off[0], gws[0]);
           return IRIS_SUCCESS; 
       }

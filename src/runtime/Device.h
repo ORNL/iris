@@ -38,6 +38,8 @@ public:
   virtual void RegisterPin(void *host, size_t size) { }
   void ExecuteMalloc(Command* cmd);
   void RegisterHost(BaseMem *mem);
+  virtual void CreateEvent(void **event) {}
+  virtual void DestroyEvent(void *event) {}
   template <typename DMemType>
   void InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem);
   void ExecuteMemResetInput(Task *task, Command* cmd);

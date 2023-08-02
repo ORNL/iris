@@ -47,6 +47,7 @@ private:
   hipCtx_t ctx_;
   hipDevice_t dev_;
   hipDevice_t peers_[IRIS_MAX_NDEVS];
+  hipStream_t streams_[IRIS_MAX_DEVICE_NQUEUES];
   int peers_count_;
   hipModule_t module_;
   hipError_t err_;

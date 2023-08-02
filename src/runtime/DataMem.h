@@ -100,6 +100,8 @@ protected:
   bool host_ptr_owner_;
   Platform *platform_;
   DataMemRegion **regions_;
+  void **completion_events_;
+  void **dep_events_;
 };
 
 } /* namespace rt */

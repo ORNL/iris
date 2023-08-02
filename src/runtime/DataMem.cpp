@@ -36,13 +36,19 @@ void DataMem::Init(Platform *platform, void *host_ptr, size_t size)
     host_dirty_flag_ = false;
     dev_mutex_ = new pthread_mutex_t[ndevs_];
     dirty_flag_ = new bool[ndevs_];
+    completion_events_ = new void *[ndevs_+1];
+    dep_events_ = new void *[ndevs_+1];
     for (int i = 0; i < ndevs_; i++) {
         archs_[i] = NULL;
         archs_dev_[i] = platform->device(i);
         dirty_flag_[i] = true;
         pthread_mutex_init(&dev_mutex_[i], NULL);
+        completion_events_[i] = NULL;
+        dep_events_[i] = NULL;
         //dev_ranges_[i] = NULL;
     }
+    completion_events_[ndevs_] = NULL;
+    dep_events_[ndevs_] = NULL;
     pthread_mutex_init(&host_mutex_, NULL);
     elem_size_ = size_;
     for(int i=0; i<3; i++) {
@@ -52,6 +58,28 @@ void DataMem::Init(Platform *platform, void *host_ptr, size_t size)
     }
     dim_ = 1;
     host_ptr_ = host_ptr;
+}
+DataMem::~DataMem() {
+    if (host_ptr_owner_) free(host_ptr_);
+    for (int i = 0; i < ndevs_; i++) {
+        if (archs_[i]) archs_dev_[i]->MemFree(archs_[i]);
+    }
+    for(int i=0; i<ndevs_; i++) {
+        pthread_mutex_destroy(&dev_mutex_[i]);
+    }
+    pthread_mutex_destroy(&host_mutex_);
+    delete [] dev_mutex_;
+    delete [] dirty_flag_;
+    for(int i=0; i<n_regions_; i++) {
+        delete regions_[i];
+    }
+    if (regions_) delete [] regions_;
+    for(int i=0; i<ndevs_; i++) {
+        if (completion_events_[i] != NULL) 
+            archs_dev_[i]->DestroyEvent(completion_events_[i]);
+    }
+    delete [] dep_events_;
+    delete [] completion_events_;
 }
 void DataMem::UpdateHost(void *host_ptr)
 {
@@ -110,22 +138,6 @@ void DataMem::EnableOuterDimensionRegions()
         size_t dev_offset_from_root = i * dev_offset * elem_size_;
         regions_[i] = new DataMemRegion(this, i, off, loff, host_size_, dev_size, elem_size_, dim_, dev_offset_from_root);
     }
-}
-DataMem::~DataMem() {
-    if (host_ptr_owner_) free(host_ptr_);
-    for (int i = 0; i < ndevs_; i++) {
-        if (archs_[i]) archs_dev_[i]->MemFree(archs_[i]);
-    }
-    for(int i=0; i<ndevs_; i++) {
-        pthread_mutex_destroy(&dev_mutex_[i]);
-    }
-    pthread_mutex_destroy(&host_mutex_);
-    delete [] dev_mutex_;
-    delete [] dirty_flag_;
-    for(int i=0; i<n_regions_; i++) {
-        delete regions_[i];
-    }
-    if (regions_) delete [] regions_;
 }
 
 void DataMem::create_dev_mem(Device *dev, int devno, void *host)

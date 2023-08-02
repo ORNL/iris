@@ -15,6 +15,7 @@ Kernel::Kernel(const char* name, Platform* platform) {
   size_t len = strlen(name);
   strncpy(name_, name, len);
   strcpy(task_name_, name);
+  task_ = NULL;
   name_[len] = 0;
   profile_data_transfers_ = false;
   platform_ = platform;

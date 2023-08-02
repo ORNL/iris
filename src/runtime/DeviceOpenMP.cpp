@@ -266,7 +266,8 @@ int DeviceOpenMP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws
   _trace("dev[%d] kernel[%s:%s] dim[%d] off[%lu] gws[%lu]", devno_, kernel->name(), kernel->get_task_name(), dim, off[0], gws[0]);
   ld_->SetKernelPtr(kernel->GetParamWrapperMemory(), kernel->name());
   if (ld_->iris_openmp_launch_with_obj)
-    return ld_->iris_openmp_launch_with_obj(kernel->GetParamWrapperMemory(), 0, dim, off[0], gws[0]);
+    return ld_->iris_openmp_launch_with_obj(NULL, 
+            kernel->GetParamWrapperMemory(), 0, dim, off[0], gws[0]);
   if (ld_->iris_openmp_launch)
     return ld_->iris_openmp_launch(dim, off[0], gws[0]);
   _error("Missing host iris_openmp_launch/iris_openmp_launch_with_obj function for OpenMP kernel:%s", kernel->name());

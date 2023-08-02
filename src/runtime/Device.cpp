@@ -25,7 +25,7 @@ Device::Device(int devno, int platform) {
   is_d2d_possible_ = false;
   shared_memory_buffers_ = false;
   can_share_host_memory_ = false;
-  nqueues_ = 32;
+  nqueues_ = IRIS_MAX_DEVICE_NQUEUES;
   q_ = 0;
   memset(vendor_, 0, sizeof(vendor_));
   memset(name_, 0, sizeof(name_));
