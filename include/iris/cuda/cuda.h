@@ -68,6 +68,9 @@ enum cudaMemcpyKind
     cudaMemcpyDeviceToDevice      =   3,      /**< Device -> Device */
     cudaMemcpyDefault             =   4       /**< Direction of the transfer is inferred from the pointer values. Requires unified virtual addressing */
 };
+#ifndef __cplusplus
+typedef enum cudaMemcpyKind cudaMemcpyKind;
+#endif
 #define cudaHostRegisterDefault             0x00  /**< Default host memory registration flag */
 #define cudaHostRegisterPortable            0x01  /**< Pinned memory accessible by all CUDA contexts */
 #define cudaHostRegisterMapped              0x02  /**< Map registered memory into device space */

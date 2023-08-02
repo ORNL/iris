@@ -25,6 +25,7 @@ public:
   virtual ~DataMem();
   void UpdateHost(void *host);
   void EnableOuterDimensionRegions();
+  void *GetEvent(int devno) { return completion_events_[devno]; }
   void RecordEvent(int devno, int stream);
   void WaitForEvent(int devno, int stream, int dep_devno);
   void init_reset(bool reset=true);
@@ -103,7 +104,6 @@ protected:
   Platform *platform_;
   DataMemRegion **regions_;
   void **completion_events_;
-  void **dep_events_;
 };
 
 } /* namespace rt */

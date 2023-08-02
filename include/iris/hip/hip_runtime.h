@@ -155,7 +155,7 @@ hipError_t hipMemcpy2DAsync(void* dst, size_t dpitch, const void* src, size_t sp
 hipError_t hipStreamWaitEvent(hipStream_t stream, hipEvent_t event, unsigned int flags);
 hipError_t hipEventCreateWithFlags(hipEvent_t* event, unsigned flags);
 hipError_t hipEventCreate(hipEvent_t* event);
-hipError_t hipEventRecord(hipEvent_t event, hipStream_t stream = NULL);
+hipError_t hipEventRecord(hipEvent_t event, hipStream_t stream);
 hipError_t hipEventDestroy(hipEvent_t event);
 hipError_t hipEventSynchronize(hipEvent_t event);
 hipError_t hipEventElapsedTime(float* ms, hipEvent_t start, hipEvent_t stop);

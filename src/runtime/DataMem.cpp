@@ -37,18 +37,15 @@ void DataMem::Init(Platform *platform, void *host_ptr, size_t size)
     dev_mutex_ = new pthread_mutex_t[ndevs_];
     dirty_flag_ = new bool[ndevs_];
     completion_events_ = new void *[ndevs_+1];
-    dep_events_ = new void *[ndevs_+1];
     for (int i = 0; i < ndevs_; i++) {
         archs_[i] = NULL;
         archs_dev_[i] = platform->device(i);
         dirty_flag_[i] = true;
         pthread_mutex_init(&dev_mutex_[i], NULL);
         completion_events_[i] = NULL;
-        dep_events_[i] = NULL;
         //dev_ranges_[i] = NULL;
     }
     completion_events_[ndevs_] = NULL;
-    dep_events_[ndevs_] = NULL;
     pthread_mutex_init(&host_mutex_, NULL);
     elem_size_ = size_;
     for(int i=0; i<3; i++) {
@@ -78,7 +75,6 @@ DataMem::~DataMem() {
         if (completion_events_[i] != NULL) 
             archs_dev_[i]->DestroyEvent(completion_events_[i]);
     }
-    delete [] dep_events_;
     delete [] completion_events_;
 }
 void DataMem::RecordEvent(int devno, int stream) {
