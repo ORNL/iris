@@ -53,6 +53,12 @@ int LoaderCUDA::LoadFunctions() {
   LOADFUNCSYM(cuMemcpyDtoH, cuMemcpyDtoH_v2);
   LOADFUNCSYM(cuMemcpyDtoHAsync, cuMemcpyDtoHAsync);
   LOADFUNC(cuLaunchKernel);
+  LOADFUNC(cuEventCreate);
+  LOADFUNC(cuEventRecord);
+  LOADFUNC(cuEventDestroy);
+  LOADFUNC(cuEventSynchronize);
+  LOADFUNC(cuEventElapsedTime);
+  LOADFUNC(cuEventQuery);
   return IRIS_SUCCESS;
 }
 
