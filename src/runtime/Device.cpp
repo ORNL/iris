@@ -5,6 +5,7 @@
 #include "Kernel.h"
 #include "Mem.h"
 #include "DataMem.h"
+#include "DataMemRegion.h"
 #include "Platform.h"
 #include "Reduction.h"
 #include "Task.h"

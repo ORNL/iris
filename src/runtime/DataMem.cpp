@@ -1,4 +1,5 @@
 #include "DataMem.h"
+#include "DataMemRegion.h"
 #include "Debug.h"
 #include "Platform.h"
 #include "Device.h"
@@ -12,6 +13,19 @@ namespace rt {
 DataMem::DataMem(Platform* platform, void *host_ptr, size_t size) : BaseMem(IRIS_DMEM, platform->ndevs()) {
     Init(platform, host_ptr, size);
 }
+DataMem::DataMem(Platform *platform, void *host_ptr, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim) : BaseMem(IRIS_DMEM, platform->ndevs()) 
+{
+    size_t size = elem_size;
+    for(int i=0; i<dim; i++) {
+        size = size * dev_size[i];
+    }
+    Init(platform, host_ptr, size);
+    dim_ = dim;
+    memcpy(off_, off, sizeof(size_t)*dim_);
+    memcpy(dev_size_, dev_size, sizeof(size_t)*dim_);
+    memcpy(host_size_, host_size, sizeof(size_t)*dim_);
+    elem_size_ = elem_size;
+}
 void DataMem::Init(Platform *platform, void *host_ptr, size_t size)
 {
     platform_ = platform;
@@ -20,6 +34,8 @@ void DataMem::Init(Platform *platform, void *host_ptr, size_t size)
     n_regions_ = -1;
     regions_ = NULL;
     host_dirty_flag_ = false;
+    dev_mutex_ = new pthread_mutex_t[ndevs_];
+    dirty_flag_ = new bool[ndevs_];
     for (int i = 0; i < ndevs_; i++) {
         archs_[i] = NULL;
         archs_dev_[i] = platform->device(i);
@@ -50,9 +66,9 @@ void DataMem::UpdateHost(void *host_ptr)
 void DataMem::init_reset(bool reset)
 {
     reset_ = reset;
-    host_dirty_flag_ = !reset;
+    host_dirty_flag_ = reset;
     for(int i=0;  i<ndevs_; i++) {
-        dirty_flag_[i] = reset;
+        dirty_flag_[i] = !reset;
     }
 }
 void DataMem::clear() {
@@ -66,21 +82,6 @@ void DataMem::clear() {
           archs_[i] = NULL;
       }
   }
-}
-DataMem::DataMem(Platform *platform, void *host_ptr, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim) : BaseMem(IRIS_DMEM, platform->ndevs()) 
-{
-    size_t size = elem_size;
-    for(int i=0; i<dim; i++) {
-        size = size * dev_size[i];
-    }
-    Init(platform, host_ptr, size);
-    dim_ = dim;
-    for(int i=0; i<dim; i++) {
-        off_[i] = off[i];
-        dev_size_[i] = dev_size[i];
-        host_size_[i] = host_size[i];
-    }
-    elem_size_ = elem_size;
 }
 void *DataMem::host_memory() {
     if (!host_ptr_)  {
@@ -119,6 +120,8 @@ DataMem::~DataMem() {
         pthread_mutex_destroy(&dev_mutex_[i]);
     }
     pthread_mutex_destroy(&host_mutex_);
+    delete [] dev_mutex_;
+    delete [] dirty_flag_;
     for(int i=0; i<n_regions_; i++) {
         delete regions_[i];
     }

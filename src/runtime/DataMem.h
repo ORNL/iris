@@ -4,7 +4,6 @@
 #include "Config.h"
 #include "Retainable.h"
 #include "BaseMem.h"
-#include "DataMemRegion.h"
 #include <pthread.h>
 #include <set>
 #include <vector>
@@ -16,6 +15,7 @@ namespace rt {
 class Platform;
 class Command;
 class Device;
+class DataMemRegion;
 
 class DataMem: public BaseMem {
 public:
@@ -66,29 +66,29 @@ public:
   }
   void clear();
   size_t *off() { return off_; }
-  size_t *local_off() { return off_; }
+  virtual size_t *local_off() { return off_; }
   size_t *host_size() { return host_size_; }
   size_t *dev_size() { return dev_size_; }
   size_t elem_size() { return elem_size_; }
   int dim() { return dim_; }
   void *host_ptr() { return host_ptr_; }
-  void *host_root_memory() { return host_memory(); }
-  void *host_memory();
+  virtual void *host_root_memory() { return host_memory(); }
+  virtual void *host_memory();
   void lock_host_region(int region);
   void unlock_host_region(int region);
   int get_n_regions() { return n_regions_; }
   bool is_regions_enabled() { return n_regions_ != -1; }
   DataMemRegion *get_region(int i) { return regions_[i]; }
-  void* arch(int devno, void *host=NULL);
-  void* arch(Device* dev, void *host=NULL);
-  void** arch_ptr(int devno, void *host=NULL);
-  void** arch_ptr(Device *dev, void *host=NULL);
+  virtual void* arch(int devno, void *host=NULL);
+  virtual void* arch(Device* dev, void *host=NULL);
+  virtual void** arch_ptr(int devno, void *host=NULL);
+  virtual void** arch_ptr(Device *dev, void *host=NULL);
   inline void create_dev_mem(Device *dev, int devno, void *host);
   Platform *platform() { return platform_; }
-private:
+protected:
   bool host_dirty_flag_;
-  bool  dirty_flag_[IRIS_MAX_NDEVS];
-  pthread_mutex_t dev_mutex_[IRIS_MAX_NDEVS];
+  bool  *dirty_flag_;
+  pthread_mutex_t *dev_mutex_;
   pthread_mutex_t host_mutex_;
   int n_regions_;
   void *host_ptr_;

@@ -59,6 +59,12 @@ public:
   CUresult (*cuMemcpyDtoHAsync)(void* dstHost, CUdeviceptr srcDevice, size_t ByteCount, CUstream hStream);
 //  CUresult (*cuLaunchHostFunc)(CUstream hStream, CUhostFn fn, void *userData);
   CUresult (*cuLaunchKernel)(CUfunction f, unsigned int gridDimX, unsigned int gridDimY, unsigned int gridDimZ, unsigned int blockDimX, unsigned int blockDimY, unsigned int blockDimZ, unsigned int sharedMemBytes, CUstream hStream, void** kernelParams, void** extra);
+  CUresult (*cuEventCreate)(CUevent *phEvent, unsigned int Flags);
+  CUresult (*cuEventRecord)(CUevent hEvent, CUstream hStream);
+  CUresult (*cuEventDestroy)(CUevent hEvent);
+  CUresult (*cuEventSynchronize)(CUevent hEvent);
+  CUresult (*cuEventElapsedTime)(float *pMilliseconds, CUevent hStart, CUevent hEnd);
+  CUresult (*cuEventQuery)(CUevent hEvent);
 };
 
 } /* namespace rt */
