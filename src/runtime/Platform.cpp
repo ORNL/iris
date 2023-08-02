@@ -54,6 +54,7 @@ Platform::Platform() {
   disable_d2d_ = false;
   finalize_ = false;
   release_task_flag_ = true;
+  async_ = false;
   nplatforms_ = 0;
   ndevs_ = 0;
   ndevs_enabled_ = 0;

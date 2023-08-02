@@ -239,6 +239,15 @@ extern int iris_platform_count(int* nplatforms);
 extern int iris_platform_info(int platform, int param, void* value, size_t* size);
 
 
+/**@brief Enable IRIS asynchronous task execution feature
+ *
+ * IRIS by default has asynchronous disabled
+ *
+ * @param flag 0: disabled, 1: enabled
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_set_asynchronous(int flag);
+
 /**@brief Sets shared memory model
  *
  * Using this function shared memory model can be set

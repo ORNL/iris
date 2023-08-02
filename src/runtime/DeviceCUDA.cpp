@@ -74,6 +74,7 @@ void testMemcpy(LoaderCUDA *ld)
 }
 DeviceCUDA::DeviceCUDA(LoaderCUDA* ld, LoaderHost2CUDA *host2cuda_ld, CUdevice cudev, int devno, int platform) : Device(devno, platform) {
   ld_ = ld;
+  set_async(true && Platform::GetPlatform()->is_async()); 
   host2cuda_ld_ = host2cuda_ld;
   peers_count_ = 0;
   max_arg_idx_ = 0;

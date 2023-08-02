@@ -43,6 +43,11 @@ int iris_synchronize() {
   return Platform::GetPlatform()->Synchronize();
 }
 
+int iris_set_asynchronous(int flag) {
+ Platform::GetPlatform()->set_async((bool)flag);
+ return IRIS_SUCCESS;
+}
+
 int iris_env_set(const char* key, const char* value) {
   return Platform::GetPlatform()->EnvironmentSet(key, value, true);
 }

@@ -93,6 +93,8 @@ public:
 
   void set_shared_memory_buffers(bool flag=true) { shared_memory_buffers_ = flag; }
   bool is_shared_memory_buffers() { return shared_memory_buffers_ && can_share_host_memory_; }
+  void set_async(bool flag=true) { async_ = flag; }
+  bool is_async() { return async_; }
   int platform() { return platform_; }
   int devno() { return devno_; }
   int type() { return type_; }
@@ -134,6 +136,7 @@ protected:
   bool can_share_host_memory_;
   bool is_d2d_possible_;
   bool native_kernel_not_exists_;
+  bool async_;
 
   Worker* worker_;
   Timer* timer_;

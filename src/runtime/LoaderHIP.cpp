@@ -40,6 +40,15 @@ int LoaderHIP::LoadFunctions() {
   LOADFUNC(hipMemcpyDtoH);
   LOADFUNC(hipModuleLaunchKernel);
   LOADFUNC(hipDeviceSynchronize);
+  LOADFUNC(hipStreamWaitEvent);
+  LOADFUNC(hipEventCreateWithFlags);
+  LOADFUNC(hipEventCreate);
+  LOADFUNC(hipEventRecord);
+  LOADFUNC(hipEventDestroy);
+  LOADFUNC(hipEventSynchronize);
+  LOADFUNC(hipEventElapsedTime);
+  LOADFUNC(hipEventQuery);
+ 
   return IRIS_SUCCESS;
 }
 

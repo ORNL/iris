@@ -95,6 +95,7 @@ typedef enum hipDeviceAttribute_t {
 typedef int hipDevice_t;
 typedef void* hipDeviceptr_t;
 
+typedef struct ihipEvent_t* hipEvent_t;
 typedef struct ihipCtx_t* hipCtx_t;
 typedef struct ihipModule_t* hipModule_t;
 typedef struct ihipModuleSymbol_t* hipFunction_t;
@@ -120,6 +121,14 @@ hipError_t hipMemcpyDtoH(void* dst, hipDeviceptr_t src, size_t sizeBytes);
 hipError_t hipModuleLaunchKernel(hipFunction_t f, unsigned int gridDimX, unsigned int gridDimY, unsigned int gridDimZ, unsigned int blockDimX, unsigned int blockDimY, unsigned int blockDimZ, unsigned int sharedMemBytes, hipStream_t stream, void** kernelParams, void** extra);
 hipError_t hipDeviceSynchronize(void);
 hipError_t hipMemcpy2D(void* dst, size_t dpitch, const void* src, size_t spitch, size_t width, size_t height, hipMemcpyKind kind);
+hipError_t hipStreamWaitEvent(hipStream_t stream, hipEvent_t event, unsigned int flags);
+hipError_t hipEventCreateWithFlags(hipEvent_t* event, unsigned flags);
+hipError_t hipEventCreate(hipEvent_t* event);
+hipError_t hipEventRecord(hipEvent_t event, hipStream_t stream = NULL);
+hipError_t hipEventDestroy(hipEvent_t event);
+hipError_t hipEventSynchronize(hipEvent_t event);
+hipError_t hipEventElapsedTime(float* ms, hipEvent_t start, hipEvent_t stop);
+hipError_t hipEventQuery(hipEvent_t event);
 
 typedef struct {
     // 32-bit Atomics

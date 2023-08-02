@@ -44,6 +44,14 @@ public:
   hipError_t (*hipMemcpyDtoH)(void* dst, hipDeviceptr_t src, size_t sizeBytes);
   hipError_t (*hipModuleLaunchKernel)(hipFunction_t f, unsigned int gridDimX, unsigned int gridDimY, unsigned int gridDimZ, unsigned int blockDimX, unsigned int blockDimY, unsigned int blockDimZ, unsigned int sharedMemBytes, hipStream_t stream, void** kernelParams, void** extra);
   hipError_t (*hipDeviceSynchronize)(void);
+  hipError_t (*hipStreamWaitEvent)(hipStream_t stream, hipEvent_t event, unsigned int flags);
+  hipError_t (*hipEventCreateWithFlags)(hipEvent_t* event, unsigned flags);
+  hipError_t (*hipEventCreate)(hipEvent_t* event);
+  hipError_t (*hipEventRecord)(hipEvent_t event, hipStream_t stream);
+  hipError_t (*hipEventDestroy)(hipEvent_t event);
+  hipError_t (*hipEventSynchronize)(hipEvent_t event);
+  hipError_t (*hipEventElapsedTime)(float* ms, hipEvent_t start, hipEvent_t stop);
+  hipError_t (*hipEventQuery)(hipEvent_t event);
 
   void Lock();
   void Unlock();

@@ -18,6 +18,7 @@ namespace rt {
 
 DeviceHIP::DeviceHIP(LoaderHIP* ld, LoaderHost2HIP *host2hip_ld, hipDevice_t dev, int ordinal, int devno, int platform) : Device(devno, platform) {
   ld_ = ld;
+  set_async(true && Platform::GetPlatform()->is_async()); 
   atleast_one_command_ = false;
   host2hip_ld_ = host2hip_ld;
   max_arg_idx_ = 0;

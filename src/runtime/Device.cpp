@@ -19,6 +19,7 @@ Device::Device(int devno, int platform) {
   platform_ = platform;
   busy_ = false;
   enable_ = false;
+  async_ = false;
   native_kernel_not_exists_ = false;
   is_d2d_possible_ = false;
   shared_memory_buffers_ = false;

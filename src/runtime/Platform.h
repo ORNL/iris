@@ -226,6 +226,8 @@ public:
   Kernel *get_kernel_object(iris_kernel brs_kernel) { return (Kernel *)kernel_track_.GetObject(brs_kernel.uid); }
   int nprofilers() { return nprofilers_; }
   bool is_scheduling_history_enabled() { return enable_scheduling_history_; }
+  bool is_async() { return async_; }
+  void set_async(bool flag=true) { async_ = flag; }
   SchedulingHistory* scheduling_history() { return scheduling_history_; }
   double time_app() { return time_app_; }
   double time_init() { return time_init_; }
@@ -274,6 +276,7 @@ private:
   int devs_enabled_[IRIS_MAX_NDEVS];
   int ndevs_enabled_;
   int nfailures_;
+  bool async_;
 
   std::vector<LoaderHost2OpenCL*> loaderHost2OpenCL_;
   LoaderHost2HIP * loaderHost2HIP_;
