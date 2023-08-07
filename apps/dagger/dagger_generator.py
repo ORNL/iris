@@ -54,6 +54,7 @@ def init_parser(parser):
     parser.add_argument("--seed",required=False,type=int,help="Seed for the random number generator, default is current system time.", default=None)
     parser.add_argument("--sandwich",help="Sandwich the DAG between a lead in and terminating task (akin to a scatter-gather).", action='store_true')
     parser.add_argument("--num-memory-objects",required=False,type=int,help="Enables sharing of memory objects dealt between tasks! It is the total number of memory objects to be passed around in the DAG between tasks (allows greater task interactions).", default=None)
+    parser.add_argument("--use-data-memory",required=False,help="Enables the graph to use memory instead of the default explicit memory buffers. This results in final explicit flush events of buffers that are written.",default=False,action='store_true')
 
 def parse_args(pargs=None,additional_arguments=[]):
     parser = argparse.ArgumentParser(description='DAGGER: Directed Acyclic Graph Generator for Evaluating Runtimes')
@@ -69,7 +70,7 @@ def parse_args(pargs=None,additional_arguments=[]):
     else:
         args = parser.parse_args(shlex.split(pargs))
 
-    global _kernels, _k_probs, _depth, _num_tasks, _min_width, _max_width, _mean, _std_dev, _skips, _seed, _sandwich, _concurrent_kernels, _duplicates, _dimensionality, _graph, _memory_object_pool
+    global _kernels, _k_probs, _depth, _num_tasks, _min_width, _max_width, _mean, _std_dev, _skips, _seed, _sandwich, _concurrent_kernels, _duplicates, _dimensionality, _graph, _memory_object_pool, _use_data_memory
 
     _graph = args.graph
     _depth = args.depth
@@ -82,6 +83,7 @@ def parse_args(pargs=None,additional_arguments=[]):
     _duplicates = args.duplicates
     if _duplicates <= 1: _duplicates = 1
     _kernels = args.kernels.split(',')
+    _use_data_memory = args.use_data_memory
 
     #if kernel-split is used ensure they have the same number of percentages as kernels
     if args.kernel_split:
@@ -411,6 +413,8 @@ def determine_iris_inputs():
     return inputs
 
 def determine_and_prepend_iris_h2d_transfers(dag):
+    if _use_data_memory:
+        return dag
     #sample:       {
     #      "name" : "transferto0",
     #      "h2d": ["user-memA0", "user-A", "0", "user-size-cb"],
@@ -456,6 +460,61 @@ def determine_and_prepend_iris_h2d_transfers(dag):
 
 def determine_and_append_iris_d2h_transfers(dag):
     transfers = []
+
+    if _use_data_memory:
+        #flush here:
+        #iris_task_dmem_flush_out(task0,mem_C);
+        print("geniing data-memory-flush")
+        #either we need to perform a data memory flush back on all of our short-listed pool of memory (since we can't be sure which objects have been written
+        if _memory_object_pool is not None:
+            #depend on all tasks before we flush
+            all_tasks = []
+            for t in dag:
+                all_tasks.append(t['name'])
+
+            #add a data-memory flush for each used memory object
+            for buffer_name in _memory_object_pool:
+                commands = {}
+                commands["d2h"] = {"name":"dmemflush-{}".format(buffer_name),"device_memory":buffer_name,"data-memory-flush":1}
+                transfer = {}
+                transfer["name"] = "dmemflush-{}".format(buffer_name)
+                transfer["commands"] = [commands]
+                transfer["depends"] = all_tasks
+                transfer["target"] = "user-target-control"
+                transfers.append(transfer)
+        #or we need to flush just the written buffers
+        else:
+            for i,k in enumerate(_kernels):
+                for ck in range(0,_duplicates):
+                    for j,l in enumerate(_kernel_buffs[k]):
+                            if l == 'r':
+                                continue
+                            buffer_name = "devicemem-{}-buffer{}-instance{}".format(k,j,ck)
+                            commands = {}
+                            commands["d2h"] = {"name":"d2h-buffer{}-instance{}".format(j,ck),"device_memory":buffer_name,"data-memory-flush":1}
+                            transfer = {}
+                            transfer["name"] = "dmemflush-{}-buffer{}-instance{}".format(k,j,ck)
+                            transfer["commands"] = [commands]
+                            transfer["depends"] = []
+                            #add this dependency to the DAGs--depend on all kernels which use these buffers
+                            memory_instance_in_use = False
+                            for m,t in enumerate(dag):
+                                if 'kernel' not in t['commands'][0]:
+                                    continue
+                                for p in t['commands'][0]['kernel']['parameters']:
+                                    if buffer_name == p['value']:
+                                        memory_instance_in_use = True
+                                        transfer["depends"].append(t["name"])
+                            transfer["target"] = "user-target-control"
+                            if memory_instance_in_use == True:
+                                transfers.append(transfer)
+        #prepend the d2h transfers
+        for t in range(0, len(transfers)):
+            dag.append(transfers.pop(0))
+
+        return dag
+
+    #we aren't using data memory --- process the explicit d2h memory transfers
     #this should be extended for each instance
     for i,k in enumerate(_kernels):
         for ck in range(0,_duplicates):

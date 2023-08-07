@@ -23,9 +23,12 @@ class Gantt():
 
         for d in drop:
           timings = timings[timings.taskname != d]
-
         from natsort import humansorted
-        processors = sorted(list(set(timings['acclname'])),reverse=True)
+        try:
+            processors = sorted(list(set(timings['acclname'])),reverse=True)
+        except:
+            import ipdb
+            ipdb.set_trace()
 
         proc_names = [p for p in processors]
         
@@ -234,17 +237,34 @@ class DAG():
         #add colour
         node_colours = []
         node_shapes = []
+        nodes_to_remove = []
         for n in dag:
             name = None
             for z in task_dag:
               if z['name'] == n:
                 name = z['name']
                 break
-            node_colours.append(device_colour[tuple(self.timeline[self.timeline['taskname'] == name]['acclname'])[0]])
+            try:
+                node_colours.append(device_colour[tuple(self.timeline[self.timeline['taskname'] == name]['acclname'])[0]])
+            except:
+                #MemFlush tasks (IRIS data-memory uses an internal cache and so if the buffer isn't written to, it isn't marked as dirty and therefore no flushing occurs)
+                if z['kernel'] != 'memory_transfer':
+                    import ipdb
+                    ipdb.set_trace()
+                assert z['kernel'] == 'memory_transfer', "we are missing a task in the timeline log!"
+                nodes_to_remove.append(name)
+                print("removed node, label and position for task {} (it was not run)...".format(name))
+                continue
             kernel_name = [ item['kernel'] for item in self.tasks if item['name'] == name ]
             if isinstance(kernel_name,list):
                 kernel_name = kernel_name[0]
             node_shapes.append(kernel_shapes[kernel_name])
+
+        #prune tasks not executed (see line #245)
+        for name in nodes_to_remove:
+            node_labels.pop(name)
+            pos.pop(name)
+            dag.remove_node(name)
 
         fig = plt.figure(figsize=(3,6))
         ax = fig.add_subplot(111)

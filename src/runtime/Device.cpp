@@ -356,6 +356,8 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem)
     double d2dtime = 0.0f;
     double d2otime = 0.0f;
     double o2dtime = 0.0f;
+    printf("TODO: log internal and dmem transfers!\n");
+    //string d2h_tn = "Internal-D2H:" + string(task->name());
     // Check if it is still dirty
     if (!Platform::GetPlatform()->is_d2d_disabled() && d2d_dev >= 0) { 
         // May be transfer directly from peer device is best 
@@ -478,6 +480,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem)
         cmd->kernel()->history()->AddD2H_H2D(cmd, this, d2htime+h2dtime, size);
         //cmd->kernel()->history()->AddD2H(cmd, this, d2htime);
         //cmd->kernel()->history()->AddH2D(cmd, this, h2dtime);
+    if (Platform::GetPlatform()->is_scheduling_history_enabled()) Platform::GetPlatform()->scheduling_history()->AddH2D(cmd);
     }
 }
 void Device::ExecuteMemInDMemRegionIn(Task *task, Command* cmd, DataMemRegion *mem) {
@@ -600,6 +603,7 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
         if (task->is_profile_data_transfers()) {
             task->AddOutDataObjectProfile({(uint32_t) task->uid(), (uint32_t) mem->uid(), (uint32_t) iris_dt_d2h_h2d, (uint32_t) devno_, (uint32_t) -1, start, end});
         }
+        if (Platform::GetPlatform()->is_scheduling_history_enabled()) Platform::GetPlatform()->scheduling_history()->AddD2H(cmd);
     }
     else {
         _trace("MemFlushout is skipped as host already having valid data for task:%ld:%s\n", cmd->task()->uid(), cmd->task()->name());

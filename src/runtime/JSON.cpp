@@ -437,13 +437,6 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
       }
       else if (iris_tasks_[i]["commands"][j].HasMember("d2h")){
         const rapidjson::Value& d2h_ = iris_tasks_[i]["commands"][j]["d2h"];
-        //host_memory
-        if(!d2h_.HasMember("host_memory") or !d2h_["host_memory"].IsString()){
-          _error("malformed command d2h host_memory in file[%s]", path);
-          platform_->IncrementErrorCount();
-          return IRIS_ERROR;
-        }
-        void* host_mem = GetParameterInput(params, d2h_["host_memory"].GetString());
         //device_memory
         if(!d2h_.HasMember("device_memory") or !d2h_["device_memory"].IsString()){
           _error("malformed command d2h device_memory in file[%s]", path);
@@ -451,6 +444,31 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
           return IRIS_ERROR;
         }
         iris_mem *dev_mem = (iris_mem*) GetParameterInput(params, d2h_["device_memory"].GetString());
+        //if IRIS data memory --- break early
+        if(d2h_.HasMember("data-memory-flush")){
+          iris_mem *dev_mem = (iris_mem*) GetParameterInput(params, d2h_["device_memory"].GetString());
+          Command* cmd = Command::CreateMemFlushOut(task, (DataMem *)platform_->get_mem_object(*dev_mem));
+          if(d2h_.HasMember("name")){
+            if(!d2h_["name"].IsString()){
+              _error("malformed command d2h name in file[%s]", path);
+              platform_->IncrementErrorCount();
+              return IRIS_ERROR;
+            }
+            cmd->set_name(const_cast<char*>(d2h_["name"].GetString()));
+            if (!task->given_name()) task->set_name(cmd->name());
+          }
+          printf("adding data_memory flush: %s\n",cmd->name());
+          //raise(SIGINT);//ensure the control-flow is correct
+          task->AddCommand(cmd);
+          continue;
+        }
+        //host_memory
+        if(!d2h_.HasMember("host_memory") or !d2h_["host_memory"].IsString()){
+          _error("malformed command d2h host_memory in file[%s]", path);
+          platform_->IncrementErrorCount();
+          return IRIS_ERROR;
+        }
+        void* host_mem = GetParameterInput(params, d2h_["host_memory"].GetString());
         //offset
         if(!d2h_.HasMember("offset")){
           _error("missing command d2h offset in file[%s]", path);

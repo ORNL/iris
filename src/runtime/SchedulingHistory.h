@@ -1,16 +1,18 @@
 #ifndef BRISBANE_SRC_RT_SCHEDULING_HISTORY_H
 #define BRISBANE_SRC_RT_SCHEDULING_HISTORY_H
 
-#include "Profiler.h"
-#include <set>
+#include <mutex>
+#include <iostream>
+#include <fstream>
 
 namespace iris {
 namespace rt {
 
+class Platform;
 class Command;
 class Task;
 
-class SchedulingHistory : public Profiler {
+class SchedulingHistory {
 public:
   SchedulingHistory(Platform* platform);
   virtual ~SchedulingHistory();
@@ -24,11 +26,9 @@ private:
   void Add(Command* cmd);
   int CompleteCommand(Command* command);
   int CompleteTask(Task* task);
-
-protected:
-  virtual int Main();
-  virtual int Exit();
-  virtual const char* FileExtension();
+  const char* policy_str(int policy);
+  std::ofstream myfile;
+  std::mutex file_mutex;
 
 };
 
