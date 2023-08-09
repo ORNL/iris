@@ -35,10 +35,16 @@ Task::Task(Platform* platform, int type, const char* name) {
   system_ = false;
   internal_memory_transfer_ = false;
   arch_ = NULL;
-  depends_uids_ = NULL;
   meta_data_[0] = meta_data_[1] = meta_data_[2] = meta_data_[3] = -1;
+  //parent
+  depends_uids_ = NULL;
   depends_max_ = 1024;
   ndepends_ = 0;
+  // childs
+  childs_uids_ = NULL;
+  childs_max_ = 1024;
+  nchilds_ = 0;
+
   given_name_ = name != NULL;
   profile_data_transfers_ = false;
   name_="";
@@ -299,10 +305,42 @@ void Task::AddDepend(Task* task, unsigned long uid) {
     delete [] old_uids;
   } 
   depends_uids_[ndepends_] = uid;
+  if(platform_->get_enable_proactive() 
+		&& std::string(this->name()).find("Graph") == std::string::npos  
+		&& std::string(this->name()).find("flush-out") == std::string::npos ) {
+	task->AddChild(this, this->uid());
+  }
   ndepends_++;
   if (platform_->task_track().IsObjectExists(uid)) 
       task->Retain();
 }
+
+void Task::AddChild(Task* task, unsigned long uid) {
+  if (childs_uids_ == NULL) {
+      childs_uids_ = new unsigned long[childs_max_];
+  }
+  for (int i = 0; i < nchilds_; i++) if (uid == childs_uids_[i]) return;
+  if (nchilds_ == childs_max_ - 1) {
+    unsigned long *old_uids = childs_uids_;
+    childs_max_ *= 2;
+    childs_uids_ = new unsigned long[childs_max_];
+    memcpy(childs_uids_, old_uids, nchilds_*sizeof(unsigned long));
+    delete [] old_uids;
+  }
+
+  childs_uids_[nchilds_] = uid;
+  nchilds_++;
+  //if (platform_->task_track().IsObjectExists(uid))
+  //    task->Retain();
+}
+
+// One call to add all the childs by tracking the parents
+void Task::AddAllChilds() {
+  for (int i = 0; i < ndepends_; i++) 
+	platform_->get_task_object(depends_uids_[i])->AddChild(this, this->uid());
+}
+
+
 
 /*
 void Task::RemoveDepend(Task* task) {
@@ -314,6 +352,9 @@ void Task::RemoveDepend(Task* task) {
     }
 }
 */
+
+
+
 
 void Task::Submit(int brs_policy, const char* opt, int sync) {
   status_ = IRIS_NONE;

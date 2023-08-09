@@ -7,6 +7,7 @@
 #include <pthread.h>
 #include <vector>
 #include <string>
+#include <iostream>
 
 #define IRIS_COMPLETE   0x0
 #define IRIS_RUNNING    0x1
@@ -114,6 +115,12 @@ public:
   void set_metadata(int index, int data) { meta_data_[index] = data; }
   int metadata(int index) { return meta_data_[index]; }
   void print_incomplete_tasks();
+
+  Task* Child(int i) { return platform_->get_task_object(childs_uids_[i]); }
+  int nchilds() { return nchilds_; }
+  void AddChild(Task* task, unsigned long uid);
+  void AddAllChilds();
+ 
 private:
   void CompleteSub();
 
@@ -136,10 +143,17 @@ private:
   size_t subtasks_complete_;
   void* arch_;
 
+  // for keepign track of the parents
   //Task** depends_;
   unsigned long* depends_uids_;
   int depends_max_;
   int ndepends_;
+ 
+  // for keeping track of the childs
+  unsigned long* childs_uids_;
+  int childs_max_;
+  int nchilds_;
+
 
   int brs_policy_;
   char opt_[64];

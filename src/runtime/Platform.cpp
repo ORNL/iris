@@ -91,7 +91,7 @@ Platform::Platform() {
   hook_command_post_ = NULL;
   scheduling_history_ = NULL;
   pthread_mutex_init(&mutex_, NULL);
-  enable_proactive_ = false;
+  enable_proactive_ = true;
 }
 
 Platform::~Platform() {
@@ -1489,6 +1489,13 @@ int Platform::GraphSubmit(iris_graph brs_graph, int brs_policy, int sync) {
   //graph->RecordStartTime(devs_[0]->Now());
   for (std::vector<Task*>::iterator I = tasks->begin(), E = tasks->end(); I != E; ++I) {
     Task* task = *I;
+/* 
+    printf("Task: %s\n", task->name());
+    for(int i = 0; i < task->ndepends(); i++)
+        printf("    Parents %d - %s\n", i, task->depend(i)->name());
+    for(int i = 0; i < task->nchilds(); i++)
+        printf("    Childs %d - %s\n", i, task->Child(i)->name());
+*/ 
     //preference is to honour the policy embedded in the task-graph.
     if (task->brs_policy() == iris_default) {
       task->set_brs_policy(brs_policy);
