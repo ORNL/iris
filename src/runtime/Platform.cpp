@@ -91,6 +91,7 @@ Platform::Platform() {
   hook_command_post_ = NULL;
   scheduling_history_ = NULL;
   pthread_mutex_init(&mutex_, NULL);
+  enable_proactive_ = false;
 }
 
 Platform::~Platform() {

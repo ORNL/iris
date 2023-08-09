@@ -245,6 +245,8 @@ public:
   BaseMem* GetMem(iris_mem brs_mem);
   BaseMem* GetMem(void* host, size_t* off);
   shared_ptr<History> CreateHistory(string kname);
+  bool get_enable_proactive(){ return enable_proactive_;}
+  void set_enable_proactive(bool enable_proactive){ enable_proactive_ = enable_proactive;}
 
 private:
   int SetDevsAvailable();
@@ -337,6 +339,8 @@ private:
   double time_app_;
   double time_init_;
   char tmp_dir_[263];
+  bool enable_proactive_;
+
 private:
   static unique_ptr<Platform> singleton_;
   static std::once_flag flag_singleton_;
