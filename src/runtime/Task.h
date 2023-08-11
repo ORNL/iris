@@ -91,6 +91,8 @@ public:
   void set_opt(const char* opt);
   char* opt() { return opt_; }
   int brs_policy() { return brs_policy_; }
+  int recommended_dev() { return recommended_dev_; }
+  void set_recommended_dev(int dev) { recommended_dev_ = dev; }
   const char* brs_policy_string();
   const char* task_status_string();
   bool sync() { return sync_; }
@@ -155,6 +157,7 @@ private:
   int nchilds_;
 
 
+  int recommended_dev_;
   int brs_policy_;
   char opt_[64];
 

@@ -42,6 +42,7 @@ public:
   virtual void RecordEvent(void *event, int stream);
   virtual void WaitForEvent(void *event, int stream, int flags=0);
   virtual void DestroyEvent(void *event);
+  void ProactiveTransfers(Task *task);
   template <typename DMemType>
   void InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem);
   void ExecuteMemResetInput(Task *task, Command* cmd);
@@ -128,6 +129,7 @@ protected:
   size_t max_work_group_size_;
   size_t max_work_item_sizes_[3];
   int max_block_dims_[3];
+  uint8_t *devices_track_;
   int nqueues_;
   int q_;
   int errid_;

@@ -28,6 +28,7 @@ Device::Device(int devno, int platform) {
   can_share_host_memory_ = false;
   nqueues_ = IRIS_MAX_DEVICE_NQUEUES;
   q_ = 0;
+  devices_track_ = NULL; 
   memset(vendor_, 0, sizeof(vendor_));
   memset(name_, 0, sizeof(name_));
   memset(version_, 0, sizeof(version_));
@@ -90,10 +91,29 @@ void Device::Execute(Task* task) {
   if (hook_task_post_) hook_task_post_(task);
 //  if (++q_ >= nqueues_) q_ = 0;
   if (!task->system()) _trace("task[%lu:%s] complete dev[%d][%s] time[%lf] end:[%lf]", task->uid(), task->name(), devno(), name(), task->time(), task->time_end());
+  ProactiveTransfers(task);
 #ifdef IRIS_SYNC_EXECUTION
   task->Complete();
 #endif
   busy_ = false;
+}
+
+void Device::ProactiveTransfers(Task *task, Command *cmd)
+{
+  int ndevs = Platform::GetPlatform()->ndevs();
+  if (devices_track_ == NULL)
+      devices_track_ = (uint8_t *)malloc(ndevs*sizeof(uint8_t));
+  memset(devices_track_, 0x0, sizeof(uint8_t)*ndevs);
+  for (int i=0; i<task->nchilds(); i++) {
+      Task *child = task->Child(i);
+      int dev = child->recommended_dev();
+      devices_track_[dev] = 1;
+  }
+  for (int i=0; i<ndevs; i++) {
+      if (devices_track_[i] == 1) {
+        //TODO:
+      }
+  }
 }
 
 void Device::ExecuteInit(Command* cmd) {
