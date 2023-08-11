@@ -54,12 +54,16 @@ public:
   char *get_task_name() { return task_name_; }
   Platform* platform() { return platform_; }
   shared_ptr<History> history() { return history_; }
+  map<DataMem *, int> & in_mems() { return in_mem_track_; }
   map<int, DataMem *> & data_mems_in() { return data_mems_in_; }
   map<int, DataMem *> & data_mems_out() { return data_mems_out_; }
   map<int, DataMemRegion *> & data_mem_regions_in() { return data_mem_regions_in_; }
   map<int, DataMemRegion *> & data_mem_regions_out() { return data_mem_regions_out_; }
   vector<int> & data_mems_in_order() { return data_mems_in_order_; }
   vector<BaseMem*> & all_data_mems_in() { return all_data_mems_in_; }
+  bool is_in_mem_exist(BaseMem *mem) { 
+    return in_mem_track_.find(mem) != in_mem_track_.end();
+  }
   void** archs() { return archs_; }
   size_t nargs() { return args_.size(); }
   void* arch(Device* dev, bool report_error=true);
@@ -84,6 +88,7 @@ private:
   vector<DataObjectProfile>       in_dataobject_profiles;
   vector<int> data_mems_in_order_;
   vector<BaseMem *> all_data_mems_in_;
+  std::map<BaseMem *, int> in_mem_track_;
   std::map<int, DataMem *> data_mems_in_;
   std::map<int, DataMemRegion *> data_mem_regions_in_;
   std::map<int, DataMem *> data_mems_out_;

@@ -81,6 +81,7 @@ void Kernel::add_dmem(DataMem *mem, int idx, int mode)
     if (mode == iris_r) {
         data_mems_in_.insert(make_pair(idx, mem));
         all_data_mems_in_.push_back(mem);
+        in_mem_track_.insert(make_pair(mem, idx));
     }
     else if (mode == iris_w)  {
         data_mems_out_.insert(make_pair(idx, mem));
@@ -89,6 +90,7 @@ void Kernel::add_dmem(DataMem *mem, int idx, int mode)
         data_mems_in_.insert(make_pair(idx, mem));
         data_mems_out_.insert(make_pair(idx, mem));
         all_data_mems_in_.push_back(mem);
+        in_mem_track_.insert(make_pair(mem, idx));
     }
 }
 void  Kernel::add_dmem_region(DataMemRegion *mem, int idx, int mode)
@@ -96,6 +98,7 @@ void  Kernel::add_dmem_region(DataMemRegion *mem, int idx, int mode)
     if (mode == iris_r) {
         data_mem_regions_in_.insert(make_pair(idx, mem));
         all_data_mems_in_.push_back(mem);
+        in_mem_track_.insert(make_pair(mem, idx));
     }
     else if (mode == iris_w)  {
         data_mem_regions_out_.insert(make_pair(idx, mem));
@@ -104,6 +107,7 @@ void  Kernel::add_dmem_region(DataMemRegion *mem, int idx, int mode)
         data_mem_regions_in_.insert(make_pair(idx, mem));
         data_mem_regions_out_.insert(make_pair(idx, mem));
         all_data_mems_in_.push_back(mem);
+        in_mem_track_.insert(make_pair(mem, idx));
     }
 }
 

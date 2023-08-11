@@ -28,7 +28,7 @@ Device::Device(int devno, int platform) {
   can_share_host_memory_ = false;
   nqueues_ = IRIS_MAX_DEVICE_NQUEUES;
   q_ = 0;
-  devices_track_ = NULL; 
+  dev_2_child_task_ = NULL; 
   memset(vendor_, 0, sizeof(vendor_));
   memset(name_, 0, sizeof(name_));
   memset(version_, 0, sizeof(version_));
@@ -100,18 +100,34 @@ void Device::Execute(Task* task) {
 
 void Device::ProactiveTransfers(Task *task, Command *cmd)
 {
+  if (!Platform::GetPlatform()->get_enable_proactive()) return;
+  if (cmd->kernel() == NULL) return;
   int ndevs = Platform::GetPlatform()->ndevs();
-  if (devices_track_ == NULL)
-      devices_track_ = (uint8_t *)malloc(ndevs*sizeof(uint8_t));
-  memset(devices_track_, 0x0, sizeof(uint8_t)*ndevs);
-  for (int i=0; i<task->nchilds(); i++) {
-      Task *child = task->Child(i);
-      int dev = child->recommended_dev();
-      devices_track_[dev] = 1;
-  }
-  for (int i=0; i<ndevs; i++) {
-      if (devices_track_[i] == 1) {
-        //TODO:
+  if (dev_2_child_task_ == NULL)
+      dev_2_child_task_ = (Task**)malloc(ndevs*sizeof(Task*));
+  map<BaseMem *, int> in_mems = cmd->kernel()->in_mems();
+  for (auto & inmem : in_mems) {
+      DataMem *mem = (DataMem *)inmem.first;
+      int karg_index = inmem.second;
+      memset(dev_2_child_task_, 0x0, sizeof(Task*)*ndevs);
+      for (int i=0; i<task->nchilds(); i++) {
+          Task *child = task->Child(i);
+          int dev = child->recommended_dev();
+          if (dev != -1 && child->cmd_kernel() != NULL &&
+                  child->cmd_kernel()->kernel()->is_in_mem_exist(mem)) {
+              dev_2_child_task_[dev] = child;
+          }
+      }
+      for (int i=0; i<ndevs; i++) {
+          if (dev_2_child_task_[i] == NULL) {
+              Device *dev = Platform::GetPlatform()->device(i);
+              if (mem->GetMemHandlerType() == IRIS_DMEM) {
+                 dev->ExecuteMemInDMemIn(dev_2_child_task_[i], cmd, mem);
+              }
+              else if (mem->GetMemHandlerType() == IRIS_DMEM_REGION) {
+                 ExecuteMemInDMemRegionIn(dev_2_child_task_[i], cmd, (DataMemRegion *)mem);
+              }
+          }
       }
   }
 }

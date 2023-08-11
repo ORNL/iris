@@ -129,7 +129,7 @@ protected:
   size_t max_work_group_size_;
   size_t max_work_item_sizes_[3];
   int max_block_dims_[3];
-  uint8_t *devices_track_;
+  Task **dev_2_child_task_;
   int nqueues_;
   int q_;
   int errid_;
