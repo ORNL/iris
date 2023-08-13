@@ -218,7 +218,7 @@ int DeviceHIP::MemD2D(Task *task, BaseMem *mem, void *dst, void *src, size_t siz
       ld_->hipCtxSetCurrent(ctx_);
   }
   if (is_async()) {
-      q_ = task->uid() % nqueues_; 
+      q_ = GetStream(task); //task->uid() % nqueues_; 
       err_ = ld_->hipMemcpyDtoDAsync(dst, src, size, streams_[q_]);
   } 
   else {
@@ -237,7 +237,7 @@ int DeviceHIP::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,
   }
   void* hipmem = mem->arch(this);
   if (is_async()) {
-      q_ = task->uid() % nqueues_; 
+      q_ = GetStream(task); //task->uid() % nqueues_; 
   }
   if (dim == 2) {
       _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu,%lu,%lu] host_sizes[%lu,%lu,%lu] dev_sizes[%lu,%lu,%lu] size[%lu] host[%p]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), hipmem, off[0], off[1], off[2], host_sizes[0], host_sizes[1], host_sizes[2], dev_sizes[0], dev_sizes[1], dev_sizes[2], size, host);
@@ -300,7 +300,7 @@ int DeviceHIP::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,
   }
   void* hipmem = mem->arch(this);
   if (is_async()) {
-      q_ = task->uid() % nqueues_; 
+      q_ = GetStream(task); //task->uid() % nqueues_; 
   }
   if (dim == 2) {
       _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu,%lu,%lu] host_sizes[%lu,%lu,%lu] dev_sizes[%lu,%lu,%lu] size[%lu] host[%p]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)hipmem, off[0], off[1], off[2], host_sizes[0], host_sizes[1], host_sizes[2], dev_sizes[0], dev_sizes[1], dev_sizes[2], size, host);
@@ -477,7 +477,7 @@ int DeviceHIP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, s
 #endif
   atleast_one_command_ = true;
   if (is_async())
-      q_ = kernel->task()->uid() % nqueues_; 
+      q_ = GetStream(kernel->task()); //kernel->task()->uid() % nqueues_; 
   if (kernel->is_vendor_specific_kernel(devno_) && host2hip_ld_->iris_host2hip_launch_with_obj) {
       _trace("dev[%d][%s] kernel[%s:%s] dim[%d] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, q_);
       host2hip_ld_->SetKernelPtr(kernel->GetParamWrapperMemory(), kernel->name());

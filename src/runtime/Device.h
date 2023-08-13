@@ -115,6 +115,7 @@ public:
   int ok() { return errid_; }
   void set_worker(Worker* worker) { worker_ = worker; }
   Worker* worker() { return worker_; }
+  int GetStream(Task *task);
   double Now() { return timer_->Now(); }
 protected:
   int devno_;
@@ -133,6 +134,7 @@ protected:
   int nqueues_;
   int q_;
   int errid_;
+  int current_queue_;
 
   char kernel_path_[256];
 

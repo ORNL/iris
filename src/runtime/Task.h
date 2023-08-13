@@ -91,6 +91,8 @@ public:
   void set_opt(const char* opt);
   char* opt() { return opt_; }
   int brs_policy() { return brs_policy_; }
+  int recommended_stream() { return recommended_stream_; }
+  void set_recommended_stream(int stream) { recommended_stream_ = stream; }
   int recommended_dev() { return recommended_dev_; }
   void set_recommended_dev(int dev) { recommended_dev_ = dev; }
   const char* brs_policy_string();
@@ -157,6 +159,7 @@ private:
   int nchilds_;
 
 
+  int recommended_stream_;
   int recommended_dev_;
   int brs_policy_;
   char opt_[64];

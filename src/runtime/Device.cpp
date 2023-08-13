@@ -18,6 +18,7 @@ namespace rt {
 
 Device::Device(int devno, int platform) {
   devno_ = devno;
+  current_queue_ = 0;
   platform_ = platform;
   busy_ = false;
   enable_ = false;
@@ -43,6 +44,10 @@ Device::Device(int devno, int platform) {
 
 Device::~Device() {
   delete timer_;
+}
+
+int Device::GetStream(Task *task) { 
+    return task->uid() % nqueues_; 
 }
 
 void Device::Execute(Task* task) {

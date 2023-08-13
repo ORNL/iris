@@ -309,7 +309,7 @@ int DeviceCUDA::MemD2D(Task *task, BaseMem *mem, void *dst, void *src, size_t si
       ld_->cuCtxSetCurrent(ctx_);
   }
   if (is_async()) {
-      q_ = task->uid() % nqueues_; 
+      q_ = GetStream(task); //task->uid() % nqueues_; 
       err_ = ld_->cudaMemcpyAsync((void *)dst_cumem, (void *)src_cumem, size, cudaMemcpyDeviceToDevice, streams_[q_]);
   }
   else {
@@ -338,7 +338,7 @@ int DeviceCUDA::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
   //testMemcpy(ld_);
   CUdeviceptr cumem = (CUdeviceptr) mem->arch(this);
   if (is_async()) {
-      q_ = task->uid() % nqueues_; 
+      q_ = GetStream(task); //task->uid() % nqueues_; 
   }
   if (dim == 3) {
       _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu,%lu,%lu] host_sizes[%lu,%lu,%lu] dev_sizes[%lu,%lu,%lu] size[%lu] host[%p]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, off[0], off[1], off[2], host_sizes[0], host_sizes[1], host_sizes[2], dev_sizes[0], dev_sizes[1], dev_sizes[2], size, host);
@@ -426,7 +426,7 @@ int DeviceCUDA::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
   }
   CUdeviceptr cumem = (CUdeviceptr) mem->arch(this);
   if (is_async()) {
-      q_ = task->uid() % nqueues_; 
+      q_ = GetStream(task); //task->uid() % nqueues_; 
   }
   if (dim == 3) {
       _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu,%lu,%lu] host_sizes[%lu,%lu,%lu] dev_sizes[%lu,%lu,%lu] size[%lu] host[%p]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, off[0], off[1], off[2], host_sizes[0], host_sizes[1], host_sizes[2], dev_sizes[0], dev_sizes[1], dev_sizes[2], size, host);
@@ -613,7 +613,7 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
     }
 #endif
   if (is_async())
-      q_ = kernel->task()->uid() % nqueues_; 
+      q_ = GetStream(kernel->task()); //task->uid() % nqueues_; 
   if (kernel->is_vendor_specific_kernel(devno_)) {
      if(host2cuda_ld_->iris_host2cuda_launch_with_obj) {
          _trace("dev[%d][%s] kernel[%s:%s] dim[%d] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, q_);
@@ -714,7 +714,7 @@ int DeviceCUDA::Synchronize() {
 }
 
 int DeviceCUDA::AddCallback(Task* task) {
-  q_ = task->uid() % nqueues_; 
+  q_ = GetStream(task); //task->uid() % nqueues_; 
   err_ = ld_->cuStreamAddCallback(streams_[q_], DeviceCUDA::Callback, task, 0);
   _cuerror(err_);
   if (err_ != CUDA_SUCCESS){
