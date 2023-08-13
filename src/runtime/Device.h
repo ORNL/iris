@@ -117,6 +117,14 @@ public:
   Worker* worker() { return worker_; }
   int GetStream(Task *task);
   double Now() { return timer_->Now(); }
+private:
+  int get_new_stream_queue() {
+    unsigned long new_current_queue;
+    do {
+        new_current_queue = current_queue_ + 1;
+    } while (!__sync_bool_compare_and_swap(&current_queue_, current_queue_, new_current_queue));
+    return new_current_queue;
+  }
 protected:
   int devno_;
   int platform_;

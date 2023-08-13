@@ -92,6 +92,12 @@ public:
   char* opt() { return opt_; }
   int brs_policy() { return brs_policy_; }
   int recommended_stream() { return recommended_stream_; }
+  void stream_lock() {
+    pthread_mutex_lock(&stream_mutex_);
+  }
+  void stream_unlock() {
+    pthread_mutex_unlock(&stream_mutex_);
+  }
   void set_recommended_stream(int stream) { recommended_stream_ = stream; }
   int recommended_dev() { return recommended_dev_; }
   void set_recommended_dev(int dev) { recommended_dev_ = dev; }
@@ -178,6 +184,7 @@ private:
   double time_start_;
   double time_end_;
 
+  pthread_mutex_t stream_mutex_;
   pthread_mutex_t mutex_pending_;
   pthread_mutex_t mutex_executable_;
   pthread_mutex_t mutex_complete_;

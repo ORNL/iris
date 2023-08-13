@@ -53,6 +53,7 @@ Task::Task(Platform* platform, int type, const char* name) {
   if (name) name_ = std::string(name);
   status_ = IRIS_NONE;
 
+  pthread_mutex_init(&stream_mutex_, NULL);
   pthread_mutex_init(&mutex_pending_, NULL);
   pthread_mutex_init(&mutex_executable_, NULL);
   pthread_mutex_init(&mutex_complete_, NULL);
@@ -70,6 +71,7 @@ Task::~Task() {
   _trace("Task deleted %lu %s %p", uid(), name(), this);
   for (int i = 0; i < ncmds_; i++) delete cmds_[i];
   if (depends_uids_) delete [] depends_uids_;
+  pthread_mutex_destroy(&stream_mutex_);
   pthread_mutex_destroy(&mutex_pending_);
   pthread_mutex_destroy(&mutex_executable_);
   pthread_mutex_destroy(&mutex_complete_);

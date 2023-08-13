@@ -47,7 +47,15 @@ Device::~Device() {
 }
 
 int Device::GetStream(Task *task) { 
-    return task->uid() % nqueues_; 
+    task->stream_lock();
+    int s_index = task->recommended_stream();
+    if (s_index == -1) {
+        int queue = get_new_stream_queue();
+        task->set_recommended_stream(queue);
+    }
+    task->stream_unlock();
+    return task->recommended_stream();
+    //return task->uid() % nqueues_; 
 }
 
 void Device::Execute(Task* task) {
