@@ -91,7 +91,7 @@ void Device::Execute(Task* task) {
   if (hook_task_post_) hook_task_post_(task);
 //  if (++q_ >= nqueues_) q_ = 0;
   if (!task->system()) _trace("task[%lu:%s] complete dev[%d][%s] time[%lf] end:[%lf]", task->uid(), task->name(), devno(), name(), task->time(), task->time_end());
-  ProactiveTransfers(task);
+  ProactiveTransfers(task, task->cmd_kernel());
 #ifdef IRIS_SYNC_EXECUTION
   task->Complete();
 #endif
@@ -106,6 +106,7 @@ void Device::ProactiveTransfers(Task *task, Command *cmd)
   if (dev_2_child_task_ == NULL)
       dev_2_child_task_ = (Task**)malloc(ndevs*sizeof(Task*));
   map<BaseMem *, int> in_mems = cmd->kernel()->in_mems();
+  // Extract all input memory objects and unique device transfers
   for (auto & inmem : in_mems) {
       DataMem *mem = (DataMem *)inmem.first;
       int karg_index = inmem.second;
@@ -113,11 +114,14 @@ void Device::ProactiveTransfers(Task *task, Command *cmd)
       for (int i=0; i<task->nchilds(); i++) {
           Task *child = task->Child(i);
           int dev = child->recommended_dev();
-          if (dev != -1 && child->cmd_kernel() != NULL &&
-                  child->cmd_kernel()->kernel()->is_in_mem_exist(mem)) {
+          KernelArg *karg = NULL;
+          if (dev != -1 && child->cmd_kernel() != NULL && 
+                  (karg = cmd->kernel()->get_in_mem_karg(mem))!=NULL) {
               dev_2_child_task_[dev] = child;
+              karg->proactive_enabled();
           }
       }
+      //TODO: Explore Hierarchical (Tree style) data transfers in future for asyn
       for (int i=0; i<ndevs; i++) {
           if (dev_2_child_task_[i] == NULL) {
               Device *dev = Platform::GetPlatform()->device(i);
@@ -125,7 +129,7 @@ void Device::ProactiveTransfers(Task *task, Command *cmd)
                  dev->ExecuteMemInDMemIn(dev_2_child_task_[i], cmd, mem);
               }
               else if (mem->GetMemHandlerType() == IRIS_DMEM_REGION) {
-                 ExecuteMemInDMemRegionIn(dev_2_child_task_[i], cmd, (DataMemRegion *)mem);
+                 dev->ExecuteMemInDMemRegionIn(dev_2_child_task_[i], cmd, (DataMemRegion *)mem);
               }
           }
       }
@@ -330,6 +334,13 @@ void Device::ExecuteMemIn(Task *task, Command* cmd) {
             if (params_map != NULL && 
                     (params_map[idx] & iris_all) == 0 && 
                     !(params_map[idx] & type_) ) continue;
+            KernelArg *karg = kernel->karg(idx);
+            // If the kernel argument data transfer is proactively handled, ignore here
+            if (karg->proactive) { 
+                // Clear it for next time task submit
+                karg->proactive_disabled();
+                continue;
+            }
             if ((size_t)idx < all_data_mems_in.size()) {
                 if (all_data_mems_in[idx]->GetMemHandlerType() == IRIS_DMEM) {
                     DataMem *mem = (DataMem*)all_data_mems_in[idx];

@@ -26,6 +26,9 @@ typedef struct _KernelArg {
   size_t mem_size;
   size_t off;
   int mode;
+  int proactive;
+  void proactive_enabled() { proactive = true; }
+  void proactive_disabled() { proactive = false; }
 } KernelArg;
 
 class Kernel: public Retainable<struct _iris_kernel, Kernel> {
@@ -54,18 +57,22 @@ public:
   char *get_task_name() { return task_name_; }
   Platform* platform() { return platform_; }
   shared_ptr<History> history() { return history_; }
-  map<DataMem *, int> & in_mems() { return in_mem_track_; }
+  map<BaseMem*, int> & in_mems() { return in_mem_track_; }
   map<int, DataMem *> & data_mems_in() { return data_mems_in_; }
   map<int, DataMem *> & data_mems_out() { return data_mems_out_; }
   map<int, DataMemRegion *> & data_mem_regions_in() { return data_mem_regions_in_; }
   map<int, DataMemRegion *> & data_mem_regions_out() { return data_mem_regions_out_; }
   vector<int> & data_mems_in_order() { return data_mems_in_order_; }
   vector<BaseMem*> & all_data_mems_in() { return all_data_mems_in_; }
+  KernelArg *get_in_mem_karg(BaseMem *mem) { 
+    return (in_mem_track_.find(mem) != in_mem_track_.end()) ? karg(in_mem_track_[mem]) : NULL;
+  }
   bool is_in_mem_exist(BaseMem *mem) { 
     return in_mem_track_.find(mem) != in_mem_track_.end();
   }
   void** archs() { return archs_; }
   size_t nargs() { return args_.size(); }
+  KernelArg *karg(int index) { return args_[index]; }
   void* arch(Device* dev, bool report_error=true);
   int set_order(int *order);
   int isSupported(Device* dev);

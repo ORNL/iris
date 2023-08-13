@@ -42,7 +42,7 @@ public:
   virtual void RecordEvent(void *event, int stream);
   virtual void WaitForEvent(void *event, int stream, int flags=0);
   virtual void DestroyEvent(void *event);
-  void ProactiveTransfers(Task *task);
+  void ProactiveTransfers(Task *task, Command *cmd);
   template <typename DMemType>
   void InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem);
   void ExecuteMemResetInput(Task *task, Command* cmd);

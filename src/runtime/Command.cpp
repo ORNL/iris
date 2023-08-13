@@ -51,7 +51,6 @@ void Command::Clear(bool init) {
   selector_kernel_params_ = NULL;
   time_ = 0.0;
   internal_memory_transfer_ = false;
-  kernel_args_ = NULL;
   kernel_nargs_ = 0;
   last_ = false;
   selector_kernel_ = NULL;
@@ -68,6 +67,7 @@ void Command::Clear(bool init) {
     kernel_nargs_max_ = IRIS_CMD_KERNEL_NARGS_MAX;
     kernel_args_ = new KernelArg[kernel_nargs_max_];
     for (int i = 0; i < kernel_nargs_max_; i++) {
+      kernel_args_[i].proactive = false;
       kernel_args_[i].mem = NULL;
     }
   }

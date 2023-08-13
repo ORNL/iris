@@ -146,7 +146,7 @@ void Scheduler::SubmitTask(Task* task) {
     }
   } else policies_->GetPolicy(brs_policy, opt)->GetDevices(task, devs, &ndevs);
   if (ndevs == 1) {
-    task-set_recommended_dev(devs[0]);
+    task->set_recommended_dev(devs[0]->devno());
   }
   if (ndevs == 0) {
     int dev_default = platform_->device_default();
