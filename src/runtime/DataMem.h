@@ -25,6 +25,8 @@ public:
   virtual ~DataMem();
   void UpdateHost(void *host);
   void EnableOuterDimensionRegions();
+  int GetWriteStream(int devno) { return write_streams_[devno]; }
+  void SetWriteStream(int devno, int stream) { write_streams_[devno] = stream; }
   void *GetEvent(int devno) { return completion_events_[devno]; }
   void RecordEvent(int devno, int stream);
   void WaitForEvent(int devno, int stream, int dep_devno);
@@ -104,6 +106,7 @@ protected:
   Platform *platform_;
   DataMemRegion **regions_;
   void **completion_events_;
+  int *write_streams_;
 };
 
 } /* namespace rt */

@@ -96,6 +96,7 @@ void Device::Execute(Task* task) {
     cmd->set_time_end(timer_->Now());
     if (hook_command_post_) hook_command_post_(cmd);
 #ifndef IRIS_SYNC_EXECUTION
+    //TODO: Revisit here after async
     if (cmd->last()) AddCallback(task);
 #endif
   }
@@ -106,6 +107,7 @@ void Device::Execute(Task* task) {
   if (!task->system()) _trace("task[%lu:%s] complete dev[%d][%s] time[%lf] end:[%lf]", task->uid(), task->name(), devno(), name(), task->time(), task->time_end());
   ProactiveTransfers(task, task->cmd_kernel());
 #ifdef IRIS_SYNC_EXECUTION
+  //TODO: Revisit here after async
   task->Complete();
 #endif
   busy_ = false;
@@ -351,6 +353,7 @@ void Device::ExecuteMemIn(Task *task, Command* cmd) {
             // If the kernel argument data transfer is proactively handled, ignore here
             if (karg->proactive) { 
                 // Clear it for next time task submit
+                // TODO: Revisit this after asynchronous implementation
                 karg->proactive_disabled();
                 continue;
             }
@@ -432,6 +435,8 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem)
 
         MemD2D(task, mem, dst_arch, src_arch, mem->size());
         double end = timer_->Now();
+        if (is_async()) 
+            mem->RecordEvent(devno(), task->recommended_stream());
         if (kernel->is_profile_data_transfers()) {
             kernel->AddInDataObjectProfile({(uint32_t) cmd->task()->uid(), (uint32_t) mem->uid(), (uint32_t) iris_dt_d2d, (uint32_t) d2d_dev, (uint32_t) devno_, start, end});
         }
@@ -454,6 +459,8 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem)
         double start = timer_->Now();
         MemH2D(task, mem, off, host_sizes, dev_sizes, 1, 1, mem->size(), src_arch, "OpenMP2DEV ");
         double end = timer_->Now();
+        if (is_async()) 
+            mem->RecordEvent(devno(), task->recommended_stream());
         o2dtime = end - start;
         if (kernel->is_profile_data_transfers()) {
             kernel->AddInDataObjectProfile({(uint32_t) cmd->task()->uid(), (uint32_t) mem->uid(), (uint32_t) iris_dt_o2d, (uint32_t) cpu_dev, (uint32_t) devno_, start, end});
@@ -477,6 +484,8 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem)
         double start = timer_->Now();
         src_dev->MemD2H(task, mem, off, host_sizes, dev_sizes, 1, 1, mem->size(), src_arch, "DEV2OpenMP ");
         double end = timer_->Now();
+        if (is_async()) 
+            mem->RecordEvent(src_dev->devno(), mem->GetWriteStream(src_dev->devno()));
         if (context_shift) ResetContext();
         if (kernel->is_profile_data_transfers()) {
             kernel->AddInDataObjectProfile({(uint32_t) cmd->task()->uid(), (uint32_t) mem->uid(), (uint32_t) iris_dt_d2o, (uint32_t) non_cpu_dev, (uint32_t) devno_, start, end});
@@ -493,6 +502,8 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem)
         errid_ = MemH2D(task, mem, ptr_off, 
                 gws, lws, elem_size, dim, size, host);
         double end = timer_->Now();
+        if (is_async()) 
+            mem->RecordEvent(devno(), task->recommended_stream());
         if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
         if (kernel->is_profile_data_transfers()) {
             kernel->AddInDataObjectProfile({(uint32_t) cmd->task()->uid(), (uint32_t) mem->uid(), (uint32_t) iris_dt_h2d, (uint32_t) -1, (uint32_t) devno_, start, end});
@@ -515,6 +526,8 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem)
         errid_ = src_dev->MemD2H(task, mem, ptr_off, 
                 gws, lws, elem_size, dim, size, host, "D2H->H2D(1) ");
         double end = timer_->Now();
+        if (is_async()) 
+            mem->RecordEvent(src_dev->devno(), mem->GetWriteStream(src_dev->devno()));
         d2htime = end - start;
         if (context_shift) ResetContext();
         if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
@@ -523,6 +536,8 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem)
         errid_ = MemH2D(task, mem, ptr_off, 
                 gws, lws, elem_size, dim, size, host, "D2H->H2D(2) ");
         end = timer_->Now();
+        if (is_async()) 
+            mem->RecordEvent(devno(), task->recommended_stream());
         h2dtime = end - start;
         if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
         mem->clear_host_dirty();
@@ -606,6 +621,7 @@ void Device::ExecuteMemOut(Task *task, Command* cmd) {
                 !(params_map[idx] & type_) ) continue;
         mem->set_dirty_except(devno_);
         mem->set_host_dirty();
+        mem->SetWriteStream(devno(), task->recommended_stream());
     }
     for(pair<int, DataMemRegion *> it : cmd->kernel()->data_mem_regions_out()) {
         int idx = it.first;
@@ -615,6 +631,7 @@ void Device::ExecuteMemOut(Task *task, Command* cmd) {
                 !(params_map[idx] & type_) ) continue;
         mem->set_dirty_except(devno_);
         mem->set_host_dirty();
+        mem->SetWriteStream(devno(), task->recommended_stream());
     }
 }
 void Device::ExecuteMemFlushOut(Command* cmd) {
