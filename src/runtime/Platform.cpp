@@ -691,6 +691,7 @@ int Platform::InitDevices(bool sync) {
     tasks[i]->set_system();
     Command* cmd = Command::CreateInit(tasks[i]);
     tasks[i]->AddCommand(cmd);
+    tasks[i]->Retain();
     workers_[i]->Enqueue(tasks[i]);
   }
   if (sync) for (int i = 0; i < ndevs_; i++) tasks[i]->Wait();

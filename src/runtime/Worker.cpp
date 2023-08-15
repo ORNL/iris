@@ -37,7 +37,7 @@ Worker::~Worker() {
 void Worker::TaskComplete(Task* task) {
   //_trace("now invoke scheduler after task:%lu:%s qsize:%lu", task->uid(), task->name(), queue_->Size());
   if (scheduler_) scheduler_->Invoke();
-  task->set_devno(dev_->devno());
+  //task->set_devno(dev_->devno());
   //_trace("now invoke worker after task:%lu:%s qsize:%lu", task->uid(), task->name(), queue_->Size());
   Invoke();
 }
@@ -71,11 +71,14 @@ void Worker::Execute(Task* task) {
   if (scheduler_) scheduler_->StartTask(task, this);
   if (consistency_) consistency_->Resolve(task);
   bool task_cmd_last = task->cmd_last();
+  bool user_task = task->user();
+  if (user_task) task->Retain();
   dev_->Execute(task);
   if (task_cmd_last) {
     if (scheduler_) scheduler_->CompleteTask(task, this);
     //task->Complete();
   }
+  if (user_task) task->Release();
   //task->TryReleaseTask();
   busy_ = false;
 }
