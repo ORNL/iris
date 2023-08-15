@@ -1193,11 +1193,12 @@ int Platform::TaskSubmit(iris_task brs_task, int brs_policy, const char* opt, in
     FilterSubmitExecute(task);
     scheduler_->Enqueue(task);
   } else workers_[0]->Enqueue(task);
-  if (sync) task->Wait();
+  if (sync) TaskWait(brs_task);
   return nfailures_;
 }
 
 int Platform::TaskSubmit(Task *task, int brs_policy, const char* opt, int sync) {
+  iris_task brs_task = *(task->struct_obj());
   if (recording_) json_->RecordTask(task);
   task->Submit(brs_policy, opt, sync);
   _trace(" successfully submitted task:%lu:%s", task->uid(), task->name());
@@ -1205,13 +1206,20 @@ int Platform::TaskSubmit(Task *task, int brs_policy, const char* opt, int sync) 
     FilterSubmitExecute(task);
     scheduler_->Enqueue(task);
   } else workers_[0]->Enqueue(task);
-  if (sync) task->Wait();
+  if (sync) TaskWait(brs_task);
   return nfailures_;
 }
-
+void Platform::TaskWaitCallBack(void *data) {
+  Task *task = (Task *)data;
+  task->Retain();
+}
 int Platform::TaskWait(iris_task brs_task) {
+  task_track_.CallBackIfObjectExists(brs_task.uid, Platform::TaskWaitCallBack);
   Task *task = get_task_object(brs_task);
-  if (task != NULL) task->Wait();
+  if (task != NULL) {
+     task->Wait();
+     task->Release();
+  }
   return IRIS_SUCCESS;
 }
 

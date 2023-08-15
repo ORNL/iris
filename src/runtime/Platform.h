@@ -198,6 +198,7 @@ public:
   bool is_mem_exist(unsigned long uid) { return mem_track_.IsObjectExists(uid); }
   bool is_kernel_exist(unsigned long uid) { return kernel_track_.IsObjectExists(uid); }
   bool is_graph_exist(unsigned long uid) { return graph_track_.IsObjectExists(uid); }
+  static void TaskWaitCallBack(void *data);
   Task *get_task_object(unsigned long uid) { 
       //task_track_.Print("Task track"); 
       Task *task = (Task *)task_track_.GetObject(uid); 

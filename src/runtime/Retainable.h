@@ -56,8 +56,7 @@ public:
     do i = ref_cnt_;
     while (!__sync_bool_compare_and_swap(&ref_cnt_, i, i + 1));
   }
-
-  void ForceRelease() {
+  void ForceRelease(bool check=false) {
     Platform *platform = Platform::GetPlatform();
     pthread_mutex_lock(&delete_lock_);
     if (track_!=NULL && !track_->IsObjectExists(uid_)) {
@@ -66,7 +65,9 @@ public:
     }
     //if (!struct_obj()) return;
     pthread_mutex_unlock(&delete_lock_);
-    delete this;
+    void *obj = track_->GetObject(uid_);
+    if (!check || (obj != NULL && ref_cnt_ <= 1 && is_release_))
+	delete this;
   }
 
   ObjectTrack *track() { return track_; }
@@ -75,7 +76,7 @@ public:
     int i;
     do i = ref_cnt_;
     while (!__sync_bool_compare_and_swap(&ref_cnt_, i, i - 1));
-    if (ref_cnt_ <= 1 && is_release_) ForceRelease();
+    if (ref_cnt_ <= 1 && is_release_) ForceRelease(true);
   }
   void set_object_track(ObjectTrack *track) { track_ = track; }
   int ref_cnt() { return ref_cnt_; }

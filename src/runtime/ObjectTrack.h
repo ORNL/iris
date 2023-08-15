@@ -5,7 +5,7 @@
 #include "Debug.h"
 
 using namespace std;
-
+typedef void (*ObjectTrackCallBack)(void *data);
 namespace iris {
     namespace rt {
         class ObjectTrack
@@ -29,6 +29,12 @@ namespace iris {
                     _trace("object:%lu: %p exists flag:%d", uid, obj, flag);
                     return flag;
                 }
+		virtual void CallBackIfObjectExists(unsigned long uid, ObjectTrackCallBack callbackfn) {
+		    pthread_mutex_lock(&track_lock_);
+		    if (allocated_objects_.find(uid) != allocated_objects_.end())
+			    callbackfn(allocated_objects_[uid]);
+		    pthread_mutex_unlock(&track_lock_);
+		}
                 virtual void *GetObject(unsigned long uid) {
                     void *obj = NULL;
                     pthread_mutex_lock(&track_lock_);
