@@ -71,11 +71,13 @@ void Worker::Execute(Task* task) {
   if (scheduler_) scheduler_->StartTask(task, this);
   if (consistency_) consistency_->Resolve(task);
   bool task_cmd_last = task->cmd_last();
+  if (task->user()) task->Retain();
   dev_->Execute(task);
   if (task_cmd_last) {
     if (scheduler_) scheduler_->CompleteTask(task, this);
     //task->Complete();
   }
+  if (task->user()) task->Release();
   //task->TryReleaseTask();
   busy_ = false;
 }
