@@ -20,6 +20,7 @@ Kernel::Kernel(const char* name, Platform* platform) {
   profile_data_transfers_ = false;
   platform_ = platform;
   history_ = platform->CreateHistory(name);
+  async_data_.Init(this, -1);
   for (size_t i = 0; i < IRIS_MAX_NDEVS; i++) {
     archs_[i] = NULL;
     archs_devs_[i] = NULL;

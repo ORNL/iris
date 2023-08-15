@@ -5,6 +5,7 @@
 #include "Retainable.h"
 #include "Platform.h"
 #include "History.h"
+#include "AsyncData.h"
 #include <stdint.h>
 #include <map>
 #include <vector>
@@ -31,6 +32,7 @@ typedef struct _KernelArg {
   void proactive_disabled() { proactive = false; }
 } KernelArg;
 
+using KernelAsyncData = AsyncData<Kernel>;
 class Kernel: public Retainable<struct _iris_kernel, Kernel> {
 public:
   Kernel(const char* name, Platform* platform);
@@ -78,7 +80,8 @@ public:
   int isSupported(Device* dev);
   void add_dmem(DataMem *mem, int idx, int mode);
   void add_dmem_region(DataMemRegion *mem, int idx, int mode);
-
+  void **GetCompletionEventPtr() { return async_data_.GetCompletionEventPtr(); }
+  void *GetCompletionEvent() { return async_data_.GetCompletionEvent(); }
 private:
   char name_[256];
   char task_name_[256];
@@ -100,6 +103,7 @@ private:
   std::map<int, DataMemRegion *> data_mem_regions_in_;
   std::map<int, DataMem *> data_mems_out_;
   std::map<int, DataMemRegion *> data_mem_regions_out_;
+  KernelAsyncData async_data_;
 };
 
 } /* namespace rt */

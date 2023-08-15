@@ -160,6 +160,9 @@ hipError_t hipEventDestroy(hipEvent_t event);
 hipError_t hipEventSynchronize(hipEvent_t event);
 hipError_t hipEventElapsedTime(float* ms, hipEvent_t start, hipEvent_t stop);
 hipError_t hipEventQuery(hipEvent_t event);
+typedef void (*hipStreamCallback_t)(hipStream_t stream, hipError_t status, void* userData);
+hipError_t hipStreamAddCallback(hipStream_t stream, hipStreamCallback_t callback, void* userData,
+                                        unsigned int flags);
 
 typedef struct {
     // 32-bit Atomics

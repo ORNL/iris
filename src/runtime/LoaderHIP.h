@@ -58,7 +58,8 @@ public:
   hipError_t (*hipEventSynchronize)(hipEvent_t event);
   hipError_t (*hipEventElapsedTime)(float* ms, hipEvent_t start, hipEvent_t stop);
   hipError_t (*hipEventQuery)(hipEvent_t event);
-
+  hipError_t (*hipStreamAddCallback)(hipStream_t stream, hipStreamCallback_t callback, void* userData,
+                                          unsigned int flags);
   void Lock();
   void Unlock();
 

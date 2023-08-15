@@ -33,6 +33,8 @@ public:
   int Synchronize();
   int AddCallback(Task* task);
   void EnablePeerAccess();
+  static void Callback(hipStream_t stream, hipEvent_t status, void* data);
+  int RegisterCallback(int stream, CallBackType callback_fn, void* data);
   void SetPeerDevices(int *peers, int count);
   int hipdev() { return dev_; }
   const char* kernel_src() { return "KERNEL_SRC_HIP"; }

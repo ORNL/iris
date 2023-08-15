@@ -575,9 +575,31 @@ int DeviceHIP::Synchronize() {
 }
 
 int DeviceHIP::AddCallback(Task* task) {
-  task->Complete();
-  return task->Ok();
+  q_ = GetStream(task); //task->uid() % nqueues_; 
+  err_ = ld_->hipStreamAddCallback(streams_[q_], (hipStreamCallback_t)DeviceHIP::Callback, task, 0);
+  _hiperror(err_);
+  if (err_ != hipSuccess){
+   worker_->platform()->IncrementErrorCount();
+   return IRIS_ERROR;
+  }
+  return IRIS_SUCCESS;
 }
+void DeviceHIP::Callback(hipStream_t stream, hipEvent_t status, void* data) {
+  Task* task = (Task*) data;
+  task->Complete();
+}
+
+int DeviceHIP::RegisterCallback(int stream, CallBackType callback_fn, void *data) 
+{
+    err_ = ld_->hipStreamAddCallback(streams_[stream], (hipStreamCallback_t)callback_fn, data, 0);
+    _hiperror(err_);
+    if (err_ != hipSuccess){
+     worker_->platform()->IncrementErrorCount();
+     return IRIS_ERROR;
+    }
+    return IRIS_SUCCESS;
+}
+
 void DeviceHIP::CreateEvent(void **event, int flags)
 {
     if (IsContextChangeRequired()) {

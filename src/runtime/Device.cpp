@@ -275,6 +275,8 @@ void Device::ExecuteKernel(Command* cmd) {
   cmd->set_time_end(timer_->Now());
   double time = timer_->Stop(IRIS_TIMER_KERNEL);
   cmd->SetTime(time);
+  if (is_async()) 
+      RecordEvent(cmd->kernel()->GetCompletionEventPtr(), cmd->task()->recommended_stream());
   //printf("Task:%s time:%f ktime:%f init:%f atime:%f setmemtime:%f\n", cmd->task()->name(), time, ktime, ltime, atime, set_mem_time);
   cmd->kernel()->history()->AddKernel(cmd, this, time);
   if (Platform::GetPlatform()->is_scheduling_history_enabled()) Platform::GetPlatform()->scheduling_history()->AddKernel(cmd);
@@ -532,6 +534,8 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem)
         if (context_shift) ResetContext();
         if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
         // H2D should be issued from this current device
+        if (is_async()) 
+            mem->WaitForEvent(devno(), task->recommended_stream(), src_dev->devno());
         start = timer_->Now();
         errid_ = MemH2D(task, mem, ptr_off, 
                 gws, lws, elem_size, dim, size, host, "D2H->H2D(2) ");
@@ -893,6 +897,11 @@ void Device::CreateEvent(void **event, int flags) {
 void Device::RecordEvent(void *event, int stream) {
     _error("Device:%d:%s Invalid function call!", devno_, name()); 
     worker_->platform()->IncrementErrorCount();
+}
+void Device::RecordEvent(void **event, int stream) {
+    if (*event == NULL)
+        CreateEvent(event, iris_event_disable_timing);
+    RecordEvent(*event, stream);
 }
 void Device::WaitForEvent(void *event, int stream, int flags) {
     _error("Device:%d:%s Invalid function call!", devno_, name()); 

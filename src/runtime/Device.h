@@ -23,6 +23,7 @@ class Task;
 class Timer;
 class Worker;
 
+typedef void (*CallBackType)(void *stream, int status, void *data);
 class Device {
 public:
   Device(int devno, int platform);
@@ -40,6 +41,7 @@ public:
   void RegisterHost(BaseMem *mem);
   virtual void CreateEvent(void **event, int flags);
   virtual void RecordEvent(void *event, int stream);
+  void RecordEvent(void **event, int stream);
   virtual void WaitForEvent(void *event, int stream, int flags=0);
   virtual void DestroyEvent(void *event);
   void ProactiveTransfers(Task *task, Command *cmd);
@@ -67,6 +69,7 @@ public:
 
   void GetPossibleDevices(int devno, int *nddevs, 
           int &d2d_dev, int &cpu_dev, int &non_cpu_dev);
+  virtual int RegisterCallback(int stream, CallBackType callback_fn, void *data);
   int RegisterCommand(int tag, command_handler handler);
   int RegisterHooks();
 

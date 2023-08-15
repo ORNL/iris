@@ -735,6 +735,17 @@ int DeviceCUDA::Custom(int tag, char* params) {
   return IRIS_SUCCESS;
 }
 
+int DeviceCUDA::RegisterCallback(int stream, CallBackType callback_fn, void *data) 
+{
+    err_ = ld_->cuStreamAddCallback(streams_[stream], (CUstreamCallback)callback_fn, data, 0);
+    _cuerror(err_);
+    if (err_ != CUDA_SUCCESS){
+     worker_->platform()->IncrementErrorCount();
+     return IRIS_ERROR;
+    }
+    return IRIS_SUCCESS;
+}
+
 void DeviceCUDA::Callback(CUstream stream, CUresult status, void* data) {
   Task* task = (Task*) data;
   task->Complete();

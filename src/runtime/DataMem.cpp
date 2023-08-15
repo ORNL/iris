@@ -34,22 +34,16 @@ void DataMem::Init(Platform *platform, void *host_ptr, size_t size)
     n_regions_ = -1;
     regions_ = NULL;
     host_dirty_flag_ = false;
-    dev_mutex_ = new pthread_mutex_t[ndevs_];
     dirty_flag_ = new bool[ndevs_];
-    write_streams_ = new int[ndevs_+1];
-    completion_events_ = new void *[ndevs_+1];
+    device_map_ = new DataMemDevice[ndevs_+1];
     for (int i = 0; i < ndevs_; i++) {
         archs_[i] = NULL;
         archs_dev_[i] = platform->device(i);
         dirty_flag_[i] = true;
-        pthread_mutex_init(&dev_mutex_[i], NULL);
-        completion_events_[i] = NULL;
-        write_streams_[i] = -1;
+        device_map_[i].Init(this, i);
         //dev_ranges_[i] = NULL;
     }
-    completion_events_[ndevs_] = NULL;
-    write_streams_[ndevs_] = -1;
-    pthread_mutex_init(&host_mutex_, NULL);
+    device_map_[ndevs_].Init(this, ndevs_);
     elem_size_ = size_;
     for(int i=0; i<3; i++) {
         host_size_[i] = 1;
@@ -64,31 +58,29 @@ DataMem::~DataMem() {
     for (int i = 0; i < ndevs_; i++) {
         if (archs_[i]) archs_dev_[i]->MemFree(archs_[i]);
     }
-    for(int i=0; i<ndevs_; i++) {
-        pthread_mutex_destroy(&dev_mutex_[i]);
-    }
-    pthread_mutex_destroy(&host_mutex_);
-    delete [] dev_mutex_;
     delete [] dirty_flag_;
     for(int i=0; i<n_regions_; i++) {
         delete regions_[i];
     }
     if (regions_) delete [] regions_;
     for(int i=0; i<ndevs_; i++) {
-        if (completion_events_[i] != NULL) 
-            archs_dev_[i]->DestroyEvent(completion_events_[i]);
+        if (GetCompletionEvent(i) != NULL) 
+            archs_dev_[i]->DestroyEvent(GetCompletionEvent(i));
     }
-    delete [] completion_events_;
-    delete [] write_streams_;
+    delete [] device_map_;
+}
+void DataMem::CompleteCallback(void *stream, int status, DataMemDevice *data)
+{
+    data->EnableCompleted();
 }
 void DataMem::RecordEvent(int devno, int stream) {
-    if (completion_events_[devno] != NULL)
-        archs_dev_[devno]->CreateEvent(completion_events_+devno, iris_event_disable_timing);
-    archs_dev_[devno]->RecordEvent(completion_events_[devno], stream);
+    if (GetCompletionEvent(devno) != NULL)
+        archs_dev_[devno]->CreateEvent(GetCompletionEventPtr(devno), iris_event_disable_timing);
+    archs_dev_[devno]->RecordEvent(GetCompletionEvent(devno), stream);
 }
 void DataMem::WaitForEvent(int devno, int stream, int dep_devno) {
-    assert(completion_events_[dep_devno] != NULL);
-    archs_dev_[devno]->WaitForEvent(completion_events_[dep_devno], stream, iris_event_disable_timing);
+    assert(GetCompletionEvent(devno) != NULL);
+    archs_dev_[devno]->WaitForEvent(GetCompletionEvent(devno), stream, iris_event_disable_timing);
 }
 
 void DataMem::UpdateHost(void *host_ptr)

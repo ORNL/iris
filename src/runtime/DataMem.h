@@ -8,6 +8,7 @@
 #include <set>
 #include <vector>
 #include <assert.h>
+#include "AsyncData.h"
 
 namespace iris {
 namespace rt {
@@ -16,18 +17,26 @@ class Platform;
 class Command;
 class Device;
 class DataMemRegion;
+class DataMem;
+
+using DataMemDevice = AsyncData<DataMem>;
 
 class DataMem: public BaseMem {
 public:
   DataMem(Platform* platform, void *host, size_t size);
   DataMem(Platform *platform, void *host_ptr, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim);
+  static void CompleteCallback(void *stream, int status, DataMemDevice *data);
   void Init(Platform *platform, void *host_ptr, size_t size);
   virtual ~DataMem();
   void UpdateHost(void *host);
   void EnableOuterDimensionRegions();
-  int GetWriteStream(int devno) { return write_streams_[devno]; }
-  void SetWriteStream(int devno, int stream) { write_streams_[devno] = stream; }
-  void *GetEvent(int devno) { return completion_events_[devno]; }
+  int GetWriteStream(int devno) { return device_map_[devno].GetWriteStream(); }
+  void SetWriteStream(int devno, int stream) { device_map_[devno].SetWriteStream(stream); }
+  bool IsProactive(int devno) { return device_map_[devno].IsProactive(); }
+  void EnableProactive(int devno) { device_map_[devno].EnableProactive(); }
+  void DisableProactive(int devno) { device_map_[devno].DisableProactive(); }
+  void *GetCompletionEvent(int devno) { return device_map_[devno].GetCompletionEvent(); }
+  void **GetCompletionEventPtr(int devno) { return device_map_[devno].GetCompletionEventPtr(); }
   void RecordEvent(int devno, int stream);
   void WaitForEvent(int devno, int stream, int dep_devno);
   void init_reset(bool reset=true);
@@ -64,10 +73,10 @@ public:
     return all;
   }
   void dev_unlock(int devno) {
-    pthread_mutex_unlock(&dev_mutex_[devno]);
+    device_map_[devno].Unlock();
   }
   void dev_lock(int devno) {
-    pthread_mutex_lock(&dev_mutex_[devno]);
+    device_map_[devno].Lock();
   }
   void clear();
   size_t *off() { return off_; }
@@ -93,7 +102,6 @@ public:
 protected:
   bool host_dirty_flag_;
   bool  *dirty_flag_;
-  pthread_mutex_t *dev_mutex_;
   pthread_mutex_t host_mutex_;
   int n_regions_;
   void *host_ptr_;
@@ -105,8 +113,7 @@ protected:
   bool host_ptr_owner_;
   Platform *platform_;
   DataMemRegion **regions_;
-  void **completion_events_;
-  int *write_streams_;
+  DataMemDevice *device_map_;
 };
 
 } /* namespace rt */

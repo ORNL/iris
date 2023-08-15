@@ -54,6 +54,7 @@ int LoaderHIP::LoadFunctions() {
   LOADFUNC(hipEventSynchronize);
   LOADFUNC(hipEventElapsedTime);
   LOADFUNC(hipEventQuery);
+  LOADFUNC(hipStreamAddCallback);
  
   return IRIS_SUCCESS;
 }
