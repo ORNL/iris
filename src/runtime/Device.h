@@ -46,6 +46,8 @@ public:
   virtual void DestroyEvent(void *event);
   void ProactiveTransfers(Task *task, Command *cmd);
   template <typename DMemType>
+  void WaitForDataAvailability(int devno, Task *task, DMemType *mem);
+  template <typename DMemType>
   void InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem);
   void ExecuteMemResetInput(Task *task, Command* cmd);
   void ExecuteMemIn(Task *task, Command* cmd);
@@ -69,7 +71,7 @@ public:
 
   void GetPossibleDevices(int devno, int *nddevs, 
           int &d2d_dev, int &cpu_dev, int &non_cpu_dev);
-  virtual int RegisterCallback(int stream, CallBackType callback_fn, void *data);
+  virtual int RegisterCallback(int stream, CallBackType callback_fn, void *data, int flags=0);
   int RegisterCommand(int tag, command_handler handler);
   int RegisterHooks();
 

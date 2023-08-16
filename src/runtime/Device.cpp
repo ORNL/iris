@@ -398,6 +398,19 @@ void Device::ExecuteMemIn(Task *task, Command* cmd) {
 }
 
 template <typename DMemType>
+void Device::WaitForDataAvailability(int devno, Task *task, DMemType *mem)
+{
+    if (is_async()) {
+        int stream = mem->GetWriteStream(devno);
+        if (stream != task->recommended_stream()) {
+            // Even if the parent task and current task are running on same device, it may be using different streams
+            for (void * event: mem->GetWaitEvents(devno_)) {
+                WaitForEvent(event, stream, iris_event_disable_timing);
+            }
+        }
+    }
+}
+template <typename DMemType>
 void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem)
 {
     int nddevs[IRIS_MAX_NDEVS+1];
@@ -435,6 +448,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem)
         void* src_arch = mem->arch(src_dev);
         double start = timer_->Now();
 
+        WaitForDataAvailability(src_dev->devno(), task, mem);
         MemD2D(task, mem, dst_arch, src_arch, mem->size());
         double end = timer_->Now();
         if (is_async()) 
@@ -568,7 +582,16 @@ void Device::ExecuteMemInDMemRegionIn(Task *task, Command* cmd, DataMemRegion *m
         InvokeDMemInDataTransfer<DataMemRegion>(task, cmd, mem);
     }
     else{
-        _trace("Skipped DMEM_REGION H2D data transfer dev[%d:%s] task[%ld:%s] dmem_reg[%lu] dmem[%lu] dptr[%p]", devno_, name_, task->uid(), task->name(), mem->uid(), mem->get_dmem()->uid(), mem->arch(devno_));
+        _trace("Skipped DMEM_REGION data transfer dev[%d:%s] task[%ld:%s] dmem_reg[%lu] dmem[%lu] dptr[%p]", devno_, name_, task->uid(), task->name(), mem->uid(), mem->get_dmem()->uid(), mem->arch(devno_));
+        if (is_async()) {
+            int stream = mem->GetWriteStream(devno_);
+            if (stream != task->recommended_stream()) {
+                // Even if the parent task and current task are running on same device, it may be using different streams
+                for (void * event: mem->GetWaitEvents(devno_)) {
+                    WaitForEvent(event, stream, iris_event_disable_timing);
+                }
+            }
+        }
     }
 }
 void Device::ExecuteMemInDMemIn(Task *task, Command* cmd, DataMem *mem) {
@@ -582,7 +605,15 @@ void Device::ExecuteMemInDMemIn(Task *task, Command* cmd, DataMem *mem) {
             }
             else {
                 _trace("Skipped DMEM_REGION region(%d) H2D data transfer dev[%d:%s] task[%ld:%s] dmem_reg[%lu] dmem[%lu] dptr[%p]", i, devno_, name_, task->uid(), task->name(), rmem->uid(), rmem->get_dmem()->uid(), rmem->arch(devno_));
-
+                if (is_async()) {
+                    int stream = mem->GetWriteStream(devno_);
+                    if (stream != task->recommended_stream()) {
+                        // Even if the parent task and current task are running on same device, it may be using different streams
+                        for (void * event: mem->GetWaitEvents(devno_)) {
+                            WaitForEvent(event, stream, iris_event_disable_timing);
+                        }
+                    }
+                }
             }
         }
 #if 0
@@ -611,6 +642,15 @@ void Device::ExecuteMemInDMemIn(Task *task, Command* cmd, DataMem *mem) {
     }
     else{
         _trace("Skipped DMEM H2D data transfer dev[%d:%s] task[%ld:%s] dmem[%lu] dptr[%p]", devno_, name_, task->uid(), task->name(), mem->uid(), mem->arch(devno_));
+        if (is_async()) {
+            int stream = mem->GetWriteStream(devno_);
+            if (stream != task->recommended_stream()) {
+                // Even if the parent task and current task are running on same device, it may be using different streams
+                for (void * event: mem->GetWaitEvents(devno_)) {
+                    WaitForEvent(event, stream, iris_event_disable_timing);
+                }
+            }
+        }
     }
 }
 void Device::ExecuteMemOut(Task *task, Command* cmd) {
@@ -625,7 +665,9 @@ void Device::ExecuteMemOut(Task *task, Command* cmd) {
                 !(params_map[idx] & type_) ) continue;
         mem->set_dirty_except(devno_);
         mem->set_host_dirty();
+        mem->ClearWaitEvents(devno());
         mem->SetWriteStream(devno(), task->recommended_stream());
+        mem->AddWaitEvent(devno(), cmd->kernel()->GetCompletionEvent());
     }
     for(pair<int, DataMemRegion *> it : cmd->kernel()->data_mem_regions_out()) {
         int idx = it.first;
@@ -635,7 +677,9 @@ void Device::ExecuteMemOut(Task *task, Command* cmd) {
                 !(params_map[idx] & type_) ) continue;
         mem->set_dirty_except(devno_);
         mem->set_host_dirty();
+        mem->ClearWaitEvents(devno());
         mem->SetWriteStream(devno(), task->recommended_stream());
+        mem->AddWaitEvent(devno(), cmd->kernel()->GetCompletionEvent());
     }
 }
 void Device::ExecuteMemFlushOut(Command* cmd) {
@@ -889,6 +933,11 @@ int Device::RegisterHooks() {
   hook_command_pre_ = Platform::GetPlatform()->hook_command_pre();
   hook_command_post_ = Platform::GetPlatform()->hook_command_post();
   return IRIS_SUCCESS;
+}
+int Device::RegisterCallback(int stream, CallBackType callback_fn, void *data, int flags)
+{
+    _error("Device:%d:%s Invalid function call!", devno_, name()); 
+    worker_->platform()->IncrementErrorCount();
 }
 void Device::CreateEvent(void **event, int flags) { 
     _error("Device:%d:%s Invalid function call!", devno_, name()); 

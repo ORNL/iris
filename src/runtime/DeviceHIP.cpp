@@ -589,9 +589,9 @@ void DeviceHIP::Callback(hipStream_t stream, hipEvent_t status, void* data) {
   task->Complete();
 }
 
-int DeviceHIP::RegisterCallback(int stream, CallBackType callback_fn, void *data) 
+int DeviceHIP::RegisterCallback(int stream, CallBackType callback_fn, void *data, int flags) 
 {
-    err_ = ld_->hipStreamAddCallback(streams_[stream], (hipStreamCallback_t)callback_fn, data, 0);
+    err_ = ld_->hipStreamAddCallback(streams_[stream], (hipStreamCallback_t)callback_fn, data, flags);
     _hiperror(err_);
     if (err_ != hipSuccess){
      worker_->platform()->IncrementErrorCount();

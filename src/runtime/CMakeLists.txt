@@ -136,6 +136,7 @@ set(IRIS_RUNTIME_HEADERS
   LoaderLevelZero.h
   LoaderHost2HIP.h
   LoaderHost2CUDA.h
+  AsyncData.h
   LoaderCUDA.h
   LoaderHexagon.h
   LoaderHIP.h

@@ -30,6 +30,9 @@ public:
   virtual ~DataMem();
   void UpdateHost(void *host);
   void EnableOuterDimensionRegions();
+  void AddWaitEvent(int devno, void *event) { device_map_[devno].AddWaitEvent(event); }
+  void ClearWaitEvents(int devno) { device_map_[devno].ClearWaitEvents(); }
+  vector<void *> & GetWaitEvents(int devno) { device_map_[devno].GetWaitEvents(); }
   int GetWriteStream(int devno) { return device_map_[devno].GetWriteStream(); }
   void SetWriteStream(int devno, int stream) { device_map_[devno].SetWriteStream(stream); }
   bool IsProactive(int devno) { return device_map_[devno].IsProactive(); }
