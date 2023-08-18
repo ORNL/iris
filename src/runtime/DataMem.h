@@ -32,12 +32,13 @@ public:
   void EnableOuterDimensionRegions();
   void AddWaitEvent(int devno, void *event) { device_map_[devno].AddWaitEvent(event); }
   void ClearWaitEvents(int devno) { device_map_[devno].ClearWaitEvents(); }
-  vector<void *> & GetWaitEvents(int devno) { device_map_[devno].GetWaitEvents(); }
+  vector<void *> & GetWaitEvents(int devno) { return device_map_[devno].GetWaitEvents(); }
   int GetWriteStream(int devno) { return device_map_[devno].GetWriteStream(); }
   void SetWriteStream(int devno, int stream) { device_map_[devno].SetWriteStream(stream); }
   bool IsProactive(int devno) { return device_map_[devno].IsProactive(); }
   void EnableProactive(int devno) { device_map_[devno].EnableProactive(); }
   void DisableProactive(int devno) { device_map_[devno].DisableProactive(); }
+  EventExchange *GetEventExchange(int devno) { return device_map_[devno].exchange(); }
   void *GetCompletionEvent(int devno) { return device_map_[devno].GetCompletionEvent(); }
   void **GetCompletionEventPtr(int devno) { return device_map_[devno].GetCompletionEventPtr(); }
   void RecordEvent(int devno, int stream);

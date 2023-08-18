@@ -4,6 +4,7 @@
 #include "Debug.h"
 #include "Config.h"
 #include "Timer.h"
+//#include "CPUEvent.h"
 #include <map>
 
 #ifndef IRIS_ASYNC_STREAMING
@@ -44,6 +45,7 @@ public:
   void RecordEvent(void **event, int stream);
   virtual void WaitForEvent(void *event, int stream, int flags=0);
   virtual void DestroyEvent(void *event);
+  virtual void EventSychronize(void *event);
   void ProactiveTransfers(Task *task, Command *cmd);
   template <typename DMemType>
   void WaitForDataAvailability(int devno, Task *task, DMemType *mem);

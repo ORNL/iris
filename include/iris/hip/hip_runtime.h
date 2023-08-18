@@ -19,6 +19,13 @@ typedef enum hipMemcpyKind {
         4  ///< Runtime will automatically determine copy-kind based on virtual addresses.
 } hipMemcpyKind;
 
+//Flags that can be used with hipStreamCreateWithFlags.
+/** Default stream creation flags. These are used with hipStreamCreate().*/
+#define hipStreamDefault  0x00
+
+/** Stream does not implicitly synchronize with null stream.*/
+#define hipStreamNonBlocking 0x01
+
 //Flags that can be used with hipHostRegister.
 /** Memory is Mapped and Portable.*/
 #define hipHostRegisterDefault 0x0

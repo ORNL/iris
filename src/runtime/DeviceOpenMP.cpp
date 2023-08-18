@@ -57,9 +57,6 @@ void DeviceOpenMP::TaskPre(Task *task) {
             default: break;
         }
         if (hook_command_post_) hook_command_post_(cmd);
-#ifndef IRIS_SYNC_EXECUTION
-        if (cmd->last()) AddCallback(task);
-#endif
     }
 }
 

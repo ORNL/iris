@@ -33,7 +33,7 @@ public:
   int Synchronize();
   int AddCallback(Task* task);
   void EnablePeerAccess();
-  static void Callback(hipStream_t stream, hipEvent_t status, void* data);
+  static void Callback(hipStream_t stream, hipError_t status, void* data);
   int RegisterCallback(int stream, CallBackType callback_fn, void* data, int flags=0);
   void SetPeerDevices(int *peers, int count);
   int hipdev() { return dev_; }
@@ -46,6 +46,7 @@ public:
   void RecordEvent(void *event, int stream);
   void WaitForEvent(void *event, int stream, int flags=0);
   void DestroyEvent(void *event);
+  void EventSychronize(void *event);
 
 private:
   LoaderHIP* ld_;

@@ -1,6 +1,7 @@
 #ifndef IRIS_SRC_RT_DEBUG_H
 #define IRIS_SRC_RT_DEBUG_H
 
+#include <assert.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -28,6 +29,7 @@
 
 #define _COLOR_DEBUG
 
+#define ASSERT(X)   assert(X)
 #ifdef _COLOR_DEBUG
 #define RED     "\033[22;31m"
 #define GREEN   "\033[22;32m"

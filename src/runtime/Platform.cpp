@@ -170,6 +170,10 @@ int Platform::Init(int* argc, char*** argv, int sync) {
 
   SetDevsAvailable();
 
+  char *async = NULL;
+  EnvironmentGet("ASYNC", &async, NULL);
+  if (async != NULL && atoi(async) == 1)
+      set_async(true);
   char* archs = NULL;
   EnvironmentGet("ARCHS", &archs, NULL);
   _info("IRIS architectures[%s]", archs);

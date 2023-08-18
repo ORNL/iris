@@ -144,6 +144,10 @@ typedef int8_t bool;
 #define iris_event_disable_timing   2
 #define iris_event_interprocess     3
 
+// Stream flags
+#define iris_stream_default         0
+#define iris_stream_non_blocking    1
+
 #endif // UNDEF_IRIS_MACROS
 #endif // DOXYGEN_SHOULD_SKIP_THIS
 

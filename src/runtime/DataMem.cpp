@@ -74,8 +74,9 @@ void DataMem::CompleteCallback(void *stream, int status, DataMemDevice *data)
     data->EnableCompleted();
 }
 void DataMem::RecordEvent(int devno, int stream) {
-    if (GetCompletionEvent(devno) != NULL)
+    if (GetCompletionEvent(devno) == NULL)
         archs_dev_[devno]->CreateEvent(GetCompletionEventPtr(devno), iris_event_disable_timing);
+    _trace(" devno:%d stream:%d uid:%lu event:%p\n", devno, stream, uid(), GetCompletionEvent(devno)); 
     archs_dev_[devno]->RecordEvent(GetCompletionEvent(devno), stream);
 }
 void DataMem::WaitForEvent(int devno, int stream, int dep_devno) {

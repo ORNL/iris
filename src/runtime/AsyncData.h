@@ -1,4 +1,6 @@
 #pragma once
+#include <pthread.h>
+#include "EventExchange.h"
 
 namespace iris {
     namespace rt {
@@ -8,14 +10,19 @@ namespace iris {
                     AsyncData() { core_=NULL; devno_ = 0; }
                     ~AsyncData() {
                         pthread_mutex_destroy(&mutex_);
+                        delete exchange_;
                     }
                     void Init(CoreClass *core, int devno) {
                         devno_ = devno; core_ = core;
                         completion_event_ = NULL;
                         completed_flag_ = false;
+                        exchange_ = new EventExchange();
                         write_streams_ = -1;
                         proactive_transfer_ = false;
                         pthread_mutex_init(&mutex_, NULL);
+                    }
+                    EventExchange *exchange() { 
+                        return exchange_; 
                     }
                     CoreClass *core() { return core_; }
                     int devno() { return devno_; }
@@ -44,6 +51,7 @@ namespace iris {
                     }
                 private:
                     CoreClass *core_;
+                    EventExchange *exchange_;
                     void *completion_event_;
                     pthread_mutex_t mutex_;
                     vector<void *> waiting_events_;
