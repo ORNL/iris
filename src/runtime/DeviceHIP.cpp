@@ -68,9 +68,9 @@ void DeviceHIP::EnablePeerAccess()
     for(int i=0; i<peers_count_; i++) {
         hipDevice_t target_dev = peers_[i];
         if (target_dev == dev_) continue;
-        _hiperror(err);
         int can_access=0;
         err = ld_->hipDeviceCanAccessPeer(&can_access, dev_, target_dev);
+        _hiperror(err);
         if (can_access) {
             //printf("Can access dev:%d -> %d = %d\n", dev_, target_dev, can_access);
             err = ld_->hipDeviceEnablePeerAccess(target_dev, 0);
