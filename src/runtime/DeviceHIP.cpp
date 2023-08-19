@@ -30,8 +30,8 @@ DeviceHIP::DeviceHIP(LoaderHIP* ld, LoaderHost2HIP *host2hip_ld, hipDevice_t dev
   enableD2D();
   dev_ = dev;
   strcpy(vendor_, "Advanced Micro Devices");
-  err_ = ld_->hipDeviceGetName(name_, sizeof(name_), dev_);
-  _hiperror(err_);
+  hipError_t err = ld_->hipDeviceGetName(name_, sizeof(name_), dev_);
+  _hiperror(err);
   if (strlen(name_) == 0) {
       hipDeviceProp_t props;
       ld_->hipGetDeviceProperties(&props, dev_);
@@ -44,8 +44,8 @@ DeviceHIP::DeviceHIP(LoaderHIP* ld, LoaderHost2HIP *host2hip_ld, hipDevice_t dev
   type_ = iris_amd;
   model_ = iris_hip;
   memset(streams_, 0, sizeof(hipStream_t)*IRIS_MAX_DEVICE_NQUEUES);
-  err_ = ld_->hipDriverGetVersion(&driver_version_);
-  _hiperror(err_);
+  err = ld_->hipDriverGetVersion(&driver_version_);
+  _hiperror(err);
   sprintf(version_, "AMD HIP %d", driver_version_);
   _info("device[%d] platform[%d] vendor[%s] device[%s] ordinal[%d] type[%d] version[%s]", devno_, platform_, vendor_, name_, ordinal_, type_, version_);
 }
@@ -58,22 +58,23 @@ DeviceHIP::~DeviceHIP() {
         host2hip_ld_->iris_host2hip_finalize_handles(ordinal_);
     }
     for (int i = 0; i < nqueues_; i++) {
-      err_ = ld_->hipStreamDestroy(streams_[i]);
-      _hiperror(err_);
+      hipError_t err = ld_->hipStreamDestroy(streams_[i]);
+      _hiperror(err);
     }
 }
 void DeviceHIP::EnablePeerAccess()
 {
+    hipError_t err;
     for(int i=0; i<peers_count_; i++) {
         hipDevice_t target_dev = peers_[i];
         if (target_dev == dev_) continue;
-        _hiperror(err_);
+        _hiperror(err);
         int can_access=0;
-        err_ = ld_->hipDeviceCanAccessPeer(&can_access, dev_, target_dev);
+        err = ld_->hipDeviceCanAccessPeer(&can_access, dev_, target_dev);
         if (can_access) {
             //printf("Can access dev:%d -> %d = %d\n", dev_, target_dev, can_access);
-            err_ = ld_->hipDeviceEnablePeerAccess(target_dev, 0);
-            _hiperror(err_);
+            err = ld_->hipDeviceEnablePeerAccess(target_dev, 0);
+            _hiperror(err);
         }
     }
 }
@@ -96,8 +97,8 @@ void DeviceHIP::SetPeerDevices(int *peers, int count)
 }
 int DeviceHIP::Init() {
   int tb=0, mc=0, bx=0, by=0, bz=0, dx=0, dy=0, dz=0, ck=0; //, ae;
-  err_ = ld_->hipSetDevice(ordinal_);
-  err_ = ld_->hipCtxCreate(&ctx_, hipDeviceScheduleAuto, ordinal_);
+  hipError_t err = ld_->hipSetDevice(ordinal_);
+  err = ld_->hipCtxCreate(&ctx_, hipDeviceScheduleAuto, ordinal_);
   EnablePeerAccess();
   if (host2hip_ld_->iris_host2hip_init != NULL) {
     host2hip_ld_->iris_host2hip_init();
@@ -105,22 +106,22 @@ int DeviceHIP::Init() {
   if (host2hip_ld_->iris_host2hip_init_handles != NULL) {
     host2hip_ld_->iris_host2hip_init_handles(ordinal_);
   }
-  _hiperror(err_);
+  _hiperror(err);
   for (int i = 0; i < nqueues_; i++) {
-    err_ = ld_->hipStreamCreate(streams_ + i);
-    _hiperror(err_);
+    err = ld_->hipStreamCreate(streams_ + i);
+    _hiperror(err);
   }
-  err_ = ld_->hipGetDevice(&devid_);
-  _hiperror(err_);
-  err_ = ld_->hipDeviceGetAttribute(&tb, hipDeviceAttributeMaxThreadsPerBlock, devid_);
-  err_ = ld_->hipDeviceGetAttribute(&mc, hipDeviceAttributeMultiprocessorCount, devid_);
-  err_ = ld_->hipDeviceGetAttribute(&bx, hipDeviceAttributeMaxBlockDimX, devid_);
-  err_ = ld_->hipDeviceGetAttribute(&by, hipDeviceAttributeMaxBlockDimY, devid_);
-  err_ = ld_->hipDeviceGetAttribute(&bz, hipDeviceAttributeMaxBlockDimZ, devid_);
-  err_ = ld_->hipDeviceGetAttribute(&dx, hipDeviceAttributeMaxGridDimX, devid_);
-  err_ = ld_->hipDeviceGetAttribute(&dy, hipDeviceAttributeMaxGridDimY, devid_);
-  err_ = ld_->hipDeviceGetAttribute(&dz, hipDeviceAttributeMaxGridDimZ, devid_);
-  err_ = ld_->hipDeviceGetAttribute(&ck, hipDeviceAttributeConcurrentKernels, devid_);
+  err = ld_->hipGetDevice(&devid_);
+  _hiperror(err);
+  err = ld_->hipDeviceGetAttribute(&tb, hipDeviceAttributeMaxThreadsPerBlock, devid_);
+  err = ld_->hipDeviceGetAttribute(&mc, hipDeviceAttributeMultiprocessorCount, devid_);
+  err = ld_->hipDeviceGetAttribute(&bx, hipDeviceAttributeMaxBlockDimX, devid_);
+  err = ld_->hipDeviceGetAttribute(&by, hipDeviceAttributeMaxBlockDimY, devid_);
+  err = ld_->hipDeviceGetAttribute(&bz, hipDeviceAttributeMaxBlockDimZ, devid_);
+  err = ld_->hipDeviceGetAttribute(&dx, hipDeviceAttributeMaxGridDimX, devid_);
+  err = ld_->hipDeviceGetAttribute(&dy, hipDeviceAttributeMaxGridDimY, devid_);
+  err = ld_->hipDeviceGetAttribute(&dz, hipDeviceAttributeMaxGridDimZ, devid_);
+  err = ld_->hipDeviceGetAttribute(&ck, hipDeviceAttributeConcurrentKernels, devid_);
   max_work_group_size_ = tb;
   max_compute_units_ = mc;
   max_block_dims_[0] = bx;
@@ -141,10 +142,10 @@ int DeviceHIP::Init() {
   }
   _trace("dev[%d][%s] kernels[%s]", devno_, name_, path);
   ld_->Lock();
-  err_ = ld_->hipModuleLoad(&module_, path);
+  err = ld_->hipModuleLoad(&module_, path);
   ld_->Unlock();
-  if (err_ != hipSuccess) {
-    _hiperror(err_);
+  if (err != hipSuccess) {
+    _hiperror(err);
     _error("srclen[%zu] src\n%s", srclen, src);
     if (src) free(src);
     worker_->platform()->IncrementErrorCount();
@@ -155,9 +156,9 @@ int DeviceHIP::Init() {
 }
 
 int DeviceHIP::ResetMemory(BaseMem *mem, uint8_t reset_value) {
-    err_ = ld_->hipMemset(mem->arch(this), reset_value, mem->size());
-    _hiperror(err_);
-    if (err_ != hipSuccess) {
+    hipError_t err = ld_->hipMemset(mem->arch(this), reset_value, mem->size());
+    _hiperror(err);
+    if (err != hipSuccess) {
        worker_->platform()->IncrementErrorCount();
        return IRIS_ERROR;
     }
@@ -172,22 +173,22 @@ void DeviceHIP::RegisterPin(void *host, size_t size)
 
 int DeviceHIP::MemAlloc(void** mem, size_t size, bool reset) {
   void** hipmem = mem;
-  err_ = ld_->hipMalloc(hipmem, size);
-  _hiperror(err_);
-  if (err_ != hipSuccess) {
+  hipError_t err = ld_->hipMalloc(hipmem, size);
+  _hiperror(err);
+  if (err != hipSuccess) {
      worker_->platform()->IncrementErrorCount();
      return IRIS_ERROR;
   }
-  if (reset) err_ = ld_->hipMemset(*hipmem, 0, size);
-  _hiperror(err_);
+  if (reset) err = ld_->hipMemset(*hipmem, 0, size);
+  _hiperror(err);
   return IRIS_SUCCESS;
 }
 
 int DeviceHIP::MemFree(void* mem) {
   void* hipmem = mem;
-  err_ = ld_->hipFree(hipmem);
-  _hiperror(err_);
-  if (err_ != hipSuccess){
+  hipError_t err = ld_->hipFree(hipmem);
+  _hiperror(err);
+  if (err != hipSuccess){
     worker_->platform()->IncrementErrorCount();
     return IRIS_ERROR;
   }
@@ -218,16 +219,17 @@ int DeviceHIP::MemD2D(Task *task, BaseMem *mem, void *dst, void *src, size_t siz
       ld_->hipCtxSetCurrent(ctx_);
   }
   bool error_occured = false;
+  hipError_t err;
   if (is_async()) {
       q_ = GetStream(task); //task->uid() % nqueues_; 
-      err_ = ld_->hipMemcpyDtoDAsync(dst, src, size, streams_[q_]);
-      _hiperror(err_);
-      if (err_ != hipSuccess) error_occured = true;
+      err = ld_->hipMemcpyDtoDAsync(dst, src, size, streams_[q_]);
+      _hiperror(err);
+      if (err != hipSuccess) error_occured = true;
   } 
   else {
-      err_ = ld_->hipMemcpyDtoD(dst, src, size);
-      _hiperror(err_);
-      if (err_ != hipSuccess) error_occured = true;
+      err = ld_->hipMemcpyDtoD(dst, src, size);
+      _hiperror(err);
+      if (err != hipSuccess) error_occured = true;
   }
   _trace("dev[%d][%s] task[%ld:%s] mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] size[%lu] q[%d]", devno_, name_, task->uid(), task->name(), mem->uid(), dst, src, size, q_);
   if (error_occured){
@@ -238,6 +240,7 @@ int DeviceHIP::MemD2D(Task *task, BaseMem *mem, void *dst, void *src, size_t siz
 }
 int DeviceHIP::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag) {
   bool error_occured = false;
+  hipError_t err;
   atleast_one_command_ = true;
   if (IsContextChangeRequired()) {
       _trace("HIP context switch dev[%d][%s] task[%ld:%s] mem[%lu] self:%p thread:%p", devno_, name_, task->uid(), task->name(), mem->uid(), (void *)worker()->self(), (void *)worker()->thread());
@@ -252,18 +255,18 @@ int DeviceHIP::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,
       size_t host_row_pitch = elem_size * host_sizes[0];
       void *host_start = (uint8_t *)host + off[0]*elem_size + off[1] * host_row_pitch;
       if (!is_async()) {
-          err_ = ld_->hipMemcpy2D((char*) hipmem, dev_sizes[0]*elem_size, host_start,
+          err = ld_->hipMemcpy2D((char*) hipmem, dev_sizes[0]*elem_size, host_start,
                   host_row_pitch, dev_sizes[0]*elem_size, dev_sizes[1], 
                   hipMemcpyHostToDevice);
-          _hiperror(err_);
-          if (err_ != hipSuccess) error_occured = true;
+          _hiperror(err);
+          if (err != hipSuccess) error_occured = true;
       } 
       else {
-          err_ = ld_->hipMemcpy2DAsync((char*) hipmem, dev_sizes[0]*elem_size, host_start,
+          err = ld_->hipMemcpy2DAsync((char*) hipmem, dev_sizes[0]*elem_size, host_start,
                   host_row_pitch, dev_sizes[0]*elem_size, dev_sizes[1], 
                   hipMemcpyHostToDevice, streams_[q_]);
-          _hiperror(err_);
-          if (err_ != hipSuccess) error_occured = true;
+          _hiperror(err);
+          if (err != hipSuccess) error_occured = true;
       }
 #if 0
       printf("H2D: %ld:%s mem:%ld dev:%p host:%p host_start:%p elem_size:%lu ", task->uid(), task->name(), mem->uid(), hipmem, host, host_start, elem_size);
@@ -281,14 +284,14 @@ int DeviceHIP::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,
   else {
       _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), hipmem, off[0], size, host, q_);
       if (!is_async()) {
-          err_ = ld_->hipMemcpyHtoD((char*) hipmem + off[0], host, size);
-          _hiperror(err_);
-          if (err_ != hipSuccess) error_occured = true;
+          err = ld_->hipMemcpyHtoD((char*) hipmem + off[0], host, size);
+          _hiperror(err);
+          if (err != hipSuccess) error_occured = true;
       }
       else {
-          err_ = ld_->hipMemcpyHtoDAsync((char*) hipmem + off[0], host, size, streams_[q_]);
-          _hiperror(err_);
-          if (err_ != hipSuccess) error_occured = true;
+          err = ld_->hipMemcpyHtoDAsync((char*) hipmem + off[0], host, size, streams_[q_]);
+          _hiperror(err);
+          if (err != hipSuccess) error_occured = true;
       }
 #if 0
       printf("H2D: %ld:%s mem:%ld dev:%p host:%p host_start:%p elem_size:%lu ", task->uid(), task->name(), mem->uid(), hipmem+off[0], host, host, elem_size);
@@ -318,23 +321,24 @@ int DeviceHIP::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,
       q_ = GetStream(task); //task->uid() % nqueues_; 
   }
   bool error_occured = false;
+  hipError_t err;
   if (dim == 2) {
       _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu,%lu,%lu] host_sizes[%lu,%lu,%lu] dev_sizes[%lu,%lu,%lu] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)hipmem, off[0], off[1], off[2], host_sizes[0], host_sizes[1], host_sizes[2], dev_sizes[0], dev_sizes[1], dev_sizes[2], size, host, q_);
       size_t host_row_pitch = elem_size * host_sizes[0];
       void *host_start = (uint8_t *)host + off[0]*elem_size + off[1] * host_row_pitch;
       if (!is_async()) {
-          err_ = ld_->hipMemcpy2D((char*) host_start, host_sizes[0]*elem_size, hipmem,
+          err = ld_->hipMemcpy2D((char*) host_start, host_sizes[0]*elem_size, hipmem,
                   dev_sizes[0]*elem_size, dev_sizes[0]*elem_size, dev_sizes[1], 
                   hipMemcpyDeviceToHost);
-          _hiperror(err_);
-          if (err_ != hipSuccess) error_occured = true;
+          _hiperror(err);
+          if (err != hipSuccess) error_occured = true;
       }
       else {
-          err_ = ld_->hipMemcpy2DAsync((char*) host_start, host_sizes[0]*elem_size, hipmem,
+          err = ld_->hipMemcpy2DAsync((char*) host_start, host_sizes[0]*elem_size, hipmem,
                   dev_sizes[0]*elem_size, dev_sizes[0]*elem_size, dev_sizes[1], 
                   hipMemcpyDeviceToHost, streams_[q_]);
-          _hiperror(err_);
-          if (err_ != hipSuccess) error_occured = true;
+          _hiperror(err);
+          if (err != hipSuccess) error_occured = true;
       }
 #if 0
       printf("D2H: %ld:%s mem:%ld:%p dev:%p host:%p host_start:%p elem_size:%lu ", task->uid(), task->name(), mem->uid(), hipmem, host, host_start, elem_size);
@@ -355,14 +359,14 @@ int DeviceHIP::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,
   else {
       _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), hipmem, off[0], size, host, q_);
       if (!is_async())  {
-          err_ = ld_->hipMemcpyDtoH(host, (char*) hipmem + off[0], size);
-          _hiperror(err_);
-          if (err_ != hipSuccess) error_occured = true;
+          err = ld_->hipMemcpyDtoH(host, (char*) hipmem + off[0], size);
+          _hiperror(err);
+          if (err != hipSuccess) error_occured = true;
       }
       else {
-          err_ = ld_->hipMemcpyDtoHAsync(host, (char*) hipmem + off[0], size, streams_[q_]);
-          _hiperror(err_);
-          if (err_ != hipSuccess) error_occured = true;
+          err = ld_->hipMemcpyDtoHAsync(host, (char*) hipmem + off[0], size, streams_[q_]);
+          _hiperror(err);
+          if (err != hipSuccess) error_occured = true;
       }
 #if 0
       printf("D2H: %ld:%s mem:%ld dev:%p host:%p host_start:%p elem_size:%lu ", task->uid(), task->name(), mem->uid(), hipmem+off[0], host, host, elem_size);
@@ -420,9 +424,9 @@ int DeviceHIP::KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bo
       return IRIS_ERROR;
   }
   hipFunction_t* hipkernel = (hipFunction_t*) kernel_bin;
-  err_ = ld_->hipModuleGetFunction(hipkernel, module_, name);
-  if (report_error) _hiperror(err_);
-  if (err_ != hipSuccess){
+  hipError_t err = ld_->hipModuleGetFunction(hipkernel, module_, name);
+  if (report_error) _hiperror(err);
+  if (err != hipSuccess){
       if (report_error) {
           _error("HIP kernel:%s not found !", name);
           worker_->platform()->IncrementErrorCount();
@@ -433,8 +437,8 @@ int DeviceHIP::KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bo
   memset(name_off, 0, sizeof(name_off));
   sprintf(name_off, "%s_with_offsets", name);
   hipFunction_t hipkernel_off;
-  err_ = ld_->hipModuleGetFunction(&hipkernel_off, module_, name_off);
-  if (err_ == hipSuccess) {
+  err = ld_->hipModuleGetFunction(&hipkernel_off, module_, name_off);
+  if (err == hipSuccess) {
       kernels_offs_.insert(std::pair<hipFunction_t, hipFunction_t>(*hipkernel, hipkernel_off));
   }
   return IRIS_SUCCESS;
@@ -501,6 +505,7 @@ int DeviceHIP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, s
   }
 #endif
   atleast_one_command_ = true;
+  hipError_t err;
   if (is_async())
       q_ = GetStream(kernel->task()); //kernel->task()->uid() % nqueues_; 
   if (kernel->is_vendor_specific_kernel(devno_) && host2hip_ld_->iris_host2hip_launch_with_obj) {
@@ -515,9 +520,9 @@ int DeviceHIP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, s
       else {
           int status = host2hip_ld_->iris_host2hip_launch_with_obj(NULL,
                   kernel->GetParamWrapperMemory(), ordinal_, dim, off[0], gws[0]);
-          err_ = ld_->hipDeviceSynchronize();
-          _hiperror(err_);
-          if (err_ != hipSuccess){
+          err = ld_->hipDeviceSynchronize();
+          _hiperror(err);
+          if (err != hipSuccess){
             worker_->platform()->IncrementErrorCount();
             return IRIS_ERROR;
           }
@@ -527,9 +532,9 @@ int DeviceHIP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, s
   else if (kernel->is_vendor_specific_kernel(devno_) && host2hip_ld_->iris_host2hip_launch) {
       _trace("dev[%d][%s] kernel[%s:%s] dim[%d] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, q_);
       int status = host2hip_ld_->iris_host2hip_launch(dim, off[0], gws[0]);
-      err_ = ld_->hipDeviceSynchronize();
-      _hiperror(err_);
-      if (err_ != hipSuccess){
+      err = ld_->hipDeviceSynchronize();
+      _hiperror(err);
+      if (err != hipSuccess){
           worker_->platform()->IncrementErrorCount();
           return IRIS_ERROR;
       }
@@ -561,23 +566,23 @@ int DeviceHIP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, s
 
   _trace("dev[%d] kernel[%s:%s] dim[%d] grid[%d,%d,%d] block[%d,%d,%d] shared_mem_bytes[%u] q[%d]", devno_, kernel->name(), kernel->get_task_name(), dim, grid[0], grid[1], grid[2], block[0], block[1], block[2], shared_mem_bytes_, q_);
   if (!is_async()) {
-      err_ = ld_->hipModuleLaunchKernel(func, grid[0], grid[1], grid[2], block[0], block[1], block[2], shared_mem_bytes_, 0, params_, NULL);
-      _hiperror(err_);
-      if (err_ != hipSuccess){
+      err = ld_->hipModuleLaunchKernel(func, grid[0], grid[1], grid[2], block[0], block[1], block[2], shared_mem_bytes_, 0, params_, NULL);
+      _hiperror(err);
+      if (err != hipSuccess){
         worker_->platform()->IncrementErrorCount();
         return IRIS_ERROR;
       }
-      err_ = ld_->hipDeviceSynchronize();
-      _hiperror(err_);
-      if (err_ != hipSuccess){
+      err = ld_->hipDeviceSynchronize();
+      _hiperror(err);
+      if (err != hipSuccess){
           worker_->platform()->IncrementErrorCount();
           return IRIS_ERROR;
       }
   }
   else {
-      err_ = ld_->hipModuleLaunchKernel(func, grid[0], grid[1], grid[2], block[0], block[1], block[2], shared_mem_bytes_, streams_[q_], params_, NULL);
-      _hiperror(err_);
-      if (err_ != hipSuccess){
+      err = ld_->hipModuleLaunchKernel(func, grid[0], grid[1], grid[2], block[0], block[1], block[2], shared_mem_bytes_, streams_[q_], params_, NULL);
+      _hiperror(err);
+      if (err != hipSuccess){
           worker_->platform()->IncrementErrorCount();
           return IRIS_ERROR;
       }
@@ -590,9 +595,9 @@ int DeviceHIP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, s
 
 int DeviceHIP::Synchronize() {
   if (! atleast_one_command_) return IRIS_SUCCESS;
-  err_ = ld_->hipDeviceSynchronize();
-  _hiperror(err_);
-  if (err_ != hipSuccess){
+  hipError_t err = ld_->hipDeviceSynchronize();
+  _hiperror(err);
+  if (err != hipSuccess){
     worker_->platform()->IncrementErrorCount();
     return IRIS_ERROR;
   }
@@ -617,9 +622,9 @@ int DeviceHIP::RegisterCallback(int stream, CallBackType callback_fn, void *data
     }
     ASSERT(data != NULL && "Data shouldn't be null");
     //TODO: hipStreamAddCallback supports only flags = 0, it is reserved in future for nonblocking
-    err_ = ld_->hipStreamAddCallback(streams_[stream], (hipStreamCallback_t)callback_fn, data, iris_stream_default);
-    _hiperror(err_);
-    if (err_ != hipSuccess){
+    hipError_t err = ld_->hipStreamAddCallback(streams_[stream], (hipStreamCallback_t)callback_fn, data, iris_stream_default);
+    _hiperror(err);
+    if (err != hipSuccess){
      worker_->platform()->IncrementErrorCount();
      return IRIS_ERROR;
     }
@@ -631,10 +636,10 @@ void DeviceHIP::CreateEvent(void **event, int flags)
     if (IsContextChangeRequired()) {
         ld_->hipCtxSetCurrent(ctx_);
     }
-    err_ = ld_->hipEventCreateWithFlags((hipEvent_t *)event, flags);   
-    _hiperror(err_);
+    hipError_t err = ld_->hipEventCreateWithFlags((hipEvent_t *)event, flags);   
+    _hiperror(err);
     _trace(" event:%p flags:%d", event, flags);
-    if (err_ != hipSuccess)
+    if (err != hipSuccess)
         worker_->platform()->IncrementErrorCount();
 }
 void DeviceHIP::RecordEvent(void *event, int stream)
@@ -644,9 +649,9 @@ void DeviceHIP::RecordEvent(void *event, int stream)
         ld_->hipCtxSetCurrent(ctx_);
     }
     ASSERT(event != NULL && "Event shouldn't be null");
-    err_ = ld_->hipEventRecord((hipEvent_t)event, streams_[stream]);
-    _hiperror(err_);
-    if (err_ != hipSuccess)
+    hipError_t err = ld_->hipEventRecord((hipEvent_t)event, streams_[stream]);
+    _hiperror(err);
+    if (err != hipSuccess)
         worker_->platform()->IncrementErrorCount();
 }
 void DeviceHIP::WaitForEvent(void *event, int stream, int flags)
@@ -656,9 +661,9 @@ void DeviceHIP::WaitForEvent(void *event, int stream, int flags)
         ld_->hipCtxSetCurrent(ctx_);
     }
     ASSERT(event != NULL && "Event shouldn't be null");
-    err_ = ld_->hipStreamWaitEvent(streams_[stream], (hipEvent_t)event, flags);
-    _hiperror(err_);
-    if (err_ != hipSuccess)
+    hipError_t err = ld_->hipStreamWaitEvent(streams_[stream], (hipEvent_t)event, flags);
+    _hiperror(err);
+    if (err != hipSuccess)
         worker_->platform()->IncrementErrorCount();
 }
 void DeviceHIP::DestroyEvent(void *event)
@@ -668,9 +673,9 @@ void DeviceHIP::DestroyEvent(void *event)
     if (IsContextChangeRequired()) {
         ld_->hipCtxSetCurrent(ctx_);
     }
-    err_ = ld_->hipEventDestroy((hipEvent_t) event);
-    _hiperror(err_);
-    if (err_ != hipSuccess)
+    hipError_t err = ld_->hipEventDestroy((hipEvent_t) event);
+    _hiperror(err);
+    if (err != hipSuccess)
         worker_->platform()->IncrementErrorCount();
 }
 void DeviceHIP::EventSychronize(void *event)
@@ -680,9 +685,9 @@ void DeviceHIP::EventSychronize(void *event)
     if (IsContextChangeRequired()) {
         ld_->hipCtxSetCurrent(ctx_);
     }
-    err_ = ld_->hipEventSynchronize((hipEvent_t) event);
-    _hiperror(err_);
-    if (err_ != hipSuccess)
+    hipError_t err = ld_->hipEventSynchronize((hipEvent_t) event);
+    _hiperror(err);
+    if (err != hipSuccess)
         worker_->platform()->IncrementErrorCount();
 }
 

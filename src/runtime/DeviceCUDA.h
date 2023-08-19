@@ -72,7 +72,6 @@ private:
   CUcontext ctx_;
   CUstream streams_[IRIS_MAX_DEVICE_NQUEUES];
   CUmodule module_;
-  CUresult err_;
   unsigned int shared_mem_bytes_;
   unsigned int shared_mem_offs_[IRIS_MAX_KERNEL_NARGS];
   void* params_[IRIS_MAX_KERNEL_NARGS];

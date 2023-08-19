@@ -57,7 +57,6 @@ private:
   hipStream_t streams_[IRIS_MAX_DEVICE_NQUEUES];
   int peers_count_;
   hipModule_t module_;
-  hipError_t err_;
   int ordinal_;
   int devid_;
   unsigned int shared_mem_bytes_;
