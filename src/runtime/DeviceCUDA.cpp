@@ -153,13 +153,14 @@ void DeviceCUDA::SetPeerDevices(int *peers, int count)
 }
 void DeviceCUDA::EnablePeerAccess()
 {
-#if 0 
+#if 0
     // It has some performance issues
     for(int i=0; i<peers_count_; i++) {
         CUdevice target_dev = peers_[i];
         if (target_dev == dev_) continue;
         int can_access=0;
-        err = ld_->cudaDeviceCanAccessPeer(&can_access, dev_, target_dev);
+        CUresult err = ld_->cudaDeviceCanAccessPeer(&can_access, dev_, target_dev);
+        _cuerror(err);
         if (can_access) {
             //printf("Can access dev:%d -> %d = %d\n", dev_, target_dev, can_access);
             err = ld_->cudaDeviceEnablePeerAccess(target_dev, 0);
