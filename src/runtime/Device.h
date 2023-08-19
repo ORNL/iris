@@ -130,7 +130,7 @@ private:
     do {
         new_current_queue = current_queue_ + 1;
     } while (!__sync_bool_compare_and_swap(&current_queue_, current_queue_, new_current_queue));
-    return new_current_queue;
+    return new_current_queue%nqueues_;
   }
 protected:
   int devno_;
