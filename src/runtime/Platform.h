@@ -236,6 +236,8 @@ public:
   void disable_d2d() { disable_d2d_ = true; }
   void enable_d2d() { disable_d2d_ = false; }
   bool is_d2d_disabled() { return disable_d2d_; }
+  bool is_kernel_launch_disabled() { return disable_kernel_launch_; }
+  void set_kernel_launch_disabled(bool flag) { disable_kernel_launch_ = flag; }
   void ProfileCompletedTask(Task *task); 
   hook_task hook_task_pre() { return hook_task_pre_; }
   hook_task hook_task_post() { return hook_task_post_; }
@@ -323,6 +325,7 @@ private:
 
   bool enable_scheduling_history_;
   bool disable_d2d_;
+  bool disable_kernel_launch_;
   bool release_task_flag_;
   SchedulingHistory* scheduling_history_;
 

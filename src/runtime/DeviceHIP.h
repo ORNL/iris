@@ -31,9 +31,7 @@ public:
   int KernelLaunchInit(Kernel* kernel);
   int KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws);
   int Synchronize();
-  int AddCallback(Task* task);
   void EnablePeerAccess();
-  static void Callback(hipStream_t stream, hipError_t status, void* data);
   int RegisterCallback(int stream, CallBackType callback_fn, void* data, int flags=0);
   void SetPeerDevices(int *peers, int count);
   int hipdev() { return dev_; }

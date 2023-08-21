@@ -60,11 +60,13 @@ int Device::GetStream(Task *task) {
 
 void Device::Execute(Task* task) {
   busy_ = true;
+  if (is_async() && task->user()) task->set_recommended_stream(GetStream(task));
   if (hook_task_pre_) hook_task_pre_(task);
   TaskPre(task);
   task->set_time_start(timer_->Now());
   //printf("================== Task:%s =====================\n", task->name());
-  _trace("task[%lu:%s] started execution on dev[%d][%s] time[%lf] start:[%lf]", task->uid(), task->name(), devno(), name(), task->time(), task->time_start());
+  _printf("task[%lu:%s] started execution on dev[%d][%s] time[%lf] start:[%lf] q[%d]", task->uid(), task->name(), devno(), name(), task->time(), task->time_start(), task->recommended_stream());
+  _trace("task[%lu:%s] started execution on dev[%d][%s] time[%lf] start:[%lf] q[%d]", task->uid(), task->name(), devno(), name(), task->time(), task->time_start(), task->recommended_stream());
   for(Command *cmd : task->reset_mems()) {
       ExecuteMemResetInput(task, cmd);
   }
@@ -96,21 +98,34 @@ void Device::Execute(Task* task) {
     cmd->set_time_end(timer_->Now());
     if (hook_command_post_) hook_command_post_(cmd);
   }
-  if (is_async()) AddCallback(task);
+  if (is_async() && task->user()) AddCallback(task);
   task->set_time_end(timer_->Now());
   TaskPost(task);
   if (hook_task_post_) hook_task_post_(task);
 //  if (++q_ >= nqueues_) q_ = 0;
   if (!task->system()) _trace("task[%lu:%s] complete dev[%d][%s] time[%lf] end:[%lf]", task->uid(), task->name(), devno(), name(), task->time(), task->time_end());
   if (task->cmd_kernel() != NULL) ProactiveTransfers(task, task->cmd_kernel());
-  if (!is_async()) task->Complete();
+  if (!is_async() || !task->user()) task->Complete();
   busy_ = false;
+}
+
+int Device::AddCallback(Task* task) {
+  q_ = GetStream(task); //task->uid() % nqueues_; 
+  return RegisterCallback(q_, (CallBackType)Device::Callback, task, iris_stream_non_blocking);
+}
+
+void Device::Callback(void *stream, int status, void* data) {
+  Task* task = (Task*) data;
+  _printf(" stream_ptr:%p task:%p:%s:%lu status:%d", stream, task, task->name(), task->uid(), status);
+  task->Complete();
+  _printf(" Completed task stream_ptr:%p task:%p:%s:%lu status:%d", stream, task, task->name(), task->uid(), status);
 }
 
 void Device::ProactiveTransfers(Task *task, Command *cmd)
 {
   if (!Platform::GetPlatform()->get_enable_proactive()) return;
   if (cmd->kernel() == NULL) return;
+  _printf("Doing proactive transfers for task:%s:%lu", task->name(), task->uid());
   int ndevs = Platform::GetPlatform()->ndevs();
   if (dev_2_child_task_ == NULL)
       dev_2_child_task_ = (Task**)malloc(ndevs*sizeof(Task*));
@@ -261,10 +276,14 @@ void Device::ExecuteKernel(Command* cmd) {
 #endif
   //double ktime_start = timer_->GetCurrentTime();
   bool enabled = true;
-  if (cmd->task() != NULL && cmd->task()->is_kernel_launch_disabled())
+  if (cmd->task() != NULL && (
+              cmd->task()->is_kernel_launch_disabled() ||
+              Platform::GetPlatform()->is_kernel_launch_disabled()))
       enabled = false;
-  if (enabled)
+  if (enabled) {
+      _printf("Launching kernel:%s:%lu task:%s:%lu", kernel->name(), kernel->uid(), cmd->task()->name(), cmd->task()->uid());
       errid_ = KernelLaunch(kernel, dim, off, gws, lws[0] > 0 ? lws : NULL);
+  }
   //double ktime = timer_->GetCurrentTime() - ktime_start;
   cmd->set_time_end(timer_->Now());
   double time = timer_->Stop(IRIS_TIMER_KERNEL);
@@ -397,8 +416,10 @@ void Device::WaitForDataAvailability(int devno, Task *task, DMemType *mem)
     if (is_async()) {
         int stream = mem->GetWriteStream(devno);
         if (stream != task->recommended_stream()) {
+            Device *dev= Platform::GetPlatform()->device(devno);
             // Even if the parent task and current task are running on same device, it may be using different streams
             for (void * event: mem->GetWaitEvents(devno_)) {
+                _printf(" from dev:[%d] event to dev:[%d][%s] task:%s:%lu task_stream:%d mem:%lu mem_stream:%d\n", devno_, devno, dev->name(), task->name(), task->uid(), task->recommended_stream(), mem->uid(), stream);
                 WaitForEvent(event, stream, iris_event_disable_timing);
             }
         }
@@ -436,7 +457,8 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem)
         // May be transfer directly from peer device is best 
         // Do D2D communication
         // Keep host data dirty as it is
-        _trace("explore D2D dev[%d][%s] task[%ld:%s] mem[%lu]", devno_, name_, task->uid(), task->name(), mem->uid());
+        _printf("explore D2D dev[%d][%s] task[%ld:%s] mem[%lu] q[%d]", devno_, name_, task->uid(), task->name(), mem->uid(), task->recommended_stream());
+        _trace("explore D2D dev[%d][%s] task[%ld:%s] mem[%lu] q[%d]", devno_, name_, task->uid(), task->name(), mem->uid(), task->recommended_stream());
         Device *src_dev = Platform::GetPlatform()->device(d2d_dev);
         void* dst_arch = mem->arch(this);
         void* src_arch = mem->arch(src_dev);
@@ -516,6 +538,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem)
         errid_ = MemH2D(task, mem, ptr_off, 
                 gws, lws, elem_size, dim, size, host);
         double end = timer_->Now();
+        _printf("explore Host2Device (H2D) dev[%d][%s] task[%ld:%s] mem[%lu] q[%d]", devno_, name_, task->uid(), task->name(), mem->uid(), task->recommended_stream());
         if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
         if (is_async()) 
             mem->RecordEvent(devno(), task->recommended_stream());
@@ -594,15 +617,7 @@ void Device::ExecuteMemInDMemRegionIn(Task *task, Command* cmd, DataMemRegion *m
     }
     else{
         _trace("Skipped DMEM_REGION data transfer dev[%d:%s] task[%ld:%s] dmem_reg[%lu] dmem[%lu] dptr[%p]", devno_, name_, task->uid(), task->name(), mem->uid(), mem->get_dmem()->uid(), mem->arch(devno_));
-        if (is_async()) {
-            int stream = mem->GetWriteStream(devno_);
-            if (stream != task->recommended_stream()) {
-                // Even if the parent task and current task are running on same device, it may be using different streams
-                for (void * event: mem->GetWaitEvents(devno_)) {
-                    WaitForEvent(event, stream, iris_event_disable_timing);
-                }
-            }
-        }
+        WaitForDataAvailability<DataMemRegion>(devno_, task, mem);
     }
 }
 void Device::ExecuteMemInDMemIn(Task *task, Command* cmd, DataMem *mem) {
@@ -616,15 +631,7 @@ void Device::ExecuteMemInDMemIn(Task *task, Command* cmd, DataMem *mem) {
             }
             else {
                 _trace("Skipped DMEM_REGION region(%d) H2D data transfer dev[%d:%s] task[%ld:%s] dmem_reg[%lu] dmem[%lu] dptr[%p]", i, devno_, name_, task->uid(), task->name(), rmem->uid(), rmem->get_dmem()->uid(), rmem->arch(devno_));
-                if (is_async()) {
-                    int stream = mem->GetWriteStream(devno_);
-                    if (stream != task->recommended_stream()) {
-                        // Even if the parent task and current task are running on same device, it may be using different streams
-                        for (void * event: mem->GetWaitEvents(devno_)) {
-                            WaitForEvent(event, stream, iris_event_disable_timing);
-                        }
-                    }
-                }
+                WaitForDataAvailability<DataMemRegion>(devno_, task, rmem);
             }
         }
 #if 0
@@ -653,15 +660,7 @@ void Device::ExecuteMemInDMemIn(Task *task, Command* cmd, DataMem *mem) {
     }
     else{
         _trace("Skipped DMEM H2D data transfer dev[%d:%s] task[%ld:%s] dmem[%lu] dptr[%p]", devno_, name_, task->uid(), task->name(), mem->uid(), mem->arch(devno_));
-        if (is_async()) {
-            int stream = mem->GetWriteStream(devno_);
-            if (stream != task->recommended_stream()) {
-                // Even if the parent task and current task are running on same device, it may be using different streams
-                for (void * event: mem->GetWaitEvents(devno_)) {
-                    WaitForEvent(event, stream, iris_event_disable_timing);
-                }
-            }
-        }
+        WaitForDataAvailability<DataMem>(devno_, task, mem);
     }
 }
 void Device::ExecuteMemOut(Task *task, Command* cmd) {

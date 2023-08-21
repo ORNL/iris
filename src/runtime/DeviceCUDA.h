@@ -38,7 +38,6 @@ public:
   int KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, size_t off);
   int KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws);
   int Synchronize();
-  int AddCallback(Task* task);
   int Custom(int tag, char* params);
   void CreateEvent(void **event, int flags);
   void RecordEvent(void *event, int stream);
@@ -60,7 +59,6 @@ public:
   void SetContextToCurrentThread();
 
 private:
-  static void Callback(CUstream stream, CUresult status, void* data);
   void ClearGarbage();
 
 private:

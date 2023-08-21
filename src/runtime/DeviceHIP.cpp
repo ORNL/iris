@@ -604,16 +604,6 @@ int DeviceHIP::Synchronize() {
   return IRIS_SUCCESS;
 }
 
-int DeviceHIP::AddCallback(Task* task) {
-  q_ = GetStream(task); //task->uid() % nqueues_; 
-  return RegisterCallback(q_, (CallBackType)DeviceHIP::Callback, task, iris_stream_non_blocking);
-}
-void DeviceHIP::Callback(hipStream_t stream, hipError_t status, void* data) {
-  _trace(" stream_ptr:%p data:%p status:%d", stream, data, status);
-  Task* task = (Task*) data;
-  task->Complete();
-}
-
 int DeviceHIP::RegisterCallback(int stream, CallBackType callback_fn, void *data, int flags) 
 {
     _trace(" stream:%d data:%p flags:%d", stream, data, flags);

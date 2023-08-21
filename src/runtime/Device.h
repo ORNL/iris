@@ -95,7 +95,8 @@ public:
   virtual int KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, size_t off) = 0;
   virtual int KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws) = 0;
   virtual int Synchronize() = 0;
-  virtual int AddCallback(Task* task) = 0;
+  virtual int AddCallback(Task* task);
+  static void Callback(void *stream, int status, void* data);
   virtual int Custom(int tag, char* params) { return IRIS_SUCCESS; }
   virtual int RecreateContext() { return IRIS_ERROR; }
   virtual bool SupportJIT() { return true; }

@@ -738,11 +738,6 @@ int DeviceCUDA::Synchronize() {
   return IRIS_SUCCESS;
 }
 
-int DeviceCUDA::AddCallback(Task* task) {
-  q_ = GetStream(task); //task->uid() % nqueues_; 
-  return RegisterCallback(q_, (CallBackType)DeviceCUDA::Callback, task, iris_stream_non_blocking);
-}
-
 int DeviceCUDA::Custom(int tag, char* params) {
   if (!cmd_handlers_.count(tag)) {
     _error("unknown tag[0x%x]", tag);
@@ -767,11 +762,6 @@ int DeviceCUDA::RegisterCallback(int stream, CallBackType callback_fn, void *dat
         return IRIS_ERROR;
     }
     return IRIS_SUCCESS;
-}
-
-void DeviceCUDA::Callback(CUstream stream, CUresult status, void* data) {
-  Task* task = (Task*) data;
-  task->Complete();
 }
 
 void DeviceCUDA::TaskPre(Task* task) {
@@ -799,6 +789,7 @@ void DeviceCUDA::RecordEvent(void *event, int stream)
 }
 void DeviceCUDA::WaitForEvent(void *event, int stream, int flags)
 {
+    _printf("Waiting for event to be fired");
     if (IsContextChangeRequired()) {
         ld_->cuCtxSetCurrent(ctx_);
     }
@@ -819,6 +810,7 @@ void DeviceCUDA::DestroyEvent(void *event)
 }
 void DeviceCUDA::EventSychronize(void *event)
 {
+    _printf("Waiting for event to synchronize");
     if (IsContextChangeRequired()) {
         ld_->cuCtxSetCurrent(ctx_);
     }

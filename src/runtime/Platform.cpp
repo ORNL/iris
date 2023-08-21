@@ -92,6 +92,7 @@ Platform::Platform() {
   scheduling_history_ = NULL;
   pthread_mutex_init(&mutex_, NULL);
   enable_proactive_ = true;
+  disable_kernel_launch_ = false;
 }
 
 Platform::~Platform() {
@@ -170,6 +171,10 @@ int Platform::Init(int* argc, char*** argv, int sync) {
 
   SetDevsAvailable();
 
+  char *disable_kernel_launch = NULL;
+  EnvironmentGet("DISABLE_KERNEL_LAUNCH", &disable_kernel_launch, NULL);
+  if (disable_kernel_launch != NULL && atoi(disable_kernel_launch) == 1)
+      set_kernel_launch_disabled(true);
   char *async = NULL;
   EnvironmentGet("ASYNC", &async, NULL);
   if (async != NULL && atoi(async) == 1)
