@@ -24,6 +24,10 @@ class Task;
 class Timer;
 class Worker;
 
+enum StreamPolicy {
+    STREAM_POLICY_DEFAULT,
+    STREAM_POLICY_SAME_FOR_TASK,
+};
 typedef void (*CallBackType)(void *stream, int status, void *data);
 class Device {
 public:
@@ -124,6 +128,7 @@ public:
   void set_worker(Worker* worker) { worker_ = worker; }
   Worker* worker() { return worker_; }
   int GetStream(Task *task);
+  int GetStream(Task *task, BaseMem *mem);
   double Now() { return timer_->Now(); }
 private:
   int get_new_stream_queue() {
@@ -148,7 +153,6 @@ protected:
   int max_block_dims_[3];
   Task **dev_2_child_task_;
   int nqueues_;
-  int q_;
   int errid_;
   int current_queue_;
 
@@ -170,6 +174,7 @@ protected:
   hook_command hook_command_post_;
 
   std::map<int, command_handler> cmd_handlers_;
+  int stream_policy_;
 };
 
 } /* namespace rt */

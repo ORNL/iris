@@ -28,7 +28,6 @@ Device::Device(int devno, int platform) {
   shared_memory_buffers_ = false;
   can_share_host_memory_ = false;
   nqueues_ = IRIS_MAX_DEVICE_NQUEUES;
-  q_ = 0;
   dev_2_child_task_ = NULL; 
   memset(vendor_, 0, sizeof(vendor_));
   memset(name_, 0, sizeof(name_));
@@ -40,6 +39,7 @@ Device::Device(int devno, int platform) {
   hook_command_pre_ = NULL;
   hook_command_post_ = NULL;
   worker_ = NULL;
+  stream_policy_ = STREAM_POLICY_DEFAULT;
 }
 
 Device::~Device() {
@@ -47,6 +47,18 @@ Device::~Device() {
 }
 
 int Device::GetStream(Task *task) { 
+    task->stream_lock();
+    int s_index = task->recommended_stream();
+    if (s_index == -1) {
+        int queue = get_new_stream_queue();
+        task->set_recommended_stream(queue);
+    }
+    task->stream_unlock();
+    return task->recommended_stream();
+    //return task->uid() % nqueues_; 
+}
+
+int Device::GetStream(Task *task, BaseMem *mem) { 
     task->stream_lock();
     int s_index = task->recommended_stream();
     if (s_index == -1) {
@@ -102,7 +114,7 @@ void Device::Execute(Task* task) {
   task->set_time_end(timer_->Now());
   TaskPost(task);
   if (hook_task_post_) hook_task_post_(task);
-//  if (++q_ >= nqueues_) q_ = 0;
+//  if (++stream_index >= nqueues_) stream_index = 0;
   if (!task->system()) _trace("task[%lu:%s] complete dev[%d][%s] time[%lf] end:[%lf]", task->uid(), task->name(), devno(), name(), task->time(), task->time_end());
   if (task->cmd_kernel() != NULL) ProactiveTransfers(task, task->cmd_kernel());
   if (!is_async() || !task->user()) task->Complete();
@@ -110,8 +122,9 @@ void Device::Execute(Task* task) {
 }
 
 int Device::AddCallback(Task* task) {
-  q_ = GetStream(task); //task->uid() % nqueues_; 
-  return RegisterCallback(q_, (CallBackType)Device::Callback, task, iris_stream_non_blocking);
+  int stream_index = 0;
+  stream_index = GetStream(task); //task->uid() % nqueues_; 
+  return RegisterCallback(stream_index, (CallBackType)Device::Callback, task, iris_stream_non_blocking);
 }
 
 void Device::Callback(void *stream, int status, void* data) {

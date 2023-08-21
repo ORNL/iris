@@ -219,10 +219,11 @@ int DeviceHIP::MemD2D(Task *task, BaseMem *mem, void *dst, void *src, size_t siz
       ld_->hipCtxSetCurrent(ctx_);
   }
   bool error_occured = false;
+  int stream_index=0;
   hipError_t err;
   if (is_async()) {
-      q_ = GetStream(task); //task->uid() % nqueues_; 
-      err = ld_->hipMemcpyDtoDAsync(dst, src, size, streams_[q_]);
+      stream_index = GetStream(task, mem); //task->uid() % nqueues_; 
+      err = ld_->hipMemcpyDtoDAsync(dst, src, size, streams_[stream_index]);
       _hiperror(err);
       if (err != hipSuccess) error_occured = true;
   } 
@@ -231,7 +232,7 @@ int DeviceHIP::MemD2D(Task *task, BaseMem *mem, void *dst, void *src, size_t siz
       _hiperror(err);
       if (err != hipSuccess) error_occured = true;
   }
-  _trace("dev[%d][%s] task[%ld:%s] mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] size[%lu] q[%d]", devno_, name_, task->uid(), task->name(), mem->uid(), dst, src, size, q_);
+  _trace("dev[%d][%s] task[%ld:%s] mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] size[%lu] q[%d]", devno_, name_, task->uid(), task->name(), mem->uid(), dst, src, size, stream_index);
   if (error_occured){
       worker_->platform()->IncrementErrorCount();
       return IRIS_ERROR;
@@ -247,11 +248,12 @@ int DeviceHIP::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,
       ld_->hipCtxSetCurrent(ctx_);
   }
   void* hipmem = mem->arch(this);
+  int stream_index=0;
   if (is_async()) {
-      q_ = GetStream(task); //task->uid() % nqueues_; 
+      stream_index = GetStream(task, mem); //task->uid() % nqueues_; 
   }
   if (dim == 2) {
-      _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu,%lu,%lu] host_sizes[%lu,%lu,%lu] dev_sizes[%lu,%lu,%lu] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), hipmem, off[0], off[1], off[2], host_sizes[0], host_sizes[1], host_sizes[2], dev_sizes[0], dev_sizes[1], dev_sizes[2], size, host, q_);
+      _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu,%lu,%lu] host_sizes[%lu,%lu,%lu] dev_sizes[%lu,%lu,%lu] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), hipmem, off[0], off[1], off[2], host_sizes[0], host_sizes[1], host_sizes[2], dev_sizes[0], dev_sizes[1], dev_sizes[2], size, host, stream_index);
       size_t host_row_pitch = elem_size * host_sizes[0];
       void *host_start = (uint8_t *)host + off[0]*elem_size + off[1] * host_row_pitch;
       if (!is_async()) {
@@ -264,7 +266,7 @@ int DeviceHIP::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,
       else {
           err = ld_->hipMemcpy2DAsync((char*) hipmem, dev_sizes[0]*elem_size, host_start,
                   host_row_pitch, dev_sizes[0]*elem_size, dev_sizes[1], 
-                  hipMemcpyHostToDevice, streams_[q_]);
+                  hipMemcpyHostToDevice, streams_[stream_index]);
           _hiperror(err);
           if (err != hipSuccess) error_occured = true;
       }
@@ -282,14 +284,14 @@ int DeviceHIP::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,
 #endif
   }
   else {
-      _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), hipmem, off[0], size, host, q_);
+      _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), hipmem, off[0], size, host, stream_index);
       if (!is_async()) {
           err = ld_->hipMemcpyHtoD((char*) hipmem + off[0], host, size);
           _hiperror(err);
           if (err != hipSuccess) error_occured = true;
       }
       else {
-          err = ld_->hipMemcpyHtoDAsync((char*) hipmem + off[0], host, size, streams_[q_]);
+          err = ld_->hipMemcpyHtoDAsync((char*) hipmem + off[0], host, size, streams_[stream_index]);
           _hiperror(err);
           if (err != hipSuccess) error_occured = true;
       }
@@ -317,13 +319,14 @@ int DeviceHIP::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,
       ld_->hipCtxSetCurrent(ctx_);
   }
   void* hipmem = mem->arch(this);
+  int stream_index=0;
   if (is_async()) {
-      q_ = GetStream(task); //task->uid() % nqueues_; 
+      stream_index = GetStream(task, mem); //task->uid() % nqueues_; 
   }
   bool error_occured = false;
   hipError_t err;
   if (dim == 2) {
-      _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu,%lu,%lu] host_sizes[%lu,%lu,%lu] dev_sizes[%lu,%lu,%lu] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)hipmem, off[0], off[1], off[2], host_sizes[0], host_sizes[1], host_sizes[2], dev_sizes[0], dev_sizes[1], dev_sizes[2], size, host, q_);
+      _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu,%lu,%lu] host_sizes[%lu,%lu,%lu] dev_sizes[%lu,%lu,%lu] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)hipmem, off[0], off[1], off[2], host_sizes[0], host_sizes[1], host_sizes[2], dev_sizes[0], dev_sizes[1], dev_sizes[2], size, host, stream_index);
       size_t host_row_pitch = elem_size * host_sizes[0];
       void *host_start = (uint8_t *)host + off[0]*elem_size + off[1] * host_row_pitch;
       if (!is_async()) {
@@ -336,7 +339,7 @@ int DeviceHIP::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,
       else {
           err = ld_->hipMemcpy2DAsync((char*) host_start, host_sizes[0]*elem_size, hipmem,
                   dev_sizes[0]*elem_size, dev_sizes[0]*elem_size, dev_sizes[1], 
-                  hipMemcpyDeviceToHost, streams_[q_]);
+                  hipMemcpyDeviceToHost, streams_[stream_index]);
           _hiperror(err);
           if (err != hipSuccess) error_occured = true;
       }
@@ -357,14 +360,14 @@ int DeviceHIP::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,
 #endif
   }
   else {
-      _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), hipmem, off[0], size, host, q_);
+      _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), hipmem, off[0], size, host, stream_index);
       if (!is_async())  {
           err = ld_->hipMemcpyDtoH(host, (char*) hipmem + off[0], size);
           _hiperror(err);
           if (err != hipSuccess) error_occured = true;
       }
       else {
-          err = ld_->hipMemcpyDtoHAsync(host, (char*) hipmem + off[0], size, streams_[q_]);
+          err = ld_->hipMemcpyDtoHAsync(host, (char*) hipmem + off[0], size, streams_[stream_index]);
           _hiperror(err);
           if (err != hipSuccess) error_occured = true;
       }
@@ -506,14 +509,15 @@ int DeviceHIP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, s
 #endif
   atleast_one_command_ = true;
   hipError_t err;
+  int stream_index=0;
   if (is_async())
-      q_ = GetStream(kernel->task()); //kernel->task()->uid() % nqueues_; 
+      stream_index = GetStream(kernel->task()); //kernel->task()->uid() % nqueues_; 
   if (kernel->is_vendor_specific_kernel(devno_) && host2hip_ld_->iris_host2hip_launch_with_obj) {
-      _trace("dev[%d][%s] kernel[%s:%s] dim[%d] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, q_);
+      _trace("dev[%d][%s] kernel[%s:%s] dim[%d] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, stream_index);
       host2hip_ld_->SetKernelPtr(kernel->GetParamWrapperMemory(), kernel->name());
       if (is_async()) {
           int status = host2hip_ld_->iris_host2hip_launch_with_obj(
-                  streams_[q_],
+                  streams_[stream_index],
                   kernel->GetParamWrapperMemory(), ordinal_, dim, off[0], gws[0]);
           return status;
       }
@@ -530,7 +534,7 @@ int DeviceHIP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, s
       }
   }
   else if (kernel->is_vendor_specific_kernel(devno_) && host2hip_ld_->iris_host2hip_launch) {
-      _trace("dev[%d][%s] kernel[%s:%s] dim[%d] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, q_);
+      _trace("dev[%d][%s] kernel[%s:%s] dim[%d] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, stream_index);
       int status = host2hip_ld_->iris_host2hip_launch(dim, off[0], gws[0]);
       err = ld_->hipDeviceSynchronize();
       _hiperror(err);
@@ -540,7 +544,7 @@ int DeviceHIP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, s
       }
       return status;
   }
-  _trace("native kernel start dev[%d][%s] kernel[%s:%s] dim[%d] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, q_);
+  _trace("native kernel start dev[%d][%s] kernel[%s:%s] dim[%d] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, stream_index);
   hipFunction_t func = (hipFunction_t) kernel->arch(this);
   int block[3] = { lws ? (int) lws[0] : 1, lws ? (int) lws[1] : 1, lws ? (int) lws[2] : 1 };
   if (!lws) {
@@ -564,7 +568,7 @@ int DeviceHIP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, s
     }
   }
 
-  _trace("dev[%d] kernel[%s:%s] dim[%d] grid[%d,%d,%d] block[%d,%d,%d] shared_mem_bytes[%u] q[%d]", devno_, kernel->name(), kernel->get_task_name(), dim, grid[0], grid[1], grid[2], block[0], block[1], block[2], shared_mem_bytes_, q_);
+  _trace("dev[%d] kernel[%s:%s] dim[%d] grid[%d,%d,%d] block[%d,%d,%d] shared_mem_bytes[%u] q[%d]", devno_, kernel->name(), kernel->get_task_name(), dim, grid[0], grid[1], grid[2], block[0], block[1], block[2], shared_mem_bytes_, stream_index);
   if (!is_async()) {
       err = ld_->hipModuleLaunchKernel(func, grid[0], grid[1], grid[2], block[0], block[1], block[2], shared_mem_bytes_, 0, params_, NULL);
       _hiperror(err);
@@ -580,7 +584,7 @@ int DeviceHIP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, s
       }
   }
   else {
-      err = ld_->hipModuleLaunchKernel(func, grid[0], grid[1], grid[2], block[0], block[1], block[2], shared_mem_bytes_, streams_[q_], params_, NULL);
+      err = ld_->hipModuleLaunchKernel(func, grid[0], grid[1], grid[2], block[0], block[1], block[2], shared_mem_bytes_, streams_[stream_index], params_, NULL);
       _hiperror(err);
       if (err != hipSuccess){
           worker_->platform()->IncrementErrorCount();
