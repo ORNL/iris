@@ -27,6 +27,7 @@ typedef struct _KernelArg {
   size_t mem_size;
   size_t off;
   int mode;
+  int mem_index;
   int proactive;
   void proactive_enabled() { proactive = true; }
   void proactive_disabled() { proactive = false; }
@@ -60,12 +61,19 @@ public:
   Platform* platform() { return platform_; }
   shared_ptr<History> history() { return history_; }
   map<BaseMem*, int> & in_mems() { return in_mem_track_; }
+  map<BaseMem*, int> & mems() { return mem_track_; }
   map<int, DataMem *> & data_mems_in() { return data_mems_in_; }
   map<int, DataMem *> & data_mems_out() { return data_mems_out_; }
   map<int, DataMemRegion *> & data_mem_regions_in() { return data_mem_regions_in_; }
   map<int, DataMemRegion *> & data_mem_regions_out() { return data_mem_regions_out_; }
   vector<int> & data_mems_in_order() { return data_mems_in_order_; }
   vector<BaseMem*> & all_data_mems_in() { return all_data_mems_in_; }
+  int get_mem_karg_index(BaseMem *mem) { 
+    return (mem_track_.find(mem) != mem_track_.end()) ? mem_track_[mem] : -1;
+  }
+  KernelArg *get_mem_karg(BaseMem *mem) { 
+    return (mem_track_.find(mem) != mem_track_.end()) ? karg(mem_track_[mem]) : NULL;
+  }
   KernelArg *get_in_mem_karg(BaseMem *mem) { 
     return (in_mem_track_.find(mem) != in_mem_track_.end()) ? karg(in_mem_track_[mem]) : NULL;
   }
@@ -83,6 +91,7 @@ public:
   void **GetCompletionEventPtr() { return async_data_.GetCompletionEventPtr(); }
   void *GetCompletionEvent() { return async_data_.GetCompletionEvent(); }
 private:
+  int n_mems_;
   char name_[256];
   char task_name_[256];
   Task *task_;
@@ -99,6 +108,7 @@ private:
   vector<int> data_mems_in_order_;
   vector<BaseMem *> all_data_mems_in_;
   std::map<BaseMem *, int> in_mem_track_;
+  std::map<BaseMem *, int> mem_track_;
   std::map<int, DataMem *> data_mems_in_;
   std::map<int, DataMemRegion *> data_mem_regions_in_;
   std::map<int, DataMem *> data_mems_out_;

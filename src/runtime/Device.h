@@ -6,6 +6,8 @@
 #include "Timer.h"
 //#include "CPUEvent.h"
 #include <map>
+#include <vector>
+using namespace std;
 
 #ifndef IRIS_ASYNC_STREAMING
 #define IRIS_SYNC_EXECUTION
@@ -51,6 +53,7 @@ public:
   virtual void DestroyEvent(void *event);
   virtual void EventSychronize(void *event);
   void ProactiveTransfers(Task *task, Command *cmd);
+  void WaitForInputAvailability(int devno, Task *task, Command *cmd);
   template <typename DMemType>
   void WaitForDataAvailability(int devno, Task *task, DMemType *mem);
   template <typename DMemType>
@@ -131,12 +134,12 @@ public:
   int GetStream(Task *task, BaseMem *mem);
   double Now() { return timer_->Now(); }
 private:
-  int get_new_stream_queue() {
+  int get_new_stream_queue(int offset=0) {
     unsigned long new_current_queue;
     do {
         new_current_queue = current_queue_ + 1;
     } while (!__sync_bool_compare_and_swap(&current_queue_, current_queue_, new_current_queue));
-    return new_current_queue%nqueues_;
+    return new_current_queue%(nqueues_-offset);
   }
 protected:
   int devno_;
@@ -155,6 +158,7 @@ protected:
   int nqueues_;
   int errid_;
   int current_queue_;
+  int n_copy_engines_;
 
   char kernel_path_[256];
 
@@ -174,7 +178,7 @@ protected:
   hook_command hook_command_post_;
 
   std::map<int, command_handler> cmd_handlers_;
-  int stream_policy_;
+  StreamPolicy stream_policy_;
 };
 
 } /* namespace rt */

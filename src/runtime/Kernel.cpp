@@ -16,6 +16,7 @@ Kernel::Kernel(const char* name, Platform* platform) {
   strncpy(name_, name, len);
   strcpy(task_name_, name);
   task_ = NULL;
+  n_mems_ = 0;
   name_[len] = 0;
   profile_data_transfers_ = false;
   platform_ = platform;
@@ -61,6 +62,7 @@ int Kernel::SetArg(int idx, size_t size, void* value) {
 
 int Kernel::SetMem(int idx, BaseMem* mem, size_t off, int mode) {
   KernelArg* arg = new KernelArg;
+  _printf("IDX:%d", idx);
   if(!mem) {
     _error("no mem[%p] for the kernel parameter %d", mem, idx);
     platform_->IncrementErrorCount();
@@ -71,6 +73,7 @@ int Kernel::SetMem(int idx, BaseMem* mem, size_t off, int mode) {
   arg->mem = mem;
   arg->off = off;
   arg->mode = mode;
+  arg->mem_index = n_mems_; n_mems_++;
   arg->mem_off = 0;
   arg->mem_size = mem->size();
   args_[idx] = arg;
@@ -93,6 +96,7 @@ void Kernel::add_dmem(DataMem *mem, int idx, int mode)
         all_data_mems_in_.push_back(mem);
         in_mem_track_.insert(make_pair(mem, idx));
     }
+    mem_track_.insert(make_pair(mem, idx));
 }
 void  Kernel::add_dmem_region(DataMemRegion *mem, int idx, int mode)
 {
@@ -110,6 +114,7 @@ void  Kernel::add_dmem_region(DataMemRegion *mem, int idx, int mode)
         all_data_mems_in_.push_back(mem);
         in_mem_track_.insert(make_pair(mem, idx));
     }
+    mem_track_.insert(make_pair(mem, idx));
 }
 
 KernelArg* Kernel::ExportArgs() {
@@ -123,6 +128,7 @@ KernelArg* Kernel::ExportArgs() {
       new_arg->mode = arg->mode;
       new_arg->mem_off = arg->mem_off;
       new_arg->mem_size = arg->mem_size;
+      new_arg->mem_index = arg->mem_index;
     } else {
       new_arg->size = arg->size; 
       memcpy(new_arg->value, arg->value, arg->size);

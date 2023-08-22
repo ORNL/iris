@@ -138,6 +138,10 @@ typedef int8_t bool;
 #define iris_ncmds_memcpy       3
 #define iris_cmds               4
 
+// The event wait flags aligned with HIP and CUDA
+#define iris_event_wait_default          0
+#define iris_event_wait_external         1
+
 // The event flags aligned with HIP and CUDA
 #define iris_event_default          0
 #define iris_event_blocking_sync    1

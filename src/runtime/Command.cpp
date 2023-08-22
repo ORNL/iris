@@ -33,6 +33,7 @@ void Command::set_params_map(int *pmap) {
 }
 
 void Command::Clear(bool init) {
+  n_mems_ = 0;
   host_ = NULL;
   params_map_ = NULL;
   kernel_ = NULL;
@@ -185,6 +186,7 @@ Command* Command::CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off,
     if (mem->GetMemHandlerType() == IRIS_DMEM) kernel->add_dmem((DataMem *)mem, i, param_info);
     if (mem->GetMemHandlerType() == IRIS_DMEM_REGION) kernel->add_dmem_region((DataMemRegion *)mem, i, param_info);
     arg->mem = mem;
+    arg->mem_index = cmd->n_mems_; cmd->n_mems_++;
     arg->off = mem_off;
     if (params_off) arg->off = params_off[i];
     arg->mode = param_info;

@@ -127,6 +127,7 @@ private:
   KernelArg* kernel_args_;
   int kernel_nargs_;
   int kernel_nargs_max_;
+  int n_mems_;
   iris_poly_mem* polymems_;
   int npolymems_;
   int tag_;

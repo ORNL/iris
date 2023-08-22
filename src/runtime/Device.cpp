@@ -40,6 +40,8 @@ Device::Device(int devno, int platform) {
   hook_command_post_ = NULL;
   worker_ = NULL;
   stream_policy_ = STREAM_POLICY_DEFAULT;
+  stream_policy_ = STREAM_POLICY_SAME_FOR_TASK;
+  n_copy_engines_ = 3;
 }
 
 Device::~Device() {
@@ -50,8 +52,13 @@ int Device::GetStream(Task *task) {
     task->stream_lock();
     int s_index = task->recommended_stream();
     if (s_index == -1) {
-        int queue = get_new_stream_queue();
-        task->set_recommended_stream(queue);
+        int stream;
+        if (stream_policy_ == STREAM_POLICY_SAME_FOR_TASK)
+            stream = get_new_stream_queue();
+        else
+            stream = get_new_stream_queue(n_copy_engines_) + n_copy_engines_;
+            //stream = n_copy_engines_ + 1;
+        task->set_recommended_stream(stream);
     }
     task->stream_unlock();
     return task->recommended_stream();
@@ -59,15 +66,18 @@ int Device::GetStream(Task *task) {
 }
 
 int Device::GetStream(Task *task, BaseMem *mem) { 
-    task->stream_lock();
-    int s_index = task->recommended_stream();
-    if (s_index == -1) {
-        int queue = get_new_stream_queue();
-        task->set_recommended_stream(queue);
+    if (stream_policy_ == STREAM_POLICY_SAME_FOR_TASK)
+        return GetStream(task);
+    int stream = task->recommended_stream();
+    if (task->cmd_kernel() != NULL &&
+            task->cmd_kernel()->kernel() != NULL) {
+        int arg_index = task->cmd_kernel()->kernel()->get_mem_karg_index(mem);
+        KernelArg *arg = task->cmd_kernel()->kernel_arg(arg_index);
+        //ASSERT(arg != NULL && "Kernel argument shouldn't be null");
+        //_printf("Task:%s:%lu mem:%lu task_stream:%d mem_index:%d mem_stream:%d", task->name(), task->uid(), mem->uid(), stream, arg->mem_index, (arg->mem_index % n_copy_engines_)+1);
+        stream = (arg->mem_index % n_copy_engines_)+1;
     }
-    task->stream_unlock();
-    return task->recommended_stream();
-    //return task->uid() % nqueues_; 
+    return stream;
 }
 
 void Device::Execute(Task* task) {
@@ -114,7 +124,6 @@ void Device::Execute(Task* task) {
   task->set_time_end(timer_->Now());
   TaskPost(task);
   if (hook_task_post_) hook_task_post_(task);
-//  if (++stream_index >= nqueues_) stream_index = 0;
   if (!task->system()) _trace("task[%lu:%s] complete dev[%d][%s] time[%lf] end:[%lf]", task->uid(), task->name(), devno(), name(), task->time(), task->time_end());
   if (task->cmd_kernel() != NULL) ProactiveTransfers(task, task->cmd_kernel());
   if (!is_async() || !task->user()) task->Complete();
@@ -288,6 +297,8 @@ void Device::ExecuteKernel(Command* cmd) {
   }
 #endif
   //double ktime_start = timer_->GetCurrentTime();
+  if (is_async() && stream_policy_ == STREAM_POLICY_DEFAULT)
+      WaitForInputAvailability(devno(), cmd->task(), cmd);
   bool enabled = true;
   if (cmd->task() != NULL && (
               cmd->task()->is_kernel_launch_disabled() ||
@@ -372,6 +383,7 @@ void Device::ExecuteMemIn(Task *task, Command* cmd) {
     if (kernel->is_profile_data_transfers()) {
         kernel->ClearMemInProfile();
     }
+    // If order of DMEM data transfers is provided
     if (kernel->data_mems_in_order().size() > 0) {
         for(int idx : kernel->data_mems_in_order()) {
             if (params_map != NULL && 
@@ -423,18 +435,35 @@ void Device::ExecuteMemIn(Task *task, Command* cmd) {
     }
 }
 
+void Device::WaitForInputAvailability(int devno, Task *task, Command *cmd)
+{
+    for(auto && z : cmd->kernel()->in_mems()) {
+        BaseMem *mem = z.first;
+        int idx = z.second;
+        if (mem->GetMemHandlerType() == IRIS_MEM) continue;
+        DataMem *dmem = (DataMem *)mem;
+        int dmem_stream = dmem->GetWriteStream(devno);
+        int task_stream = GetStream(task);
+        void *event = dmem->GetCompletionEvent(devno);
+        // If DMEM input is not yet happened due to reset flag enabled
+        if (dmem_stream != task_stream && event != NULL) {
+            _printf(" task:%s:%lu Waiting for event to be fired devno:%d task_stream:%d waiting for dmem_stream:%d", task->name(), task->uid(), devno, task_stream, dmem_stream);
+            WaitForEvent(event, task_stream, iris_event_wait_default);
+        }
+
+    }
+}
 template <typename DMemType>
 void Device::WaitForDataAvailability(int devno, Task *task, DMemType *mem)
 {
-    if (is_async()) {
-        int stream = mem->GetWriteStream(devno);
-        if (stream != task->recommended_stream()) {
-            Device *dev= Platform::GetPlatform()->device(devno);
-            // Even if the parent task and current task are running on same device, it may be using different streams
-            for (void * event: mem->GetWaitEvents(devno_)) {
-                _printf(" from dev:[%d] event to dev:[%d][%s] task:%s:%lu task_stream:%d mem:%lu mem_stream:%d\n", devno_, devno, dev->name(), task->name(), task->uid(), task->recommended_stream(), mem->uid(), stream);
-                WaitForEvent(event, stream, iris_event_disable_timing);
-            }
+    int stream = mem->GetWriteStream(devno);
+    int read_stream = GetStream(task, mem);
+    if (stream != read_stream) {
+        Device *dev= Platform::GetPlatform()->device(devno);
+        // Even if the parent task and current task are running on same device, it may be using different streams
+        for (void * event: mem->GetWaitEvents(devno_)) {
+            _printf(" from dev:[%d] event to dev:[%d][%s] task:%s:%lu task_stream:%d mem:%lu mem_stream:%d", devno_, devno, dev->name(), task->name(), task->uid(), read_stream, mem->uid(), stream);
+            WaitForEvent(event, stream, iris_event_wait_default);
         }
     }
 }
@@ -465,23 +494,25 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem)
     double d2dtime = 0.0f;
     double d2otime = 0.0f;
     double o2dtime = 0.0f;
+    int mem_stream = GetStream(task, mem);
+    //_printf(" task:%s:%lu mem:%lu mem_stream:%d", task->name(), task->uid(), mem->uid(), mem_stream);
     // Check if it is still dirty
     if (!Platform::GetPlatform()->is_d2d_disabled() && d2d_dev >= 0) { 
         // May be transfer directly from peer device is best 
         // Do D2D communication
         // Keep host data dirty as it is
-        _printf("explore D2D dev[%d][%s] task[%ld:%s] mem[%lu] q[%d]", devno_, name_, task->uid(), task->name(), mem->uid(), task->recommended_stream());
-        _trace("explore D2D dev[%d][%s] task[%ld:%s] mem[%lu] q[%d]", devno_, name_, task->uid(), task->name(), mem->uid(), task->recommended_stream());
+        _printf("explore D2D dev[%d][%s] task[%ld:%s] mem[%lu] q[%d]", devno_, name_, task->uid(), task->name(), mem->uid(), mem_stream);
+        _trace("explore D2D dev[%d][%s] task[%ld:%s] mem[%lu] q[%d]", devno_, name_, task->uid(), task->name(), mem->uid(), mem_stream);
         Device *src_dev = Platform::GetPlatform()->device(d2d_dev);
         void* dst_arch = mem->arch(this);
         void* src_arch = mem->arch(src_dev);
         double start = timer_->Now();
 
-        WaitForDataAvailability(src_dev->devno(), task, mem);
+        if (is_async()) WaitForDataAvailability(src_dev->devno(), task, mem);
         MemD2D(task, mem, dst_arch, src_arch, mem->size());
         double end = timer_->Now();
         if (is_async()) 
-            mem->RecordEvent(devno(), task->recommended_stream());
+            mem->RecordEvent(devno(), mem_stream);
         if (kernel->is_profile_data_transfers()) {
             kernel->AddInDataObjectProfile({(uint32_t) cmd->task()->uid(), (uint32_t) mem->uid(), (uint32_t) iris_dt_d2d, (uint32_t) d2d_dev, (uint32_t) devno_, start, end});
         }
@@ -502,11 +533,11 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem)
         // it is still a device to device transfer
         // You do not need offsets as they correspond to host pointer
         double start = timer_->Now();
-        WaitForDataAvailability(src_dev->devno(), task, mem);
+        if (is_async()) WaitForDataAvailability(src_dev->devno(), task, mem);
         MemH2D(task, mem, off, host_sizes, dev_sizes, 1, 1, mem->size(), src_arch, "OpenMP2DEV ");
         double end = timer_->Now();
         if (is_async()) 
-            mem->RecordEvent(devno(), task->recommended_stream());
+            mem->RecordEvent(devno(), mem_stream);
         o2dtime = end - start;
         if (kernel->is_profile_data_transfers()) {
             kernel->AddInDataObjectProfile({(uint32_t) cmd->task()->uid(), (uint32_t) mem->uid(), (uint32_t) iris_dt_o2d, (uint32_t) cpu_dev, (uint32_t) devno_, start, end});
@@ -551,10 +582,10 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem)
         errid_ = MemH2D(task, mem, ptr_off, 
                 gws, lws, elem_size, dim, size, host);
         double end = timer_->Now();
-        _printf("explore Host2Device (H2D) dev[%d][%s] task[%ld:%s] mem[%lu] q[%d]", devno_, name_, task->uid(), task->name(), mem->uid(), task->recommended_stream());
+        _printf("explore Host2Device (H2D) dev[%d][%s] task[%ld:%s] mem[%lu] q[%d]", devno_, name_, task->uid(), task->name(), mem->uid(), mem_stream);
         if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
         if (is_async()) 
-            mem->RecordEvent(devno(), task->recommended_stream());
+            mem->RecordEvent(devno(), mem_stream);
         if (kernel->is_profile_data_transfers()) {
             kernel->AddInDataObjectProfile({(uint32_t) cmd->task()->uid(), (uint32_t) mem->uid(), (uint32_t) iris_dt_h2d, (uint32_t) -1, (uint32_t) devno_, start, end});
         }
@@ -587,7 +618,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem)
             src_dev->RegisterCallback(mem->GetWriteStream(src_dev->devno()), 
                     (CallBackType)EventExchange::Fire, mem->GetEventExchange(devno()), 
                     iris_stream_non_blocking);
-            RegisterCallback(task->recommended_stream(), 
+            RegisterCallback(mem_stream, 
                     EventExchange::Wait, mem->GetEventExchange(devno()),
                     iris_stream_default);
         }
@@ -602,7 +633,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem)
                 gws, lws, elem_size, dim, size, host, "D2H->H2D(2) ");
         end = timer_->Now();
         if (is_async()) 
-            mem->RecordEvent(devno(), task->recommended_stream());
+            mem->RecordEvent(devno(), mem_stream);
         h2dtime = end - start;
         if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
         mem->clear_host_dirty();
@@ -611,6 +642,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem)
             kernel->AddInDataObjectProfile({(uint32_t) cmd->task()->uid(), (uint32_t) mem->uid(), (uint32_t) iris_dt_d2h_h2d, (uint32_t) nddevs[0], (uint32_t) devno_, d2h_start, end});
         }
     }
+    mem->SetWriteStream(devno_, mem_stream);
     mem->clear_dev_dirty(devno_ );
     mem->dev_unlock(devno_);
     if (h2d_enabled) cmd->kernel()->history()->AddH2D(cmd, this, h2dtime, size);
@@ -630,7 +662,7 @@ void Device::ExecuteMemInDMemRegionIn(Task *task, Command* cmd, DataMemRegion *m
     }
     else{
         _trace("Skipped DMEM_REGION data transfer dev[%d:%s] task[%ld:%s] dmem_reg[%lu] dmem[%lu] dptr[%p]", devno_, name_, task->uid(), task->name(), mem->uid(), mem->get_dmem()->uid(), mem->arch(devno_));
-        WaitForDataAvailability<DataMemRegion>(devno_, task, mem);
+        if (is_async()) WaitForDataAvailability<DataMemRegion>(devno_, task, mem);
     }
 }
 void Device::ExecuteMemInDMemIn(Task *task, Command* cmd, DataMem *mem) {
@@ -644,7 +676,7 @@ void Device::ExecuteMemInDMemIn(Task *task, Command* cmd, DataMem *mem) {
             }
             else {
                 _trace("Skipped DMEM_REGION region(%d) H2D data transfer dev[%d:%s] task[%ld:%s] dmem_reg[%lu] dmem[%lu] dptr[%p]", i, devno_, name_, task->uid(), task->name(), rmem->uid(), rmem->get_dmem()->uid(), rmem->arch(devno_));
-                WaitForDataAvailability<DataMemRegion>(devno_, task, rmem);
+                if (is_async()) WaitForDataAvailability<DataMemRegion>(devno_, task, rmem);
             }
         }
 #if 0
@@ -673,7 +705,7 @@ void Device::ExecuteMemInDMemIn(Task *task, Command* cmd, DataMem *mem) {
     }
     else{
         _trace("Skipped DMEM H2D data transfer dev[%d:%s] task[%ld:%s] dmem[%lu] dptr[%p]", devno_, name_, task->uid(), task->name(), mem->uid(), mem->arch(devno_));
-        WaitForDataAvailability<DataMem>(devno_, task, mem);
+        if (is_async()) WaitForDataAvailability<DataMem>(devno_, task, mem);
     }
 }
 void Device::ExecuteMemOut(Task *task, Command* cmd) {
