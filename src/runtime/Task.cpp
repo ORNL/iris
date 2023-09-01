@@ -223,11 +223,11 @@ void Task::Complete() {
   _trace(" task:%lu:%s is completed", uid(), name());
   bool is_user_task = user_;
   if (dev_) set_devno(dev_->devno());
-  pthread_mutex_lock(&mutex_complete_);
+  //pthread_mutex_lock(&mutex_complete_);
   status_ = IRIS_COMPLETE;
   if (user_) platform_->ProfileCompletedTask(this);
   pthread_cond_broadcast(&complete_cond_);
-  pthread_mutex_unlock(&mutex_complete_);
+  //pthread_mutex_unlock(&mutex_complete_);
   if (parent_exist_) parent()->CompleteSub();
   else {
     if (dev_) dev_->worker()->TaskComplete(this);
