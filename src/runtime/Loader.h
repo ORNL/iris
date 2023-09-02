@@ -42,6 +42,7 @@ public:
   void *GetFunctionPtr(const char *name);
   int SetKernelPtr(void *obj, char *kernel_name);
   int LoadExtHandle(const char *libname);
+  void *handle() { return handle_; }
 private:
   int LoadHandle();
 

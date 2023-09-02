@@ -83,6 +83,7 @@ set(IRIS_RUNTIME_SOURCES
   Platform.cpp
   Policies.cpp
   Policy.cpp
+  HostInterface.cpp
   PolicyAll.cpp
   PolicyAny.cpp
   PolicyData.cpp
