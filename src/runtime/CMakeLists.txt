@@ -1,6 +1,8 @@
 option(BUILD_SHARED_LIBS "Build shared libs" ON)
 
+if (ENABLE_FFI) 
 add_subdirectory(libffi)
+endif()
 include_directories(${IRIS_INC_DIR})
 include_directories(${IRIS_BIN_DIR}/runtime)
 include_directories(${IRIS_BIN_DIR}/runtime/rapidjson)

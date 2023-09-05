@@ -2,9 +2,6 @@
 #include "Platform.h"
 #include <stdlib.h>
 
-#ifdef DISABLE_DYNAMIC_LINKING
-#define ENABLE_STATIC_LINKING
-#endif
 #include "LoaderOpenMP.h"
 
 namespace CLinkage {

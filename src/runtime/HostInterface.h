@@ -5,7 +5,7 @@
 
 #include <string>
 #include <map>
-#ifndef ENABLE_STATIC_LINKING
+#ifndef DISABLE_DYNAMIC_LINKING
 #define REGISTER_HOST_WRAPPER(FN, SYM)  LoadFunction(#FN, #SYM); 
 #else
 #define REGISTER_HOST_WRAPPER(FN, SYM)  LoadFunctionStatic(#FN, CLinkage::SYM); 
@@ -34,6 +34,10 @@ namespace iris {
                 HostInterfaceLoader(string kernel_env);
                 ~HostInterfaceLoader() { }
                 const char* library();
+#ifdef DISABLE_DYNAMIC_LINKING
+                virtual bool IsFunctionExists(const char *kernel_name);
+                virtual void *GetFunctionPtr(const char *kernel_name);
+#endif
                 virtual int LoadFunctions(){ Loader::LoadFunctions(); return IRIS_SUCCESS; }
                 virtual void finalize();
                 virtual void init();

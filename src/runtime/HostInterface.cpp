@@ -43,6 +43,23 @@ namespace iris {
             Platform::GetPlatform()->EnvironmentGet(kernel_env_.c_str(), &path, NULL);
             return path;
         }
+#ifdef DISABLE_DYNAMIC_LINKING
+        bool HostInterfaceLoader::IsFunctionExists(const char *kernel_name) {
+            int kernel_idx = -1;
+            if (iris_host_kernel_with_obj != NULL && 
+                    iris_host_kernel_with_obj(&kernel_idx, kernel_name) == IRIS_SUCCESS) {
+                return true;
+            }
+            if (iris_host_kernel != NULL && 
+                    iris_host_kernel(kernel_name) == IRIS_SUCCESS)
+                return true;
+            return false;
+        }
+        void *HostInterfaceLoader::GetFunctionPtr(const char *kernel_name) {
+            void *kptr = this->iris_host_get_kernel_ptr(kernel_name);
+            return kptr;
+        }
+#endif
         void HostInterfaceLoader::LoadFunction(const char *func_name, const char *symbol) 
         {
             if (sym_map_fn_.find(func_name) != sym_map_fn_.end()) {
@@ -96,7 +113,7 @@ namespace iris {
         {
             if (iris_set_kernel_ptr_with_obj) {
                 __iris_kernel_ptr kptr;
-                kptr = (__iris_kernel_ptr) dlsym(handle(), kernel_name);
+                kptr = (__iris_kernel_ptr) GetFunctionPtr(kernel_name);
                 iris_set_kernel_ptr_with_obj(obj, kptr);
                 if (kptr != NULL) return IRIS_SUCCESS;
             }
@@ -198,7 +215,7 @@ namespace iris {
         {
             if (IsFunctionExists(kernel_name)) {
                 __iris_kernel_ptr kptr;
-                kptr = (__iris_kernel_ptr) dlsym(handle(), kernel_name);
+                kptr = (__iris_kernel_ptr) GetFunctionPtr(kernel_name);
                 KernelFFI *ffi_data = get_kernel_ffi(obj);
                 ffi_data->set_fn_ptr(kptr);
                 if (kptr != NULL) return IRIS_SUCCESS;
