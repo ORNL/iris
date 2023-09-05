@@ -135,7 +135,7 @@ namespace iris {
                 void set_value_ptr(void *value) { 
                     values_ptr_[index_] = value; 
                     values_[index_] = &values_ptr_[index_]; 
-                    //printf("         Values ptr:%p\n", values_+index_); 
+                    //printf("         Values mem:%p mem_ptr:%p\n", values_ptr_[index_], values_[index_]); 
                 }
                 void set_host_launch_type(FFICallType type) { type_ = type; }
                 FFICallType host_launch_type() { return type_; }
@@ -145,7 +145,9 @@ namespace iris {
                 void **values() { return values_; }
                 int top() { return index_; }
                 void increment() { index_++; }
-                void add_epilog() {
+                void add_epilog(size_t off, size_t ndr) {
+                    param_idx_ = off;
+                    param_size_ = ndr;
                     set_arg_type(&ffi_type_uint64);
                     set_value(&param_idx_);
                     increment();

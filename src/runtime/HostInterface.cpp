@@ -237,7 +237,7 @@ namespace iris {
             if (IsFunctionExists(kname)) {
                 KernelFFI *ffi_data = get_kernel_ffi(param_mem);
                 SetKernelPtr(param_mem, kname);
-                ffi_data->add_epilog();
+                ffi_data->add_epilog(off[0], gws[0]);
                 ffi_arg rc;
                 ffi_prep_cif(ffi_data->cif(), FFI_DEFAULT_ABI, ffi_data->top(), &ffi_type_sint, ffi_data->args());
                 ffi_call(ffi_data->cif(), ffi_data->fn_ptr(), &rc, ffi_data->values());
@@ -272,7 +272,7 @@ namespace iris {
         int FFIHostInterfaceLoader::setmem(void *param_mem, int kindex, void *mem)
         {
             KernelFFI *ffi_data = get_kernel_ffi(param_mem);
-            //printf("setmem ffi_data:%p kindex:%d arg_index:%d mem:%p mem_ptr:%p\n", ffi_data, kindex, ffi_data->top(), mem, mem_ptr);
+            //printf("setmem ffi_data:%p kindex:%d arg_index:%d mem:%p\n", ffi_data, kindex, ffi_data->top(), mem);
             ffi_data->set_arg_type(&ffi_type_pointer);
             ffi_data->set_value_ptr(mem);
             ffi_data->increment();

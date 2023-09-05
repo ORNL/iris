@@ -1,6 +1,6 @@
 #include <iris/iris_openmp.h>
 
-static void saxpy(int* Z, int* X, int* Y, int A, IRIS_OPENMP_KERNEL_ARGS) {
+void saxpy(int* Z, int* X, int* Y, int A, IRIS_OPENMP_KERNEL_ARGS) {
   size_t id;
 #pragma omp parallel for shared(Z, X, Y) private(_id)
   IRIS_OPENMP_KERNEL_BEGIN(id)
