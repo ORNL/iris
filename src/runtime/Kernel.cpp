@@ -51,10 +51,10 @@ int Kernel::set_order(int *order) {
 
 int Kernel::SetArg(int idx, size_t size, void* value) {
   KernelArg* arg = new KernelArg;
-  arg->size = size;
+  arg->size = size & 0xFFFF;
+  arg->data_type = size & 0xFFFF0000;
   if (value) memcpy(arg->value, value, size);
   arg->mem = NULL;
-  arg->data_type = 0;
   arg->off = 0ULL;
   args_[idx] = arg;
   return IRIS_SUCCESS;
