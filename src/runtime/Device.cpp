@@ -356,8 +356,6 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem)
     double d2dtime = 0.0f;
     double d2otime = 0.0f;
     double o2dtime = 0.0f;
-    printf("TODO: log internal and dmem transfers!\n");
-    //string d2h_tn = "Internal-D2H:" + string(task->name());
     // Check if it is still dirty
     if (!Platform::GetPlatform()->is_d2d_disabled() && d2d_dev >= 0) { 
         // May be transfer directly from peer device is best 
@@ -376,6 +374,10 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem)
         }
         d2dtime = end - start;
         d2d_enabled = true;
+        if (Platform::GetPlatform()->is_scheduling_history_enabled()){
+            string cmd_name = "Internal-D2D(" + string(cmd->task()->name()) + ")-from-" + string(src_dev->name()) + "-to-" + string(this->name());
+            Platform::GetPlatform()->scheduling_history()->Add(cmd, cmd_name, "MemFlushOut", start,end);
+        }
     }
     else if (!Platform::GetPlatform()->is_d2d_disabled() && cpu_dev >= 0) {
         // You didn't find data in peer device, 
@@ -398,6 +400,10 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem)
             kernel->AddInDataObjectProfile({(uint32_t) cmd->task()->uid(), (uint32_t) mem->uid(), (uint32_t) iris_dt_o2d, (uint32_t) cpu_dev, (uint32_t) devno_, start, end});
         }
         o2d_enabled = true;
+        if (Platform::GetPlatform()->is_scheduling_history_enabled()){
+            string cmd_name = "Internal-O2D(" + string(cmd->task()->name()) + ")-from-" + string(src_dev->name()) + "-to-" + string(this->name());
+            Platform::GetPlatform()->scheduling_history()->Add(cmd, cmd_name, "MemFlushOut", start,end);
+        }
     }
     else if (!Platform::GetPlatform()->is_d2d_disabled() && this->type() == iris_cpu && non_cpu_dev >= 0) {
         // You found data in non-CPU/OpenMP device, but this device is CPU/OpenMP
@@ -422,6 +428,10 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem)
         }
         d2otime = end - start;
         d2o_enabled = true;
+        if (Platform::GetPlatform()->is_scheduling_history_enabled()){
+            string cmd_name = "Internal-D2O(" + string(cmd->task()->name()) + ")-from-" + string(src_dev->name()) + "-to-" + string(this->name());
+            Platform::GetPlatform()->scheduling_history()->Add(cmd, cmd_name, "MemFlushOut", start,end);
+        }
     }
     else if (!mem->is_host_dirty()) {
         // If host is not dirty, it is best to transfer from host
@@ -438,6 +448,10 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem)
         }
         h2dtime = end - start;
         h2d_enabled = true;
+        if (Platform::GetPlatform()->is_scheduling_history_enabled()){
+            string cmd_name = "Internal-H2D(" + string(cmd->task()->name()) + ")-to-" + string(this->name());
+            Platform::GetPlatform()->scheduling_history()->Add(cmd, cmd_name, "MemFlushOut", start,end);
+        }
     }
     else {
         // Host doesn't have fresh copy and peer2peer d2d is not possible
@@ -469,6 +483,10 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem)
         if (kernel->is_profile_data_transfers()) {
             kernel->AddInDataObjectProfile({(uint32_t) cmd->task()->uid(), (uint32_t) mem->uid(), (uint32_t) iris_dt_d2h_h2d, (uint32_t) nddevs[0], (uint32_t) devno_, d2h_start, end});
         }
+        if (Platform::GetPlatform()->is_scheduling_history_enabled()){
+            string cmd_name = "Internal-D2H-H2D(" + string(cmd->task()->name()) + ")-from-" + string(src_dev->name()) + "-to-" + string(this->name());
+            Platform::GetPlatform()->scheduling_history()->Add(cmd, cmd_name, "MemFlushOut", d2h_start,end);
+        }
     }
     mem->clear_dev_dirty(devno_ );
     mem->dev_unlock(devno_);
@@ -480,9 +498,10 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem)
         cmd->kernel()->history()->AddD2H_H2D(cmd, this, d2htime+h2dtime, size);
         //cmd->kernel()->history()->AddD2H(cmd, this, d2htime);
         //cmd->kernel()->history()->AddH2D(cmd, this, h2dtime);
-    if (Platform::GetPlatform()->is_scheduling_history_enabled()) Platform::GetPlatform()->scheduling_history()->AddH2D(cmd);
+    //if (Platform::GetPlatform()->is_scheduling_history_enabled()) Platform::GetPlatform()->scheduling_history()->AddD2H_H2D(cmd);
     }
 }
+
 void Device::ExecuteMemInDMemRegionIn(Task *task, Command* cmd, DataMemRegion *mem) {
     if (mem->is_dev_dirty(devno_)) {
         _trace("Initiating DMEM_REGION data transfer dev[%d:%s] task[%ld:%s] dmem_reg[%lu] dmem[%lu]", devno_, name_, task->uid(), task->name(), mem->uid(), mem->get_dmem()->uid());
@@ -529,6 +548,7 @@ void Device::ExecuteMemInDMemIn(Task *task, Command* cmd, DataMem *mem) {
     }
     else if (mem->is_dev_dirty(devno_)) {
         InvokeDMemInDataTransfer<DataMem>(task, cmd, mem);
+        printf("TODO there should be a corresponding log here!...\n");
     }
     else{
         _trace("Skipped DMEM H2D data transfer dev[%d:%s] task[%ld:%s] dmem[%lu] dptr[%p]", devno_, name_, task->uid(), task->name(), mem->uid(), mem->arch(devno_));
@@ -564,6 +584,7 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
         _error("Flush out is called for unssuported memory handler task:%ld:%s\n", cmd->task()->uid(), cmd->task()->name());
         return;
     }
+    printf("running transfer : %s\n", cmd->task()->name());
     DataMem* mem = (DataMem *)cmd->mem();
     if (mem->is_host_dirty()) {
         size_t *ptr_off = mem->off();
@@ -603,7 +624,12 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
         if (task->is_profile_data_transfers()) {
             task->AddOutDataObjectProfile({(uint32_t) task->uid(), (uint32_t) mem->uid(), (uint32_t) iris_dt_d2h_h2d, (uint32_t) devno_, (uint32_t) -1, start, end});
         }
-        if (Platform::GetPlatform()->is_scheduling_history_enabled()) Platform::GetPlatform()->scheduling_history()->AddD2H(cmd);
+        if (Platform::GetPlatform()->is_scheduling_history_enabled()){
+          //TODO: clean up
+          string cmd_name = "Internal-D2H(" + string(cmd->task()->name()) + ")-from-" + string(src_dev->name());// + "-to-" + string(this->name());
+          Platform::GetPlatform()->scheduling_history()->Add(cmd, cmd_name, "MemFlushOut", start,end);
+        }
+
     }
     else {
         _trace("MemFlushout is skipped as host already having valid data for task:%ld:%s\n", cmd->task()->uid(), cmd->task()->name());

@@ -12,7 +12,7 @@
 #include <locale>
 #include <string>
 
-#define SCHEDULING_HISTORY_HEADER "taskname,type,start,end,duration,size,policy,acclname,devno"
+#define SCHEDULING_HISTORY_HEADER "taskname,type,start,end,duration,size,policy,acclname"
 
 #define SCHEDULING_HISTORY_FOOTER ""
 
@@ -25,6 +25,7 @@ SchedulingHistory::SchedulingHistory(Platform* platform) {
     time_t t = time(NULL);
     char s[64];
     strftime(s, 64, "%Y%m%d-%H%M%S", localtime(&t));
+    provided_filepath = new char[512];
     sprintf(provided_filepath, "%s-%s-%s.%s", platform->app(), platform->host(), s, ".csv");
   }
 
@@ -37,41 +38,62 @@ SchedulingHistory::~SchedulingHistory() {
 }
 
 void SchedulingHistory::AddKernel(Command* cmd) {
-  //todo set type?
+  //ignore logging kernels at the moment
   //Add(cmd);
 }
 
 void SchedulingHistory::AddH2D(Command* cmd) {
-  //check if the buffer has a name, use that rather than the transfer type
-  if(cmd->task()->name())
-    cmd->set_name(cmd->task()->name());
   Add(cmd);
 }
 
 void SchedulingHistory::AddD2H(Command* cmd) {
-  if(cmd->task()->name())
-    cmd->set_name(cmd->task()->name());
+  Add(cmd);
+}
+
+void SchedulingHistory::AddD2D(Command* cmd) {
+  Add(cmd);
+}
+
+void SchedulingHistory::AddD2H_H2D(Command* cmd) {
   Add(cmd);
 }
 
 void SchedulingHistory::AddTask(Task* task) {
-  task->Retain();
   CompleteTask(task);
-  task->Release();
 }
 
 void SchedulingHistory::Add(Command* cmd){
-  //set time, and device id?
   CompleteCommand(cmd);
+}
+
+void SchedulingHistory::Add(Command* cmd, string name, string type,double time_start,double time_end){
+  CompleteSpecialCommand(cmd,name,type,time_start,time_end);
+}
+
+int SchedulingHistory::CompleteSpecialCommand(Command* command, string name, string type,double time_start,double time_end) {
+  const std::lock_guard<std::mutex> lock(file_mutex);
+  char s[1024];
+  size_t ksize  = command->size();
+  myfile << name << ','
+         << type << ','
+         << time_start << ','
+         << time_end << ','
+         << (time_end - time_start) << ','
+         << ksize << ','
+         << policy_str(command->task()->brs_policy()) << ','
+         << command->task()->dev()->name() << ' '
+         << command->task()->dev()->devno() << std::endl;
+  return IRIS_SUCCESS;
 }
 
 int SchedulingHistory::CompleteCommand(Command* command) {
   const std::lock_guard<std::mutex> lock(file_mutex);
-
-  if(command->type_kernel()){//use task name rather than kernel name
-    command->set_name(command->task()->name());
-  }else{
-    if (!command->given_name()) command->set_name(command->type_name());
+  if (!command->given_name()) {
+    if(command->type_kernel()){//use task name rather than kernel name
+      command->set_name(command->task()->name());
+    } else {
+      command->set_name(command->type_name());
+    }
   }
 
   char s[1024];
@@ -83,7 +105,7 @@ int SchedulingHistory::CompleteCommand(Command* command) {
          << command->time_duration() << ','
          << ksize << ','
          << policy_str(command->task()->brs_policy()) << ','
-         << command->task()->dev()->name() << ','
+         << command->task()->dev()->name() << ' '
          << command->task()->dev()->devno() << std::endl;
   return IRIS_SUCCESS;
 }

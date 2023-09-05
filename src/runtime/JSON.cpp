@@ -457,8 +457,7 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
             cmd->set_name(const_cast<char*>(d2h_["name"].GetString()));
             if (!task->given_name()) task->set_name(cmd->name());
           }
-          printf("adding data_memory flush: %s\n",cmd->name());
-          //raise(SIGINT);//ensure the control-flow is correct
+          _trace("adding data_memory flush: %s\n",cmd->name());
           task->AddCommand(cmd);
           continue;
         }

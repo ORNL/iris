@@ -20,13 +20,20 @@ public:
   void AddKernel(Command* cmd);
   void AddH2D(Command* cmd);
   void AddD2H(Command* cmd);
+  void AddD2D(Command* cmd);
+  void AddD2H_H2D(Command* cmd);
   void AddTask(Task* task);
+  void Add(Command* cmd, std::string name, std::string type,double time_start,double time_end);
+
+
 
 private:
   void Add(Command* cmd);
   int CompleteCommand(Command* command);
   int CompleteTask(Task* task);
   const char* policy_str(int policy);
+  int CompleteSpecialCommand(Command* command, std::string name, std::string type, double time_start, double time_end);
+
   std::ofstream myfile;
   std::mutex file_mutex;
 
