@@ -1,6 +1,6 @@
 #include <iris/iris_openmp.h>
 
-static void ijk(double* C, double* A, double* B, IRIS_OPENMP_KERNEL_ARGS) {
+void ijk(double* C, double* A, double* B, IRIS_OPENMP_KERNEL_ARGS) {
   size_t _id;
 #pragma omp parallel for shared(C, A, B) private(_id)
   IRIS_OPENMP_KERNEL_BEGIN(_id)
