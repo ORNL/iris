@@ -127,6 +127,7 @@ set(IRIS_RUNTIME_HEADERS
   DeviceCUDA.h
   DeviceHexagon.h
   DeviceHIP.h
+  HostInterface.h
   DeviceLevelZero.h
   DeviceOpenCL.h
   DeviceOpenMP.h
