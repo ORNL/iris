@@ -24,75 +24,26 @@ namespace CLinkage {
 namespace iris {
 namespace rt {
 
-LoaderOpenMP::LoaderOpenMP() : Loader() {
-    iris_openmp_init = NULL;
-    iris_openmp_init_handles = NULL;
-    iris_openmp_finalize_handles = NULL;
-    iris_openmp_finalize = NULL;
-    iris_openmp_kernel = NULL;
-    iris_openmp_setarg = NULL;
-    iris_openmp_setmem = NULL;
-    iris_openmp_launch = NULL;
-    iris_openmp_get_kernel_ptr = NULL;
-    iris_openmp_kernel_with_obj = NULL;
-    iris_openmp_setarg_with_obj = NULL;
-    iris_openmp_setmem_with_obj = NULL;
-    iris_openmp_launch_with_obj = NULL;
+LoaderOpenMP::LoaderOpenMP() : HostInterfaceClass("KERNEL_BIN_OPENMP") {
 }
 
 LoaderOpenMP::~LoaderOpenMP() {
 }
 
-#ifdef DISABLE_DYNAMIC_LINKING
-bool LoaderOpenMP::IsFunctionExists(const char *kernel_name) {
-    int kernel_idx = -1;
-    if (this->iris_openmp_kernel_with_obj != NULL && 
-            this->iris_openmp_kernel_with_obj(&kernel_idx, kernel_name) == IRIS_SUCCESS) {
-        return true;
-    }
-    if (this->iris_openmp_kernel != NULL && 
-            this->iris_openmp_kernel(kernel_name) == IRIS_SUCCESS)
-        return true;
-    return false;
-}
-void *LoaderOpenMP::GetFunctionPtr(const char *kernel_name) {
-    void *kptr = this->iris_openmp_get_kernel_ptr(kernel_name);
-    return kptr;
-}
-int LoaderOpenMP::SetKernelPtr(void *obj, char *kernel_name)
-{
-    if (iris_set_kernel_ptr_with_obj) {
-        __iris_kernel_ptr kptr;
-        kptr = (__iris_kernel_ptr) GetFunctionPtr(kernel_name);
-        iris_set_kernel_ptr_with_obj(obj, kptr);
-        if (kptr != NULL) return IRIS_SUCCESS;
-    }
-    return IRIS_ERROR;
-}
-
-#endif
-
-const char* LoaderOpenMP::library() {
-  char* path = NULL;
-  Platform::GetPlatform()->GetFilePath("KERNEL_BIN_OPENMP", &path, NULL);
-  return path;
-}
-
 int LoaderOpenMP::LoadFunctions() {
-  Loader::LoadFunctions();
-  LOADFUNCSYM(iris_openmp_init,     iris_openmp_init);
-  LOADFUNCSYM(iris_openmp_finalize, iris_openmp_finalize);
-  LOADFUNCSYM_OPTIONAL(iris_openmp_init_handles,   iris_openmp_init_handles);
-  LOADFUNCSYM_OPTIONAL(iris_openmp_finalize_handles,   iris_openmp_finalize_handles);
-  LOADFUNCSYM_OPTIONAL(iris_openmp_kernel,   iris_openmp_kernel);
-  LOADFUNCSYM_OPTIONAL(iris_openmp_setarg,   iris_openmp_setarg);
-  LOADFUNCSYM_OPTIONAL(iris_openmp_setmem,   iris_openmp_setmem);
-  LOADFUNCSYM_OPTIONAL(iris_openmp_launch,   iris_openmp_launch);
-  LOADFUNCSYM_OPTIONAL(iris_openmp_get_kernel_ptr,    iris_openmp_get_kernel_ptr);
-  LOADFUNCSYM_OPTIONAL(iris_openmp_kernel_with_obj,   iris_openmp_kernel_with_obj);
-  LOADFUNCSYM_OPTIONAL(iris_openmp_setarg_with_obj,   iris_openmp_setarg_with_obj);
-  LOADFUNCSYM_OPTIONAL(iris_openmp_setmem_with_obj,   iris_openmp_setmem_with_obj);
-  LOADFUNCSYM_OPTIONAL(iris_openmp_launch_with_obj,   iris_openmp_launch_with_obj);
+  HostInterfaceClass::LoadFunctions();
+  REGISTER_HOST_WRAPPER(iris_host_init,             iris_openmp_init             );
+  REGISTER_HOST_WRAPPER(iris_host_init_handles,     iris_openmp_init_handles     );
+  REGISTER_HOST_WRAPPER(iris_host_finalize_handles, iris_openmp_finalize_handles );
+  REGISTER_HOST_WRAPPER(iris_host_finalize,         iris_openmp_finalize         );
+  REGISTER_HOST_WRAPPER(iris_host_kernel,           iris_openmp_kernel           );
+  REGISTER_HOST_WRAPPER(iris_host_setarg,           iris_openmp_setarg           );
+  REGISTER_HOST_WRAPPER(iris_host_setmem,           iris_openmp_setmem           );
+  REGISTER_HOST_WRAPPER(iris_host_launch,           iris_openmp_launch           );
+  REGISTER_HOST_WRAPPER(iris_host_kernel_with_obj,  iris_openmp_kernel_with_obj  );
+  REGISTER_HOST_WRAPPER(iris_host_setarg_with_obj,  iris_openmp_setarg_with_obj  );
+  REGISTER_HOST_WRAPPER(iris_host_setmem_with_obj,  iris_openmp_setmem_with_obj  );
+  REGISTER_HOST_WRAPPER(iris_host_launch_with_obj,  iris_openmp_launch_with_obj  );
   return IRIS_SUCCESS;
 }
 

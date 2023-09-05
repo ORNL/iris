@@ -177,7 +177,7 @@ int DeviceCUDA::Init() {
     err_ = ld_->cuStreamCreate(streams_ + i, CU_STREAM_DEFAULT);
     _cuerror(err_);
   }
-  host2cuda_ld_->set_dev(devno());
+  host2cuda_ld_->set_dev(devno(), model());
   host2cuda_ld_->init();
 
   char* path = kernel_path_;
@@ -539,7 +539,7 @@ int DeviceCUDA::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, 
   if (max_arg_idx_ < idx) max_arg_idx_ = idx;
   if (kernel->is_vendor_specific_kernel(devno_)) {
       host2cuda_ld_->setmem(
-              kernel->GetParamWrapperMemory(), kindex, dev_ptr, (void **)params_[idx]);
+              kernel->GetParamWrapperMemory(), kindex, dev_ptr);
       /*
       if (host2cuda_ld_->iris_host2cuda_setmem_with_obj) 
           host2cuda_ld_->iris_host2cuda_setmem_with_obj(

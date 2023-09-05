@@ -83,6 +83,11 @@ namespace iris {
                 INIT_SYM_FN(iris_get_kernel_names);
                 INIT_SYM_FN(iris_set_kernel_ptr_with_obj);
             }
+        int BoilerPlateHostInterfaceLoader::launch_init(void *stream, void *param_mem, Command *cmd) 
+        {
+            if (IsFunctionExists(cmd->kernel()->name())) return IRIS_SUCCESS;
+            return IRIS_ERROR;
+        }
         int BoilerPlateHostInterfaceLoader::host_kernel(void *param_mem, const char *kname) 
         {
             if (iris_host_kernel_with_obj) {
@@ -141,21 +146,23 @@ namespace iris {
             }
             return IRIS_ERROR;
         }
-        void BoilerPlateHostInterfaceLoader::setarg(void *param_mem, int kindex, size_t size, void *value) 
+        int BoilerPlateHostInterfaceLoader::setarg(void *param_mem, int kindex, size_t size, void *value) 
         {
             if (iris_host_setarg_with_obj)
-                iris_host_setarg_with_obj(
+                return iris_host_setarg_with_obj(
                         param_mem, kindex, size, value);
             else if (iris_host_setarg)
-                iris_host_setarg(kindex, size, value);
+                return iris_host_setarg(kindex, size, value);
+            return IRIS_ERROR;
         }
-        void BoilerPlateHostInterfaceLoader::setmem(void *param_mem, int kindex, void *mem, void **mem_ptr) 
+        int BoilerPlateHostInterfaceLoader::setmem(void *param_mem, int kindex, void *mem) 
         {
             if (iris_host_setmem_with_obj) 
-                iris_host_setmem_with_obj(
+                return iris_host_setmem_with_obj(
                         param_mem, kindex, mem);
             else if (iris_host_setmem) 
-                iris_host_setmem(kindex, mem);
+                return iris_host_setmem(kindex, mem);
+            return IRIS_ERROR;
         }
 #ifdef ENABLE_FFI
         FFIHostInterfaceLoader::FFIHostInterfaceLoader(string kernel_env) :
@@ -175,24 +182,26 @@ namespace iris {
             KernelFFI **ffi_ptr = (KernelFFI **)(((uint8_t *)param_mem)+ sizeof(int));
             *ffi_ptr = ffi_data;
         }
-        void FFIHostInterfaceLoader::launch_init(void *stream, void *param_mem, Command *cmd) 
+        int FFIHostInterfaceLoader::launch_init(void *stream, void *param_mem, Command *cmd) 
         {
             Kernel *kernel = cmd->kernel();
             const char *name = kernel->name();
-            if (! IsFunctionExists(name)) return;
+            if (! IsFunctionExists(name)) return IRIS_ERROR;
             kernel->CreateFFIdata(sizeof(KernelFFI));
             KernelFFI *ffi_data = (KernelFFI *) kernel->GetFFIdata();
-            printf("FFI Data:%p size:%lu\n", ffi_data, sizeof(KernelFFI));
+            //printf("FFI Data:%p size:%lu\n", ffi_data, sizeof(KernelFFI));
             set_kernel_ffi(param_mem, ffi_data);
             ffi_data->init(cmd->kernel_nargs());
             ffi_data->set_kernel(kernel);
             ffi_data->set_iris_args(cmd->kernel_args());
             if (iris_host_launch_with_obj) {
                 ffi_data->set_host_launch_type(HOST_LAUNCH_WITH_STREAM_DEV);
+                if (model() != iris_openmp) {
 #ifndef IRIS_SYNC_EXECUTION
-                ffi_data->add_stream(stream); 
+                    ffi_data->add_stream(stream); 
 #endif
-                ffi_data->add_device(dev_ptr()); 
+                    ffi_data->add_device(dev_ptr()); 
+                }
             }
             else if (iris_host_launch) {
                 ffi_data->set_host_launch_type(HOST_LAUNCH_BARE);
@@ -204,6 +213,7 @@ namespace iris {
                 ffi_data->set_host_launch_type(HOST_LAUNCH_WITH_FFI_OBJ);
             else 
                 ffi_data->set_host_launch_type(HOST_LAUNCH_FFI_BARE);
+            return IRIS_SUCCESS;
         }
         int FFIHostInterfaceLoader::host_kernel(void *param_mem, const char *kname) 
         {
@@ -231,14 +241,15 @@ namespace iris {
                 ffi_arg rc;
                 ffi_prep_cif(ffi_data->cif(), FFI_DEFAULT_ABI, ffi_data->top(), &ffi_type_sint, ffi_data->args());
                 ffi_call(ffi_data->cif(), ffi_data->fn_ptr(), &rc, ffi_data->values());
+                return IRIS_SUCCESS;
             }
             return IRIS_ERROR;
         }
-        void FFIHostInterfaceLoader::setarg(void *param_mem, int kindex, size_t size, void *value)
+        int FFIHostInterfaceLoader::setarg(void *param_mem, int kindex, size_t size, void *value)
         {
             KernelFFI *ffi_data = get_kernel_ffi(param_mem);
             KernelArg *arg = ffi_data->get_iris_arg(kindex);
-            printf("setarg ffi_data:%p kindex:%d arg_index:%d size:%lu value:%p\n", ffi_data, kindex, ffi_data->top(), size, value);
+            //printf("setarg ffi_data:%p kindex:%d arg_index:%d size:%lu value:%p\n", ffi_data, kindex, ffi_data->top(), size, value);
             if (size == 1) 
                 ffi_data->set_arg_type(&ffi_type_uint8);
             else if (size == 2) 
@@ -256,15 +267,17 @@ namespace iris {
             }
             ffi_data->set_value(value);
             ffi_data->increment();
+            return IRIS_SUCCESS;
         }
-        void FFIHostInterfaceLoader::setmem(void *param_mem, int kindex, void *mem, void **mem_ptr)
+        int FFIHostInterfaceLoader::setmem(void *param_mem, int kindex, void *mem)
         {
             KernelFFI *ffi_data = get_kernel_ffi(param_mem);
-            printf("setmem ffi_data:%p kindex:%d arg_index:%d mem:%p mem_ptr:%p\n", ffi_data, kindex, ffi_data->top(), mem, mem_ptr);
+            //printf("setmem ffi_data:%p kindex:%d arg_index:%d mem:%p mem_ptr:%p\n", ffi_data, kindex, ffi_data->top(), mem, mem_ptr);
             ffi_data->set_arg_type(&ffi_type_pointer);
-            ffi_data->set_value(mem_ptr);
+            ffi_data->set_value_ptr(mem);
             ffi_data->increment();
             //raise(SIGABRT);
+            return IRIS_SUCCESS;
         }
 #endif
     }
