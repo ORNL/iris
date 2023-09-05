@@ -246,10 +246,21 @@ iris_w          =   -2
 iris_rw         =   -3
 iris_flush      =   -4
 
-iris_int        =   (1 << 0)
-iris_long       =   (1 << 1)
-iris_float      =   (1 << 2)
-iris_double     =   (1 << 3)
+iris_int              =  ((1 << 1) << 16)
+iris_uint             =  ((1 << 1) << 16)
+iris_float            =  ((1 << 2) << 16)
+iris_double           =  ((1 << 3) << 16)
+iris_char             =  ((1 << 4) << 16)
+iris_int8             =  ((1 << 4) << 16)
+iris_uint8            =  ((1 << 4) << 16)
+iris_int16            =  ((1 << 5) << 16)
+iris_uint16           =  ((1 << 5) << 16)
+iris_int32            =  ((1 << 6) << 16)
+iris_uint32           =  ((1 << 6) << 16)
+iris_int64            =  ((1 << 7) << 16)
+iris_uint64           =  ((1 << 7) << 16)
+iris_long             =  ((1 << 8 << 16))
+iris_unsigned_long    =  ((1 << 8 << 16))
 
 iris_normal     =   (1 << 10)
 iris_reduction  =   (1 << 11)
@@ -404,10 +415,15 @@ def kernel_create(name):
     return k
 
 def kernel_setarg(kernel, idx, size, value):
+    iris_datatype_code = 0
     if type(value) == int: cvalue = byref(c_int(value))
-    elif type(value) == float and size == 4: cvalue = byref(c_float(value))
-    elif type(value) == float and size == 8: cvalue = byref(c_double(value))
-    return dll.iris_kernel_setarg(kernel, c_int(idx), c_size_t(size), cvalue)
+    elif type(value) == float and size == 4: 
+        cvalue = byref(c_float(value))
+        iris_datatype_code = iris_float
+    elif type(value) == float and size == 8: 
+        cvalue = byref(c_double(value))
+        iris_datatype_code = iris_double
+    return dll.iris_kernel_setarg(kernel, c_int(idx), c_size_t(size) | iris_datatype_code, cvalue)
 
 def kernel_setmem(kernel, idx, mem, mode):
     return dll.iris_kernel_setmem(kernel, c_int(idx), mem, c_size_t(mode))
