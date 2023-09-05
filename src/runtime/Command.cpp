@@ -169,7 +169,8 @@ Command* Command::CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off,
     if (param_info > 0) {
       arg->mem = NULL;
       arg->off = 0ULL;
-      arg->size = param_info;
+      arg->size = param_info & 0xFFFF;
+      arg->data_type = param_info & 0xFFFF0000;
       if (param) memcpy(arg->value, param, arg->size);
       continue;
     }

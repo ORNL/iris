@@ -26,6 +26,7 @@ typedef struct _KernelArg {
   size_t mem_size;
   size_t off;
   int mode;
+  int data_type;
 } KernelArg;
 
 class Kernel: public Retainable<struct _iris_kernel, Kernel> {
@@ -36,6 +37,8 @@ public:
   int SetArg(int idx, size_t size, void* value);
   int SetMem(int idx, BaseMem* mem, size_t off, int mode);
   KernelArg* ExportArgs();
+  void* GetFFIdata() { return ffi_data_; }
+  void CreateFFIdata(size_t size) { ffi_data_ = malloc(size); }
   void* GetParamWrapperMemory() { return (void *)param_wrapper_mem_; }
 
   char* name() { return name_; }
@@ -72,6 +75,7 @@ private:
   std::map<int, KernelArg*> args_;
   void* archs_[IRIS_MAX_NDEVS];
   Device* archs_devs_[IRIS_MAX_NDEVS];
+  void *ffi_data_;
   uint8_t param_wrapper_mem_[8*128];
   Platform* platform_;
   shared_ptr<History> history_;

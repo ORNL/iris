@@ -28,7 +28,7 @@ public:
   int KernelSetArg(Kernel* kernel, int idx, int kindex, size_t size, void* value);
   int KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, size_t off);
   void CheckVendorSpecificKernel(Kernel* kernel);
-  int KernelLaunchInit(Kernel* kernel);
+  int KernelLaunchInit(Command *cmd, Kernel* kernel);
   int KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws);
   int Synchronize();
   int AddCallback(Task* task);

@@ -227,7 +227,7 @@ int DeviceOpenMP::KernelGet(Kernel *kernel, void** kernel_bin, const char* name,
   return IRIS_SUCCESS;
 }
 
-int DeviceOpenMP::KernelLaunchInit(Kernel* kernel) {
+int DeviceOpenMP::KernelLaunchInit(Command *cmd, Kernel* kernel) {
   //c_string_array data = ld_->iris_get_kernel_names();
   int status=IRIS_ERROR;
   if (ld_->iris_openmp_kernel_with_obj)

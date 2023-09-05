@@ -8,7 +8,7 @@
 namespace iris {
 namespace rt {
 
-class LoaderHost2CUDA : public BoilerPlateHostInterfaceLoader {
+class LoaderHost2CUDA : public HostInterfaceClass {
 public:
   LoaderHost2CUDA();
   ~LoaderHost2CUDA();

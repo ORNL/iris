@@ -116,10 +116,21 @@ typedef int8_t bool;
 #define iris_dt_d2h_h2d         6
 #define iris_dt_error           0
 
-#define iris_int                (1 << 0)
-#define iris_long               (1 << 1)
-#define iris_float              (1 << 2)
-#define iris_double             (1 << 3)
+#define iris_int                ((1 << 1) << 16)
+#define iris_uint               ((1 << 1) << 16)
+#define iris_float              ((1 << 2) << 16)
+#define iris_double             ((1 << 3) << 16)
+#define iris_char               ((1 << 4) << 16)
+#define iris_int8               ((1 << 4) << 16)
+#define iris_uint8              ((1 << 4) << 16)
+#define iris_int16              ((1 << 5) << 16)
+#define iris_uint16             ((1 << 5) << 16)
+#define iris_int32              ((1 << 6) << 16)
+#define iris_uint32             ((1 << 6) << 16)
+#define iris_int64              ((1 << 7) << 16)
+#define iris_uint64             ((1 << 7) << 16)
+#define iris_long               ((1 << 8 << 16))
+#define iris_unsigned_long      ((1 << 8 << 16))
 
 #define iris_normal             (1 << 10)
 #define iris_reduction          (1 << 11)

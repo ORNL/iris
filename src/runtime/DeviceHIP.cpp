@@ -419,7 +419,7 @@ void DeviceHIP::CheckVendorSpecificKernel(Kernel *kernel) {
   kernel->set_vendor_specific_kernel_check(devno_, true);
 }
 
-int DeviceHIP::KernelLaunchInit(Kernel* kernel) {
+int DeviceHIP::KernelLaunchInit(Command *cmd, Kernel* kernel) {
     return IRIS_SUCCESS;
 }
 

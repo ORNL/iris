@@ -1176,7 +1176,12 @@ void {c_func_name}({params_decl_str})
                 unique_macro.append(x)
             else:
                 task_params.append(f"&{x}")
-                task_params_info.append(f"sizeof({x})")
+                if arg_data[2] == 'double':
+                    task_params_info.append(f"(sizeof({x}) | (iris_double))")
+                elif arg_data[2] == 'float':
+                    task_params_info.append(f"(sizeof({x}) | (iris_float))")
+                else:
+                    task_params_info.append(f"(sizeof({x}))")
                 cpp_call_args.append(x)
                 task_api_call_args.append(f"{x}")
                 cpp_call_args_irismem.append(f"{x}")

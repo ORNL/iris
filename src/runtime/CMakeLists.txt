@@ -1,5 +1,6 @@
 option(BUILD_SHARED_LIBS "Build shared libs" ON)
 
+add_subdirectory(libffi)
 include_directories(${IRIS_INC_DIR})
 include_directories(${IRIS_BIN_DIR}/runtime)
 include_directories(${IRIS_BIN_DIR}/runtime/rapidjson)
@@ -34,6 +35,10 @@ endif()
 
 if (DISABLE_CONSISTENCY_CHECK) 
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDISABLE_CONSISTENCY_CHECK")
+endif()
+
+if (ENABLE_FFI) 
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DENABLE_FFI")
 endif()
 
 if (TRACE_DISABLE) 
@@ -195,6 +200,10 @@ if(USE_PYTHON)
 endif()
 
 add_library(iris ${IRIS_RUNTIME_SOURCES})
+if (ENABLE_FFI)
+set_target_properties(iris PROPERTIES LINK_FLAGS "-L${CMAKE_BINARY_DIR}/src/runtime/libffi")
+target_link_libraries(iris ffi)
+endif() #ENABLE_FFI
 
 target_compile_options(iris PRIVATE -Wall)
 

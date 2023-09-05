@@ -25,6 +25,7 @@ Kernel::Kernel(const char* name, Platform* platform) {
     set_vendor_specific_kernel(i, false);
     vendor_specific_kernel_check_flag_[i] = false;
   }
+  ffi_data_ = NULL;
   set_object_track(Platform::GetPlatform()->kernel_track_ptr());
   Platform::GetPlatform()->kernel_track().TrackObject(this, uid());
 }
@@ -35,6 +36,7 @@ Kernel::~Kernel() {
   data_mems_in_order_.clear();
   data_mem_regions_in_.clear();
   history_ = nullptr;
+  if (ffi_data_ != NULL) free(ffi_data_); 
   for (std::map<int, KernelArg*>::iterator I = args_.begin(), E = args_.end(); I != E; ++I)
     delete I->second;
   _trace(" kernel:%lu:%s is destroyed", uid(), name_);
@@ -52,6 +54,7 @@ int Kernel::SetArg(int idx, size_t size, void* value) {
   arg->size = size;
   if (value) memcpy(arg->value, value, size);
   arg->mem = NULL;
+  arg->data_type = 0;
   arg->off = 0ULL;
   args_[idx] = arg;
   return IRIS_SUCCESS;

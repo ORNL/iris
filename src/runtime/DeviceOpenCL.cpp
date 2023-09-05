@@ -391,7 +391,7 @@ void DeviceOpenCL::CheckVendorSpecificKernel(Kernel *kernel) {
     }
     kernel->set_vendor_specific_kernel_check(devno_, true);
 }
-int DeviceOpenCL::KernelLaunchInit(Kernel* kernel) {
+int DeviceOpenCL::KernelLaunchInit(Command *cmd, Kernel* kernel) {
     return IRIS_SUCCESS;
 }
 
@@ -458,7 +458,7 @@ void DeviceOpenCL::ExecuteKernel(Command* cmd) {
   kernel->set_vendor_specific_kernel(devno_, false);
   if (!kernel->vendor_specific_kernel_check_flag(devno_))
       CheckVendorSpecificKernel(kernel);
-  KernelLaunchInit(kernel);
+  KernelLaunchInit(cmd, kernel);
   KernelArg* args = cmd->kernel_args();
   int *params_map = cmd->get_params_map();
   int arg_idx = 0;

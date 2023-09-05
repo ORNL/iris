@@ -153,7 +153,7 @@ void Device::ExecuteKernel(Command* cmd) {
   //double ltime_start = timer_->GetCurrentTime();
   if (!kernel->vendor_specific_kernel_check_flag(devno_))
       CheckVendorSpecificKernel(kernel);
-  KernelLaunchInit(kernel);
+  KernelLaunchInit(cmd, kernel);
   //double ltime = timer_->GetCurrentTime() - ltime_start;
   KernelArg* args = cmd->kernel_args();
   int *params_map = cmd->get_params_map();

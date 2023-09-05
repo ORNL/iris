@@ -6,14 +6,14 @@
 namespace iris {
 namespace rt {
 
-LoaderHost2CUDA::LoaderHost2CUDA() : BoilerPlateHostInterfaceLoader("KERNEL_HOST2CUDA") {
+LoaderHost2CUDA::LoaderHost2CUDA() : HostInterfaceClass("KERNEL_HOST2CUDA") {
 }
 
 LoaderHost2CUDA::~LoaderHost2CUDA() {
 }
 
 int LoaderHost2CUDA::LoadFunctions() {
-  BoilerPlateHostInterfaceLoader::LoadFunctions();
+  HostInterfaceClass::LoadFunctions();
   REGISTER_HOST_WRAPPER(iris_host_init,             iris_host2cuda_init             );
   REGISTER_HOST_WRAPPER(iris_host_init_handles,     iris_host2cuda_init_handles     );
   REGISTER_HOST_WRAPPER(iris_host_finalize_handles, iris_host2cuda_finalize_handles );

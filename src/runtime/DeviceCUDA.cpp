@@ -539,7 +539,7 @@ int DeviceCUDA::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, 
   if (max_arg_idx_ < idx) max_arg_idx_ = idx;
   if (kernel->is_vendor_specific_kernel(devno_)) {
       host2cuda_ld_->setmem(
-              kernel->GetParamWrapperMemory(), kindex, dev_ptr);
+              kernel->GetParamWrapperMemory(), kindex, dev_ptr, (void **)params_[idx]);
       /*
       if (host2cuda_ld_->iris_host2cuda_setmem_with_obj) 
           host2cuda_ld_->iris_host2cuda_setmem_with_obj(
@@ -575,7 +575,11 @@ void DeviceCUDA::CheckVendorSpecificKernel(Kernel* kernel) {
     */
     kernel->set_vendor_specific_kernel_check(devno_, true);
 }
-int DeviceCUDA::KernelLaunchInit(Kernel* kernel) {
+int DeviceCUDA::KernelLaunchInit(Command *cmd, Kernel* kernel) {
+#ifndef IRIS_SYNC_EXECUTION
+    q_ = cmd->task()->uid() % nqueues_; 
+#endif
+    host2cuda_ld_->launch_init(streams_[q_], kernel->GetParamWrapperMemory(), cmd);
     return IRIS_SUCCESS;
 }
 
