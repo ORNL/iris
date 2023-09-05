@@ -54,7 +54,7 @@ namespace iris {
 
             /**@brief Terminates the IRIS platform .
              *
-             * this funciton put end to IRIS execution environment.
+             * this function put end to IRIS execution environment.
              *
              * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
              */
@@ -71,6 +71,14 @@ namespace iris {
              */
             int error_count() {
                 return iris_error_count();
+            }
+
+            /**@brief Prints an overview of the system available to IRIS; specifically
+             * platforms, devices and their corresponding backends.
+             * It is logged to standard output.
+             */
+            void overview() {
+                 iris_overview();
             }
 
         private:

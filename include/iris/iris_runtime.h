@@ -220,6 +220,13 @@ extern int iris_env_set(const char* key, const char* value);
 extern int iris_env_get(const char* key, char** value, size_t* vallen);
 
 
+/**@brief Prints an overview of the system available to IRIS; specifically
+ * platforms, devices and their corresponding backends.
+ * It is logged to standard output.
+ */
+extern void iris_overview();
+
+
 /**@brief Returns the number of platforms.
  *
  * @param nplatforms pointer to the number of platform
