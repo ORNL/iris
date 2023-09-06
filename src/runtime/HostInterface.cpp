@@ -157,6 +157,7 @@ namespace iris {
         }
         int BoilerPlateHostInterfaceLoader::setmem(void *param_mem, int kindex, void *mem) 
         {
+            //printf("iris_host_setmem:%p kindex:%d\n", iris_host_setmem, kindex);
             if (iris_host_setmem_with_obj) 
                 return iris_host_setmem_with_obj(
                         param_mem, kindex, mem);
@@ -254,11 +255,11 @@ namespace iris {
                 ffi_data->set_arg_type(&ffi_type_uint8);
             else if (size == 2) 
                 ffi_data->set_arg_type(&ffi_type_uint16);
-            else if (size == 4 && arg->data_type == iris_float) 
+            else if (size == 4 && arg->data_type == iris_float)  // Special case to handle for double
                 ffi_data->set_arg_type(&ffi_type_float);
             else if (size == 4) 
                 ffi_data->set_arg_type(&ffi_type_uint32);
-            else if (size == 8 && arg->data_type == iris_double) 
+            else if (size == 8 && arg->data_type == iris_double)  // Special case to handle for double
                 ffi_data->set_arg_type(&ffi_type_double);
             else if (size == 8) 
                 ffi_data->set_arg_type(&ffi_type_uint64);
