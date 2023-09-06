@@ -2,6 +2,7 @@
 
 #include "Loader.h"
 #include "Kernel.h"
+#include "Debug.h"
 
 #include <string>
 #include <map>
@@ -103,6 +104,7 @@ namespace iris {
                     args_ = NULL;
                     values_ = NULL;
                     values_ptr_ = NULL;
+                    args_capacity_ = 0;
                 }
                 ~KernelFFI( ) {
                     if (args_ != NULL) free(args_);
@@ -113,22 +115,25 @@ namespace iris {
                     args_ = NULL;
                     values_ = NULL;
                     values_ptr_ = NULL;
+                    args_capacity_ = nargs+6;
                     if (args_ == NULL) 
                         args_ = (ffi_type **) malloc(
-                                sizeof(ffi_type *)*nargs*2);
+                                sizeof(ffi_type *)*args_capacity_);
                     if (values_ == NULL)
                         values_ = (void **) malloc(
-                                sizeof(void *)*nargs*2);
+                                sizeof(void *)*args_capacity_);
                     if (values_ptr_ == NULL)
                         values_ptr_ = (void **) malloc(
-                                sizeof(void *)*nargs*2);
+                                sizeof(void *)*args_capacity_);
                     index_  = 0;
                 }
                 void set_kernel(Kernel *kernel) { kernel_ = kernel; }
                 void set_arg_type(ffi_type *arg_type) {
+                    assert(index_ < args_capacity_);
                     args_[index_] = arg_type;
                 }
                 void set_value(void *value) { 
+                    assert(index_ < args_capacity_);
                     values_[index_] = value; 
                     //printf("         Values ptr:%p\n", values_+index_); 
                 }
@@ -170,6 +175,7 @@ namespace iris {
                 __iris_kernel_ptr fn_ptr() { return fn_ptr_; }
                 Kernel *kernel() { return kernel_; }
             private:
+                int args_capacity_;
                 Kernel *kernel_;
                 __iris_kernel_ptr fn_ptr_;
                 KernelArg *iris_args_;

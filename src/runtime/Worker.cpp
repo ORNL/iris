@@ -73,6 +73,7 @@ void Worker::Execute(Task* task) {
   bool task_cmd_last = task->cmd_last();
   bool user_task = task->user();
   if (user_task) task->Retain();
+  task->set_devno(dev_->devno());
   dev_->Execute(task);
   if (task_cmd_last) {
     if (scheduler_) scheduler_->CompleteTask(task, this);
