@@ -31,7 +31,7 @@ namespace rt {
             MemHandlerType GetMemHandlerType() { return handler_type_; }
             virtual ~BaseMem() { 
                 _trace("Memory object is deleted:%lu:%p", uid(), this);
-                track()->UntrackObject(this, uid());
+                //track()->UntrackObject(this, uid());
             }
             virtual void* arch(Device* dev, void *host=NULL) = 0;
             virtual void* arch(int devno, void *host=NULL) = 0;

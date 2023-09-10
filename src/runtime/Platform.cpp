@@ -132,6 +132,7 @@ Platform::~Platform() {
   if (pool_) delete pool_;
   kernel_history_.clear();
   pthread_mutex_destroy(&mutex_);
+  _printf("Platform deleted");
 }
 
 int Platform::Init(int* argc, char*** argv, int sync) {
@@ -681,22 +682,30 @@ int Platform::InitDevices(bool sync) {
   char* c = getenv("IRIS_DEVICE_DEFAULT");
   if (c) dev_default_ = atoi(c);
 
-  Task** tasks = new Task*[ndevs_];
+  //Task** tasks = new Task*[ndevs_];
+  iris_task *tasks = new iris_task[ndevs_];
   char task_name[128];
   for (int i = 0; i < ndevs_; i++) {
     sprintf(task_name, "Initialize-%d", i);
-    tasks[i] = new Task(this, IRIS_TASK, task_name);
-    tasks[i]->set_system();
-    Command* cmd = Command::CreateInit(tasks[i]);
-    tasks[i]->AddCommand(cmd);
-    tasks[i]->Retain();
-    workers_[i]->Enqueue(tasks[i]);
+    //tasks[i] = new Task(this, IRIS_TASK, task_name);
+    TaskCreate(task_name, false, &tasks[i]);
+    Task *task = get_task_object(tasks[i]);
+    task->set_system();
+    Command* cmd = Command::CreateInit(task);
+    task->AddCommand(cmd);
+    _printf("Initialize task:%lu:%s ref_cnt:%d", task->uid(), task->name(), task->ref_cnt());
+    //task->Retain();
+    _printf("Initialize task:%lu:%s ref_cnt:%d", task->uid(), task->name(), task->ref_cnt());
+    workers_[i]->Enqueue(task);
   }
-  if (sync) for (int i = 0; i < ndevs_; i++) tasks[i]->Wait();
-  for (int i = 0; i < ndevs_; i++) {
-    //delete tasks[i];
-    tasks[i]->Release();
+  if (sync) for (int i = 0; i < ndevs_; i++) {
+      TaskWait(tasks[i]);
   }
+  //for (int i = 0; i < ndevs_; i++) {
+    //Task *task = get_task_object(tasks[i]);
+    //_printf("Release Initialize task:%lu:%s ref_cnt:%d", task->uid(), task->name(), task->ref_cnt());
+    //task->Release();
+  //}
   delete[] tasks;
   return IRIS_SUCCESS;
 }
@@ -755,6 +764,7 @@ int Platform::DeviceGetDefault(int* device) {
 
 int Platform::DeviceSynchronize(int ndevs, int* devices) {
   Task* task = new Task(this, IRIS_MARKER, "Marker");
+  iris_task brs_task = *(task->struct_obj());
   if (scheduler_) {
     char sync_task[128];
     for (int i = 0; i < ndevs; i++) {
@@ -770,8 +780,11 @@ int Platform::DeviceSynchronize(int ndevs, int* devices) {
     }
     scheduler_->Enqueue(task);
   } else workers_[0]->Enqueue(task);
-  task->Wait();
-  return task->Ok();
+  TaskWait(brs_task);
+  //task->Wait();
+  // Task::Ok returns only Device::Ok. However, the parent task doesn't map to any 
+  // device. It is meaningless to call task->Ok(). Hence, returning  IRIS_SUCCESS.
+  return IRIS_SUCCESS;
 }
 
 int Platform::PolicyRegister(const char* lib, const char* name, void* params) {
@@ -1193,6 +1206,7 @@ int Platform::TaskSubmit(iris_task brs_task, int brs_policy, const char* opt, in
     FilterSubmitExecute(task);
     scheduler_->Enqueue(task);
   } else workers_[0]->Enqueue(task);
+  _printf("Task wait release:%lu:%s ref_cnt:%d before TaskSubmit\n", task->uid(), task->name(), task->ref_cnt());
   if (sync) TaskWait(brs_task);
   return nfailures_;
 }
@@ -1214,11 +1228,15 @@ void Platform::TaskWaitCallBack(void *data) {
   task->Retain();
 }
 int Platform::TaskWait(iris_task brs_task) {
+  _printf("waiting for brs_task:%lu\n", brs_task.uid);
   task_track_.CallBackIfObjectExists(brs_task.uid, Platform::TaskWaitCallBack);
   Task *task = get_task_object(brs_task);
   if (task != NULL) {
+     unsigned long uid = task->uid(); string lname = task->name(); _printf("Task wait release:%lu:%s ref_cnt:%d after callback\n", task->uid(), task->name(), task->ref_cnt());
      task->Wait();
-     task->Release();
+     _printf("Task wait before release:%lu:%s ref_cnt:%d\n", uid, lname.c_str(), task->ref_cnt());
+     int ref_cnt = task->Release();
+     printf("Task wait after release:%lu:%s ref_cnt:%d\n", uid, lname.c_str(), ref_cnt);
   }
   return IRIS_SUCCESS;
 }
@@ -1243,14 +1261,20 @@ int Platform::TaskKernelCmdOnly(iris_task brs_task) {
   return (task->ncmds() == 1 && task->cmd_kernel()) ? IRIS_SUCCESS : IRIS_ERROR;
 }
 
-int Platform::TaskRelease(iris_task brs_task) {
-    Task *task = get_task_object(brs_task);
-    if (task != NULL) {
-        if (!task->IsRelease())
-            task->ForceRelease();
-        else 
-            task->Release();
+void Platform::TaskReleaseStatic(void *data)
+{
+    Task *task = (Task *)data;
+    // This is only for tasks which has to be manuallay released. 
+    // Otherwise, runtime will take care of when to release it
+    if (!task->IsRelease()) {
+        _printf("Force releasing the task id:%lu:%s", task->uid(), task->name());
+        task->ForceRelease();
     }
+}
+
+int Platform::TaskRelease(iris_task brs_task) {
+    _printf("Releasing the task id:%lu", brs_task.uid);
+    task_track_.CallBackIfObjectExists(brs_task.uid, Platform::TaskReleaseStatic);
     return IRIS_SUCCESS;
 }
 
@@ -1826,13 +1850,13 @@ int Platform::ShowKernelHistory() {
 #endif
 }
 
-unique_ptr<Platform> Platform::singleton_ = nullptr;
+shared_ptr<Platform> Platform::singleton_ = nullptr;
 std::once_flag Platform::flag_singleton_;
 std::once_flag Platform::flag_finalize_;
 
 Platform* Platform::GetPlatform() {
 //  if (singleton_ == NULL) singleton_ = new Platform();
-  std::call_once(flag_singleton_, []() { singleton_ = std::unique_ptr<Platform>(new Platform()); });
+  std::call_once(flag_singleton_, []() { singleton_ = std::shared_ptr<Platform>(new Platform()); });
   return singleton_.get();
 }
 int Platform::GetGraphTasksCount(iris_graph brs_graph) {

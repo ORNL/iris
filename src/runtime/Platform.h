@@ -122,6 +122,7 @@ public:
   int TaskWaitAll(int ntasks, iris_task* brs_tasks);
   int TaskAddSubtask(iris_task brs_task, iris_task brs_subtask);
   int TaskKernelCmdOnly(iris_task brs_task);
+  static void TaskReleaseStatic(void *data);
   int TaskRelease(iris_task brs_task);
   int TaskReleaseMem(iris_task brs_task, iris_mem brs_mem);
   int SetParamsMap(iris_task brs_task, int *params_map);
@@ -336,7 +337,7 @@ private:
   double time_init_;
   char tmp_dir_[263];
 private:
-  static unique_ptr<Platform> singleton_;
+  static shared_ptr<Platform> singleton_;
   static std::once_flag flag_singleton_;
   static std::once_flag flag_finalize_;
 };

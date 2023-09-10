@@ -44,7 +44,7 @@ shared_ptr<GraphMetadata> Graph::get_metadata(int iterations)
 }
 
 Graph::~Graph() {
-  platform_->graph_track().UntrackObject(this, uid());
+  //platform_->graph_track().UntrackObject(this, uid());
   pthread_mutex_destroy(&mutex_complete_);
   pthread_cond_destroy(&complete_cond_);
   //if (end_) delete end_;

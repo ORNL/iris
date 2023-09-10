@@ -58,8 +58,8 @@ Task::Task(Platform* platform, int type, const char* name) {
 
 Task::~Task() {
   //printf("released task:%lu:%s released ptr:%p ref_cnt:%d\n", uid(), name(), this, ref_cnt());
-  Platform::GetPlatform()->task_track().UntrackObject(this, uid());
-  _trace("Task deleted %lu %s %p", uid(), name(), this);
+  //Platform::GetPlatform()->task_track().UntrackObject(this, uid());
+  _printf("Task deleted %lu %s %p ref_cnt:%d", uid(), name(), this, ref_cnt());
   for (int i = 0; i < ncmds_; i++) delete cmds_[i];
   if (depends_uids_) delete [] depends_uids_;
   pthread_mutex_destroy(&mutex_pending_);
@@ -68,7 +68,7 @@ Task::~Task() {
   pthread_mutex_destroy(&mutex_subtasks_);
   pthread_cond_destroy(&complete_cond_);
   subtasks_.clear();
-  _trace("released task:%lu:%s released", uid(), name());
+  _printf("released task:%lu:%s released ref_cnt:%d", uid(), name(), ref_cnt());
 }
 
 double Task::TimeInc(double t) {
@@ -220,27 +220,35 @@ void Task::set_pending() {
 }
 
 void Task::Complete() {
-  _trace(" task:%lu:%s is completed", uid(), name());
+  _printf(" task:%lu:%s is completed ref_cnt:%d", uid(), name(), ref_cnt());
   bool is_user_task = user_;
-  if (dev_) set_devno(dev_->devno());
+  bool platform_release_flag = platform_->release_task_flag();
+  if (dev_ && type() != IRIS_MARKER) set_devno(dev_->devno());
   //pthread_mutex_lock(&mutex_complete_);
   status_ = IRIS_COMPLETE;
   if (user_) platform_->ProfileCompletedTask(this);
   pthread_cond_broadcast(&complete_cond_);
   //pthread_mutex_unlock(&mutex_complete_);
+  // For task with subtasks, the parent task is not in any worker queue. 
+  // However, it has to call the completion of parent task each time.
+  // Parent marker task was never go through Worker::Execute.
   if (parent_exist_) parent()->CompleteSub();
   else {
+    _printf(" task:%lu:%s is completed ref_cnt:%d", uid(), name(), ref_cnt());
     if (dev_) dev_->worker()->TaskComplete(this);
     else if (scheduler_) scheduler_->Invoke();
+    _printf(" task:%lu:%s is completed ref_cnt:%d", uid(), name(), ref_cnt());
   }
-  if (!is_user_task) return;
-  _trace(" trying to release task:%lu:%s ref_cnt:%d", uid(), name(), ref_cnt());
-  if (platform_->release_task_flag()) {
+  //if (!is_user_task) return;
+  _printf(" trying to release task:%lu:%s ref_cnt:%d", uid(), name(), ref_cnt());
+  if (platform_release_flag) {
       for (int i = 0; i < ndepends_; i++) {
           Task *dep = platform_->get_task_object(depends_uids_[i]);
           if(dep != NULL && dep->user()) dep->Release();
       }
-      if (is_user_task) Release();
+      unsigned long luid = uid(); string lname = name_; _printf(" task:%lu:%s is completed and trying to release ref_cnt:%d", uid(), name(), ref_cnt());
+      int ret_ref_cnt = Release();
+      _printf(" task:%lu:%s is completed and after release ref_cnt:%d", luid, lname.c_str(), ret_ref_cnt);
   }
 }
 
@@ -250,13 +258,16 @@ void Task::TryReleaseTask()
         Task *dep = platform_->get_task_object(depends_uids_[i]);
         if(dep != NULL && dep->user()) dep->Release();
     }
+    _printf("task:%lu:%s trying to release here as well ref_cnt:%d", uid(), name(), ref_cnt());
     if (user_) Release();
 }
 
 void Task::CompleteSub() {
+  Retain();
   pthread_mutex_lock(&mutex_subtasks_);
   if (++subtasks_complete_ == subtasks_.size()) Complete();
   pthread_mutex_unlock(&mutex_subtasks_);
+  Release();
 }
 
 void Task::Wait() {
@@ -331,7 +342,7 @@ void Task::Submit(int brs_policy, const char* opt, int sync) {
   sync_ = sync;
   if (cmd_last_) cmd_last_->set_last();
   user_ = true;
-  Retain();
+  //Retain();
 }
 
 Task* Task::Create(Platform* platform, int type, const char* name) {

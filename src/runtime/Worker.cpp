@@ -35,11 +35,14 @@ Worker::~Worker() {
 }
 
 void Worker::TaskComplete(Task* task) {
-  //_trace("now invoke scheduler after task:%lu:%s qsize:%lu", task->uid(), task->name(), queue_->Size());
+  _printf("task:%lu:%s ref_cnt:%d\n", task->uid(), task->name(), task->ref_cnt());
+  _trace("now invoke scheduler after task:%lu:%s qsize:%lu", task->uid(), task->name(), queue_->Size());
   if (scheduler_) scheduler_->Invoke();
+  _printf("task:%lu:%s ref_cnt:%d\n", task->uid(), task->name(), task->ref_cnt());
   //task->set_devno(dev_->devno());
   //_trace("now invoke worker after task:%lu:%s qsize:%lu", task->uid(), task->name(), queue_->Size());
   Invoke();
+  _printf("task:%lu:%s ref_cnt:%d\n", task->uid(), task->name(), task->ref_cnt());
 }
 
 void Worker::Enqueue(Task* task) {
@@ -72,14 +75,19 @@ void Worker::Execute(Task* task) {
   if (consistency_) consistency_->Resolve(task);
   bool task_cmd_last = task->cmd_last();
   bool user_task = task->user();
-  if (user_task) task->Retain();
+  
+  task->Retain();
+  _printf("Task %s:%lu refcnt:%d", task->name(), task->uid(), task->ref_cnt());
   task->set_devno(dev_->devno());
   dev_->Execute(task);
+  _printf("Task %s:%lu refcnt:%d after execute", task->name(), task->uid(), task->ref_cnt());
   if (task_cmd_last) {
     if (scheduler_) scheduler_->CompleteTask(task, this);
     //task->Complete();
   }
-  if (user_task) task->Release();
+  unsigned long uid = task->uid(); string name = task->name(); _printf("Task %s:%lu refcnt:%d before release", name.c_str(), uid, task->ref_cnt());
+  int ref_cnt = task->Release();
+  _printf("Task %s:%lu refcnt:%d after release", name.c_str(), uid, ref_cnt);
   //task->TryReleaseTask();
   busy_ = false;
 }

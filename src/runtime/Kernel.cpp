@@ -31,7 +31,7 @@ Kernel::Kernel(const char* name, Platform* platform) {
 }
 
 Kernel::~Kernel() {
-  Platform::GetPlatform()->kernel_track().UntrackObject(this, uid());
+  //Platform::GetPlatform()->kernel_track().UntrackObject(this, uid());
   data_mems_in_.clear();
   data_mems_in_order_.clear();
   data_mem_regions_in_.clear();
