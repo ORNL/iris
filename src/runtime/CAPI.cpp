@@ -117,6 +117,11 @@ int iris_task_cmd_reset_mem(iris_task task, iris_mem mem, uint8_t reset) {
   return Platform::GetPlatform()->TaskMemResetInput(task, mem, reset);
 }
 
+void iris_task_disable_asynchronous(iris_task brs_task) {
+    Task *task = Platform::GetPlatform()->get_task_object(brs_task);
+    task->set_async(false);
+}
+
 int iris_task_get_metadata(iris_task brs_task, int index) {
     Task *task = Platform::GetPlatform()->get_task_object(brs_task);
     return task->metadata(index);

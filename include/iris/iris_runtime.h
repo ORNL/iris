@@ -481,6 +481,14 @@ extern int iris_task_malloc(iris_task task, iris_mem mem);
 extern int iris_task_cmd_reset_mem(iris_task task, iris_mem mem, uint8_t reset);
 
 
+/**@brief Disable task asynchronous execution
+ *
+ * This function disables asynchronous task execution (data transfers, kernel execution) for the given task even if it is supported by the device. If the device is not supported for asynchronous task execution, this flag is ignored.
+ *
+ * @param brs_task iris task object
+ */
+extern void iris_task_disable_asynchronous(iris_task brs_task);
+
 /**@brief Gets task meta data
  *
  * This function used for getting optional task metadata through the specified index

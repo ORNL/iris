@@ -104,6 +104,8 @@ public:
   const char* brs_policy_string();
   const char* task_status_string();
   bool sync() { return sync_; }
+  bool is_async() { return async_execution_; }
+  void set_async(bool flag) { async_execution_ = flag; }
   std::vector<Task*>* subtasks() { return &subtasks_; }
   Task* subtask(int i) { return subtasks_[i]; }
   bool is_subtask() { return parent_exist_; }
@@ -179,6 +181,7 @@ private:
   bool internal_memory_transfer_;
   bool is_kernel_launch_disabled_;
   bool profile_data_transfers_;
+  bool async_execution_;
 
   double time_;
   double time_start_;

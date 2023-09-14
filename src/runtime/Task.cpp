@@ -62,6 +62,7 @@ Task::Task(Platform* platform, int type, const char* name) {
   brs_policy_ = iris_default;
   set_object_track(Platform::GetPlatform()->task_track_ptr());
   platform_->task_track().TrackObject(this, uid());
+  async_execution_ = platform_->is_async(); // Same as platform by default
   _trace("Task created %lu %s %p", uid(), name_.c_str(), this);
 }
 

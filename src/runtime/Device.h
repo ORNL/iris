@@ -114,6 +114,7 @@ public:
   void set_shared_memory_buffers(bool flag=true) { shared_memory_buffers_ = flag; }
   bool is_shared_memory_buffers() { return shared_memory_buffers_ && can_share_host_memory_; }
   void set_async(bool flag=true) { async_ = flag; }
+  template <class Task> bool is_async(Task *task) { return is_async() && task->is_async(); }
   bool is_async() { return async_; }
   int platform() { return platform_; }
   int devno() { return devno_; }
