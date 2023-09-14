@@ -132,7 +132,7 @@ Platform::~Platform() {
   if (pool_) delete pool_;
   kernel_history_.clear();
   pthread_mutex_destroy(&mutex_);
-  _printf("Platform deleted");
+  _debug2("Platform deleted");
 }
 
 int Platform::Init(int* argc, char*** argv, int sync) {
@@ -691,11 +691,12 @@ int Platform::InitDevices(bool sync) {
     TaskCreate(task_name, false, &tasks[i]);
     Task *task = get_task_object(tasks[i]);
     task->set_system();
+    task->Retain();
     Command* cmd = Command::CreateInit(task);
     task->AddCommand(cmd);
-    _printf("Initialize task:%lu:%s ref_cnt:%d", task->uid(), task->name(), task->ref_cnt());
+    _debug2("Initialize task:%lu:%s ref_cnt:%d", task->uid(), task->name(), task->ref_cnt());
     //task->Retain();
-    _printf("Initialize task:%lu:%s ref_cnt:%d", task->uid(), task->name(), task->ref_cnt());
+    _debug2("Initialize task:%lu:%s ref_cnt:%d", task->uid(), task->name(), task->ref_cnt());
     workers_[i]->Enqueue(task);
   }
   if (sync) for (int i = 0; i < ndevs_; i++) {
@@ -703,7 +704,7 @@ int Platform::InitDevices(bool sync) {
   }
   //for (int i = 0; i < ndevs_; i++) {
     //Task *task = get_task_object(tasks[i]);
-    //_printf("Release Initialize task:%lu:%s ref_cnt:%d", task->uid(), task->name(), task->ref_cnt());
+    //_debug2("Release Initialize task:%lu:%s ref_cnt:%d", task->uid(), task->name(), task->ref_cnt());
     //task->Release();
   //}
   delete[] tasks;
@@ -764,6 +765,7 @@ int Platform::DeviceGetDefault(int* device) {
 
 int Platform::DeviceSynchronize(int ndevs, int* devices) {
   Task* task = new Task(this, IRIS_MARKER, "Marker");
+  task->Retain();
   iris_task brs_task = *(task->struct_obj());
   if (scheduler_) {
     char sync_task[128];
@@ -775,7 +777,9 @@ int Platform::DeviceSynchronize(int ndevs, int* devices) {
       sprintf(sync_task, "Marker-%d", i);
       Task* subtask = new Task(this, IRIS_MARKER, sync_task);
       subtask->set_devno(devices[i]);
+      subtask->Retain();
       subtask->set_user(true);
+      _debug2("Created marker task:%lu:%s ref_cnt:%d", subtask->uid(), subtask->name(), subtask->ref_cnt());
       task->AddSubtask(subtask);
     }
     scheduler_->Enqueue(task);
@@ -1200,13 +1204,14 @@ int Platform::TaskSubmit(iris_task brs_task, int brs_policy, const char* opt, in
   Task *task = get_task_object(brs_task);
   assert(task != NULL);
   if (recording_) json_->RecordTask(task);
+  task->Retain();
   task->Submit(brs_policy, opt, sync);
   _trace(" successfully submitted task:%lu:%s", task->uid(), task->name());
   if (scheduler_) {
     FilterSubmitExecute(task);
     scheduler_->Enqueue(task);
   } else workers_[0]->Enqueue(task);
-  _printf("Task wait release:%lu:%s ref_cnt:%d before TaskSubmit\n", task->uid(), task->name(), task->ref_cnt());
+  _debug2("Task wait release:%lu:%s ref_cnt:%d before TaskSubmit\n", task->uid(), task->name(), task->ref_cnt());
   if (sync) TaskWait(brs_task);
   return nfailures_;
 }
@@ -1214,6 +1219,7 @@ int Platform::TaskSubmit(iris_task brs_task, int brs_policy, const char* opt, in
 int Platform::TaskSubmit(Task *task, int brs_policy, const char* opt, int sync) {
   iris_task brs_task = *(task->struct_obj());
   if (recording_) json_->RecordTask(task);
+  task->Retain();
   task->Submit(brs_policy, opt, sync);
   _trace(" successfully submitted task:%lu:%s", task->uid(), task->name());
   if (scheduler_) {
@@ -1228,15 +1234,15 @@ void Platform::TaskWaitCallBack(void *data) {
   task->Retain();
 }
 int Platform::TaskWait(iris_task brs_task) {
-  _printf("waiting for brs_task:%lu\n", brs_task.uid);
+  _debug2("waiting for brs_task:%lu\n", brs_task.uid);
   task_track_.CallBackIfObjectExists(brs_task.uid, Platform::TaskWaitCallBack);
   Task *task = get_task_object(brs_task);
   if (task != NULL) {
-     unsigned long uid = task->uid(); string lname = task->name(); _printf("Task wait release:%lu:%s ref_cnt:%d after callback\n", task->uid(), task->name(), task->ref_cnt());
+     unsigned long uid = task->uid(); string lname = task->name(); _debug2("Task wait release:%lu:%s ref_cnt:%d after callback\n", task->uid(), task->name(), task->ref_cnt());
      task->Wait();
-     _printf("Task wait before release:%lu:%s ref_cnt:%d\n", uid, lname.c_str(), task->ref_cnt());
+     _debug2("Task wait before release:%lu:%s ref_cnt:%d\n", uid, lname.c_str(), task->ref_cnt());
      int ref_cnt = task->Release();
-     printf("Task wait after release:%lu:%s ref_cnt:%d\n", uid, lname.c_str(), ref_cnt);
+     _debug2("Task wait after release:%lu:%s ref_cnt:%d\n", uid, lname.c_str(), ref_cnt);
   }
   return IRIS_SUCCESS;
 }
@@ -1267,14 +1273,25 @@ void Platform::TaskReleaseStatic(void *data)
     // This is only for tasks which has to be manuallay released. 
     // Otherwise, runtime will take care of when to release it
     if (!task->IsRelease()) {
-        _printf("Force releasing the task id:%lu:%s", task->uid(), task->name());
+        _debug2("Force releasing the task id:%lu:%s", task->uid(), task->name());
+        assert(task->ref_cnt() == 1);
+        task->EnableRelease();
         task->ForceRelease();
     }
 }
 
 int Platform::TaskRelease(iris_task brs_task) {
-    _printf("Releasing the task id:%lu", brs_task.uid);
-    task_track_.CallBackIfObjectExists(brs_task.uid, Platform::TaskReleaseStatic);
+    _debug2("Releasing the task id:%lu", brs_task.uid);
+    //task_track_.CallBackIfObjectExists(brs_task.uid, Platform::TaskReleaseStatic);
+    //Retainable object should alive 
+    Task *task = get_task_object(brs_task);
+    if (task != NULL && !task->IsRelease()) {
+        task->EnableRelease();
+        _debug2("Releasing the task id:%lu ref_cnt:%d\n", brs_task.uid, task->ref_cnt());
+        //assert(task->ref_cnt() == 1);
+        task->Release();
+        //Task should be alive yet.
+    }
     return IRIS_SUCCESS;
 }
 
@@ -1487,28 +1504,42 @@ void Platform::set_release_task_flag(bool flag, iris_task brs_task)
 {
     Task *task = get_task_object(brs_task);
     assert(task != NULL);
-    task->DisableRelease();
+    if (!flag && task->IsRelease()) {
+        task->Retain();
+        task->DisableRelease();
+    }
+    else if (flag && !task->IsRelease()) {
+        task->EnableRelease();
+        task->Release();
+    }
+    _debug2(" reatined task id:%lu ref_cnt:%d\n", brs_task.uid, task->ref_cnt());
 }
 
 int Platform::GraphRelease(iris_graph brs_graph) {
-  Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
-  graph->ForceRelease();
+  graph_track_.CallBackIfObjectExists(brs_graph.uid, Graph::GraphRelease);
   return IRIS_SUCCESS;
 }
 
 int Platform::GraphRetain(iris_graph brs_graph, bool flag) {
   Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
-  if (flag)
+  if (flag && graph->IsRelease()) {
       graph->enable_retainable();
-  else
+  }
+  else if (!flag && !graph->IsRelease()) {
       graph->disable_retainable();
+  }
   std::vector<Task*>* tasks = graph->tasks();
   for (std::vector<Task*>::iterator I = tasks->begin(), E = tasks->end(); I != E; ++I) {
     Task* task = *I;
-    if (flag)
+    if (flag && task->IsRelease()) {
+        task->Retain();
         task->DisableRelease();
-    else
+        _debug2("Graph task:%lu:%s retained ref_cnt:%d", task->uid(), task->name(), task->ref_cnt());
+    }
+    else if (!flag && !task->IsRelease()) {
         task->EnableRelease();
+        task->Release();
+    }
   }
   return IRIS_SUCCESS;
 }
@@ -1516,6 +1547,7 @@ int Platform::GraphRetain(iris_graph brs_graph, bool flag) {
 int Platform::GraphSubmit(iris_graph brs_graph, int brs_policy, int sync) {
   Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
   if (graph == NULL) { if (sync) return Synchronize(); else return IRIS_SUCCESS; }
+  graph->Retain();
   std::vector<Task*>* tasks = graph->tasks();
   //graph->RecordStartTime(devs_[0]->Now());
   for (std::vector<Task*>::iterator I = tasks->begin(), E = tasks->end(); I != E; ++I) {
@@ -1524,6 +1556,8 @@ int Platform::GraphSubmit(iris_graph brs_graph, int brs_policy, int sync) {
     if (task->brs_policy() == iris_default) {
       task->set_brs_policy(brs_policy);
     }
+    _debug2("Graph submit task:%lu:%s retained ref_cnt:%d", task->uid(), task->name(), task->ref_cnt());
+    task->Retain();
     task->Submit(task->brs_policy(), task->opt(), sync);
     if (recording_) json_->RecordTask(task);
     if (scheduler_) scheduler_->Enqueue(task);
@@ -1536,6 +1570,7 @@ int Platform::GraphSubmit(iris_graph brs_graph, int brs_policy, int sync) {
 int Platform::GraphSubmit(iris_graph brs_graph, int *order, int brs_policy, int sync) {
   Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
   if (graph == NULL) { if (sync) return Synchronize(); else return IRIS_SUCCESS; }
+  graph->Retain();
   std::vector<Task*> & tasks = graph->tasks_list();
   //graph->RecordStartTime(devs_[0]->Now());
   for(size_t i=0; i<tasks.size(); i++) {
@@ -1544,6 +1579,8 @@ int Platform::GraphSubmit(iris_graph brs_graph, int *order, int brs_policy, int 
     if (task->brs_policy() == iris_default) {
       task->set_brs_policy(brs_policy);
     }
+    _debug2("Graph submit task:%lu:%s retained ref_cnt:%d", task->uid(), task->name(), task->ref_cnt());
+    task->Retain();
     task->Submit(task->brs_policy(), task->opt(), sync);
     if (recording_) json_->RecordTask(task);
     if (scheduler_) scheduler_->Enqueue(task);

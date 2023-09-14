@@ -69,7 +69,61 @@ enable_testing()
 # Format list(APPEND TEST_EXES "directory" "test1::test2")
 # Space is used for an empty test exe
 
+list(APPEND TEST_EXES "01_init_finalize" "test01_init_finalize" "")
+if (CUDAToolkit_FOUND OR HIP_ROOT_DIR)
+list(APPEND TEST_EXES "02_task_depend" "test02_task_depend" "")
+endif()
+list(APPEND TEST_EXES "03_release" "test03_release" "")
+if (CUDAToolkit_FOUND OR HIP_ROOT_DIR)
 list(APPEND TEST_EXES "04_enclosing_targets" "test04_enclosing_targets" "")
+endif()
+#[DEBUG] Remove Snapdragon-specific test.
+#list(APPEND TEST_EXES "05_snapdragon" "test05_snapdragon" "")
+list(APPEND TEST_EXES "06_device" "test06_device" "")
+list(APPEND TEST_EXES "07_policy_register" "test07_policy_register" "")
+list(APPEND TEST_EXES "08_multithreading" "test08_multithreading" "")
+list(APPEND TEST_EXES "09_dataflow" "test09_dataflow" "")
+if (CUDAToolkit_FOUND)
+list(APPEND TEST_EXES "10_multikernelexecution" "test10_multikernelexecution" "")
+endif()
+#list(APPEND TEST_EXES "11_deadlock" "test11_deadlock" "")
+#[REMOVE] CUDA specific and interfaces directly with the CUDA loader
+#list(APPEND TEST_EXES "12_task_custom" "test12_task_custom" "")
+list(APPEND TEST_EXES "13_hooks" "test13_hooks" "")
+if (CUDAToolkit_FOUND)
+list(APPEND TEST_EXES "14_permanent_task" "test14_permanent_task" "")
+endif()
+list(APPEND TEST_EXES "15_graph" "test15_graph" "")
+#[FIXME] Temporarily disabled due to a deadlock issue.
+#list(APPEND TEST_EXES "16_task_host" "test16_task_host" "")
+list(APPEND TEST_EXES "17_json" "test17_json" "")
+list(APPEND TEST_EXES "18_record" "test18_record" "")
+list(APPEND TEST_EXES "19_replay" "test19_replay" "")
+#[DEBUG] Remove test20 due to dependency to cublas.
+if (CUDAToolkit_FOUND)
+  #list(APPEND TEST_EXES "20_cublas" "test20_cublas" "")
+list(APPEND TEST_EXES "21_task_malloc" "test21_task_malloc" "")
+endif()
+list(APPEND TEST_EXES "22_json_mixed_args" "test22_json_mixed_args" "")
+list(APPEND TEST_EXES "23_multigraph" "test23_multigraph" "")
+list(APPEND TEST_EXES "24_multi_kernels" "test24_multi_kernels" "")
+if (CUDAToolkit_FOUND)
+list(APPEND TEST_EXES "25_random_tasks" "test25_random_tasks" "")
+endif()
+list(APPEND TEST_EXES "26_env_set" "test26_env_set" "")
+list(APPEND TEST_EXES "27_deadlock2" "test27_deadlock2" "")
+list(APPEND TEST_EXES "28_json2" "test28_json2" "")
+list(APPEND TEST_EXES "29_data_mem" "test29_data_mem" "")
+if (CUDAToolkit_FOUND)
+list(APPEND TEST_EXES "30_task_info" "test30_task_info" " ")
+endif()
+#[FIXME] Temporarily disabled due to improper configuration.
+#list(APPEND TEST_EXES "31_isaxpy" "test31_isaxpy" "")
+list(APPEND TEST_EXES "32_json3" "test32_json3" "--kernels=ijk --duplicates=0 --buffers-per-kernel=\"ijk:w-r-r\" --kernel-dimensions=ijk:2 --kernel-split=100 --depth=10 --num-tasks=10 --min-width=1 --max-width=1 --logfile=log.txt --repeats=1 --scheduling-policy=any --size=128")
+list(APPEND TEST_EXES "33_graph_cpp" "test33_graph_cpp" " ")
+list(APPEND TEST_EXES "34_set_mem" "test34_set_mem" " ")
+list(APPEND TEST_EXES "35_json_mixed_args_record_replay" "test35_json_mixed_args_record_replay" " ")
+list(APPEND TEST_EXES "36_double_json_mixed_args_record_replay" "test36_double_json_mixed_args_record_replay" " ")
 
 # Run each test in TEST_EXES
 list(LENGTH TEST_EXES count)
@@ -112,7 +166,7 @@ foreach(i RANGE 0 ${count} 3)
          set(exe_it "${exe}_i${index}")
          add_test(
             NAME ${exe_it}
-            COMMAND bash -c "valgrind --leak-check=summary ./${exe} ${args}"
+            COMMAND ${exe} ${args}
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${dir}
             )
          if (CUDAToolkit_FOUND OR HIP_ROOT_DIR)

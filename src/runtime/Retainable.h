@@ -51,11 +51,16 @@ public:
   unsigned long uid() { return uid_; }
   struct_type *struct_obj() { return &struct_obj_; }
 
+  static void StaticRetain(void *data) {
+    Retainable *obj = (Retainable *)data;
+    obj->Retain();
+  }
+
   void Retain() {
     int i;
     do i = ref_cnt_;
     while (!__sync_bool_compare_and_swap(&ref_cnt_, i, i + 1));
-    //printf("Retain: id:%lu ref_cnt:%d\n", uid_, ref_cnt_);
+    //printf("Retain: id:%lu ref_cnt:%d\n", uid_, i+1);
   }
   void ForceRelease(bool check=false) {
     Platform *platform = Platform::GetPlatform();
@@ -64,11 +69,11 @@ public:
         pthread_mutex_unlock(&delete_lock_);
         return;
     }
-    printf("force release called id:%lu ref_cnt:%d\n", uid_, ref_cnt_);
+    //printf("force release called id:%lu ref_cnt:%d\n", uid_, ref_cnt_);
     //if (!struct_obj()) return;
     pthread_mutex_unlock(&delete_lock_);
     //void *obj = track_->GetObject(uid_);
-    if (!check || (ref_cnt_ < 1 && is_release_)) {
+    if (!check || (ref_cnt_ <= 1 && is_release_)) {
         track_->UntrackObjectNoLock(this, uid());
         delete this;
     }
@@ -82,13 +87,15 @@ public:
 
   int Release() {
     int i;
-    printf("from id:%lu ref_cnt_:%d\n", uid_, ref_cnt_);
+    //printf("from id:%lu ref_cnt_:%d\n", uid_, ref_cnt_);
     do i = ref_cnt_;
     while (!__sync_bool_compare_and_swap(&ref_cnt_, i, i - 1));
-    printf("id:%lu ref_cnt_:%d\n", uid_, ref_cnt_);
+    //printf("id:%lu ref_cnt_:%d\n", uid_, ref_cnt_);
     // ref_cnt should be derived from local variable i
     int ref_cnt = i-1;
-    if (ref_cnt < 1 && is_release_) 
+    //if (ref_cnt < 1) printf("problem from id:%lu ref_cnt_:%d\n", uid_, ref_cnt_);
+    assert(ref_cnt >= 1);
+    if (ref_cnt <= 1 && is_release_) 
         track_->CallBackIfObjectExists(uid_, Retainable::StaticForceRelease);
         //ForceRelease(true);
     return ref_cnt;

@@ -35,8 +35,9 @@ public:
   void set_order(int *order);
   int tasks_count() { return tasks_.size(); }
   bool is_retainable() { return retain_tasks_; }
-  void enable_retainable() { retain_tasks_ = true; }
-  void disable_retainable() { retain_tasks_ = false; }
+  void enable_retainable(); 
+  void disable_retainable();
+  static void GraphRelease(void *data);
   shared_ptr<GraphMetadata> get_metadata(int iterations=3);
 private:
   Platform* platform_;
@@ -45,6 +46,7 @@ private:
 
   //Task* start_;
   Task* end_;
+  iris_task end_brs_task_;
 
   bool retain_tasks_;
   int status_;

@@ -85,11 +85,7 @@ namespace iris {
             }
         int BoilerPlateHostInterfaceLoader::launch_init(void *stream, void *param_mem, Command *cmd) 
         {
-            if (IsFunctionExists(cmd->kernel()->name())) return IRIS_SUCCESS;
-            return IRIS_ERROR;
-        }
-        int BoilerPlateHostInterfaceLoader::host_kernel(void *param_mem, const char *kname) 
-        {
+            const char *kname = cmd->kernel()->name();
             if (iris_host_kernel_with_obj) {
                 int status = iris_host_kernel_with_obj(
                         param_mem, kname);
@@ -105,6 +101,11 @@ namespace iris {
                     return IRIS_SUCCESS;
                 }
             }
+            return IRIS_ERROR;
+        }
+        int BoilerPlateHostInterfaceLoader::host_kernel(void *param_mem, const char *kname) 
+        {
+            if (IsFunctionExists(kname)) return IRIS_SUCCESS;
             return IRIS_ERROR;
         }
         int BoilerPlateHostInterfaceLoader::LoadFunctions()

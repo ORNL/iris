@@ -106,6 +106,7 @@ public:
   void* arch() { return arch_; }
   void set_arch(void* arch) { arch_ = arch; }
   void set_pending();
+  void set_status_none();
   bool pending() {return status_==IRIS_PENDING;}
   std::vector<Command *> & reset_mems() { return reset_mems_; }
   void DispatchDependencies();

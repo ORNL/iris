@@ -83,13 +83,13 @@ void Device::Execute(Task* task) {
 #endif
   }
   task->set_time_end(timer_->Now());
-  _printf("Task %s:%lu refcnt:%d\n", task->name(), task->uid(), task->ref_cnt());
+  _debug2("Task %s:%lu refcnt:%d\n", task->name(), task->uid(), task->ref_cnt());
   TaskPost(task);
   if (hook_task_post_) hook_task_post_(task);
 //  if (++q_ >= nqueues_) q_ = 0;
   if (!task->system()) _trace("task[%lu:%s] complete dev[%d][%s] time[%lf] end:[%lf]", task->uid(), task->name(), devno(), name(), task->time(), task->time_end());
 #ifdef IRIS_SYNC_EXECUTION
-  _printf("Task %s:%lu refcnt:%d\n", task->name(), task->uid(), task->ref_cnt());
+  _debug2("Task %s:%lu refcnt:%d\n", task->name(), task->uid(), task->ref_cnt());
   task->Complete();
 #endif
   busy_ = false;

@@ -88,14 +88,15 @@ void Scheduler::Enqueue(Task* task) {
 
 void Scheduler::Run() {
   while (true) {
-    _trace("Scheduler entering into sleep mode qsize:%lu", queue_->Size());
+    _debug2("Scheduler entering into sleep mode qsize:%lu", queue_->Size());
     Sleep();
-    _trace("Scheduler invoked");
+    _debug2("Scheduler invoked");
     if (!running_) break;
-    _trace("Scheduler in running state qsize:%lu", queue_->Size());
+    _debug2("Scheduler in running state qsize:%lu", queue_->Size());
     Task* task = NULL;
     while (queue_->Dequeue(&task)) Submit(task);
   }
+  _debug2("Scheduler exited");
 }
 
 void Scheduler::SubmitTaskDirect(Task* task, Device* dev) {
@@ -104,7 +105,7 @@ void Scheduler::SubmitTaskDirect(Task* task, Device* dev) {
 }
 
 void Scheduler::Submit(Task* task) {
-  _trace("Dequeued task:%lu:%s", task->uid(), task->name());
+  _debug2("Dequeued task:%lu:%s ndevs:%d cond:%d", task->uid(), task->name(), ndevs_, !ndevs_);
   if (!ndevs_) {
     if (!task->marker()) { 
        _error("%s", "no device");
@@ -113,18 +114,21 @@ void Scheduler::Submit(Task* task) {
     task->Complete();
     return;
   }
+  _debug2("checking marker task:%lu:%s", task->uid(), task->name());
   if (task->marker()) {
-    _trace("Identified marker task:%lu:%s", task->uid(), task->name());
+    _debug2("Identified marker task:%lu:%s", task->uid(), task->name());
     std::vector<Task*>* subtasks = task->subtasks();
     for (std::vector<Task*>::iterator I = subtasks->begin(), E = subtasks->end(); I != E; ++I) {
       Task* subtask = *I;
       int dev = subtask->devno();
-      _trace("Enquing marker task:%lu:%s of subtask:%lu:%s to device", task->uid(), task->name(), subtask->uid(), subtask->name());
+      _debug2("Enquing marker task:%lu:%s of subtask:%lu:%s to device", task->uid(), task->name(), subtask->uid(), subtask->name());
       workers_[dev]->Enqueue(subtask);
     }
     return;
   }
+  _debug2("checking subtasks:%lu:%s", task->uid(), task->name());
   if (!task->HasSubtasks()) {
+    _debug2("submitting task:%lu:%s", task->uid(), task->name());
     SubmitTask(task);
     return;
   }

@@ -59,7 +59,7 @@ Task::Task(Platform* platform, int type, const char* name) {
 Task::~Task() {
   //printf("released task:%lu:%s released ptr:%p ref_cnt:%d\n", uid(), name(), this, ref_cnt());
   //Platform::GetPlatform()->task_track().UntrackObject(this, uid());
-  _printf("Task deleted %lu %s %p ref_cnt:%d", uid(), name(), this, ref_cnt());
+  _debug2("Task deleted %lu %s %p ref_cnt:%d", uid(), name(), this, ref_cnt());
   for (int i = 0; i < ncmds_; i++) delete cmds_[i];
   if (depends_uids_) delete [] depends_uids_;
   pthread_mutex_destroy(&mutex_pending_);
@@ -68,7 +68,7 @@ Task::~Task() {
   pthread_mutex_destroy(&mutex_subtasks_);
   pthread_cond_destroy(&complete_cond_);
   subtasks_.clear();
-  _printf("released task:%lu:%s released ref_cnt:%d", uid(), name(), ref_cnt());
+  _debug2("released task:%lu:%s released ref_cnt:%d", uid(), name(), ref_cnt());
 }
 
 double Task::TimeInc(double t) {
@@ -173,7 +173,7 @@ void Task::ClearCommands() {
 
 bool Task::Dispatchable() {
   //if we, or the tasks we depend on are pending (or not-complete), we can't run.
-  _trace("Checking task:%lu:%s dispatchable depends_uids_:%p ndepends_:%d", uid(), name(), depends_uids_, ndepends_);
+  _debug2("Checking task:%lu:%s dispatchable depends_uids_:%p ndepends_:%d pending:%d", uid(), name(), depends_uids_, ndepends_, (status_ == IRIS_PENDING));
   //print_incomplete_tasks();
   if (status_ == IRIS_PENDING) return false;
   if (depends_uids_ == NULL) return true;
@@ -181,23 +181,23 @@ bool Task::Dispatchable() {
       Task *dep = platform_->get_task_object(depends_uids_[i]);
       if ( dep != NULL && dep->status() != IRIS_COMPLETE) return false;
   }
-  _trace("Task task:%lu:%s is ready to run", uid(), name());
+  _debug2("Task task:%lu:%s is ready to run", uid(), name());
   return true;
 }
 
 //dispatch all of this tasks pending dependencies on the assigned device.
 void Task::DispatchDependencies() {
-  pthread_mutex_lock(&mutex_pending_);
-  if (status_ == IRIS_PENDING) status_ = IRIS_NONE;
+  //pthread_mutex_lock(&mutex_pending_);
+  if (status_ == IRIS_PENDING) set_status_none(); 
   for (int i = 0; i < ndepends_; i++) {
       Task *dep= depend(i);
       if (dep!= NULL) {
           _trace("      Dispatch dependencies task: %d:%ld:%ld:%s Status:%s object exists\n", i, depends_uids_[i], dep->uid(), dep->name(), dep->task_status_string());
           if (dep->status() == IRIS_PENDING) 
-              dep->status_ = IRIS_NONE;
+              dep->set_status_none();
       }
   }
-  pthread_mutex_unlock(&mutex_pending_);
+  //pthread_mutex_unlock(&mutex_pending_);
 }
 
 bool Task::Executable() {
@@ -212,15 +212,21 @@ bool Task::Executable() {
   return false;
 }
 
-void Task::set_pending() {
+void Task::set_status_none() {
   pthread_mutex_lock(&mutex_pending_);
-  if (brs_policy_ == iris_pending)
-    status_ = IRIS_PENDING;
+  status_ = IRIS_NONE;
   pthread_mutex_unlock(&mutex_pending_);
+}
+void Task::set_pending() {
+    if (brs_policy_ == iris_pending) {
+        pthread_mutex_lock(&mutex_pending_);
+        status_ = IRIS_PENDING;
+        pthread_mutex_unlock(&mutex_pending_);
+    }
 }
 
 void Task::Complete() {
-  _printf(" task:%lu:%s is completed ref_cnt:%d", uid(), name(), ref_cnt());
+  _debug2(" task:%lu:%s is completed ref_cnt:%d", uid(), name(), ref_cnt());
   bool is_user_task = user_;
   bool platform_release_flag = platform_->release_task_flag();
   if (dev_ && type() != IRIS_MARKER) set_devno(dev_->devno());
@@ -234,21 +240,21 @@ void Task::Complete() {
   // Parent marker task was never go through Worker::Execute.
   if (parent_exist_) parent()->CompleteSub();
   else {
-    _printf(" task:%lu:%s is completed ref_cnt:%d", uid(), name(), ref_cnt());
+    _debug2(" task:%lu:%s is completed ref_cnt:%d", uid(), name(), ref_cnt());
     if (dev_) dev_->worker()->TaskComplete(this);
     else if (scheduler_) scheduler_->Invoke();
-    _printf(" task:%lu:%s is completed ref_cnt:%d", uid(), name(), ref_cnt());
+    _debug2(" task:%lu:%s is completed ref_cnt:%d", uid(), name(), ref_cnt());
   }
   //if (!is_user_task) return;
-  _printf(" trying to release task:%lu:%s ref_cnt:%d", uid(), name(), ref_cnt());
+  _debug2(" trying to release task:%lu:%s ref_cnt:%d", uid(), name(), ref_cnt());
   if (platform_release_flag) {
       for (int i = 0; i < ndepends_; i++) {
           Task *dep = platform_->get_task_object(depends_uids_[i]);
-          if(dep != NULL && dep->user()) dep->Release();
+          if(dep != NULL && dep->user()) { _debug2(" dep_task:%lu:%s ref_cnt:%d", dep->uid(), dep->name(), dep->ref_cnt()-1); dep->Release(); }
       }
-      unsigned long luid = uid(); string lname = name_; _printf(" task:%lu:%s is completed and trying to release ref_cnt:%d", uid(), name(), ref_cnt());
+      unsigned long luid = uid(); string lname = name_; _debug2(" task:%lu:%s is completed and trying to release ref_cnt:%d", uid(), name(), ref_cnt());
       int ret_ref_cnt = Release();
-      _printf(" task:%lu:%s is completed and after release ref_cnt:%d", luid, lname.c_str(), ret_ref_cnt);
+      _debug2(" task:%lu:%s is completed and after release ref_cnt:%d", luid, lname.c_str(), ret_ref_cnt);
   }
 }
 
@@ -258,7 +264,7 @@ void Task::TryReleaseTask()
         Task *dep = platform_->get_task_object(depends_uids_[i]);
         if(dep != NULL && dep->user()) dep->Release();
     }
-    _printf("task:%lu:%s trying to release here as well ref_cnt:%d", uid(), name(), ref_cnt());
+    _debug2("task:%lu:%s trying to release here as well ref_cnt:%d", uid(), name(), ref_cnt());
     if (user_) Release();
 }
 
@@ -271,15 +277,16 @@ void Task::CompleteSub() {
 }
 
 void Task::Wait() {
-  unsigned long id = uid();
-  Platform *platform = Platform::GetPlatform();
+  //unsigned long id = uid();
+  //Platform *platform = Platform::GetPlatform();
   //printf(" task:%lu:%s is waiting\n", id, name());
-  if (!platform->is_task_exist(id)) return;
+  //if (!platform->is_task_exist(id)) return;
   pthread_mutex_lock(&mutex_complete_);
-  if (!platform->is_task_exist(id)) return;
+  //if (!platform->is_task_exist(id)) return;
+  _debug2("Waiting for task completion: task:%lu:%s ref_cnt:%d", uid(), name(), ref_cnt());
   if (status_ != IRIS_COMPLETE)
     pthread_cond_wait(&complete_cond_, &mutex_complete_);
-  if (!platform->is_task_exist(id)) return;
+  //if (!platform->is_task_exist(id)) return;
   pthread_mutex_unlock(&mutex_complete_);
   //printf(" task:%lu:%s dependency is clear\n", uid(), name());
 }
@@ -312,8 +319,6 @@ void Task::AddDepend(Task* task, unsigned long uid) {
   } 
   depends_uids_[ndepends_] = uid;
   ndepends_++;
-  if (platform_->task_track().IsObjectExists(uid)) 
-      task->Retain();
 }
 
 /*
@@ -343,6 +348,11 @@ void Task::Submit(int brs_policy, const char* opt, int sync) {
   if (cmd_last_) cmd_last_->set_last();
   user_ = true;
   //Retain();
+  for (int i=0; i<ndepends_; i++) {
+      unsigned long dep_uid = depends_uids_[i];
+      _debug2("added dependency task:%lu ", dep_uid);
+      platform_->task_track().CallBackIfObjectExists(dep_uid, Task::StaticRetain);
+  }
 }
 
 Task* Task::Create(Platform* platform, int type, const char* name) {

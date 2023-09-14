@@ -18,6 +18,7 @@ Kernel::Kernel(const char* name, Platform* platform) {
   name_[len] = 0;
   profile_data_transfers_ = false;
   platform_ = platform;
+  Retain();
   history_ = platform->CreateHistory(name);
   for (size_t i = 0; i < IRIS_MAX_NDEVS; i++) {
     archs_[i] = NULL;
