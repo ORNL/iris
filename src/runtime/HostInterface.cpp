@@ -105,7 +105,8 @@ namespace iris {
         }
         int BoilerPlateHostInterfaceLoader::host_kernel(void *param_mem, const char *kname) 
         {
-            if (IsFunctionExists(kname)) return IRIS_SUCCESS;
+            if (iris_host_kernel_with_obj || iris_host_kernel) 
+                if (IsFunctionExists(kname)) return IRIS_SUCCESS;
             return IRIS_ERROR;
         }
         int BoilerPlateHostInterfaceLoader::LoadFunctions()
