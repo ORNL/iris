@@ -100,6 +100,7 @@ void Scheduler::Run() {
 }
 
 void Scheduler::SubmitTaskDirect(Task* task, Device* dev) {
+  task->Retain();
   dev->worker()->Enqueue(task);
   if (hub_available_) hub_client_->TaskInc(dev->devno(), 1);
 }
@@ -122,6 +123,7 @@ void Scheduler::Submit(Task* task) {
       Task* subtask = *I;
       int dev = subtask->devno();
       _debug2("Enquing marker task:%lu:%s of subtask:%lu:%s to device", task->uid(), task->name(), subtask->uid(), subtask->name());
+      subtask->Retain();
       workers_[dev]->Enqueue(subtask);
     }
     return;
@@ -158,6 +160,9 @@ void Scheduler::SubmitTask(Task* task) {
   //if any dependencies were pending, time to process them now.
   if (!task->Dispatchable()) task->DispatchDependencies();
 
+  for (int i = 0; i < ndevs; i++) {
+      task->Retain();
+  }
   for (int i = 0; i < ndevs; i++) {
     devs[i]->worker()->Enqueue(task);
     if (hub_available_) hub_client_->TaskInc(devs[i]->devno(), 1);

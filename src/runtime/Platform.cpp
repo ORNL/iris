@@ -697,7 +697,7 @@ int Platform::InitDevices(bool sync) {
     _debug2("Initialize task:%lu:%s ref_cnt:%d", task->uid(), task->name(), task->ref_cnt());
     //task->Retain();
     _debug2("Initialize task:%lu:%s ref_cnt:%d", task->uid(), task->name(), task->ref_cnt());
-    workers_[i]->Enqueue(task);
+    task->Retain(); workers_[i]->Enqueue(task);
   }
   if (sync) for (int i = 0; i < ndevs_; i++) {
       TaskWait(tasks[i]);
@@ -783,7 +783,7 @@ int Platform::DeviceSynchronize(int ndevs, int* devices) {
       task->AddSubtask(subtask);
     }
     scheduler_->Enqueue(task);
-  } else workers_[0]->Enqueue(task);
+  } else { task->Retain(); workers_[0]->Enqueue(task); }
   TaskWait(brs_task);
   //task->Wait();
   // Task::Ok returns only Device::Ok. However, the parent task doesn't map to any 
@@ -1210,7 +1210,7 @@ int Platform::TaskSubmit(iris_task brs_task, int brs_policy, const char* opt, in
   if (scheduler_) {
     FilterSubmitExecute(task);
     scheduler_->Enqueue(task);
-  } else workers_[0]->Enqueue(task);
+  } else { task->Retain(); workers_[0]->Enqueue(task); }
   _debug2("Task wait release:%lu:%s ref_cnt:%d before TaskSubmit\n", task->uid(), task->name(), task->ref_cnt());
   if (sync) TaskWait(brs_task);
   return nfailures_;
@@ -1225,7 +1225,7 @@ int Platform::TaskSubmit(Task *task, int brs_policy, const char* opt, int sync) 
   if (scheduler_) {
     FilterSubmitExecute(task);
     scheduler_->Enqueue(task);
-  } else workers_[0]->Enqueue(task);
+  } else { task->Retain(); workers_[0]->Enqueue(task); }
   if (sync) TaskWait(brs_task);
   return nfailures_;
 }
@@ -1561,7 +1561,7 @@ int Platform::GraphSubmit(iris_graph brs_graph, int brs_policy, int sync) {
     task->Submit(task->brs_policy(), task->opt(), sync);
     if (recording_) json_->RecordTask(task);
     if (scheduler_) scheduler_->Enqueue(task);
-    else workers_[0]->Enqueue(task);
+    else { task->Retain(); workers_[0]->Enqueue(task); }
   }
   if (sync) graph->Wait();
   return IRIS_SUCCESS;
@@ -1584,7 +1584,7 @@ int Platform::GraphSubmit(iris_graph brs_graph, int *order, int brs_policy, int 
     task->Submit(task->brs_policy(), task->opt(), sync);
     if (recording_) json_->RecordTask(task);
     if (scheduler_) scheduler_->Enqueue(task);
-    else workers_[0]->Enqueue(task);
+    else { task->Retain(); workers_[0]->Enqueue(task); }
   }
   if (sync) graph->Wait();
   return IRIS_SUCCESS;

@@ -63,7 +63,8 @@ void Worker::Enqueue(Task* task) {
 void Worker::Execute(Task* task) {
   _debug2("check executable for task:%lu:%s:%p qsize:%lu dev:%d ref_cnt:%d\n", task->uid(), task->name(), task, queue_->Size(), dev_->devno(), task->ref_cnt());
   //queue_->Print(dev_->devno());
-  if (!task->Executable()) return;
+  if (!task->Executable()) { task->Release(); return; }
+  task->Release();
   task->set_dev(dev_);
   if (task->marker()) {
     dev_->Synchronize();
@@ -86,7 +87,9 @@ void Worker::Execute(Task* task) {
     if (scheduler_) scheduler_->CompleteTask(task, this);
     //task->Complete();
   }
+#ifdef _DEBUG2_ENABLE
   unsigned long uid = task->uid(); string name = task->name(); _debug2("Task %s:%lu refcnt:%d before release", name.c_str(), uid, task->ref_cnt());
+#endif
   int ref_cnt = task->Release();
   _debug2("Task %s:%lu refcnt:%d after release", name.c_str(), uid, ref_cnt);
   //task->TryReleaseTask();
@@ -105,11 +108,11 @@ void Worker::Run() {
     _debug2("Device:%d:%s Queue size:%lu", dev_->devno(), dev_->name(), queue_->Size());
     while (running_ && queue_->Dequeue(&task)){
       //printf("Device:%d:%s Qsize:%lu dequeued task:%lu:%s:%p\n", dev_->devno(), dev_->name(), queue_->Size(), task->uid(), task->name(), task);
+      _debug2("Device:%d:%s Qsize:%lu dequeued task:%lu:%s:%p", dev_->devno(), dev_->name(), queue_->Size(), task.first, task.second->name(), task.second);
+      if (!Platform::GetPlatform()->is_task_exist(task.first)) continue;
 #ifdef _DEBUG2_ENABLE
       task.second->Retain();
 #endif
-      _debug2("Device:%d:%s Qsize:%lu dequeued task:%lu:%s:%p", dev_->devno(), dev_->name(), queue_->Size(), task.first, task.second->name(), task.second);
-      if (!Platform::GetPlatform()->is_task_exist(task.first)) continue;
       Execute(task.second);
       _debug2("Completed task Device:%d:%s Qsize:%lu dequeued, task:%p", dev_->devno(), dev_->name(), queue_->Size(), task.second);
 #ifdef _DEBUG2_ENABLE
