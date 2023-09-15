@@ -128,7 +128,7 @@ void Device::Execute(Task* task) {
   if (!task->system()) _trace("task[%lu:%s] complete dev[%d][%s] time[%lf] end:[%lf]", task->uid(), task->name(), devno(), name(), task->time(), task->time_end());
   _debug2("Task %s:%lu refcnt:%d\n", task->name(), task->uid(), task->ref_cnt());
   if (task->cmd_kernel() != NULL) ProactiveTransfers(task, task->cmd_kernel());
-  if (!is_async(task) || !task->user()) task->Complete();
+  if (!is_async(task)) task->Complete();
   busy_ = false;
 }
 
