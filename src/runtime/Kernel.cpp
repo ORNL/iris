@@ -66,7 +66,7 @@ int Kernel::SetArg(int idx, size_t size, void* value) {
 
 int Kernel::SetMem(int idx, BaseMem* mem, size_t off, int mode) {
   KernelArg* arg = new KernelArg;
-  _printf("IDX:%d", idx);
+  _debug2("IDX:%d", idx);
   if(!mem) {
     _error("no mem[%p] for the kernel parameter %d", mem, idx);
     platform_->IncrementErrorCount();
