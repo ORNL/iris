@@ -25,12 +25,12 @@ class Heatmap():
         #    shutil.move(os.path.join(directory,f),os.path.join(directory, f.replace('-','',1)))
         data = []
         for f in files:
+            if "datamemlinear10" in f: continue #skip the deep-dive result
             content = pandas.read_csv(os.path.join(directory, f))
             dag,schedule,system,*_ = f.replace('.csv','').split('-')
             start = min(content['start'])
             end = max(content['end'])
             data.append({"system-and-policy":"{}-{}".format(system,schedule), "duration":end-start, "dag":dag})
-            #data.append({"start":start, "end":end, "system":system, "duration":end-start, "experiment":"{}-{}".format(dag,schedule)})
 
         data = pandas.DataFrame.from_records(data)
 
@@ -52,18 +52,13 @@ class Heatmap():
         fig, ax = plt.subplots(figsize=(20,15))
         cmap = sns.cm.rocket_r
         heatmap_plot = sns.heatmap(heatmap_data['duration']['median'],annot=round(heatmap_data['duration']['median'],3).astype(str)+'±'+round(heatmap_data['duration']['var'],3).astype(str),fmt="",cmap=cmap)
-        #heatmap_plot = sns.heatmap(heatmap_data['duration']['median'],annot=True,fmt=".3f",cmap=cmap)
-        #heatmap_plot.set_xticklabels(heatmap_plot.get_xticklabels(),rotation=30)
         heatmap_plot.collections[0].colorbar.set_label("median time to completion (sec)")
+        plt.xlabel('DAG', fontsize = 15)
+        plt.ylabel('System and Policy', fontsize = 15)
         fig = heatmap_plot.get_figure()
         fig.tight_layout()
-        fig.savefig(output)
-
-        #heatmap_data = pandas.DataFrame(heatmap_data['duration'],index=heatmap_data['system-and-policy'],columns=list(set(heatmap_data['dag'])))
-        #ipdb.set_trace()
-        #print (heatmap_data)
-
         # save heatmap to disk
+        fig.savefig(output)
 
 
 if __name__ == '__main__':

@@ -41,4 +41,6 @@ source $IRIS_INSTALL_ROOT/setup.source
 make clean
 
 export IRIS_HISTORY=1
-export IRIS_ARCHS=opencl
+#export IRIS_ARCHS=opencl
+export IRIS_ARCHS=cuda,hip
+echo TODO: try out opencl to verify the explicit memory transfer huge performance penalty persists on all but CUDA devices with explicit memory management but disappears with the use of data-memory

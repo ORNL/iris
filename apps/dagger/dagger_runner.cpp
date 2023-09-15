@@ -34,7 +34,7 @@ void ShowUsage(){
   //printf("\t\t --sandwich\t\t (optional) determines if there are the beginning and terminating nodes\n");
   //printf("\t\t --kernel-split=\"70,30\"\t (optional) list of probabilities of each kernel being used\n");
   //printf("\t\t --num-memory-objects=\"5\"\t (optional) the total number of memory objects to be passed around in the DAG between tasks (allows greater task interactions).\n");
-  //printf("\t\t --use-data-memory=1 (optional) Enables the graph to use memory instead of the default explicit memory buffers. This results in final explicit flush events of buffers that are written.");
+  printf("\t\t --use-data-memory=1 (optional) Enables the graph to use memory instead of the default explicit memory buffers. This results in final explicit flush events of buffers that are written.");
 }
 
 int main(int argc, char** argv) {

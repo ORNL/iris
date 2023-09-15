@@ -581,7 +581,7 @@ def main():
     #print("edges:")
     #print(edges)
 
-    plot_dag(task_dag,edges,'./dag.png')
+    plot_dag(task_dag,edges,'./dag.pdf')
     #dag = get_task_dag(args.conf,"dag.png")
 
     #get_task_to_dag(dag)
