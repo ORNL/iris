@@ -534,10 +534,14 @@ int DeviceHIP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, s
      if (host2hip_ld_->host_launch(streams_[stream_index], kernel->name(), 
                  kernel->GetParamWrapperMemory(), 
                  dim, off, gws) == IRIS_SUCCESS) {
-         err = ld_->hipDeviceSynchronize(streams_[stream_index]);
-         _hiperror(err);
+         if (!is_async(kernel->task())) {
+             err = ld_->hipDeviceSynchronize();
+             _hiperror(err);
+         }
          return IRIS_SUCCESS;
-     }/*
+     }
+     return IRIS_ERROR;
+     /*
   if (kernel->is_vendor_specific_kernel(devno_) && host2hip_ld_->iris_host2hip_launch_with_obj) {
       _trace("dev[%d][%s] kernel[%s:%s] dim[%d] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, stream_index);
       host2hip_ld_->SetKernelPtr(kernel->GetParamWrapperMemory(), kernel->name());

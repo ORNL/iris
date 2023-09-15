@@ -655,10 +655,13 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
      if (host2cuda_ld_->host_launch(streams_[stream_index], kernel->name(), 
                  kernel->GetParamWrapperMemory(), 
                  dim, off, gws) == IRIS_SUCCESS) {
-         err = ld_->cuStreamSynchronize(stream_index);
-         _cuerror(err);
+         if (!is_async(kernel->task())) {
+             err = ld_->cuStreamSynchronize(0);
+             _cuerror(err);
+         }
          return IRIS_SUCCESS;
      }
+     return IRIS_ERROR;
      /*
      if(host2cuda_ld_->iris_host2cuda_launch_with_obj) {
          _trace("dev[%d][%s] kernel[%s:%s] dim[%d] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, stream_index);
