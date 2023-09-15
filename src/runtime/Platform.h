@@ -229,7 +229,7 @@ public:
   int nprofilers() { return nprofilers_; }
   bool is_scheduling_history_enabled() { return enable_scheduling_history_; }
   bool is_async() { return async_; }
-  void set_async(bool flag=true) { async_ = flag; }
+  void set_async(bool flag=true) { async_ = flag; enable_proactive_ = true; }
   SchedulingHistory* scheduling_history() { return scheduling_history_; }
   double time_app() { return time_app_; }
   double time_init() { return time_init_; }
