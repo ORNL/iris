@@ -31,8 +31,8 @@ public:
   int KernelLaunchInit(Command *cmd, Kernel* kernel);
   int KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws);
   int Synchronize();
-  int AddCallback(Task* task);
   void EnablePeerAccess();
+  int RegisterCallback(int stream, CallBackType callback_fn, void* data, int flags=0);
   void SetPeerDevices(int *peers, int count);
   int hipdev() { return dev_; }
   const char* kernel_src() { return "KERNEL_SRC_HIP"; }
@@ -40,6 +40,11 @@ public:
   void ResetContext();
   bool IsContextChangeRequired();
   void SetContextToCurrentThread();
+  void CreateEvent(void **event, int flags);
+  void RecordEvent(void *event, int stream);
+  void WaitForEvent(void *event, int stream, int flags=0);
+  void DestroyEvent(void *event);
+  void EventSychronize(void *event);
 
 private:
   LoaderHIP* ld_;
@@ -47,9 +52,9 @@ private:
   hipCtx_t ctx_;
   hipDevice_t dev_;
   hipDevice_t peers_[IRIS_MAX_NDEVS];
+  hipStream_t streams_[IRIS_MAX_DEVICE_NQUEUES];
   int peers_count_;
   hipModule_t module_;
-  hipError_t err_;
   int ordinal_;
   int devid_;
   unsigned int shared_mem_bytes_;

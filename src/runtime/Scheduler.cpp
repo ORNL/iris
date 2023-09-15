@@ -151,6 +151,9 @@ void Scheduler::SubmitTask(Task* task) {
       devs[0] = devs_[brs_policy];
     }
   } else policies_->GetPolicy(brs_policy, opt)->GetDevices(task, devs, &ndevs);
+  if (ndevs == 1) {
+    task->set_recommended_dev(devs[0]->devno());
+  }
   if (ndevs == 0) {
     int dev_default = platform_->device_default();
     _trace("no device for policy[0x%x], run the task on device[%d]", brs_policy, dev_default);

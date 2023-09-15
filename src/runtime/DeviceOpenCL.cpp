@@ -212,6 +212,7 @@ int DeviceOpenCL::MemFree(void* mem) {
 
 int DeviceOpenCL::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag) {
   cl_mem clmem = (cl_mem) mem->arch(this);
+  int stream_index=0;
   if (dim == 2 || dim ==3) {
       size_t host_row_pitch = elem_size * host_sizes[0];
       size_t host_slice_pitch   = host_sizes[1] * host_row_pitch;
@@ -236,7 +237,7 @@ int DeviceOpenCL::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_siz
 #endif
   }
   else {
-      _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), clmem, off[0], size, host, q_);
+      _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), clmem, off[0], size, host, stream_index);
       err_ = ld_->clEnqueueWriteBuffer(clcmdq_, clmem, CL_TRUE, off[0], size, host, 0, NULL, NULL);
 #if 0
       printf("H2D: Dev%d: ", devno_);
@@ -257,6 +258,7 @@ int DeviceOpenCL::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_siz
 
 int DeviceOpenCL::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag) {
   cl_mem clmem = (cl_mem) mem->arch(this);
+  int stream_index=0;
   if (dim == 2 || dim ==3) {
       size_t host_row_pitch = elem_size * host_sizes[0];
       size_t host_slice_pitch   = host_sizes[1] * host_row_pitch;
@@ -269,7 +271,7 @@ int DeviceOpenCL::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_siz
       err_ = ld_->clEnqueueReadBufferRect(clcmdq_, clmem, CL_TRUE, buffer_origin, host_origin, region, dev_row_pitch, dev_slice_pitch, host_row_pitch, host_slice_pitch, host, 0, NULL, NULL);
   }
   else {
-      _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), clmem, off[0], size, host, q_);
+      _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), clmem, off[0], size, host, stream_index);
       err_ = ld_->clEnqueueReadBuffer(clcmdq_, clmem, CL_TRUE, off[0], size, host, 0, NULL, NULL);
 #if 0
       printf("D2H: Dev:%d: ", devno_);
@@ -400,7 +402,7 @@ int DeviceOpenCL::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws
   if (kernel->is_vendor_specific_kernel(devno_)) {
       if (host2opencl_ld_->iris_host2opencl_launch_with_obj) {
           host2opencl_ld_->SetKernelPtr(kernel->GetParamWrapperMemory(), kernel->name());
-          host2opencl_ld_->iris_host2opencl_launch_with_obj(
+          host2opencl_ld_->iris_host2opencl_launch_with_obj(NULL,
                   kernel->GetParamWrapperMemory(), ocldevno_, dim, off[0], gws[0]);
           return IRIS_SUCCESS; 
       }

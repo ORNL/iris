@@ -33,6 +33,7 @@ void Command::set_params_map(int *pmap) {
 }
 
 void Command::Clear(bool init) {
+  n_mems_ = 0;
   host_ = NULL;
   params_map_ = NULL;
   kernel_ = NULL;
@@ -51,7 +52,6 @@ void Command::Clear(bool init) {
   selector_kernel_params_ = NULL;
   time_ = 0.0;
   internal_memory_transfer_ = false;
-  kernel_args_ = NULL;
   kernel_nargs_ = 0;
   last_ = false;
   selector_kernel_ = NULL;
@@ -68,6 +68,7 @@ void Command::Clear(bool init) {
     kernel_nargs_max_ = IRIS_CMD_KERNEL_NARGS_MAX;
     kernel_args_ = new KernelArg[kernel_nargs_max_];
     for (int i = 0; i < kernel_nargs_max_; i++) {
+      kernel_args_[i].proactive = false;
       kernel_args_[i].mem = NULL;
     }
   }
@@ -127,6 +128,7 @@ Command* Command::CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off,
   cmd->kernel_nargs_max_ = kernel->nargs();
   cmd->kernel_nargs_ = kernel->nargs();
   cmd->dim_ = dim;
+  kernel->set_task(task);
   for (int i = 0; i < dim; i++) {
     cmd->off_[i] = off ? off[i] : 0ULL;
     cmd->gws_[i] = gws[i];
@@ -145,6 +147,7 @@ Command* Command::CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off,
   cmd->kernel_ = kernel;
   cmd->dim_ = dim;
   cmd->name_ = kernel->name();
+  kernel->set_task(task);
   for (int i = 0; i < dim; i++) {
     cmd->off_[i] = off ? off[i] : 0ULL;
     cmd->gws_[i] = gws[i];
@@ -184,6 +187,7 @@ Command* Command::CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off,
     if (mem->GetMemHandlerType() == IRIS_DMEM) kernel->add_dmem((DataMem *)mem, i, param_info);
     if (mem->GetMemHandlerType() == IRIS_DMEM_REGION) kernel->add_dmem_region((DataMemRegion *)mem, i, param_info);
     arg->mem = mem;
+    arg->mem_index = cmd->n_mems_; cmd->n_mems_++;
     arg->off = mem_off;
     if (params_off) arg->off = params_off[i];
     arg->mode = param_info;

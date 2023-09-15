@@ -43,6 +43,11 @@ int iris_synchronize() {
   return Platform::GetPlatform()->Synchronize();
 }
 
+int iris_set_asynchronous(int flag) {
+ Platform::GetPlatform()->set_async((bool)flag);
+ return IRIS_SUCCESS;
+}
+
 int iris_env_set(const char* key, const char* value) {
   return Platform::GetPlatform()->EnvironmentSet(key, value, true);
 }
@@ -110,6 +115,11 @@ int iris_task_malloc(iris_task task, iris_mem mem) {
 
 int iris_task_cmd_reset_mem(iris_task task, iris_mem mem, uint8_t reset) {
   return Platform::GetPlatform()->TaskMemResetInput(task, mem, reset);
+}
+
+void iris_task_disable_asynchronous(iris_task brs_task) {
+    Task *task = Platform::GetPlatform()->get_task_object(brs_task);
+    task->set_async(false);
 }
 
 int iris_task_get_metadata(iris_task brs_task, int index) {

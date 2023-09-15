@@ -17,6 +17,8 @@ Task::Task(Platform* platform, int type, const char* name) {
   //printf("Creating task:%lu:%s ptr:%p\n", uid(), name, this);
   is_kernel_launch_disabled_ = false;
   type_ = type;
+  recommended_stream_ = -1;
+  recommended_dev_ = -1;
   ncmds_ = 0;
   disable_consistency_ = false;
   cmd_kernel_ = NULL;
@@ -35,16 +37,23 @@ Task::Task(Platform* platform, int type, const char* name) {
   system_ = false;
   internal_memory_transfer_ = false;
   arch_ = NULL;
-  depends_uids_ = NULL;
   meta_data_[0] = meta_data_[1] = meta_data_[2] = meta_data_[3] = -1;
+  //parent
+  depends_uids_ = NULL;
   depends_max_ = 1024;
   ndepends_ = 0;
+  // childs
+  childs_uids_ = NULL;
+  childs_max_ = 1024;
+  nchilds_ = 0;
+
   given_name_ = name != NULL;
   profile_data_transfers_ = false;
   name_="";
   if (name) name_ = std::string(name);
   status_ = IRIS_NONE;
 
+  pthread_mutex_init(&stream_mutex_, NULL);
   pthread_mutex_init(&mutex_pending_, NULL);
   pthread_mutex_init(&mutex_executable_, NULL);
   pthread_mutex_init(&mutex_complete_, NULL);
@@ -53,7 +62,8 @@ Task::Task(Platform* platform, int type, const char* name) {
   brs_policy_ = iris_default;
   set_object_track(Platform::GetPlatform()->task_track_ptr());
   platform_->task_track().TrackObject(this, uid());
-  _trace("Task created %lu %s %p", uid(), name_, this);
+  async_execution_ = platform_->is_async(); // Same as platform by default
+  _trace("Task created %lu %s %p", uid(), name_.c_str(), this);
 }
 
 Task::~Task() {
@@ -62,6 +72,7 @@ Task::~Task() {
   _debug2("Task deleted %lu %s %p ref_cnt:%d", uid(), name(), this, ref_cnt());
   for (int i = 0; i < ncmds_; i++) delete cmds_[i];
   if (depends_uids_) delete [] depends_uids_;
+  pthread_mutex_destroy(&stream_mutex_);
   pthread_mutex_destroy(&mutex_pending_);
   pthread_mutex_destroy(&mutex_executable_);
   pthread_mutex_destroy(&mutex_complete_);
@@ -318,8 +329,40 @@ void Task::AddDepend(Task* task, unsigned long uid) {
     delete [] old_uids;
   } 
   depends_uids_[ndepends_] = uid;
+  if(platform_->get_enable_proactive() 
+		&& std::string(this->name()).find("Graph") == std::string::npos  
+		&& std::string(this->name()).find("flush-out") == std::string::npos ) {
+	task->AddChild(this, this->uid());
+  }
   ndepends_++;
 }
+
+void Task::AddChild(Task* task, unsigned long uid) {
+  if (childs_uids_ == NULL) {
+      childs_uids_ = new unsigned long[childs_max_];
+  }
+  for (int i = 0; i < nchilds_; i++) if (uid == childs_uids_[i]) return;
+  if (nchilds_ == childs_max_ - 1) {
+    unsigned long *old_uids = childs_uids_;
+    childs_max_ *= 2;
+    childs_uids_ = new unsigned long[childs_max_];
+    memcpy(childs_uids_, old_uids, nchilds_*sizeof(unsigned long));
+    delete [] old_uids;
+  }
+
+  childs_uids_[nchilds_] = uid;
+  nchilds_++;
+  //if (platform_->task_track().IsObjectExists(uid))
+  //    task->Retain();
+}
+
+// One call to add all the childs by tracking the parents
+void Task::AddAllChilds() {
+  for (int i = 0; i < ndepends_; i++) 
+	platform_->get_task_object(depends_uids_[i])->AddChild(this, this->uid());
+}
+
+
 
 /*
 void Task::RemoveDepend(Task* task) {
@@ -331,6 +374,9 @@ void Task::RemoveDepend(Task* task) {
     }
 }
 */
+
+
+
 
 void Task::Submit(int brs_policy, const char* opt, int sync) {
   status_ = IRIS_NONE;

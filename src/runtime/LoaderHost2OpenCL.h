@@ -27,7 +27,7 @@ public:
   int (*iris_host2opencl_kernel_with_obj)(void *obj, const char* name);
   int (*iris_host2opencl_setarg_with_obj)(void *obj, int idx, size_t size, void* value);
   int (*iris_host2opencl_setmem_with_obj)(void *obj, int idx, void* mem);
-  int (*iris_host2opencl_launch_with_obj)(void *obj, int devno, int dim, size_t off, size_t gws);
+  int (*iris_host2opencl_launch_with_obj)(void *stream, void *obj, int devno, int dim, size_t off, size_t gws);
   char *suffix_;
 };
 

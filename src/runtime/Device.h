@@ -4,7 +4,10 @@
 #include "Debug.h"
 #include "Config.h"
 #include "Timer.h"
+//#include "CPUEvent.h"
 #include <map>
+#include <vector>
+using namespace std;
 
 #ifndef IRIS_ASYNC_STREAMING
 #define IRIS_SYNC_EXECUTION
@@ -23,6 +26,11 @@ class Task;
 class Timer;
 class Worker;
 
+enum StreamPolicy {
+    STREAM_POLICY_DEFAULT,
+    STREAM_POLICY_SAME_FOR_TASK,
+};
+typedef void (*CallBackType)(void *stream, int status, void *data);
 class Device {
 public:
   Device(int devno, int platform);
@@ -38,6 +46,16 @@ public:
   virtual void RegisterPin(void *host, size_t size) { }
   void ExecuteMalloc(Command* cmd);
   void RegisterHost(BaseMem *mem);
+  virtual void CreateEvent(void **event, int flags);
+  virtual void RecordEvent(void *event, int stream);
+  void RecordEvent(void **event, int stream);
+  virtual void WaitForEvent(void *event, int stream, int flags=0);
+  virtual void DestroyEvent(void *event);
+  virtual void EventSychronize(void *event);
+  void ProactiveTransfers(Task *task, Command *cmd);
+  void WaitForInputAvailability(int devno, Task *task, Command *cmd);
+  template <typename DMemType>
+  void WaitForDataAvailability(int devno, Task *task, DMemType *mem);
   template <typename DMemType>
   void InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem);
   void ExecuteMemResetInput(Task *task, Command* cmd);
@@ -62,6 +80,7 @@ public:
 
   void GetPossibleDevices(int devno, int *nddevs, 
           int &d2d_dev, int &cpu_dev, int &non_cpu_dev);
+  virtual int RegisterCallback(int stream, CallBackType callback_fn, void *data, int flags=0);
   int RegisterCommand(int tag, command_handler handler);
   int RegisterHooks();
 
@@ -83,7 +102,8 @@ public:
   virtual int KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, size_t off) = 0;
   virtual int KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws) = 0;
   virtual int Synchronize() = 0;
-  virtual int AddCallback(Task* task) = 0;
+  virtual int AddCallback(Task* task);
+  static void Callback(void *stream, int status, void* data);
   virtual int Custom(int tag, char* params) { return IRIS_SUCCESS; }
   virtual int RecreateContext() { return IRIS_ERROR; }
   virtual bool SupportJIT() { return true; }
@@ -93,6 +113,9 @@ public:
 
   void set_shared_memory_buffers(bool flag=true) { shared_memory_buffers_ = flag; }
   bool is_shared_memory_buffers() { return shared_memory_buffers_ && can_share_host_memory_; }
+  void set_async(bool flag=true) { async_ = flag; }
+  template <class Task> bool is_async(Task *task) { return is_async() && task->is_async(); }
+  bool is_async() { return async_; }
   int platform() { return platform_; }
   int devno() { return devno_; }
   int type() { return type_; }
@@ -108,7 +131,17 @@ public:
   int ok() { return errid_; }
   void set_worker(Worker* worker) { worker_ = worker; }
   Worker* worker() { return worker_; }
+  int GetStream(Task *task);
+  int GetStream(Task *task, BaseMem *mem);
   double Now() { return timer_->Now(); }
+private:
+  int get_new_stream_queue(int offset=0) {
+    unsigned long new_current_queue;
+    do {
+        new_current_queue = current_queue_ + 1;
+    } while (!__sync_bool_compare_and_swap(&current_queue_, current_queue_, new_current_queue));
+    return new_current_queue%(nqueues_-offset);
+  }
 protected:
   int devno_;
   int platform_;
@@ -122,9 +155,11 @@ protected:
   size_t max_work_group_size_;
   size_t max_work_item_sizes_[3];
   int max_block_dims_[3];
+  Task **dev_2_child_task_;
   int nqueues_;
-  int q_;
   int errid_;
+  int current_queue_;
+  int n_copy_engines_;
 
   char kernel_path_[256];
 
@@ -134,6 +169,7 @@ protected:
   bool can_share_host_memory_;
   bool is_d2d_possible_;
   bool native_kernel_not_exists_;
+  bool async_;
 
   Worker* worker_;
   Timer* timer_;
@@ -143,6 +179,7 @@ protected:
   hook_command hook_command_post_;
 
   std::map<int, command_handler> cmd_handlers_;
+  StreamPolicy stream_policy_;
 };
 
 } /* namespace rt */

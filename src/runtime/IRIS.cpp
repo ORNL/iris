@@ -89,6 +89,9 @@ Task::Task(const char *name, bool perm, bool retainable)
     if (retainable) iris_task_retain(task_, !retainable);
 #endif
 }
+void Task::disable_async() {
+    return iris_task_disable_asynchronous(task_);
+}
 int Task::set_order(int *order) {
     return iris_task_kernel_dmem_fetch_order(task_, order);
 }

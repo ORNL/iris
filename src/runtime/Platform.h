@@ -228,6 +228,8 @@ public:
   Kernel *get_kernel_object(iris_kernel brs_kernel) { return (Kernel *)kernel_track_.GetObject(brs_kernel.uid); }
   int nprofilers() { return nprofilers_; }
   bool is_scheduling_history_enabled() { return enable_scheduling_history_; }
+  bool is_async() { return async_; }
+  void set_async(bool flag=true) { async_ = flag; }
   SchedulingHistory* scheduling_history() { return scheduling_history_; }
   double time_app() { return time_app_; }
   double time_init() { return time_init_; }
@@ -236,6 +238,8 @@ public:
   void disable_d2d() { disable_d2d_ = true; }
   void enable_d2d() { disable_d2d_ = false; }
   bool is_d2d_disabled() { return disable_d2d_; }
+  bool is_kernel_launch_disabled() { return disable_kernel_launch_; }
+  void set_kernel_launch_disabled(bool flag) { disable_kernel_launch_ = flag; }
   void ProfileCompletedTask(Task *task); 
   hook_task hook_task_pre() { return hook_task_pre_; }
   hook_task hook_task_post() { return hook_task_post_; }
@@ -245,6 +249,8 @@ public:
   BaseMem* GetMem(iris_mem brs_mem);
   BaseMem* GetMem(void* host, size_t* off);
   shared_ptr<History> CreateHistory(string kname);
+  bool get_enable_proactive(){ return enable_proactive_;}
+  void set_enable_proactive(bool enable_proactive){ enable_proactive_ = enable_proactive;}
 
 private:
   int SetDevsAvailable();
@@ -276,6 +282,7 @@ private:
   int devs_enabled_[IRIS_MAX_NDEVS];
   int ndevs_enabled_;
   int nfailures_;
+  bool async_;
 
   std::vector<LoaderHost2OpenCL*> loaderHost2OpenCL_;
   LoaderHost2HIP * loaderHost2HIP_;
@@ -320,6 +327,7 @@ private:
 
   bool enable_scheduling_history_;
   bool disable_d2d_;
+  bool disable_kernel_launch_;
   bool release_task_flag_;
   SchedulingHistory* scheduling_history_;
 
@@ -336,6 +344,8 @@ private:
   double time_app_;
   double time_init_;
   char tmp_dir_[263];
+  bool enable_proactive_;
+
 private:
   static shared_ptr<Platform> singleton_;
   static std::once_flag flag_singleton_;

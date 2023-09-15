@@ -54,9 +54,6 @@ void DeviceOpenMP::TaskPre(Task *task) {
             default: break;
         }
         if (hook_command_post_) hook_command_post_(cmd);
-#ifndef IRIS_SYNC_EXECUTION
-        if (cmd->last()) AddCallback(task);
-#endif
     }
 }
 
@@ -278,7 +275,8 @@ int DeviceOpenMP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws
   /*
   ld_->SetKernelPtr(kernel->GetParamWrapperMemory(), kernel->name());
   if (ld_->iris_openmp_launch_with_obj)
-    return ld_->iris_openmp_launch_with_obj(kernel->GetParamWrapperMemory(), 0, dim, off[0], gws[0]);
+    return ld_->iris_openmp_launch_with_obj(NULL, 
+            kernel->GetParamWrapperMemory(), 0, dim, off[0], gws[0]);
   if (ld_->iris_openmp_launch)
     return ld_->iris_openmp_launch(dim, off[0], gws[0]);
     */

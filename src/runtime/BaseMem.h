@@ -29,6 +29,7 @@ namespace rt {
                 track()->TrackObject(this, uid());
                 _trace("Memory object is Created :%lu:%p", uid(), this);
             }
+            void SetMemHandlerType(MemHandlerType type) { handler_type_ = type; }
             MemHandlerType GetMemHandlerType() { return handler_type_; }
             virtual ~BaseMem() { 
                 _trace("Memory object is deleted:%lu:%p", uid(), this);

@@ -18,7 +18,7 @@ namespace CLinkage {
     int iris_openmp_kernel_with_obj(void *obj, const char* name);
     int iris_openmp_setarg_with_obj(void *obj, int idx, size_t size, void* value);
     int iris_openmp_setmem_with_obj(void *obj, int idx, void* mem);
-    int iris_openmp_launch_with_obj(void *obj, int devno, int dim, size_t off, size_t gws);
+    int iris_openmp_launch_with_obj(void *stream, void *obj, int devno, int dim, size_t off, size_t gws);
     }
 }
 namespace iris {

@@ -54,6 +54,7 @@ Platform::Platform() {
   disable_d2d_ = false;
   finalize_ = false;
   release_task_flag_ = true;
+  async_ = false;
   nplatforms_ = 0;
   ndevs_ = 0;
   ndevs_enabled_ = 0;
@@ -90,6 +91,8 @@ Platform::Platform() {
   hook_command_post_ = NULL;
   scheduling_history_ = NULL;
   pthread_mutex_init(&mutex_, NULL);
+  enable_proactive_ = true;
+  disable_kernel_launch_ = false;
 }
 
 Platform::~Platform() {
@@ -169,6 +172,16 @@ int Platform::Init(int* argc, char*** argv, int sync) {
 
   SetDevsAvailable();
 
+  char *disable_kernel_launch = NULL;
+  EnvironmentGet("DISABLE_KERNEL_LAUNCH", &disable_kernel_launch, NULL);
+  if (disable_kernel_launch != NULL && atoi(disable_kernel_launch) == 1)
+      set_kernel_launch_disabled(true);
+  char *async = NULL;
+  EnvironmentGet("ASYNC", &async, NULL);
+  if (async != NULL && atoi(async) == 1)
+      set_async(true);
+  if (is_async()) 
+      _info("Asynchronous is enabled");
   char* archs = NULL;
   EnvironmentGet("ARCHS", &archs, NULL);
   _info("IRIS architectures[%s]", archs);
@@ -1552,6 +1565,13 @@ int Platform::GraphSubmit(iris_graph brs_graph, int brs_policy, int sync) {
   //graph->RecordStartTime(devs_[0]->Now());
   for (std::vector<Task*>::iterator I = tasks->begin(), E = tasks->end(); I != E; ++I) {
     Task* task = *I;
+/* 
+    printf("Task: %s\n", task->name());
+    for(int i = 0; i < task->ndepends(); i++)
+        printf("    Parents %d - %s\n", i, task->depend(i)->name());
+    for(int i = 0; i < task->nchilds(); i++)
+        printf("    Childs %d - %s\n", i, task->Child(i)->name());
+*/ 
     //preference is to honour the policy embedded in the task-graph.
     if (task->brs_policy() == iris_default) {
       task->set_brs_policy(brs_policy);

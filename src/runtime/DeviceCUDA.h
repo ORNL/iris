@@ -22,6 +22,7 @@ public:
   int MemAlloc(void** mem, size_t size, bool reset=false);
   int MemFree(void* mem);
   void RegisterPin(void *host, size_t size);
+  int RegisterCallback(int stream, CallBackType callback_fn, void* data, int flags=0);
   void EnablePeerAccess();
   void SetPeerDevices(int *peers, int count);
   void MemCpy3D(CUdeviceptr dev, uint8_t *host, size_t *off, 
@@ -37,8 +38,12 @@ public:
   int KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, size_t off);
   int KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws);
   int Synchronize();
-  int AddCallback(Task* task);
   int Custom(int tag, char* params);
+  void CreateEvent(void **event, int flags);
+  void RecordEvent(void *event, int stream);
+  void WaitForEvent(void *event, int stream, int flags=0);
+  void DestroyEvent(void *event);
+  void EventSychronize(void *event);
 
   const char* kernel_src() { return "KERNEL_SRC_CUDA"; }
   const char* kernel_bin() { return "KERNEL_BIN_CUDA"; }
@@ -54,7 +59,6 @@ public:
   void SetContextToCurrentThread();
 
 private:
-  static void Callback(CUstream stream, CUresult status, void* data);
   void ClearGarbage();
 
 private:
@@ -66,7 +70,6 @@ private:
   CUcontext ctx_;
   CUstream streams_[IRIS_MAX_DEVICE_NQUEUES];
   CUmodule module_;
-  CUresult err_;
   unsigned int shared_mem_bytes_;
   unsigned int shared_mem_offs_[IRIS_MAX_KERNEL_NARGS];
   void* params_[IRIS_MAX_KERNEL_NARGS];
