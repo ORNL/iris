@@ -180,9 +180,11 @@ int DeviceCUDA::Init() {
 #endif
   //err = ld_->cuCtxEnablePeerAccess(ctx_, 0);
   _cuerror(err);
-  for (int i = 0; i < nqueues_; i++) {
-    err = ld_->cuStreamCreate(streams_ + i, CU_STREAM_NON_BLOCKING);
-    _cuerror(err);
+  if (is_async()) {
+      for (int i = 0; i < nqueues_; i++) {
+          err = ld_->cuStreamCreate(streams_ + i, CU_STREAM_NON_BLOCKING);
+          _cuerror(err);
+      }
   }
   host2cuda_ld_->set_dev(devno(), model());
   host2cuda_ld_->init();
@@ -495,10 +497,10 @@ int DeviceCUDA::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
       }
   }
   _trace("Completed D2H DT of %sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] size[%lu] host[%p]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, size, host);
-  ASSERT(!error_occured && "CUDA Error occured");
   if (error_occured){
    _error("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, off[0], size, host, stream_index);
    worker_->platform()->IncrementErrorCount();
+   ASSERT(!error_occured && "CUDA Error occured");
    return IRIS_ERROR;
   }
   return IRIS_SUCCESS;
@@ -631,7 +633,7 @@ void DeviceCUDA::CheckVendorSpecificKernel(Kernel* kernel) {
 }
 int DeviceCUDA::KernelLaunchInit(Command *cmd, Kernel* kernel) {
     int stream_index = 0;
-    if (is_async())
+    if (is_async(kernel->task()))
         stream_index = GetStream(kernel->task()); //task->uid() % nqueues_; 
     host2cuda_ld_->launch_init(streams_[stream_index], kernel->GetParamWrapperMemory(), cmd);
     return IRIS_SUCCESS;
@@ -647,20 +649,32 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
         _trace("Context wrong for Kernel launch Context Switch: %p %p", ctx, ctx_);
     }
 #endif
+  if (IsContextChangeRequired()) {
+      ld_->cuCtxSetCurrent(ctx_);
+  }
   CUresult err;
   int stream_index = 0;
-  if (is_async(kernel->task()))
+  CUstream *kstream = NULL;
+  if (is_async(kernel->task())) {
       stream_index = GetStream(kernel->task()); //task->uid() % nqueues_; 
+      kstream = &streams_[stream_index];
+  }
   if (kernel->is_vendor_specific_kernel(devno_)) {
-     if (host2cuda_ld_->host_launch(streams_[stream_index], kernel->name(), 
+     if (host2cuda_ld_->host_launch((void **)kstream, 1, kernel->name(), 
                  kernel->GetParamWrapperMemory(), 
                  dim, off, gws) == IRIS_SUCCESS) {
          if (!is_async(kernel->task())) {
              err = ld_->cuStreamSynchronize(0);
              _cuerror(err);
+             if (err != CUDA_SUCCESS){
+                 _error("dev[%d][%s] task[%ld:%s] kernel launch::%ld:%s failed q[%d]", devno_, name_, kernel->task()->uid(), kernel->task()->name(), kernel->uid(), kernel->name(), stream_index);
+                 worker_->platform()->IncrementErrorCount();
+                 return IRIS_ERROR;
+             }
          }
          return IRIS_SUCCESS;
      }
+     worker_->platform()->IncrementErrorCount();
      return IRIS_ERROR;
      /*
      if(host2cuda_ld_->iris_host2cuda_launch_with_obj) {

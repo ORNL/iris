@@ -126,13 +126,14 @@ namespace iris {
             }
             return IRIS_ERROR;
         }
-        int BoilerPlateHostInterfaceLoader::host_launch(void *stream, const char *kname, void *param_mem, int dim, size_t *off, size_t *gws) 
+        int BoilerPlateHostInterfaceLoader::host_launch(void **stream, int nstreams, const char *kname, void *param_mem, int dim, size_t *off, size_t *gws) 
         {
             if(iris_host_launch_with_obj) {
+                int dev_info = nstreams << 16 | dev();
                 SetKernelPtr(param_mem, kname);
                 int status = iris_host_launch_with_obj(
                         stream, 
-                        param_mem, dev(),  
+                        param_mem, dev_info,  
                         dim, off[0], gws[0]);
                 return IRIS_SUCCESS;
             }

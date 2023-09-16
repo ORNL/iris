@@ -96,9 +96,11 @@ int DeviceHIP::Init() {
   err = ld_->hipCtxCreate(&ctx_, hipDeviceScheduleAuto, ordinal_);
   EnablePeerAccess();
   _hiperror(err);
-  for (int i = 0; i < nqueues_; i++) {
-    err = ld_->hipStreamCreate(streams_ + i);
-    _hiperror(err);
+  if (is_async()) {
+      for (int i = 0; i < nqueues_; i++) {
+          err = ld_->hipStreamCreate(streams_ + i);
+          _hiperror(err);
+      }
   }
   err = ld_->hipGetDevice(&devid_);
   _hiperror(err);
@@ -508,7 +510,7 @@ void DeviceHIP::CheckVendorSpecificKernel(Kernel *kernel) {
 
 int DeviceHIP::KernelLaunchInit(Command *cmd, Kernel* kernel) {
     int stream_index = 0;
-    if (is_async())
+    if (is_async(kernel->task()))
         stream_index = GetStream(kernel->task()); //task->uid() % nqueues_; 
     host2hip_ld_->launch_init(streams_[stream_index], kernel->GetParamWrapperMemory(), cmd);
     return IRIS_SUCCESS;
@@ -528,18 +530,29 @@ int DeviceHIP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, s
   atleast_one_command_ = true;
   hipError_t err;
   int stream_index=0;
-  if (is_async(kernel->task()))
+  hipStream_t *kstream = NULL;
+  if (is_async(kernel->task())) {
       stream_index = GetStream(kernel->task()); //kernel->task()->uid() % nqueues_; 
+      kstream = &streams_[stream_index];
+  }
+  if (IsContextChangeRequired()) {
+      ld_->hipCtxSetCurrent(ctx_);
+  }
   if (kernel->is_vendor_specific_kernel(devno_)) {
-     if (host2hip_ld_->host_launch(streams_[stream_index], kernel->name(), 
+     if (host2hip_ld_->host_launch((void **)kstream, 1, kernel->name(), 
                  kernel->GetParamWrapperMemory(), 
                  dim, off, gws) == IRIS_SUCCESS) {
          if (!is_async(kernel->task())) {
              err = ld_->hipDeviceSynchronize();
              _hiperror(err);
+             if (err != hipSuccess){
+               worker_->platform()->IncrementErrorCount();
+               return IRIS_ERROR;
+             }
          }
          return IRIS_SUCCESS;
      }
+     worker_->platform()->IncrementErrorCount();
      return IRIS_ERROR;
      /*
   if (kernel->is_vendor_specific_kernel(devno_) && host2hip_ld_->iris_host2hip_launch_with_obj) {
