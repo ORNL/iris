@@ -43,6 +43,11 @@ int iris_synchronize() {
   return Platform::GetPlatform()->Synchronize();
 }
 
+int iris_set_stream_policy(StreamPolicy policy) {
+ Platform::GetPlatform()->set_stream_policy(policy);
+ return IRIS_SUCCESS;
+}
+
 int iris_set_asynchronous(int flag) {
  Platform::GetPlatform()->set_async((bool)flag);
  return IRIS_SUCCESS;
@@ -115,6 +120,12 @@ int iris_task_malloc(iris_task task, iris_mem mem) {
 
 int iris_task_cmd_reset_mem(iris_task task, iris_mem mem, uint8_t reset) {
   return Platform::GetPlatform()->TaskMemResetInput(task, mem, reset);
+}
+
+int iris_task_set_stream_policy(iris_task brs_task, StreamPolicy policy) {
+ Task *task = Platform::GetPlatform()->get_task_object(brs_task);
+ if (task != NULL) task->set_stream_policy(policy);
+ return IRIS_SUCCESS;
 }
 
 void iris_task_disable_asynchronous(iris_task brs_task) {

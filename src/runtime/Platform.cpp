@@ -79,6 +79,7 @@ Platform::Platform() {
   loaderHexagon_ = NULL;
   arch_available_ = 0UL;
   present_table_ = NULL;
+  stream_policy_ = STREAM_POLICY_DEFAULT;
   recording_ = false;
   enable_profiler_ = getenv("IRIS_PROFILE");
   enable_scheduling_history_ = getenv("IRIS_HISTORY");

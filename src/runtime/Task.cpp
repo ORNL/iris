@@ -23,6 +23,7 @@ Task::Task(Platform* platform, int type, const char* name) {
   disable_consistency_ = false;
   cmd_kernel_ = NULL;
   cmd_last_ = NULL;
+  stream_policy_ = STREAM_POLICY_DEFAULT;
   platform_ = platform;
   if (platform) scheduler_ = platform_->scheduler();
   dev_ = NULL;

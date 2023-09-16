@@ -117,6 +117,8 @@ public:
   unsigned long* depends() { return depends_uids_; }
   Task* depend(int i) { return platform_->get_task_object(depends_uids_[i]); }
   void* arch() { return arch_; }
+  void set_stream_policy(StreamPolicy policy) { stream_policy_ = policy; }
+  StreamPolicy stream_policy() { return stream_policy_; }
   void set_arch(void* arch) { arch_ = arch; }
   void set_pending();
   void set_status_none();
@@ -183,6 +185,7 @@ private:
   bool is_kernel_launch_disabled_;
   bool profile_data_transfers_;
   bool async_execution_;
+  StreamPolicy stream_policy_;
 
   double time_;
   double time_start_;

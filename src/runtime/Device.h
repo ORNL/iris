@@ -28,11 +28,6 @@ class Task;
 class Timer;
 class Worker;
 
-enum StreamPolicy {
-    STREAM_POLICY_DEFAULT,
-    STREAM_POLICY_SAME_FOR_TASK,
-    STREAM_POLICY_GIVE_ALL_STREAMS_TO_KERNEL
-};
 typedef void (*CallBackType)(void *stream, int status, void *data);
 class Device {
 public:
@@ -136,6 +131,8 @@ public:
   Worker* worker() { return worker_; }
   int GetStream(Task *task);
   int GetStream(Task *task, BaseMem *mem);
+  StreamPolicy stream_policy(Task *task);
+  StreamPolicy stream_policy() { return stream_policy_; }
   double Now() { return timer_->Now(); }
 private:
   int get_new_stream_queue(int offset=0) {

@@ -49,14 +49,24 @@ Device::~Device() {
   delete timer_;
 }
 
+StreamPolicy Device::stream_policy(Task *task) 
+{
+    StreamPolicy platform_policy = Platform::GetPlatform()->stream_policy();
+    StreamPolicy device_policy = stream_policy();
+    StreamPolicy task_policy = task->stream_policy();
+    StreamPolicy policy = (device_policy != STREAM_POLICY_DEFAULT) ? device_policy : platform_policy;
+    policy = (task_policy != STREAM_POLICY_DEFAULT) ? task_policy : policy;
+    return policy; 
+}
 int Device::GetStream(Task *task) { 
     task->stream_lock();
     int s_index = task->recommended_stream();
     if (s_index == -1) {
         int stream;
-        if (stream_policy_ == STREAM_POLICY_GIVE_ALL_STREAMS_TO_KERNEL)
+        StreamPolicy policy = stream_policy(task);
+        if (policy == STREAM_POLICY_GIVE_ALL_STREAMS_TO_KERNEL)
             stream = DEFAULT_STREAM_INDEX;
-        else if (stream_policy_ == STREAM_POLICY_SAME_FOR_TASK)
+        else if (policy == STREAM_POLICY_SAME_FOR_TASK)
             stream = get_new_stream_queue();
         else
             stream = get_new_stream_queue(n_copy_engines_) + n_copy_engines_;
@@ -69,9 +79,10 @@ int Device::GetStream(Task *task) {
 }
 
 int Device::GetStream(Task *task, BaseMem *mem) { 
-    if (stream_policy_ == STREAM_POLICY_GIVE_ALL_STREAMS_TO_KERNEL)
+    StreamPolicy policy = stream_policy(task);
+    if (policy == STREAM_POLICY_GIVE_ALL_STREAMS_TO_KERNEL)
         return DEFAULT_STREAM_INDEX;
-    if (stream_policy_ == STREAM_POLICY_SAME_FOR_TASK)
+    if (policy == STREAM_POLICY_SAME_FOR_TASK)
         return GetStream(task);
     int stream = task->recommended_stream();
     if (task->cmd_kernel() != NULL &&
@@ -304,7 +315,8 @@ void Device::ExecuteKernel(Command* cmd) {
   }
 #endif
   //double ktime_start = timer_->GetCurrentTime();
-  if (is_async(cmd->task()) && stream_policy_ == STREAM_POLICY_DEFAULT)
+  StreamPolicy policy = stream_policy(cmd->task());
+  if (is_async(cmd->task()) && policy == STREAM_POLICY_DEFAULT)
       WaitForInputAvailability(devno(), cmd->task(), cmd);
   bool enabled = true;
   if (cmd->task() != NULL && (

@@ -184,6 +184,8 @@ public:
   Scheduler* scheduler() { return scheduler_; }
   Timer* timer() { return timer_; }
   Kernel* null_kernel() { return null_kernel_; }
+  void set_stream_policy(StreamPolicy policy) { stream_policy_ = policy; }
+  StreamPolicy stream_policy() { return stream_policy_; }
   char* app() { return app_; }
   char* host() { return host_; }
   Profiler** profilers() { return profilers_; }
@@ -345,7 +347,7 @@ private:
   double time_init_;
   char tmp_dir_[263];
   bool enable_proactive_;
-
+  StreamPolicy stream_policy_;
 private:
   static shared_ptr<Platform> singleton_;
   static std::once_flag flag_singleton_;
