@@ -41,6 +41,7 @@ Device::Device(int devno, int platform) {
   worker_ = NULL;
   //stream_policy_ = STREAM_POLICY_DEFAULT;
   stream_policy_ = STREAM_POLICY_SAME_FOR_TASK;
+  //stream_policy_ = STREAM_POLICY_GIVE_ALL_STREAMS_TO_KERNEL;
   n_copy_engines_ = 3;
 }
 
@@ -53,7 +54,9 @@ int Device::GetStream(Task *task) {
     int s_index = task->recommended_stream();
     if (s_index == -1) {
         int stream;
-        if (stream_policy_ == STREAM_POLICY_SAME_FOR_TASK)
+        if (stream_policy_ == STREAM_POLICY_GIVE_ALL_STREAMS_TO_KERNEL)
+            stream = DEFAULT_STREAM_INDEX;
+        else if (stream_policy_ == STREAM_POLICY_SAME_FOR_TASK)
             stream = get_new_stream_queue();
         else
             stream = get_new_stream_queue(n_copy_engines_) + n_copy_engines_;
@@ -66,6 +69,8 @@ int Device::GetStream(Task *task) {
 }
 
 int Device::GetStream(Task *task, BaseMem *mem) { 
+    if (stream_policy_ == STREAM_POLICY_GIVE_ALL_STREAMS_TO_KERNEL)
+        return DEFAULT_STREAM_INDEX;
     if (stream_policy_ == STREAM_POLICY_SAME_FOR_TASK)
         return GetStream(task);
     int stream = task->recommended_stream();

@@ -17,8 +17,8 @@ namespace iris {
             INIT_SYM_FN(iris_host_finalize_handles);
             INIT_SYM_FN(iris_host_finalize);
             INIT_SYM_FN(iris_host_launch);
-            INIT_SYM_FN(iris_ffi_launch);
             INIT_SYM_FN(iris_host_launch_with_obj);
+            INIT_SYM_FN(iris_ffi_launch);
         }
         void HostInterfaceLoader::init() 
         {
@@ -202,7 +202,7 @@ namespace iris {
             }
             else if (iris_host_launch) {
                 ffi_data->set_host_launch_type(HOST_LAUNCH_BARE);
-                ffi_data->add_stream(stream); 
+                //ffi_data->add_stream(stream); 
             }
             else if (iris_ffi_launch)
                 ffi_data->set_host_launch_type(HOST_LAUNCH_WITH_FFI_OBJ);

@@ -13,6 +13,8 @@ using namespace std;
 #define IRIS_SYNC_EXECUTION
 #endif //IRIS_ASYNC_STREAMING
 
+#define DEFAULT_STREAM_INDEX -2
+
 namespace iris {
 namespace rt {
 
@@ -29,6 +31,7 @@ class Worker;
 enum StreamPolicy {
     STREAM_POLICY_DEFAULT,
     STREAM_POLICY_SAME_FOR_TASK,
+    STREAM_POLICY_GIVE_ALL_STREAMS_TO_KERNEL
 };
 typedef void (*CallBackType)(void *stream, int status, void *data);
 class Device {

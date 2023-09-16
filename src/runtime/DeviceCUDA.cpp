@@ -300,8 +300,13 @@ int DeviceCUDA::MemD2D(Task *task, BaseMem *mem, void *dst, void *src, size_t si
   bool error_occured = false;
   CUresult err = CUDA_SUCCESS;
   int stream_index = 0;
+  bool async = false;
   if (is_async(task)) {
       stream_index = GetStream(task, mem); //task->uid() % nqueues_; 
+      async = true;
+      if (stream_index == DEFAULT_STREAM_INDEX) { async = false; stream_index = 0; }
+  }
+  if (async) {
       err = ld_->cudaMemcpyAsync((void *)dst_cumem, (void *)src_cumem, size, cudaMemcpyDeviceToDevice, streams_[stream_index]);
       _cuerror(err);
       if (err != CUDA_SUCCESS) error_occured = true;
@@ -334,8 +339,11 @@ int DeviceCUDA::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
   //testMemcpy(ld_);
   CUdeviceptr cumem = (CUdeviceptr) mem->arch(this);
   int stream_index = 0;
+  bool async = false;
   if (is_async(task)) {
       stream_index = GetStream(task, mem); //task->uid() % nqueues_; 
+      async = true;
+      if (stream_index == DEFAULT_STREAM_INDEX) { async = false; stream_index = 0; }
   }
   CUresult err = CUDA_SUCCESS;
   if (dim == 3) {
@@ -346,7 +354,7 @@ int DeviceCUDA::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
       _debug2("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu,%lu,%lu] host_sizes[%lu,%lu,%lu] dev_sizes[%lu,%lu,%lu] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, off[0], off[1], off[2], host_sizes[0], host_sizes[1], host_sizes[2], dev_sizes[0], dev_sizes[1], dev_sizes[2], size, host, stream_index);
        size_t host_row_pitch = elem_size * host_sizes[0];
        void *host_start = (uint8_t *)host + off[0]*elem_size + off[1] * host_row_pitch;
-       if (!is_async(task)) {
+       if (!async) {
            err = ld_->cudaMemcpy2D((void *)cumem, dev_sizes[0]*elem_size, host_start, 
                    host_row_pitch, dev_sizes[0]*elem_size, dev_sizes[1], 
                    cudaMemcpyHostToDevice);
@@ -375,7 +383,7 @@ int DeviceCUDA::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
   }
   else {
       _debug2("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, off[0], size, host, stream_index);
-      if (!is_async(task)) {
+      if (!async) {
           err = ld_->cuMemcpyHtoD(cumem + off[0], host, size);
           _cuerror(err);
           if (err != CUDA_SUCCESS) error_occured = true;
@@ -434,8 +442,11 @@ int DeviceCUDA::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
   }
   CUdeviceptr cumem = (CUdeviceptr) mem->arch(this);
   int stream_index = 0;
+  bool async = false;
   if (is_async(task)) {
       stream_index = GetStream(task, mem); //task->uid() % nqueues_; 
+      async = true;
+      if (stream_index == DEFAULT_STREAM_INDEX) { async = false; stream_index = 0; }
   }
   if (dim == 3) {
       _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu,%lu,%lu] host_sizes[%lu,%lu,%lu] dev_sizes[%lu,%lu,%lu] size[%lu] host[%p]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, off[0], off[1], off[2], host_sizes[0], host_sizes[1], host_sizes[2], dev_sizes[0], dev_sizes[1], dev_sizes[2], size, host);
@@ -445,7 +456,7 @@ int DeviceCUDA::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
     _debug2("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu,%lu,%lu] host_sizes[%lu,%lu,%lu] dev_sizes[%lu,%lu,%lu] size[%lu] host[%p]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, off[0], off[1], off[2], host_sizes[0], host_sizes[1], host_sizes[2], dev_sizes[0], dev_sizes[1], dev_sizes[2], size, host);
     size_t host_row_pitch = elem_size * host_sizes[0];
     void *host_start = (uint8_t *)host + off[0]*elem_size + off[1] * host_row_pitch;
-    if (!is_async(task)) {
+    if (!async) {
         err = ld_->cudaMemcpy2D((void *)host_start, host_sizes[0]*elem_size, (void*)cumem, 
                 dev_sizes[0]*elem_size, dev_sizes[0]*elem_size, dev_sizes[1], 
                 cudaMemcpyDeviceToHost);
@@ -477,7 +488,7 @@ int DeviceCUDA::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
   }
   else {
       _debug2("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, off[0], size, host, stream_index);
-      if (!is_async(task)) {
+      if (!async) {
           err = ld_->cuMemcpyDtoH(host, cumem + off[0], size);
           _cuerror(err);
           if (err != CUDA_SUCCESS) error_occured = true;
@@ -633,8 +644,10 @@ void DeviceCUDA::CheckVendorSpecificKernel(Kernel* kernel) {
 }
 int DeviceCUDA::KernelLaunchInit(Command *cmd, Kernel* kernel) {
     int stream_index = 0;
-    if (is_async(kernel->task()))
+    if (is_async(kernel->task())) {
         stream_index = GetStream(kernel->task()); //task->uid() % nqueues_; 
+        if (stream_index == DEFAULT_STREAM_INDEX) { stream_index = 0; }
+    }
     host2cuda_ld_->launch_init(streams_[stream_index], kernel->GetParamWrapperMemory(), cmd);
     return IRIS_SUCCESS;
 }
@@ -655,15 +668,21 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
   CUresult err;
   int stream_index = 0;
   CUstream *kstream = NULL;
+  bool async = false;
+  int nstreams = 0;
   if (is_async(kernel->task())) {
       stream_index = GetStream(kernel->task()); //task->uid() % nqueues_; 
+      async = true;
+      if (stream_index == DEFAULT_STREAM_INDEX) { async = false; stream_index = 0; }
+      // Though async is set to false, we still pass all streams to kernel to use it
       kstream = &streams_[stream_index];
+      nstreams = IRIS_MAX_DEVICE_NQUEUES - stream_index;
   }
   if (kernel->is_vendor_specific_kernel(devno_)) {
-     if (host2cuda_ld_->host_launch((void **)kstream, 1, kernel->name(), 
+     if (host2cuda_ld_->host_launch((void **)kstream, nstreams, kernel->name(), 
                  kernel->GetParamWrapperMemory(), 
                  dim, off, gws) == IRIS_SUCCESS) {
-         if (!is_async(kernel->task())) {
+         if (!async) {
              err = ld_->cuStreamSynchronize(0);
              _cuerror(err);
              if (err != CUDA_SUCCESS){
@@ -738,7 +757,7 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
     }
   }
   _trace("dev[%d][%s] kernel[%s:%s] dim[%d] grid[%d,%d,%d] block[%d,%d,%d] blockoff[%lu,%lu,%lu] max_arg_idx[%d] shared_mem_bytes[%u] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, grid[0], grid[1], grid[2], block[0], block[1], block[2], blockOff_x, blockOff_y, blockOff_z, max_arg_idx_, shared_mem_bytes_, stream_index);
-  if (!is_async(kernel->task())) {
+  if (!async) {
       err = ld_->cuLaunchKernel(cukernel, grid[0], grid[1], grid[2], block[0], block[1], block[2], shared_mem_bytes_, 0, params_, NULL);
       _cuerror(err);
       if (err != CUDA_SUCCESS){
