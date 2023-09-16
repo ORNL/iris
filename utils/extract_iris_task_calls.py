@@ -334,6 +334,8 @@ static int iris_kernel_idx = -1;
 #define DEVICE_NUM
 #define StreamType void *
 #define STREAM_VAR stream,
+#define StreamTypeKernel void *
+#define STREAM_VAR_KERNEL stream,
 #endif //IRIS_HEXAGON
             ''')
     lines.append('''
@@ -368,6 +370,8 @@ static int iris_kernel_idx = -1;
 #define DEVICE_NUM_TYPE 
 #define StreamType void *
 #define STREAM_VAR stream,
+#define StreamTypeKernel 
+#define STREAM_VAR_KERNEL 
             ''')
     for k,v in data_hash.items():
         lines.append("#define iris_kernel_"+k+" "+k)
@@ -397,6 +401,8 @@ static int iris_kernel_idx = -1;
 #define DEVICE_NUM_TYPE int,
 #define StreamType void *
 #define STREAM_VAR stream,
+#define StreamTypeKernel void *
+#define STREAM_VAR_KERNEL stream,
             ''')
     lines.append("#ifdef HOST2OPENCL")
     for k,v in data_hash.items():
@@ -429,6 +435,8 @@ static int iris_kernel_idx = -1;
 #define DEVICE_NUM_TYPE int,
 #define StreamType hipStream_t
 #define STREAM_VAR stream,
+#define StreamTypeKernel void *
+#define STREAM_VAR_KERNEL stream,
             ''')
     lines.append("#ifdef HOST2HIP")
     for k,v in data_hash.items():
@@ -461,6 +469,8 @@ static int iris_kernel_idx = -1;
 #define DEVICE_NUM_TYPE int,
 #define StreamType CUstream
 #define STREAM_VAR stream,
+#define StreamTypeKernel void *
+#define STREAM_VAR_KERNEL stream,
             ''')
     lines.append("#ifdef HOST2CUDA")
     for k,v in data_hash.items():
@@ -1458,7 +1468,7 @@ def appendKernelSignature(args, lines, data_hash, k_hash, dynamic_linking=True):
         kvar = getKernelParamVairable(k)
         func_sig = "int iris_kernel_"+k+"(HANDLETYPE"
         if args.thread_safe:
-            func_sig = "typedef int (* __iris_kernel_"+k+"_ptr)(HANDLETYPE StreamType STREAM_VAR DEVICE_NUM_TYPE"
+            func_sig = "typedef int (* __iris_kernel_"+k+"_ptr)(HANDLETYPE StreamTypeKernel STREAM_VAR_KERNEL DEVICE_NUM_TYPE"
         if not dynamic_linking:
             func_sig = "int "+k+"(HANDLETYPE"
         params = []
@@ -1865,7 +1875,7 @@ int iris_kernel(const char* name) {
             else:
                 kvar = kvar+"."
             if is_with_obj:
-                lines.append(f"\t\t\t  {fn_name}({handle_var} STREAM_VAR DEVICE_NUM")
+                lines.append(f"\t\t\t  {fn_name}({handle_var} STREAM_VAR_KERNEL DEVICE_NUM")
             else:
                 lines.append(f"\t\t\t  {fn_name}({handle_var}")
             add_conditional_parameters_to_kernel(kvar, k, v, lines)

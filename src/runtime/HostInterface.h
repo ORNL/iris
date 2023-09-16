@@ -62,7 +62,7 @@ namespace iris {
                 int (*iris_host_finalize)();
                 int (*iris_host_launch)(int dim, size_t off, size_t gws);
                 int (*iris_ffi_launch)();
-                int (*iris_host_launch_with_obj)(void *obj, int devno, int dim, size_t off, size_t gws);
+                int (*iris_host_launch_with_obj)(void *stream, void *obj, int devno, int dim, size_t off, size_t gws);
             private:
                 string kernel_env_;
                 int dev_;

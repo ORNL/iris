@@ -131,18 +131,13 @@ namespace iris {
             if(iris_host_launch_with_obj) {
                 SetKernelPtr(param_mem, kname);
                 int status = iris_host_launch_with_obj(
-#ifndef IRIS_SYNC_EXECUTION
                         stream, 
-#endif
                         param_mem, dev(),  
                         dim, off[0], gws[0]);
                 return IRIS_SUCCESS;
             }
             else if(iris_host_launch) {
                 int status = iris_host_launch(
-#ifndef IRIS_SYNC_EXECUTION
-                        stream, 
-#endif
                         dim, off[0], gws[0]);
                 return IRIS_SUCCESS;
             }
@@ -200,17 +195,13 @@ namespace iris {
             if (iris_host_launch_with_obj) {
                 ffi_data->set_host_launch_type(HOST_LAUNCH_WITH_STREAM_DEV);
                 if (model() != iris_openmp) {
-#ifndef IRIS_SYNC_EXECUTION
                     ffi_data->add_stream(stream); 
-#endif
                     ffi_data->add_device(dev_ptr()); 
                 }
             }
             else if (iris_host_launch) {
                 ffi_data->set_host_launch_type(HOST_LAUNCH_BARE);
-#ifndef IRIS_SYNC_EXECUTION
                 ffi_data->add_stream(stream); 
-#endif
             }
             else if (iris_ffi_launch)
                 ffi_data->set_host_launch_type(HOST_LAUNCH_WITH_FFI_OBJ);
