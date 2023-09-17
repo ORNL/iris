@@ -332,9 +332,9 @@ static int iris_kernel_idx = -1;
 #define HANDLETYPE uint64_t,
 #define DEVICE_NUM_TYPE 
 #define DEVICE_NUM
-#define StreamType void *
+#define StreamType void **
 #define STREAM_VAR stream,
-#define StreamTypeKernel void *
+#define StreamTypeKernel void **
 #define STREAM_VAR_KERNEL stream,
 #endif //IRIS_HEXAGON
             ''')
@@ -368,7 +368,7 @@ static int iris_kernel_idx = -1;
 #define HANDLETYPE 
 #define DEVICE_NUM
 #define DEVICE_NUM_TYPE 
-#define StreamType void *
+#define StreamType void **
 #define STREAM_VAR stream,
 #define StreamTypeKernel 
 #define STREAM_VAR_KERNEL 
@@ -399,9 +399,9 @@ static int iris_kernel_idx = -1;
 #define HANDLETYPE void *,
 #define DEVICE_NUM devno,
 #define DEVICE_NUM_TYPE int,
-#define StreamType void *
+#define StreamType void **
 #define STREAM_VAR stream,
-#define StreamTypeKernel void *
+#define StreamTypeKernel void **
 #define STREAM_VAR_KERNEL stream,
             ''')
     lines.append("#ifdef HOST2OPENCL")
@@ -433,9 +433,9 @@ static int iris_kernel_idx = -1;
 #define HANDLETYPE 
 #define DEVICE_NUM devno,
 #define DEVICE_NUM_TYPE int,
-#define StreamType hipStream_t
+#define StreamType hipStream_t *
 #define STREAM_VAR stream,
-#define StreamTypeKernel void *
+#define StreamTypeKernel void **
 #define STREAM_VAR_KERNEL stream,
             ''')
     lines.append("#ifdef HOST2HIP")
@@ -467,9 +467,9 @@ static int iris_kernel_idx = -1;
 #define HANDLETYPE 
 #define DEVICE_NUM devno,
 #define DEVICE_NUM_TYPE int,
-#define StreamType CUstream
+#define StreamType CUstream *
 #define STREAM_VAR stream,
-#define StreamTypeKernel void *
+#define StreamTypeKernel void **
 #define STREAM_VAR_KERNEL stream,
             ''')
     lines.append("#ifdef HOST2CUDA")
