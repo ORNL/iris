@@ -87,6 +87,7 @@ set(IRIS_RUNTIME_SOURCES
   DataMem.cpp
   Mem.cpp
   MemRange.cpp
+  TGPolicy.cpp
   Platform.cpp
   Policies.cpp
   Policy.cpp
@@ -174,6 +175,7 @@ set(IRIS_RUNTIME_HEADERS
   PolicyRoundRobin.h
   Polyhedral.h
   Pool.h
+  TGPolicy.h
   PresentTable.h
   Profiler.h
   ProfilerDOT.h

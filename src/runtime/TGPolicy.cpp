@@ -10,14 +10,13 @@ namespace rt {
 TGPolicy::TGPolicy() {
 }
 
+bool TGPolicy::IsKernelSupported(Task *task, Device *dev) {
+    return task->IsKernelSupported(dev);
+}
+
 TGPolicy::~TGPolicy() {
 }
 
-void TGPolicy::SetScheduler(Scheduler* scheduler) {
-  scheduler_ = scheduler;
-  devs_ = scheduler_->devices();
-  ndevs_ = scheduler_->ndevs();
-}
 
 } /* namespace rt */
 } /* namespace iris */

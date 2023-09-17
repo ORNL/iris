@@ -204,6 +204,7 @@ public:
   static Task* Create(Platform* platform, int type, std::string name) {
     return Create(platform, type, name.c_str());
   }
+  bool IsKernelSupported(Device *dev);
 };
 
 } /* namespace rt */

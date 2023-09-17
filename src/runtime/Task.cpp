@@ -82,7 +82,15 @@ Task::~Task() {
   subtasks_.clear();
   _debug2("released task:%lu:%s released ref_cnt:%d", uid(), name(), ref_cnt());
 }
-
+bool Task::IsKernelSupported(Device *dev)
+{
+    Command *cmd = cmd_kernel();
+    if (cmd == NULL) return true;
+    Kernel *kernel = cmd->kernel();
+    if (kernel == NULL) return true;
+    if (kernel->isSupported(dev)) return true;
+    return false;
+}
 double Task::TimeInc(double t) {
   time_ += t;
   return time_;
