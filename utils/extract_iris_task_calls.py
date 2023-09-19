@@ -435,7 +435,7 @@ static int iris_kernel_idx = -1;
 #define DEVICE_NUM_TYPE int,
 #define StreamType hipStream_t *
 #define STREAM_VAR stream,
-#define StreamTypeKernel void **
+#define StreamTypeKernel hipStream_t *
 #define STREAM_VAR_KERNEL stream,
             ''')
     lines.append("#ifdef HOST2HIP")
@@ -469,7 +469,7 @@ static int iris_kernel_idx = -1;
 #define DEVICE_NUM_TYPE int,
 #define StreamType CUstream *
 #define STREAM_VAR stream,
-#define StreamTypeKernel void **
+#define StreamTypeKernel CUstream *
 #define STREAM_VAR_KERNEL stream,
             ''')
     lines.append("#ifdef HOST2CUDA")
