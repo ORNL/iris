@@ -1,4 +1,4 @@
-#include "PolicyAny.h"
+#include "PolicyMinimum.h"
 #include "Debug.h"
 #include "Scheduler.h"
 #include <stdlib.h>
@@ -9,14 +9,14 @@
 namespace iris {
 namespace rt {
 
-PolicyAny::PolicyAny(Scheduler* scheduler) {
+PolicyMinimum::PolicyMinimum(Scheduler* scheduler) {
   SetScheduler(scheduler);
 }
 
-PolicyAny::~PolicyAny() {
+PolicyMinimum::~PolicyMinimum() {
 }
 
-void PolicyAny::GetDevices(Task* task, Device** devs, int* ndevs) {
+void PolicyMinimum::GetDevices(Task* task, Device** devs, int* ndevs) {
   unsigned long min = ULONG_MAX;
   int min_dev = 0;
   scheduler_->RefreshNTasksOnDevs();

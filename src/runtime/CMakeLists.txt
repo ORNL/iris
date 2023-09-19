@@ -84,11 +84,11 @@ set(IRIS_RUNTIME_SOURCES
   Policies.cpp
   Policy.cpp
   PolicyAll.cpp
-  PolicyAny.cpp
   PolicyData.cpp
   PolicyDefault.cpp
   PolicyDepend.cpp
   PolicyDevice.cpp
+  PolicyMinimum.cpp
   PolicyProfile.cpp
   PolicyRandom.cpp
   PolicyRoundRobin.cpp
@@ -153,7 +153,7 @@ set(IRIS_RUNTIME_HEADERS
   Policies.h
   Policy.h
   PolicyAll.h
-  PolicyAny.h
+  PolicyMinimum.h
   PolicyData.h
   PolicyDefault.h
   PolicyDevice.h

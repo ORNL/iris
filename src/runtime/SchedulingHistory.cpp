@@ -39,6 +39,9 @@ SchedulingHistory::~SchedulingHistory() {
 
 void SchedulingHistory::AddKernel(Command* cmd) {
   //ignore logging kernels at the moment
+  if (cmd->type_init()){
+    printf("not logging initialization -- but performed init on device id %d\n",cmd->task()->dev()->devno());
+  }
   //Add(cmd);
 }
 
@@ -153,7 +156,7 @@ const char* SchedulingHistory::policy_str(int policy) {
     case iris_profile:    return "profile";
     case iris_random:     return "random";
     case iris_pending:    return "pending";
-    case iris_any:        return "any";
+    case iris_minimum:    return "minimum";
     case iris_custom:     return "custom";
     default: break;
   }

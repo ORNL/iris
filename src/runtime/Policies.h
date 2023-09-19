@@ -24,11 +24,11 @@ private:
   Scheduler* scheduler_;
 
   Policy* policy_all_;
-  Policy* policy_any_;
   Policy* policy_data_;
   Policy* policy_default_;
   Policy* policy_depend_;
   Policy* policy_device_;
+  Policy* policy_minimum_;
   Policy* policy_profile_;
   Policy* policy_random_;
   Policy* policy_roundrobin_;

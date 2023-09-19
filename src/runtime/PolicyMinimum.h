@@ -6,10 +6,10 @@
 namespace iris {
 namespace rt {
 
-class PolicyAny : public Policy {
+class PolicyMinimum : public Policy {
 public:
-  PolicyAny(Scheduler* scheduler);
-  virtual ~PolicyAny();
+  PolicyMinimum(Scheduler* scheduler);
+  virtual ~PolicyMinimum();
 
   virtual void GetDevices(Task* task, Device** devs, int* ndevs);
 };
