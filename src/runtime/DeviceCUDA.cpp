@@ -226,7 +226,7 @@ int DeviceCUDA::MemAlloc(void** mem, size_t size, bool reset) {
   //double mtime = timer_->Now();
   CUresult err = ld_->cuMemAlloc(cumem, size);
   //mtime = timer_->Now() - mtime;
-  //printf("CUDA MemAlloc size:%zu ptr:%p time:%f devno:%d\n", size, *cumem, mtime, devno_);
+  //_printf("CUDA MemAlloc dev:%d:%s size:%zu ptr:%p\n", devno_, name_, size, *cumem);
   _cuerror(err);
   if (reset) ld_->cudaMemset(*mem, 0, size);
   //printf("CUDA Malloc: %p size:%d reset:%d\n", *mem, size, reset);
@@ -316,7 +316,7 @@ int DeviceCUDA::MemD2D(Task *task, BaseMem *mem, void *dst, void *src, size_t si
       _cuerror(err);
       if (err != CUDA_SUCCESS) error_occured = true;
   }
-  _debug2("dev[%d][%s] task[%ld:%s] mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] size[%lu] q[%d]", devno_, name_, task->uid(), task->name(), mem->uid(), dst, src, size, stream_index);
+  _trace("dev[%d][%s] task[%ld:%s] mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] size[%lu] q[%d]", devno_, name_, task->uid(), task->name(), mem->uid(), dst, src, size, stream_index);
   ASSERT(!error_occured && "CUDA Error occured");
   if (error_occured) {
       worker_->platform()->IncrementErrorCount();
@@ -453,7 +453,7 @@ int DeviceCUDA::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
       MemCpy3D(cumem, (uint8_t *)host, off, dev_sizes, host_sizes, elem_size, false);
   }
   else if (dim == 2) {
-    _debug2("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu,%lu,%lu] host_sizes[%lu,%lu,%lu] dev_sizes[%lu,%lu,%lu] size[%lu] host[%p]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, off[0], off[1], off[2], host_sizes[0], host_sizes[1], host_sizes[2], dev_sizes[0], dev_sizes[1], dev_sizes[2], size, host);
+    _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu,%lu,%lu] host_sizes[%lu,%lu,%lu] dev_sizes[%lu,%lu,%lu] size[%lu] host[%p]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, off[0], off[1], off[2], host_sizes[0], host_sizes[1], host_sizes[2], dev_sizes[0], dev_sizes[1], dev_sizes[2], size, host);
     size_t host_row_pitch = elem_size * host_sizes[0];
     void *host_start = (uint8_t *)host + off[0]*elem_size + off[1] * host_row_pitch;
     if (!async) {
@@ -487,7 +487,7 @@ int DeviceCUDA::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
 #endif
   }
   else {
-      _debug2("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, off[0], size, host, stream_index);
+      _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, off[0], size, host, stream_index);
       if (!async) {
           err = ld_->cuMemcpyDtoH(host, cumem + off[0], size);
           _cuerror(err);
@@ -507,11 +507,12 @@ int DeviceCUDA::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
           if (err != CUDA_SUCCESS) error_occured = true;
       }
   }
-  _trace("Completed D2H DT of %sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] size[%lu] host[%p]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, size, host);
+  _debug2("Completed D2H DT of %sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] size[%lu] host[%p]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, size, host);
   if (error_occured){
+   _debug2("Error D2H DT of %sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] size[%lu] host[%p]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, size, host);
    _error("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, off[0], size, host, stream_index);
    worker_->platform()->IncrementErrorCount();
-   ASSERT(!error_occured && "CUDA Error occured");
+   assert(!error_occured && "CUDA Error occured");
    return IRIS_ERROR;
   }
   return IRIS_SUCCESS;
@@ -603,6 +604,9 @@ int DeviceCUDA::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, 
       params_[idx] = dev_alloc_ptr;
       dev_ptr = *dev_alloc_ptr; 
   }
+  _debug2("task:%lu:%s idx:%d::%d off:%lu dev_ptr:%p dev_alloc_ptr:%p\n", 
+          kernel->task()->uid(), kernel->task()->name(),
+          idx, kindex, off, dev_ptr, dev_alloc_ptr);
   if (max_arg_idx_ < idx) max_arg_idx_ = idx;
   if (kernel->is_vendor_specific_kernel(devno_)) {
       host2cuda_ld_->setmem(
@@ -678,6 +682,7 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
       kstream = &streams_[stream_index];
       nstreams = IRIS_MAX_DEVICE_NQUEUES - stream_index;
   }
+  _debug2("dev[%d][%s] task[%ld:%s] kernel launch::%ld:%s q[%d]", devno_, name_, kernel->task()->uid(), kernel->task()->name(), kernel->uid(), kernel->name(), stream_index);
   if (kernel->is_vendor_specific_kernel(devno_)) {
      if (host2cuda_ld_->host_launch((void **)kstream, nstreams, kernel->name(), 
                  kernel->GetParamWrapperMemory(), 
