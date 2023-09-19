@@ -62,14 +62,14 @@ namespace iris {
 #endif
         void HostInterfaceLoader::LoadFunction(const char *func_name, const char *symbol) 
         {
-            if (sym_map_fn_.find(func_name) != sym_map_fn_.end()) {
-                *(sym_map_fn_[func_name]) = dlsym(handle(), symbol);
+            if (sym_map_fn_.find(string(func_name)) != sym_map_fn_.end()) {
+                *(sym_map_fn_[string(func_name)]) = dlsym(handle(), symbol);
             }
         }
         void HostInterfaceLoader::LoadFunctionStatic(const char *func_name, void *symbol) 
         {
-            if (sym_map_fn_.find(func_name) != sym_map_fn_.end()) {
-                *(sym_map_fn_[func_name]) = symbol;
+            if (sym_map_fn_.find(string(func_name)) != sym_map_fn_.end()) {
+                *(sym_map_fn_[string(func_name)]) = symbol;
             }
         }
         BoilerPlateHostInterfaceLoader::BoilerPlateHostInterfaceLoader(string kernel_env):
