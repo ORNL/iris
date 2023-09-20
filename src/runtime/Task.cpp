@@ -105,7 +105,7 @@ const char* Task::brs_policy_string() {
     case iris_data: return ("data");
     case iris_default: return ("default");
     case iris_depend: return ("depend");
-    case iris_minimum: return ("minimum");
+    case iris_sdq: return ("sdq");
     case iris_pending: return ("pending");
     case iris_profile: return ("profile");
     case iris_random: return ("random");

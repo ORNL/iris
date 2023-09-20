@@ -590,7 +590,7 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
     int nddevs[IRIS_MAX_NDEVS+1];
     BaseMem* bmem = (BaseMem *)cmd->mem();
     if (bmem->GetMemHandlerType() != IRIS_DMEM) {
-        _error("Flush out is called for unssuported memory handler task:%ld:%s\n", cmd->task()->uid(), cmd->task()->name());
+        _error("Flush out is called for unsupported memory handler task:%ld:%s\n", cmd->task()->uid(), cmd->task()->name());
         return;
     }
     printf("running transfer : %s\n", cmd->task()->name());
@@ -636,6 +636,7 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
         if (Platform::GetPlatform()->is_scheduling_history_enabled()){
           //TODO: clean up
           string cmd_name = "Internal-D2H(" + string(cmd->task()->name()) + ")-from-" + to_string(src_dev->devno());// + "-to-" + string(this->name());
+          cmd->task()->set_dev(src_dev);
           Platform::GetPlatform()->scheduling_history()->Add(cmd, cmd_name, "MemFlushOut", start,end);
         }
 

@@ -119,7 +119,7 @@ list(APPEND TEST_EXES "30_task_info" "test30_task_info" " ")
 endif()
 #[FIXME] Temporarily disabled due to improper configuration.
 #list(APPEND TEST_EXES "31_isaxpy" "test31_isaxpy" "")
-list(APPEND TEST_EXES "32_json3" "test32_json3" "--kernels=ijk --duplicates=0 --buffers-per-kernel=\"ijk:w-r-r\" --kernel-dimensions=ijk:2 --kernel-split=100 --depth=10 --num-tasks=10 --min-width=1 --max-width=1 --logfile=log.txt --repeats=1 --scheduling-policy=minimum --size=128")
+list(APPEND TEST_EXES "32_json3" "test32_json3" "--kernels=ijk --duplicates=0 --buffers-per-kernel=\"ijk:w-r-r\" --kernel-dimensions=ijk:2 --kernel-split=100 --depth=10 --num-tasks=10 --min-width=1 --max-width=1 --logfile=log.txt --repeats=1 --scheduling-policy=sdq --size=128")
 list(APPEND TEST_EXES "33_graph_cpp" "test33_graph_cpp" " ")
 list(APPEND TEST_EXES "34_set_mem" "test34_set_mem" " ")
 list(APPEND TEST_EXES "35_json_mixed_args_record_replay" "test35_json_mixed_args_record_replay" " ")

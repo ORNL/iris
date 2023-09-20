@@ -44,7 +44,7 @@ int main(int argc, char** argv) {
   int* A;
 
   SIZE = argc > 1 ? atol(argv[1]) : 8;
-  TARGET = argc > 2 ? atol(argv[2]) : iris_minimum;
+  TARGET = argc > 2 ? atol(argv[2]) : iris_sdq;
 
   printf("[%s:%d] SIZE[%zu] TARGET[%d]\n", __FILE__, __LINE__, SIZE, TARGET);
 

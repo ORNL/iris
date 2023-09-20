@@ -8,7 +8,7 @@
 #include "PolicyDefault.h"
 #include "PolicyDepend.h"
 #include "PolicyDevice.h"
-#include "PolicyMinimum.h"
+#include "PolicyShortestDeviceQueue.h"
 #include "PolicyProfile.h"
 #include "PolicyRandom.h"
 #include "PolicyRoundRobin.h"
@@ -24,7 +24,7 @@ Policies::Policies(Scheduler* scheduler) {
   policy_default_     = new PolicyDefault(scheduler_);
   policy_depend_      = new PolicyDepend(scheduler_);
   policy_device_      = new PolicyDevice(scheduler_);
-  policy_minimum_     = new PolicyMinimum(scheduler_);
+  policy_sdq_         = new PolicyShortestDeviceQueue(scheduler_);
   policy_profile_     = new PolicyProfile(scheduler_, this);
   policy_random_      = new PolicyRandom(scheduler_);
   policy_roundrobin_  = new PolicyRoundRobin(scheduler_);
@@ -36,7 +36,7 @@ Policies::~Policies() {
   delete policy_default_;
   delete policy_depend_;
   delete policy_device_;
-  delete policy_minimum_;
+  delete policy_sdq_;
   delete policy_profile_;
   delete policy_random_;
   delete policy_roundrobin_;
@@ -58,7 +58,7 @@ Policy* Policies::GetPolicy(int brs_policy, char* opt) {
   if (brs_policy == iris_data)    return policy_data_;
   if (brs_policy == iris_depend)  return policy_depend_;
   if (brs_policy == iris_default) return policy_default_;
-  if (brs_policy == iris_minimum) return policy_minimum_;
+  if (brs_policy == iris_sdq)     return policy_sdq_;
   if (brs_policy == iris_profile) return policy_profile_;
   if (brs_policy == iris_random)  return policy_random_;
   if (brs_policy == iris_pending) return policy_data_;//to get to this point with the pending policy it can only be for D2H tranfers (so just default to data policy to minimize memory movement)
@@ -70,7 +70,7 @@ Policy* Policies::GetPolicy(int brs_policy, char* opt) {
     }
   }
   _warning("unknown policy [%d] [0x%x] [%s]", brs_policy, brs_policy, opt);
-  return policy_minimum_;
+  return policy_sdq_;
 }
 
 int Policies::Register(const char* lib, const char* name, void* params) {
