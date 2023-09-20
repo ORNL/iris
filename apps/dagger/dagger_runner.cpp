@@ -29,11 +29,12 @@ void ShowUsage(){
   printf("\t\t --size=\"1024\"\n");
   printf("\t\t --repeats=\"100\"\n");
   printf("\t\t --logfile=\"log.csv\"\n");
-  printf("\t\t --scheduling-policy=\"roundrobin\"\t all options include (roundrobin, depend, profile, random, any, all, custom) or any integer [0-9] denoting the device id to run all tasks on\n");
+  printf("\t\t --scheduling-policy=\"roundrobin\"\t all options include (roundrobin, depend, profile, random, minimum, all, custom) or any integer [0-9] denoting the device id to run all tasks on\n");
   //printf("\t\t --num-tasks=\"6\"\t (optional) only used for throughput computation\n");
   //printf("\t\t --sandwich\t\t (optional) determines if there are the beginning and terminating nodes\n");
   //printf("\t\t --kernel-split=\"70,30\"\t (optional) list of probabilities of each kernel being used\n");
   //printf("\t\t --num-memory-objects=\"5\"\t (optional) the total number of memory objects to be passed around in the DAG between tasks (allows greater task interactions).\n");
+  printf("\t\t --use-data-memory=1 (optional) Enables the graph to use memory instead of the default explicit memory buffers. This results in final explicit flush events of buffers that are written.");
 }
 
 int main(int argc, char** argv) {
@@ -77,7 +78,7 @@ int main(int argc, char** argv) {
     {"data", iris_data},
     {"profile", iris_profile},
     {"random", iris_random},
-    {"any",iris_any},
+    {"minimum",iris_minimum},
     {"all", iris_all},
     {"custom", iris_custom}
   };
@@ -106,7 +107,8 @@ int main(int argc, char** argv) {
     {"min-width", required_argument, 0, 'i'},
     {"max-width", required_argument, 0, 'x'},
     {"sandwich", no_argument, 0, 'y'},
-    {"num-memory-objects",required_argument, 0,'a'}
+    {"num-memory-objects",required_argument, 0,'a'},
+    {"use-data-memory",no_argument, 0,'f'}
   };
 
   while((opt_char = getopt_long(argc, argv, "s=", long_options, &option_index)) != -1) {
@@ -286,8 +288,11 @@ int main(int argc, char** argv) {
       case (int)'p'://kernel-split
         break;
 
-      case (int)'a':{//num-memory-objects
-        //use_data_memory = true;//**NOTE** temporarily disabled to avoid use of iris_data_memory
+      case (int)'a'://num-memory-objects
+        break;
+
+      case (int)'f':{//use-data-memory
+        use_data_memory = true; 
         } break;
     };
   }
@@ -328,6 +333,8 @@ int main(int argc, char** argv) {
   */
 
   iris_init(&argc, &argv, true);
+  iris_overview();
+
   printf("REPEATS:%d LOGFILE:%s POLICY:%s\n",REPEATS,LOGFILE,POLICY);
   for (int i = 0; i < num_kernels; i ++){
     printf("KERNEL:%s available on %d devices concurrently\n",kernels[i].name,kernels[i].concurrency);
@@ -375,8 +382,10 @@ int main(int argc, char** argv) {
           iris_mem x;
           char buffer_name[80];
           sprintf(buffer_name,"%s-%s-%d",kernel.name,buf.c_str(),argument_index);
-          if (use_data_memory)
+          if (use_data_memory){
             retcode = iris_data_mem_create(&x,host_mem[0], (int)pow(SIZE,kernel.dimensions)*sizeof(double));
+            memory_task_target = iris_default;//task_target;//iris_pending (data pending policy is incompatible with data memory
+          }
           else
             retcode = iris_mem_create( (int)pow(SIZE,kernel.dimensions)*sizeof(double), &x);//, (char*)buffer_name);
           assert (retcode == IRIS_SUCCESS && "Failed to create IRIS memory buffer");

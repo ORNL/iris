@@ -122,14 +122,14 @@ void Task::set_brs_policy(int brs_policy) {
 const char* Task::brs_policy_string() {
   switch(brs_policy_){
     case iris_all: return ("all");
-    case iris_any: return ("any");
     case iris_data: return ("data");
     case iris_default: return ("default");
     case iris_depend: return ("depend");
+    case iris_minimum: return ("minimum");
+    case iris_pending: return ("pending");
     case iris_profile: return ("profile");
     case iris_random: return ("random");
     case iris_roundrobin: return ("roundrobin");
-    case iris_pending: return ("pending");
     default: return("unknown");
   }
 }

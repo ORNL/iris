@@ -95,7 +95,7 @@ typedef enum StreamPolicy StreamPolicy;
 #define iris_profile            (1 << 21)
 #define iris_random             (1 << 22)
 #define iris_pending            (1 << 23)
-#define iris_any                (1 << 24)
+#define iris_minimum            (1 << 24)
 #define iris_all                (1 << 25)
 #define iris_ocl                (1 << 26)
 #define iris_custom             (1 << 27)
@@ -249,6 +249,13 @@ extern int iris_env_set(const char* key, const char* value);
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_env_get(const char* key, char** value, size_t* vallen);
+
+
+/**@brief Prints an overview of the system available to IRIS; specifically
+ * platforms, devices and their corresponding backends.
+ * It is logged to standard output.
+ */
+extern void iris_overview();
 
 
 /**@brief Returns the number of platforms.

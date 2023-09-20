@@ -48,6 +48,7 @@ void Command::Clear(bool init) {
   func_params_id_ = 0;
   params_ = NULL;
   type_name_ = std::string();
+  given_name_ = false;
   name_ = "";
   selector_kernel_params_ = NULL;
   time_ = 0.0;
@@ -429,6 +430,17 @@ void Command::set_selector_kernel(iris_selector_kernel func, void* params, size_
   selector_kernel_params_ = malloc(params_size);
   memcpy(selector_kernel_params_, params, params_size);
 }
+
+void Command::set_name(std::string name) {
+  name_ = name;
+  given_name_ = true;
+}
+
+void Command::set_name(const char* name) {
+  name_ = std::string(name);
+  given_name_ = true;
+}
+
 
 } /* namespace rt */
 } /* namespace iris */

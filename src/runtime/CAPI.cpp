@@ -23,6 +23,12 @@ int iris_error_count() {
   return platform->NumErrors();
 }
 
+void iris_overview() {
+  Platform *platform = Platform::GetPlatform();
+  platform->ShowOverview();
+  return;
+}
+
 void iris_task_retain(iris_task task, bool flag) {
   Platform *platform = Platform::GetPlatform(); 
   platform->set_release_task_flag(!flag, task);

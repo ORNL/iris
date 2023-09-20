@@ -55,7 +55,7 @@ int main(int argc, char** argv) {
     int pinfo0[3] = { iris_r, iris_r, iris_w };
     iris_task_kernel(task0, "vecadd", 1, NULL, &SIZE, NULL, 3, params0, pinfo0);
     iris_task_dmem_flush_out(task0,mem_C);
-    iris_task_submit(task0, iris_any,nullptr, true);
+    iris_task_submit(task0, iris_minimum,nullptr, true);
     iris_synchronize();
     auto const t_end = std::chrono::high_resolution_clock::now();
     timings.push_back(std::to_string(std::chrono::duration_cast<std::chrono::nanoseconds>(t_end - t_start).count()));

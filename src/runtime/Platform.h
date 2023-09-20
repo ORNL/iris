@@ -66,6 +66,8 @@ public:
   int EnvironmentGet(const char* key, char** value, size_t* vallen);
   int GetFilePath(const char *key, char** value, size_t* vallen);
 
+  void ShowOverview();
+
   int PlatformCount(int* nplatforms);
   int PlatformInfo(int platform, int param, void* value, size_t* size);
   int PlatformBuildProgram(int model, char* path);
