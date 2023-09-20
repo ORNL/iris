@@ -122,7 +122,7 @@ void DeviceCUDA::RegisterPin(void *host, size_t size)
 }
 
 DeviceCUDA::~DeviceCUDA() {
-    host2cuda_ld_->finalize();
+    host2cuda_ld_->finalize(devno());
     for (int i = 0; i < nqueues_; i++) {
       CUresult err = ld_->cuStreamDestroy(streams_[i]);
       _cuerror(err);
@@ -171,7 +171,8 @@ int DeviceCUDA::Init() {
   _cuerror(err);
 #ifndef TRACE_DISABLE
   CUcontext ctx;
-  ld_->cuCtxGetCurrent(&ctx);
+  err = ld_->cuCtxGetCurrent(&ctx);
+  _cuerror(err);
   _trace("Init:: Context create dev:%d cctx:%p octx:%p self:%p thread:%p", devno_, ctx, ctx_, (void *)worker()->self(), (void *)worker()->thread());
   if (ctx != ctx_) {
       _trace("Init:: Context wrong for CUDA resetting context switch dev[%d][%s] worker:%d self:%p thread:%p", devno(), name_, worker()->device()->devno(), (void *)worker()->self(), (void *)worker()->thread());
@@ -179,15 +180,14 @@ int DeviceCUDA::Init() {
   }
 #endif
   //err = ld_->cuCtxEnablePeerAccess(ctx_, 0);
-  _cuerror(err);
+  //_cuerror(err);
   if (is_async()) {
       for (int i = 0; i < nqueues_; i++) {
           err = ld_->cuStreamCreate(streams_ + i, CU_STREAM_NON_BLOCKING);
           _cuerror(err);
       }
   }
-  host2cuda_ld_->set_dev(devno(), model());
-  host2cuda_ld_->init();
+  host2cuda_ld_->init(devno());
 
   char* path = kernel_path_;
   char* src = NULL;
@@ -198,6 +198,7 @@ int DeviceCUDA::Init() {
   }
   _trace("dev[%d][%s] kernels[%s]", devno_, name_, path);
   err = ld_->cuModuleLoad(&module_, path);
+  _cuerror(err);
   if (err != CUDA_SUCCESS) {
     _cuerror(err);
     _error("srclen[%zu] src\n%s", srclen, src);
@@ -220,7 +221,8 @@ int DeviceCUDA::ResetMemory(BaseMem *mem, uint8_t reset_value) {
 }
 int DeviceCUDA::MemAlloc(void** mem, size_t size, bool reset) {
   if (IsContextChangeRequired()) {
-      ld_->cuCtxSetCurrent(ctx_);
+      CUresult err=ld_->cuCtxSetCurrent(ctx_);
+      _cuerror(err);
   }
   CUdeviceptr* cumem = (CUdeviceptr*) mem;
   //double mtime = timer_->Now();
@@ -295,7 +297,8 @@ int DeviceCUDA::MemD2D(Task *task, BaseMem *mem, void *dst, void *src, size_t si
   CUdeviceptr dst_cumem = (CUdeviceptr) dst;
   if (IsContextChangeRequired()) {
       _trace("CUDA context switch dev[%d][%s] task[%ld:%s] mem[%lu] self:%p thread:%p", devno_, name_, task->uid(), task->name(), mem->uid(), (void *)worker()->self(), (void *)worker()->thread());
-      ld_->cuCtxSetCurrent(ctx_);
+      CUresult err = ld_->cuCtxSetCurrent(ctx_);
+      _cuerror(err);
   }
   bool error_occured = false;
   CUresult err = CUDA_SUCCESS;
@@ -329,7 +332,8 @@ int DeviceCUDA::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
     bool error_occured = false;
 #ifndef TRACE_DISABLE
   CUcontext ctx;
-  ld_->cuCtxGetCurrent(&ctx);
+  CUresult err = ld_->cuCtxGetCurrent(&ctx);
+  _cuerror(err);
   _trace("MemH2D:: Context create %sdev[%d][%s] task[%ld:%s] mem[%lu] cctx:%p octx:%p self:%p thread:%p", tag, devno_, name_, task->uid(), task->name(), mem->uid(), ctx, ctx_, (void *)worker()->self(), (void *)worker()->thread());
 #endif
   if (IsContextChangeRequired()) {
@@ -521,23 +525,24 @@ int DeviceCUDA::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
 int DeviceCUDA::KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bool report_error) {
   if (!kernel->vendor_specific_kernel_check_flag(devno_))
       CheckVendorSpecificKernel(kernel);
-  int kernel_idx=-1;
+int kernel_idx=-1;
+#if 1
   if (kernel->is_vendor_specific_kernel(devno_) && host2cuda_ld_->host_kernel(&kernel_idx, name) == IRIS_SUCCESS) {
       *kernel_bin = host2cuda_ld_->GetFunctionPtr(name);
       return IRIS_SUCCESS;
   }
-  /*
+#else
   if (kernel->is_vendor_specific_kernel(devno_) && 
-          host2cuda_ld_->iris_host2cuda_kernel_with_obj &&
-      host2cuda_ld_->iris_host2cuda_kernel_with_obj(&kernel_idx, name) == IRIS_SUCCESS)  {
+          host2cuda_ld_->iris_host_kernel_with_obj &&
+      host2cuda_ld_->iris_host_kernel_with_obj(&kernel_idx, name) == IRIS_SUCCESS)  {
           *kernel_bin = host2cuda_ld_->GetFunctionPtr(name);
           return IRIS_SUCCESS;
   }
-  if (kernel->is_vendor_specific_kernel(devno_) && host2cuda_ld_->iris_host2cuda_kernel) {
+  if (kernel->is_vendor_specific_kernel(devno_) && host2cuda_ld_->iris_host_kernel) {
       *kernel_bin = host2cuda_ld_->GetFunctionPtr(name);
       return IRIS_SUCCESS;
   }
-  */
+#endif
   if (IsContextChangeRequired()) {
       _trace("Changed Context for CUDA resetting context switch dev[%d][%s] worker:%d self:%p thread:%p", devno(), name_, worker()->device()->devno(), (void *)worker()->self(), (void *)worker()->thread());
       ld_->cuCtxSetCurrent(ctx_);
@@ -583,11 +588,11 @@ int DeviceCUDA::KernelSetArg(Kernel* kernel, int idx, int kindex, size_t size, v
      host2cuda_ld_->setarg(
             kernel->GetParamWrapperMemory(), kindex, size, value);
      /*
-     if (host2cuda_ld_->iris_host2cuda_setarg_with_obj)
-         host2cuda_ld_->iris_host2cuda_setarg_with_obj(
+     if (host2cuda_ld_->iris_host_setarg_with_obj)
+         host2cuda_ld_->iris_host_setarg_with_obj(
                 kernel->GetParamWrapperMemory(), kindex, size, value);
-     else if (host2cuda_ld_->iris_host2cuda_setarg)
-         host2cuda_ld_->iris_host2cuda_setarg(kindex, size, value);
+     else if (host2cuda_ld_->iris_host_setarg)
+         host2cuda_ld_->iris_host_setarg(kindex, size, value);
          */
   }
   return IRIS_SUCCESS;
@@ -612,47 +617,50 @@ int DeviceCUDA::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, 
       host2cuda_ld_->setmem(
               kernel->GetParamWrapperMemory(), kindex, dev_ptr);
       /*
-      if (host2cuda_ld_->iris_host2cuda_setmem_with_obj) 
-          host2cuda_ld_->iris_host2cuda_setmem_with_obj(
+      if (host2cuda_ld_->iris_host_setmem_with_obj) 
+          host2cuda_ld_->iris_host_setmem_with_obj(
                   kernel->GetParamWrapperMemory(), kindex, dev_ptr);
-      else if (host2cuda_ld_->iris_host2cuda_setmem) 
-          host2cuda_ld_->iris_host2cuda_setmem(kindex, dev_ptr);*/
+      else if (host2cuda_ld_->iris_host_setmem) 
+          host2cuda_ld_->iris_host_setmem(kindex, dev_ptr);*/
   }
   return IRIS_SUCCESS;
 }
 
 void DeviceCUDA::CheckVendorSpecificKernel(Kernel* kernel) {
     kernel->set_vendor_specific_kernel(devno_, false);
+#if 1
     if (host2cuda_ld_->host_kernel(kernel->GetParamWrapperMemory(), kernel->name())==IRIS_SUCCESS) {
             kernel->set_vendor_specific_kernel(devno_, true);
     }
-    /*
-    if (host2cuda_ld_->iris_host2cuda_kernel_with_obj) {
-        int status = host2cuda_ld_->iris_host2cuda_kernel_with_obj(
+#else
+    if (host2cuda_ld_->iris_host_kernel_with_obj) {
+        int status = host2cuda_ld_->iris_host_kernel_with_obj(
                 kernel->GetParamWrapperMemory(), kernel->name());
         if (status == IRIS_SUCCESS && 
                 host2cuda_ld_->IsFunctionExists(kernel->name())) {
             kernel->set_vendor_specific_kernel(devno_, true);
         }
     }
-    else if (host2cuda_ld_->iris_host2cuda_kernel) {
-        int status = host2cuda_ld_->iris_host2cuda_kernel(
+    else if (host2cuda_ld_->iris_host_kernel) {
+        int status = host2cuda_ld_->iris_host_kernel(
                 kernel->name());
         if (status == IRIS_SUCCESS && 
                 host2cuda_ld_->IsFunctionExists(kernel->name())) {
             kernel->set_vendor_specific_kernel(devno_, true);
         }
     }
-    */
+#endif
     kernel->set_vendor_specific_kernel_check(devno_, true);
 }
 int DeviceCUDA::KernelLaunchInit(Command *cmd, Kernel* kernel) {
+#if 1
     int stream_index = 0;
     if (is_async(kernel->task())) {
         stream_index = GetStream(kernel->task()); //task->uid() % nqueues_; 
         if (stream_index == DEFAULT_STREAM_INDEX) { stream_index = 0; }
     }
-    host2cuda_ld_->launch_init(streams_[stream_index], kernel->GetParamWrapperMemory(), cmd);
+    host2cuda_ld_->launch_init(model(), &devno_, streams_[stream_index], kernel->GetParamWrapperMemory(), cmd);
+#endif
     return IRIS_SUCCESS;
 }
 
@@ -671,6 +679,7 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
   }
   CUresult err;
   int stream_index = 0;
+#if 1
   CUstream *kstream = NULL;
   bool async = false;
   int nstreams = 0;
@@ -685,7 +694,7 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
   _debug2("dev[%d][%s] task[%ld:%s] kernel launch::%ld:%s q[%d]", devno_, name_, kernel->task()->uid(), kernel->task()->name(), kernel->uid(), kernel->name(), stream_index);
   if (kernel->is_vendor_specific_kernel(devno_)) {
      if (host2cuda_ld_->host_launch((void **)kstream, nstreams, kernel->name(), 
-                 kernel->GetParamWrapperMemory(), 
+                 kernel->GetParamWrapperMemory(), devno(),
                  dim, off, gws) == IRIS_SUCCESS) {
          if (!async) {
              err = ld_->cuStreamSynchronize(0);
@@ -700,19 +709,24 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
      }
      worker_->platform()->IncrementErrorCount();
      return IRIS_ERROR;
-     /*
-     if(host2cuda_ld_->iris_host2cuda_launch_with_obj) {
+  }
+#else
+  bool async = is_async(kernel->task());
+  if (async)
+      stream_index = GetStream(kernel->task()); //task->uid() % nqueues_; 
+  if (kernel->is_vendor_specific_kernel(devno_)) {
+     if(host2cuda_ld_->iris_host_launch_with_obj) {
          _trace("dev[%d][%s] kernel[%s:%s] dim[%d] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, stream_index);
          host2cuda_ld_->SetKernelPtr(kernel->GetParamWrapperMemory(), kernel->name());
          if (is_async(kernel->task())) {
-             int status = host2cuda_ld_->iris_host2cuda_launch_with_obj(
+             int status = host2cuda_ld_->iris_host_launch_with_obj(
                      streams_[stream_index], 
                      kernel->GetParamWrapperMemory(), dev_,  
                      dim, off[0], gws[0]);
              return status;
          } 
          else {
-             int status = host2cuda_ld_->iris_host2cuda_launch_with_obj(
+             int status = host2cuda_ld_->iris_host_launch_with_obj(
                      NULL,
                      kernel->GetParamWrapperMemory(), dev_,  
                      dim, off[0], gws[0]);
@@ -725,9 +739,9 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
              return status;
          }
      }
-     else if(host2cuda_ld_->iris_host2cuda_launch) {
+     else if(host2cuda_ld_->iris_host_launch) {
          _trace("dev[%d][%s] kernel[%s:%s] dim[%d] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, stream_index);
-         int status = host2cuda_ld_->iris_host2cuda_launch(dim, off[0], gws[0]);
+         int status = host2cuda_ld_->iris_host_launch(dim, off[0], gws[0]);
          err = ld_->cuStreamSynchronize(0);
          _cuerror(err);
          if (err != CUDA_SUCCESS){
@@ -736,8 +750,8 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
          }
          return status; 
      }
-     */
   }
+#endif
   _trace("native kernel start dev[%d][%s] kernel[%s:%s] dim[%d] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, stream_index);
   CUfunction cukernel = (CUfunction) kernel->arch(this);
   int block[3] = { lws ? (int) lws[0] : 1, lws ? (int) lws[1] : 1, lws ? (int) lws[2] : 1 };

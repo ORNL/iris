@@ -51,7 +51,7 @@ DeviceHIP::DeviceHIP(LoaderHIP* ld, LoaderHost2HIP *host2hip_ld, hipDevice_t dev
 }
 
 DeviceHIP::~DeviceHIP() {
-    host2hip_ld_->finalize();
+    host2hip_ld_->finalize(devno());
     for (int i = 0; i < nqueues_; i++) {
       hipError_t err = ld_->hipStreamDestroy(streams_[i]);
       _hiperror(err);
@@ -104,8 +104,8 @@ int DeviceHIP::Init() {
   }
   err = ld_->hipGetDevice(&devid_);
   _hiperror(err);
-  host2hip_ld_->set_dev(devno(), model());
-  host2hip_ld_->init();
+  //host2hip_ld_->set_dev(devno(), model());
+  host2hip_ld_->init(devno());
   err = ld_->hipDeviceGetAttribute(&tb, hipDeviceAttributeMaxThreadsPerBlock, devid_);
   err = ld_->hipDeviceGetAttribute(&mc, hipDeviceAttributeMultiprocessorCount, devid_);
   err = ld_->hipDeviceGetAttribute(&bx, hipDeviceAttributeMaxBlockDimX, devid_);
@@ -525,7 +525,7 @@ int DeviceHIP::KernelLaunchInit(Command *cmd, Kernel* kernel) {
         stream_index = GetStream(kernel->task()); //task->uid() % nqueues_; 
         if (stream_index == DEFAULT_STREAM_INDEX) { stream_index = 0; }
     }
-    host2hip_ld_->launch_init(streams_[stream_index], kernel->GetParamWrapperMemory(), cmd);
+    host2hip_ld_->launch_init(model(), &devno_, streams_[stream_index], kernel->GetParamWrapperMemory(), cmd);
     return IRIS_SUCCESS;
 }
 
@@ -559,7 +559,7 @@ int DeviceHIP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, s
   }
   if (kernel->is_vendor_specific_kernel(devno_)) {
      if (host2hip_ld_->host_launch((void **)kstream, nstreams, kernel->name(), 
-                 kernel->GetParamWrapperMemory(), 
+                 kernel->GetParamWrapperMemory(), devno(), 
                  dim, off, gws) == IRIS_SUCCESS) {
          if (!async) {
              err = ld_->hipDeviceSynchronize();

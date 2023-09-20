@@ -30,6 +30,8 @@ namespace iris {
     namespace rt {
         class Command;
         class Kernel;
+        // Note: Do not use these base and derived classes to hold some state other than 
+        // function pointer. The loaders are shared across same homogeneous devices
         class HostInterfaceLoader : public Loader {
             public:
                 HostInterfaceLoader(string kernel_env);
@@ -40,20 +42,16 @@ namespace iris {
                 virtual void *GetFunctionPtr(const char *kernel_name);
 #endif
                 virtual int LoadFunctions(){ Loader::LoadFunctions(); return IRIS_SUCCESS; }
-                virtual void finalize();
-                virtual void init();
-                virtual int launch_init(void *stream, void *param_mem, Command *cmd_kernel) { return IRIS_SUCCESS; }
+                virtual void finalize(int dev);
+                virtual void init(int dev);
+                virtual int launch_init(int model, int *dev_ptr, void *stream, void *param_mem, Command *cmd_kernel) { return IRIS_SUCCESS; }
                 virtual int setarg(void *param_mem, int index, size_t size, void *value) { return IRIS_ERROR; }
                 virtual int setmem(void *param, int index, void *mem, void **mem_ptr) { return IRIS_ERROR; }
-                virtual int host_launch(void **stream, int nstreams, const char *kname, void *param_mem, int dim, size_t *off, size_t *gws) { return IRIS_ERROR; }
+                virtual int host_launch(void **stream, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *off, size_t *gws) { return IRIS_ERROR; }
                 virtual int host_kernel(void *param_mem, const char *kname) { return IRIS_ERROR; }
                 int SetKernelPtr(void *obj, const char *kernel_name) { return IRIS_ERROR; }
                 void LoadFunction(const char *func_name, const char *symbol);
                 void LoadFunctionStatic(const char *func_name, void *symbol);
-                void set_dev(int dev, int model) { dev_ = dev; model_ = model; }
-                int model() { return model_; }
-                int dev() { return dev_; }
-                int *dev_ptr() { return &dev_; }
             protected:
                 map<string, void **> sym_map_fn_;
                 int (*iris_host_init)();
@@ -65,8 +63,8 @@ namespace iris {
                 int (*iris_host_launch_with_obj)(void *stream, void *obj, int devno, int dim, size_t off, size_t gws);
             private:
                 string kernel_env_;
-                int dev_;
-                int model_;
+                //int dev_;
+                //int model_;
         };
         class BoilerPlateHostInterfaceLoader : public HostInterfaceLoader {
             public:
@@ -75,8 +73,8 @@ namespace iris {
                 int LoadFunctions();
                 int host_kernel(void *param_mem, const char *kname);
                 int SetKernelPtr(void *obj, const char *kernel_name);
-                int launch_init(void *stream, void *param_mem, Command *cmd);
-                int host_launch(void **stream, int nstreams, const char *kname, void *param_mem, int dim, size_t *off, size_t *gws);
+                int launch_init(int model, int *dev_ptr, void *stream, void *param_mem, Command *cmd);
+                int host_launch(void **stream, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *off, size_t *gws);
                 int setarg(void *param_mem, int kindex, size_t size, void *value);
                 int setmem(void *param_mem, int kindex, void *mem);
             private:
@@ -196,9 +194,9 @@ namespace iris {
                 int host_kernel(void *param_mem, const char *kname);
                 void set_kernel_ffi(void *param_mem, KernelFFI *ffi_data);
                 KernelFFI *get_kernel_ffi(void *param_mem);
-                int launch_init(void *stream, void *param_mem, Command *cmd);
+                int launch_init(int model, int *dev_ptr, void *stream, void *param_mem, Command *cmd);
                 int SetKernelPtr(void *obj, const char *kernel_name);
-                int host_launch(void **stream, int nstreams, const char *kname, void *param_mem, int dim, size_t *off, size_t *gws);
+                int host_launch(void **stream, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *off, size_t *gws);
                 int setarg(void *param_mem, int kindex, size_t size, void *value);
                 int setmem(void *param_mem, int kindex, void *mem);
             private:

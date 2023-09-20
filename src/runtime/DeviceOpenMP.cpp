@@ -35,7 +35,7 @@ DeviceOpenMP::DeviceOpenMP(LoaderOpenMP* ld, int devno, int platform) : Device(d
 }
 
 DeviceOpenMP::~DeviceOpenMP() {
-  ld_->finalize();
+  ld_->finalize(devno());
 }
 
 void DeviceOpenMP::TaskPre(Task *task) {
@@ -108,8 +108,8 @@ int DeviceOpenMP::GetProcessorNameQualcomm(char* cpuinfo) {
 }
 
 int DeviceOpenMP::Init() {
-  ld_->set_dev(devno(), model());
-  ld_->init();
+  //ld_->set_dev(devno(), model());
+  ld_->init(devno());
   return IRIS_SUCCESS;
 }
 
@@ -222,7 +222,7 @@ int DeviceOpenMP::KernelGet(Kernel *kernel, void** kernel_bin, const char* name,
 int DeviceOpenMP::KernelLaunchInit(Command *cmd, Kernel* kernel) {
   //c_string_array data = ld_->iris_get_kernel_names();
   int status=IRIS_ERROR;
-  status = ld_->launch_init(NULL, kernel->GetParamWrapperMemory(), cmd);
+  status = ld_->launch_init(model(), &devno_, NULL, kernel->GetParamWrapperMemory(), cmd);
   /*
   if (ld_->iris_openmp_kernel_with_obj)
       status = ld_->iris_openmp_kernel_with_obj(kernel->GetParamWrapperMemory(), kernel->name());
@@ -269,7 +269,7 @@ int DeviceOpenMP::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem
 
 int DeviceOpenMP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws) {
   _trace("dev[%d] kernel[%s:%s] dim[%d] off[%lu] gws[%lu]", devno_, kernel->name(), kernel->get_task_name(), dim, off[0], gws[0]);
-  if (ld_->host_launch(NULL, 0, kernel->name(), kernel->GetParamWrapperMemory(), 
+  if (ld_->host_launch(NULL, 0, kernel->name(), kernel->GetParamWrapperMemory(), devno(),
               dim, off, gws) == IRIS_SUCCESS) 
       return IRIS_SUCCESS;
   /*

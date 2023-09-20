@@ -10,7 +10,7 @@
     FN = NULL;
 namespace iris {
     namespace rt {
-        HostInterfaceLoader::HostInterfaceLoader(string kernel_env) : Loader(), kernel_env_(kernel_env), dev_(0) 
+        HostInterfaceLoader::HostInterfaceLoader(string kernel_env) : Loader(), kernel_env_(kernel_env) 
         { 
             INIT_SYM_FN(iris_host_init);
             INIT_SYM_FN(iris_host_init_handles);
@@ -20,22 +20,22 @@ namespace iris {
             INIT_SYM_FN(iris_host_launch_with_obj);
             INIT_SYM_FN(iris_ffi_launch);
         }
-        void HostInterfaceLoader::init() 
+        void HostInterfaceLoader::init(int dev) 
         {
             if (iris_host_init != NULL) {
                 iris_host_init();
             }
             if (iris_host_init_handles != NULL) {
-                iris_host_init_handles(dev());
+                iris_host_init_handles(dev);
             }
         }
-        void HostInterfaceLoader::finalize() 
+        void HostInterfaceLoader::finalize(int dev) 
         {
             if (iris_host_finalize){
                 iris_host_finalize();
             }
             if (iris_host_finalize_handles){
-                iris_host_finalize_handles(dev());
+                iris_host_finalize_handles(dev);
             }
         }
         const char* HostInterfaceLoader::library() {
@@ -83,7 +83,7 @@ namespace iris {
                 INIT_SYM_FN(iris_get_kernel_names);
                 INIT_SYM_FN(iris_set_kernel_ptr_with_obj);
             }
-        int BoilerPlateHostInterfaceLoader::launch_init(void *stream, void *param_mem, Command *cmd) 
+        int BoilerPlateHostInterfaceLoader::launch_init(int model, int *dev_ptr, void *stream, void *param_mem, Command *cmd) 
         {
             const char *kname = cmd->kernel()->name();
             if (iris_host_kernel_with_obj) {
@@ -126,10 +126,10 @@ namespace iris {
             }
             return IRIS_ERROR;
         }
-        int BoilerPlateHostInterfaceLoader::host_launch(void **stream, int nstreams, const char *kname, void *param_mem, int dim, size_t *off, size_t *gws) 
+        int BoilerPlateHostInterfaceLoader::host_launch(void **stream, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *off, size_t *gws) 
         {
             if(iris_host_launch_with_obj) {
-                int dev_info = nstreams << 16 | dev();
+                int dev_info = nstreams << 16 | devno;
                 SetKernelPtr(param_mem, kname);
                 int status = iris_host_launch_with_obj(
                         stream, 
@@ -181,7 +181,7 @@ namespace iris {
             KernelFFI **ffi_ptr = (KernelFFI **)(((uint8_t *)param_mem)+ sizeof(int));
             *ffi_ptr = ffi_data;
         }
-        int FFIHostInterfaceLoader::launch_init(void *stream, void *param_mem, Command *cmd) 
+        int FFIHostInterfaceLoader::launch_init(int model, int *dev_ptr, void *stream, void *param_mem, Command *cmd) 
         {
             Kernel *kernel = cmd->kernel();
             const char *name = kernel->name();
@@ -195,9 +195,9 @@ namespace iris {
             ffi_data->set_iris_args(cmd->kernel_args());
             if (iris_host_launch_with_obj) {
                 ffi_data->set_host_launch_type(HOST_LAUNCH_WITH_STREAM_DEV);
-                if (model() != iris_openmp) {
+                if (model != iris_openmp) {
                     ffi_data->add_stream(stream); 
-                    ffi_data->add_device(dev_ptr()); 
+                    ffi_data->add_device(dev_ptr); 
                 }
             }
             else if (iris_host_launch) {
@@ -227,7 +227,7 @@ namespace iris {
             }
             return IRIS_ERROR;
         }
-        int FFIHostInterfaceLoader::host_launch(void *stream, const char *kname, void *param_mem, int dim, size_t *off, size_t *gws)
+        int FFIHostInterfaceLoader::host_launch(void *stream, const char *kname, void *param_mem, int devno, int dim, size_t *off, size_t *gws)
         {
             if (IsFunctionExists(kname)) {
                 KernelFFI *ffi_data = get_kernel_ffi(param_mem);
