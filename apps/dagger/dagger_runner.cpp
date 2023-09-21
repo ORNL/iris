@@ -79,7 +79,7 @@ int main(int argc, char** argv) {
     {"profile", iris_profile},
     {"random", iris_random},
     {"sdq",iris_sdq},
-    {"all", iris_all},
+    {"ftf", iris_ftf},
     {"custom", iris_custom}
   };
 

@@ -83,7 +83,7 @@ set(IRIS_RUNTIME_SOURCES
   Platform.cpp
   Policies.cpp
   Policy.cpp
-  PolicyAll.cpp
+  PolicyFirstToFinish.cpp
   PolicyData.cpp
   PolicyDefault.cpp
   PolicyDepend.cpp
@@ -152,7 +152,7 @@ set(IRIS_RUNTIME_HEADERS
   ObjectTrack.h
   Policies.h
   Policy.h
-  PolicyAll.h
+  PolicyFirstToFinish.h
   PolicyShortestDeviceQueue.h
   PolicyData.h
   PolicyDefault.h

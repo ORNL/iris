@@ -101,7 +101,7 @@ void Task::set_brs_policy(int brs_policy) {
 
 const char* Task::brs_policy_string() {
   switch(brs_policy_){
-    case iris_all: return ("all");
+    case iris_ftf: return ("ftf");
     case iris_data: return ("data");
     case iris_default: return ("default");
     case iris_depend: return ("depend");

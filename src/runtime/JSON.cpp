@@ -134,7 +134,7 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
       else if(strcmp(target_str, "cpu") == 0) target = iris_cpu;
       else if(strcmp(target_str, "gpu") == 0) target = iris_gpu;
       //iris policies
-      else if(strcmp(target_str, "all") == 0) target = iris_all;
+      else if(strcmp(target_str, "ftf") == 0) target = iris_ftf;
       else if(strcmp(target_str, "sdq") == 0) target = iris_sdq;
       else if(strcmp(target_str, "data") == 0) target = iris_data;
       else if(strcmp(target_str, "default")== 0) target = iris_default;

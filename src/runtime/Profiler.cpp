@@ -108,7 +108,7 @@ const char* Profiler::policy_str(int policy) {
     case iris_custom:     return "custom";
     default: break;
   }
-  return policy & iris_all ? "all" : "?";
+  return policy & iris_ftf ? "ftf" : "?";
 }
 
 } /* namespace rt */

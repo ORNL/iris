@@ -3,7 +3,7 @@
 #include "Platform.h"
 #include "Scheduler.h"
 #include "LoaderPolicy.h"
-#include "PolicyAll.h"
+#include "PolicyFirstToFinish.h"
 #include "PolicyData.h"
 #include "PolicyDefault.h"
 #include "PolicyDepend.h"
@@ -19,7 +19,7 @@ namespace rt {
 
 Policies::Policies(Scheduler* scheduler) {
   scheduler_ = scheduler;
-  policy_all_         = new PolicyAll(scheduler_);
+  policy_ftf_         = new PolicyFirstToFinish(scheduler_);
   policy_data_        = new PolicyData(scheduler_);
   policy_default_     = new PolicyDefault(scheduler_);
   policy_depend_      = new PolicyDepend(scheduler_);
@@ -31,7 +31,7 @@ Policies::Policies(Scheduler* scheduler) {
 }
 
 Policies::~Policies() {
-  delete policy_all_;
+  delete policy_ftf_;
   delete policy_data_;
   delete policy_default_;
   delete policy_depend_;
@@ -54,7 +54,7 @@ Policy* Policies::GetPolicy(int brs_policy, char* opt) {
       brs_policy &  iris_hexagon||
       brs_policy &  iris_dsp    ||
       brs_policy &  iris_fpga)    return policy_device_;
-  if (brs_policy == iris_all)     return policy_all_;
+  if (brs_policy == iris_ftf)     return policy_ftf_;
   if (brs_policy == iris_data)    return policy_data_;
   if (brs_policy == iris_depend)  return policy_depend_;
   if (brs_policy == iris_default) return policy_default_;
