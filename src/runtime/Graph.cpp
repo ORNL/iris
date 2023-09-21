@@ -28,12 +28,27 @@ Graph::Graph(Platform* platform) {
   status_ = IRIS_NONE;
 
   end_ = Task::Create(platform_, IRIS_TASK_PERM, "Graph");
+  end_brs_task_ = *(end_->struct_obj());
   tasks_.push_back(end_);
 
   pthread_mutex_init(&mutex_complete_, NULL);
   pthread_cond_init(&complete_cond_, NULL);
   set_object_track(platform_->graph_track_ptr());
   platform_->graph_track().TrackObject(this, uid());
+}
+
+void Graph::enable_retainable() 
+{ 
+    retain_tasks_ = true; 
+    DisableRelease();
+    Retain();
+}
+
+void Graph::disable_retainable() 
+{ 
+    retain_tasks_ = false; 
+    EnableRelease();
+    Release();
 }
 
 shared_ptr<GraphMetadata> Graph::get_metadata(int iterations)
@@ -44,7 +59,7 @@ shared_ptr<GraphMetadata> Graph::get_metadata(int iterations)
 }
 
 Graph::~Graph() {
-  platform_->graph_track().UntrackObject(this, uid());
+  //platform_->graph_track().UntrackObject(this, uid());
   pthread_mutex_destroy(&mutex_complete_);
   pthread_cond_destroy(&complete_cond_);
   //if (end_) delete end_;
@@ -61,9 +76,32 @@ Graph::~Graph() {
 #endif
   _trace("graph released");
 }
-
+void Graph::GraphRelease(void *data) {
+    Graph *graph = (Graph *)data;
+    std::vector<Task*>* tasks = graph->tasks();
+    for (std::vector<Task*>::iterator I = tasks->begin(), E = tasks->end(); I != E; ++I) {
+      Task* task = *I;
+      if (!task->IsRelease()) {
+          task->EnableRelease();
+          _debug2("Graph task:%lu:%s retained ref_cnt:%d", task->uid(), task->name(), task->ref_cnt()-1);
+          task->Release();
+      }
+    }
+    if (!graph->IsRelease()) {
+        graph->EnableRelease();
+        graph->Release();
+    }
+    else {
+        // Graph needs to be released manually. 
+        // TODO: In future this should be done automatically
+        graph->Release();
+    }
+}
 void Graph::AddTask(Task* task, unsigned long uid) {
-  if (is_retainable()) task->DisableRelease();
+  if (is_retainable() && !task->IsRelease()) { 
+      task->Retain(); 
+      task->DisableRelease(); 
+  }
   tasks_.push_back(task);
   end_->AddDepend(task, uid);
 }
@@ -119,7 +157,7 @@ void Graph::ResetMemories() {
 }   
 
 void Graph::Wait() {
-  end_->Wait();
+  platform_->TaskWait(end_brs_task_);
 }
 
 Graph* Graph::Create(Platform* platform) {

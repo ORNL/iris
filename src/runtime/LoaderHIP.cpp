@@ -34,12 +34,28 @@ int LoaderHIP::LoadFunctions() {
   LOADFUNC(hipGetDeviceProperties);
   LOADFUNC(hipDeviceCanAccessPeer);
   LOADFUNC(hipDeviceEnablePeerAccess);
+  LOADFUNC(hipStreamCreate);
+  LOADFUNC(hipStreamDestroy);
   LOADFUNC(hipMemcpy2D);
+  LOADFUNC(hipMemcpy2DAsync);
   LOADFUNC(hipMemcpyDtoD);
+  LOADFUNC(hipMemcpyDtoDAsync);
   LOADFUNC(hipMemcpyHtoD);
+  LOADFUNC(hipMemcpyHtoDAsync);
   LOADFUNC(hipMemcpyDtoH);
+  LOADFUNC(hipMemcpyDtoHAsync);
   LOADFUNC(hipModuleLaunchKernel);
   LOADFUNC(hipDeviceSynchronize);
+  LOADFUNC(hipStreamWaitEvent);
+  LOADFUNC(hipEventCreateWithFlags);
+  LOADFUNC(hipEventCreate);
+  LOADFUNC(hipEventRecord);
+  LOADFUNC(hipEventDestroy);
+  LOADFUNC(hipEventSynchronize);
+  LOADFUNC(hipEventElapsedTime);
+  LOADFUNC(hipEventQuery);
+  LOADFUNC(hipStreamAddCallback);
+ 
   return IRIS_SUCCESS;
 }
 

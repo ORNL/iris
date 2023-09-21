@@ -5,9 +5,6 @@
 #include <dlfcn.h>
 #include <stdlib.h>
 
-#ifdef DISABLE_DYNAMIC_LINKING
-#define ENABLE_STATIC_LINKING
-#endif
 #include "Loader.h"
 
 namespace CLinkage {

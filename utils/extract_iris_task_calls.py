@@ -332,8 +332,10 @@ static int iris_kernel_idx = -1;
 #define HANDLETYPE uint64_t,
 #define DEVICE_NUM_TYPE 
 #define DEVICE_NUM
-#define StreamType
-#define STREAM_VAR
+#define StreamType void **
+#define STREAM_VAR stream,
+#define StreamTypeKernel void **
+#define STREAM_VAR_KERNEL stream,
 #endif //IRIS_HEXAGON
             ''')
     lines.append('''
@@ -366,7 +368,10 @@ static int iris_kernel_idx = -1;
 #define HANDLETYPE 
 #define DEVICE_NUM
 #define DEVICE_NUM_TYPE 
-#define STREAM_VAR
+#define StreamType void **
+#define STREAM_VAR stream,
+#define StreamTypeKernel 
+#define STREAM_VAR_KERNEL 
             ''')
     for k,v in data_hash.items():
         lines.append("#define iris_kernel_"+k+" "+k)
@@ -394,7 +399,10 @@ static int iris_kernel_idx = -1;
 #define HANDLETYPE void *,
 #define DEVICE_NUM devno,
 #define DEVICE_NUM_TYPE int,
-#define STREAM_VAR
+#define StreamType void **
+#define STREAM_VAR stream,
+#define StreamTypeKernel void **
+#define STREAM_VAR_KERNEL stream,
             ''')
     lines.append("#ifdef HOST2OPENCL")
     for k,v in data_hash.items():
@@ -408,6 +416,7 @@ static int iris_kernel_idx = -1;
     lines.append('''
 #ifdef ENABLE_IRIS_HOST2HIP_APIS 
 #include "iris/iris_host2hip.h"
+#include "iris/hip/hip_runtime.h"
 #define iris_kernel_lock   iris_host2hip_lock
 #define iris_kernel_unlock iris_host2hip_unlock
 #define iris_kernel iris_host2hip_kernel
@@ -424,12 +433,10 @@ static int iris_kernel_idx = -1;
 #define HANDLETYPE 
 #define DEVICE_NUM devno,
 #define DEVICE_NUM_TYPE int,
-#ifndef IRIS_ENABLE_STREAMS
-#define STREAM_VAR
-#else
-#define StreamType hipStream_t
+#define StreamType hipStream_t *
 #define STREAM_VAR stream,
-#endif
+#define StreamTypeKernel hipStream_t *
+#define STREAM_VAR_KERNEL stream,
             ''')
     lines.append("#ifdef HOST2HIP")
     for k,v in data_hash.items():
@@ -443,6 +450,7 @@ static int iris_kernel_idx = -1;
     lines.append('''
 #ifdef ENABLE_IRIS_HOST2CUDA_APIS 
 #include "iris/iris_host2cuda.h"
+#include "iris/cuda/cuda.h"
 #define iris_kernel_lock   iris_host2cuda_lock
 #define iris_kernel_unlock iris_host2cuda_unlock
 #define iris_kernel iris_host2cuda_kernel
@@ -459,12 +467,10 @@ static int iris_kernel_idx = -1;
 #define HANDLETYPE 
 #define DEVICE_NUM devno,
 #define DEVICE_NUM_TYPE int,
-#ifndef IRIS_ENABLE_STREAMS
-#define STREAM_VAR
-#else
-#define StreamType CUstream
+#define StreamType CUstream *
 #define STREAM_VAR stream,
-#endif
+#define StreamTypeKernel CUstream *
+#define STREAM_VAR_KERNEL stream,
             ''')
     lines.append("#ifdef HOST2CUDA")
     for k,v in data_hash.items():
@@ -1176,7 +1182,12 @@ void {c_func_name}({params_decl_str})
                 unique_macro.append(x)
             else:
                 task_params.append(f"&{x}")
-                task_params_info.append(f"sizeof({x})")
+                if arg_data[2] == 'double':
+                    task_params_info.append(f"(sizeof({x}) | (iris_double))")
+                elif arg_data[2] == 'float':
+                    task_params_info.append(f"(sizeof({x}) | (iris_float))")
+                else:
+                    task_params_info.append(f"(sizeof({x}))")
                 cpp_call_args.append(x)
                 task_api_call_args.append(f"{x}")
                 cpp_call_args_irismem.append(f"{x}")
@@ -1457,7 +1468,7 @@ def appendKernelSignature(args, lines, data_hash, k_hash, dynamic_linking=True):
         kvar = getKernelParamVairable(k)
         func_sig = "int iris_kernel_"+k+"(HANDLETYPE"
         if args.thread_safe:
-            func_sig = "typedef int (* __iris_kernel_"+k+"_ptr)(HANDLETYPE DEVICE_NUM_TYPE"
+            func_sig = "typedef int (* __iris_kernel_"+k+"_ptr)(HANDLETYPE StreamTypeKernel STREAM_VAR_KERNEL DEVICE_NUM_TYPE"
         if not dynamic_linking:
             func_sig = "int "+k+"(HANDLETYPE"
         params = []
@@ -1863,7 +1874,10 @@ int iris_kernel(const char* name) {
                 fn_name = "(kobj->__iris_kernel)"
             else:
                 kvar = kvar+"."
-            lines.append(f"\t\t\t  {fn_name}({handle_var} STREAM_VAR DEVICE_NUM")
+            if is_with_obj:
+                lines.append(f"\t\t\t  {fn_name}({handle_var} STREAM_VAR_KERNEL DEVICE_NUM")
+            else:
+                lines.append(f"\t\t\t  {fn_name}({handle_var}")
             add_conditional_parameters_to_kernel(kvar, k, v, lines)
             lines.append("#ifndef DISABLE_OFFSETS")
             lines.append("#ifdef ENABLE_IRIS_HEXAGON_APIS")
@@ -1883,9 +1897,7 @@ int iris_kernel(const char* name) {
     if args.thread_safe == 1:
         lines.append('''
 int iris_launch_with_obj(
-#ifdef IRIS_ENABLE_STREAMS
         StreamType  stream,
-#endif
         void *obj,
         int devno, 
         int dim, size_t off, size_t ndr) {
@@ -1901,9 +1913,7 @@ int iris_launch_with_obj(
     else:
         lines.append('''
 int iris_launch(
-#ifdef IRIS_ENABLE_STREAMS
         StreamType  stream,
-#endif
         int dim, size_t off, size_t ndr) {
         ''')
         if args.verbose:

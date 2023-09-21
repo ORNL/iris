@@ -32,6 +32,7 @@ public:
   CUresult (*cuCtxSynchronize)(void);
   CUresult (*cuStreamAddCallback)(CUstream hStream, CUstreamCallback callback, void *userData, unsigned int flags);
   CUresult (*cuStreamCreate)(CUstream* phStream, unsigned int Flags);
+  CUresult (*cuStreamDestroy)(CUstream hStream);
   CUresult (*cuStreamSynchronize)(CUstream hStream);
   CUresult (*cuModuleGetFunction)(CUfunction* hfunc, CUmodule hmod, const char* name);
   CUresult (*cuModuleLoad)(CUmodule* module, const char* fname);
@@ -49,16 +50,26 @@ public:
   CUresult (*cudaHostRegister)(void *ptr, size_t size, unsigned int flags);
   CUresult (*cudaMemset)(void *devPtr, int value, size_t count);
   CUresult (*cudaMemcpy)( void* dst, const void* src, size_t count, cudaMemcpyKind kind );
+  CUresult (*cudaMemcpyAsync)( void* dst, const void* src, size_t count, cudaMemcpyKind kind, CUstream stream);
   CUresult (*cudaMemcpy2D)( void* dst, size_t dpitch, const void* src, size_t spitch, size_t width, size_t height, cudaMemcpyKind kind );
+  CUresult (*cudaMemcpy2DAsync)( void* dst, size_t dpitch, const void* src, size_t spitch, size_t width, size_t height, cudaMemcpyKind kind, CUstream stream);
   CUresult (*cuMemcpy2DUnaligned)(const CUDA_MEMCPY2D *pCopy);
   CUresult (*cuMemcpy2DAsync)(const CUDA_MEMCPY2D *pCopy, CUstream hStream);
   CUresult (*cuMemcpyDtoD)(CUdeviceptr dstDevice, CUdeviceptr srcDevice, size_t size);
+  CUresult (*cuMemcpyDtoDAsync)(CUdeviceptr dstDevice, CUdeviceptr srcDevice, size_t size, CUstream hStream);
   CUresult (*cuMemcpyHtoD)(CUdeviceptr dstDevice, const void* srcHost, size_t ByteCount);
   CUresult (*cuMemcpyHtoDAsync)(CUdeviceptr dstDevice, const void* srcHost, size_t ByteCount, CUstream hStream);
   CUresult (*cuMemcpyDtoH)(void* dstHost, CUdeviceptr srcDevice, size_t ByteCount);
   CUresult (*cuMemcpyDtoHAsync)(void* dstHost, CUdeviceptr srcDevice, size_t ByteCount, CUstream hStream);
 //  CUresult (*cuLaunchHostFunc)(CUstream hStream, CUhostFn fn, void *userData);
   CUresult (*cuLaunchKernel)(CUfunction f, unsigned int gridDimX, unsigned int gridDimY, unsigned int gridDimZ, unsigned int blockDimX, unsigned int blockDimY, unsigned int blockDimZ, unsigned int sharedMemBytes, CUstream hStream, void** kernelParams, void** extra);
+  CUresult (*cuEventCreate)(CUevent *phEvent, unsigned int Flags);
+  CUresult (*cuEventRecord)(CUevent hEvent, CUstream hStream);
+  CUresult (*cuEventDestroy)(CUevent hEvent);
+  CUresult (*cuEventSynchronize)(CUevent hEvent);
+  CUresult (*cuEventElapsedTime)(float *pMilliseconds, CUevent hStart, CUevent hEnd);
+  CUresult (*cuEventQuery)(CUevent hEvent);
+  CUresult (*cuStreamWaitEvent)(CUstream hStream, CUevent hEvent, unsigned int Flags);
 };
 
 } /* namespace rt */

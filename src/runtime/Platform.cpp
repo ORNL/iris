@@ -56,6 +56,7 @@ Platform::Platform() {
   disable_d2d_ = false;
   finalize_ = false;
   release_task_flag_ = true;
+  async_ = false;
   nplatforms_ = 0;
   ndevs_ = 0;
   ndevs_enabled_ = 0;
@@ -80,6 +81,7 @@ Platform::Platform() {
   loaderHexagon_ = NULL;
   arch_available_ = 0UL;
   present_table_ = NULL;
+  stream_policy_ = STREAM_POLICY_DEFAULT;
   recording_ = false;
   enable_profiler_ = getenv("IRIS_PROFILE");
   enable_scheduling_history_ = getenv("IRIS_HISTORY");
@@ -92,6 +94,8 @@ Platform::Platform() {
   hook_command_post_ = NULL;
   scheduling_history_ = NULL;
   pthread_mutex_init(&mutex_, NULL);
+  enable_proactive_ = false;
+  disable_kernel_launch_ = false;
 }
 
 Platform::~Platform() {
@@ -134,6 +138,7 @@ Platform::~Platform() {
   if (pool_) delete pool_;
   kernel_history_.clear();
   pthread_mutex_destroy(&mutex_);
+  _debug2("Platform deleted");
 }
 
 int Platform::Init(int* argc, char*** argv, int sync) {
@@ -170,6 +175,16 @@ int Platform::Init(int* argc, char*** argv, int sync) {
 
   SetDevsAvailable();
 
+  char *disable_kernel_launch = NULL;
+  EnvironmentGet("DISABLE_KERNEL_LAUNCH", &disable_kernel_launch, NULL);
+  if (disable_kernel_launch != NULL && atoi(disable_kernel_launch) == 1)
+      set_kernel_launch_disabled(true);
+  char *async = NULL;
+  EnvironmentGet("ASYNC", &async, NULL);
+  if (async != NULL && atoi(async) == 1)
+      set_async(true);
+  if (is_async()) 
+      _info("Asynchronous is enabled");
   char* archs = NULL;
   EnvironmentGet("ARCHS", &archs, NULL);
   _info("IRIS architectures[%s]", archs);
@@ -683,21 +698,31 @@ int Platform::InitDevices(bool sync) {
   char* c = getenv("IRIS_DEVICE_DEFAULT");
   if (c) dev_default_ = atoi(c);
 
-  Task** tasks = new Task*[ndevs_];
+  //Task** tasks = new Task*[ndevs_];
+  iris_task *tasks = new iris_task[ndevs_];
   char task_name[128];
   for (int i = 0; i < ndevs_; i++) {
     sprintf(task_name, "Initialize-%d", i);
-    tasks[i] = new Task(this, IRIS_TASK, task_name);
-    tasks[i]->set_system();
-    Command* cmd = Command::CreateInit(tasks[i]);
-    tasks[i]->AddCommand(cmd);
-    workers_[i]->Enqueue(tasks[i]);
+    //tasks[i] = new Task(this, IRIS_TASK, task_name);
+    TaskCreate(task_name, false, &tasks[i]);
+    Task *task = get_task_object(tasks[i]);
+    task->set_system();
+    task->Retain();
+    Command* cmd = Command::CreateInit(task);
+    task->AddCommand(cmd);
+    _debug2("Initialize task:%lu:%s ref_cnt:%d", task->uid(), task->name(), task->ref_cnt());
+    //task->Retain();
+    _debug2("Initialize task:%lu:%s ref_cnt:%d", task->uid(), task->name(), task->ref_cnt());
+    task->Retain(); workers_[i]->Enqueue(task);
   }
-  if (sync) for (int i = 0; i < ndevs_; i++) tasks[i]->Wait();
-  for (int i = 0; i < ndevs_; i++) {
-    //delete tasks[i];
-    tasks[i]->Release();
+  if (sync) for (int i = 0; i < ndevs_; i++) {
+      TaskWait(tasks[i]);
   }
+  //for (int i = 0; i < ndevs_; i++) {
+    //Task *task = get_task_object(tasks[i]);
+    //_debug2("Release Initialize task:%lu:%s ref_cnt:%d", task->uid(), task->name(), task->ref_cnt());
+    //task->Release();
+  //}
   delete[] tasks;
   return IRIS_SUCCESS;
 }
@@ -818,6 +843,8 @@ int Platform::DeviceGetDefault(int* device) {
 
 int Platform::DeviceSynchronize(int ndevs, int* devices) {
   Task* task = new Task(this, IRIS_MARKER, "Marker");
+  task->Retain();
+  iris_task brs_task = *(task->struct_obj());
   if (scheduler_) {
     char sync_task[128];
     for (int i = 0; i < ndevs; i++) {
@@ -828,13 +855,18 @@ int Platform::DeviceSynchronize(int ndevs, int* devices) {
       sprintf(sync_task, "Marker-%d", i);
       Task* subtask = new Task(this, IRIS_MARKER, sync_task);
       subtask->set_devno(devices[i]);
+      subtask->Retain();
       subtask->set_user(true);
+      _debug2("Created marker task:%lu:%s ref_cnt:%d", subtask->uid(), subtask->name(), subtask->ref_cnt());
       task->AddSubtask(subtask);
     }
     scheduler_->Enqueue(task);
-  } else workers_[0]->Enqueue(task);
-  task->Wait();
-  return task->Ok();
+  } else { task->Retain(); workers_[0]->Enqueue(task); }
+  TaskWait(brs_task);
+  //task->Wait();
+  // Task::Ok returns only Device::Ok. However, the parent task doesn't map to any 
+  // device. It is meaningless to call task->Ok(). Hence, returning  IRIS_SUCCESS.
+  return IRIS_SUCCESS;
 }
 
 int Platform::PolicyRegister(const char* lib, const char* name, void* params) {
@@ -1250,31 +1282,46 @@ int Platform::TaskSubmit(iris_task brs_task, int brs_policy, const char* opt, in
   Task *task = get_task_object(brs_task);
   assert(task != NULL);
   if (recording_) json_->RecordTask(task);
+  task->Retain();
   task->Submit(brs_policy, opt, sync);
   _trace(" successfully submitted task:%lu:%s", task->uid(), task->name());
   if (scheduler_) {
     FilterSubmitExecute(task);
     scheduler_->Enqueue(task);
-  } else workers_[0]->Enqueue(task);
-  if (sync) task->Wait();
+  } else { task->Retain(); workers_[0]->Enqueue(task); }
+  _debug2("Task wait release:%lu:%s ref_cnt:%d before TaskSubmit\n", task->uid(), task->name(), task->ref_cnt());
+  if (sync) TaskWait(brs_task);
   return nfailures_;
 }
 
 int Platform::TaskSubmit(Task *task, int brs_policy, const char* opt, int sync) {
+  iris_task brs_task = *(task->struct_obj());
   if (recording_) json_->RecordTask(task);
+  task->Retain();
   task->Submit(brs_policy, opt, sync);
   _trace(" successfully submitted task:%lu:%s", task->uid(), task->name());
   if (scheduler_) {
     FilterSubmitExecute(task);
     scheduler_->Enqueue(task);
-  } else workers_[0]->Enqueue(task);
-  if (sync) task->Wait();
+  } else { task->Retain(); workers_[0]->Enqueue(task); }
+  if (sync) TaskWait(brs_task);
   return nfailures_;
 }
-
+void Platform::TaskWaitCallBack(void *data) {
+  Task *task = (Task *)data;
+  task->Retain();
+}
 int Platform::TaskWait(iris_task brs_task) {
+  _debug2("waiting for brs_task:%lu\n", brs_task.uid);
+  task_track_.CallBackIfObjectExists(brs_task.uid, Platform::TaskWaitCallBack);
   Task *task = get_task_object(brs_task);
-  if (task != NULL) task->Wait();
+  if (task != NULL) {
+     unsigned long uid = task->uid(); string lname = task->name(); _debug2("Task wait release:%lu:%s ref_cnt:%d after callback\n", task->uid(), task->name(), task->ref_cnt());
+     task->Wait();
+     _debug2("Task wait before release:%lu:%s ref_cnt:%d\n", uid, lname.c_str(), task->ref_cnt());
+     int ref_cnt = task->Release();
+     _debug2("Task wait after release:%lu:%s ref_cnt:%d\n", uid, lname.c_str(), ref_cnt);
+  }
   return IRIS_SUCCESS;
 }
 
@@ -1298,13 +1345,30 @@ int Platform::TaskKernelCmdOnly(iris_task brs_task) {
   return (task->ncmds() == 1 && task->cmd_kernel()) ? IRIS_SUCCESS : IRIS_ERROR;
 }
 
+void Platform::TaskReleaseStatic(void *data)
+{
+    Task *task = (Task *)data;
+    // This is only for tasks which has to be manuallay released. 
+    // Otherwise, runtime will take care of when to release it
+    if (!task->IsRelease()) {
+        _debug2("Force releasing the task id:%lu:%s", task->uid(), task->name());
+        assert(task->ref_cnt() == 1);
+        task->EnableRelease();
+        task->ForceRelease();
+    }
+}
+
 int Platform::TaskRelease(iris_task brs_task) {
+    _debug2("Releasing the task id:%lu", brs_task.uid);
+    //task_track_.CallBackIfObjectExists(brs_task.uid, Platform::TaskReleaseStatic);
+    //Retainable object should alive 
     Task *task = get_task_object(brs_task);
-    if (task != NULL) {
-        if (!task->IsRelease())
-            task->ForceRelease();
-        else 
-            task->Release();
+    if (task != NULL && !task->IsRelease()) {
+        task->EnableRelease();
+        _debug2("Releasing the task id:%lu ref_cnt:%d\n", brs_task.uid, task->ref_cnt());
+        //assert(task->ref_cnt() == 1);
+        task->Release();
+        //Task should be alive yet.
     }
     return IRIS_SUCCESS;
 }
@@ -1518,28 +1582,42 @@ void Platform::set_release_task_flag(bool flag, iris_task brs_task)
 {
     Task *task = get_task_object(brs_task);
     assert(task != NULL);
-    task->DisableRelease();
+    if (!flag && task->IsRelease()) {
+        task->Retain();
+        task->DisableRelease();
+    }
+    else if (flag && !task->IsRelease()) {
+        task->EnableRelease();
+        task->Release();
+    }
+    _debug2(" reatined task id:%lu ref_cnt:%d\n", brs_task.uid, task->ref_cnt());
 }
 
 int Platform::GraphRelease(iris_graph brs_graph) {
-  Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
-  graph->ForceRelease();
+  graph_track_.CallBackIfObjectExists(brs_graph.uid, Graph::GraphRelease);
   return IRIS_SUCCESS;
 }
 
 int Platform::GraphRetain(iris_graph brs_graph, bool flag) {
   Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
-  if (flag)
+  if (flag && graph->IsRelease()) {
       graph->enable_retainable();
-  else
+  }
+  else if (!flag && !graph->IsRelease()) {
       graph->disable_retainable();
+  }
   std::vector<Task*>* tasks = graph->tasks();
   for (std::vector<Task*>::iterator I = tasks->begin(), E = tasks->end(); I != E; ++I) {
     Task* task = *I;
-    if (flag)
+    if (flag && task->IsRelease()) {
+        task->Retain();
         task->DisableRelease();
-    else
+        _debug2("Graph task:%lu:%s retained ref_cnt:%d", task->uid(), task->name(), task->ref_cnt());
+    }
+    else if (!flag && !task->IsRelease()) {
         task->EnableRelease();
+        task->Release();
+    }
   }
   return IRIS_SUCCESS;
 }
@@ -1547,18 +1625,28 @@ int Platform::GraphRetain(iris_graph brs_graph, bool flag) {
 int Platform::GraphSubmit(iris_graph brs_graph, int brs_policy, int sync) {
   Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
   if (graph == NULL) { if (sync) return Synchronize(); else return IRIS_SUCCESS; }
+  graph->Retain();
   std::vector<Task*>* tasks = graph->tasks();
   //graph->RecordStartTime(devs_[0]->Now());
   for (std::vector<Task*>::iterator I = tasks->begin(), E = tasks->end(); I != E; ++I) {
     Task* task = *I;
+/* 
+    printf("Task: %s\n", task->name());
+    for(int i = 0; i < task->ndepends(); i++)
+        printf("    Parents %d - %s\n", i, task->depend(i)->name());
+    for(int i = 0; i < task->nchilds(); i++)
+        printf("    Childs %d - %s\n", i, task->Child(i)->name());
+*/ 
     //preference is to honour the policy embedded in the task-graph.
     if (task->brs_policy() == iris_default) {
       task->set_brs_policy(brs_policy);
     }
+    _debug2("Graph submit task:%lu:%s retained ref_cnt:%d", task->uid(), task->name(), task->ref_cnt());
+    task->Retain();
     task->Submit(task->brs_policy(), task->opt(), sync);
     if (recording_) json_->RecordTask(task);
     if (scheduler_) scheduler_->Enqueue(task);
-    else workers_[0]->Enqueue(task);
+    else { task->Retain(); workers_[0]->Enqueue(task); }
   }
   if (sync) graph->Wait();
   return IRIS_SUCCESS;
@@ -1567,6 +1655,7 @@ int Platform::GraphSubmit(iris_graph brs_graph, int brs_policy, int sync) {
 int Platform::GraphSubmit(iris_graph brs_graph, int *order, int brs_policy, int sync) {
   Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
   if (graph == NULL) { if (sync) return Synchronize(); else return IRIS_SUCCESS; }
+  graph->Retain();
   std::vector<Task*> & tasks = graph->tasks_list();
   //graph->RecordStartTime(devs_[0]->Now());
   for(size_t i=0; i<tasks.size(); i++) {
@@ -1575,10 +1664,12 @@ int Platform::GraphSubmit(iris_graph brs_graph, int *order, int brs_policy, int 
     if (task->brs_policy() == iris_default) {
       task->set_brs_policy(brs_policy);
     }
+    _debug2("Graph submit task:%lu:%s retained ref_cnt:%d", task->uid(), task->name(), task->ref_cnt());
+    task->Retain();
     task->Submit(task->brs_policy(), task->opt(), sync);
     if (recording_) json_->RecordTask(task);
     if (scheduler_) scheduler_->Enqueue(task);
-    else workers_[0]->Enqueue(task);
+    else { task->Retain(); workers_[0]->Enqueue(task); }
   }
   if (sync) graph->Wait();
   return IRIS_SUCCESS;
@@ -1881,13 +1972,13 @@ int Platform::ShowKernelHistory() {
 #endif
 }
 
-unique_ptr<Platform> Platform::singleton_ = nullptr;
+shared_ptr<Platform> Platform::singleton_ = nullptr;
 std::once_flag Platform::flag_singleton_;
 std::once_flag Platform::flag_finalize_;
 
 Platform* Platform::GetPlatform() {
 //  if (singleton_ == NULL) singleton_ = new Platform();
-  std::call_once(flag_singleton_, []() { singleton_ = std::unique_ptr<Platform>(new Platform()); });
+  std::call_once(flag_singleton_, []() { singleton_ = std::shared_ptr<Platform>(new Platform()); });
   return singleton_.get();
 }
 int Platform::GetGraphTasksCount(iris_graph brs_graph) {

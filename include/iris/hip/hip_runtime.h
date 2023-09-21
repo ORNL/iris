@@ -19,6 +19,13 @@ typedef enum hipMemcpyKind {
         4  ///< Runtime will automatically determine copy-kind based on virtual addresses.
 } hipMemcpyKind;
 
+//Flags that can be used with hipStreamCreateWithFlags.
+/** Default stream creation flags. These are used with hipStreamCreate().*/
+#define hipStreamDefault  0x00
+
+/** Stream does not implicitly synchronize with null stream.*/
+#define hipStreamNonBlocking 0x01
+
 //Flags that can be used with hipHostRegister.
 /** Memory is Mapped and Portable.*/
 #define hipHostRegisterDefault 0x0
@@ -35,6 +42,27 @@ typedef enum hipMemcpyKind {
 
  /** Coarse Grained host memory lock.*/
 #define hipExtHostRegisterCoarseGrained 0x8
+
+//Flags that can be used with hipEventCreateWithFlags.
+/** Default flags.*/
+#define hipEventDefault 0x0
+
+/** Waiting will yield CPU. Power-friendly and usage-friendly but may increase latency.*/
+#define hipEventBlockingSync 0x1
+
+/** Disable event's capability to record timing information. May improve performance.*/
+#define hipEventDisableTiming  0x2
+
+/** Event can support IPC. Warnig: It is not supported in HIP.*/
+#define hipEventInterprocess 0x4
+
+/** Use a device-scope release when recording this event. This flag is useful to obtain more
+ * precise timings of commands between events.  The flag is a no-op on CUDA platforms.*/
+#define hipEventReleaseToDevice  0x40000000
+
+/** Use a system-scope release when recording this event. This flag is useful to make
+ * non-coherent host memory visible to the host. The flag is a no-op on CUDA platforms.*/
+#define hipEventReleaseToSystem  0x80000000
 
 typedef enum hipDeviceAttribute_t {
     hipDeviceAttributeMaxThreadsPerBlock,       ///< Maximum number of threads per block.
@@ -95,6 +123,7 @@ typedef enum hipDeviceAttribute_t {
 typedef int hipDevice_t;
 typedef void* hipDeviceptr_t;
 
+typedef struct ihipEvent_t* hipEvent_t;
 typedef struct ihipCtx_t* hipCtx_t;
 typedef struct ihipModule_t* hipModule_t;
 typedef struct ihipModuleSymbol_t* hipFunction_t;
@@ -115,11 +144,32 @@ hipError_t hipModuleLoad(hipModule_t* module, const char* fname);
 hipError_t hipModuleGetFunction(hipFunction_t* function, hipModule_t module, const char* kname);
 hipError_t hipMalloc(void** ptr, size_t size);
 hipError_t hipFree(void* ptr);
+hipError_t hipStreamCreateWithFlags(hipStream_t* stream, unsigned int flags);
+hipError_t hipStreamCreate(hipStream_t* stream);
+hipError_t hipStreamDestroy(hipStream_t stream);
+hipError_t hipMemcpyDtoD(hipDeviceptr_t dst, hipDeviceptr_t src, size_t sizeBytes);
+hipError_t hipMemcpyDtoDAsync(hipDeviceptr_t dst, hipDeviceptr_t src, size_t sizeBytes,
+                              hipStream_t stream);
 hipError_t hipMemcpyHtoD(hipDeviceptr_t dst, void* src, size_t sizeBytes);
+hipError_t hipMemcpyHtoDAsync(hipDeviceptr_t dst, void* src, size_t sizeBytes, hipStream_t stream);
 hipError_t hipMemcpyDtoH(void* dst, hipDeviceptr_t src, size_t sizeBytes);
+hipError_t hipMemcpyDtoHAsync(void* dst, hipDeviceptr_t src, size_t sizeBytes, hipStream_t stream);
 hipError_t hipModuleLaunchKernel(hipFunction_t f, unsigned int gridDimX, unsigned int gridDimY, unsigned int gridDimZ, unsigned int blockDimX, unsigned int blockDimY, unsigned int blockDimZ, unsigned int sharedMemBytes, hipStream_t stream, void** kernelParams, void** extra);
 hipError_t hipDeviceSynchronize(void);
 hipError_t hipMemcpy2D(void* dst, size_t dpitch, const void* src, size_t spitch, size_t width, size_t height, hipMemcpyKind kind);
+hipError_t hipMemcpy2DAsync(void* dst, size_t dpitch, const void* src, size_t spitch, size_t width,
+                            size_t height, hipMemcpyKind kind, hipStream_t stream);
+hipError_t hipStreamWaitEvent(hipStream_t stream, hipEvent_t event, unsigned int flags);
+hipError_t hipEventCreateWithFlags(hipEvent_t* event, unsigned flags);
+hipError_t hipEventCreate(hipEvent_t* event);
+hipError_t hipEventRecord(hipEvent_t event, hipStream_t stream);
+hipError_t hipEventDestroy(hipEvent_t event);
+hipError_t hipEventSynchronize(hipEvent_t event);
+hipError_t hipEventElapsedTime(float* ms, hipEvent_t start, hipEvent_t stop);
+hipError_t hipEventQuery(hipEvent_t event);
+typedef void (*hipStreamCallback_t)(hipStream_t stream, hipError_t status, void* userData);
+hipError_t hipStreamAddCallback(hipStream_t stream, hipStreamCallback_t callback, void* userData,
+                                        unsigned int flags);
 
 typedef struct {
     // 32-bit Atomics

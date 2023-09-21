@@ -1,5 +1,8 @@
 option(BUILD_SHARED_LIBS "Build shared libs" ON)
 
+if (ENABLE_FFI) 
+add_subdirectory(libffi)
+endif()
 include_directories(${IRIS_INC_DIR})
 include_directories(${IRIS_BIN_DIR}/runtime)
 include_directories(${IRIS_BIN_DIR}/runtime/rapidjson)
@@ -34,6 +37,10 @@ endif()
 
 if (DISABLE_CONSISTENCY_CHECK) 
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDISABLE_CONSISTENCY_CHECK")
+endif()
+
+if (ENABLE_FFI) 
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DENABLE_FFI")
 endif()
 
 if (TRACE_DISABLE) 
@@ -80,9 +87,11 @@ set(IRIS_RUNTIME_SOURCES
   DataMem.cpp
   Mem.cpp
   MemRange.cpp
+  TGPolicy.cpp
   Platform.cpp
   Policies.cpp
   Policy.cpp
+  HostInterface.cpp
   PolicyFirstToFinish.cpp
   PolicyData.cpp
   PolicyDefault.cpp
@@ -119,6 +128,7 @@ set(IRIS_RUNTIME_HEADERS
   DeviceCUDA.h
   DeviceHexagon.h
   DeviceHIP.h
+  HostInterface.h
   DeviceLevelZero.h
   DeviceOpenCL.h
   DeviceOpenMP.h
@@ -136,6 +146,8 @@ set(IRIS_RUNTIME_HEADERS
   LoaderLevelZero.h
   LoaderHost2HIP.h
   LoaderHost2CUDA.h
+  AsyncData.h
+  EventExchange.h
   LoaderCUDA.h
   LoaderHexagon.h
   LoaderHIP.h
@@ -163,6 +175,7 @@ set(IRIS_RUNTIME_HEADERS
   PolicyRoundRobin.h
   Polyhedral.h
   Pool.h
+  TGPolicy.h
   PresentTable.h
   Profiler.h
   ProfilerDOT.h
@@ -194,6 +207,10 @@ if(USE_PYTHON)
 endif()
 
 add_library(iris ${IRIS_RUNTIME_SOURCES})
+if (ENABLE_FFI)
+set_target_properties(iris PROPERTIES LINK_FLAGS "-L${CMAKE_BINARY_DIR}/src/runtime/libffi")
+target_link_libraries(iris ffi)
+endif() #ENABLE_FFI
 
 target_compile_options(iris PRIVATE -Wall)
 

@@ -1,6 +1,6 @@
 #include <iris/iris_openmp.h>
 
-static void process(int* A, IRIS_OPENMP_KERNEL_ARGS) {
+void process(int* A, IRIS_OPENMP_KERNEL_ARGS) {
   size_t _id;
 #pragma omp parallel for shared(A) private(_id)
   IRIS_OPENMP_KERNEL_BEGIN(_id)
@@ -8,7 +8,7 @@ static void process(int* A, IRIS_OPENMP_KERNEL_ARGS) {
   IRIS_OPENMP_KERNEL_END
 }
 
-static void ijk(double* C, double* A, double* B, size_t _off, size_t _ndr) {
+void ijk(double* C, double* A, double* B, size_t _off, size_t _ndr) {
   const size_t SIZE = _ndr;
 #pragma omp parallel for collapse(2) shared(A,B,C) private(SIZE)
   //IRIS_OPENMP_KERNEL_BEGIN(i)

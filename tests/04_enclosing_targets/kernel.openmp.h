@@ -1,6 +1,6 @@
 #include <iris/iris_openmp.h>
 
-static void loop0(int* A, IRIS_OPENMP_KERNEL_ARGS) {
+void loop0(int* A, IRIS_OPENMP_KERNEL_ARGS) {
   int i;
 #pragma omp parallel for shared(A) private(i)
   IRIS_OPENMP_KERNEL_BEGIN(i)
@@ -8,7 +8,7 @@ static void loop0(int* A, IRIS_OPENMP_KERNEL_ARGS) {
   IRIS_OPENMP_KERNEL_END
 }
 
-static void loop1(int* B, int* A, IRIS_OPENMP_KERNEL_ARGS) {
+void loop1(int* B, int* A, IRIS_OPENMP_KERNEL_ARGS) {
   int i;
 #pragma omp parallel for shared(B,A) private(i)
   IRIS_OPENMP_KERNEL_BEGIN(i)

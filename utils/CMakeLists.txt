@@ -151,6 +151,9 @@ if (HIP_ROOT_DIR)
 else()
     set(HIP_ENABLED OFF)
 endif()
+option(ENABLE_OPENMP_NVCC "Enable Host cuda kernel with NVC++ for OpenMP offload"    OFF)
+option(ENABLE_HOST2CUDA_NATIVE "Compile host2cuda kernels with NVC++ compiler"    OFF)
+option(ENABLE_HOST2HIP_NATIVE "Compile host2hip kernels with hipcc compiler"    OFF)
 option(APP_LIB_STATIC "Enable static app lib"    OFF)
 option(SNAPDRAGON "Enable support for Hexagon"    OFF )
 option(CDSP_FLAG "Enable support for CDSP"     OFF )
@@ -195,13 +198,18 @@ initVar(HOST2CUDA_LDFLAGS "")
 initVar(HOST2CUDA_COMP_FLAGS "")
 initVar(NVCC_CU cc70)
 if (ENABLE_OPENMP_NVCC)
-initVar(HOST2CUDA_COMP_COMPILER nvc++)
+set(HOST2CUDA_COMP_COMPILER nvc++)
 set(OPENMP_GPU_FLAGS -mp=gpu -gpu=${NVCC_CU})
 set(OPENMP_GPU_LDFLAGS )
 else()
 initVar(HOST2CUDA_COMP_COMPILER clang++)
 set(OPENMP_GPU_FLAGS "-fopenmp -fopenmp-targets=nvptx64-nvidia-cuda")
 set(OPENMP_GPU_LDFLAGS "-fopenmp -fopenmp-targets=nvptx64-nvidia-cuda")
+endif()
+if (ENABLE_HOST2CUDA_NATIVE)
+set(HOST2CUDA_COMP_COMPILER nvc++)
+set(OPENMP_GPU_FLAGS "")
+set(OPENMP_GPU_LDFLAGS "")
 endif()
 initVar(HOST2CUDA_COMP_LDFLAGS "")
 initVar(HOST2HIP_FLAGS "")
@@ -726,6 +734,60 @@ function(addKernelRule kernel_target kernel_sources flags ldflags libraries)
         endif()
 endfunction() #addKernelRule
 
+function(addKernelSpecificCompiler 
+                           kernel_target 
+                           compiler
+                           kernel_sources 
+                           flags 
+                           ldflags 
+                           libraries 
+                           output_obj_files 
+                           output_rules)
+        set(flags_X ${flags})
+        set(ldflags_X ${ldflags})
+        string(REPLACE " " ";" flags_X ${flags_X})
+        string(REPLACE " " ";" ldflags_X ${ldflags_X})
+        set(local_output_obj_files )
+        foreach(cuda_source ${kernel_sources})
+            message(STATUS ${cuda_source})
+            string(REGEX REPLACE " $" "" first "${cuda_source}")
+            string(REGEX REPLACE "/" ".__" rule_name "${first}.iris.specific")
+            string(REGEX REPLACE "\n$" "" rule_name "${rule_name}")
+            get_filename_component(SRC_PATH ${first} DIRECTORY)
+            if (SRC_PATH STREQUAL "")
+            set(SRC_PATH ".")
+            endif()
+            message(STATUS "\n Processing file: ${CMAKE_CURRENT_BINARY_DIR} ${first} in path:${SRC_PATH} rule:${rule_name}\n")
+            get_filename_component(SRC_DIR_PATH ${SRC_PATH} ABSOLUTE BASE_DIR ${PROJECT_SOURCE_DIR})
+            get_filename_component(SRC_FILE_PATH ${first} ABSOLUTE BASE_DIR ${PROJECT_SOURCE_DIR})
+            message(STATUS "\n ${SRC_DIR_PATH} ${SRC_FILE_PATH}\n")
+            set(output "${rule_name}.o")
+            add_custom_command(
+                    OUTPUT ${output}
+                    COMMAND ${compiler} -O2 ${OPENMP_GPU_FLAGS} -g -O0 -c ${SRC_FILE_PATH} ${flags_X} -I$ENV{IRIS}/include -I${SRC_DIR_PATH} -o ${output}
+                    DEPENDS ${SRC_FILE_PATH} iris_app_cpu_dsp_interface.h
+                    VERBATIM
+            )
+            add_custom_target(${rule_name} DEPENDS ${output})
+            list(APPEND local_output_obj_files ${output})
+            list(APPEND output_rules ${rule_name})
+        endforeach()
+        set(libpaths)
+        foreach(libname ${libraries})
+        list(APPEND libpaths "-l${libname}")
+        endforeach()
+        message(STATUS "OBJ files: ${local_output_obj_files}")
+        set(output_obj_files ${local_output_obj_files} PARENT_SCOPE)
+        add_custom_command(
+                OUTPUT ${kernel_target}.so
+                COMMAND ${compiler} -O0 -g -fPIC -shared -Wl,-soname,${kernel_target}.so -o ${kernel_target}.so ${local_output_obj_files} ${ldflags_X} ${libpaths}  -Wl,-rpath,${LIB_INSTALL_PATH}
+                DEPENDS ${output_rules}
+                WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR} 
+                )
+        add_custom_target(${kernel_target} ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${kernel_target}.so)
+        install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${kernel_target}.so DESTINATION ${LIB_INSTALL_PATH})
+endfunction() #addKernelRule
+
 function(addKernelCUDARule kernel_target 
                            kernel_sources 
                            flags 
@@ -818,11 +880,27 @@ endif() #HOST2CUDA_COMP_KERNEL_SOURCES
 #message(STATUS "Output obj files in CUDA ALL: ${output_obj_files}")
 
 if (HOST2CUDA_KERNEL_SOURCES AND USE_CUDA)
+if (ENABLE_HOST2CUDA_NATIVE)
+set(output_obj_files "")
+set(output_rules "")
+addKernelSpecificCompiler(kernel.host2cuda nvc++ "${HOST2CUDA_KERNEL_SOURCES}" ${HOST2CUDA_FLAGS} ${HOST2CUDA_LDFLAGS} "${HOST2CUDA_LIBRARIES}" "${output_obj_files}" "${output_rules}")
+set(HOST2CUDA_LDFLAGS "${HOST2CUDA_LDFLAGS} ${OPENMP_GPU_LDFLAGS} ${output_obj_files} -L${CMAKE_CURRENT_BINARY_DIR}")
+set(HOST2CUDA_LIBRARIES  ${HOST2CUDA_LIBRARIES} )
+else()
 addKernelRule(kernel.host2cuda "${HOST2CUDA_KERNEL_SOURCES}" ${HOST2CUDA_FLAGS} ${HOST2CUDA_LDFLAGS} "${HOST2CUDA_LIBRARIES}")
+endif() #HOST2CUDA_KERNEL_SOURCES
 endif() #HOST2CUDA_KERNEL_SOURCES
 
 if (HOST2HIP_KERNEL_SOURCES AND USE_HIP)
+if (ENABLE_HOST2HIP_NATIVE)
+set(output_obj_files "")
+set(output_rules "")
+addKernelSpecificCompiler(kernel.host2hip hipcc "${HOST2HIP_KERNEL_SOURCES}" ${HOST2HIP_FLAGS} ${HOST2HIP_LDFLAGS} "${HOST2HIP_LIBRARIES}" "${output_obj_files}" "${output_rules}")
+set(HOST2HIP_LDFLAGS "${HOST2HIP_LDFLAGS} ${OPENMP_GPU_LDFLAGS} ${output_obj_files} -L${CMAKE_CURRENT_BINARY_DIR}")
+set(HOST2HIP_LIBRARIES  ${HOST2HIP_LIBRARIES} )
+else()
 addKernelRule(kernel.host2hip "${HOST2HIP_KERNEL_SOURCES}" ${HOST2HIP_FLAGS} ${HOST2HIP_LDFLAGS} "${HOST2HIP_LIBRARIES}")
+endif()
 endif() #HOST2HIP_KERNEL_SOURCES
 
 if (HOST2ROC_KERNEL_SOURCES AND USE_HIP)

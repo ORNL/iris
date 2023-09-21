@@ -85,8 +85,11 @@ void Consistency::ResolveKernelWithPolymem(Task* task, Command* cmd, Mem* mem, K
   task_d2h->set_system();
   Command* d2h = Command::CreateD2H(task_d2h, mem, off, size, (char*) mem->host_inter() + off);
   task_d2h->AddCommand(d2h);
+  task_d2h->Retain();
+  iris_task task_d2h_brs = *(task_d2h->struct_obj());
   scheduler_->SubmitTaskDirect(task_d2h, owner);
-  task_d2h->Wait();
+  scheduler_->platform()->TaskWait(task_d2h_brs);
+  //task_d2h->Wait();
 
   Command* h2d = arg->mode == iris_r ?
     Command::CreateH2DNP(task, mem, off, size, (char*) mem->host_inter() + off) :
@@ -95,8 +98,8 @@ void Consistency::ResolveKernelWithPolymem(Task* task, Command* cmd, Mem* mem, K
 
   _trace("kernel[%s] memcpy[%lu] [%s] -> [%s]", kernel->name(), mem->uid(), owner->name(), dev->name());
 
-  task_d2h->Release();
-  Command::Release(h2d);
+  //task_d2h->Release();
+  //Command::Release(h2d);
 }
 
 void Consistency::ResolveKernelWithoutPolymem(Task* task, Command* cmd, Mem* mem, KernelArg* arg) {
@@ -118,8 +121,11 @@ void Consistency::ResolveKernelWithoutPolymem(Task* task, Command* cmd, Mem* mem
   d2h->set_internal_memory_transfer();
   bool context_shift = owner->IsContextChangeRequired();
   if (context_shift) owner->ResetContext();
+  task_d2h->Retain();
+  iris_task task_d2h_brs = *(task_d2h->struct_obj());
   scheduler_->SubmitTaskDirect(task_d2h,owner);
-  task_d2h->Wait();
+  scheduler_->platform()->TaskWait(task_d2h_brs);
+  //task_d2h->Wait();
   if (context_shift) dev->ResetContext();
 
   string h2d_tn = "Internal-H2D:" + string(task->name());
@@ -131,14 +137,17 @@ void Consistency::ResolveKernelWithoutPolymem(Task* task, Command* cmd, Mem* mem
   task_h2d->set_system();
   task_h2d->AddCommand(h2d);
   task_h2d->set_internal_memory_transfer();
+  task_h2d->Retain();
+  iris_task task_h2d_brs = *(task_h2d->struct_obj());
   scheduler_->SubmitTaskDirect(task_h2d,dev);
-  task_h2d->Wait();
+  scheduler_->platform()->TaskWait(task_h2d_brs);
+  //task_h2d->Wait();
   pthread_mutex_unlock(&mutex_);
 
   _trace("kernel[%s] mem[%lu] [%s][%d] -> [%s][%d]", kernel->name(), mem->uid(), owner->name(), owner->devno(), dev->name(), dev->devno());
 
-  task_d2h->Release();
-  task_h2d->Release();
+  //task_d2h->Release();
+  //task_h2d->Release();
 }
 
 void Consistency::ResolveD2H(Task* task, Command* cmd) {
@@ -157,16 +166,19 @@ void Consistency::ResolveD2H(Task* task, Command* cmd) {
   task_d2h->set_system();
   Command* d2h = Command::CreateD2H(task_d2h, mem, 0, mem->size(), mem->host_inter());
   task_d2h->AddCommand(d2h);
+  task_d2h->Retain();
+  iris_task task_d2h_brs = *(task_d2h->struct_obj());
   scheduler_->SubmitTaskDirect(task_d2h, owner);
-  task_d2h->Wait();
+  scheduler_->platform()->TaskWait(task_d2h_brs);
+  //task_d2h->Wait();
 
   Command* h2d = Command::CreateH2DNP(task, mem, 0, mem->size(), mem->host_inter());
   dev->ExecuteH2D(h2d);
 
   _trace("mem[%lu] [%s][%d] -> [%s][%d]", mem->uid(), owner->name(), owner->devno(), dev->name(), dev->devno());
 
-  task_d2h->Release();
-  Command::Release(h2d);
+  //task_d2h->Release();
+  //Command::Release(h2d);
 }
 
 } /* namespace rt */

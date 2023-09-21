@@ -23,6 +23,7 @@ option(USE_FORTRAN      "Enable support for Fortran 90" OFF)
 
 option(USE_SIGHANDLER   "Enable signal handler"         OFF)
 option(USE_HUB          "Enable hub"                    OFF)
+option(ENABLE_FFI       "Enable FFI based kernel calls" OFF)
 option(IRIS_ASYNC_STREAMING "Enable IRIS CUDA/HIP Asynchronous streaming"                    OFF)
 
 if (USE_RISCV)

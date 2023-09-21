@@ -15,26 +15,32 @@ Kernel::Kernel(const char* name, Platform* platform) {
   size_t len = strlen(name);
   strncpy(name_, name, len);
   strcpy(task_name_, name);
+  task_ = NULL;
+  n_mems_ = 0;
   name_[len] = 0;
   profile_data_transfers_ = false;
   platform_ = platform;
+  Retain();
   history_ = platform->CreateHistory(name);
+  async_data_.Init(this, -1);
   for (size_t i = 0; i < IRIS_MAX_NDEVS; i++) {
     archs_[i] = NULL;
     archs_devs_[i] = NULL;
     set_vendor_specific_kernel(i, false);
     vendor_specific_kernel_check_flag_[i] = false;
   }
+  ffi_data_ = NULL;
   set_object_track(Platform::GetPlatform()->kernel_track_ptr());
   Platform::GetPlatform()->kernel_track().TrackObject(this, uid());
 }
 
 Kernel::~Kernel() {
-  Platform::GetPlatform()->kernel_track().UntrackObject(this, uid());
+  //Platform::GetPlatform()->kernel_track().UntrackObject(this, uid());
   data_mems_in_.clear();
   data_mems_in_order_.clear();
   data_mem_regions_in_.clear();
   history_ = nullptr;
+  if (ffi_data_ != NULL) free(ffi_data_); 
   for (std::map<int, KernelArg*>::iterator I = args_.begin(), E = args_.end(); I != E; ++I)
     delete I->second;
   _trace(" kernel:%lu:%s is destroyed", uid(), name_);
@@ -49,7 +55,8 @@ int Kernel::set_order(int *order) {
 
 int Kernel::SetArg(int idx, size_t size, void* value) {
   KernelArg* arg = new KernelArg;
-  arg->size = size;
+  arg->size = size & 0xFFFF;
+  arg->data_type = size & 0xFFFF0000;
   if (value) memcpy(arg->value, value, size);
   arg->mem = NULL;
   arg->off = 0ULL;
@@ -59,6 +66,7 @@ int Kernel::SetArg(int idx, size_t size, void* value) {
 
 int Kernel::SetMem(int idx, BaseMem* mem, size_t off, int mode) {
   KernelArg* arg = new KernelArg;
+  _debug2("IDX:%d", idx);
   if(!mem) {
     _error("no mem[%p] for the kernel parameter %d", mem, idx);
     platform_->IncrementErrorCount();
@@ -69,6 +77,7 @@ int Kernel::SetMem(int idx, BaseMem* mem, size_t off, int mode) {
   arg->mem = mem;
   arg->off = off;
   arg->mode = mode;
+  arg->mem_index = n_mems_; n_mems_++;
   arg->mem_off = 0;
   arg->mem_size = mem->size();
   args_[idx] = arg;
@@ -80,6 +89,7 @@ void Kernel::add_dmem(DataMem *mem, int idx, int mode)
     if (mode == iris_r) {
         data_mems_in_.insert(make_pair(idx, mem));
         all_data_mems_in_.push_back(mem);
+        in_mem_track_.insert(make_pair(mem, idx));
     }
     else if (mode == iris_w)  {
         data_mems_out_.insert(make_pair(idx, mem));
@@ -88,13 +98,16 @@ void Kernel::add_dmem(DataMem *mem, int idx, int mode)
         data_mems_in_.insert(make_pair(idx, mem));
         data_mems_out_.insert(make_pair(idx, mem));
         all_data_mems_in_.push_back(mem);
+        in_mem_track_.insert(make_pair(mem, idx));
     }
+    mem_track_.insert(make_pair(mem, idx));
 }
 void  Kernel::add_dmem_region(DataMemRegion *mem, int idx, int mode)
 {
     if (mode == iris_r) {
         data_mem_regions_in_.insert(make_pair(idx, mem));
         all_data_mems_in_.push_back(mem);
+        in_mem_track_.insert(make_pair(mem, idx));
     }
     else if (mode == iris_w)  {
         data_mem_regions_out_.insert(make_pair(idx, mem));
@@ -103,7 +116,9 @@ void  Kernel::add_dmem_region(DataMemRegion *mem, int idx, int mode)
         data_mem_regions_in_.insert(make_pair(idx, mem));
         data_mem_regions_out_.insert(make_pair(idx, mem));
         all_data_mems_in_.push_back(mem);
+        in_mem_track_.insert(make_pair(mem, idx));
     }
+    mem_track_.insert(make_pair(mem, idx));
 }
 
 KernelArg* Kernel::ExportArgs() {
@@ -117,6 +132,7 @@ KernelArg* Kernel::ExportArgs() {
       new_arg->mode = arg->mode;
       new_arg->mem_off = arg->mem_off;
       new_arg->mem_size = arg->mem_size;
+      new_arg->mem_index = arg->mem_index;
     } else {
       new_arg->size = arg->size; 
       memcpy(new_arg->value, arg->value, arg->size);

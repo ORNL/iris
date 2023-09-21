@@ -68,6 +68,12 @@ typedef int8_t bool;
 #endif
 #endif
 
+enum StreamPolicy {
+    STREAM_POLICY_DEFAULT,
+    STREAM_POLICY_SAME_FOR_TASK,
+    STREAM_POLICY_GIVE_ALL_STREAMS_TO_KERNEL
+};
+typedef enum StreamPolicy StreamPolicy;
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 #ifndef UNDEF_IRIS_MACROS
 #define IRIS_MAX_NPLATFORMS     32
@@ -116,10 +122,21 @@ typedef int8_t bool;
 #define iris_dt_d2h_h2d         6
 #define iris_dt_error           0
 
-#define iris_int                (1 << 0)
-#define iris_long               (1 << 1)
-#define iris_float              (1 << 2)
-#define iris_double             (1 << 3)
+#define iris_int                ((1 << 1) << 16)
+#define iris_uint               ((1 << 1) << 16)
+#define iris_float              ((1 << 2) << 16)
+#define iris_double             ((1 << 3) << 16)
+#define iris_char               ((1 << 4) << 16)
+#define iris_int8               ((1 << 4) << 16)
+#define iris_uint8              ((1 << 4) << 16)
+#define iris_int16              ((1 << 5) << 16)
+#define iris_uint16             ((1 << 5) << 16)
+#define iris_int32              ((1 << 6) << 16)
+#define iris_uint32             ((1 << 6) << 16)
+#define iris_int64              ((1 << 7) << 16)
+#define iris_uint64             ((1 << 7) << 16)
+#define iris_long               ((1 << 8 << 16))
+#define iris_unsigned_long      ((1 << 8 << 16))
 
 #define iris_normal             (1 << 10)
 #define iris_reduction          (1 << 11)
@@ -137,6 +154,20 @@ typedef int8_t bool;
 #define iris_ncmds_kernel       2
 #define iris_ncmds_memcpy       3
 #define iris_cmds               4
+
+// The event wait flags aligned with HIP and CUDA
+#define iris_event_wait_default          0
+#define iris_event_wait_external         1
+
+// The event flags aligned with HIP and CUDA
+#define iris_event_default          0
+#define iris_event_blocking_sync    1
+#define iris_event_disable_timing   2
+#define iris_event_interprocess     3
+
+// Stream flags
+#define iris_stream_default         0
+#define iris_stream_non_blocking    1
 
 #endif // UNDEF_IRIS_MACROS
 #endif // DOXYGEN_SHOULD_SKIP_THIS
@@ -245,6 +276,24 @@ extern int iris_platform_count(int* nplatforms);
  */
 extern int iris_platform_info(int platform, int param, void* value, size_t* size);
 
+
+/**@brief set IRIS stream policy type 
+ *
+ * IRIS by default has stream policy type as STREAM_POLICY_DEFAULT (It selects stream policy based on device type)
+ *
+ * @param policy : Policy type of IRIS of data-type StreamPolicy 
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_set_stream_policy(StreamPolicy policy);
+
+/**@brief Enable IRIS asynchronous task execution feature
+ *
+ * IRIS by default has asynchronous disabled
+ *
+ * @param flag 0: disabled, 1: enabled
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_set_asynchronous(int flag);
 
 /**@brief Sets shared memory model
  *
@@ -464,6 +513,23 @@ extern int iris_task_malloc(iris_task task, iris_mem mem);
  */
 extern int iris_task_cmd_reset_mem(iris_task task, iris_mem mem, uint8_t reset);
 
+
+/**@brief set task level IRIS stream policy type 
+ *
+ * IRIS by default has stream policy type as STREAM_POLICY_DEFAULT (It selects stream policy based on device type)
+ *
+ * @param policy : Policy type of IRIS of data-type StreamPolicy 
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_task_set_stream_policy(iris_task brs_task, StreamPolicy policy);
+
+/**@brief Disable task asynchronous execution
+ *
+ * This function disables asynchronous task execution (data transfers, kernel execution) for the given task even if it is supported by the device. If the device is not supported for asynchronous task execution, this flag is ignored.
+ *
+ * @param brs_task iris task object
+ */
+extern void iris_task_disable_asynchronous(iris_task brs_task);
 
 /**@brief Gets task meta data
  *

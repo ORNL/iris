@@ -1,4 +1,5 @@
 #include "DataMem.h"
+#include "DataMemRegion.h"
 #include "Debug.h"
 #include "Platform.h"
 #include "Device.h"
@@ -12,6 +13,19 @@ namespace rt {
 DataMem::DataMem(Platform* platform, void *host_ptr, size_t size) : BaseMem(IRIS_DMEM, platform->ndevs()) {
     Init(platform, host_ptr, size);
 }
+DataMem::DataMem(Platform *platform, void *host_ptr, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim) : BaseMem(IRIS_DMEM, platform->ndevs()) 
+{
+    size_t size = elem_size;
+    for(int i=0; i<dim; i++) {
+        size = size * dev_size[i];
+    }
+    Init(platform, host_ptr, size);
+    dim_ = dim;
+    memcpy(off_, off, sizeof(size_t)*dim_);
+    memcpy(dev_size_, dev_size, sizeof(size_t)*dim_);
+    memcpy(host_size_, host_size, sizeof(size_t)*dim_);
+    elem_size_ = elem_size;
+}
 void DataMem::Init(Platform *platform, void *host_ptr, size_t size)
 {
     platform_ = platform;
@@ -20,14 +34,16 @@ void DataMem::Init(Platform *platform, void *host_ptr, size_t size)
     n_regions_ = -1;
     regions_ = NULL;
     host_dirty_flag_ = false;
+    dirty_flag_ = new bool[ndevs_];
+    device_map_ = new DataMemDevice[ndevs_+1];
     for (int i = 0; i < ndevs_; i++) {
         archs_[i] = NULL;
         archs_dev_[i] = platform->device(i);
         dirty_flag_[i] = true;
-        pthread_mutex_init(&dev_mutex_[i], NULL);
+        device_map_[i].Init(this, i);
         //dev_ranges_[i] = NULL;
     }
-    pthread_mutex_init(&host_mutex_, NULL);
+    device_map_[ndevs_].Init(this, ndevs_);
     elem_size_ = size_;
     for(int i=0; i<3; i++) {
         host_size_[i] = 1;
@@ -37,6 +53,37 @@ void DataMem::Init(Platform *platform, void *host_ptr, size_t size)
     dim_ = 1;
     host_ptr_ = host_ptr;
 }
+DataMem::~DataMem() {
+    if (host_ptr_owner_) free(host_ptr_);
+    for (int i = 0; i < ndevs_; i++) {
+        if (archs_[i]) archs_dev_[i]->MemFree(archs_[i]);
+    }
+    delete [] dirty_flag_;
+    for(int i=0; i<n_regions_; i++) {
+        delete regions_[i];
+    }
+    if (regions_) delete [] regions_;
+    for(int i=0; i<ndevs_; i++) {
+        if (GetCompletionEvent(i) != NULL) 
+            archs_dev_[i]->DestroyEvent(GetCompletionEvent(i));
+    }
+    delete [] device_map_;
+}
+void DataMem::CompleteCallback(void *stream, int status, DataMemDevice *data)
+{
+    data->EnableCompleted();
+}
+void DataMem::RecordEvent(int devno, int stream) {
+    if (GetCompletionEvent(devno) == NULL)
+        archs_dev_[devno]->CreateEvent(GetCompletionEventPtr(devno), iris_event_disable_timing);
+    _trace(" devno:%d stream:%d uid:%lu event:%p\n", devno, stream, uid(), GetCompletionEvent(devno)); 
+    archs_dev_[devno]->RecordEvent(GetCompletionEvent(devno), stream);
+}
+void DataMem::WaitForEvent(int devno, int stream, int dep_devno) {
+    assert(GetCompletionEvent(devno) != NULL);
+    archs_dev_[devno]->WaitForEvent(GetCompletionEvent(devno), stream, iris_event_disable_timing);
+}
+
 void DataMem::UpdateHost(void *host_ptr)
 {
     if (host_ptr_owner_ && host_ptr_ != NULL) free(host_ptr_);
@@ -50,9 +97,9 @@ void DataMem::UpdateHost(void *host_ptr)
 void DataMem::init_reset(bool reset)
 {
     reset_ = reset;
-    host_dirty_flag_ = !reset;
+    host_dirty_flag_ = reset;
     for(int i=0;  i<ndevs_; i++) {
-        dirty_flag_[i] = reset;
+        dirty_flag_[i] = !reset;
     }
 }
 void DataMem::clear() {
@@ -66,21 +113,6 @@ void DataMem::clear() {
           archs_[i] = NULL;
       }
   }
-}
-DataMem::DataMem(Platform *platform, void *host_ptr, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim) : BaseMem(IRIS_DMEM, platform->ndevs()) 
-{
-    size_t size = elem_size;
-    for(int i=0; i<dim; i++) {
-        size = size * dev_size[i];
-    }
-    Init(platform, host_ptr, size);
-    dim_ = dim;
-    for(int i=0; i<dim; i++) {
-        off_[i] = off[i];
-        dev_size_[i] = dev_size[i];
-        host_size_[i] = host_size[i];
-    }
-    elem_size_ = elem_size;
 }
 void *DataMem::host_memory() {
     if (!host_ptr_)  {
@@ -109,20 +141,6 @@ void DataMem::EnableOuterDimensionRegions()
         size_t dev_offset_from_root = i * dev_offset * elem_size_;
         regions_[i] = new DataMemRegion(this, i, off, loff, host_size_, dev_size, elem_size_, dim_, dev_offset_from_root);
     }
-}
-DataMem::~DataMem() {
-    if (host_ptr_owner_) free(host_ptr_);
-    for (int i = 0; i < ndevs_; i++) {
-        if (archs_[i]) archs_dev_[i]->MemFree(archs_[i]);
-    }
-    for(int i=0; i<ndevs_; i++) {
-        pthread_mutex_destroy(&dev_mutex_[i]);
-    }
-    pthread_mutex_destroy(&host_mutex_);
-    for(int i=0; i<n_regions_; i++) {
-        delete regions_[i];
-    }
-    if (regions_) delete [] regions_;
 }
 
 void DataMem::create_dev_mem(Device *dev, int devno, void *host)

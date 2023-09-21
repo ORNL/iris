@@ -68,6 +68,9 @@ enum cudaMemcpyKind
     cudaMemcpyDeviceToDevice      =   3,      /**< Device -> Device */
     cudaMemcpyDefault             =   4       /**< Direction of the transfer is inferred from the pointer values. Requires unified virtual addressing */
 };
+#ifndef __cplusplus
+typedef enum cudaMemcpyKind cudaMemcpyKind;
+#endif
 #define cudaHostRegisterDefault             0x00  /**< Default host memory registration flag */
 #define cudaHostRegisterPortable            0x01  /**< Pinned memory accessible by all CUDA contexts */
 #define cudaHostRegisterMapped              0x02  /**< Map registered memory into device space */
@@ -377,6 +380,16 @@ typedef enum CUstream_flags_enum {
  * See details of the \link_sync_behavior
  */
 #define CU_STREAM_PER_THREAD ((CUstream)0x2)
+
+/**
+ * Event wait flags
+ */
+typedef enum CUevent_wait_flags_enum {
+    CU_EVENT_WAIT_DEFAULT  = 0x0, /**< Default event wait flag */
+    CU_EVENT_WAIT_EXTERNAL = 0x1  /**< When using stream capture, create an event wait node
+                                    *  instead of the default behavior.  This flag is invalid
+                                    *  when used outside of capture.*/
+} CUevent_wait_flags;
 
 /**
  * Event creation flags
