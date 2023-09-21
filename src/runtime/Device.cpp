@@ -281,7 +281,7 @@ void Device::ExecuteKernel(Command* cmd) {
     KernelArg* arg = args + idx;
     BaseMem* bmem = (Mem*)arg->mem;
     if (params_map != NULL && 
-        (params_map[idx] & iris_all) == 0 && 
+        (params_map[idx] & iris_ftf) == 0 && 
         !(params_map[idx] & type_) ) continue;
     if (bmem && bmem->GetMemHandlerType() == IRIS_MEM) {
       Mem *mem = (Mem *)bmem;
@@ -415,7 +415,7 @@ void Device::ExecuteMemIn(Task *task, Command* cmd) {
     if (kernel->data_mems_in_order().size() > 0) {
         for(int idx : kernel->data_mems_in_order()) {
             if (params_map != NULL && 
-                    (params_map[idx] & iris_all) == 0 && 
+                    (params_map[idx] & iris_ftf) == 0 && 
                     !(params_map[idx] & type_) ) continue;
             KernelArg *karg = kernel->karg(idx);
             // If the kernel argument data transfer is proactively handled, ignore here
@@ -448,7 +448,7 @@ void Device::ExecuteMemIn(Task *task, Command* cmd) {
             int idx = it.first;
             DataMem *mem = it.second;
             if (params_map != NULL && 
-                    (params_map[idx] & iris_all) == 0 && 
+                    (params_map[idx] & iris_ftf) == 0 && 
                     !(params_map[idx] & type_) ) continue;
             ExecuteMemInDMemIn(task, cmd, mem);
         }
@@ -456,7 +456,7 @@ void Device::ExecuteMemIn(Task *task, Command* cmd) {
             int idx = it.first;
             DataMemRegion *mem = it.second;
             if (params_map != NULL && 
-                    (params_map[idx] & iris_all) == 0 && 
+                    (params_map[idx] & iris_ftf) == 0 && 
                     !(params_map[idx] & type_) ) continue;
             ExecuteMemInDMemRegionIn(task, cmd, mem);
         }
@@ -767,7 +767,7 @@ void Device::ExecuteMemOut(Task *task, Command* cmd) {
         int idx = it.first;
         DataMem *mem = it.second;
         if (params_map != NULL && 
-                (params_map[idx] & iris_all) == 0 && 
+                (params_map[idx] & iris_ftf) == 0 && 
                 !(params_map[idx] & type_) ) continue;
         mem->set_dirty_except(devno_);
         mem->set_host_dirty();
@@ -779,7 +779,7 @@ void Device::ExecuteMemOut(Task *task, Command* cmd) {
         int idx = it.first;
         DataMemRegion *mem = it.second;
         if (params_map != NULL && 
-                (params_map[idx] & iris_all) == 0 && 
+                (params_map[idx] & iris_ftf) == 0 && 
                 !(params_map[idx] & type_) ) continue;
         mem->set_dirty_except(devno_);
         mem->set_host_dirty();
@@ -792,7 +792,7 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
     int nddevs[IRIS_MAX_NDEVS+1];
     BaseMem* bmem = (BaseMem *)cmd->mem();
     if (bmem->GetMemHandlerType() != IRIS_DMEM) {
-        _error("Flush out is called for unssuported memory handler task:%ld:%s\n", cmd->task()->uid(), cmd->task()->name());
+        _error("Flush out is called for unsupported memory handler task:%ld:%s\n", cmd->task()->uid(), cmd->task()->name());
         return;
     }
     printf("running transfer : %s\n", cmd->task()->name());
@@ -840,6 +840,7 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
         if (Platform::GetPlatform()->is_scheduling_history_enabled()){
           //TODO: clean up
           string cmd_name = "Internal-D2H(" + string(cmd->task()->name()) + ")-from-" + to_string(src_dev->devno());// + "-to-" + string(this->name());
+          cmd->task()->set_dev(src_dev);
           Platform::GetPlatform()->scheduling_history()->Add(cmd, cmd_name, "MemFlushOut", start,end);
         }
 

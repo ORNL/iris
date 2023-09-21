@@ -29,8 +29,10 @@ elif [ "$SYSTEM" = "equinox" ] ; then
   module load gnu/12.2.0
 elif [ "$SYSTEM" = "oswald" ] ; then
   module load cmake nvhpc/23.7 gcc/12.1.0 #gnu/8.3.0 #gnu/3-2a
-  export LD_LIBRARY_PATH=$HOME/.iris/lib64:$LD_LIBRARY_PATH
+  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/.iris/lib64
   export NVCC=/opt/nvidia/hpc_sdk/Linux_x86_64/23.7/cuda/bin/nvcc
+  export CC=gcc
+  export CXX=g++
 fi
 
 #start with a clean build of iris

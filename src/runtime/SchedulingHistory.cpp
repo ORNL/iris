@@ -156,11 +156,11 @@ const char* SchedulingHistory::policy_str(int policy) {
     case iris_profile:    return "profile";
     case iris_random:     return "random";
     case iris_pending:    return "pending";
-    case iris_minimum:    return "minimum";
+    case iris_sdq:        return "sdq";
     case iris_custom:     return "custom";
     default: break;
   }
-  return policy & iris_all ? "all" : "?";
+  return policy & iris_ftf ? "ftf" : "?";
 }
 
 

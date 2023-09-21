@@ -41,7 +41,7 @@ int main(int argc, char** argv) {
   iris_task task1;
   iris_task_create(&task1);
   iris_task_host(task1, getFactor, &factor);
-  iris_graph_task(graph, task1, iris_minimum, NULL);
+  iris_graph_task(graph, task1, iris_sdq, NULL);
 
   void* params[2] = { &memA, &memFactor };
   int params_info[2] = { iris_w, iris_r };
@@ -50,16 +50,16 @@ int main(int argc, char** argv) {
   iris_task_h2d_full(task2, memFactor, &factor);
   iris_task_kernel(task2, "process", 1, NULL, &SIZE, NULL, 2, params, params_info);
   iris_task_d2h_full(task2, memA, A);
-  iris_graph_task(graph, task2, iris_minimum, NULL);
+  iris_graph_task(graph, task2, iris_sdq, NULL);
 
   iris_task task3;
   iris_task_create(&task3);
   iris_task_host(task3, printA, A);
-  iris_graph_task(graph, task3, iris_minimum, NULL);
+  iris_graph_task(graph, task3, iris_sdq, NULL);
 
   iris_graph_retain(graph, true);
   for (int loop = 0; loop < LOOP; loop++)
-    iris_graph_submit(graph, iris_minimum, 0);
+    iris_graph_submit(graph, iris_sdq, 0);
 
   iris_finalize();
 

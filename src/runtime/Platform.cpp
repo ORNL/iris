@@ -1701,7 +1701,7 @@ int Platform::RecordStop() {
 int Platform::FilterSubmitExecute(Task* task) {
   if (!polyhedral_available_) return IRIS_SUCCESS;
   if (!task->cmd_kernel()) return IRIS_SUCCESS;
-  if (task->brs_policy() & iris_all) {
+  if (task->brs_policy() & iris_ftf) {
     if (filter_task_split_->Execute(task) != IRIS_SUCCESS) {
       _trace("poly is not available kernel[%s] task[%lu]", task->cmd_kernel()->kernel()->name(), task->uid());
       return IRIS_ERROR;
