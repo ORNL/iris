@@ -46,7 +46,7 @@ namespace iris {
                 virtual void init(int dev);
                 virtual int launch_init(int model, int *dev_ptr, void *stream, void *param_mem, Command *cmd_kernel) { return IRIS_SUCCESS; }
                 virtual int setarg(void *param_mem, int index, size_t size, void *value) { return IRIS_ERROR; }
-                virtual int setmem(void *param, int index, void *mem, void **mem_ptr) { return IRIS_ERROR; }
+                virtual int setmem(void *param_mem, int kindex, void *mem) { return IRIS_ERROR; }
                 virtual int host_launch(void **stream, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *off, size_t *gws) { return IRIS_ERROR; }
                 virtual int host_kernel(void *param_mem, const char *kname) { return IRIS_ERROR; }
                 int SetKernelPtr(void *obj, const char *kernel_name) { return IRIS_ERROR; }
@@ -63,8 +63,6 @@ namespace iris {
                 int (*iris_host_launch_with_obj)(void *stream, void *obj, int devno, int dim, size_t off, size_t gws);
             private:
                 string kernel_env_;
-                //int dev_;
-                //int model_;
         };
         class BoilerPlateHostInterfaceLoader : public HostInterfaceLoader {
             public:
