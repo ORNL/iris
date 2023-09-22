@@ -96,7 +96,7 @@ int DeviceHIP::Init() {
   err = ld_->hipCtxCreate(&ctx_, hipDeviceScheduleAuto, ordinal_);
   EnablePeerAccess();
   _hiperror(err);
-  if (is_async()) {
+  if (is_async(false)) {
       for (int i = 0; i < nqueues_; i++) {
           err = ld_->hipStreamCreate(streams_ + i);
           _hiperror(err);
@@ -413,19 +413,6 @@ int DeviceHIP::KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bo
       *kernel_bin = host2hip_ld_->GetFunctionPtr(name);
       return IRIS_SUCCESS;
   }
-  /*
-  int kernel_idx = -1;
-  if (kernel->is_vendor_specific_kernel(devno_) && 
-          host2hip_ld_->iris_host2hip_kernel_with_obj &&
-        host2hip_ld_->iris_host2hip_kernel_with_obj(&kernel_idx, name)==IRIS_SUCCESS) {
-      *kernel_bin = host2hip_ld_->GetFunctionPtr(name);
-      return IRIS_SUCCESS;
-  }
-  if (kernel->is_vendor_specific_kernel(devno_) && host2hip_ld_->iris_host2hip_kernel) {
-      *kernel_bin = host2hip_ld_->GetFunctionPtr(name);
-      return IRIS_SUCCESS;
-  }
-  */
   if (IsContextChangeRequired()) {
       _trace("Changed Context for HIP resetting context switch dev[%d][%s] worker:%d self:%p thread:%p", devno(), name_, worker()->device()->devno(), (void *)worker()->self(), (void *)worker()->thread());
       ld_->hipCtxSetCurrent(ctx_);
@@ -469,12 +456,6 @@ int DeviceHIP::KernelSetArg(Kernel* kernel, int idx, int kindex, size_t size, vo
   if (kernel->is_vendor_specific_kernel(devno_)) {
      host2hip_ld_->setarg(
             kernel->GetParamWrapperMemory(), kindex, size, value);
-  /*
-  if (kernel->is_vendor_specific_kernel(devno_) && host2hip_ld_->iris_host2hip_setarg_with_obj)
-      host2hip_ld_->iris_host2hip_setarg_with_obj(kernel->GetParamWrapperMemory(), kindex, size, value);
-  else if (kernel->is_vendor_specific_kernel(devno_) && host2hip_ld_->iris_host2hip_setarg)
-      host2hip_ld_->iris_host2hip_setarg(kindex, size, value);
-      */
   }
   return IRIS_SUCCESS;
 }
@@ -487,12 +468,6 @@ int DeviceHIP::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, s
   if (kernel->is_vendor_specific_kernel(devno_)) {
       host2hip_ld_->setmem(
               kernel->GetParamWrapperMemory(), kindex, dev_ptr);
-      /*
-  if (kernel->is_vendor_specific_kernel(devno_) && host2hip_ld_->iris_host2hip_setmem_with_obj) 
-      host2hip_ld_->iris_host2hip_setmem_with_obj(kernel->GetParamWrapperMemory(), kindex, dev_ptr);
-  else if (kernel->is_vendor_specific_kernel(devno_) && host2hip_ld_->iris_host2hip_setmem) 
-      host2hip_ld_->iris_host2hip_setmem(kindex, dev_ptr);
-      */
   }
   return IRIS_SUCCESS;
 }
@@ -502,26 +477,12 @@ void DeviceHIP::CheckVendorSpecificKernel(Kernel *kernel) {
   if (host2hip_ld_->host_kernel(kernel->GetParamWrapperMemory(), kernel->name())==IRIS_SUCCESS) {
           kernel->set_vendor_specific_kernel(devno_, true);
   }
-  /*
-  if (host2hip_ld_->iris_host2hip_kernel_with_obj) {
-      int status = host2hip_ld_->iris_host2hip_kernel_with_obj(kernel->GetParamWrapperMemory(), kernel->name());
-      if (status == IRIS_SUCCESS &&
-              host2hip_ld_->IsFunctionExists(kernel->name())) {
-          kernel->set_vendor_specific_kernel(devno_, true);
-      }
-  }
-  else if (host2hip_ld_->iris_host2hip_kernel) {
-      if (host2hip_ld_->iris_host2hip_kernel(kernel->name()) == IRIS_SUCCESS &&
-              host2hip_ld_->IsFunctionExists(kernel->name())) {
-          kernel->set_vendor_specific_kernel(devno_, true);
-      }
-  }*/
   kernel->set_vendor_specific_kernel_check(devno_, true);
 }
 
 int DeviceHIP::KernelLaunchInit(Command *cmd, Kernel* kernel) {
     int stream_index = 0;
-    if (is_async(kernel->task())) {
+    if (is_async(kernel->task(), false)) {
         stream_index = GetStream(kernel->task()); //task->uid() % nqueues_; 
         if (stream_index == DEFAULT_STREAM_INDEX) { stream_index = 0; }
     }
@@ -546,7 +507,7 @@ int DeviceHIP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, s
   hipStream_t *kstream = NULL;
   bool async = false;
   int nstreams = 0;
-  if (is_async(kernel->task())) {
+  if (is_async(kernel->task(), false)) {
       stream_index = GetStream(kernel->task()); //task->uid() % nqueues_; 
       async = true;
       if (stream_index == DEFAULT_STREAM_INDEX) { async = false; stream_index = 0; }
@@ -573,39 +534,6 @@ int DeviceHIP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, s
      }
      worker_->platform()->IncrementErrorCount();
      return IRIS_ERROR;
-     /*
-  if (kernel->is_vendor_specific_kernel(devno_) && host2hip_ld_->iris_host2hip_launch_with_obj) {
-      _trace("dev[%d][%s] kernel[%s:%s] dim[%d] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, stream_index);
-      host2hip_ld_->SetKernelPtr(kernel->GetParamWrapperMemory(), kernel->name());
-      if (is_async(kernel->task())) {
-          int status = host2hip_ld_->iris_host2hip_launch_with_obj(
-                  streams_[stream_index],
-                  kernel->GetParamWrapperMemory(), ordinal_, dim, off[0], gws[0]);
-          return status;
-      }
-      else {
-          int status = host2hip_ld_->iris_host2hip_launch_with_obj(NULL,
-                  kernel->GetParamWrapperMemory(), ordinal_, dim, off[0], gws[0]);
-          err = ld_->hipDeviceSynchronize();
-          _hiperror(err);
-          if (err != hipSuccess){
-            worker_->platform()->IncrementErrorCount();
-            return IRIS_ERROR;
-          }
-          return status;
-      }
-  }
-  else if (kernel->is_vendor_specific_kernel(devno_) && host2hip_ld_->iris_host2hip_launch) {
-      _trace("dev[%d][%s] kernel[%s:%s] dim[%d] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, stream_index);
-      int status = host2hip_ld_->iris_host2hip_launch(dim, off[0], gws[0]);
-      err = ld_->hipDeviceSynchronize();
-      _hiperror(err);
-      if (err != hipSuccess){
-          worker_->platform()->IncrementErrorCount();
-          return IRIS_ERROR;
-      }
-      return status;
-  }*/
   }
   _trace("native kernel start dev[%d][%s] kernel[%s:%s] dim[%d] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, stream_index);
   hipFunction_t func = (hipFunction_t) kernel->arch(this);
