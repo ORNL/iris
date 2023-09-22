@@ -112,8 +112,15 @@ public:
   void set_shared_memory_buffers(bool flag=true) { shared_memory_buffers_ = flag; }
   bool is_shared_memory_buffers() { return shared_memory_buffers_ && can_share_host_memory_; }
   void set_async(bool flag=true) { async_ = flag; }
-  template <class Task> bool is_async(Task *task) { return is_async() && task->is_async(); }
-  bool is_async() { return async_; }
+  template <class Task> bool is_async(Task *task, bool stream_policy_check=true) { 
+      return is_async(false) && task->is_async() && 
+          (!stream_policy_check || 
+           (stream_policy(task) != STREAM_POLICY_GIVE_ALL_STREAMS_TO_KERNEL)); 
+  }
+  bool is_async(bool stream_policy_check=true) { 
+      return async_ && (!stream_policy_check || 
+              stream_policy() != STREAM_POLICY_GIVE_ALL_STREAMS_TO_KERNEL); 
+  }
   int platform() { return platform_; }
   int devno() { return devno_; }
   int type() { return type_; }

@@ -40,8 +40,8 @@ Device::Device(int devno, int platform) {
   hook_command_post_ = NULL;
   worker_ = NULL;
   //stream_policy_ = STREAM_POLICY_DEFAULT;
-  stream_policy_ = STREAM_POLICY_SAME_FOR_TASK;
-  //stream_policy_ = STREAM_POLICY_GIVE_ALL_STREAMS_TO_KERNEL;
+  //stream_policy_ = STREAM_POLICY_SAME_FOR_TASK;
+  stream_policy_ = STREAM_POLICY_GIVE_ALL_STREAMS_TO_KERNEL;
   n_copy_engines_ = 3;
 }
 

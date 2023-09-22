@@ -209,6 +209,9 @@ void Task::depends_on(Task & d_task) {
     TaskIRIS *i_task = (TaskIRIS*)(PlatformIRIS::GetPlatform()->get_task_object(d_task.task()));
     c_task->AddDepend(i_task, d_task.task().uid);
 }
+int Task::wait() {
+    return iris_task_wait(task_);
+}
 Graph::Graph(bool retainable) {
     retainable_ = retainable;
     iris_graph_create(&graph_);
