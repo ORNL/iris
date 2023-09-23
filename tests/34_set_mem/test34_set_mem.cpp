@@ -54,7 +54,7 @@ int main(int argc, char** argv) {
   }
 
 
-  //the easy way:
+  //the (data-memory) easy way:
   iris_task task1;
   iris_task_create(&task1);
 
