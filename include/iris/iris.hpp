@@ -149,6 +149,14 @@ namespace iris {
              * @param dim dimension
              */
             DMem(void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim);
+
+            static DMem *create(void *host, size_t size) {
+                DMem *dmem = new DMem(host, size);
+                return dmem;
+            }
+            static void release(DMem *dmem) {
+                delete dmem;
+            }
             /**@brief DMem Classs destructor.
              *
              */
@@ -202,6 +210,7 @@ namespace iris {
             void depends_on(Task & task);
             void disable_launch() { iris_task_kernel_launch_disabled(task_, true); }
             iris_task_type task() { return task_; }
+            int wait();
         private:
             iris_task_type task_;
             bool retainable_;

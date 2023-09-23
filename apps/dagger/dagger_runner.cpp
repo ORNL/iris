@@ -29,7 +29,7 @@ void ShowUsage(){
   printf("\t\t --size=\"1024\"\n");
   printf("\t\t --repeats=\"100\"\n");
   printf("\t\t --logfile=\"log.csv\"\n");
-  printf("\t\t --scheduling-policy=\"roundrobin\"\t all options include (roundrobin, depend, profile, random, minimum, all, custom) or any integer [0-9] denoting the device id to run all tasks on\n");
+  printf("\t\t --scheduling-policy=\"roundrobin\"\t all options include (roundrobin, depend, profile, random, sdq, all, custom) or any integer [0-9] denoting the device id to run all tasks on\n");
   //printf("\t\t --num-tasks=\"6\"\t (optional) only used for throughput computation\n");
   //printf("\t\t --sandwich\t\t (optional) determines if there are the beginning and terminating nodes\n");
   //printf("\t\t --kernel-split=\"70,30\"\t (optional) list of probabilities of each kernel being used\n");
@@ -78,8 +78,8 @@ int main(int argc, char** argv) {
     {"data", iris_data},
     {"profile", iris_profile},
     {"random", iris_random},
-    {"minimum",iris_minimum},
-    {"all", iris_all},
+    {"sdq",iris_sdq},
+    {"ftf", iris_ftf},
     {"custom", iris_custom}
   };
 

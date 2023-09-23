@@ -95,8 +95,8 @@ typedef enum StreamPolicy StreamPolicy;
 #define iris_profile            (1 << 21)
 #define iris_random             (1 << 22)
 #define iris_pending            (1 << 23)
-#define iris_minimum            (1 << 24)
-#define iris_all                (1 << 25)
+#define iris_sdq                (1 << 24)
+#define iris_ftf                (1 << 25)
 #define iris_ocl                (1 << 26)
 #define iris_custom             (1 << 27)
 
