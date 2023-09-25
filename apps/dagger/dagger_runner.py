@@ -20,20 +20,20 @@ EXIT_FAILURE = 1
 
 scheduling_policy_lookup = {
     "roundrobin": iris.iris_roundrobin,
-    "depend": iris.iris_depend,
-    "data": iris.iris_data,
-    "profile": iris.iris_profile,
-    "random": iris.iris_random,
-    "sdq": iris.iris_sdq,
-    "ftf": iris.iris_ftf,
-    "custom": iris.iris_custom,
+    "depend"    : iris.iris_depend,
+    "data"      : iris.iris_data,
+    "profile"   : iris.iris_profile,
+    "random"    : iris.iris_random,
+    "sdq"       : iris.iris_sdq,
+    "ftf"       : iris.iris_ftf,
+    "custom"    : iris.iris_custom,
 }
 
 def init_parser(parser):
     parser.add_argument("--size",required=True,type=int,help="The size of the memory buffers to use in this IRIS test.")
     parser.add_argument("--repeats",required=True,type=int,help="The number of repeats.")
     parser.add_argument("--logfile",required=True,type=str,help="The location to log the timing results.")
-    parser.add_argument("--scheduling-policy",default='roundrobin',help="all options include (roundrobin, depend, profile, random, any, all, custom) or any integer [0-9] denoting the device id to run all tasks on.")
+    parser.add_argument("--scheduling-policy",default='roundrobin',help="all options include (roundrobin, depend, profile, random, sdq, ftf, custom) or any integer [0-9] denoting the device id to run all tasks on.")
     parser.add_argument("--attach-debugger",action='store_true',help="Attach debugger on port 5678.")
 
 def create_graph(args):
