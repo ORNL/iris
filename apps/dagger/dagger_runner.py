@@ -25,7 +25,7 @@ scheduling_policy_lookup = {
     "profile": iris.iris_profile,
     "random": iris.iris_random,
     "minimum": iris.iris_minimum,
-    "all": iris.iris_all,
+    "ftf": iris.iris_ftf,
     "custom": iris.iris_custom,
 }
 

@@ -25,7 +25,7 @@ global_arguments_start_index=7
 valid_params = { 'PARAM' : 1, 'PARAM_CONST' : 1, 'IN_TASK' : 1, 'IN_TASK_OFFSET' : 1, 'OUT_TASK_OFFSET' : 1, 'OUT_TASK' : 1, 'IN_OUT_TASK' : 1, 'IN_OUT_TASK_OFFSET' : 1, 'VEC_PARAM' : 1, 'VS_CODE_GEN' : 1, 'TILED_CODE_GEN' : 1, 'CPP_TASK_TEMPLATE' : 1 }
 
 global_res= { 
-    "iris_all" : 0xFFFFFFFF, 
+    "iris_ftf" : 0xFFFFFFFF, 
     "iris_cpu"    : 0x01, 
     "iris_dsp"    : 0x02, 
     "iris_fpga"   : 0x04, 
@@ -533,7 +533,7 @@ static int iris_kernel_idx = -1;
 def getKernelParamVairable(k):
     return "__k_"+k+"_args"
 
-def is_expression_satisfied(expr, constraint='iris_all'):
+def is_expression_satisfied(expr, constraint='iris_ftf'):
     global global_res
     res = global_res
     if not re.match(r'.*iris_', expr):
@@ -543,7 +543,7 @@ def is_expression_satisfied(expr, constraint='iris_all'):
     expr = expr + " & " + constraint
     #print("EXPR: "+expr)
     expr_eval = eval(expr, res.copy())
-    if expr_eval == res['iris_all']:
+    if expr_eval == res['iris_ftf']:
         return True
     cu_op = {}
     for k,v in res.items():
@@ -561,7 +561,7 @@ def is_expression_satisfied(expr, constraint='iris_all'):
         if k == constraint:
             return True
     return False
-def appendConditionalParameters(expr, fdt, params, lines, constraint='iris_all', macros_flag=True):
+def appendConditionalParameters(expr, fdt, params, lines, constraint='iris_ftf', macros_flag=True):
     global global_res
     res = global_res
     if not re.match(r'.*iris_', expr):
@@ -571,7 +571,7 @@ def appendConditionalParameters(expr, fdt, params, lines, constraint='iris_all',
     expr = re.sub('\&\&', ' & ', expr)
     #print("EXPR: "+expr)
     expr_eval = eval(expr, res.copy())
-    if expr_eval == res['iris_all']:
+    if expr_eval == res['iris_ftf']:
         params.append(fdt)
         return
     if len(params) > 0:
@@ -623,7 +623,7 @@ def appendConditionalParameters(expr, fdt, params, lines, constraint='iris_all',
             else:
                 lines.append("\t\t\t\t"+fdt+",")
 
-def get_parameter_types(v, lines=[], constraint='iris_all'):
+def get_parameter_types(v, lines=[], constraint='iris_ftf'):
     global valid_params, global_res
     arguments = []
     arguments_variable_hash = {}
@@ -653,11 +653,11 @@ def get_parameter_types(v, lines=[], constraint='iris_all'):
            f_param == 'CPP_TASK_TEMPLATE':
             i = i+1
             continue
-        expr = 'iris_all' 
+        expr = 'iris_ftf' 
         if expression_index[f_param] == -1 or len(f_details) > expression_index[f_param]:
             expr = getPyExprString(f_details[expression_index[f_param]])
             if expr not in global_res:
-                expr = 'iris_all'
+                expr = 'iris_ftf'
         if is_expression_satisfied(expr, constraint):
             elem_dt_index = elem_dt_type_index[f_param]
             dt_index = 1
@@ -788,7 +788,7 @@ def extract_parameters(tag_list, line):
             tag_data[tag] = tag_data_tag
     return tag_data
     
-def add_conditional_parameters_with_variables(hdr_type, kvar, k, v, params=[], lines=[], conditional=False, constraint='iris_all', macros_flag=True):
+def add_conditional_parameters_with_variables(hdr_type, kvar, k, v, params=[], lines=[], conditional=False, constraint='iris_ftf', macros_flag=True):
     global valid_params, global_res
     def InsertConditionalDeclarationsWithVariable(expr, fdt, fvar, params, lines):
         if conditional:
@@ -967,7 +967,7 @@ extern \"C\" void {func_name}(
 }}
                 """)
     def generate_tiled_code(cpp_api_name, lines, v, data_details_hash, f_details, cpp_task_template):
-        vs_params, include_headers, params, params_decl, arguments, arguments_variable_hash, expression_stmts = get_headers(f_details, 'iris_all', start_index=0)
+        vs_params, include_headers, params, params_decl, arguments, arguments_variable_hash, expression_stmts = get_headers(f_details, 'iris_ftf', start_index=0)
         include_headers_str = "\n".join(include_headers) 
         expressions_str = "\n          ".join(expression_stmts)
         params_str = ", ".join(params)
@@ -1119,7 +1119,7 @@ void {c_func_name}({params_decl_str})
 #endif //IRIS_API_DEFINITION
                 """)
     def generate_cpp_task_template_code(cpp_api_name, c_api_name, kvar_original, lines, v, f_details, kernel_apis):
-        vs_params, include_headers, params, params_decl, arguments, arguments_variable_hash, expression_stmts = get_headers(f_details, 'iris_all', start_index=0)
+        vs_params, include_headers, params, params_decl, arguments, arguments_variable_hash, expression_stmts = get_headers(f_details, 'iris_ftf', start_index=0)
         include_headers_str = "\n".join(include_headers) 
         expressions_str = "\n          ".join(expression_stmts)
         params_str = ", ".join(params)

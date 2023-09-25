@@ -171,7 +171,7 @@
 #define CCONCATENATE1(arg1, arg2)  CCONCATENATE2(arg1, arg2)
 #define CCONCATENATE2(arg1, arg2)  arg1##arg2
 
-#define PMI_ARG_1(X)                        iris_all
+#define PMI_ARG_1(X)                        iris_ftf
 #define PMI_ARG_0(X)                        X 
 #define PMI_CORE(...)                       PCONCATENATE(PMI_ARG_, ISEMPTY(__VA_ARGS__))(__VA_ARGS__)
 
