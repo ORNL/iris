@@ -79,10 +79,10 @@ def create_graph(args):
                     exit(EXIT_FAILURE)
                 buffer_type.append(buffer)
                 if args.use_data_memory:
-                    iris_mem = iris.dmem_create(host_mem[-1])
+                    iris_mem = iris.dmem(host_mem[-1])
                     memory_task_target = iris.iris_default
                 else:
-                    iris_mem = iris.mem_create(host_mem[-1].nbytes)
+                    iris_mem = iris.mem(host_mem[-1].nbytes)
                 dev_mem.append(iris_mem)
 
         sizecb.append(args.size**dg._dimensionality[kernel]*np.double(0).itemsize)
