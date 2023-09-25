@@ -42,6 +42,7 @@ def create_graph(args):
     host_mem = []
     buffer_type = []
     dev_mem = []
+    memory_task_target = iris.iris_pending
     sizecb = []
     input_arrays = {
         "host_mem": host_mem,
@@ -77,7 +78,11 @@ def create_graph(args):
                     print(f"\033[41mInvalid memory argument! Kernel {kernel} has a buffer of memory type {buffer} but only r,w or rw are allowed.\n\033[0m")
                     exit(EXIT_FAILURE)
                 buffer_type.append(buffer)
-                iris_mem = iris.mem(host_mem[-1].nbytes)
+                if args.use_data_memory:
+                    iris_mem = iris.dmem_create(host_mem[-1])
+                    memory_task_target = iris.iris_default
+                else:
+                    iris_mem = iris.mem_create(host_mem[-1].nbytes)
                 dev_mem.append(iris_mem)
 
         sizecb.append(args.size**dg._dimensionality[kernel]*np.double(0).itemsize)
@@ -89,7 +94,7 @@ def create_graph(args):
     json_inputs.extend(sizecb)
     json_inputs.extend(host_mem)
     json_inputs.extend(dev_mem)
-    json_inputs.append(iris.iris_pending)
+    json_inputs.append(memory_task_target)
     json_inputs.append(args.task_target)
 
     print("JSON input parameters")
