@@ -19,6 +19,15 @@ A summary of Development Versioning Specification is shown below.
 
 ## [Unreleased]
 
+### Added
+- Changelog added to the repo to track major changes.
+
+### Changed
+
+### Removed
+
+### Fixed
+
 ## [2.0.0] - 2023-06-02
 
 Major release.
