@@ -236,8 +236,9 @@ iris_data       =       (1 << 20)
 iris_profile    =       (1 << 21)
 iris_random     =       (1 << 22)
 iris_pending    =       (1 << 23)
-iris_any        =       (1 << 24)
+iris_sdq        =       (1 << 24)
 iris_all        =       (1 << 25)
+iris_ftf        =       (1 << 25)
 iris_custom     =       (1 << 26)
 
 

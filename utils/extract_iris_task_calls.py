@@ -25,14 +25,16 @@ global_arguments_start_index=7
 valid_params = { 'PARAM' : 1, 'PARAM_CONST' : 1, 'IN_TASK' : 1, 'IN_TASK_OFFSET' : 1, 'OUT_TASK_OFFSET' : 1, 'OUT_TASK' : 1, 'IN_OUT_TASK' : 1, 'IN_OUT_TASK_OFFSET' : 1, 'VEC_PARAM' : 1, 'VS_CODE_GEN' : 1, 'TILED_CODE_GEN' : 1, 'CPP_TASK_TEMPLATE' : 1 }
 
 global_res= { 
-    "iris_all" : 0xFFFFFFFF, 
+    "iris_ftf" : 0xFFFFFFFF, 
     "iris_cpu"    : 0x01, 
     "iris_dsp"    : 0x02, 
     "iris_fpga"   : 0x04, 
     "iris_gpu"    : 0x08,
     "iris_cuda"   : 0x10,
+    "iris_cuda_host"   : 0x10,
     "iris_nvidia" : 0x10,
     "iris_hip"    : 0x20,
+    "iris_hip_host"    : 0x20,
     "iris_amd"    : 0x20,
     "iris_opencl" : 0x40,
 }
@@ -533,7 +535,7 @@ static int iris_kernel_idx = -1;
 def getKernelParamVairable(k):
     return "__k_"+k+"_args"
 
-def is_expression_satisfied(expr, constraint='iris_all'):
+def is_expression_satisfied(expr, constraint='iris_ftf'):
     global global_res
     res = global_res
     if not re.match(r'.*iris_', expr):
@@ -543,7 +545,7 @@ def is_expression_satisfied(expr, constraint='iris_all'):
     expr = expr + " & " + constraint
     #print("EXPR: "+expr)
     expr_eval = eval(expr, res.copy())
-    if expr_eval == res['iris_all']:
+    if expr_eval == res['iris_ftf']:
         return True
     cu_op = {}
     for k,v in res.items():
@@ -561,7 +563,7 @@ def is_expression_satisfied(expr, constraint='iris_all'):
         if k == constraint:
             return True
     return False
-def appendConditionalParameters(expr, fdt, params, lines, constraint='iris_all', macros_flag=True):
+def appendConditionalParameters(expr, fdt, params, lines, constraint='iris_ftf', macros_flag=True):
     global global_res
     res = global_res
     if not re.match(r'.*iris_', expr):
@@ -571,7 +573,7 @@ def appendConditionalParameters(expr, fdt, params, lines, constraint='iris_all',
     expr = re.sub('\&\&', ' & ', expr)
     #print("EXPR: "+expr)
     expr_eval = eval(expr, res.copy())
-    if expr_eval == res['iris_all']:
+    if expr_eval == res['iris_ftf']:
         params.append(fdt)
         return
     if len(params) > 0:
@@ -623,7 +625,7 @@ def appendConditionalParameters(expr, fdt, params, lines, constraint='iris_all',
             else:
                 lines.append("\t\t\t\t"+fdt+",")
 
-def get_parameter_types(v, lines=[], constraint='iris_all'):
+def get_parameter_types(v, lines=[], constraint='iris_ftf'):
     global valid_params, global_res
     arguments = []
     arguments_variable_hash = {}
@@ -653,11 +655,11 @@ def get_parameter_types(v, lines=[], constraint='iris_all'):
            f_param == 'CPP_TASK_TEMPLATE':
             i = i+1
             continue
-        expr = 'iris_all' 
+        expr = 'iris_ftf' 
         if expression_index[f_param] == -1 or len(f_details) > expression_index[f_param]:
             expr = getPyExprString(f_details[expression_index[f_param]])
             if expr not in global_res:
-                expr = 'iris_all'
+                expr = 'iris_ftf'
         if is_expression_satisfied(expr, constraint):
             elem_dt_index = elem_dt_type_index[f_param]
             dt_index = 1
@@ -788,7 +790,7 @@ def extract_parameters(tag_list, line):
             tag_data[tag] = tag_data_tag
     return tag_data
     
-def add_conditional_parameters_with_variables(hdr_type, kvar, k, v, params=[], lines=[], conditional=False, constraint='iris_all', macros_flag=True):
+def add_conditional_parameters_with_variables(hdr_type, kvar, k, v, params=[], lines=[], conditional=False, constraint='iris_ftf', macros_flag=True):
     global valid_params, global_res
     def InsertConditionalDeclarationsWithVariable(expr, fdt, fvar, params, lines):
         if conditional:
@@ -878,7 +880,7 @@ def generateTaskAPIs(args, cu_type_lines, header_data_hash):
         return param
     def get_headers(f_details, cu_type='iris_cpu', dtype_replace={}, start_index=1):
         include_headers = []
-        vs_params = extract_parameters(['INCLUDE', 'EXPR', 'DIM', 'ZIP', 'LOOP', 'GENERIC', 'MAP', 'CFUNC', 'LOOP', 'FULL_SIZE', 'TILE_SIZE', 'EXCLUDE'], ", ".join(f_details[start_index:]))
+        vs_params = extract_parameters(['INCLUDE', 'EXPR', 'DIM', 'ZIP', 'LOOP', 'GENERIC', 'MAP', 'CFUNC', 'LOOP', 'FULL_SIZE', 'TILE_SIZE', 'EXCLUDE', 'PRE_LOOP', 'POST_LOOP'], ", ".join(f_details[start_index:]))
         for k, vs_details in vs_params.items():
             if k == 'INCLUDE':
                 include_headers += [ f"#include <{f}>" for f in vs_details[0] ]
@@ -889,6 +891,8 @@ def generateTaskAPIs(args, cu_type_lines, header_data_hash):
             p = replace_datatypes(arg_data[2], dtype_replace) + " " + arg_data[0]
             params_decl.append(p)
         expression_stmts = []
+        pre_loop = []
+        post_loop = []
         for k, vs_details in vs_params.items():
             if k == 'EXPR':
                 for exprs in vs_details:
@@ -897,7 +901,21 @@ def generateTaskAPIs(args, cu_type_lines, header_data_hash):
                         expr_str = re.sub(r'\[\]\[\]', '[__id][__jd]', expr)
                         expr_str = re.sub(r'\[\]', '[__id]', expr)
                         expression_stmts.append(expr_str)
-        return vs_params, include_headers, params, params_decl, arguments, arguments_variable_hash, expression_stmts
+            if k == 'PRE_LOOP':
+                for exprs in vs_details:
+                    for expr in exprs:
+                        expr_str = re.sub(r'\[\]\[\]\[\]', '[__id][__jd][__kd]', expr)
+                        expr_str = re.sub(r'\[\]\[\]', '[__id][__jd]', expr)
+                        expr_str = re.sub(r'\[\]', '[__id]', expr)
+                        pre_loop.append(expr_str)
+            if k == 'POST_LOOP':
+                for exprs in vs_details:
+                    for expr in exprs:
+                        expr_str = re.sub(r'\[\]\[\]\[\]', '[__id][__jd][__kd]', expr)
+                        expr_str = re.sub(r'\[\]\[\]', '[__id][__jd]', expr)
+                        expr_str = re.sub(r'\[\]', '[__id]', expr)
+                        post_loop.append(expr_str)
+        return vs_params, include_headers, params, params_decl, arguments, arguments_variable_hash, expression_stmts, pre_loop, post_loop
     def generate_cuda_kernel(kvar, k, lines, v, f_details):
         func_name = kvar
         dtype_conversions={'int32_t' : 'int',
@@ -908,11 +926,13 @@ def generateTaskAPIs(args, cu_type_lines, header_data_hash):
                            'uint8_t'  : 'unsigned char',
                            'int64_t'  : 'long long',
                            'uint64_t'  : 'unsigned long long'}
-        vs_params, include_headers, params, params_decl, arguments, arguments_variable_hash, expression_stmts = get_headers(f_details, 'iris_cuda', dtype_conversions)
+        vs_params, include_headers, params, params_decl, arguments, arguments_variable_hash, expression_stmts, pre_loop, post_loop = get_headers(f_details, 'iris_cuda', dtype_conversions)
         include_headers_str = "\n".join(include_headers) 
         expressions_str = "\n          ".join(expression_stmts)
         params_decl = ",\n".join(params_decl)
         params_str = ", ".join(params)
+        pre_loop_stmt = "\n            ".join(pre_loop)
+        post_loop_stmt = "\n            ".join(post_loop)
         lines.append(f"""
 {include_headers_str}
 extern \"C\" __global__ void {func_name}(
@@ -932,7 +952,7 @@ extern \"C\" __global__ void {func_name}(
                            'uint8_t'  : 'unsigned char',
                            'int64_t'  : 'long long',
                            'uint64_t'  : 'unsigned long long'}
-        vs_params, include_headers, params, params_decl, arguments, arguments_variable_hash, expression_stmts = get_headers(f_details, 'iris_hip', dtype_conversions)
+        vs_params, include_headers, params, params_decl, arguments, arguments_variable_hash, expression_stmts, pre_loop, post_loop = get_headers(f_details, 'iris_hip', dtype_conversions)
         include_headers_str = "\n".join(include_headers) 
         expressions_str = "\n          ".join(expression_stmts)
         params_decl = ",\n".join(params_decl)
@@ -947,27 +967,62 @@ extern \"C\" __global__ void {func_name}(
     {expressions_str};
 }}
                 """)
-    def generate_openmp_kernel(kvar, k, lines, v, f_details):
+    def generate_host_kernel(kvar, k, lines, v, f_details, iris_tag='iris_cuda_host'):
         func_name = kvar
-        vs_params, include_headers, params, params_decl, arguments, arguments_variable_hash, expression_stmts = get_headers(f_details, 'iris_cpu')
+        vs_params, include_headers, params, params_decl, arguments, arguments_variable_hash, expression_stmts, pre_loop, post_loop = get_headers(f_details, iris_tag)
         include_headers_str = "\n".join(include_headers) 
         expressions_str = "\n          ".join(expression_stmts)
         params_decl = ",\n".join(params_decl)
         params_str = ", ".join(params)
+        pre_loop_stmt = "\n            ".join(pre_loop)
+        post_loop_stmt = "\n            ".join(post_loop)
+
+        stream_type = 'CUstream'
+        if iris_tag == 'iris_hip_host':
+            stream_type = 'hipStream_t'
+            lines.append('#define __HIP_PLATFORM_AMD__')
         lines.append(f"""
 {include_headers_str}
-extern \"C\" void {func_name}(
+extern \"C\" int {func_name}({stream_type} *stream, int nstreams_devno,
     {params_decl}, IRIS_OPENMP_KERNEL_ARGS)
 {{
-    size_t __id;
-    #pragma omp parallel for shared({params_str}) private(__id)
-    IRIS_OPENMP_KERNEL_BEGIN(__id)
-        {expressions_str};
-    IRIS_OPENMP_KERNEL_END
+    {pre_loop_stmt};
+    {expressions_str};
+    {post_loop_stmt};
+    return IRIS_SUCCESS;
+}}
+                """)
+    def generate_openmp_kernel(kvar, k, lines, v, f_details):
+        func_name = kvar
+        vs_params, include_headers, params, params_decl, arguments, arguments_variable_hash, expression_stmts, pre_loop, post_loop = get_headers(f_details, 'iris_cpu')
+        include_headers_str = "\n".join(include_headers) 
+        expressions_str = "\n          ".join(expression_stmts)
+        params_decl = ",\n".join(params_decl)
+        params_str = ", ".join(params)
+        expr_stmt = ""
+        if len(expression_stmts) > 0: 
+            expr_stmt = f"""
+        size_t __id;
+        #pragma omp parallel for shared({params_str}) private(__id)
+        IRIS_OPENMP_KERNEL_BEGIN(__id)
+            {expressions_str};
+        IRIS_OPENMP_KERNEL_END
+            """
+        pre_loop_stmt = "\n            ".join(pre_loop)
+        post_loop_stmt = "\n            ".join(post_loop)
+        lines.append(f"""
+{include_headers_str}
+extern \"C\" int {func_name}(
+    {params_decl}, IRIS_OPENMP_KERNEL_ARGS)
+{{
+    {pre_loop_stmt};
+    {expr_stmt}
+    {post_loop_stmt};
+    return IRIS_SUCCESS;
 }}
                 """)
     def generate_tiled_code(cpp_api_name, lines, v, data_details_hash, f_details, cpp_task_template):
-        vs_params, include_headers, params, params_decl, arguments, arguments_variable_hash, expression_stmts = get_headers(f_details, 'iris_all', start_index=0)
+        vs_params, include_headers, params, params_decl, arguments, arguments_variable_hash, expression_stmts, pre_loop, post_loop = get_headers(f_details, 'iris_ftf', start_index=0)
         include_headers_str = "\n".join(include_headers) 
         expressions_str = "\n          ".join(expression_stmts)
         params_str = ", ".join(params)
@@ -985,7 +1040,7 @@ extern \"C\" void {func_name}(
         excludes = [] 
         if 'EXCLUDE' in vs_params:
             excludes = vs_params['EXCLUDE'][0]
-        zip_params = vs_params['ZIP']
+        zip_params = vs_params['ZIP'][0]
         dim = int(vs_params['DIM'][0][0])
         zip_ds = []
         zip_ds_read = []
@@ -1024,6 +1079,8 @@ extern \"C\" void {func_name}(
             if vector_f_param:
                 cpp_params_decl.append(f"Tiling{dim}D<{x_type}> & {x}_tiling")
                 cpp_params_vars.append(f"{x}_tiling")
+                if x not in zip_params:
+                    continue
                 if vector_out_f_param:
                     zip_out_args.append(x)
                 zip_args.append(f"{x}_tile")
@@ -1070,6 +1127,8 @@ extern \"C\" void {func_name}(
             cpp_task_template = extract_parameters(['MAP'], data_details_hash['CPP_TASK_TEMPLATE'][1])
             cpp_call_fn_name = data_details_hash['CPP_TASK_TEMPLATE'][0]+"<"+cpp_task_template['MAP'][0][0]+">"
         cpp_call = cpp_call_fn_name+"("+", ".join(cpp_call_args)+")"
+        pre_loop_stmt = "\n            ".join(pre_loop)
+        post_loop_stmt = "\n            ".join(post_loop)
         lines.append(f"""
 {include_headers_str}
 #ifndef IRIS_API_DEFINITION
@@ -1088,6 +1147,7 @@ void {c_func_name}({params_decl_str});
 #ifdef __cplusplus
 void {g_func_name}({cpp_params_decl_str})
 {{
+    {pre_loop_stmt}
     {loop_stmt} {{
         {zip_ds_read_str}
         {expressions_str};
@@ -1098,6 +1158,7 @@ void {g_func_name}({cpp_params_decl_str})
         {task_set_metadata_str};
         iris_graph_task(graph, task, target_dev, NULL);
     }}
+    {post_loop_stmt}
 }}
 void {g_func_name}({params_decl_str})
 {{
@@ -1119,7 +1180,7 @@ void {c_func_name}({params_decl_str})
 #endif //IRIS_API_DEFINITION
                 """)
     def generate_cpp_task_template_code(cpp_api_name, c_api_name, kvar_original, lines, v, f_details, kernel_apis):
-        vs_params, include_headers, params, params_decl, arguments, arguments_variable_hash, expression_stmts = get_headers(f_details, 'iris_all', start_index=0)
+        vs_params, include_headers, params, params_decl, arguments, arguments_variable_hash, expression_stmts, pre_loop, post_loop = get_headers(f_details, 'iris_ftf', start_index=0)
         include_headers_str = "\n".join(include_headers) 
         expressions_str = "\n          ".join(expression_stmts)
         params_str = ", ".join(params)
@@ -1373,6 +1434,10 @@ int {func_name}("""
                 lines = []
                 if f_details[0] == 'iris_cpu':
                     generate_openmp_kernel(kvar_original, c_api_name, lines, v, f_details)
+                elif f_details[0] == 'iris_cuda_host':
+                    generate_host_kernel(kvar_original, c_api_name, lines, v, f_details)
+                elif f_details[0] == 'iris_hip_host':
+                    generate_host_kernel(kvar_original, c_api_name, lines, v, f_details, 'iris_hip_host')
                 elif f_details[0] == 'iris_cuda':
                     generate_cuda_kernel(kvar_original, c_api_name, lines, v, f_details)
                 elif f_details[0] == 'iris_hip':
@@ -1389,26 +1454,31 @@ int {func_name}("""
                 lines = []
                 generate_cpp_task_template_code(cpp_api_name, c_api_name, kvar_original, lines, v, f_details, kernel_apis)
                 insert_code(cu_type_lines, "cpp_task_template", lines)
-    def write_kernel_to_file(cu_type, filename):
-        if cu_type in cu_type_lines and len(cu_type_lines[cu_type])>0:
-            print(f"Writing {cu_type} kernels to file: {filename}")
-            lines = [ """
+    def write_kernel_to_file(cu_types, filename):
+        all_lines = []
+        lines = [ """
 /**
- * Author : Narasinga Rao Miniskar
- * Date   : Jun 16 2022
- * Contact for bug : miniskarnr@ornl.gov
- *
- */
-            """]
-            lines += cu_type_lines[cu_type]
+* Author : Narasinga Rao Miniskar
+* Date   : Jun 16 2022
+* Contact for bug : miniskarnr@ornl.gov
+*
+*/
+        """]
+        all_lines += lines
+        for cu_type in cu_types:
+            if cu_type in cu_type_lines and len(cu_type_lines[cu_type])>0:
+                print(f"Writing {cu_type} kernels to file: {filename}")
+                lines = cu_type_lines[cu_type]
+                all_lines += lines
+        if len(all_lines) > 0:
             with open(filename, 'w') as fh:
-                fh.write("\n".join(lines))
+                fh.write("\n".join(all_lines))
                 fh.close()
-    write_kernel_to_file('cpp_task_template', 'codegen_task_template.h')
-    write_kernel_to_file('tiled', 'codegen_tiled.h')
-    write_kernel_to_file('iris_cpu', 'codegen_openmp_kernels.h')
-    write_kernel_to_file('iris_cuda', 'codegen_cuda_kernels.cu')
-    write_kernel_to_file('iris_hip', 'codegen_hip_kernels.hip.cpp')
+    write_kernel_to_file(['cpp_task_template'], 'codegen_task_template.h')
+    write_kernel_to_file(['tiled'], 'codegen_tiled.h')
+    write_kernel_to_file(['iris_cpu'], 'codegen_openmp_kernels.h')
+    write_kernel_to_file(['iris_cuda', 'iris_cuda_host'], 'codegen_cuda_kernels.cu')
+    write_kernel_to_file(['iris_hip', 'iris_hip_host'], 'codegen_hip_kernels.hip.cpp')
 
 def extract_header_data_details_hash(args, v):
     global valid_params, global_res

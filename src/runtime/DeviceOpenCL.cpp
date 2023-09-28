@@ -468,7 +468,7 @@ void DeviceOpenCL::ExecuteKernel(Command* cmd) {
     if (idx > max_idx) max_idx = idx;
     KernelArg* arg = args + idx;
     if (params_map != NULL && 
-        (params_map[idx] & iris_ftf) == 0 && 
+        (params_map[idx] & iris_all) == 0 && 
         !(params_map[idx] & type_) ) continue;
     BaseMem* bmem = arg->mem;
     if (bmem && bmem->GetMemHandlerType() == IRIS_MEM) {

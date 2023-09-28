@@ -281,7 +281,7 @@ void Device::ExecuteKernel(Command* cmd) {
     KernelArg* arg = args + idx;
     BaseMem* bmem = (Mem*)arg->mem;
     if (params_map != NULL && 
-        (params_map[idx] & iris_ftf) == 0 && 
+        (params_map[idx] & iris_all) == 0 && 
         !(params_map[idx] & type_) ) continue;
     if (bmem && bmem->GetMemHandlerType() == IRIS_MEM) {
       Mem *mem = (Mem *)bmem;
@@ -415,7 +415,7 @@ void Device::ExecuteMemIn(Task *task, Command* cmd) {
     if (kernel->data_mems_in_order().size() > 0) {
         for(int idx : kernel->data_mems_in_order()) {
             if (params_map != NULL && 
-                    (params_map[idx] & iris_ftf) == 0 && 
+                    (params_map[idx] & iris_all) == 0 && 
                     !(params_map[idx] & type_) ) continue;
             KernelArg *karg = kernel->karg(idx);
             // If the kernel argument data transfer is proactively handled, ignore here
@@ -448,7 +448,7 @@ void Device::ExecuteMemIn(Task *task, Command* cmd) {
             int idx = it.first;
             DataMem *mem = it.second;
             if (params_map != NULL && 
-                    (params_map[idx] & iris_ftf) == 0 && 
+                    (params_map[idx] & iris_all) == 0 && 
                     !(params_map[idx] & type_) ) continue;
             ExecuteMemInDMemIn(task, cmd, mem);
         }
@@ -456,7 +456,7 @@ void Device::ExecuteMemIn(Task *task, Command* cmd) {
             int idx = it.first;
             DataMemRegion *mem = it.second;
             if (params_map != NULL && 
-                    (params_map[idx] & iris_ftf) == 0 && 
+                    (params_map[idx] & iris_all) == 0 && 
                     !(params_map[idx] & type_) ) continue;
             ExecuteMemInDMemRegionIn(task, cmd, mem);
         }
@@ -767,7 +767,7 @@ void Device::ExecuteMemOut(Task *task, Command* cmd) {
         int idx = it.first;
         DataMem *mem = it.second;
         if (params_map != NULL && 
-                (params_map[idx] & iris_ftf) == 0 && 
+                (params_map[idx] & iris_all) == 0 && 
                 !(params_map[idx] & type_) ) continue;
         mem->set_dirty_except(devno_);
         mem->set_host_dirty();
@@ -779,7 +779,7 @@ void Device::ExecuteMemOut(Task *task, Command* cmd) {
         int idx = it.first;
         DataMemRegion *mem = it.second;
         if (params_map != NULL && 
-                (params_map[idx] & iris_ftf) == 0 && 
+                (params_map[idx] & iris_all) == 0 && 
                 !(params_map[idx] & type_) ) continue;
         mem->set_dirty_except(devno_);
         mem->set_host_dirty();
