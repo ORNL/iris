@@ -124,6 +124,8 @@ list(APPEND TEST_EXES "33_graph_cpp" "test33_graph_cpp" " ")
 list(APPEND TEST_EXES "34_set_mem" "test34_set_mem" " ")
 list(APPEND TEST_EXES "35_json_mixed_args_record_replay" "test35_json_mixed_args_record_replay" " ")
 list(APPEND TEST_EXES "36_double_json_mixed_args_record_replay" "test36_double_json_mixed_args_record_replay" " ")
+#list(APPEND TEST_EXES "37_opencl_icd" "test37_opencl_icd" " ")
+list(APPEND TEST_EXES "38_offset" "test38_offset" " ")
 
 # Run each test in TEST_EXES
 list(LENGTH TEST_EXES count)
