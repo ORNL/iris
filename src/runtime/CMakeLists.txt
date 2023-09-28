@@ -92,12 +92,12 @@ set(IRIS_RUNTIME_SOURCES
   Policies.cpp
   Policy.cpp
   HostInterface.cpp
-  PolicyAll.cpp
-  PolicyAny.cpp
+  PolicyFirstToFinish.cpp
   PolicyData.cpp
   PolicyDefault.cpp
   PolicyDepend.cpp
   PolicyDevice.cpp
+  PolicyShortestDeviceQueue.cpp
   PolicyProfile.cpp
   PolicyRandom.cpp
   PolicyRoundRobin.cpp
@@ -164,8 +164,8 @@ set(IRIS_RUNTIME_HEADERS
   ObjectTrack.h
   Policies.h
   Policy.h
-  PolicyAll.h
-  PolicyAny.h
+  PolicyFirstToFinish.h
+  PolicyShortestDeviceQueue.h
   PolicyData.h
   PolicyDefault.h
   PolicyDevice.h

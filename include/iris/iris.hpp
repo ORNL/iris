@@ -73,6 +73,14 @@ namespace iris {
                 return iris_error_count();
             }
 
+            /**@brief Prints an overview of the system available to IRIS; specifically
+             * platforms, devices and their corresponding backends.
+             * It is logged to standard output.
+             */
+            void overview() {
+                 iris_overview();
+            }
+
         private:
             bool finalized_;
 

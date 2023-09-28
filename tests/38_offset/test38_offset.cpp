@@ -31,46 +31,64 @@ int main(int argc, char** argv) {
   iris_data_mem_create(&mem_B, B, SIZE * sizeof(int));
   iris_data_mem_create(&mem_C, C, SIZE * sizeof(int));
 
+  size_t offset = sizeof(int)*SIZE/2;// leave the first half of the results
+                                  // the offset is specified in bytes
 
-  // the hard way
+  // test memory offset (explicit)
   iris_kernel kernel0;
   iris_kernel_create("vecadd", &kernel0);
 
-  iris_kernel_setmem(kernel0, 0, mem_A, iris_r);
-  iris_kernel_setmem(kernel0, 1, mem_B, iris_r);
-  iris_kernel_setmem(kernel0, 2, mem_C, iris_w);
+  iris_kernel_setmem_off(kernel0, 0, mem_A, offset, iris_r);
+  iris_kernel_setmem_off(kernel0, 1, mem_B, offset, iris_r);
+  iris_kernel_setmem_off(kernel0, 2, mem_C, offset, iris_w);
   
   iris_task task0;
   iris_task_create(&task0);
   iris_task_kernel_object(task0, kernel0, 1, NULL, &SIZE, NULL);
   
   iris_task_dmem_flush_out(task0,mem_C);
-  iris_task_submit(task0, iris_sdq, nullptr, true);
+  iris_task_submit(task0, iris_minimum, nullptr, true);
   iris_synchronize();
 
   for (int i = 0; i < SIZE; i++) {
     printf("C[%d] = %d\n", i, C[i]);
-    if (C[i] != (A[i] + B[i])) ERROR++;
+    if (i < SIZE/2) {
+      if (C[i] != 0) ERROR++;
+    }
+    else {
+      if (C[i] != (A[i] + B[i])) ERROR++;
+    }
   }
 
 
-  //the (data-memory) easy way:
+  // test memory offset (data-memory)
   iris_task task1;
   iris_task_create(&task1);
 
-  void* params0[3] = { &mem_A, &mem_B, &mem_C };
-  int pinfo0[3] = { iris_r, iris_r, iris_w };
-  iris_task_kernel(task1, "vecadd", 1, NULL, &SIZE, NULL, 3, params0, pinfo0);
+  void* params[3] = { &mem_A, &mem_B, &mem_C };
+  int pinfo[3] = { iris_r, iris_r, iris_w };
+  //size_t poff[1] = { 4 };
+  //iris_task_kernel(task1, "vecadd", 1, poff, &SIZE, NULL, 3, params, pinfo);
+  iris_task_kernel(task1, "vecadd", 1, &offset, &SIZE, NULL, 3, params, pinfo);
 
   iris_task_dmem_flush_out(task1,mem_C);
-  iris_task_submit(task1, iris_sdq, nullptr, true);
+  iris_task_submit(task1, iris_minimum, nullptr, true);
   iris_synchronize();
 
   for (int i = 0; i < SIZE; i++) {
     printf("C[%d] = %d\n", i, C[i]);
-    if (C[i] != (A[i] + B[i])) ERROR++;
+    if (i < SIZE/2) {
+      if (C[i] != 0) ERROR++;
+    }
+    else {
+      if (C[i] != (A[i] + B[i])) ERROR++;
+    }
   }
   iris_finalize();
   printf("ERROR[%d]\n", ERROR+iris_error_count());
   return ERROR+iris_error_count();
+
+  // TODO: 2D
+
+  // TODO: 3D 
 }

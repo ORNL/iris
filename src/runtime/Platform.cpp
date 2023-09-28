@@ -42,6 +42,8 @@
 #include <unistd.h>
 #include <algorithm>
 #include <fstream>
+#include <iostream>
+#include <iomanip>
 
 namespace iris {
 namespace rt {
@@ -723,6 +725,68 @@ int Platform::InitDevices(bool sync) {
   //}
   delete[] tasks;
   return IRIS_SUCCESS;
+}
+
+void Platform::ShowOverview() {
+  int nplatforms = 0;
+  int ndevices = 0;
+  PlatformCount(&nplatforms);
+  DeviceCount(&ndevices);
+  std::cout << "IRIS is using " << ndevices << " devices with " << nplatforms << " platforms:" << std::endl;
+  char name[256];
+  char vendor[256];
+  const char* backend;
+  const char* type;
+  //print table header
+  std::cout << setw(8) << setfill('-') << "--" << "-+-" <<
+    setw(32) << setfill('-') << "----" << "-+-" <<
+    setw(32) << setfill('-') << "-----" << "-+-" <<
+    setw(32) << setfill('-') << "------" <<  "-+-" <<
+    setw(12) << setfill('-') << "----" << "-" << std::endl;
+  std::cout << setw(8) << setfill(' ') << "id" << " | " <<
+    setw(32) << setfill(' ') << "name" << " | " <<
+    setw(32) << setfill(' ') << "vendor" << " | " <<
+    setw(32) << setfill(' ') << "backend" <<  " | " <<
+    setw(12) << setfill(' ') << "type" << " " << std::endl;
+  std::cout << setw(8) << setfill('-') << "--" << "-+-" <<
+    setw(32) << setfill('-') << "----" << "-+-" <<
+    setw(32) << setfill('-') << "-----" << "-+-" <<
+    setw(32) << setfill('-') << "------" <<  "-+-" <<
+    setw(12) << setfill('-') << "----" << "-" << std::endl;
+  for (int i = 0; i < ndevices; i++){
+    int type_id;
+    int backend_id;
+    DeviceInfo(i, iris_name,    name,       NULL);
+    DeviceInfo(i, iris_vendor,  vendor,     NULL);
+    DeviceInfo(i, iris_type,    &type_id,   NULL);
+    DeviceInfo(i, iris_backend, &backend_id,NULL);
+    switch(backend_id){
+      case (iris_cuda):     backend = "cuda";       break;
+      case (iris_hexagon):  backend = "hexagon";    break;
+      case (iris_hip):      backend = "hip";        break;
+      case (iris_levelzero):backend = "levelzero";  break;
+      case (iris_opencl):   backend = "opencl";     break;
+    }
+    switch(type_id){
+      case (iris_cpu):      type = "CPU";         break;
+      case (iris_gpu):      type = "GPU";         break;
+      case (iris_amd) :     type = "AMD GPU";     break;
+      case (iris_nvidia) :  type = "NVIDIA GPU";  break;
+      case (iris_phi):      type = "PHI";         break;
+      case (iris_fpga):     type = "FPGA";        break;
+      case (iris_dsp):      type = "DSP";         break;
+    }
+    std::cout << setw(8) << setfill(' ') << i << " | " <<
+      setw(32) << setfill(' ') << name << " | "<<
+      setw(32) << setfill(' ') << vendor  << " | " <<
+      setw(32) << setfill(' ') << backend <<  " | " <<
+      setw(12) << setfill(' ') << type << " " << std::endl;
+  } 
+  std::cout << setw(8) << setfill('-') << "--" << "-+-" <<
+    setw(32) << setfill('-') << "----" << "-+-" <<
+    setw(32) << setfill('-') << "-----" << "-+-" <<
+    setw(32) << setfill('-') << "------" <<  "-+-" <<
+    setw(12) << setfill('-') << "----" << "-" << std::endl;
 }
 
 int Platform::PlatformCount(int* nplatforms) {
@@ -1637,7 +1701,7 @@ int Platform::RecordStop() {
 int Platform::FilterSubmitExecute(Task* task) {
   if (!polyhedral_available_) return IRIS_SUCCESS;
   if (!task->cmd_kernel()) return IRIS_SUCCESS;
-  if (task->brs_policy() & iris_all) {
+  if (task->brs_policy() & iris_ftf) {
     if (filter_task_split_->Execute(task) != IRIS_SUCCESS) {
       _trace("poly is not available kernel[%s] task[%lu]", task->cmd_kernel()->kernel()->name(), task->uid());
       return IRIS_ERROR;

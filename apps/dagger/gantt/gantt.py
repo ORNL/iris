@@ -23,9 +23,12 @@ class Gantt():
 
         for d in drop:
           timings = timings[timings.taskname != d]
-
         from natsort import humansorted
-        processors = sorted(list(set(timings['acclname'])),reverse=True)
+        try:
+            processors = sorted(list(set(timings['acclname'])),reverse=True)
+        except:
+            import ipdb
+            ipdb.set_trace()
 
         proc_names = [p for p in processors]
         
@@ -165,7 +168,7 @@ class DAG():
         timing_content = read_csv(timeline_file)
         return timing_content
 
-    def plotDag(self, dag_path_plot=None, show_device_legend=True):
+    def plotDag(self, dag_path_plot=None, show_device_legend=True, show_kernel_legend=True):
         import networkx as nx
         from networkx.drawing.nx_agraph import graphviz_layout
         #from bokeh.palettes import Turbo256
@@ -210,7 +213,8 @@ class DAG():
             kernel_shapes[d] = shapes[i]
 
         #generate the colour palette --- using as many unique colours as there are devices
-        unique_devices = set(self.timeline['acclname'])
+        from natsort import humansorted
+        unique_devices = humansorted(set(self.timeline['acclname']))
         #assert len(unique_devices) < 256 #if we have more than 256 we can't use Turbo256
         assert len(unique_devices) < 12 
         palette = []
@@ -234,19 +238,36 @@ class DAG():
         #add colour
         node_colours = []
         node_shapes = []
+        nodes_to_remove = []
         for n in dag:
             name = None
             for z in task_dag:
               if z['name'] == n:
                 name = z['name']
                 break
-            node_colours.append(device_colour[tuple(self.timeline[self.timeline['taskname'] == name]['acclname'])[0]])
+            try:
+                node_colours.append(device_colour[tuple(self.timeline[self.timeline['taskname'] == name]['acclname'])[0]])
+            except:
+                #MemFlush tasks (IRIS data-memory uses an internal cache and so if the buffer isn't written to, it isn't marked as dirty and therefore no flushing occurs)
+                if z['kernel'] != 'memory_transfer':
+                    import ipdb
+                    ipdb.set_trace()
+                assert z['kernel'] == 'memory_transfer', "we are missing a task in the timeline log!"
+                nodes_to_remove.append(name)
+                print("removed node, label and position for task {} (it was not run)...".format(name))
+                continue
             kernel_name = [ item['kernel'] for item in self.tasks if item['name'] == name ]
             if isinstance(kernel_name,list):
                 kernel_name = kernel_name[0]
             node_shapes.append(kernel_shapes[kernel_name])
 
-        fig = plt.figure(figsize=(3,6))
+        #prune tasks not executed (see line #245)
+        for name in nodes_to_remove:
+            node_labels.pop(name)
+            pos.pop(name)
+            dag.remove_node(name)
+
+        fig = plt.figure(figsize=(3,9))
         ax = fig.add_subplot(111)
         nx.draw(dag,pos=pos,labels=node_labels,font_size=8,node_color=node_colours,  ax=ax,node_shape=node_shapes)
         #failed attempt at using generic networkx package---rather than my own modification in python -m pip install "networkx @ git+https://github.com/BeauJoh/networkx.git@main"
@@ -263,8 +284,11 @@ class DAG():
             legend_handles.append(patch.Patch(color=device_colour[d], label=d))
         if show_device_legend:
           #ax.legend(handles=legend_handles,loc=3,title="Devices",fontsize=8)
-          ax.legend(handles=legend_handles,loc='upper center', bbox_to_anchor=(0.5, 0.0),title="Devices",fontsize=8)
-        plt.gca().add_artist(kernel_legend)
+          #ax.legend(handles=legend_handles,loc='upper center', bbox_to_anchor=(0.5, 0.0),title="Devices",fontsize=8)
+          ax.legend(handles=legend_handles,title="Devices",loc='lower center',bbox_to_anchor=(0.5, -0.2))
+        if show_kernel_legend:
+            plt.gca().add_artist(kernel_legend)
+        plt.tight_layout()
         if dag_path_plot is not None:
             plt.savefig(dag_path_plot)
             print("dag written to "+str(dag_path_plot))
@@ -316,7 +340,10 @@ class CombinePlots():
 
         # generate the dag/graph plot
         dag = DAG(self.dag_file,timeline_file=self.timeline_file)
-        right = dag.plotDag(self.dag_output_file,show_device_legend=True)
+        show_kernel_legend = False
+        if 'show_kernel_legend' in self.kargs:
+            show_kernel_legend = self.kargs['show_kernel_legend']
+        right = dag.plotDag(self.dag_output_file,show_device_legend=True,show_kernel_legend=show_kernel_legend)
         # generate the timeline/gantt plot
         use_device_background_colour = False
         if 'use_device_background_colour' in self.kargs:
@@ -345,19 +372,28 @@ if __name__ == '__main__':
     parser.add_argument('--title-string',dest="titlestring",type=str,default="",help="the title string for the plot(s)")
     parser.add_argument('--drop',dest="drop",type=str,default=None,help="elements to drop/exclude from the timeline plots")
 
+    parser.add_argument('--no-colour-background-by-device', dest='use_device_background_colour', action='store_false')
+    parser.add_argument('--colour-background-by-device', dest='use_device_background_colour', action='store_true')
+    parser.add_argument('--no-show-kernel-legend', dest='show_kernel_legend', action='store_false')
+    parser.add_argument('--show-kernel-legend', dest='show_kernel_legend', action='store_true')
+
+    #todo cell colour
+    #todo separate plots
+    parser.set_defaults(show_kernel_legend=True)
+    parser.set_defaults(use_device_background_colour=True)
+
     args = parser.parse_args()
     timeline_file = args.timeline
     dag_file      = args.dag
     output_file   = args.combinedout
     timeline_output_file  = args.timelineout
     dag_output_file       = args.dagout
-    title_string  = args.titlestring
     dropsy = []
     if args.drop is not None:
       dropsy = str(args.drop).split(',')
 
-    if output_file is None and timeline_output_file is None and dag_output_file is None:
+    if args.combinedout is None and args.timelineout is None and args.dagout is None:
         print("Incorrect Arguments. Please provide *at least* one output medium (--combined-out, --timeline-out, --dag-out)")
         sys.exit(1)
-    cp = CombinePlots(timeline_file=timeline_file, dag_file=dag_file, combined_output_file=output_file, timeline_output_file=timeline_output_file, dag_output_file=dag_output_file, title_string=title_string, drop=dropsy, use_device_background_colour=True)
+    cp = CombinePlots(timeline_file=args.timeline, dag_file=args.dag, combined_output_file=args.combinedout, timeline_output_file=args.timelineout, dag_output_file=args.dagout, title_string=args.titlestring, drop=dropsy, use_device_background_colour=args.use_device_background_colour, show_kernel_legend=args.show_kernel_legend)
 

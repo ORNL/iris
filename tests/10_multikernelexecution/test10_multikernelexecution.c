@@ -46,10 +46,10 @@ int main(int argc, char** argv) {
   iris_task_kernel_object(task2, kernel2, 1, NULL, &SIZE, NULL);
   iris_task_kernel_object(task3, kernel3, 1, NULL, &SIZE, NULL);
 
-  iris_task_submit(task0, iris_any, NULL, false);
-  iris_task_submit(task1, iris_any, NULL, false);
-  iris_task_submit(task2, iris_any, NULL, false);
-  iris_task_submit(task3, iris_any, NULL, false);
+  iris_task_submit(task0, iris_sdq, NULL, false);
+  iris_task_submit(task1, iris_sdq, NULL, false);
+  iris_task_submit(task2, iris_sdq, NULL, false);
+  iris_task_submit(task3, iris_sdq, NULL, false);
 
   printf("IRIS Synchronize\n");
   iris_synchronize();

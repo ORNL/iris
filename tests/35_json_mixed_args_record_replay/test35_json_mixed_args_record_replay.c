@@ -70,7 +70,7 @@ int main(int argc, char** argv) {
   iris_graph graph;
   iris_graph_create_json("graph_data_size.json", json_inputs, &graph);
 
-  iris_graph_submit(graph, iris_any, 1);
+  iris_graph_submit(graph, iris_sdq, 1);
   iris_synchronize();
  
   printf("X [");
@@ -133,7 +133,7 @@ int main(int argc, char** argv) {
   iris_graph graph;
   iris_graph_create_json("output.json", json_inputs, &graph);
 
-  iris_graph_submit(graph, iris_any, 1);
+  iris_graph_submit(graph, iris_sdq, 1);
   iris_synchronize();
  
   printf("X [");
@@ -195,7 +195,7 @@ int main(int argc, char** argv) {
   iris_graph graph;
   iris_graph_create_json("graph_data_type.json", json_inputs, &graph);
 
-  iris_graph_submit(graph, iris_any, 1);
+  iris_graph_submit(graph, iris_sdq, 1);
   iris_synchronize();
  
   printf("X [");
@@ -256,7 +256,7 @@ int main(int argc, char** argv) {
   iris_graph graph;
   iris_graph_create_json("output.json", json_inputs, &graph);
 
-  iris_graph_submit(graph, iris_any, 1);
+  iris_graph_submit(graph, iris_sdq, 1);
   iris_synchronize();
  
   printf("X [");
@@ -317,7 +317,7 @@ int main(int argc, char** argv) {
   iris_graph graph;
   iris_graph_create_json("graph_dynamic_data_size.json", json_inputs, &graph);
 
-  iris_graph_submit(graph, iris_any, 1);
+  iris_graph_submit(graph, iris_sdq, 1);
   iris_synchronize();
  
   printf("X [");
@@ -377,7 +377,7 @@ int main(int argc, char** argv) {
   iris_graph graph;
   iris_graph_create_json("output.json", json_inputs, &graph);
 
-  iris_graph_submit(graph, iris_any, 1);
+  iris_graph_submit(graph, iris_sdq, 1);
   iris_synchronize();
  
   printf("X [");
