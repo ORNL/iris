@@ -75,8 +75,8 @@ int main(int argc, char** argv) {
     {"data", iris_data},
     {"profile", iris_profile},
     {"random", iris_random},
-    {"any",iris_any},
-    {"all", iris_all},
+    {"sdq",iris_sdq},
+    {"ftf", iris_ftf},
     {"custom", iris_custom}
   };
 
