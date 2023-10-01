@@ -233,6 +233,7 @@ void GraphMetadata::calibrate_compute_cost_adj_matrix(double *comp_task_adj_matr
                 knobs.push_back(data64);
             }
         }
+        task->DisableRelease();
         int dev_type_index = 0;
         for(int dev_index : unique_devices) {
             int dev_no = model_2_devices[dev_index][0];
@@ -253,7 +254,9 @@ void GraphMetadata::calibrate_compute_cost_adj_matrix(double *comp_task_adj_matr
                         task->set_ndepends(0);
                         task->set_name(tname.c_str());
                         task->cmd_kernel()->kernel()->set_task_name(tname.c_str());
+                        _debug2("Before Task :%lu:%s ref_cnt:%d\n", task->uid(), task->name(), task->ref_cnt());
                         platform->TaskSubmit(task, dev_no, NULL, 1);
+                        _debug2("After Task :%lu:%s ref_cnt:%d\n", task->uid(), task->name(), task->ref_cnt());
                         task->set_name(prev_tname.c_str());
                         dtime = task->cmd_kernel()->time_duration();
                         task->set_ndepends(ndepends);
@@ -293,6 +296,7 @@ void GraphMetadata::calibrate_compute_cost_adj_matrix(double *comp_task_adj_matr
             }
             dev_type_index++;
         }
+        task->EnableRelease();
     }   
 #ifdef ENABLE_DEBUG
     int nentries = ndevs;

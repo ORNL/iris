@@ -1123,7 +1123,7 @@ class graph:
         ntasks, tasks = self.get_tasks()
         SIZE = ntasks+1
         dep_graph, dep_graph_2d_ptr = dll.alloc_int8((SIZE,SIZE))
-        dll.call_ret_ptr(dll.iris_get_graph_dependency_adj_matrix, self.handle, dep_graph)
+        dll.call_ret(dll.iris_get_graph_dependency_adj_matrix, np.int32, self.handle, dep_graph)
         #print("Dependency matrix", dep_graph)
         if pdf:
             task_names = self.get_task_names()
@@ -1227,7 +1227,7 @@ class graph:
         ntasks, tasks = self.get_tasks()
         SIZE = ntasks+1
         comm_2d, comm_2d_ptr = dll.alloc_size_t((SIZE,SIZE))
-        dll.call_ret_ptr(dll.iris_get_graph_2d_comm_adj_matrix, self.handle, comm_2d)
+        dll.call_ret(dll.iris_get_graph_2d_comm_adj_matrix, np.int32, self.handle, comm_2d)
         print("Extracting 2d communication cost")
         #print("Communication cost matrix", comm_2d)
         if pdf:
@@ -1272,10 +1272,10 @@ class graph:
             col_names = all_platform_info()
         comp_2d, comp_2d_ptr = dll.alloc_double((SIZE, cols))
         if only_device_type:
-            dll.call_ret_ptr(dll.iris_calibrate_compute_cost_adj_matrix_only_for_types, self.handle, comp_2d)
+            dll.call_ret(dll.iris_calibrate_compute_cost_adj_matrix_only_for_types, np.int32, self.handle, comp_2d)
         else:
-            dll.call_ret_ptr(dll.iris_calibrate_compute_cost_adj_matrix, self.handle, comp_2d)
-        #print("Computation cost matrix", comp_2d)
+            dll.call_ret(dll.iris_calibrate_compute_cost_adj_matrix, np.int32, self.handle, comp_2d)
+        print("Completed computation cost matrix calibration", comp_2d)
         if pdf:
             task_names = self.get_task_names()
             task_uids =  self.get_task_uids()
