@@ -1035,7 +1035,9 @@ Kernel* Device::ExecuteSelectorKernel(Command* cmd) {
   memset(kernel_name, 0, 256);
   strcpy(kernel_name, kernel->name());
   func(*(cmd->task()->struct_obj()), params, kernel_name);
-  return Platform::GetPlatform()->GetKernel(kernel_name);
+  Kernel *selected_kernel = Platform::GetPlatform()->GetKernel(kernel_name);
+  selected_kernel->set_task(kernel->task());
+  return selected_kernel;
 }
 
 int Device::RegisterCommand(int tag, command_handler handler) {

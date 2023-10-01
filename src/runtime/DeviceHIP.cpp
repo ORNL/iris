@@ -523,7 +523,7 @@ int DeviceHIP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, s
       if (stream_index == DEFAULT_STREAM_INDEX) { async = false; stream_index = 0; }
       // Though async is set to false, we still pass all streams to kernel to use it
       kstream = &streams_[stream_index];
-      nstreams = IRIS_MAX_DEVICE_NQUEUES - stream_index;
+      nstreams = nqueues_ - stream_index;
   }
   if (IsContextChangeRequired()) {
       ld_->hipCtxSetCurrent(ctx_);
@@ -563,6 +563,8 @@ int DeviceHIP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, s
     params_[max_arg_idx_ + 3] = &blockOff_z;
     if (kernels_offs_.find(func) == kernels_offs_.end()) {
       _trace("off0[%lu] cannot find %s_with_offsets kernel. ignore offsets", off[0], kernel->name());
+      _error("HIP kernel name:%s with offset kernel:%s_with_offsets function is not found", kernel->name(), kernel->name());
+      worker_->platform()->IncrementErrorCount();
     } else {
       func = kernels_offs_[func];
       _trace("off0[%lu] running %s_with_offsets kernel. max_arg_idx:%d", off[0], kernel->name(), max_arg_idx_);

@@ -46,11 +46,10 @@ private:
   Timer* timer_;
   cl_device_id cldev_;
   cl_context clctx_;
-  cl_command_queue clcmdq_;
+  cl_command_queue clcmdq_[IRIS_MAX_DEVICE_NQUEUES];
   cl_program clprog_;
   cl_device_type cltype_;
   cl_bool compiler_available_;
-  cl_int err_;
   int ocldevno_;
   std::string fpga_bin_suffix_;
 };

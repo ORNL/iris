@@ -35,8 +35,9 @@ namespace iris {
         class HostInterfaceLoader : public Loader {
             public:
                 HostInterfaceLoader(string kernel_env);
+                HostInterfaceLoader(string kernel_env, string suffix);
                 ~HostInterfaceLoader() { }
-                const char* library();
+                virtual const char* library();
 #ifdef DISABLE_DYNAMIC_LINKING
                 virtual bool IsFunctionExists(const char *kernel_name);
                 virtual void *GetFunctionPtr(const char *kernel_name);
@@ -68,6 +69,7 @@ namespace iris {
             public:
                 BoilerPlateHostInterfaceLoader(string kernel_env);
                 ~BoilerPlateHostInterfaceLoader() { }
+                virtual const char* library() { return HostInterfaceLoader::library(); }
                 int LoadFunctions();
                 int host_kernel(void *param_mem, const char *kname);
                 int SetKernelPtr(void *obj, const char *kernel_name);
@@ -188,6 +190,7 @@ namespace iris {
             public:
                 FFIHostInterfaceLoader(string kernel_env);
                 ~FFIHostInterfaceLoader() { }
+                virtual const char* library() { return HostInterfaceLoader::library(); }
                 int LoadFunctions();
                 int host_kernel(void *param_mem, const char *kname);
                 void set_kernel_ffi(void *param_mem, KernelFFI *ffi_data);

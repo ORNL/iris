@@ -73,6 +73,7 @@ int LoaderOpenCL::LoadFunctions() {
   LOADFUNC(clEnqueueWriteBufferRect);
   LOADFUNC(clEnqueueNDRangeKernel);
   LOADFUNC(clCreateCommandQueue);
+  LOADFUNC(clReleaseCommandQueue);
   LOADFUNC(clSetEventCallback);
   return IRIS_SUCCESS;
 }
