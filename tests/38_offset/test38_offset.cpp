@@ -44,7 +44,8 @@ int main(int argc, char** argv) {
   
   iris_task task0;
   iris_task_create(&task0);
-  iris_task_kernel_object(task0, kernel0, 1, NULL, &SIZE, NULL);
+  size_t SIZE2 = SIZE/2;
+  iris_task_kernel_object(task0, kernel0, 1, NULL, &SIZE2, NULL);
   
   iris_task_dmem_flush_out(task0,mem_C);
   iris_task_submit(task0, iris_sdq, nullptr, true);
@@ -73,7 +74,7 @@ int main(int argc, char** argv) {
   //size_t poff[1] = { 4 };
   //iris_task_kernel(task1, "vecadd", 1, poff, &SIZE, NULL, 3, params, pinfo);
   //printf("Task kernel offset:%lu\n", offset);
-  iris_task_kernel(task1, "vecadd", 1, &offset, &SIZE, NULL, 3, params, pinfo);
+  iris_task_kernel(task1, "vecadd", 1, &offset, &SIZE2, NULL, 3, params, pinfo);
 
   iris_task_dmem_flush_out(task1,mem_C);
   iris_task_submit(task1, iris_sdq, nullptr, true);
