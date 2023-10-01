@@ -461,15 +461,25 @@ int DeviceHIP::KernelSetArg(Kernel* kernel, int idx, int kindex, size_t size, vo
 }
 
 int DeviceHIP::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, size_t off) {
-  mem->arch(this);
-  void *dev_ptr = mem->arch(devno_);
-  params_[idx] = mem->arch_ptr(devno_);
-  if (max_arg_idx_ < idx) max_arg_idx_ = idx;
-  if (kernel->is_vendor_specific_kernel(devno_)) {
-      host2hip_ld_->setmem(
-              kernel->GetParamWrapperMemory(), kindex, dev_ptr);
-  }
-  return IRIS_SUCCESS;
+    void **dev_alloc_ptr = mem->arch_ptr(this);
+    void *dev_ptr = NULL;
+    if (off) {
+        *(mem->archs_off() + devno_) = (void*) ((uint8_t *) *dev_alloc_ptr + off);
+        params_[idx] = mem->archs_off() + devno_;
+        dev_ptr = *(mem->archs_off() + devno_);
+    } else {
+        params_[idx] = dev_alloc_ptr;
+        dev_ptr = *dev_alloc_ptr; 
+    }
+    _debug2("task:%lu:%s idx:%d::%d off:%lu dev_ptr:%p (%p) dev_alloc_ptr:%p", 
+            kernel->task()->uid(), kernel->task()->name(),
+            idx, kindex, off, dev_ptr, *dev_alloc_ptr, dev_alloc_ptr);
+    if (max_arg_idx_ < idx) max_arg_idx_ = idx;
+    if (kernel->is_vendor_specific_kernel(devno_)) {
+        host2hip_ld_->setmem(
+                kernel->GetParamWrapperMemory(), kindex, dev_ptr);
+    }
+    return IRIS_SUCCESS;
 }
 
 void DeviceHIP::CheckVendorSpecificKernel(Kernel *kernel) {
@@ -544,10 +554,10 @@ int DeviceHIP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, s
   }
   int grid[3] = { (int) (gws[0] / block[0]), (int) (gws[1] / block[1]), (int) (gws[2] / block[2]) };
 
+  size_t blockOff_x = off[0] / block[0];
+  size_t blockOff_y = off[1] / block[1];
+  size_t blockOff_z = off[2] / block[2];
   if (off[0] != 0 || off[1] != 0 || off[2] != 0) {
-    size_t blockOff_x = off[0] / block[0];
-    size_t blockOff_y = off[1] / block[1];
-    size_t blockOff_z = off[2] / block[2];
     params_[max_arg_idx_ + 1] = &blockOff_x;
     params_[max_arg_idx_ + 2] = &blockOff_y;
     params_[max_arg_idx_ + 3] = &blockOff_z;
@@ -555,11 +565,11 @@ int DeviceHIP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, s
       _trace("off0[%lu] cannot find %s_with_offsets kernel. ignore offsets", off[0], kernel->name());
     } else {
       func = kernels_offs_[func];
-      _trace("off0[%lu] running %s_with_offsets kernel.", off[0], kernel->name());
+      _trace("off0[%lu] running %s_with_offsets kernel. max_arg_idx:%d", off[0], kernel->name(), max_arg_idx_);
     }
   }
 
-  _trace("dev[%d] kernel[%s:%s] dim[%d] grid[%d,%d,%d] block[%d,%d,%d] shared_mem_bytes[%u] q[%d]", devno_, kernel->name(), kernel->get_task_name(), dim, grid[0], grid[1], grid[2], block[0], block[1], block[2], shared_mem_bytes_, stream_index);
+  _trace("dev[%d][%s] kernel[%s:%s] dim[%d] grid[%d,%d,%d] block[%d,%d,%d] blockoff[%lu,%lu,%lu] max_arg_idx[%d] shared_mem_bytes[%u] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, grid[0], grid[1], grid[2], block[0], block[1], block[2], blockOff_x, blockOff_y, blockOff_z, max_arg_idx_, shared_mem_bytes_, stream_index);
   if (!async) {
       err = ld_->hipModuleLaunchKernel(func, grid[0], grid[1], grid[2], block[0], block[1], block[2], shared_mem_bytes_, 0, params_, NULL);
       _hiperror(err);

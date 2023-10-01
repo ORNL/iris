@@ -589,7 +589,7 @@ int DeviceCUDA::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, 
       params_[idx] = dev_alloc_ptr;
       dev_ptr = *dev_alloc_ptr; 
   }
-  _debug2("task:%lu:%s idx:%d::%d off:%lu dev_ptr:%p dev_alloc_ptr:%p\n", 
+  _debug2("task:%lu:%s idx:%d::%d off:%lu dev_ptr:%p dev_alloc_ptr:%p", 
           kernel->task()->uid(), kernel->task()->name(),
           idx, kindex, off, dev_ptr, dev_alloc_ptr);
   if (max_arg_idx_ < idx) max_arg_idx_ = idx;

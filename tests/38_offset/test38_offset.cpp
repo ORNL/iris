@@ -40,14 +40,14 @@ int main(int argc, char** argv) {
 
   iris_kernel_setmem_off(kernel0, 0, mem_A, offset, iris_r);
   iris_kernel_setmem_off(kernel0, 1, mem_B, offset, iris_r);
-  iris_kernel_setmem_off(kernel0, 2, mem_C, offset, iris_w);
+  iris_kernel_setmem_off(kernel0, 2, mem_C, offset, iris_rw);
   
   iris_task task0;
   iris_task_create(&task0);
   iris_task_kernel_object(task0, kernel0, 1, NULL, &SIZE, NULL);
   
   iris_task_dmem_flush_out(task0,mem_C);
-  iris_task_submit(task0, iris_minimum, nullptr, true);
+  iris_task_submit(task0, iris_sdq, nullptr, true);
   iris_synchronize();
 
   for (int i = 0; i < SIZE; i++) {
@@ -58,31 +58,36 @@ int main(int argc, char** argv) {
     else {
       if (C[i] != (A[i] + B[i])) ERROR++;
     }
+    C[i] = 0;
   }
+  iris_data_mem_update(mem_C, C);
+  //printf("ERROR :%d\n", ERROR);
 
-
+  offset = 8;
   // test memory offset (data-memory)
   iris_task task1;
   iris_task_create(&task1);
 
   void* params[3] = { &mem_A, &mem_B, &mem_C };
-  int pinfo[3] = { iris_r, iris_r, iris_w };
+  int pinfo[3] = { iris_r, iris_r, iris_rw };
   //size_t poff[1] = { 4 };
   //iris_task_kernel(task1, "vecadd", 1, poff, &SIZE, NULL, 3, params, pinfo);
+  //printf("Task kernel offset:%lu\n", offset);
   iris_task_kernel(task1, "vecadd", 1, &offset, &SIZE, NULL, 3, params, pinfo);
 
   iris_task_dmem_flush_out(task1,mem_C);
-  iris_task_submit(task1, iris_minimum, nullptr, true);
+  iris_task_submit(task1, iris_sdq, nullptr, true);
   iris_synchronize();
 
   for (int i = 0; i < SIZE; i++) {
-    printf("C[%d] = %d\n", i, C[i]);
+    //printf("C[%d] = %d\n", i, C[i]);
     if (i < SIZE/2) {
       if (C[i] != 0) ERROR++;
     }
     else {
       if (C[i] != (A[i] + B[i])) ERROR++;
     }
+    printf("C[%d]:%d A[%d]:%d B[%d]:%d\n", i, C[i], i, A[i], i, B[i]);
   }
   iris_finalize();
   printf("ERROR[%d]\n", ERROR+iris_error_count());
