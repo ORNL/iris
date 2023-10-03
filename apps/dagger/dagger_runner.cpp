@@ -22,8 +22,7 @@ void ShowUsage(){
   printf("./dagger_runner\t --kernels=\"process,ijk\"\n");
   printf("\t\t --graph=\"linear10.json\"\n");
   printf("\t\t --buffers-per-kernel=\"process: rw,ijk: r r w rw\"\n");
-  printf("\t\t --duplicates=\"2\"\n");
-  printf("\t\t --concurrent-kernels=**UNSUPPORTED**\"process:2,ijk:4\"\n");
+  printf("\t\t --concurrent-kernels=\"process:2,ijk:4\"\n");
   //TODO: kernel-dimensions could be extended to support the actual work-group size, e.g. ijk:512,512
   printf("\t\t --kernel-dimensions=\"ijk:2,process:1\"\n");
   printf("\t\t --size=\"1024\"\n");
@@ -56,8 +55,7 @@ int main(int argc, char** argv) {
     {"kernels", false},
     {"graph",false},
     {"buffers-per-kernel", false},
-    {"duplicates", false},
-    //{"concurrent-kernels", false},
+    {"concurrent-kernels", false},
     {"size", false},
     {"repeats", false},
     {"logfile", false},
@@ -92,7 +90,6 @@ int main(int argc, char** argv) {
     {"graph", required_argument, 0, 'g'},
     {"kernels", required_argument, 0, 'k'},
     {"buffers-per-kernel", required_argument, 0, 'b'},
-    {"duplicates", required_argument, 0, 'z'},
     {"concurrent-kernels", optional_argument, 0, 'c'},
     {"size", required_argument, 0, 's'},
     {"repeats", required_argument, 0, 'r'},
@@ -349,7 +346,7 @@ int main(int argc, char** argv) {
 
     for(auto & kernel : kernels){
       //TODO: support concurrency here
-      for(auto concurrent_device = 0; concurrent_device < duplicates; concurrent_device++){
+      for(auto concurrent_device = 0; concurrent_device < kernel.concurrency; concurrent_device++){
         int argument_index = 0;
         for(auto & buffer : kernel.buffers){
           //create and add the host-side buffer based on it's type

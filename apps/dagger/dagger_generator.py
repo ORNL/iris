@@ -41,7 +41,7 @@ def init_parser(parser):
     parser.add_argument("--kernels",required=True,type=str,help="The kernel names --in the current directory-- to generate tasks, presented as a comma separated value string e.g. \"process,matmul\".")
     parser.add_argument("--kernel-split",required=False,type=str,help="The percentage of each kernel being assigned to the task, presented as a comma separated value string e.g. \"80,20\".")
     parser.add_argument("--duplicates",required=False,type=int,help="Duplicate the generated DAG horizontally the given number across (to increase concurrency).", default=0)
-    parser.add_argument("--concurrent-kernels",required=False,type=str,help="**UNIMPLEMENTED**The number of duplicate/concurrent memory buffers allowed for each kernel, stored as a key value pair, e.g. \"process:2\" indicates that the kernel called \"process\" will only allow two unique sets of memory buffers in the generated DAG, effectively limiting concurrency by indicating a data dependency.",default=None)
+    parser.add_argument("--concurrent-kernels",required=False,type=str,help="STUFF!!!**UNIMPLEMENTED**The number of concurrent memory buffers allowed for each kernel, stored as a key value pair, e.g. \"process:2\" indicates that the kernel called \"process\" will only allow two unique sets of memory buffers in the generated DAG, effectively limiting concurrency by indicating a data dependency.",default=None)
     parser.add_argument("--buffers-per-kernel",required=True,type=str,help="The number and type of buffers of buffers required for each kernel, stored as a key value pair, with each buffer separated by white-space, e.g. \"process:r r w rw\" indicates that the kernel called \"process\" requires four separate buffers with read, read, write and read/write permissions respectively.")
     parser.add_argument("--kernel-dimensions",required=True,type=str,help="The dimensionality of each kernel, presented as a key-value store, multiple kernels are specified as a comma-separated-value string e.g. \"process:1,matmul:2\". indicates that kernel \"process\" is 1-D while \"matmul\" uses 2-D workgroups.")
     parser.add_argument("--depth",required=True,type=int,help="Depth of tree, e.g. 10.")
@@ -81,7 +81,10 @@ def parse_args(pargs=None,additional_arguments=[]):
     _seed = args.seed
     _sandwich = args.sandwich
     _duplicates = args.duplicates
-    if _duplicates <= 1: _duplicates = 1
+    #if _duplicates <= 1: _duplicates = 1
+    if _duplicates > 1: print("currently duplicates flag unsupported!\n")
+    _duplicates = 1
+
     _kernels = args.kernels.split(',')
     _use_data_memory = args.use_data_memory
 
@@ -257,14 +260,13 @@ def gen_attr(tasks,kernel_names,kernel_probs):
         tname = "task"+str(i)
 
         kname = bag_of_kernels.pop()
-        #selected_memory = random.choices(range(0,_concurrent_kernels[kname]),k=1)
-        selected_memory = [0]
+        selected_memory = random.choices(range(0,_concurrent_kernels[kname]),k=1)
+        #print("selected memory {}\n".format(selected_memory))
+        #import ipdb
+        #ipdb.set_trace()
+        #selected_memory = [0]
         kinst = int(selected_memory[0])
 
-        deps  = tasks[i]
-        deps = ["task"+str(d) for d in deps]
-
-        #for ck in range(0,_concurrent_kernels[kname]):
         mobs = []
         mper = []
 
@@ -279,25 +281,37 @@ def gen_attr(tasks,kernel_names,kernel_probs):
                 #print("figuring out proper permissions")
                 mper.append(_kernel_buffs[kname][j])
         else:
-            for i,j in enumerate(_kernel_buffs[kname]):
-                mobs.append("devicemem-{}-buffer{}-instance{}".format(kname,i,kinst))
+            for z,j in enumerate(_kernel_buffs[kname]):
+                mobs.append("devicemem-{}-buffer{}-instance{}".format(kname,z,kinst))
                 mper.append(j)
 
         if mobs == []:
             assert False, "kernel {} hasn't been given any memory to work on! This can be rectified by setting --buffers-per-kernel.".format(kname)
         #TODO the dimensionality of each work group can also be set instead of a fixed "user-size":
         kernel_dimension = []
-        for i in range(0,_dimensionality[kname]):
+        for z in range(0,_dimensionality[kname]):
             kernel_dimension.append("user-size")
         #task_instance_name = tname
         #if ck != 0: #if we're supporting concurrent tasks, all but the first instance should have a unique name
         #    task_instance_name += '-' + str(ck)
         parameters = []
-        for i,m in enumerate(mobs):
-            #NOTE: there is currently a restriction that all memory objects passed into the kernel are the same size (in user-size-cb-{kernel-name})
-            parameters.append({"type":"memory_object","value":m,"size_bytes":"user-size-cb-{}".format(kname),"permissions":mper[i]})
+        for z,m in enumerate(mobs):
+            parameters.append({"type":"memory_object","value":m,"size_bytes":"user-size-cb-{}".format(kname),"permissions":mper[z]})
+
+        #filter out dependencies based on tasks that have shared memory objects
+        deps = []
+        for t in tasks:
+            if t >= i:#we can only insert a dependency on tasks using the same memory object if they were assigned before the current task
+                break
+            if dag == []:
+                continue
+            for p in dag[t]['commands'][0]['kernel']['parameters']:
+                if p['value'] in mobs:
+                    deps.append(t)
+                break
+        deps = ["task"+str(d) for d in deps]
+
         task = {"name":tname,"commands":[{"kernel":{"name":kname,"global_size":kernel_dimension,"parameters":parameters}}],"depends":deps,"target":"user-target-data"}
-        #TODO: what about local_size or offset
         dag.append(task)
 
     return dag
@@ -397,13 +411,13 @@ def determine_iris_inputs():
     for k in _kernels:
         inputs.append("user-size-cb-{}".format(k))
     for k in _kernels:
-        for ck in range(0,_duplicates):
+        for ck in range(0,_concurrent_kernels[k]):
             for i,j in enumerate(_kernel_buffs[k]):
                 #inputs.append("hostmem-{}-buffer{}".format(k,i))
                 #TODO could facilitate concurrent-kernels with :
                 inputs.append("hostmem-{}-buffer{}-instance{}".format(k,i,ck))
     for k in _kernels:
-        for ck in range(0,_duplicates):
+        for ck in range(0,_concurrent_kernels[k]):
             for i,j in enumerate(_kernel_buffs[k]):
                 inputs.append("devicemem-{}-buffer{}-instance{}".format(k,i,ck))
     print('TODO: support multiple targets--hint all but the h2d and d2h memory transfers should be transfer target (control-dependency) while all actual kernels should use the data-dependency')
@@ -424,7 +438,7 @@ def determine_and_prepend_iris_h2d_transfers(dag):
     transfers = []
     #this should be extended for each instance
     for i,k in enumerate(_kernels):
-        for ck in range(0,_duplicates):
+        for ck in range(0,_concurrent_kernels[k]):
             for j,l in enumerate(_kernel_buffs[k]):
                 if l == 'w': #Only transfer memory that will be read on the device
                     continue
@@ -485,7 +499,7 @@ def determine_and_append_iris_d2h_transfers(dag):
         #or we need to flush just the written buffers
         else:
             for i,k in enumerate(_kernels):
-                for ck in range(0,_duplicates):
+                for ck in range(0,_concurrent_kernels[k]):
                     for j,l in enumerate(_kernel_buffs[k]):
                             if l == 'r':
                                 continue
@@ -517,7 +531,7 @@ def determine_and_append_iris_d2h_transfers(dag):
     #we aren't using data memory --- process the explicit d2h memory transfers
     #this should be extended for each instance
     for i,k in enumerate(_kernels):
-        for ck in range(0,_duplicates):
+        for ck in range(0,_concurrent_kernels[k]):
             for j,l in enumerate(_kernel_buffs[k]):
                 if l == 'r': #Only transfer memory that have been written on the device
                     continue

@@ -52,7 +52,7 @@ def create_graph(args):
     }
 
     for kernel in dg._kernels:
-        for concurrent_device in range(dg._duplicates):
+        for concurrent_device in range(dg._concurrent_kernels[kernel]):
             argument_index = 0
             for buffer in dg._kernel_buffs[kernel]:
                 # Create and add the host-side buffer based on it's type
