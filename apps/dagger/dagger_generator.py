@@ -41,7 +41,7 @@ def init_parser(parser):
     parser.add_argument("--kernels",required=True,type=str,help="The kernel names --in the current directory-- to generate tasks, presented as a comma separated value string e.g. \"process,matmul\".")
     parser.add_argument("--kernel-split",required=False,type=str,help="The percentage of each kernel being assigned to the task, presented as a comma separated value string e.g. \"80,20\".")
     parser.add_argument("--duplicates",required=False,type=int,help="Duplicate the generated DAG horizontally the given number across (to increase concurrency).", default=0)
-    parser.add_argument("--concurrent-kernels",required=False,type=str,help="STUFF!!!**UNIMPLEMENTED**The number of concurrent memory buffers allowed for each kernel, stored as a key value pair, e.g. \"process:2\" indicates that the kernel called \"process\" will only allow two unique sets of memory buffers in the generated DAG, effectively limiting concurrency by indicating a data dependency.",default=None)
+    parser.add_argument("--concurrent-kernels",required=False,type=str,help="The number of concurrent memory buffers allowed for each kernel, stored as a key value pair, e.g. \"process:2\" indicates that the kernel called \"process\" will only allow two unique sets of memory buffers in the generated DAG, effectively limiting concurrency by indicating a data dependency.",default=None)
     parser.add_argument("--buffers-per-kernel",required=True,type=str,help="The number and type of buffers of buffers required for each kernel, stored as a key value pair, with each buffer separated by white-space, e.g. \"process:r r w rw\" indicates that the kernel called \"process\" requires four separate buffers with read, read, write and read/write permissions respectively.")
     parser.add_argument("--kernel-dimensions",required=True,type=str,help="The dimensionality of each kernel, presented as a key-value store, multiple kernels are specified as a comma-separated-value string e.g. \"process:1,matmul:2\". indicates that kernel \"process\" is 1-D while \"matmul\" uses 2-D workgroups.")
     parser.add_argument("--depth",required=True,type=int,help="Depth of tree, e.g. 10.")
@@ -81,9 +81,9 @@ def parse_args(pargs=None,additional_arguments=[]):
     _seed = args.seed
     _sandwich = args.sandwich
     _duplicates = args.duplicates
-    #if _duplicates <= 1: _duplicates = 1
-    if _duplicates > 1: print("currently duplicates flag unsupported!\n")
-    _duplicates = 1
+    if _duplicates <= 1: _duplicates = 1
+    #if _duplicates > 1: print("currently duplicates flag unsupported!\n")
+    #_duplicates = 1
 
     _kernels = args.kernels.split(',')
     _use_data_memory = args.use_data_memory
@@ -133,7 +133,7 @@ def parse_args(pargs=None,additional_arguments=[]):
     #process concurrent-kernels
     if args.concurrent_kernels is None:
         for k in _kernels:
-            _concurrent_kernels[k] = 0
+            _concurrent_kernels[k] = 1
     else:
         for i in args.concurrent_kernels.split(','):
             try:
