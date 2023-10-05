@@ -48,14 +48,13 @@ int main(int argc, char** argv) {
   int retcode;
   int task_target = -1;//this is set in the scheduling-policy e.g. --scheduling-policy="roundrobin"
   int memory_task_target = iris_pending;
-  int duplicates = 0;
+  int duplicates = 1;
   bool use_data_memory = false;
 
   std::map<std::string,bool> required_arguments_set = {
     {"kernels", false},
     {"graph",false},
     {"buffers-per-kernel", false},
-    {"concurrent-kernels", false},
     {"size", false},
     {"repeats", false},
     {"logfile", false},
@@ -90,6 +89,7 @@ int main(int argc, char** argv) {
     {"graph", required_argument, 0, 'g'},
     {"kernels", required_argument, 0, 'k'},
     {"buffers-per-kernel", required_argument, 0, 'b'},
+    {"duplicates", optional_argument, 0, 'z'},
     {"concurrent-kernels", optional_argument, 0, 'c'},
     {"size", required_argument, 0, 's'},
     {"repeats", required_argument, 0, 'r'},
@@ -124,6 +124,7 @@ int main(int argc, char** argv) {
           while(x){
             struct kernel_parameters kp;
             kp.name = x;
+            kp.concurrency = 0;
             kernels.push_back(kp);
             x = strtok(NULL, ",");
             num_kernels++;
@@ -316,25 +317,13 @@ int main(int argc, char** argv) {
     duplicates = 1;
   }
 
-  /*
-  //TODO: delete this chunk (only for debugging)
-  //raise(SIGINT);
-  //just quickly eyeball that we've collected all the arguments (in the right format)
-  for (auto & kernel : kernels){
-    printf("kernel: %s\t has the following buffers specified: ",kernel.name);
-    for (auto & buffs : kernel.buffers){
-      printf("%s ",buffs);
-    }
-    printf(" and should have %i run concurrently\n",kernel.concurrency);
-  }
-  */
-
   iris_init(&argc, &argv, true);
   iris_overview();
 
   printf("REPEATS:%d LOGFILE:%s POLICY:%s\n",REPEATS,LOGFILE,POLICY);
   for (int i = 0; i < num_kernels; i ++){
-    printf("KERNEL:%s available on %d devices concurrently\n",kernels[i].name,kernels[i].concurrency);
+    if (kernels[i].concurrency < 1) kernels[i].concurrency = 1;
+    printf("KERNEL:%s available has %d instances\n",kernels[i].name,kernels[i].concurrency);
   }
 
   for (int t = 0; t < REPEATS; t++) {
@@ -345,8 +334,7 @@ int main(int argc, char** argv) {
     std::vector<size_t> sizecb;
 
     for(auto & kernel : kernels){
-      //TODO: support concurrency here
-      for(auto concurrent_device = 0; concurrent_device < kernel.concurrency; concurrent_device++){
+      for(auto concurrent_kernel_instance = 0; concurrent_kernel_instance < kernel.concurrency; concurrent_kernel_instance++){
         int argument_index = 0;
         for(auto & buffer : kernel.buffers){
           //create and add the host-side buffer based on it's type
@@ -398,8 +386,8 @@ int main(int argc, char** argv) {
 
     //variable number of memory buffers can be provided into IRIS
     void* json_inputs[4+num_buffers_used];
-int indexer = 0;
-    printf("TODO: support SIZE per kernel -- as with sizecb\n");
+    int indexer = 0;
+    //printf("TODO: support SIZE per kernel -- as with sizecb\n");
     json_inputs[indexer] = &SIZE; indexer++;
     for(auto & bytes : sizecb){
       json_inputs[indexer] = &bytes; indexer++;
@@ -422,7 +410,6 @@ int indexer = 0;
     t0 = now();
 
     iris_graph_submit(graph, iris_gpu, true);//iris_default in task-graph target is the only case that doesn't override the submission policy--so leave it as iris_gpu.
-    //**TODO**: deadlock ensues if we use synchronous mode with profiling enabled (BRISBANE_PROFILE=1 ./dagger_dgemm)
 
     retcode = iris_synchronize();
     assert(retcode == IRIS_SUCCESS && "Failed to synchronize IRIS");

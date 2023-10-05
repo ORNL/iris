@@ -752,7 +752,7 @@ void Device::ExecuteMemInDMemIn(Task *task, Command* cmd, DataMem *mem) {
     }
     else if (mem->is_dev_dirty(devno_)) {
         InvokeDMemInDataTransfer<DataMem>(task, cmd, mem);
-        printf("TODO there should be a corresponding log here!...\n");
+        //printf("TODO there should be a corresponding log here!...\n");
     }
     else{
         _trace("Skipped DMEM H2D data transfer dev[%d:%s] task[%ld:%s] dmem[%lu] dptr[%p]", devno_, name_, task->uid(), task->name(), mem->uid(), mem->arch(devno_));
@@ -795,7 +795,7 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
         _error("Flush out is called for unsupported memory handler task:%ld:%s\n", cmd->task()->uid(), cmd->task()->name());
         return;
     }
-    printf("running transfer : %s\n", cmd->task()->name());
+    //printf("TODO running transfer : %s\n", cmd->task()->name());
     DataMem* mem = (DataMem *)cmd->mem();
     if (mem->is_host_dirty()) {
         size_t *ptr_off = mem->off();
