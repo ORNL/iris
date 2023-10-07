@@ -183,6 +183,9 @@ int Platform::Init(int* argc, char*** argv, int sync) {
   EnvironmentGet("ASYNC", &async, NULL);
   if (async != NULL && atoi(async) == 1)
       set_async(true);
+#ifdef IRIS_ASYNC_STREAMING
+  set_async(true);
+#endif
   if (is_async()) 
       _info("Asynchronous is enabled");
   char* archs = NULL;
