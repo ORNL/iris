@@ -64,7 +64,8 @@ Task::Task(Platform* platform, int type, const char* name) {
   set_object_track(Platform::GetPlatform()->task_track_ptr());
   platform_->task_track().TrackObject(this, uid());
   async_execution_ = platform_->is_async(); // Same as platform by default
-  _trace("Task created %lu %s %p", uid(), name_.c_str(), this);
+  _debug2("Task created %lu %s %p ref_cnt:%d\n", uid(), name_.c_str(), this, ref_cnt());
+  _trace("Task created %lu %s %p ref_cnt:%d", uid(), name_.c_str(), this, ref_cnt());
 }
 
 Task::~Task() {
@@ -342,12 +343,18 @@ void Task::AddDepend(Task* task, unsigned long uid) {
   if(platform_->get_enable_proactive() 
 		&& std::string(this->name()).find("Graph") == std::string::npos  
 		&& std::string(this->name()).find("flush-out") == std::string::npos ) {
-	task->AddChild(this, this->uid());
+      unsigned long this_uid = this->uid();
+      platform_->task_track().CallBackIfObjectExists(uid, 
+              [](void *data, void *lhs, void *rhs) {
+                Task *parent_task = (Task *)data;
+                unsigned long child_uid = *((unsigned long *)rhs);
+                parent_task->AddChild(child_uid);
+              }, &uid, &this_uid);
   }
   ndepends_++;
 }
 
-void Task::AddChild(Task* task, unsigned long uid) {
+void Task::AddChild(unsigned long uid) {
   if (childs_uids_ == NULL) {
       childs_uids_ = new unsigned long[childs_max_];
   }
@@ -369,7 +376,7 @@ void Task::AddChild(Task* task, unsigned long uid) {
 // One call to add all the childs by tracking the parents
 void Task::AddAllChilds() {
   for (int i = 0; i < ndepends_; i++) 
-	platform_->get_task_object(depends_uids_[i])->AddChild(this, this->uid());
+	platform_->get_task_object(depends_uids_[i])->AddChild(this->uid());
 }
 
 

@@ -133,7 +133,7 @@ public:
 
   Task* Child(int i) { return platform_->get_task_object(childs_uids_[i]); }
   int nchilds() { return nchilds_; }
-  void AddChild(Task* task, unsigned long uid);
+  void AddChild(unsigned long uid);
   void AddAllChilds();
  
 private:

@@ -6,6 +6,7 @@
 
 using namespace std;
 typedef void (*ObjectTrackCallBack)(void *data);
+typedef void (*SafeAssignmentCallBack)(void *data, void *lhs, void *rhs);
 namespace iris {
     namespace rt {
         class ObjectTrack
@@ -28,6 +29,20 @@ namespace iris {
                     //printf("object:%lu: %p exists flag:%d\n", uid, obj, flag);
                     _trace("object:%lu: %p exists flag:%d", uid, obj, flag);
                     return flag;
+                }
+                virtual bool CallBackIfObjectExists(unsigned long uid, SafeAssignmentCallBack callbackfn, void *lhs, void *rhs) {
+                    bool object_exists = true;
+                    _debug2("Waiting for lock uid:%lu", uid);
+                    pthread_mutex_lock(&track_lock_);
+                    _debug2("Acquired lock uid:%lu", uid);
+                    if (allocated_objects_.find(uid) != allocated_objects_.end() &&
+                            allocated_objects_[uid] != NULL)
+                        callbackfn(allocated_objects_[uid], lhs, rhs);
+                    else
+                        object_exists = false;
+                    pthread_mutex_unlock(&track_lock_);
+                    _debug2("Released lock uid:%lu", uid);
+                    return object_exists;
                 }
                 virtual bool CallBackIfObjectExists(unsigned long uid, ObjectTrackCallBack callbackfn) {
                     bool object_exists = true;

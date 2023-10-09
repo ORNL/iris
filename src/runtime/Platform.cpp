@@ -716,7 +716,9 @@ int Platform::InitDevices(bool sync) {
     _debug2("Initialize task:%lu:%s ref_cnt:%d", task->uid(), task->name(), task->ref_cnt());
     //task->Retain();
     _debug2("Initialize task:%lu:%s ref_cnt:%d", task->uid(), task->name(), task->ref_cnt());
-    task->Retain(); workers_[i]->Enqueue(task);
+    task->Retain(); 
+    _debug2("Initialize task:%lu:%s ref_cnt:%d", task->uid(), task->name(), task->ref_cnt());
+    workers_[i]->Enqueue(task);
   }
   if (sync) for (int i = 0; i < ndevs_; i++) {
       TaskWait(tasks[i]);
@@ -1310,13 +1312,19 @@ int Platform::TaskSubmit(Task *task, int brs_policy, const char* opt, int sync) 
   if (sync) TaskWait(brs_task);
   return nfailures_;
 }
-void Platform::TaskWaitCallBack(void *data) {
+void Platform::TaskSafeRetainStatic(void *data) {
   Task *task = (Task *)data;
   task->Retain();
 }
+void Platform::TaskSafeRetain(unsigned long uid) {
+  task_track_.CallBackIfObjectExists(uid, Platform::TaskSafeRetainStatic);
+}
+void Platform::TaskSafeRetain(iris_task brs_task) {
+  task_track_.CallBackIfObjectExists(brs_task.uid, Platform::TaskSafeRetainStatic);
+}
 int Platform::TaskWait(iris_task brs_task) {
   _debug2("waiting for brs_task:%lu\n", brs_task.uid);
-  task_track_.CallBackIfObjectExists(brs_task.uid, Platform::TaskWaitCallBack);
+  TaskSafeRetain(brs_task);
   Task *task = get_task_object(brs_task);
   if (task != NULL) {
      unsigned long uid = task->uid(); string lname = task->name(); _debug2("Task wait release:%lu:%s ref_cnt:%d after callback\n", task->uid(), task->name(), task->ref_cnt());
