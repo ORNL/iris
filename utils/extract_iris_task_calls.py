@@ -1951,7 +1951,7 @@ int iris_kernel(const char* name) {
             add_conditional_parameters_to_kernel(kvar, k, v, lines)
             lines.append("#ifndef DISABLE_OFFSETS")
             lines.append("#ifdef ENABLE_IRIS_HEXAGON_APIS")
-            lines.append("\t\t\t\t(int)off, (int)ndr") 
+            lines.append("\t\t\t\toff, ndr") 
             lines.append("#else")
             #lines.append("#ifdef ENABLE_IRIS_OPENMP_APIS")
             lines.append("\t\t\t\toff, ndr") 
@@ -1970,7 +1970,7 @@ int iris_launch_with_obj(
         StreamType  stream,
         void *obj,
         int devno, 
-        int dim, size_t off, size_t ndr) {
+        int dim, size_t *off, size_t *ndr) {
         ''')
         if args.verbose:
             lines.append('printf("%s:%d (%s) is called\\n", __FILE__, __LINE__, __func__);')
@@ -1984,7 +1984,7 @@ int iris_launch_with_obj(
         lines.append('''
 int iris_launch(
         StreamType  stream,
-        int dim, size_t off, size_t ndr) {
+        int dim, size_t *off, size_t *ndr) {
         ''')
         if args.verbose:
             lines.append('printf("%s:%d (%s) is called\\n", __FILE__, __LINE__, __func__);')

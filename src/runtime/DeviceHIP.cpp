@@ -553,6 +553,7 @@ int DeviceHIP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, s
     while (block[0] > max_block_dims_[0] && max_block_dims_[0] !=0) block[0] >>= 1;
   }
   int grid[3] = { (int) (gws[0] / block[0]), (int) (gws[1] / block[1]), (int) (gws[2] / block[2]) };
+  //int grid[3] = { (int) ((gws[0]-off[0]) / block[0]), (int) ((gws[1]-off[1]) / block[1]), (int) ((gws[2]-off[2]) / block[2]) };
 
   size_t blockOff_x = off[0] / block[0];
   size_t blockOff_y = off[1] / block[1];

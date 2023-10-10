@@ -670,6 +670,7 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
     while (block[0] > max_block_dims_[0]) block[0] >>= 1;
   }
   int grid[3] = { (int) (gws[0] / block[0]), (int) (gws[1] / block[1]), (int) (gws[2] / block[2]) };
+  //int grid[3] = { (int) ((gws[0]-off[0]) / block[0]), (int) ((gws[1]-off[1]) / block[1]), (int) ((gws[2]-off[2]) / block[2]) };
   size_t blockOff_x = off[0] / block[0];
   size_t blockOff_y = off[1] / block[1];
   size_t blockOff_z = off[2] / block[2];
@@ -687,6 +688,10 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
       _trace("off0[%lu] running %s_with_offsets kernel.", off[0], kernel->name());
     }
   }
+  _debug2("off[%lu, %lu, %lu]", off[0], (dim > 1) ? off[1] : 0, (dim > 2) ? off[2] : 0);
+  _debug2("lws[%lu, %lu, %lu]", (lws != NULL) ? lws[0] : 1, (lws != NULL && dim > 1) ? lws[1] : 1, (lws != NULL && dim > 2) ? lws[2] : 1);
+  _debug2("gws[%lu, %lu, %lu]", gws[0], (dim > 1) ? gws[1] : 0, (dim > 2) ? gws[2] : 0);
+  _debug2("dev[%d][%s] kernel[%s:%s] dim[%d] grid[%d,%d,%d] block[%d,%d,%d] blockoff[%lu,%lu,%lu] max_arg_idx[%d] shared_mem_bytes[%u] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, grid[0], grid[1], grid[2], block[0], block[1], block[2], blockOff_x, blockOff_y, blockOff_z, max_arg_idx_, shared_mem_bytes_, stream_index);
   _trace("dev[%d][%s] kernel[%s:%s] dim[%d] grid[%d,%d,%d] block[%d,%d,%d] blockoff[%lu,%lu,%lu] max_arg_idx[%d] shared_mem_bytes[%u] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, grid[0], grid[1], grid[2], block[0], block[1], block[2], blockOff_x, blockOff_y, blockOff_z, max_arg_idx_, shared_mem_bytes_, stream_index);
   if (!async) {
       err = ld_->cuLaunchKernel(cukernel, grid[0], grid[1], grid[2], block[0], block[1], block[2], shared_mem_bytes_, 0, params_, NULL);

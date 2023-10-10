@@ -48,7 +48,7 @@ namespace iris {
                 virtual int launch_init(int model, int *dev_ptr, void *stream, void *param_mem, Command *cmd_kernel) { return IRIS_SUCCESS; }
                 virtual int setarg(void *param_mem, int index, size_t size, void *value) { return IRIS_ERROR; }
                 virtual int setmem(void *param_mem, int kindex, void *mem) { return IRIS_ERROR; }
-                virtual int host_launch(void **stream, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *off, size_t *gws) { return IRIS_ERROR; }
+                virtual int host_launch(void **stream, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *off, size_t *bws) { return IRIS_ERROR; }
                 virtual int host_kernel(void *param_mem, const char *kname) { return IRIS_ERROR; }
                 int SetKernelPtr(void *obj, const char *kernel_name) { return IRIS_ERROR; }
                 void LoadFunction(const char *func_name, const char *symbol);
@@ -59,9 +59,9 @@ namespace iris {
                 int (*iris_host_init_handles)(int devno);
                 int (*iris_host_finalize_handles)(int devno);
                 int (*iris_host_finalize)();
-                int (*iris_host_launch)(int dim, size_t off, size_t gws);
+                int (*iris_host_launch)(int dim, size_t *off, size_t *bws);
                 int (*iris_ffi_launch)();
-                int (*iris_host_launch_with_obj)(void *stream, void *obj, int devno, int dim, size_t off, size_t gws);
+                int (*iris_host_launch_with_obj)(void *stream, void *obj, int devno, int dim, size_t *off, size_t *bws);
             private:
                 string kernel_env_;
         };
@@ -74,7 +74,7 @@ namespace iris {
                 int host_kernel(void *param_mem, const char *kname);
                 int SetKernelPtr(void *obj, const char *kernel_name);
                 int launch_init(int model, int *dev_ptr, void *stream, void *param_mem, Command *cmd);
-                int host_launch(void **stream, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *off, size_t *gws);
+                int host_launch(void **stream, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *off, size_t *bws);
                 int setarg(void *param_mem, int kindex, size_t size, void *value);
                 int setmem(void *param_mem, int kindex, void *mem);
             private:
@@ -158,6 +158,14 @@ namespace iris {
                     set_value(&param_size_);
                     increment();
                 }
+                void add_epilog(size_t *off, size_t *bws) {
+                    set_arg_type(&ffi_type_pointer);
+                    set_value(off);
+                    increment();
+                    set_arg_type(&ffi_type_pointer);
+                    set_value(bws);
+                    increment();
+                }
                 void add_stream(void *stream) {
                     set_arg_type(&ffi_type_pointer);
                     set_value(stream);
@@ -197,7 +205,7 @@ namespace iris {
                 KernelFFI *get_kernel_ffi(void *param_mem);
                 int launch_init(int model, int *dev_ptr, void *stream, void *param_mem, Command *cmd);
                 int SetKernelPtr(void *obj, const char *kernel_name);
-                int host_launch(void **stream, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *off, size_t *gws);
+                int host_launch(void **stream, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *off, size_t *bws);
                 int setarg(void *param_mem, int kindex, size_t size, void *value);
                 int setmem(void *param_mem, int kindex, void *mem);
             private:

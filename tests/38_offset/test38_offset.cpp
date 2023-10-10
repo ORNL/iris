@@ -35,6 +35,7 @@ int main(int argc, char** argv) {
                                           // the offset is specified in bytes
   size_t NUM_WORK_ITEMS = SIZE/2; //we'll only operate on half the data in this offset test, so we have half the total number of work-items
 
+#if 1
   // test memory offset (explicit)
   iris_kernel kernel0;
   iris_kernel_create("vecadd", &kernel0);
@@ -63,7 +64,7 @@ int main(int argc, char** argv) {
   }
   printf("ERROR[%d]\n", ERROR+iris_error_count());
   iris_data_mem_update(mem_C, C);
-
+#endif
   size_t OFFSET = SIZE/2;
   // test memory offset (data-memory)
   iris_task task1;
@@ -116,13 +117,14 @@ int main(int argc, char** argv) {
   iris_task task2;
   iris_task_create(&task2);
 
-  void* block_params[3] = { &mem_A, &mem_B, &mem_C };
-  int block_pinfo[3] = { iris_r, iris_r, iris_rw };
+  void* block_params[] = { &mem_A, &mem_B, &mem_C, (void *)&SIZE };
+  int block_pinfo[] = { iris_r, iris_r, iris_rw, sizeof(SIZE) };
+  size_t gworksize[2] = {SIZE, SIZE};
   size_t worksize[2] = {NUM_WORK_ITEMS, NUM_WORK_ITEMS};
   size_t block_off[2] = {OFFSET, OFFSET};
-  iris_task_kernel(task2, "blockadd", 2, block_off, worksize, NULL, 3, block_params, block_pinfo);
+  iris_task_kernel(task2, "blockadd", 2, block_off, worksize, NULL, 4, block_params, block_pinfo);
 
-  iris_task_dmem_flush_out(task2,mem_C);
+  iris_task_dmem_flush_out(task2, mem_C);
   iris_task_submit(task2, iris_sdq, nullptr, true);
   iris_synchronize();
 

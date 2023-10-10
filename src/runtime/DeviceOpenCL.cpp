@@ -431,8 +431,14 @@ int DeviceOpenCL::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws
      return IRIS_ERROR;
   }
 
-  _trace("dev[%d][%s] kernel[%s:%s] dim[%d] gws[%zu,%zu,%zu] lws[%zu,%zu,%zu]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, gws[0], gws[1], gws[2], lws ? lws[0] : 0, lws ? lws[1] : 0, lws ? lws[2] : 0);
   size_t block[3] = { lws ? lws[0] : 1, lws ?  lws[1] : 1, lws ?  lws[2] : 1 };
+  _trace("dev[%d][%s] kernel[%s:%s] dim[%d] gws[%zu,%zu,%zu] lws[%zu,%zu,%zu] off[%zu,%zu,%zu] block[%zu, %zu, %zu]", 
+          devno_, name_, kernel->name(), kernel->get_task_name(), 
+          dim, gws[0], gws[1], gws[2], 
+          lws ? lws[0] : 1, lws ? lws[1] : 1, lws ? lws[2] : 1,
+          off ? off[0] : 0, off ? off[1] : 0, off ? off[2] : 0,
+          block[0], block[1], block[2]
+          );
   cl_kernel clkernel = (cl_kernel) kernel->arch(this);
   err = ld_->clEnqueueNDRangeKernel(clcmdq_[stream_index], clkernel, (cl_uint) dim, (const size_t*) off, (const size_t*) gws, (const size_t*) block, 0, NULL, NULL);
   _clerror(err);

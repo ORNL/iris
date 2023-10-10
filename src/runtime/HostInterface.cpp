@@ -126,7 +126,7 @@ namespace iris {
             }
             return IRIS_ERROR;
         }
-        int BoilerPlateHostInterfaceLoader::host_launch(void **stream, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *off, size_t *gws) 
+        int BoilerPlateHostInterfaceLoader::host_launch(void **stream, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *off, size_t *bws) 
         {
             if(iris_host_launch_with_obj) {
                 int dev_info = nstreams << 16 | devno;
@@ -134,12 +134,12 @@ namespace iris {
                 int status = iris_host_launch_with_obj(
                         stream, 
                         param_mem, dev_info,  
-                        dim, off[0], gws[0]);
+                        dim, off, bws);
                 return IRIS_SUCCESS;
             }
             else if(iris_host_launch) {
                 int status = iris_host_launch(
-                        dim, off[0], gws[0]);
+                        dim, off, bws);
                 return IRIS_SUCCESS;
             }
             return IRIS_ERROR;
@@ -227,12 +227,13 @@ namespace iris {
             }
             return IRIS_ERROR;
         }
-        int FFIHostInterfaceLoader::host_launch(void *stream, const char *kname, void *param_mem, int devno, int dim, size_t *off, size_t *gws)
+        int FFIHostInterfaceLoader::host_launch(void *stream, const char *kname, void *param_mem, int devno, int dim, size_t *off, size_t *bws)
         {
             if (IsFunctionExists(kname)) {
                 KernelFFI *ffi_data = get_kernel_ffi(param_mem);
                 SetKernelPtr(param_mem, kname);
-                ffi_data->add_epilog(off[0], gws[0]);
+                //ffi_data->add_epilog(off[0], bws[0]);
+                ffi_data->add_epilog(off, bws);
                 ffi_arg rc;
                 ffi_prep_cif(ffi_data->cif(), FFI_DEFAULT_ABI, ffi_data->top(), &ffi_type_sint, ffi_data->args());
                 ffi_call(ffi_data->cif(), ffi_data->fn_ptr(), &rc, ffi_data->values());
