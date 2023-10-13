@@ -64,7 +64,7 @@ void Worker::Execute(Task* task) {
   _debug2("check executable for task:%lu:%s:%p qsize:%lu dev:%d ref_cnt:%d\n", task->uid(), task->name(), task, queue_->Size(), dev_->devno(), task->ref_cnt());
   //queue_->Print(dev_->devno());
   if (!task->Executable()) { task->Release(); return; }
-  task->Release();
+  task->Release(); // This is for Scheduler::Submit task retain
   task->set_dev(dev_);
   if (task->marker()) {
     dev_->Synchronize();
@@ -90,7 +90,7 @@ void Worker::Execute(Task* task) {
 #ifdef _DEBUG2_ENABLE
   unsigned long uid = task->uid(); string name = task->name(); _debug2("Task %s:%lu refcnt:%d before release", name.c_str(), uid, task->ref_cnt());
 #endif
-  int ref_cnt = task->Release();
+  int ref_cnt = task->Release(); //Device::Execute Retain call
   _debug2("Task %s:%lu refcnt:%d after release", name.c_str(), uid, ref_cnt);
   //task->TryReleaseTask();
   busy_ = false;
@@ -116,7 +116,7 @@ void Worker::Run() {
       Execute(task.second);
       _debug2("Completed task Device:%d:%s Qsize:%lu dequeued, task:%p", dev_->devno(), dev_->name(), queue_->Size(), task.second);
 #ifdef _DEBUG2_ENABLE
-      task.second->Release();
+      task.second->Release(); // For Worker::Run Retain call
 #endif
     }
   }

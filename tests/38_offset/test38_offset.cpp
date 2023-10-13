@@ -61,6 +61,7 @@ int main(int argc, char** argv) {
     }
     C[i] = 0;
   }
+  printf("ERROR[%d]\n", ERROR+iris_error_count());
   iris_data_mem_update(mem_C, C);
 
   size_t OFFSET = SIZE/2;
@@ -87,6 +88,7 @@ int main(int argc, char** argv) {
     }
     printf("C[%d]:%d A[%d]:%d B[%d]:%d\n", i, C[i], i, A[i], i, B[i]);
   }
+  printf("ERROR[%d]\n", ERROR+iris_error_count());
 
   // 2-D tests
   iris_mem_release(mem_A);
@@ -135,6 +137,14 @@ int main(int argc, char** argv) {
       printf("C[%d]:%d A[%d]:%d B[%d]:%d\n", j * SIZE + i, C[j * SIZE + i], j * SIZE + i, A[j * SIZE + i], j * SIZE + i, B[j * SIZE + i]);
     }
   }
+
+  for (int i = 0; i < SIZE; i++) {
+    for (int j = 0; j < SIZE; j++) {
+      printf("%5d ", C[i*SIZE+j]);
+    }
+    printf("\n");
+  }
+  printf("\n");
 
   // TODO: 3-D tests
 

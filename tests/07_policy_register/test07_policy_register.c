@@ -18,7 +18,7 @@ int main(int argc, char** argv) {
   void* params[1] = { &memA };
   int params_info[1] = { iris_w };
   iris_task task;
-  iris_task_create(&task);
+  iris_task_create_name("example", &task);
   iris_task_kernel(task, "process", 1, NULL, &SIZE, NULL, 1, params, params_info);
   iris_task_d2h_full(task, memA, A);
   iris_task_submit(task, iris_custom, "policy_gws_hook", 1);

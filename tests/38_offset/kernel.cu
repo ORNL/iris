@@ -17,6 +17,6 @@ extern "C" __global__ void blockadd_with_offsets(double* A, double* B, double* C
   size_t i = (blockOff_x + blockIdx.x) * blockDim.x + threadIdx.x;
   size_t j = (blockOff_y + blockIdx.y) * blockDim.y + threadIdx.y;
   size_t SIZE = gridDim.y * blockDim.y;
-  //printf("using global size = %i offset: %i\n",SIZE,blockOff_x);
+  printf("using blockOff:(%lu, %lu), blockDim:(%i, %i), blockIdx:(%i, %i), threadIdx:(%i, %i), gridDim:(%i, %i) SIZE:%lu\n",blockOff_x, blockOff_y, blockDim.x, blockDim.y, blockIdx.x, blockIdx.y, threadIdx.x, threadIdx.y, gridDim.x, gridDim.y, SIZE);
   C[j * SIZE + i] = A[j * SIZE + i] + B[j * SIZE + i];
 }

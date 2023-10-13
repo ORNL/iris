@@ -9,9 +9,6 @@
 #include <vector>
 using namespace std;
 
-#ifndef IRIS_ASYNC_STREAMING
-#define IRIS_SYNC_EXECUTION
-#endif //IRIS_ASYNC_STREAMING
 
 #define DEFAULT_STREAM_INDEX -2
 
