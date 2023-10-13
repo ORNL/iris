@@ -369,7 +369,7 @@ int main(int argc, char** argv) {
           sprintf(buffer_name,"%s-%s-%d",kernel.name,buf.c_str(),argument_index);
           if (use_data_memory){
             retcode = iris_data_mem_create(&x,host_mem[0], (int)pow(SIZE,kernel.dimensions)*sizeof(double));
-            memory_task_target = iris_default;//task_target;//iris_pending (data pending policy is incompatible with data memory
+            memory_task_target = iris_pending;
           }
           else
             retcode = iris_mem_create( (int)pow(SIZE,kernel.dimensions)*sizeof(double), &x);//, (char*)buffer_name);
@@ -457,9 +457,7 @@ int main(int argc, char** argv) {
   }
 
     iris_finalize();
-    
-    return(EXIT_SUCCESS);
 
-  return 0;
+    return(EXIT_SUCCESS);
 }
 

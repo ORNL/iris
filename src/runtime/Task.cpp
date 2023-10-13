@@ -170,7 +170,8 @@ void Task::AddCommand(Command* cmd) {
   }
   if (!system_ &&
      (cmd->type() == IRIS_CMD_KERNEL || cmd->type() == IRIS_CMD_H2D ||
-      cmd->type() == IRIS_CMD_H2DNP  || cmd->type() == IRIS_CMD_D2H))
+      cmd->type() == IRIS_CMD_H2DNP  || cmd->type() == IRIS_CMD_D2H ||
+      cmd->type() == IRIS_CMD_MEM_FLUSH ))
     cmd_last_ = cmd;
 }
 
@@ -392,8 +393,10 @@ void Task::Submit(int brs_policy, const char* opt, int sync) {
   status_ = IRIS_NONE;
   set_brs_policy(brs_policy);
   //if the submitted task is pending but it is a d2h transfer, then, default to a data movement minimization policy.
-  if (brs_policy == iris_pending && cmd_last_->type_d2h()){
-    set_brs_policy(iris_data);
+  if (brs_policy == iris_pending){
+    if (!cmd_last_ || cmd_last_->type_d2h() || cmd_last_->type_memflush()){
+      set_brs_policy(iris_data);
+    }
   }
   //if we have a non-pending policy, dispatch all pending dependencies.
   if (brs_policy != iris_pending){
