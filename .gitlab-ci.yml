@@ -238,6 +238,15 @@ test-backends-34:
         coverage_format: cobertura
         path: coverage.xml
 
+test-job-zenith-all-ffi-async-s2k:
+  extends: .test-job
+  before_script:
+    - source /auto/software/iris/setup_system.source
+    - source $IRIS_INSTALL_ROOT.ffi/setup.source
+    - export IRIS_ARCHS=cuda,hip,openmp,opencl
+    - export IRIS_ASYNC=1
+    - echo "Running All version of the tests..."
+
 test-job-zenith-all-async-s2k:
   extends: .test-job
   before_script:
