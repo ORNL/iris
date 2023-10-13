@@ -222,7 +222,7 @@ int DeviceOpenMP::KernelGet(Kernel *kernel, void** kernel_bin, const char* name,
 int DeviceOpenMP::KernelLaunchInit(Command *cmd, Kernel* kernel) {
   //c_string_array data = ld_->iris_get_kernel_names();
   int status=IRIS_ERROR;
-  status = ld_->launch_init(model(), &devno_, NULL, kernel->GetParamWrapperMemory(), cmd);
+  status = ld_->launch_init(model(), devno_, 0, NULL, kernel->GetParamWrapperMemory(), cmd);
   /*
   if (ld_->iris_openmp_kernel_with_obj)
       status = ld_->iris_openmp_kernel_with_obj(kernel->GetParamWrapperMemory(), kernel->name());

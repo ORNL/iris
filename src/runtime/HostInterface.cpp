@@ -83,7 +83,7 @@ namespace iris {
                 INIT_SYM_FN(iris_get_kernel_names);
                 INIT_SYM_FN(iris_set_kernel_ptr_with_obj);
             }
-        int BoilerPlateHostInterfaceLoader::launch_init(int model, int *dev_ptr, void *stream, void *param_mem, Command *cmd) 
+        int BoilerPlateHostInterfaceLoader::launch_init(int model, int devno, int nstreams, void **stream, void *param_mem, Command *cmd) 
         {
             const char *kname = cmd->kernel()->name();
             if (iris_host_kernel_with_obj) {
@@ -181,7 +181,7 @@ namespace iris {
             KernelFFI **ffi_ptr = (KernelFFI **)(((uint8_t *)param_mem)+ sizeof(int));
             *ffi_ptr = ffi_data;
         }
-        int FFIHostInterfaceLoader::launch_init(int model, int *dev_ptr, void *stream, void *param_mem, Command *cmd) 
+        int FFIHostInterfaceLoader::launch_init(int model, int devno, int nstreams, void **stream, void *param_mem, Command *cmd) 
         {
             Kernel *kernel = cmd->kernel();
             const char *name = kernel->name();
@@ -197,7 +197,9 @@ namespace iris {
                 ffi_data->set_host_launch_type(HOST_LAUNCH_WITH_STREAM_DEV);
                 if (model != iris_openmp) {
                     ffi_data->add_stream(stream); 
-                    ffi_data->add_device(dev_ptr); 
+                    ffi_data->set_devno(devno);
+                    ffi_data->set_nstream(nstreams);
+                    ffi_data->add_nstreams_device(); 
                 }
             }
             else if (iris_host_launch) {
@@ -227,7 +229,7 @@ namespace iris {
             }
             return IRIS_ERROR;
         }
-        int FFIHostInterfaceLoader::host_launch(void *stream, const char *kname, void *param_mem, int devno, int dim, size_t *off, size_t *bws)
+        int FFIHostInterfaceLoader::host_launch(void **stream, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *off, size_t *bws)
         {
             if (IsFunctionExists(kname)) {
                 KernelFFI *ffi_data = get_kernel_ffi(param_mem);

@@ -492,11 +492,15 @@ void DeviceHIP::CheckVendorSpecificKernel(Kernel *kernel) {
 
 int DeviceHIP::KernelLaunchInit(Command *cmd, Kernel* kernel) {
     int stream_index = 0;
+    hipStream_t *kstream = NULL;
+    int nstreams = 0;
     if (is_async(kernel->task(), false)) {
         stream_index = GetStream(kernel->task()); //task->uid() % nqueues_; 
         if (stream_index == DEFAULT_STREAM_INDEX) { stream_index = 0; }
+        kstream = &streams_[stream_index];
+        nstreams = nqueues_ - stream_index;
     }
-    host2hip_ld_->launch_init(model(), &devno_, streams_[stream_index], kernel->GetParamWrapperMemory(), cmd);
+    host2hip_ld_->launch_init(model(), devno_, nstreams, (void **)kstream, kernel->GetParamWrapperMemory(), cmd);
     return IRIS_SUCCESS;
 }
 

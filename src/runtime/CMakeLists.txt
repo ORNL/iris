@@ -1,7 +1,12 @@
 option(BUILD_SHARED_LIBS "Build shared libs" ON)
 
 if (ENABLE_FFI) 
-add_subdirectory(libffi)
+include(CPM.cmake)
+CPMAddPackage(NAME libffi
+        GITHUB_REPOSITORY "miniskar/libffi-cmake"
+        GIT_TAG master)
+include_directories(${libffi_BINARY_DIR}/include)
+#add_subdirectory(libffi)
 endif()
 include_directories(${IRIS_INC_DIR})
 include_directories(${IRIS_BIN_DIR}/runtime)
@@ -209,7 +214,12 @@ endif()
 
 add_library(iris ${IRIS_RUNTIME_SOURCES})
 if (ENABLE_FFI)
-set_target_properties(iris PROPERTIES LINK_FLAGS "-L${CMAKE_BINARY_DIR}/src/runtime/libffi")
+install(FILES ${libffi_BINARY_DIR}/libffi.so DESTINATION ${CMAKE_INSTALL_LIBDIR})
+install(FILES ${libffi_BINARY_DIR}/libffi.a DESTINATION ${CMAKE_INSTALL_LIBDIR})
+install(FILES ${libffi_BINARY_DIR}/include/fficonfig.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+install(FILES ${libffi_BINARY_DIR}/include/ffi.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+install(FILES ${libffi_BINARY_DIR}/include/ffitarget.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+set_target_properties(iris PROPERTIES LINK_FLAGS "-L${libffi_BINARY_DIR} ")
 target_link_libraries(iris ffi)
 endif() #ENABLE_FFI
 

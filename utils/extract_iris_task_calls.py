@@ -1641,9 +1641,9 @@ def appendKernelSignature(args, lines, data_hash, k_hash, dynamic_linking=True):
         if len(params) > 0:
              lines.append("\t\t\t\t"+", \n\t\t\t\t".join(params)+",")
         lines.append("#ifndef ENABLE_IRIS_HEXAGON_APIS")
-        lines.append("size_t, size_t")
+        lines.append("size_t *, size_t *")
         lines.append("#else //ENABLE_IRIS_HEXAGON_APIS")
-        lines.append("int, int")
+        lines.append("int *, int *")
         lines.append("#endif //ENABLE_IRIS_HEXAGON_APIS")
         lines.append(");")
 

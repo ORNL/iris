@@ -45,7 +45,7 @@ namespace iris {
                 virtual int LoadFunctions(){ Loader::LoadFunctions(); return IRIS_SUCCESS; }
                 virtual void finalize(int dev);
                 virtual void init(int dev);
-                virtual int launch_init(int model, int *dev_ptr, void *stream, void *param_mem, Command *cmd_kernel) { return IRIS_SUCCESS; }
+                virtual int launch_init(int model, int devno, int nstreams, void **stream, void *param_mem, Command *cmd_kernel) { return IRIS_SUCCESS; }
                 virtual int setarg(void *param_mem, int index, size_t size, void *value) { return IRIS_ERROR; }
                 virtual int setmem(void *param_mem, int kindex, void *mem) { return IRIS_ERROR; }
                 virtual int host_launch(void **stream, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *off, size_t *bws) { return IRIS_ERROR; }
@@ -73,7 +73,7 @@ namespace iris {
                 int LoadFunctions();
                 int host_kernel(void *param_mem, const char *kname);
                 int SetKernelPtr(void *obj, const char *kernel_name);
-                int launch_init(int model, int *dev_ptr, void *stream, void *param_mem, Command *cmd);
+                int launch_init(int model, int devno, int nstreams, void **stream, void *param_mem, Command *cmd);
                 int host_launch(void **stream, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *off, size_t *bws);
                 int setarg(void *param_mem, int kindex, size_t size, void *value);
                 int setmem(void *param_mem, int kindex, void *mem);
@@ -148,38 +148,33 @@ namespace iris {
                 void **values() { return values_; }
                 int top() { return index_; }
                 void increment() { index_++; }
-                void add_epilog(size_t off, size_t ndr) {
+                void add_epilog(size_t *off, size_t *ndr) {
                     param_idx_ = off;
                     param_size_ = ndr;
-                    set_arg_type(&ffi_type_uint64);
+                    set_arg_type(&ffi_type_pointer);
                     set_value(&param_idx_);
                     increment();
-                    set_arg_type(&ffi_type_uint64);
+                    set_arg_type(&ffi_type_pointer);
                     set_value(&param_size_);
                     increment();
                 }
-                void add_epilog(size_t *off, size_t *bws) {
+                void add_stream(void **stream) {
                     set_arg_type(&ffi_type_pointer);
-                    set_value(off);
-                    increment();
-                    set_arg_type(&ffi_type_pointer);
-                    set_value(bws);
+                    streams_ = stream;
+                    set_value(&streams_);
                     increment();
                 }
-                void add_stream(void *stream) {
-                    set_arg_type(&ffi_type_pointer);
-                    set_value(stream);
-                    increment();
-                }
-                void add_device(int *dev_ptr) {
-                    set_arg_type(&ffi_type_sint);
-                    set_value(dev_ptr);
+                void add_nstreams_device() {
+                    set_arg_type(&ffi_type_uint);
+                    set_value(&nstreams_devno_);
                     increment();
                 }
                 ffi_cif *cif() { return &cif_; }
                 ffi_type **args() { return args_; }
                 __iris_kernel_ptr fn_ptr() { return fn_ptr_; }
                 Kernel *kernel() { return kernel_; }
+                void set_nstream(int32_t nstreams) { nstreams_devno_ = (nstreams_devno_ & 0xFFFF) | (((uint32_t)nstreams & 0xFFFF)<<16); }
+                void set_devno(int32_t devno) { nstreams_devno_ = (nstreams_devno_ & 0xFFFF0000) | ((uint32_t)devno & 0xFFFF); }
             private:
                 int args_capacity_;
                 Kernel *kernel_;
@@ -189,9 +184,11 @@ namespace iris {
                 void **values_;
                 void **values_ptr_;
                 ffi_cif cif_;
-                size_t param_size_;
-                size_t param_idx_;
+                size_t *param_size_;
+                size_t *param_idx_;
                 FFICallType type_;
+                void **streams_;
+                uint32_t nstreams_devno_;
                 int index_;
         };
         class FFIHostInterfaceLoader : public HostInterfaceLoader {
@@ -203,7 +200,7 @@ namespace iris {
                 int host_kernel(void *param_mem, const char *kname);
                 void set_kernel_ffi(void *param_mem, KernelFFI *ffi_data);
                 KernelFFI *get_kernel_ffi(void *param_mem);
-                int launch_init(int model, int *dev_ptr, void *stream, void *param_mem, Command *cmd);
+                int launch_init(int model, int devno, int nstreams, void **stream, void *param_mem, Command *cmd);
                 int SetKernelPtr(void *obj, const char *kernel_name);
                 int host_launch(void **stream, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *off, size_t *bws);
                 int setarg(void *param_mem, int kindex, size_t size, void *value);
