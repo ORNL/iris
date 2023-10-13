@@ -23,6 +23,7 @@ build-job:
   script:
     - echo "Installing iris to $CI_PROJECT_DIR/install"
     - bash build.sh
+    - IRIS_TAG=.ffi bash build.sh -DENABLE_FFI=ON
   artifacts:
     paths:
       - $IRIS_INSTALL_ROOT
