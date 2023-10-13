@@ -93,7 +93,7 @@ if ! [ -d dagger-payloads ] ; then
   echo "*                          Diamond 10                             *"
   echo "*******************************************************************"
   #diamond 10
-  ./dagger_generator.py --kernels="ijk" --kernel-split='100' --depth=1 --num-tasks=8 --min-width=8 --max-width=8 --buffers-per-kernel="ijk:rw r r" --concurrent-kernels="ijk:10" --kernel-dimensions="ijk:2" --sandwich  $USE_DATA_MEMORY
+  ./dagger_generator.py --kernels="ijk" --kernel-split='100' --depth=1 --num-tasks=8 --min-width=8 --max-width=8 --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --sandwich  $USE_DATA_MEMORY #--concurrent-kernels="ijk:10"
   [ $? -ne 0 ] &&  exit 1
   cat graph.json
   cp graph.json dagger-payloads/diamond10-graph.json
@@ -101,7 +101,7 @@ if ! [ -d dagger-payloads ] ; then
   echo "*******************************************************************"
   echo "*                          Diamond 25                             *"
   echo "*******************************************************************"
-  ./dagger_generator.py --kernels="ijk" --kernel-split='100' --depth=1 --num-tasks=23 --min-width=23 --max-width=23 --buffers-per-kernel="ijk:rw r r" --concurrent-kernels="ijk:25" --kernel-dimensions="ijk:2" --sandwich $USE_DATA_MEMORY
+  ./dagger_generator.py --kernels="ijk" --kernel-split='100' --depth=1 --num-tasks=23 --min-width=23 --max-width=23 --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --sandwich $USE_DATA_MEMORY #--concurrent-kernels="ijk:25"
   [ $? -ne 0 ] &&  exit 1
   cat graph.json
   cp graph.json dagger-payloads/diamond25-graph.json
@@ -109,7 +109,7 @@ if ! [ -d dagger-payloads ] ; then
   echo "*******************************************************************"
   echo "*                          Diamond 100                            *"
   echo "*******************************************************************"
-  ./dagger_generator.py --kernels="ijk" --kernel-split='100' --depth=1 --num-tasks=98 --min-width=98 --max-width=98 --buffers-per-kernel="ijk:rw r r" --concurrent-kernels="ijk:100" --kernel-dimensions="ijk:2" --sandwich $USE_DATA_MEMORY
+  ./dagger_generator.py --kernels="ijk" --kernel-split='100' --depth=1 --num-tasks=98 --min-width=98 --max-width=98 --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --sandwich $USE_DATA_MEMORY #--concurrent-kernels="ijk:100"
   [ $? -ne 0 ] &&  exit 1
   cat graph.json
   cp graph.json dagger-payloads/diamond100-graph.json
@@ -117,7 +117,7 @@ if ! [ -d dagger-payloads ] ; then
   echo "*******************************************************************"
   echo "*                          Diamond 1000                           *"
   echo "*******************************************************************"
-  ./dagger_generator.py --kernels="ijk" --kernel-split='100' --depth=1 --num-tasks=1000 --min-width=1000 --max-width=1000 --buffers-per-kernel="ijk:rw r r" --concurrent-kernels="ijk:1000" --kernel-dimensions="ijk:2" --sandwich $USE_DATA_MEMORY
+  ./dagger_generator.py --kernels="ijk" --kernel-split='100' --depth=1 --num-tasks=1000 --min-width=1000 --max-width=1000 --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --sandwich $USE_DATA_MEMORY #--concurrent-kernels="ijk:1000"
   [ $? -ne 0 ] &&  exit 1
   cat graph.json
   cp graph.json dagger-payloads/diamond1000-graph.json
@@ -125,7 +125,7 @@ if ! [ -d dagger-payloads ] ; then
   echo "*******************************************************************"
   echo "*                          Chainlink 10                           *"
   echo "*******************************************************************"
-  ./dagger_generator.py --kernels="ijk" --kernel-split='100' --depth=5 --num-tasks=8 --min-width=1 --max-width=2 --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --concurrent-kernels="ijk:2" --cdf-mean=1.5 --cdf-std-dev=0 --sandwich $USE_DATA_MEMORY
+  ./dagger_generator.py --kernels="ijk" --kernel-split='100' --depth=5 --num-tasks=8 --min-width=1 --max-width=2 --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --cdf-mean=1.5 --cdf-std-dev=0 --sandwich $USE_DATA_MEMORY #--concurrent-kernels="ijk:2" 
   [ $? -ne 0 ] &&  exit 1
   cat graph.json
   cp graph.json dagger-payloads/chainlink10-graph.json
@@ -133,7 +133,7 @@ if ! [ -d dagger-payloads ] ; then
   echo "*******************************************************************"
   echo "*                          Chainlink 25                           *"
   echo "*******************************************************************"
-  ./dagger_generator.py --kernels="ijk" --kernel-split='100' --depth=12 --num-tasks=25 --min-width=1 --max-width=2 --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --concurrent-kernels="ijk:2" --sandwich --cdf-mean=1.5 --cdf-std-dev=0 $USE_DATA_MEMORY
+  ./dagger_generator.py --kernels="ijk" --kernel-split='100' --depth=12 --num-tasks=25 --min-width=1 --max-width=2 --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --sandwich --cdf-mean=1.5 --cdf-std-dev=0 $USE_DATA_MEMORY #--concurrent-kernels="ijk:2"
   [ $? -ne 0 ] &&  exit 1
   cat graph.json
   cp graph.json dagger-payloads/chainlink25-graph.json
@@ -141,7 +141,7 @@ if ! [ -d dagger-payloads ] ; then
   echo "*******************************************************************"
   echo "*                          Chainlink 100                          *"
   echo "*******************************************************************"
-  ./dagger_generator.py --kernels="ijk" --kernel-split='100' --depth=50 --num-tasks=100 --min-width=1 --max-width=2 --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --concurrent-kernels="ijk:2" --sandwich --cdf-mean=1.5 --cdf-std-dev=0 $USE_DATA_MEMORY
+  ./dagger_generator.py --kernels="ijk" --kernel-split='100' --depth=50 --num-tasks=100 --min-width=1 --max-width=2 --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --sandwich --cdf-mean=1.5 --cdf-std-dev=0 $USE_DATA_MEMORY #--concurrent-kernels="ijk:2"
   [ $? -ne 0 ] &&  exit 1
   cat graph.json
   cp graph.json dagger-payloads/chainlink100-graph.json
@@ -157,7 +157,7 @@ if ! [ -d dagger-payloads ] ; then
   echo "*******************************************************************"
   echo "*                          Tangled 10                             *"
   echo "*******************************************************************"
-  ./dagger_generator.py --kernels="ijk" --kernel-split='100' --depth=10 --num-tasks=10 --min-width=1 --max-width=12 --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --concurrent-kernels="ijk:12" --sandwich --cdf-mean=2 --cdf-std-dev=0 --skips=3 $USE_DATA_MEMORY
+  ./dagger_generator.py --kernels="ijk" --kernel-split='100' --depth=10 --num-tasks=10 --min-width=1 --max-width=12 --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --sandwich --cdf-mean=2 --cdf-std-dev=0 --skips=3 $USE_DATA_MEMORY #--concurrent-kernels="ijk:12"
   [ $? -ne 0 ] &&  exit 1
   cat graph.json
   cp graph.json dagger-payloads/tangled10-graph.json
@@ -165,7 +165,7 @@ if ! [ -d dagger-payloads ] ; then
   echo "*******************************************************************"
   echo "*                          Tangled 25                             *"
   echo "*******************************************************************"
-  ./dagger_generator.py --kernels="ijk" --kernel-split='100' --depth=25 --num-tasks=25 --min-width=1 --max-width=12 --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2"  --concurrent-kernels="ijk:12" --sandwich --cdf-mean=2 --cdf-std-dev=0 --skips=3 $USE_DATA_MEMORY
+  ./dagger_generator.py --kernels="ijk" --kernel-split='100' --depth=25 --num-tasks=25 --min-width=1 --max-width=12 --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --sandwich --cdf-mean=2 --cdf-std-dev=0 --skips=3 $USE_DATA_MEMORY #--concurrent-kernels="ijk:12"
   [ $? -ne 0 ] &&  exit 1
   cat graph.json
   cp graph.json dagger-payloads/tangled25-graph.json
@@ -173,7 +173,7 @@ if ! [ -d dagger-payloads ] ; then
   echo "*******************************************************************"
   echo "*                          Tangled 100                             *"
   echo "*******************************************************************"
-  ./dagger_generator.py --kernels="ijk" --kernel-split='100' --depth=100 --num-tasks=100 --min-width=1 --max-width=12 --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --concurrent-kernels="ijk:12" --sandwich --cdf-mean=2 --cdf-std-dev=0 --skips=3 $USE_DATA_MEMORY
+  ./dagger_generator.py --kernels="ijk" --kernel-split='100' --depth=100 --num-tasks=100 --min-width=1 --max-width=12 --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --sandwich --cdf-mean=2 --cdf-std-dev=0 --skips=3 $USE_DATA_MEMORY #--concurrent-kernels="ijk:12"
   [ $? -ne 0 ] &&  exit 1
   cat graph.json
   cp graph.json dagger-payloads/tangled100-graph.json
@@ -278,7 +278,7 @@ do
     for (( num_run=0; num_run<=$REPEATS; num_run++ ))
     do
       echo "Running IRIS on Diamond $SIZE with Policy: $POLICY  run no. $num_run"
-      IRIS_HISTORY=1 ./dagger_runner --graph="dagger-payloads/diamond$SIZE-graph.json" --logfile="time.csv" --repeats=1 --scheduling-policy="$POLICY" --size=$PAYLOAD_SIZE --kernels="ijk" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=1 --num-tasks=$SIZE --min-width=$SIZE --max-width=$SIZE --concurrent-kernels="ijk:$SIZE" --sandwich $USE_DATA_MEMORY
+      IRIS_HISTORY=1 ./dagger_runner --graph="dagger-payloads/diamond$SIZE-graph.json" --logfile="time.csv" --repeats=1 --scheduling-policy="$POLICY" --size=$PAYLOAD_SIZE --kernels="ijk" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=1 --num-tasks=$SIZE --min-width=$SIZE --max-width=$SIZE --sandwich $USE_DATA_MEMORY #--concurrent-kernels="ijk:$SIZE"
       [ $? -ne 0 ] && echo "Diamond $SIZE Failed with Policy: $POLICY" &&  exit 1
       mv dagger_runner-$SYSTEM*.csv $RESULTS_DIR/diamond$SIZE-$POLICY-$SYSTEM-$num_run.csv
       [ $? -ne 0 ] &&  exit 1
@@ -290,7 +290,7 @@ do
     fi
   done
 done
-
+#module load nvhpc/23.7
 for SIZE in ${SIZES[@]}
 do
   echo "*******************************************************************"
@@ -302,8 +302,8 @@ do
     for (( num_run=0; num_run<=$REPEATS; num_run++ ))
     do
       echo "Running IRIS on Chainlink $SIZE with Policy: $POLICY  run no. $num_run"
-      IRIS_HISTORY=1 ./dagger_runner --graph="dagger-payloads/chainlink$SIZE-graph.json" --logfile="time.csv" --repeats=1 --scheduling-policy="$POLICY" --size=$PAYLOAD_SIZE --kernels="ijk" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=$SIZE --num-tasks=$SIZE --min-width=1 --max-width=2 --concurrent-kernels="ijk:2" --sandwich $USE_DATA_MEMORY
-      [ $? -ne 0 ] && echo "Chainlink $SIZE Failed with Policy: $POLICY" &&  exit 1
+      ./dagger_runner --graph="dagger-payloads/chainlink$SIZE-graph.json" --logfile="time.csv" --repeats=1 --scheduling-policy="$POLICY" --size=$PAYLOAD_SIZE --kernels="ijk" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=$SIZE --num-tasks=$SIZE --min-width=1 --max-width=2  --sandwich $USE_DATA_MEMORY #--concurrent-kernels="ijk:2"
+      [ $? -ne 0 ] && echo "Chainlink $SIZE Failed with Policy: $POLICY at Run no. $num_run and with Size: $SIZE and with $USE_DATA_MEMORY" &&  exit 1
       mv dagger_runner-$SYSTEM*.csv $RESULTS_DIR/chainlink$SIZE-$POLICY-$SYSTEM-$num_run.csv
       [ $? -ne 0 ] &&  exit 1
     done
@@ -342,7 +342,7 @@ do
     for (( num_run=0; num_run<=$REPEATS; num_run++ ))
     do
       echo "Running IRIS on Tangled $SIZE with Policy: $POLICY  run no. $num_run"
-      IRIS_HISTORY=1 ./dagger_runner --graph="dagger-payloads/tangled$SIZE-graph.json" --logfile="time.csv" --repeats=1 --scheduling-policy="$POLICY" --size=$PAYLOAD_SIZE --kernels="ijk" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=$SIZE --num-tasks=$SIZE --min-width=1 --max-width=12 --concurrent-kernels="ijk:12" --sandwich $USE_DATA_MEMORY
+      IRIS_HISTORY=1 ./dagger_runner --graph="dagger-payloads/tangled$SIZE-graph.json" --logfile="time.csv" --repeats=1 --scheduling-policy="$POLICY" --size=$PAYLOAD_SIZE --kernels="ijk" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=$SIZE --num-tasks=$SIZE --min-width=1 --max-width=12  --sandwich $USE_DATA_MEMORY #--concurrent-kernels="ijk:12"
       [ $? -ne 0 ] && echo "Tangled $SIZE Failed with Policy: $POLICY" &&  exit 1
       mv dagger_runner-$SYSTEM*.csv $RESULTS_DIR/tangled$SIZE-$POLICY-$SYSTEM-$num_run.csv
       [ $? -ne 0 ] &&  exit 1
