@@ -1768,7 +1768,7 @@ def appendKernelSetArgMemParamFunctions(args, lines, kernel, data):
     return IRIS_SUCCESS;
 }
         ''')
-    lines.append("static int "+kernel+"_setmem(void *obj, int idx, void *mem, int size) {")
+    lines.append("static int "+kernel+"_setmem(void *obj, int idx, void *mem, size_t size) {")
     if args.verbose:
         lines.append('printf("%s:%d (%s) is called\\n", __FILE__, __LINE__, __func__);')
     lines.append('''
@@ -1818,7 +1818,7 @@ int iris_setarg_with_obj(void *obj, int idx, size_t size, void* value) {
 }
         ''')
         lines.append('''
-int iris_setmem_with_obj(void *obj, int idx, void *mem, int size) {
+int iris_setmem_with_obj(void *obj, int idx, void *mem, size_t size) {
   int kernel_idx = *((int *)obj); // First argument should be kernel index''')
         if args.verbose:
             lines.append('printf("%s:%d (%s) is called\\n", __FILE__, __LINE__, __func__);')
@@ -1851,7 +1851,7 @@ int iris_setarg(int idx, size_t size, void* value) {''')
 }
         ''')
         lines.append('''
-int iris_setmem(int idx, void *mem, int size) {''')
+int iris_setmem(int idx, void *mem, size_t size) {''')
         if args.verbose:
             lines.append('printf("%s:%d (%s) is called\\n", __FILE__, __LINE__, __func__);')
         lines.append('''

@@ -254,7 +254,8 @@ int DeviceOpenMP::KernelSetArg(Kernel* kernel, int idx, int kindex, size_t size,
 
 int DeviceOpenMP::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, size_t off) {
   void* mpmem = (char*) mem->arch(this) + off;
-  int status = ld_->setmem(kernel->GetParamWrapperMemory(), kindex, mpmem);
+  size_t size = mem->size() - off;
+  int status = ld_->setmem(kernel->GetParamWrapperMemory(), kindex, mpmem, size);
   /*
   if (ld_->iris_openmp_setmem_with_obj)
     return ld_->iris_openmp_setmem_with_obj(kernel->GetParamWrapperMemory(), kindex, mpmem);

@@ -360,12 +360,13 @@ int DeviceOpenCL::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem
       param = dev_alloc_ptr;
       dev_ptr = *dev_alloc_ptr; 
   }
+  size_t size = mem->size() - off;
   _debug2("task:%lu:%s idx:%d::%d off:%lu dev_ptr:%p dev_alloc_ptr:%p", 
           kernel->task()->uid(), kernel->task()->name(),
           idx, kindex, off, dev_ptr, dev_alloc_ptr);
   if (kernel->is_vendor_specific_kernel(devno_)) {
       host2opencl_ld_->setmem(
-              kernel->GetParamWrapperMemory(), kindex, dev_ptr);
+              kernel->GetParamWrapperMemory(), kindex, dev_ptr, size);
   }
   else {
     cl_kernel clkernel = (cl_kernel) kernel->arch(this);
