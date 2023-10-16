@@ -418,7 +418,7 @@ static int iris_kernel_idx = -1;
     lines.append('''
 #ifdef ENABLE_IRIS_HOST2HIP_APIS 
 #include "iris/iris_host2hip.h"
-#include "iris/hip/hip_runtime.h"
+//#include "iris/hip/hip_runtime.h"
 #define iris_kernel_lock   iris_host2hip_lock
 #define iris_kernel_unlock iris_host2hip_unlock
 #define iris_kernel iris_host2hip_kernel
@@ -452,7 +452,7 @@ static int iris_kernel_idx = -1;
     lines.append('''
 #ifdef ENABLE_IRIS_HOST2CUDA_APIS 
 #include "iris/iris_host2cuda.h"
-#include "iris/cuda/cuda.h"
+//#include "iris/cuda/cuda.h"
 #define iris_kernel_lock   iris_host2cuda_lock
 #define iris_kernel_unlock iris_host2cuda_unlock
 #define iris_kernel iris_host2cuda_kernel
