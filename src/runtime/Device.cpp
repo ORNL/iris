@@ -244,7 +244,10 @@ void Device::ExecuteInit(Command* cmd) {
   size_t off[3] = { 0 };
   size_t host_sizes[3] = { mem->size() };
   size_t dev_sizes[3] = { mem->size() };
+  bool async = async_;
+  async_ = false;
   MemH2D(cmd->task(), mem, off, host_sizes, dev_sizes, 4, 1, mem->size(), src_arch, "Init H2D");
+  async_ = async;
   delete mem;
   cmd->set_time_end(timer_->Now());
   double time = timer_->Stop(IRIS_TIMER_INIT);
