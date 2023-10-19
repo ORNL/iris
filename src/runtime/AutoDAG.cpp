@@ -46,7 +46,7 @@ void AutoDAG::create_dependency(Command* cmd, Task* task,
     	    if (mem->get_current_writing_task() != task) {
            	    //task->AddDepend(mem->get_current_writing_task());	
                 task->AddDepend(mem->get_current_writing_task(), mem->get_current_writing_task()->uid());
-                printf("For %s -> parent %s main w or wr\n", task->name(), mem->get_current_writing_task()->name());
+                //printf("For %s -> parent %s main w or wr\n", task->name(), mem->get_current_writing_task()->name());
 	        }
     	} else if (  mem->get_read_task_list()->size() != 0 ){
 #ifndef AUTO_SHADOW
@@ -112,7 +112,7 @@ void AutoDAG::create_multi_read_dependency(Task* task,
         if (read_task != task) {
             //task->AddDepend(read_task);	
             task->AddDepend(read_task, read_task->uid());
-            printf("For %s -> parent %s multiread\n", task->name(), read_task->name());
+            //printf("For %s -> parent %s multiread\n", task->name(), read_task->name());
 	    }
     }
 }
@@ -156,7 +156,7 @@ void AutoDAG::create_auto_shadow(Command* cmd, Task* task,
 	    //Task* task_shadow_flush = mem->get_flush_task();
         task->AddDepend(mem->get_flush_task(), mem->get_flush_task()->uid());
         //task->AddDepend(mem->get_flush_task());	
-        printf("For %s -> parent %s auto shadow\n", task->name(), mem->get_flush_task()->name());
+        //printf("For %s -> parent %s auto shadow\n", task->name(), mem->get_flush_task()->name());
         //task_shadow_flush->AddDepend(current_writing_task);	
         
 
@@ -170,9 +170,9 @@ void AutoDAG::create_shadow_flush(Command* cmd, Task* task, BaseMem* mem) {
                     task->uid(), task->name());
 
     sprintf(tn, "%s-to-shadow-flushed-out", task->name());
-    printf("For %s Before Shadow flush task name %s\n", task->name(), task_flush->name());
+    //printf("For %s Before Shadow flush task name %s\n", task->name(), task_flush->name());
     task_flush->set_name(tn);
-    printf("For %s After Shadow flush task name %s\n", task->name(), task_flush->name());
+    //printf("For %s After Shadow flush task name %s\n", task->name(), task_flush->name());
     task_flush->ClearCommands();
     Command* cmd_shadow_flush = Command::CreateMemFlushOutToShadow(task_flush, (DataMem *) mem);
     task_flush->AddCommand(cmd_shadow_flush);
@@ -222,20 +222,20 @@ void AutoDAG::create_auto_flush(Command* cmd, Task* task,
    	    mem->set_flush_task(task_flush);
         //task_flush->AddDepend(task);	
         task_flush->AddDepend(task, task->uid());
-        printf("For %s -> parent %s auto flush\n", task_flush->name(), task->name());
+        //printf("For %s -> parent %s auto flush\n", task_flush->name(), task->name());
 	    if(graph_flush != NULL) {
 		    //graph_flush->AddTask(task_flush);
             graph_flush->AddTask(task_flush, task_flush->uid());
 	    }else {
-		printf("-------Graph NULL----------\n");
+		//printf("-------Graph NULL----------\n");
         	_error("Graph is NULL:%ld:%s\n", task->uid(), task->name());
 	    }
 	} else {
 	    //printf("-------Flush task Null----------\n");
     	//printf("Total dependency %d\n", task_flush->ndepends());
-        printf("For %s Before Auto flush task name %s\n", task->name(), task_flush->name());
+        //printf("For %s Before Auto flush task name %s\n", task->name(), task_flush->name());
 	    task_flush->set_name(tn);
-        printf("For %s After Auto flush task name %s\n", task->name(), task_flush->name());
+        //printf("For %s After Auto flush task name %s\n", task->name(), task_flush->name());
         task_flush->ReplaceDependFlushTask(task);	
         //task_flush->EraseDepend();
 	    //printf("Total dependency %d\n",task_flush->ndepends());
