@@ -238,7 +238,7 @@ void Device::ExecuteInit(Command* cmd) {
   if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
   size_t init_size = 16; // Should be multiple of 4
   //send some memory for the device (important for spinning up AMD devices)
-  Mem* mem = new Mem(16, Platform::GetPlatform());
+  Mem* mem = new Mem(init_size, Platform::GetPlatform());
   mem->SetOwner(this);
   void* src_arch = mem->arch(this);
   size_t off[3] = { 0 };
