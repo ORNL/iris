@@ -236,14 +236,15 @@ void Device::ExecuteInit(Command* cmd) {
   }
   errid_ = Init();
   if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
+  size_t init_size = 16; // Should be multiple of 4
   //send some memory for the device (important for spinning up AMD devices)
-  Mem* mem = new Mem(1, Platform::GetPlatform());
+  Mem* mem = new Mem(16, Platform::GetPlatform());
   mem->SetOwner(this);
   void* src_arch = mem->arch(this);
   size_t off[3] = { 0 };
   size_t host_sizes[3] = { mem->size() };
   size_t dev_sizes[3] = { mem->size() };
-  MemH2D(cmd->task(), mem, off, host_sizes, dev_sizes, 1, 1, mem->size(), src_arch, "Init H2D");
+  MemH2D(cmd->task(), mem, off, host_sizes, dev_sizes, 4, 1, mem->size(), src_arch, "Init H2D");
   delete mem;
   cmd->set_time_end(timer_->Now());
   double time = timer_->Stop(IRIS_TIMER_INIT);
