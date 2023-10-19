@@ -351,13 +351,13 @@ int DeviceOpenCL::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem
   cl_int err;
   void **dev_alloc_ptr = mem->arch_ptr(this);
   void *dev_ptr = NULL;
-  void *param = NULL;
+  //void *param;
   if (off) {
       *(mem->archs_off() + devno_) = (void*) ((uint8_t *) *dev_alloc_ptr + off);
-      param = mem->archs_off() + devno_;
+      //param = mem->archs_off() + devno_;
       dev_ptr = *(mem->archs_off() + devno_);
   } else {
-      param = dev_alloc_ptr;
+      //param = dev_alloc_ptr;
       dev_ptr = *dev_alloc_ptr; 
   }
   size_t size = mem->size() - off;
