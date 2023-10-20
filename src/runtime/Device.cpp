@@ -283,7 +283,7 @@ void Device::ExecuteKernel(Command* cmd) {
   for (int idx = 0; idx < cmd->kernel_nargs(); idx++) {
     if (idx > max_idx) max_idx = idx;
     KernelArg* arg = args + idx;
-    BaseMem* bmem = (Mem*)arg->mem;
+    BaseMem* bmem = (BaseMem*)arg->mem;
     if (params_map != NULL && 
         (params_map[idx] & iris_all) == 0 && 
         !(params_map[idx] & type_) ) continue;
@@ -315,7 +315,7 @@ void Device::ExecuteKernel(Command* cmd) {
       mem_idx++;
     } else if (bmem) {
         //double set_mem_time_start = timer_->GetCurrentTime();
-        KernelSetMem(kernel, arg_idx, idx, (DataMem *)bmem, arg->off); arg_idx+=1; 
+        KernelSetMem(kernel, arg_idx, idx, bmem, arg->off); arg_idx+=1; 
         //set_mem_time += timer_->GetCurrentTime() - set_mem_time_start;
         mem_idx++;
     } else { KernelSetArg(kernel, arg_idx, idx, arg->size, arg->value); arg_idx+=1; }
@@ -339,6 +339,7 @@ void Device::ExecuteKernel(Command* cmd) {
   if (enabled) {
       _debug2("Launching kernel:%s:%lu task:%s:%lu", kernel->name(), kernel->uid(), cmd->task()->name(), cmd->task()->uid());
       errid_ = KernelLaunch(kernel, dim, off, gws, lws[0] > 0 ? lws : NULL);
+      _debug2("Completed kernel:%s:%lu task:%s:%lu", kernel->name(), kernel->uid(), cmd->task()->name(), cmd->task()->uid());
   }
   //double ktime = timer_->GetCurrentTime() - ktime_start;
   cmd->set_time_end(timer_->Now());
