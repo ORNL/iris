@@ -1,0 +1,15 @@
+IRIS ?= $(HOME)/.iris
+
+SHELL=bash
+
+setup:
+	python3 -m venv daggerpy
+	source daggerpy/bin/activate ; \
+	python3 -m pip install pygraphviz matplotlib numpy bokeh natsort; \
+	python3 -m pip install "networkx @ git+https://github.com/BeauJoh/networkx.git@main"
+
+all:
+	source daggerpy/bin/activate ; IRIS_ARCHS=cuda,hip IRIS_HISTORY=1 IRIS_INSTALL_ROOT=$(IRIS) bash ./run-policy-evaluation.sh
+
+clean:
+	rm -rf dagger-payloads
