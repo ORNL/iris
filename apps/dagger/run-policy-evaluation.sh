@@ -32,7 +32,7 @@ if ! [ -f dagger_runner ] ; then
 fi
 
 #uncomment to use data memory rather than explicit memory transfers
-#export USE_DATA_MEMORY=--use-data-memory
+export USE_DATA_MEMORY=--use-data-memory
 
 export RESULTS_DIR=`pwd`/dagger-results
 export GRAPHS_DIR=`pwd`/dagger-graphs
