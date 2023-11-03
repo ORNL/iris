@@ -7,7 +7,7 @@ export PAYLOAD_SIZE=${PAYLOAD_SIZE:=128}
 export SIZES=("10" "25" "100")
 
 #uncomment to use data memory rather than explicit memory transfers
-export USE_DATA_MEMORY=--use-data-memory
+#export USE_DATA_MEMORY=--use-data-memory
 
 source ./setup.sh
 
