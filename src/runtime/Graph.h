@@ -16,9 +16,7 @@ class TaskProfile;
 class DataObjectProfile;
 
 #ifdef AUTO_PAR
-#ifdef AUTO_FLUSH
 class AutoDAG;
-#endif
 #endif
 
 

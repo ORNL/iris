@@ -19,6 +19,7 @@ AutoDAG::AutoDAG(Platform* platform){
 #ifdef AUTO_SHADOW
   number_of_shadow_ = 0;
 #endif
+  auto_dep_ = false;
 }
 
 //AutoDAG::platform_ = NULL;
@@ -29,6 +30,15 @@ void AutoDAG::create_dependency(Command* cmd, Task* task,
     current_kernel_ = kernel;
     current_idx_ = idx;
     current_param_info_ = param_info;
+
+#ifdef IGNORE_MANUAL
+    set_auto_dep();
+#endif
+
+#ifdef SANITY_CHECK
+    set_auto_dep();
+#endif
+
 
 #ifdef AUTO_SHADOW
 
@@ -98,6 +108,13 @@ void AutoDAG::create_dependency(Command* cmd, Task* task,
 	    }
     }
 
+#ifdef IGNORE_MANUAL
+    unset_auto_dep();
+#endif
+
+#ifdef SANITY_CHECK
+    unset_auto_dep();
+#endif
 }
 
 void AutoDAG::create_multi_read_dependency(Task* task, 
@@ -255,6 +272,35 @@ void AutoDAG::create_auto_flush(Command* cmd, Task* task,
 	//task_flush->set_brs_policy(task->get_brs_policy());
 }
 #endif
+
+#ifdef SANITY_CHECK
+
+void AutoDAG::extra_dependencies() {
+    std::cout << "---List of Extra dependencies---" << std::endl;
+    for(int i = 0 ; i < manual_dep_list_.size(); i++) {
+        int found = 0;
+        for(int j = 0 ; j < auto_dep_list_.size(); j++) {
+            if ( manual_dep_list_[i] == auto_dep_list_[j]) found = 1;
+        }
+        if (found == 0) std::cout << "   " << manual_dep_list_[i] << std::endl;
+    }
+    std::cout << "\n\n\n";
+}
+
+void AutoDAG::missing_dependencies() {
+    std::cout << "---List of Missing dependencies---" << std::endl;
+    for(int i = 0 ; i < auto_dep_list_.size(); i++) {
+        int found = 0;
+        for(int j = 0 ; j < manual_dep_list_.size(); j++) {
+            if ( auto_dep_list_[i] == manual_dep_list_[j]) found = 1;
+        }
+        if (found == 0) std::cout << "   " << auto_dep_list_[i] << std::endl;
+    }
+    std::cout << "\n\n\n";
+}
+#endif
+
+
 
 } /* namespace rt */
 } /* namespace iris */

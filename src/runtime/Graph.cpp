@@ -18,9 +18,7 @@
 #include <bits/stdc++.h>
 
 #ifdef AUTO_PAR
-#ifdef AUTO_FLUSH
 #include "AutoDAG.h"
-#endif
 #endif
  
 #define GET2D_INDEX(NCOL, I, J)  ((I)*(NCOL)+(J))
@@ -120,7 +118,21 @@ void Graph::AddTask(Task* task, unsigned long uid) {
       task->DisableRelease(); 
   }
   tasks_.push_back(task);
+
+#ifdef AUTO_PAR
+#ifdef IGNORE_MANUAL
+    task->platform()->get_auto_dag()->set_auto_dep();
+#endif
+#endif
+
   end_->AddDepend(task, uid);
+
+#ifdef AUTO_PAR
+#ifdef IGNORE_MANUAL
+   task->platform()->get_auto_dag()->unset_auto_dep();
+#endif
+#endif
+
 
 #ifdef AUTO_PAR
 #ifdef AUTO_FLUSH

@@ -9,6 +9,7 @@
 #include "Scheduler.h"
 #include "Timer.h"
 #include "Worker.h"
+#include "AutoDAG.h"
 
 namespace iris {
 namespace rt {
@@ -343,6 +344,28 @@ bool Task::HasSubtasks() {
 // Hence, validate the parent task not only from whether object exists or not, but also by
 // comparing the actual parent task uid.
 void Task::AddDepend(Task* task, unsigned long uid) {
+#ifdef AUTO_PAR
+#ifdef IGNORE_MANUAL
+  if ( task->platform()->get_auto_dag()->get_auto_dep() == false) return;
+#endif
+
+#ifdef SANITY_CHECK
+  if(std::string(this->name()).find("Graph") == std::string::npos){  
+    std::string full_dep = std::string(this->name()) + "->" + std::string(task->name());
+    std::cout << full_dep << std::endl;
+    if (task->platform()->get_auto_dag()->get_auto_dep() == false){
+        task->platform()->get_auto_dag()->add_manual_dep_list(full_dep);
+    } else {
+        task->platform()->get_auto_dag()->add_auto_dep_list(full_dep);
+    }
+  }
+
+  task->platform()->get_auto_dag()->extra_dependencies();
+  task->platform()->get_auto_dag()->missing_dependencies();
+#endif
+
+#endif
+
   if (depends_uids_ == NULL) {
       depends_uids_ = new unsigned long[depends_max_];
   }

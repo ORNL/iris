@@ -27,6 +27,7 @@ namespace rt {
 
 class Scheduler;
 class Graph;
+class AutoDAG;
 
 class Task: public Retainable<struct _iris_task, Task> {
 public:
