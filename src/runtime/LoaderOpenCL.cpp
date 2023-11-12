@@ -58,6 +58,7 @@ int LoaderOpenCL::LoadFunctions() {
   LOADFUNC(clCreateBuffer);
   LOADFUNC(clReleaseMemObject);
   LOADFUNC(clCreateProgramWithSource);
+  LOADFUNC(clGetCommandQueueInfo);
   LOADFUNC(clCreateProgramWithBinary);
   LOADFUNCSILENT(clCreateProgramWithIL);
   LOADFUNC(clReleaseProgram);
