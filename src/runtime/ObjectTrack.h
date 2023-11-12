@@ -60,13 +60,13 @@ namespace iris {
                 }
                 virtual void *GetObject(unsigned long uid) {
                     void *obj = NULL;
-                    _debug2("Waiting for lock uid:%lu", uid);
+                    //_debug2("Waiting for lock uid:%lu", uid);
                     pthread_mutex_lock(&track_lock_);
-                    _debug2("Acquired lock uid:%lu", uid);
+                    //_debug2("Acquired lock uid:%lu", uid);
                     if (allocated_objects_.find(uid) != allocated_objects_.end())
                         obj = allocated_objects_[uid];
                     pthread_mutex_unlock(&track_lock_);
-                    _debug2("Released lock uid:%lu", uid);
+                    //_debug2("Released lock uid:%lu", uid);
                     return obj;
                 }
                 virtual void UntrackObjectNoLock(void *p, unsigned long uid) {
