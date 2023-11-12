@@ -2,6 +2,13 @@
 #source /etc/profile
 #source /etc/profile.d/z00_lmod.sh
 #source ~/.bashrc
+export REPEATS=${REPEATS:=100}
+export PAYLOAD_SIZE=${PAYLOAD_SIZE:=128}
+export SIZES=("10" "25" "100")
+
+#uncomment to use data memory rather than explicit memory transfers
+#export USE_DATA_MEMORY=--use-data-memory
+
 source ./setup.sh
 
 make clean
@@ -31,8 +38,6 @@ if ! [ -f dagger_runner ] ; then
    echo "No dagger_runner app! " && exit 1
 fi
 
-#uncomment to use data memory rather than explicit memory transfers
-#export USE_DATA_MEMORY=--use-data-memory
 
 export RESULTS_DIR=`pwd`/dagger-results
 export GRAPHS_DIR=`pwd`/dagger-graphs
@@ -187,11 +192,6 @@ if ! [ -d dagger-payloads ] ; then
   cp graph.json dagger-payloads/brain1000-graph.json
   cp dag.pdf $GRAPHS_DIR/brain1000-graph.pdf
 fi
-
-export REPEATS=100
-export PAYLOAD_SIZE=128
-#export PAYLOAD_SIZE=256
-export SIZES=("10" "25" "100")
 
 echo "Running deep-dive test..."
 echo "Running IRIS on Linear 10 with Policy: roundrobin"

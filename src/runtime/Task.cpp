@@ -253,11 +253,10 @@ void Task::Complete() {
   bool is_user_task = user_;
   bool platform_release_flag = platform_->release_task_flag();
   if (dev_ && type() != IRIS_MARKER) set_devno(dev_->devno());
-  //pthread_mutex_lock(&mutex_complete_);
+  pthread_mutex_lock(&mutex_complete_);
   status_ = IRIS_COMPLETE;
-  if (user_) platform_->ProfileCompletedTask(this);
   pthread_cond_broadcast(&complete_cond_);
-  //pthread_mutex_unlock(&mutex_complete_);
+  pthread_mutex_unlock(&mutex_complete_);
   // For task with subtasks, the parent task is not in any worker queue. 
   // However, it has to call the completion of parent task each time.
   // Parent marker task was never go through Worker::Execute.
@@ -300,6 +299,11 @@ void Task::CompleteSub() {
 }
 
 void Task::Wait() {
+
+  //if (status_ != IRIS_COMPLETE && marker() && !parent_exist_ && ndepends_ == 0 && ncmds_ == 0){
+  //  status_ = IRIS_COMPLETE;
+  //  return;
+  //}
   //unsigned long id = uid();
   //Platform *platform = Platform::GetPlatform();
   //printf(" task:%lu:%s is waiting\n", id, name());
@@ -307,8 +311,11 @@ void Task::Wait() {
   pthread_mutex_lock(&mutex_complete_);
   //if (!platform->is_task_exist(id)) return;
   _debug2("Waiting for task completion: task:%lu:%s ref_cnt:%d", uid(), name(), ref_cnt());
-  if (status_ != IRIS_COMPLETE)
+  if (status_ != IRIS_COMPLETE){
+    //either parent (or abandoned) marker tasks can still linger in the waiting queue without ever being assigned a device, should this occur do we assign a device or just abandon the task (by claiming it is complete)?
     pthread_cond_wait(&complete_cond_, &mutex_complete_);
+  }
+
   //if (!platform->is_task_exist(id)) return;
   pthread_mutex_unlock(&mutex_complete_);
   //printf(" task:%lu:%s dependency is clear\n", uid(), name());

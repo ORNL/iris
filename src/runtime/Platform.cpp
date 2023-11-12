@@ -714,14 +714,14 @@ int Platform::InitDevices(bool sync) {
     Command* cmd = Command::CreateInit(task);
     task->AddCommand(cmd);
     _debug2("Initialize task:%lu:%s ref_cnt:%d", task->uid(), task->name(), task->ref_cnt());
-    //task->Retain();
-    _debug2("Initialize task:%lu:%s ref_cnt:%d", task->uid(), task->name(), task->ref_cnt());
-    task->Retain(); 
-    _debug2("Initialize task:%lu:%s ref_cnt:%d", task->uid(), task->name(), task->ref_cnt());
+    task->Retain();
     workers_[i]->Enqueue(task);
   }
   if (sync) for (int i = 0; i < ndevs_; i++) {
-      TaskWait(tasks[i]);
+    Task *task = get_task_object(tasks[i]);
+    //TODO: add clause to send `call workers_[1]->Enqueue(task)` if task has been missed? 1 in 20k run deadlock
+    if(task != NULL && task->status() != IRIS_COMPLETE) {task->Retain(); task->Wait(); task->Release();}
+    //TaskWait(tasks[i]);
   }
   //for (int i = 0; i < ndevs_; i++) {
     //Task *task = get_task_object(tasks[i]);
@@ -866,9 +866,11 @@ int Platform::DeviceSynchronize(int ndevs, int* devices) {
       task->AddSubtask(subtask);
     }
     scheduler_->Enqueue(task);
-  } else { task->Retain(); workers_[0]->Enqueue(task); }
-  TaskWait(brs_task);
-  //task->Wait();
+  } else{
+    workers_[0]->Enqueue(task);
+  }
+  task->Wait();
+  //TaskWait(brs_task);
   // Task::Ok returns only Device::Ok. However, the parent task doesn't map to any 
   // device. It is meaningless to call task->Ok(). Hence, returning  IRIS_SUCCESS.
   return IRIS_SUCCESS;
@@ -1324,14 +1326,15 @@ void Platform::TaskSafeRetain(iris_task brs_task) {
 }
 int Platform::TaskWait(iris_task brs_task) {
   _debug2("waiting for brs_task:%lu\n", brs_task.uid);
-  TaskSafeRetain(brs_task);
   Task *task = get_task_object(brs_task);
   if (task != NULL) {
-     unsigned long uid = task->uid(); string lname = task->name(); _debug2("Task wait release:%lu:%s ref_cnt:%d after callback\n", task->uid(), task->name(), task->ref_cnt());
-     task->Wait();
-     _debug2("Task wait before release:%lu:%s ref_cnt:%d\n", uid, lname.c_str(), task->ref_cnt());
-     int ref_cnt = task->Release();
-     _debug2("Task wait after release:%lu:%s ref_cnt:%d\n", uid, lname.c_str(), ref_cnt);
+    //TaskSafeRetain(brs_task);
+    task->Retain();
+    unsigned long uid = task->uid(); string lname = task->name(); _debug2("Task wait release:%lu:%s ref_cnt:%d after callback\n", task->uid(), task->name(), task->ref_cnt());
+    task->Wait();
+    _debug2("Task wait before release:%lu:%s ref_cnt:%d\n", uid, lname.c_str(), task->ref_cnt());
+    int ref_cnt = task->Release();
+    _debug2("Task wait after release:%lu:%s ref_cnt:%d\n", uid, lname.c_str(), ref_cnt);
   }
   return IRIS_SUCCESS;
 }

@@ -43,6 +43,7 @@ conda env create --force -p ./envs -f dagger.yaml
 conda activate ./envs
 
 # Run command
+export REPEATS=10
 ./run-policy-evaluation.sh
 popd
 
