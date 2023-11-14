@@ -479,6 +479,7 @@ int DeviceOpenCL::AddCallback(Task* task) {
   return IRIS_SUCCESS;
 }
 
+#if 0
 void DeviceOpenCL::ExecuteKernel(Command* cmd) {
   timer_->Start(IRIS_TIMER_KERNEL);
   Kernel* kernel = ExecuteSelectorKernel(cmd);
@@ -541,13 +542,6 @@ void DeviceOpenCL::ExecuteKernel(Command* cmd) {
         arg_idx+=1;
     }
   }
-#if 0
-  if (reduction) {
-    size_t gws0 = gws[0];
-    _trace("max_idx+1[%d] gws[%lu]", max_idx + 1, gws0);
-    KernelSetArg(kernel, max_idx + 1, sizeof(size_t), &gws0);
-  }
-#endif
   bool enabled = true;
   if (cmd->task() != NULL && cmd->task()->is_kernel_launch_disabled())
       enabled = false;
@@ -562,6 +556,7 @@ void DeviceOpenCL::ExecuteKernel(Command* cmd) {
   cmd->SetTime(time);
   cmd->kernel()->history()->AddKernel(cmd, this, time);
 }
+#endif
 
 int DeviceOpenCL::CreateProgram(const char* suffix, char** src, size_t* srclen) {
   char* p = NULL;

@@ -33,7 +33,7 @@ public:
   int Synchronize();
   int AddCallback(Task* task);
   int RecreateContext();
-  void ExecuteKernel(Command* cmd);
+  //void ExecuteKernel(Command* cmd);
   static std::string GetLoaderHost2OpenCLSuffix(LoaderOpenCL *ld, cl_device_id cldev);
   bool SupportJIT() { return false; }
 
