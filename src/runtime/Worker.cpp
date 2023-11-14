@@ -64,6 +64,7 @@ void Worker::Execute(Task* task) {
   _debug2("check executable for task:%lu:%s:%p qsize:%lu dev:%d ref_cnt:%d\n", task->uid(), task->name(), task, queue_->Size(), dev_->devno(), task->ref_cnt());
   //queue_->Print(dev_->devno());
   if (!task->Executable()) { task->Release(); return; }
+  task->ChangeToProcessMode();
   task->Release(); // This is for Scheduler::Submit task retain
   task->set_dev(dev_);
   if (task->marker()) {
