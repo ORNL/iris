@@ -715,12 +715,16 @@ int Platform::InitDevices(bool sync) {
     task->AddCommand(cmd);
     _debug2("Initialize task:%lu:%s ref_cnt:%d", task->uid(), task->name(), task->ref_cnt());
     task->Retain();
+    task->Retain();
     workers_[i]->Enqueue(task);
   }
   if (sync) for (int i = 0; i < ndevs_; i++) {
     Task *task = get_task_object(tasks[i]);
+    task->Wait();
+    task->Release();
+    //Task *task = get_task_object(tasks[i]);
     //TODO: add clause to send `call workers_[1]->Enqueue(task)` if task has been missed? 1 in 20k run deadlock
-    if(task != NULL && task->status() != IRIS_COMPLETE) {task->Retain(); task->Wait(); task->Release();}
+    //if(task != NULL && task->status() != IRIS_COMPLETE) {task->Retain(); task->Wait(); task->Release();}
     //TaskWait(tasks[i]);
   }
   //for (int i = 0; i < ndevs_; i++) {
@@ -849,6 +853,7 @@ int Platform::DeviceGetDefault(int* device) {
 int Platform::DeviceSynchronize(int ndevs, int* devices) {
   Task* task = new Task(this, IRIS_MARKER, "Marker");
   task->Retain();
+  task->Retain();
   iris_task brs_task = *(task->struct_obj());
   if (scheduler_) {
     char sync_task[128];
@@ -870,6 +875,7 @@ int Platform::DeviceSynchronize(int ndevs, int* devices) {
     workers_[0]->Enqueue(task);
   }
   task->Wait();
+  task->Release();
   //TaskWait(brs_task);
   // Task::Ok returns only Device::Ok. However, the parent task doesn't map to any 
   // device. It is meaningless to call task->Ok(). Hence, returning  IRIS_SUCCESS.
@@ -1326,10 +1332,9 @@ void Platform::TaskSafeRetain(iris_task brs_task) {
 }
 int Platform::TaskWait(iris_task brs_task) {
   _debug2("waiting for brs_task:%lu\n", brs_task.uid);
+  TaskSafeRetain(brs_task);
   Task *task = get_task_object(brs_task);
   if (task != NULL) {
-    //TaskSafeRetain(brs_task);
-    task->Retain();
     unsigned long uid = task->uid(); string lname = task->name(); _debug2("Task wait release:%lu:%s ref_cnt:%d after callback\n", task->uid(), task->name(), task->ref_cnt());
     task->Wait();
     _debug2("Task wait before release:%lu:%s ref_cnt:%d\n", uid, lname.c_str(), task->ref_cnt());
