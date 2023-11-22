@@ -126,6 +126,11 @@ void Device::Execute(Task* task) {
       case IRIS_CMD_H2DNP:        ExecuteH2DNP(cmd);      break;
       case IRIS_CMD_D2H:          ExecuteD2H(cmd);        break;
       case IRIS_CMD_MEM_FLUSH:    ExecuteMemFlushOut(cmd);break;
+#ifdef AUTO_PAR
+#ifdef AUTO_SHADOW
+      case IRIS_CMD_MEM_FLUSH_TO_SHADOW:    ExecuteMemFlushOutToShadow(cmd);break;
+#endif
+#endif
       case IRIS_CMD_RESET_INPUT :                         break;
       case IRIS_CMD_MAP:          ExecuteMap(cmd);        break;
       case IRIS_CMD_RELEASE_MEM:  ExecuteReleaseMem(cmd); break;
@@ -804,6 +809,8 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
         size_t elem_size = mem->elem_size();
         int dim = mem->dim();
         size_t size = mem->size();
+        //printf("Pointer offset %d, gws %d lws %d elem_size %d dim %d size %d\n", 
+            //*ptr_off, *gws, *lws, elem_size, dim, size);
         void* host = mem->host_memory(); // It should work even if host_ptr is null
         double start = timer_->Now();
         Task *task = cmd->task();
@@ -849,6 +856,108 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
         _trace("MemFlushout is skipped as host already having valid data for task:%ld:%s\n", cmd->task()->uid(), cmd->task()->name());
     }
 }
+#ifdef AUTO_PAR
+#ifdef AUTO_SHADOW
+void Device::ExecuteMemFlushOutToShadow(Command* cmd) {
+    int nddevs[IRIS_MAX_NDEVS+1];
+    BaseMem* bmem = (BaseMem *)cmd->mem();
+    if (bmem->GetMemHandlerType() != IRIS_DMEM) {
+        _error("Shadow Flush out is called for unssuported memory handler task:%ld:%s\n", cmd->task()->uid(), cmd->task()->name());
+        return;
+    }
+    DataMem* mem = (DataMem *)cmd->mem();
+    //if (mem->is_host_dirty()) {
+    size_t *ptr_off, *gws, *lws, elem_size, size;
+    int dim;
+    if(mem->get_is_shadow() == false) {
+        ptr_off = mem->get_current_dmem_shadow()->off();
+        gws = mem->get_current_dmem_shadow()->host_size();
+        lws = mem->get_current_dmem_shadow()->dev_size();
+        elem_size = mem->get_current_dmem_shadow()->elem_size();
+        dim = mem->get_current_dmem_shadow()->dim();
+        size = mem->get_current_dmem_shadow()->size();
+    }
+    else {
+        ptr_off = mem->get_main_dmem()->off();
+        gws = mem->get_main_dmem()->host_size();
+        lws = mem->get_main_dmem()->dev_size();
+        elem_size = mem->get_main_dmem()->elem_size();
+        dim = mem->get_main_dmem()->dim();
+        size = mem->get_main_dmem()->size();
+    }
+
+    //printf("Pointer offset %d, gws %d lws %d elem_size %d dim %d size %d\n", 
+            //*ptr_off, *gws, *lws, elem_size, dim, size);
+    //void* host = mem->host_memory(); // It should work even if host_ptr is null
+    void* host;
+    if(mem->get_is_shadow() == false)
+        host = mem->get_current_dmem_shadow()->host_memory(); // get the host of shadow 
+    else 
+        host = mem->get_main_dmem()->host_memory(); // get the host of main 
+    //void* host = mem->get_host_shadow_ptr(); // It is getting the shadow host pointer 
+    
+    std::cout << "Before " <<  cmd->task()->name()<< " : ";
+    for(int i = 0; i < 32; i=i+8){
+        std::cout << *((double*) (host + i)) << " "; 
+    }
+    std::cout << std::endl;
+   
+    double start = timer_->Now();
+    Task *task = cmd->task();
+    Device *src_dev = this;
+    if (mem->is_dev_dirty(devno_)) {
+        int cpu_dev = -1;
+        int non_cpu_dev = -1;
+        int d2d_dev = -1;
+        GetPossibleDevices(devno_, mem->get_non_dirty_devices(nddevs), 
+                    d2d_dev, cpu_dev, non_cpu_dev);
+        src_dev = Platform::GetPlatform()->device(nddevs[0]);
+        // D2H should be issued from target src (remote) device
+        bool context_shift = src_dev->IsContextChangeRequired();
+        errid_ = src_dev->MemD2H(task, mem, 
+                ptr_off, gws, lws, elem_size, dim, size, host, "MemShadowFlushOut ");
+                //ptr_off, gws, lws, elem_size, dim, size, host, "MemShadowFlushOut ");
+        if (context_shift) ResetContext();
+    }
+    else {
+        errid_ = MemD2H(task, mem, 
+                ptr_off, gws, lws, elem_size, dim, size, host, "MemShadowFlushOut ");
+                //ptr_off, gws, lws, elem_size, dim, size, host, "MemShadowFlushOut ");
+    }
+    if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
+    //mem->get_current_dmem_shadow()->clear_host_shadow_dirty();
+    if(mem->get_is_shadow() == false)
+        mem->get_current_dmem_shadow()->clear_host_dirty();
+    else 
+        mem->get_main_dmem()->clear_host_dirty();
+    std::cout << "shadow flush host pointer " << host << std::endl;
+    //mem->clear_host_shadow_dirty();
+    //// Now need to set the shadow dmem to clear the host dirty
+    //need to create map both in Task and AutoDAG to recover the shadow object associated with this
+    double d2htime = timer_->Now() - start;
+    Command* cmd_kernel = cmd->task()->cmd_kernel();
+    if (cmd_kernel) cmd_kernel->kernel()->history()->AddD2H(cmd_kernel, src_dev, d2htime, size);
+    else Platform::GetPlatform()->null_kernel()->history()->AddD2H(cmd, this, d2htime, size);
+    /*}
+    else {
+        std::cout << " I am Here -----------------"  << std::endl;
+        memcpy(mem->get_current_dmem_shadow()->host_memory(), mem->host_memory(), mem->size());
+        _trace("MemShadowFlushout is copying host to host of shadow:%ld:%s\n", cmd->task()->uid(), cmd->task()->name());
+    }*/
+    /*if(mem->get_is_shadow() == false)
+        mem->get_current_dmem_shadow()->clear_host_dirty();
+    else 
+        mem->get_main_dmem()->clear_host_dirty();*/
+    //void* p = mem->get_current_dmem_shadow()->host_memory(); 
+    //void* q = mem->host_memory(); 
+    std::cout << "After " <<  cmd->task()->name()<< " : ";
+    for(int i = 0; i < 32; i=i+8){
+        std::cout << *((double*) (host + i)) << " "; 
+    }
+    std::cout << std::endl;
+}
+#endif
+#endif
 void Device::ExecuteH2BroadCast(Command *cmd) {
     int ndevs = Platform::GetPlatform()->ndevs();
     for(int i=0; i<ndevs; i++) {

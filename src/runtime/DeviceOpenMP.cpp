@@ -268,6 +268,7 @@ int DeviceOpenMP::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem
 }
 
 int DeviceOpenMP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws) {
+  //printf(" Task %s\n", kernel->get_task_name());
   _trace("dev[%d] kernel[%s:%s] dim[%d] off[%lu] gws[%lu]", devno_, kernel->name(), kernel->get_task_name(), dim, off[0], gws[0]);
   if (ld_->host_launch(NULL, 0, kernel->name(), kernel->GetParamWrapperMemory(), devno(),
               dim, off, gws) == IRIS_SUCCESS) 

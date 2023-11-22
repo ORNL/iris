@@ -61,6 +61,14 @@ Task::Task(Platform* platform, int type, const char* name) {
   pthread_mutex_init(&mutex_subtasks_, NULL);
   pthread_cond_init(&complete_cond_, NULL);
   brs_policy_ = iris_default;
+#ifdef AUTO_PAR
+#ifdef AUTO_FLUSH
+  graph_ = NULL;
+#endif
+#ifdef AUTO_SHADOW
+  shadow_dep_added_ = false;
+#endif
+#endif
   set_object_track(Platform::GetPlatform()->task_track_ptr());
   platform_->task_track().TrackObject(this, uid());
   async_execution_ = platform_->is_async(); // Same as platform by default
@@ -380,6 +388,19 @@ void Task::AddAllChilds() {
 }
 
 
+#ifdef AUTO_PAR
+#ifdef AUTO_FLUSH
+void Task::ReplaceDependFlushTask(Task * task) {
+    //if (ndepends_ > 1) 
+        //_error("Flush task should not have more than one dependency:%ld:%s\n", this->uid(), this->name());
+
+    //platform_->get_task_object(depends_uids_[0])->Release();
+    ndepends_ = 0;
+    this->AddDepend(task, task->uid());
+
+}
+#endif
+#endif
 
 /*
 void Task::RemoveDepend(Task* task) {

@@ -4,6 +4,7 @@
 #include "Retainable.h"
 #include "Command.h"
 #include "Platform.h"
+#include "History.h"
 #include <pthread.h>
 #include <vector>
 #include <string>
@@ -24,6 +25,7 @@ namespace iris {
 namespace rt {
 
 class Scheduler;
+class Graph;
 
 class Task: public Retainable<struct _iris_task, Task> {
 public:
@@ -89,6 +91,7 @@ public:
   void ClearMemOutProfile() { out_dataobject_profiles.clear(); }
   vector<DataObjectProfile> & out_mem_profiles() { return out_dataobject_profiles; }
   void set_opt(const char* opt);
+  const char* get_opt(){return opt_;}
   char* opt() { return opt_; }
   int brs_policy() { return brs_policy_; }
   int recommended_stream() { return recommended_stream_; }
@@ -136,6 +139,23 @@ public:
   void AddChild(unsigned long uid);
   void AddAllChilds();
  
+#ifdef AUTO_PAR
+  std::vector<BaseMem*>* get_write_list() { return &write_list_; }
+  std::vector<BaseMem*>* get_read_list() { return &read_list_; }
+  void add_to_read_list(BaseMem* mem) { read_list_.push_back(mem); }
+  void add_to_write_list(BaseMem* mem) { write_list_.push_back(mem); }
+#ifdef AUTO_FLUSH
+  Graph* get_graph(){return graph_;}
+  void set_graph(Graph* graph){graph_ = graph;}
+  //void EraseDepend();
+  void ReplaceDependFlushTask(Task * task);
+#endif
+#ifdef AUTO_SHADOW
+  void set_shadow_dep_added(bool shadow_dep_added){ shadow_dep_added_ = shadow_dep_added;}
+  bool get_shadow_dep_added(){ return shadow_dep_added_;}
+#endif
+#endif
+
 private:
   void CompleteSub();
 
@@ -155,6 +175,16 @@ private:
   Scheduler* scheduler_;
   std::vector<Task*> subtasks_;
   std::vector<Command *> reset_mems_;
+#ifdef AUTO_PAR
+  std::vector<BaseMem*> write_list_;
+  std::vector<BaseMem*> read_list_;
+#ifdef AUTO_FLUSH
+  Graph* graph_;
+#endif
+#ifdef AUTO_SHADOW
+  bool shadow_dep_added_;
+#endif
+#endif
   size_t subtasks_complete_;
   void* arch_;
 

@@ -3,9 +3,16 @@
 
 #include "Config.h"
 #include "Retainable.h"
+#ifdef AUTO_PAR
+#include "Task.h"
+#include <vector>
+#endif
 namespace iris {
 namespace rt {
     class Device;
+#ifdef AUTO_PAR
+    class Task;
+#endif
     enum MemHandlerType{
         IRIS_MEM = 0x1,
         IRIS_DMEM = 0x2,
@@ -47,6 +54,21 @@ namespace rt {
             inline void *get_arch(int devno) { return archs_[devno]; }
             inline void set_arch(int devno, void *ptr) { archs_[devno] = ptr; }
             inline size_t size() { return size_; }
+#ifdef AUTO_PAR
+  	    inline Task* get_current_writing_task() { return current_writing_task_;}
+  	    inline void set_current_writing_task(Task* task) { current_writing_task_ = task;}
+  	    void add_to_read_task_list(Task* task) { read_task_list_.push_back(task); }
+  	    std::vector<Task*>* get_read_task_list() { return &read_task_list_; }
+  	    void erase_all_read_task_list() {
+		    read_task_list_.erase(read_task_list_.begin(), 
+		    read_task_list_.end()); }
+
+#ifdef AUTO_FLUSH
+  	    inline Task* get_flush_task() { return flush_task_;}
+  	    inline void set_flush_task(Task* flush_task) { flush_task_ = flush_task;}
+#endif 
+
+#endif
             inline int ndevs() { return ndevs_; }
             virtual inline void clear() { }
         protected:
@@ -57,7 +79,14 @@ namespace rt {
             size_t size_;
             int ndevs_;
             bool  reset_;
-
+#ifdef AUTO_PAR
+  	    Task* current_writing_task_;
+  	    std::vector<Task*> read_task_list_;
+#ifdef AUTO_FLUSH
+  	    Task* flush_task_;
+#endif 
+#endif
+ 
     };
 }
 }
