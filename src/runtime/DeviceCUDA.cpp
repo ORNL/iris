@@ -648,13 +648,14 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
       kstream = &streams_[stream_index];
       nstreams = nqueues_ - stream_index;
   }
-  _debug2("dev[%d][%s] task[%ld:%s] kernel launch::%ld:%s q[%d]", devno_, name_, kernel->task()->uid(), kernel->task()->name(), kernel->uid(), kernel->name(), stream_index);
+  //_debug2("dev[%d][%s] task[%ld:%s] kernel launch::%ld:%s q[%d]", devno_, name_, kernel->task()->uid(), kernel->task()->name(), kernel->uid(), kernel->name(), stream_index);
   if (kernel->is_vendor_specific_kernel(devno_)) {
      if (host2cuda_ld_->host_launch((void **)kstream, nstreams, kernel->name(), 
                  kernel->GetParamWrapperMemory(), devno(),
                  dim, off, gws) == IRIS_SUCCESS) {
          if (!async) {
-             err = ld_->cuStreamSynchronize(0);
+             //err = ld_->cuStreamSynchronize(0);
+             err = ld_->cuCtxSynchronize();
              _cuerror(err);
              if (err != CUDA_SUCCESS){
                  _error("dev[%d][%s] task[%ld:%s] kernel launch::%ld:%s failed q[%d]", devno_, name_, kernel->task()->uid(), kernel->task()->name(), kernel->uid(), kernel->name(), stream_index);
