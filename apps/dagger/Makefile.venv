@@ -9,7 +9,7 @@ setup:
 	python3 -m pip install "networkx @ git+https://github.com/BeauJoh/networkx.git@main"
 
 all:
-	source daggerpy/bin/activate ; IRIS_ARCHS=cuda,hip IRIS_HISTORY=1 IRIS_INSTALL_ROOT=$(IRIS) bash ./run-policy-evaluation.sh
+	source daggerpy/bin/activate ; IRIS_ARCHS=cuda,hip IRIS_HISTORY=1 IRIS_INSTALL_ROOT=$(IRIS) SKIP_SETUP=1 bash ./run-policy-evaluation.sh
 
 clean:
 	rm -rf dagger-payloads

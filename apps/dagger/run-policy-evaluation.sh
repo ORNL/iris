@@ -5,11 +5,14 @@
 export REPEATS=${REPEATS:=100}
 export PAYLOAD_SIZE=${PAYLOAD_SIZE:=128}
 export SIZES=("10" "25" "100")
+export SKIP_SETUP=${SKIP_SETUP:=0}
 
 #uncomment to use data memory rather than explicit memory transfers
 #export USE_DATA_MEMORY=--use-data-memory
 set -x;
+if [ "x$SKIP_SETUP" = "x0" ]; then
 source ./setup.sh
+fi
 
 make clean
 if [ "$SYSTEM" = "leconte" ] ; then
