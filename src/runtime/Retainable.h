@@ -91,7 +91,7 @@ public:
   }
 
   ObjectTrack *track() { return track_; }
-
+  int retain_mode() { return mode_; }
   int Release() {
     int i;
     //printf("from id:%lu ref_cnt_:%d\n", uid_, ref_cnt_);

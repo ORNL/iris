@@ -253,10 +253,10 @@ void Task::Complete() {
   bool is_user_task = user_;
   bool platform_release_flag = platform_->release_task_flag();
   if (dev_ && type() != IRIS_MARKER) set_devno(dev_->devno());
-  //pthread_mutex_lock(&mutex_complete_);
   status_ = IRIS_COMPLETE;
+  pthread_mutex_lock(&mutex_complete_);
   pthread_cond_broadcast(&complete_cond_);
-  //pthread_mutex_unlock(&mutex_complete_);
+  pthread_mutex_unlock(&mutex_complete_);
   if (user_) platform_->ProfileCompletedTask(this);
   // For task with subtasks, the parent task is not in any worker queue. 
   // However, it has to call the completion of parent task each time.
