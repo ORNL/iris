@@ -8,6 +8,7 @@
 #include <vector>
 #include <string>
 #include <iostream>
+#include <condition_variable>
 
 #define IRIS_COMPLETE   0x0
 #define IRIS_RUNNING    0x1
@@ -194,9 +195,11 @@ private:
   pthread_mutex_t stream_mutex_;
   pthread_mutex_t mutex_pending_;
   pthread_mutex_t mutex_executable_;
-  pthread_mutex_t mutex_complete_;
+  //pthread_mutex_t mutex_complete_;
+  std::mutex mutex_complete_cpp_;
+  std::condition_variable complete_cond_cpp_;
   pthread_mutex_t mutex_subtasks_;
-  pthread_cond_t complete_cond_;
+  //pthread_cond_t complete_cond_;
   vector<DataObjectProfile>       out_dataobject_profiles;
 
 public:

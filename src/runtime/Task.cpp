@@ -57,9 +57,9 @@ Task::Task(Platform* platform, int type, const char* name) {
   pthread_mutex_init(&stream_mutex_, NULL);
   pthread_mutex_init(&mutex_pending_, NULL);
   pthread_mutex_init(&mutex_executable_, NULL);
-  pthread_mutex_init(&mutex_complete_, NULL);
+  //pthread_mutex_init(&mutex_complete_, NULL);
   pthread_mutex_init(&mutex_subtasks_, NULL);
-  pthread_cond_init(&complete_cond_, NULL);
+  //pthread_cond_init(&complete_cond_, NULL);
   brs_policy_ = iris_default;
   set_object_track(Platform::GetPlatform()->task_track_ptr());
   platform_->task_track().TrackObject(this, uid());
@@ -77,9 +77,9 @@ Task::~Task() {
   pthread_mutex_destroy(&stream_mutex_);
   pthread_mutex_destroy(&mutex_pending_);
   pthread_mutex_destroy(&mutex_executable_);
-  pthread_mutex_destroy(&mutex_complete_);
+  //pthread_mutex_destroy(&mutex_complete_);
   pthread_mutex_destroy(&mutex_subtasks_);
-  pthread_cond_destroy(&complete_cond_);
+  //pthread_cond_destroy(&complete_cond_);
   subtasks_.clear();
   _trace("released task:%lu:%s released ref_cnt:%d", uid(), name(), ref_cnt());
 }
@@ -253,10 +253,12 @@ void Task::Complete() {
   bool is_user_task = user_;
   bool platform_release_flag = platform_->release_task_flag();
   if (dev_ && type() != IRIS_MARKER) set_devno(dev_->devno());
+  std::unique_lock<std::mutex> lock(mutex_complete_cpp_);
   status_ = IRIS_COMPLETE;
-  pthread_mutex_lock(&mutex_complete_);
-  pthread_cond_broadcast(&complete_cond_);
-  pthread_mutex_unlock(&mutex_complete_);
+  complete_cond_cpp_.notify_all();
+  //pthread_mutex_lock(&mutex_complete_);
+  //pthread_cond_broadcast(&complete_cond_);
+  //pthread_mutex_unlock(&mutex_complete_);
   if (user_) platform_->ProfileCompletedTask(this);
   // For task with subtasks, the parent task is not in any worker queue. 
   // However, it has to call the completion of parent task each time.
@@ -300,17 +302,10 @@ void Task::CompleteSub() {
 }
 
 void Task::Wait() {
-
-  //if (status_ != IRIS_COMPLETE && marker() && !parent_exist_ && ndepends_ == 0 && ncmds_ == 0){
-  //  status_ = IRIS_COMPLETE;
-  //  return;
-  //}
-  //unsigned long id = uid();
-  //Platform *platform = Platform::GetPlatform();
-  //printf(" task:%lu:%s is waiting\n", id, name());
-  //if (!platform->is_task_exist(id)) return;
+  std::unique_lock<std::mutex> lock(mutex_complete_cpp_);
+  complete_cond_cpp_.wait(lock, [this]{ return status_ == IRIS_COMPLETE; });
+#if 0
   pthread_mutex_lock(&mutex_complete_);
-  //if (!platform->is_task_exist(id)) return;
   _debug2("Waiting for task completion: task:%lu:%s ref_cnt:%d", uid(), name(), ref_cnt());
   if (status_ != IRIS_COMPLETE){
     //either parent (or abandoned) marker tasks can still linger in the waiting queue without ever being assigned a device, should this occur do we assign a device or just abandon the task (by claiming it is complete)?
@@ -320,6 +315,7 @@ void Task::Wait() {
   //if (!platform->is_task_exist(id)) return;
   pthread_mutex_unlock(&mutex_complete_);
   //printf(" task:%lu:%s dependency is clear\n", uid(), name());
+#endif
 }
 
 void Task::AddSubtask(Task* subtask) {

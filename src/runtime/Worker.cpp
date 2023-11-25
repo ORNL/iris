@@ -110,7 +110,8 @@ void Worker::Run() {
     while (running_ && queue_->Dequeue(&task)){
       //printf("Device:%d:%s Qsize:%lu dequeued task:%lu:%s:%p\n", dev_->devno(), dev_->name(), queue_->Size(), task->uid(), task->name(), task);
       _debug2("Device:%d:%s Qsize:%lu dequeued task:%lu:%s:%p", dev_->devno(), dev_->name(), queue_->Size(), task.first, task.second->name(), task.second);
-      if (!Platform::GetPlatform()->is_task_exist(task.first)) continue;
+      //FIX: This check is not needed. For the policies like ALL, when the task is in some worker queue, it couldn't be deleted unless all worker queues release them
+      //if (!Platform::GetPlatform()->is_task_exist(task.first)) continue;
 #ifdef _DEBUG2_ENABLE
       task.second->Retain();
 #endif
