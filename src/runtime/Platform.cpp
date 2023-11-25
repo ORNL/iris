@@ -683,11 +683,17 @@ int Platform::InitOpenCL() {
       ndevs_++;
       mdevs++;
       ocldevno++;
+#ifdef ENABLE_SINGLE_DEVICE_PER_CU
+      break;
+#endif
     }
     _trace("adding platform[%d] [%s %s] ndevs[%u]", nplatforms_, vendor, platform_name, ndevs);
     sprintf(platform_names_[nplatforms_], "OpenCL %s", vendor);
     first_dev_of_type_[nplatforms_] = devs_[ndevs_-mdevs];
     nplatforms_++;
+#ifdef ENABLE_SINGLE_DEVICE_PER_CU
+    break;
+#endif
   }
   return IRIS_SUCCESS;
 }

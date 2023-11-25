@@ -240,7 +240,7 @@ void Device::ExecuteInit(Command* cmd) {
   //send some memory for the device (important for spinning up AMD devices)
   Mem* mem = new Mem(init_size, Platform::GetPlatform());
   mem->SetOwner(this);
-  void* src_arch = mem->arch(this);
+  void* src_arch = mem->host_inter(); //mem->arch(this);
   size_t off[3] = { 0 };
   size_t host_sizes[3] = { mem->size() };
   size_t dev_sizes[3] = { mem->size() };

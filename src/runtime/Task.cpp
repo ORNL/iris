@@ -71,7 +71,7 @@ Task::Task(Platform* platform, int type, const char* name) {
 Task::~Task() {
   //printf("released task:%lu:%s released ptr:%p ref_cnt:%d\n", uid(), name(), this, ref_cnt());
   //Platform::GetPlatform()->task_track().UntrackObject(this, uid());
-  _debug2("Task deleted %lu %s %p ref_cnt:%d", uid(), name(), this, ref_cnt());
+  _trace("Task deleted %lu %s %p ref_cnt:%d", uid(), name(), this, ref_cnt());
   for (int i = 0; i < ncmds_; i++) delete cmds_[i];
   if (depends_uids_) delete [] depends_uids_;
   pthread_mutex_destroy(&stream_mutex_);
@@ -81,7 +81,7 @@ Task::~Task() {
   pthread_mutex_destroy(&mutex_subtasks_);
   pthread_cond_destroy(&complete_cond_);
   subtasks_.clear();
-  _debug2("released task:%lu:%s released ref_cnt:%d", uid(), name(), ref_cnt());
+  _trace("released task:%lu:%s released ref_cnt:%d", uid(), name(), ref_cnt());
 }
 bool Task::IsKernelSupported(Device *dev)
 {
@@ -255,9 +255,9 @@ void Task::Complete() {
   if (dev_ && type() != IRIS_MARKER) set_devno(dev_->devno());
   //pthread_mutex_lock(&mutex_complete_);
   status_ = IRIS_COMPLETE;
-  if (user_) platform_->ProfileCompletedTask(this);
   pthread_cond_broadcast(&complete_cond_);
   //pthread_mutex_unlock(&mutex_complete_);
+  if (user_) platform_->ProfileCompletedTask(this);
   // For task with subtasks, the parent task is not in any worker queue. 
   // However, it has to call the completion of parent task each time.
   // Parent marker task was never go through Worker::Execute.
