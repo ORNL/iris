@@ -218,7 +218,7 @@ void Device::ExecuteInit(Command* cmd) {
       _error("NO KERNEL SRC[%s] NO KERNEL BIN[%s]", src, bin);
       native_kernel_not_exists_ = true;
     } else if (!stat_src && stat_bin) {
-      strncpy(kernel_path_, bin, strlen(bin));
+      strncpy(kernel_path_, bin, strlen(bin)+1);
     } else if (stat_src && !stat_bin) {
       Platform::GetPlatform()->EnvironmentGet(kernel_bin(), &bin, NULL);
       sprintf(kernel_path_, "%s/%s-%d", tmpdir, bin, devno_);
@@ -230,7 +230,7 @@ void Device::ExecuteInit(Command* cmd) {
         Platform::GetPlatform()->EnvironmentGet(kernel_bin(), &bin, NULL);
         sprintf(kernel_path_, "%s/%s-%d", tmpdir, bin, devno_);
         errid_ = Compile(src);
-      } else strncpy(kernel_path_, bin, strlen(bin));
+      } else strncpy(kernel_path_, bin, strlen(bin)+1);
     }
     if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
   }

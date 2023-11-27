@@ -151,7 +151,7 @@ void Task::set_opt(const char* opt) {
   if (!opt) return;
   if (std::string(opt) == std::string(opt_)) return;
   memset(opt_, 0, sizeof(opt_));
-  strncpy(opt_, opt, strlen(opt));
+  strncpy(opt_, opt, strlen(opt)+1);
 }
 
 void Task::AddMemResetCommand(Command* cmd) {

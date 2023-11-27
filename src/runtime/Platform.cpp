@@ -194,7 +194,7 @@ int Platform::Init(int* argc, char*** argv, int sync) {
   const char* delim = " :;.,";
   char arch_str[128];
   memset(arch_str, 0, 128);
-  strncpy(arch_str, archs, strlen(archs));
+  strncpy(arch_str, archs, strlen(archs)+1);
   char* rest = arch_str;
   char* a = NULL;
   while ((a = strtok_r(rest, delim, &rest))) {
@@ -374,7 +374,7 @@ int Platform::SetDevsAvailable() {
   const char* delim = " :;.,";
   char str[128];
   memset(str, 0, 128);
-  strncpy(str, enabled, strlen(enabled));
+  strncpy(str, enabled, strlen(enabled)+1);
   char* rest = str;
   char* a = NULL;
   while ((a = strtok_r(rest, delim, &rest))) {
