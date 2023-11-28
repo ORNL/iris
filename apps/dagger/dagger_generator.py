@@ -7,7 +7,7 @@ Adapted from https://github.com/ANRGUSC/Automatic-DAG-Generator and adapted as n
     license: GPL
 """
 __author__ = "Beau Johnston"
-__copyright__ = "Copyright (c) 2020-2022, Oak Ridge National Laboratory (ORNL) Programming Systems Research Group. All rights reserved."
+__copyright__ = "Copyright (c) 2020-2023, Oak Ridge National Laboratory (ORNL) Programming Systems Research Group. All rights reserved."
 __license__ = "GPL"
 __version__ = "1.0"
 __schema__ = "https://raw.githubusercontent.com/ORNL/iris/v2.0.0/schema/dagger.schema.json"
@@ -32,6 +32,7 @@ _mean, _std_dev, _skips = None,None,None
 _seed = None
 _kernel_buffs = {}
 _concurrent_kernels = {}
+_total_num_concurrent_kernels = 0
 _dimensionality = {}
 _graph = None
 _memory_object_pool = None
@@ -70,7 +71,7 @@ def parse_args(pargs=None,additional_arguments=[]):
     else:
         args = parser.parse_args(shlex.split(pargs))
 
-    global _kernels, _k_probs, _depth, _num_tasks, _min_width, _max_width, _mean, _std_dev, _skips, _seed, _sandwich, _concurrent_kernels, _duplicates, _dimensionality, _graph, _memory_object_pool, _use_data_memory
+    global _kernels, _k_probs, _depth, _num_tasks, _min_width, _max_width, _mean, _std_dev, _skips, _seed, _sandwich, _concurrent_kernels, _duplicates, _dimensionality, _graph, _memory_object_pool, _use_data_memory, _total_num_concurrent_kernels
 
     _graph = args.graph
     _depth = args.depth
@@ -134,14 +135,17 @@ def parse_args(pargs=None,additional_arguments=[]):
     if args.concurrent_kernels is None:
         for k in _kernels:
             _concurrent_kernels[k] = 1
+            _total_num_concurrent_kernels  += _concurrent_kernels[k]
     else:
         for i in args.concurrent_kernels.split(','):
             try:
                 kernel_name, number_of_concurrent_kernels = i.split(':')
                 _concurrent_kernels[kernel_name] = int(number_of_concurrent_kernels)
+                _total_num_concurrent_kernels  += int(number_of_concurrent_kernels)
             except:
                 assert False, "Incorrect arguments given to --concurrent-kernels. Broken on {}".format(i)
            # \"process:2\" indicates that the kernel called \"process\" will only allow two unique sets of memory buffers in the generated DAG, effectively limiting concurrency by indicating a data dependency.")
+    assert _total_num_concurrent_kernels == _max_width, "Incorrect arguments given: the total number of concurrent kernels must be equal to the maximum width of any level in the graph. The total number of concurrent kernels are: {} while the width is {}\n".format(_total_num_concurrent_kernels,_max_width)
 
     for i in args.kernel_dimensions.split(','):
         try:
@@ -242,6 +246,103 @@ def repack_dag_with_missing_edges(neighs_down_top,neighs_top_down):
                 linked_neighs[e] = numpy.append(linked_neighs[e],t)
     return linked_neighs
 
+def create_h2d_task_from_kernel_bag(kernel_bag):
+    #sample:       {
+    #      "name" : "transferto0",
+    #      "h2d": ["user-memA0", "user-A", "0", "user-size-cb"],
+    #      "h2d": ["user-memB0", "user-B", "0", "user-size-cb"],
+    #      "target": "user-target1"
+    #  },
+    commands = []
+    for kernel_name in kernel_bag.keys():
+        for kernel_instance in kernel_bag[kernel_name]:
+            for parameter in kernel_instance['kernel']['parameters']:
+                if parameter['type'] == "memory_object":
+                    memory_name = parameter['value']
+                    size_bytes = parameter['size_bytes']
+                    commands.append({ "h2d":{ "name":memory_name.replace("devicemem","transferto"), "device_memory":memory_name, "host_memory":memory_name.replace("devicemem","hostmem"), "offset":"0", "size":size_bytes } })
+
+    transfer_task = { "name":"initial_h2d", "commands":commands, "target":"user-target-control", "depends":[] }
+    return transfer_task
+
+def create_d2h_task_from_kernel_bag(_kernel_bag,dag):
+    depends = []
+    for t in dag:
+        depends.append(t['name'])
+    touched_memory_objects = []
+    size_bytes_lookup = {}
+    for task in dag:
+        for cmd in task['commands']:
+            if 'kernel' in cmd:
+                for params in task['commands'][0]['kernel']['parameters']:
+                    if params['type'] == 'memory_object' and "w" in params['permissions']:
+                        touched_memory_objects.append(params['value'])
+                        size_bytes_lookup[params['value']] = params['size_bytes']
+    touched_memory_objects = set(touched_memory_objects)
+    commands = []
+    for memory_name in touched_memory_objects:
+        if _use_data_memory:
+            commands.append({ "d2h":{ "name":memory_name.replace("devicemem","dmemflush"), "device_memory":memory_name, "data-memory-flush":1 } })
+        else:
+            commands.append({ "d2h":{ "name":memory_name.replace("devicemem","transferfrom"), "device_memory":memory_name, "host_memory":memory_name.replace("devicemem","hostmem"), "offset":"0", "size":size_bytes_lookup[memory_name] } })
+    transfer_task = { "name":"final_d2h", "commands":commands, "target":"user-target-control", "depends":depends }
+    return transfer_task
+
+def generate_attributes(task_dependencies,tasks_per_level):
+    #generate internal kernel instance names based on duplicates
+    _kernel_bag = {}
+    for k in _kernels:
+        _kernel_bag[k] = []
+        for c in range(0,_concurrent_kernels[k]):
+            x = {}
+            x["name"] = k
+
+            x["global_size"] = []
+            for z in range(0,_dimensionality[k]):
+                x["global_size"].append("user-size")
+
+            x["parameters"] = []
+            for index,permission in enumerate(_kernel_buffs[k]):
+                x["parameters"].append({
+                    "type":"memory_object",
+                    "value":"devicemem-{}-buffer{}-instance{}".format(k,index,c),
+                    "size_bytes":"user-size-cb-{}".format(k),
+                    "permissions":permission})
+            _kernel_bag[k].append({"kernel":x})
+
+    dag = []
+    current_task_number = 0
+    for level_num in tasks_per_level:
+        #if sandwich mode ensure the first and last tasks do the h2d and d2h transfers
+        if _sandwich:
+            #Note: if dmem is used only the final flush is needed, and so the first task is replaced with an arbitrary kernel task
+            if current_task_number == 0 and not _use_data_memory:
+                dag.append(create_h2d_task_from_kernel_bag(_kernel_bag))
+                current_task_number += 1
+                continue
+            elif current_task_number == _num_tasks + 1:
+                dag.append(create_d2h_task_from_kernel_bag(_kernel_bag,dag))
+                current_task_number += 1
+                print("replacing the last task")
+                continue
+        #TODO: we could add a memory shuffle step here to mix up the kernels memory objects in use --- for instance shuffle memory objects in the _kernel_bag at each new level...
+        #TODO: duplication should work again now --- bring it back, or at least test it out
+        #TODO: do all the old payloads look and behave the same?
+        #TODO: contact Monil with changes to test out with his data-dependency tracker tool
+        tasks_this_level = tasks_per_level[level_num]
+        selected_kernels_this_level = random.choices(_kernels, weights=_k_probs, k=len(tasks_this_level))
+        selected_tasks_this_level = []
+        for unique_kernel in set(selected_kernels_this_level):
+            num_memory_instances = selected_kernels_this_level.count(unique_kernel)
+            selected_tasks_this_level = random.sample(_kernel_bag[unique_kernel],k = num_memory_instances)
+        for selected_task in selected_tasks_this_level:
+            deps = ["task"+str(d) for d in task_dependencies[current_task_number]]
+            task = {"name":"task"+str(current_task_number), "commands":[selected_task], "depends":deps, "target":"user-target-data"}
+            dag.append(task)
+            current_task_number += 1
+    return dag
+
+
 def gen_attr(tasks,kernel_names,kernel_probs):
     #TODO: how do handle memory transfers between each task? Insert h2d and d2h calls around each kernel -- but how should we treat this when multiple dependencies are scheduled on the same device, are they simple dropped in 1024dagger.c?
     #TODO: we should automate kernel arguments being set
@@ -262,8 +363,6 @@ def gen_attr(tasks,kernel_names,kernel_probs):
         kname = bag_of_kernels.pop()
         selected_memory = random.choices(range(0,_concurrent_kernels[kname]),k=1)
         #print("selected memory {}\n".format(selected_memory))
-        #import ipdb
-        #ipdb.set_trace()
         #selected_memory = [0]
         kinst = int(selected_memory[0])
 
@@ -377,8 +476,19 @@ def plot_dag(task_dag,edges,dag_path_plot):
     #edge_d = [(e[i][], e['name'],{'data':e['name']}) for i,e in enumerate(task_dag)]
 
     dag = nx.DiGraph()
-        #hash the colours in the dag for each kernel name
-    unique_kernels = sorted(set([t['commands'][0]['kernel']['name'] for t in task_dag]))
+    #hash the colours in the dag for each kernel name and memory transfers
+    unique_kernels = []
+    for t in task_dag:
+        #import ipdb
+        #ipdb.set_trace()
+        for c in t['commands'][0]:
+            if 'kernel' in c:
+                unique_kernels.append(t['commands'][0][c]['name'])
+            else:
+                unique_kernels.append(t['name'])
+    unique_kernels = set(unique_kernels)
+
+    #unique_kernels = sorted(set([t['commands'][0]['kernel']['name'] for t in task_dag]))
     assert len(unique_kernels) < 9, "Can't colourize that many unique kernels -- maybe choose a bigger colour palette? <https://docs.bokeh.org/en/latest/docs/reference/palettes.html>"
     palette = brewer['Pastel1'][9]
     phash = {}
@@ -396,7 +506,12 @@ def plot_dag(task_dag,edges,dag_path_plot):
     #plot it
     pos = graphviz_layout(dag,prog='dot')
     #add colour
-    node_colours = ['{}'.format(phash[task_dag[int(n)]['commands'][0]['kernel']['name']]) for n in dag]
+    node_colours = []
+    for n in dag:
+        if 'kernel' in task_dag[int(n)]['commands'][0]:
+            node_colours.append('{}'.format(phash[task_dag[int(n)]['commands'][0]['kernel']['name']]))
+        else: #h2d or d2h transfer tasks
+            node_colours.append('{}'.format(phash[task_dag[int(n)]['name']]))
 
     nx.draw(dag,pos=pos,labels=node_labels,font_size=8,node_color=node_colours)
     #nx.draw_networkx_edge_labels(dag,pos,edge_labels=edge_labels,label_pos=0.75,font_size=6)
@@ -476,9 +591,7 @@ def determine_and_append_iris_d2h_transfers(dag):
     transfers = []
 
     if _use_data_memory:
-        #flush here:
         #iris_task_dmem_flush_out(task0,mem_C);
-        print("geniing data-memory-flush")
         #either we need to perform a data memory flush back on all of our short-listed pool of memory (since we can't be sure which objects have been written
         if _memory_object_pool is not None:
             #depend on all tasks before we flush
@@ -574,8 +687,8 @@ def get_task_to_json(dag,deps):
         #print(t['depends'])
     f = open(_graph, 'w')
     inputs = determine_iris_inputs()
-    dag = determine_and_prepend_iris_h2d_transfers(dag)
-    dag = determine_and_append_iris_d2h_transfers(dag)
+    #dag = determine_and_prepend_iris_h2d_transfers(dag)
+    #dag = determine_and_append_iris_d2h_transfers(dag)
     final_json = {"$schema": __schema__, "iris-graph":{"inputs":inputs,"graph":{"tasks":dag}}}
     f.write(json.dumps(final_json,indent = 2))
     f.close()
@@ -586,9 +699,15 @@ def main():
     edges,neighs_top_down,neighs_down_top = gen_task_links(_mean,_std_dev,task_per_level,level_per_task,delta_lvl=_skips)
     if _sandwich:
         neighs_down_top = repack_dag_with_missing_edges(neighs_down_top,neighs_top_down)
-    task_dag = gen_attr(neighs_down_top,_kernels,_k_probs)
+    ##old way:
+    #task_dag = gen_attr(neighs_down_top,_kernels,_k_probs)
+    #edges = prune_edges_from_dependencies(task_dag,edges)
+    #task_dag,edges = duplicate_for_concurrency(task_dag,edges)
+
+    #the way:
+    task_dag = generate_attributes(neighs_down_top,task_per_level)
     edges = prune_edges_from_dependencies(task_dag,edges)
-    task_dag,edges = duplicate_for_concurrency(task_dag,edges)
+
     #print("task_dag:")
     #print(task_dag)
     #print("\n\n")
