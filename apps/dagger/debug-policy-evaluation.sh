@@ -45,6 +45,10 @@ echo "Running DAGGER evaluation.... (graph figures can be found in $GRAPHS_DIR)"
 echo "*******************************************************************"
 echo "*                          Diamond 10                             *"
 echo "*******************************************************************"
+#diamond 10 with data memory
+./dagger_generator.py --kernels="ijk" --kernel-split='100' --depth=1 --num-tasks=8 --min-width=8 --max-width=8 --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --sandwich  --concurrent-kernels="ijk:8" --use-data-memory
+[ $? -ne 0 ] &&  exit 1
+IRIS_HISTORY=1 gdb --args ./dagger_runner --graph="graph.json" --logfile="time.csv" --repeats=1 --scheduling-policy=0 --size=64 --kernels="ijk" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=1 --num-tasks=8 --min-width=8 --max-width=8 --sandwich --concurrent-kernels="ijk:8" --use-data-memory
 #diamond 10 without data memory
 ./dagger_generator.py --kernels="ijk" --kernel-split='100' --depth=1 --num-tasks=8 --min-width=8 --max-width=8 --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --sandwich  --concurrent-kernels="ijk:8"
 [ $? -ne 0 ] &&  exit 1
