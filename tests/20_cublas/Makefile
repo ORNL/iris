@@ -6,6 +6,3 @@ LDFLAGS	+= -lcublas -lcuda
 
 include ../Makefile.tests
 
-kernel.ptx: kernel.cu
-	$(NVCC) -ptx $^
-
