@@ -2,9 +2,16 @@ option(BUILD_SHARED_LIBS "Build shared libs" ON)
 
 if (ENABLE_FFI) 
 include(CPM.cmake)
+if (CMAKE_C_COMPILER MATCHES "nvc$")
+CPMAddPackage(NAME libffi
+        GITHUB_REPOSITORY "miniskar/libffi-cmake"
+        OPTIONS "HAVE_AS_X86_PCREL"
+        GIT_TAG master)
+else()
 CPMAddPackage(NAME libffi
         GITHUB_REPOSITORY "miniskar/libffi-cmake"
         GIT_TAG master)
+endif()
 include_directories(${libffi_BINARY_DIR}/include)
 #add_subdirectory(libffi)
 endif()
