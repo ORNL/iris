@@ -281,6 +281,29 @@ Command* Command::CreateMalloc(Task* task, Mem* mem) {
 Command* Command::CreateMemFlushOut(Task* task, DataMem* mem) {
   Command* cmd = Create(task, IRIS_CMD_MEM_FLUSH);
   cmd->mem_ = mem;
+#ifdef AUTO_PAR
+//#ifdef IGNORE_MANUAL
+    
+//#endif
+
+//#ifdef SANITY_CHECK
+//    task->platform()->get_auto_dag()->set_auto_dep();
+//#endif
+   // need to fix this
+   if (mem->get_current_writing_task() != NULL && mem->get_current_writing_task()->uid() != NULL)
+   		task->AddDepend(mem->get_current_writing_task(), mem->get_current_writing_task()->uid());
+
+//#ifdef IGNORE_MANUAL
+//   task->platform()->get_auto_dag()->unset_auto_dep();
+//#endif
+
+//#ifdef SANITY_CHECK
+//   task->platform()->get_auto_dag()->unset_auto_dep();
+//#endif
+
+#endif
+
+
   return cmd;
 }
 
