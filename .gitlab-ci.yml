@@ -219,6 +219,7 @@ test-backends-29:
   allow_failure: true
   before_script:
     - source /auto/software/iris/setup_system.source
+    - source /opt/xilinx/xrt/setup.sh
   script:
     - echo "Installing iris to $IRIS_INSTALL_ROOT"
     - bash build-coverage.sh
@@ -359,6 +360,7 @@ test-backends-29-async-s2k:
   allow_failure: true
   before_script:
     - source /auto/software/iris/setup_system.source
+    - source /opt/xilinx/xrt/setup.sh
     - export IRIS_ASYNC=1
   script:
     - echo "Installing iris to $IRIS_INSTALL_ROOT"
@@ -399,6 +401,7 @@ test-backends-34-async-s2k:
   allow_failure: true
   before_script:
     - source /auto/software/iris/setup_system.source
+    - source /opt/xilinx/xrt/setup.sh
     - export IRIS_ASYNC=1
   script:
     - echo "Installing iris to $IRIS_INSTALL_ROOT"
@@ -440,6 +443,7 @@ test-backends-37:
   allow_failure: true
   before_script:
     - source /auto/software/iris/setup_system.source
+    - source /opt/xilinx/xrt/setup.sh
   script:
     - echo "Installing iris to $IRIS_INSTALL_ROOT"
     - bash build-coverage.sh
