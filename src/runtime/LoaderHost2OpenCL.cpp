@@ -7,6 +7,7 @@ namespace iris {
 namespace rt {
 
 LoaderHost2OpenCL::LoaderHost2OpenCL(const char *suffix) : HostInterfaceClass("KERNEL_HOST2OPENCL") {
+    enable_strict_handle_check();
     int len = strlen(suffix)+1;
     suffix_ = new char[len];
     for (int i=0; i<len; i++) {

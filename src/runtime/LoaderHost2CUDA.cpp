@@ -7,6 +7,7 @@ namespace iris {
 namespace rt {
 
 LoaderHost2CUDA::LoaderHost2CUDA() : HostInterfaceClass("KERNEL_HOST2CUDA") {
+    enable_strict_handle_check();
 }
 
 LoaderHost2CUDA::~LoaderHost2CUDA() {

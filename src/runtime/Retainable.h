@@ -97,7 +97,7 @@ public:
     //printf("from id:%lu ref_cnt_:%d\n", uid_, ref_cnt_);
     do i = ref_cnt_;
     while (!__sync_bool_compare_and_swap(&ref_cnt_, i, i - 1));
-    //printf("id:%lu ref_cnt_:%d %d mode:%d\n", uid_, ref_cnt_, i-1, mode_);
+    //printf("Release id:%lu ref_cnt_:%d %d mode:%d\n", uid_, ref_cnt_, i-1, mode_);
     // ref_cnt should be derived from local variable i
     int ref_cnt = i-1;
     //if (ref_cnt < 1) printf("problem from id:%lu ref_cnt_:%d\n", uid_, ref_cnt_);
