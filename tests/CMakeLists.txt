@@ -95,7 +95,7 @@ list(APPEND TEST_EXES "14_permanent_task" "test14_permanent_task" "")
 endif()
 list(APPEND TEST_EXES "15_graph" "test15_graph" "")
 #[FIXME] Temporarily disabled due to a deadlock issue.
-#list(APPEND TEST_EXES "16_task_host" "test16_task_host" "")
+list(APPEND TEST_EXES "16_task_host" "test16_task_host" "")
 list(APPEND TEST_EXES "17_json" "test17_json" "")
 list(APPEND TEST_EXES "18_record" "test18_record" "")
 list(APPEND TEST_EXES "19_replay" "test19_replay" "")
