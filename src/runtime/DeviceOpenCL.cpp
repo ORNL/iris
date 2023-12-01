@@ -77,15 +77,21 @@ DeviceOpenCL::DeviceOpenCL(LoaderOpenCL* ld, LoaderHost2OpenCL *host2opencl_ld, 
   }
   else type_ = iris_cpu;
   model_ = iris_opencl;
-
-  _info("device[%d] platform[%d] vendor[%s] device[%s] type[0x%x:%d] version[%s] max_compute_units[%zu] max_work_group_size[%zu] max_work_item_sizes[%zu,%zu,%zu] compiler_available[%d]", devno_, platform_, vendor_, name_, type_, type_, version_, max_compute_units_, max_work_group_size_, max_work_item_sizes_[0], max_work_item_sizes_[1], max_work_item_sizes_[2], compiler_available_);
+  for (int i = 0; i < nqueues_; i++) {
+    clcmdq_[i] = NULL;
+  }
+  if (IsDeviceValid()) {
+      _info("device[%d] platform[%d] vendor[%s] device[%s] type[0x%x:%d] version[%s] max_compute_units[%zu] max_work_group_size[%zu] max_work_item_sizes[%zu,%zu,%zu] compiler_available[%d]", devno_, platform_, vendor_, name_, type_, type_, version_, max_compute_units_, max_work_group_size_, max_work_item_sizes_[0], max_work_item_sizes_[1], max_work_item_sizes_[2], compiler_available_);
+  }
 }
 
 DeviceOpenCL::~DeviceOpenCL() {
     host2opencl_ld_->finalize(ocldevno_);
     for (int i = 0; i < nqueues_; i++) {
-      cl_int err = ld_->clReleaseCommandQueue(clcmdq_[i]);
-      _clerror(err);
+      if (clcmdq_[i]) {
+          cl_int err = ld_->clReleaseCommandQueue(clcmdq_[i]);
+          _clerror(err);
+      }
     }
 }
 
@@ -119,6 +125,10 @@ int DeviceOpenCL::Init() {
       return IRIS_ERROR;
     }
   } else if (CreateProgram("cl", &src, &len) == IRIS_SUCCESS) {
+    if (type_ == iris_fpga) {
+        _error("dev[%d][%s] has no binary kernel file", devno_, name_);
+        return IRIS_SUCCESS;
+    }
     clprog_ = ld_->clCreateProgramWithSource(clctx_, 1, (const char**) &src, (const size_t*) &len, &err);
     _clerror(err);
     if (err != CL_SUCCESS){
@@ -319,6 +329,8 @@ int DeviceOpenCL::KernelGet(Kernel *kernel, void** kernel_bin, const char* name,
       *kernel_bin = host2opencl_ld_->GetFunctionPtr(name);
       return IRIS_SUCCESS;
   }
+  if (clprog_ == NULL) 
+      return IRIS_ERROR;
   //_trace("dev[%d][%s] kernel[%s:%s] kernel-get-3", devno_, name_, kernel->name(), kernel->get_task_name());
   cl_kernel* clkernel = (cl_kernel*) kernel_bin;
   *clkernel = ld_->clCreateKernel(clprog_, name, &err);
@@ -558,6 +570,29 @@ void DeviceOpenCL::ExecuteKernel(Command* cmd) {
 }
 #endif
 
+bool DeviceOpenCL::IsDeviceValid() { 
+    if (type_ == iris_fpga) {
+        char* p = NULL;
+        if (type_ == iris_fpga) {
+            if (strcmp("aocx", fpga_bin_suffix_.c_str()) == 0 && 
+                    Platform::GetPlatform()->GetFilePath("KERNEL_INTEL_AOCX", &p, NULL) == IRIS_SUCCESS) {
+                if (Utils::Exist(p)) return true;
+            }
+            if (p != NULL) { free(p); p = NULL; }
+            if (strcmp("xclbin", fpga_bin_suffix_.c_str()) == 0 && 
+                    Platform::GetPlatform()->GetFilePath("KERNEL_XILINX_XCLBIN", &p, NULL) == IRIS_SUCCESS) {
+                if (Utils::Exist(p)) return true;
+            }
+            if (p != NULL) { free(p); p = NULL; }
+            if (strcmp("xclbin", fpga_bin_suffix_.c_str()) == 0 && 
+                    Platform::GetPlatform()->GetFilePath("KERNEL_FPGA_XCLBIN", &p, NULL) == IRIS_SUCCESS) {
+                if (Utils::Exist(p)) return true;
+            }
+        }
+        return false;
+    }
+    return true; 
+}
 int DeviceOpenCL::CreateProgram(const char* suffix, char** src, size_t* srclen) {
   char* p = NULL;
   if (Platform::GetPlatform()->GetFilePath(strcmp("spv", suffix) == 0 ? "KERNEL_BIN_SPV" : "KERNEL_SRC_SPV", &p, NULL) == IRIS_SUCCESS) {

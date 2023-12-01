@@ -678,7 +678,12 @@ int Platform::InitOpenCL() {
         _trace("%s", "skipping Host2OpenCL wrapper calls");
       }
       loaderHost2OpenCL_.push_back(loaderHost2OpenCL);
-      devs_[ndevs_] = new DeviceOpenCL(loaderOpenCL_, loaderHost2OpenCL, cl_devices[j], cl_contexts[i], ndevs_, ocldevno, nplatforms_);
+      DeviceOpenCL *dev = new DeviceOpenCL(loaderOpenCL_, loaderHost2OpenCL, cl_devices[j], cl_contexts[i], ndevs_, ocldevno, nplatforms_);
+      if (!dev->IsDeviceValid()) {
+          delete dev;
+          continue;
+      }
+      devs_[ndevs_] = dev;
       arch_available_ |= devs_[ndevs_]->type();
       ndevs_++;
       mdevs++;
@@ -687,13 +692,15 @@ int Platform::InitOpenCL() {
       break;
 #endif
     }
-    _trace("adding platform[%d] [%s %s] ndevs[%u]", nplatforms_, vendor, platform_name, ndevs);
-    sprintf(platform_names_[nplatforms_], "OpenCL %s", vendor);
-    first_dev_of_type_[nplatforms_] = devs_[ndevs_-mdevs];
-    nplatforms_++;
+    if (mdevs > 0) {
+        _trace("adding platform[%d] [%s %s] ndevs[%u]", nplatforms_, vendor, platform_name, ndevs);
+        sprintf(platform_names_[nplatforms_], "OpenCL %s", vendor);
+        first_dev_of_type_[nplatforms_] = devs_[ndevs_-mdevs];
+        nplatforms_++;
 #ifdef ENABLE_SINGLE_DEVICE_PER_CU
-    break;
+        if (ocldevno > 0) break;
 #endif
+    }
   }
   return IRIS_SUCCESS;
 }

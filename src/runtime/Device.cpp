@@ -931,7 +931,7 @@ void Device::ExecuteH2D(Command* cmd, Device *dev) {
   timer_->Start(IRIS_TIMER_H2D);
   cmd->set_time_start(timer_->Now());
   errid_ = dev->MemH2D(cmd->task(), mem, ptr_off, gws, lws, elem_size, dim, size, host);
-  if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
+  if (errid_ != IRIS_SUCCESS) _error("iret[%d] dev[%d][%s]", errid_, dev->devno(), dev->name());
   cmd->set_time_end(timer_->Now());
   double time = timer_->Stop(IRIS_TIMER_H2D);
   cmd->SetTime(time);
@@ -982,7 +982,7 @@ void Device::ExecuteD2H(Command* cmd) {
     errid_ = MemD2H(cmd->task(), mem, ptr_off, gws, lws, elem_size, dim, mem->size() * expansion, mem->host_inter());
     Reduction::GetInstance()->Reduce(mem, host, size);
   } else errid_ = MemD2H(cmd->task(), mem, ptr_off, gws, lws, elem_size, dim, size, host);
-  if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
+  if (errid_ != IRIS_SUCCESS) _error("iret[%d] dev[%d][%s]", errid_, devno(), name());
   cmd->set_time_end(timer_->Now());
   double time = timer_->Stop(IRIS_TIMER_D2H);
   cmd->SetTime(time);

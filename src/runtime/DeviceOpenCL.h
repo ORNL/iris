@@ -18,6 +18,7 @@ public:
   ~DeviceOpenCL();
 
   int Init();
+  bool IsDeviceValid();
   int BuildProgram(char* path);
   int ResetMemory(BaseMem *mem, uint8_t reset_value);
   int MemAlloc(void** mem, size_t size, bool reset=false);

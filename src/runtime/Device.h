@@ -82,6 +82,7 @@ public:
   virtual int ResetMemory(BaseMem *mem, uint8_t reset_value)=0;
   virtual void ResetContext() { }
   virtual bool IsContextChangeRequired() { return false; }
+  virtual bool IsDeviceValid() { return true; }
   virtual int Compile(char* src) { return IRIS_SUCCESS; }
   virtual int Init() = 0;
   virtual int BuildProgram(char* path) { return IRIS_SUCCESS; }
