@@ -171,6 +171,7 @@ test-job-zenith-all:
   extends: .test-job
   before_script:
     - source /auto/software/iris/setup_system.source
+    - source /opt/xilinx/xrt/setup.sh
     - export IRIS_ARCHS=cuda,hip,openmp,opencl
     - echo "Running All version of the tests..."
 
@@ -199,6 +200,7 @@ test-job-zenith-opencl:
   extends: .test-job
   before_script:
     - source /auto/software/iris/setup_system.source
+    - source /opt/xilinx/xrt/setup.sh
     - export IRIS_ARCHS=opencl
     - echo "Running OpenCL version of the tests..."
 
@@ -256,6 +258,7 @@ test-backends-34:
   allow_failure: true
   before_script:
     - source /auto/software/iris/setup_system.source
+    - source /opt/xilinx/xrt/setup.sh
   script:
     - echo "Installing iris to $IRIS_INSTALL_ROOT"
     - bash build-coverage.sh
@@ -292,6 +295,7 @@ test-job-zenith-all-ffi-async-s2k:
   extends: .test-job-ffi
   before_script:
     - source /auto/software/iris/setup_system.source
+    - source /opt/xilinx/xrt/setup.sh
     - export IRIS_ARCHS=cuda,hip,openmp,opencl
     - export IRIS_ASYNC=1
     - echo "Running All version of the tests..."
@@ -300,6 +304,7 @@ test-job-zenith-all-async-s2k:
   extends: .test-job
   before_script:
     - source /auto/software/iris/setup_system.source
+    - source /opt/xilinx/xrt/setup.sh
     - export IRIS_ARCHS=cuda,hip,openmp,opencl
     - export IRIS_ASYNC=1
     - echo "Running All version of the tests..."
@@ -332,6 +337,7 @@ test-job-zenith-opencl-async-s2k:
   extends: .test-job
   before_script:
     - source /auto/software/iris/setup_system.source
+    - source /opt/xilinx/xrt/setup.sh
     - export IRIS_ARCHS=opencl
     - export IRIS_ASYNC=1
     - echo "Running OpenCL version of the tests..."
