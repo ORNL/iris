@@ -30,7 +30,7 @@ echo "*******************************************************************"
 echo "*                          Linear 50                              *"
 echo "*******************************************************************"
 ##build linear-50 DAG
-./dagger_generator.py --kernels="bigk" --duplicates="0" --buffers-per-kernel="bigk:rw r r" --kernel-dimensions="bigk:2" --kernel-split='100' --depth=50 --num-tasks=50 --min-width=1 --max-width=1
+./dagger_generator.py --kernels="bigk" --duplicates="0" --buffers-per-kernel="bigk:rw r r" --kernel-dimensions="bigk:2" --kernel-split='100' --depth=50 --num-tasks=50 --min-width=1 --max-width=1 --concurrent-kernels="bigk:1"
 [ $? -ne 0 ] && exit
 cat graph.json
 cp graph.json linear50-graph.json
