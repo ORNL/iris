@@ -617,6 +617,8 @@ class dmem:
     for i in range(n_regions):
       output.append(dll.call_ret(dll.iris_data_mem_get_region_uid, np.uint32, self.handle, np.int32(i)))
     return output
+  def release(self):
+    mem_release(self.handle)
 class dmem_region:
   def __init__(self, *args):
     self.handle = dmem_create(args)

@@ -6,6 +6,7 @@
 #SBATCH --output=slurm-test-out.txt
 #SBATCH --error=slurm-test-err.txt
 #SBATCH --exclusive
+#SBATCH --time="1:01:00"
 
 GIT_ROOT=$(git rev-parse --show-toplevel)
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
@@ -22,7 +23,7 @@ echo Groups: $(groups)
 echo --------------------------------------------------------------------------------
 
 cd $GIT_ROOT
- 
+
 ### Setup Environment
 
 ## Slurm/gitlab-runner specific setup
