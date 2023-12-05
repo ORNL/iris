@@ -478,11 +478,9 @@ int indexer = 0;
       iris_mem_release(this_mem);
     }
   }
+  int num_errors = iris_error_count();
+  iris_finalize();
+  return(num_errors);
 
-    iris_finalize();
-    
-    return(EXIT_SUCCESS);
-
-  return 0;
 }
 

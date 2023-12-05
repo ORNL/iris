@@ -456,8 +456,8 @@ int main(int argc, char** argv) {
     }
   }
 
-    iris_finalize();
-
-    return(EXIT_SUCCESS);
+  int num_errors = iris_error_count();
+  iris_finalize();
+  return(num_errors);
 }
 
