@@ -687,8 +687,9 @@ def get_task_to_json(dag,deps):
         #print(t['depends'])
     f = open(_graph, 'w')
     inputs = determine_iris_inputs()
-    #dag = determine_and_prepend_iris_h2d_transfers(dag)
-    #dag = determine_and_append_iris_d2h_transfers(dag)
+    if not _sandwich:
+        dag = determine_and_prepend_iris_h2d_transfers(dag)
+        dag = determine_and_append_iris_d2h_transfers(dag)
     final_json = {"$schema": __schema__, "iris-graph":{"inputs":inputs,"graph":{"tasks":dag}}}
     f.write(json.dumps(final_json,indent = 2))
     f.close()
