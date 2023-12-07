@@ -35,7 +35,7 @@ int main(int argc, char** argv) {
                                           // the offset is specified in bytes
   size_t NUM_WORK_ITEMS = SIZE/2; //we'll only operate on half the data in this offset test, so we have half the total number of work-items
 
-#if 1
+#if 0
   // test memory offset (explicit)
   iris_kernel kernel0;
   iris_kernel_create("vecadd", &kernel0);

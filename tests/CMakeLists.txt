@@ -126,6 +126,8 @@ list(APPEND TEST_EXES "35_json_mixed_args_record_replay" "test35_json_mixed_args
 list(APPEND TEST_EXES "36_double_json_mixed_args_record_replay" "test36_double_json_mixed_args_record_replay" " ")
 #list(APPEND TEST_EXES "37_opencl_icd" "test37_opencl_icd" " ")
 list(APPEND TEST_EXES "38_offset" "test38_offset" " ")
+# FIXME: This test is disabled for now due to no support subbuffer in IRIS/OpenCL
+# list(APPEND TEST_EXES "38_offset_subbuffer" "test38_offset_subbuffer" " ")
 
 # Run each test in TEST_EXES
 list(LENGTH TEST_EXES count)
