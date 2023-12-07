@@ -278,7 +278,7 @@ do
     for (( num_run=0; num_run<=$REPEATS; num_run++ ))
     do
       echo "Running IRIS on Diamond $SIZE with Policy: $POLICY  run no. $num_run"
-      IRIS_HISTORY=1 ./dagger_runner --graph="dagger-payloads/diamond$SIZE-graph.json" --logfile="time.csv" --repeats=1 --scheduling-policy="$POLICY" --size=$PAYLOAD_SIZE --kernels="ijk" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=1 --num-tasks=$SIZE --min-width=$SIZE --max-width=$SIZE --sandwich $USE_DATA_MEMORY #--concurrent-kernels="ijk:$SIZE"
+      IRIS_HISTORY=1 ./dagger_runner --graph="dagger-payloads/diamond$SIZE-graph.json" --logfile="time.csv" --repeats=1 --scheduling-policy="$POLICY" --size=$PAYLOAD_SIZE --kernels="ijk" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=1 --num-tasks=$SIZE --min-width=$SIZE --max-width=$SIZE --sandwich $USE_DATA_MEMORY --concurrent-kernels="ijk:$(($SIZE-2))"
       [ $? -ne 0 ] && echo "Diamond $SIZE Failed with Policy: $POLICY" &&  exit 1
       mv dagger_runner-$SYSTEM*.csv $RESULTS_DIR/diamond$SIZE-$POLICY-$SYSTEM-$num_run.csv
       [ $? -ne 0 ] &&  exit 1
