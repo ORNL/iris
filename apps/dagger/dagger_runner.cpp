@@ -457,6 +457,7 @@ int main(int argc, char** argv) {
   }
 
   int num_errors = iris_error_count();
+  printf("dagger_runner finished with %i errors.\n", num_errors);
   iris_finalize();
   return(num_errors);
 }
