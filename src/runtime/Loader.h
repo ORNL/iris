@@ -43,7 +43,7 @@ public:
   int SetKernelPtr(void *obj, char *kernel_name);
   int LoadExtHandle(const char *libname);
   void *handle() { return handle_; }
-  bool enable_strict_handle_check() { strict_handle_check_ = true; }
+  void enable_strict_handle_check() { strict_handle_check_ = true; }
 private:
   int LoadHandle();
 
