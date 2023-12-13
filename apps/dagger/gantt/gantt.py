@@ -13,9 +13,10 @@ class Gantt():
     import pandas as pandas
     from bokeh import palettes
 
-    def __init__(self, device_colour_palette=None, use_device_background_colour=False):
+    def __init__(self, device_colour_palette=None, use_device_background_colour=False,drop_memory_transfer_commands=True):
         self.device_colour_palette = device_colour_palette
         self.use_device_background_colour = use_device_background_colour
+        self.drop_memory_transfer_commands = drop_memory_transfer_commands
 
     def _createGanttChart(self, timings, title=None, edgepalette=None, insidepalette=None, time_range=None, zoom=False, drop=[], outline=True, inner_label=False, timeline_output_file=None):
         import numpy as np
@@ -23,6 +24,12 @@ class Gantt():
 
         for d in drop:
           timings = timings[timings.taskname != d]
+
+        # to simplify rename the commands to the parent tasks name
+        if self.drop_memory_transfer_commands:
+            timings["taskname"].replace("transferto-.*$", "initial_h2d", inplace=True, regex=True)
+            timings["taskname"].replace("transferfrom-.*$", "final_d2h", inplace=True, regex=True)
+
         from natsort import humansorted
         try:
             processors = sorted(list(set(timings['acclname'])),reverse=True)
@@ -140,10 +147,12 @@ class Gantt():
 
 class DAG():
 
-    def __init__(self, dag_file, timeline_file):
+    def __init__(self, dag_file, timeline_file, drop_memory_transfer_commands=True):
         self.tasks, self.edges = self.getJsonToTask(dag_file)
         self.timeline = self.getTimelineFromFile(timeline_file)
         self.device_colour_palette = None
+        self.drop_memory_transfer_commands = drop_memory_transfer_commands
+
 
     def getJsonToTask(self, dag_file):
         tasks, edges = [],[]
@@ -178,6 +187,14 @@ class DAG():
         matplotlib.use("Agg")
         from matplotlib import pyplot as plt
         from matplotlib import patches as patch
+        #filter out transferto-* and transfer-from (intermediate commands rather than a whole task)
+        if self.drop_memory_transfer_commands:
+            mask = self.timeline['taskname'].str.contains('transferto-')
+            self.timeline = self.timeline[~mask]
+            mask = self.timeline['taskname'].str.contains('transferfrom-')
+            self.timeline = self.timeline[~mask]
+
+        #self.timeline[self.timeline['taskname'] == name
         #debug to try out a few unique shapes (TODO:delete)
         #kernels = ['ijk', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i']
         #for i,k in enumerate(self.tasks):
@@ -253,6 +270,8 @@ class DAG():
                     import ipdb
                     ipdb.set_trace()
                 assert z['kernel'] == 'memory_transfer', "we are missing a task in the timeline log!"
+                if name is None: #the name could be associated with the pos and still be None, best give it a real name in this case
+                    name = n
                 nodes_to_remove.append(name)
                 print("removed node, label and position for task {} (it was not run)...".format(name))
                 continue
@@ -260,11 +279,12 @@ class DAG():
             if isinstance(kernel_name,list):
                 kernel_name = kernel_name[0]
             node_shapes.append(kernel_shapes[kernel_name])
-
         #prune tasks not executed (see line #245)
         for name in nodes_to_remove:
-            node_labels.pop(name)
-            pos.pop(name)
+            if name in node_labels:
+                node_labels.pop(name)
+            if name in pos:
+                pos.pop(name)
             dag.remove_node(name)
 
         fig = plt.figure(figsize=(3,9))
@@ -296,7 +316,7 @@ class DAG():
 
 
 class CombinePlots():
-    def __init__(self, timeline_file=None,dag_file=None,combined_output_file=None,timeline_output_file=None,dag_output_file=None,title_string=None,drop=None,**kargs):
+    def __init__(self, timeline_file=None,dag_file=None,combined_output_file=None,timeline_output_file=None,dag_output_file=None,title_string=None,drop=None,drop_memory_transfer_commands=True,**kargs):
         assert timeline_file is not None, f"timeline file not provided"
         assert dag_file is not None, f"dag file not provided"
         if combined_output_file is None and timeline_output_file is None and dag_output_file is None:
@@ -310,6 +330,7 @@ class CombinePlots():
         self.dag_output_file = dag_output_file
         self.drop = drop
         self.title_string = title_string
+        self.drop_memory_transfer_commands = drop_memory_transfer_commands
         self.kargs = kargs
         self.PlotBoth()
 
@@ -339,7 +360,7 @@ class CombinePlots():
         time_range = [mint-window_buffer, maxt+window_buffer]
 
         # generate the dag/graph plot
-        dag = DAG(self.dag_file,timeline_file=self.timeline_file)
+        dag = DAG(self.dag_file,timeline_file=self.timeline_file,drop_memory_transfer_commands=self.drop_memory_transfer_commands)
         show_kernel_legend = False
         if 'show_kernel_legend' in self.kargs:
             show_kernel_legend = self.kargs['show_kernel_legend']
@@ -348,7 +369,7 @@ class CombinePlots():
         use_device_background_colour = False
         if 'use_device_background_colour' in self.kargs:
             use_device_background_colour = self.kargs['use_device_background_colour']
-        gantt = Gantt(device_colour_palette=dag.device_colour_palette,use_device_background_colour=use_device_background_colour)
+        gantt = Gantt(device_colour_palette=dag.device_colour_palette,use_device_background_colour=use_device_background_colour,drop_memory_transfer_commands=self.drop_memory_transfer_commands)
         left = gantt.plotGanttChart(timing_log=self.timeline_file,drop=self.drop,title=self.title_string,time_range=time_range,outline=False,timeline_output_file=self.timeline_output_file)
         if self.output_file is not None:
             self.write_pdf([left, right])
@@ -376,6 +397,7 @@ if __name__ == '__main__':
     parser.add_argument('--colour-background-by-device', dest='use_device_background_colour', action='store_true')
     parser.add_argument('--no-show-kernel-legend', dest='show_kernel_legend', action='store_false')
     parser.add_argument('--show-kernel-legend', dest='show_kernel_legend', action='store_true')
+    parser.add_argument('--keep-memory-transfer-commands', dest='drop_memory_transfer_commands', action='store_false')
 
     #todo cell colour
     #todo separate plots
@@ -388,6 +410,7 @@ if __name__ == '__main__':
     output_file   = args.combinedout
     timeline_output_file  = args.timelineout
     dag_output_file       = args.dagout
+    
     dropsy = []
     if args.drop is not None:
       dropsy = str(args.drop).split(',')
@@ -395,5 +418,5 @@ if __name__ == '__main__':
     if args.combinedout is None and args.timelineout is None and args.dagout is None:
         print("Incorrect Arguments. Please provide *at least* one output medium (--combined-out, --timeline-out, --dag-out)")
         sys.exit(1)
-    cp = CombinePlots(timeline_file=args.timeline, dag_file=args.dag, combined_output_file=args.combinedout, timeline_output_file=args.timelineout, dag_output_file=args.dagout, title_string=args.titlestring, drop=dropsy, use_device_background_colour=args.use_device_background_colour, show_kernel_legend=args.show_kernel_legend)
+    cp = CombinePlots(timeline_file=args.timeline, dag_file=args.dag, combined_output_file=args.combinedout, timeline_output_file=args.timelineout, dag_output_file=args.dagout, title_string=args.titlestring, drop=dropsy, use_device_background_colour=args.use_device_background_colour, show_kernel_legend=args.show_kernel_legend, drop_memory_transfer_commands=args.drop_memory_transfer_commands)
 
