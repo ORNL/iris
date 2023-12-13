@@ -231,7 +231,7 @@ do
     done
     #plot timeline with gantt
     if [ "$SIZE" == "10" ] ; then
-      python ./gantt/gantt.py --dag=./dagger-payloads/linear$SIZE-graph.json --timeline=$RESULTS_DIR/linear$SIZE-$POLICY-$SYSTEM-0.csv --combined-out=$GRAPHS_DIR/linear$SIZE-$POLICY-$SYSTEM.pdf --no-show-kernel-legend # --drop="Initialize-0,Initialize-1" #--title-string="Linear 10 dataset with RANDOM scheduling policy" --drop="Init"
+      python ./gantt/gantt.py --dag=./dagger-payloads/linear$SIZE-graph.json --timeline=$RESULTS_DIR/linear$SIZE-$POLICY-$SYSTEM-0.csv --combined-out=$GRAPHS_DIR/linear$SIZE-$POLICY-$SYSTEM.pdf --no-show-kernel-legend #--keep-memory-transfer-commands # --drop="Initialize-0,Initialize-1" #--title-string="Linear 10 dataset with RANDOM scheduling policy" --drop="Init"
     fi
     [ $? -ne 0 ] && echo "Failed Combined Plotting of Linear $SIZE with Policy: $POLICY" &&  exit 1
   done

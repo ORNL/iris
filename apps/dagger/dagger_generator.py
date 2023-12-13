@@ -285,6 +285,9 @@ def create_d2h_task_from_kernel_bag(_kernel_bag,dag):
             commands.append({ "d2h":{ "name":memory_name.replace("devicemem","dmemflush"), "device_memory":memory_name, "data-memory-flush":1 } })
         else:
             commands.append({ "d2h":{ "name":memory_name.replace("devicemem","transferfrom"), "device_memory":memory_name, "host_memory":memory_name.replace("devicemem","hostmem"), "offset":"0", "size":size_bytes_lookup[memory_name] } })
+    #remove the initial_h2d as a dependency
+    while('initial_h2d' in depends):
+        depends.remove('initial_h2d')
     transfer_task = { "name":"final_d2h", "commands":commands, "target":"user-target-control", "depends":depends }
     return transfer_task
 
@@ -342,6 +345,27 @@ def generate_attributes(task_dependencies,tasks_per_level):
             current_task_number += 1
     return dag
 
+def rename_special_tasks(task_dag):
+    dependency_tasks = []
+    for t in task_dag:
+        dependency_tasks += t['depends']
+    dependency_tasks = set(dependency_tasks)
+    task_names = []
+    for t in task_dag:
+        task_names.append(t['name'])
+    for t in dependency_tasks:
+        if t not in task_names:
+            if t == "task0": #renaming task0 to initial_h2d
+                #sweep and replace
+                for s in task_dag:
+                    if t in s['depends']:
+                        s['depends'] = [sub.replace(t, 'initial_h2d') for sub in s['depends']]
+            else:
+                print("found a new task with a unique name {}, don't know what this should be renamed to".format(t))
+                import ipdb
+                ipdb.set_trace()
+
+    return(task_dag)
 
 def gen_attr(tasks,kernel_names,kernel_probs):
     #TODO: how do handle memory transfers between each task? Insert h2d and d2h calls around each kernel -- but how should we treat this when multiple dependencies are scheduled on the same device, are they simple dropped in 1024dagger.c?
@@ -707,6 +731,7 @@ def main():
 
     #the way:
     task_dag = generate_attributes(neighs_down_top,task_per_level)
+    task_dag = rename_special_tasks(task_dag)
     edges = prune_edges_from_dependencies(task_dag,edges)
 
     #print("task_dag:")
