@@ -23,7 +23,6 @@ void ShowUsage(){
   printf("\t\t --graph=\"linear10.json\"\n");
   printf("\t\t --buffers-per-kernel=\"process: rw,ijk: r r w rw\"\n");
   printf("\t\t --concurrent-kernels=\"process:2,ijk:4\"\n");
-  //TODO: kernel-dimensions could be extended to support the actual work-group size, e.g. ijk:512,512
   printf("\t\t --kernel-dimensions=\"ijk:2,process:1\"\n");
   printf("\t\t --size=\"1024\"\n");
   printf("\t\t --repeats=\"100\"\n");
@@ -307,7 +306,6 @@ int main(int argc, char** argv) {
 
   if(!all_good){
     printf("\033[43mNot all arguments were properly provided to the runner!\n\033[0m");
-    //TODO: tell the user which arguments weren't correctly supplied
     ShowUsage();
     return(EXIT_FAILURE);
   }
@@ -387,7 +385,6 @@ int main(int argc, char** argv) {
     //variable number of memory buffers can be provided into IRIS
     void* json_inputs[4+num_buffers_used];
     int indexer = 0;
-    //printf("TODO: support SIZE per kernel -- as with sizecb\n");
     json_inputs[indexer] = &SIZE; indexer++;
     for(auto & bytes : sizecb){
       json_inputs[indexer] = &bytes; indexer++;
