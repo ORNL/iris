@@ -589,6 +589,14 @@ int iris_graph_tasks_count(iris_graph graph)
 {
     return Platform::GetPlatform()->GetGraphTasksCount(graph);
 }
+int iris_get_graph_max_theoretical_parallelism(iris_graph brs_graph)
+{
+    Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
+    shared_ptr<GraphMetadata> gm = graph->get_metadata();
+    gm->get_max_parallelism();
+    return IRIS_SUCCESS;
+}
+
 int iris_get_graph_dependency_adj_matrix(iris_graph brs_graph, int8_t *dep_matrix)
 {
     Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);

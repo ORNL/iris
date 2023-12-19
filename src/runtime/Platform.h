@@ -48,6 +48,7 @@ class Task;
 class Timer;
 class Worker;
 class SchedulingHistory;
+class AutoDAG;
 
 class Platform {
 private:
@@ -258,6 +259,12 @@ public:
   bool get_enable_proactive(){ return enable_proactive_;}
   void set_enable_proactive(bool enable_proactive){ enable_proactive_ = enable_proactive;}
 
+#ifdef AUTO_PAR
+  AutoDAG* get_auto_dag(){return auto_dag_;}
+  void set_auto_dag(AutoDAG* auto_dag){auto_dag_ = auto_dag;}
+  //void insert_into_mems(BaseMem* mem){ mems_.insert(mem); }
+#endif
+
 private:
   int SetDevsAvailable();
   int InitCUDA();
@@ -339,6 +346,9 @@ private:
 
   Kernel* null_kernel_;
 
+#ifdef AUTO_PAR
+  AutoDAG* auto_dag_;
+#endif
   pthread_mutex_t mutex_;
   hook_task hook_task_pre_;
   hook_task hook_task_post_;

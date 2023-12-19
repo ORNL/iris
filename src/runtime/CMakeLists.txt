@@ -66,7 +66,9 @@ if (DEBUG_DISABLE)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDEBUG_DISABLE")
 endif()
 
+
 set(IRIS_RUNTIME_SOURCES
+#AutoDAG.cpp
   CAPI.cpp
   IRIS.cpp
   Command.cpp
@@ -134,6 +136,7 @@ set(IRIS_RUNTIME_SOURCES
   Worker.cpp)
 
 set(IRIS_RUNTIME_HEADERS
+# AutoDAG.h
   Command.h
   Consistency.h
   Debug.h
@@ -206,6 +209,30 @@ set(IRIS_RUNTIME_HEADERS
   Timer.h
   Utils.h
   Worker.h)
+
+
+if (AUTO_PARALLEL) 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DAUTO_PAR")
+list(APPEND IRIS_RUNTIME_SOURCES AutoDAG.cpp)
+list(APPEND IRIS_RUNTIME_HEADERS AutoDAG.h)
+if (AUTO_FLUSH) 
+   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DAUTO_FLUSH")
+endif()
+
+if (AUTO_SHADOW) 
+   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DAUTO_SHADOW")
+endif()
+endif()
+
+if (ENABLE_PER_TASK_COLOR_DOT) 
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DPER_TASK_COLOR")
+endif()
+
+if (ENABLE_PRINT_TASK_DEP) 
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DPRINT_TASK_DEP")
+endif()
+
+
 
 if(USE_FORTRAN)
   MESSAGE(STATUS "USE_FORTRAN")
