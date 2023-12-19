@@ -16,13 +16,14 @@ if [ ! -n "$CONDA_ROOT" ]; then
 	CONDA_ROOT="/noback/$USER/conda"
 fi
 
+cd $GIT_ROOT
+
 echo Started: $(date)
 echo Host: $(hostname)
 echo Path: $GIT_ROOT
 echo Groups: $(groups)
+echo ${SLURM_JOB_ID} > slurm.job
 echo --------------------------------------------------------------------------------
-
-cd $GIT_ROOT
 
 ### Setup Environment
 
