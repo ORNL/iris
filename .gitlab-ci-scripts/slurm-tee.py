@@ -20,7 +20,14 @@ SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 
 
 def watch(fn):
-    fp = open(fn, "r")
+    fp = None
+
+    while fp is None:
+        if os.path.isfile(fn):
+            fp = open(fn, "r")
+        else:
+            time.sleep(1)
+
     while True:
         new = fp.readline()
         if new:
