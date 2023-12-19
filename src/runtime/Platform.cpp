@@ -1658,11 +1658,15 @@ int Platform::GraphSubmit(iris_graph brs_graph, int brs_policy, int sync) {
   //graph->RecordStartTime(devs_[0]->Now());
   for (std::vector<Task*>::iterator I = tasks->begin(), E = tasks->end(); I != E; ++I) {
     Task* task = *I;
-/* 
-    printf("Task: %s\n", task->name());
+
+#ifdef PRINT_TASK_DEP
+    printf("Task: %s task id %d\n", task->name(), task->uid());
     for(int i = 0; i < task->ndepends(); i++)
-        printf("    Parents %d - %s\n", i, task->depend(i)->name());
+        printf("    Parents %d - %s task id %d\n", i, task->depend(i)->name(), task->depend(i)->uid());
     for(int i = 0; i < task->nchilds(); i++)
+        printf("    Childs %d - %s task id %d\n", i, task->Child(i)->name(), task->Child(i)->uid());
+#endif
+/*    for(int i = 0; i < task->nchilds(); i++)
         printf("    Childs %d - %s\n", i, task->Child(i)->name());
 */ 
     //printf("Task name %s depend count %d\n", task->name(), task->ndepends());
