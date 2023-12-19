@@ -289,8 +289,9 @@ Command* Command::CreateMemFlushOut(Task* task, DataMem* mem) {
 //#ifdef SANITY_CHECK
 //    task->platform()->get_auto_dag()->set_auto_dep();
 //#endif
-   // need to fix this
-   if (mem->get_current_writing_task() != NULL && mem->get_current_writing_task()->uid() != NULL)
+   // Fixed it
+   if (mem->get_current_writing_task() != NULL && mem->get_current_writing_task()->uid() != NULL
+        && mem->get_current_writing_task() != task)
    		task->AddDepend(mem->get_current_writing_task(), mem->get_current_writing_task()->uid());
 
 //#ifdef IGNORE_MANUAL
