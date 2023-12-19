@@ -5,4 +5,4 @@ echo Watcher is watching: $WATCH_ID
 tail --pid $WATCH_ID -f /dev/null
 sleep 60
 echo Stopping slurm job: $(cat slurm.job)
-echo '[ -s "slurm.job" ] && cat slurm.job | xargs scancel' > bash
+[ -s "slurm.job" ] && cat slurm.job | xargs scancel
