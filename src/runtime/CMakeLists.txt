@@ -212,6 +212,9 @@ if (AUTO_SHADOW)
 endif()
 endif()
 
+if (ENABLE_PER_TASK_COLOR_DOT) 
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DPER_TASK_COLOR")
+endif()
 
 
 if(USE_FORTRAN)
