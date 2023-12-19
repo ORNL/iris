@@ -296,7 +296,7 @@ dagger-zenith-run-policy-evaluations:
   script:
     - .gitlab-ci-scripts/runner_watcher.sh $$ &
     - sbatch --partition=gpu --nodelist=zenith .gitlab-ci-scripts/slurm-dagger-run-policy-evaluations.sh
-    - python3 .gitlab-ci-scripts/slurm-tee.py slurm-err.txt slurm-out.txt
+    - python3 .gitlab-ci-scripts/slurm-tee.py slurm-test-err.txt slurm-test-out.txt
     - echo "Errors $(wc -l errors.txt)"
     - cat errors.txt
     - if [ -s errors.txt ]; then exit 1; fi
@@ -306,7 +306,7 @@ dagger-zenith-test-correctness:
   script:
     - .gitlab-ci-scripts/runner_watcher.sh $$ &
     - sbatch --partition=gpu --nodelist=zenith .gitlab-ci-scripts/slurm-dagger-test-correctness.sh
-    - python3 .gitlab-ci-scripts/slurm-tee.py slurm-err.txt slurm-out.txt
+    - python3 .gitlab-ci-scripts/slurm-tee.py slurm-test-err.txt slurm-test-out.txt
     - echo "Errors $(wc -l errors.txt)"
     - cat errors.txt
     - if [ -s errors.txt ]; then exit 1; fi
