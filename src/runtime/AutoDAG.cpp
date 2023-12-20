@@ -42,10 +42,10 @@ void AutoDAG::create_dependency(Command* cmd, Task* task,
 
 #ifdef AUTO_SHADOW
 
-    if( mem->GetMemHandlerType() == IRIS_DMEM) {
+    /*if( mem->GetMemHandlerType() == IRIS_DMEM) {
         if(((DataMem*)mem)->get_is_shadow() == true) printf("----------------no ghapla---------------\n");
         if(((DataMem*)mem)->get_has_shadow() == true) printf("----------------ghapla---------------\n");
-    }
+    }*/
 #endif
     //printf(" Task %s param_info %d\n", task->name(), param_info);
     //printf(" Task %s , mem read count %d\n", task->name(), mem->get_read_task_list()->size());
@@ -145,7 +145,7 @@ void AutoDAG::create_auto_shadow(Command* cmd, Task* task,
     if( read_list->size() < 1 || ((DataMem*)mem)->get_is_shadow() == true) {
 	    create_multi_read_dependency(task, mem);
     } else {
-        std::cout << "For " << task->name() << " shadow creation " << std::endl;
+        //std::cout << "For " << task->name() << " shadow creation " << std::endl;
         //std::cout << "Host size  " << *(((DataMem*)mem)->host_size()) << std::endl;
         //std::cout << "device size  " << ((DataMem*)mem)->size() << std::endl;
         void* host_ptr_shadow;
