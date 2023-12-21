@@ -21,6 +21,10 @@ Mem::Mem(size_t size, Platform* platform) : BaseMem(IRIS_MEM, platform->ndevs())
     archs_[i] = NULL;
   }
   pthread_mutex_init(&mutex_, NULL);
+#ifdef AUTO_PAR
+  current_writing_task_ = NULL;
+#endif
+ 
 }
 
 Mem::~Mem() {

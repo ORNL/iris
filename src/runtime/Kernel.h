@@ -93,6 +93,14 @@ public:
   void add_dmem_region(DataMemRegion *mem, int idx, int mode);
   void **GetCompletionEventPtr() { return async_data_.GetCompletionEventPtr(); }
   void *GetCompletionEvent() { return async_data_.GetCompletionEvent(); }
+/*
+#ifdef AUTO_PAR
+#ifdef AUTO_SHADOW
+  void replace_with_shadow_dmem(DataMem *mem, int idx, int mode);
+#endif
+#endif
+*/
+
 private:
   int n_mems_;
   char name_[256];

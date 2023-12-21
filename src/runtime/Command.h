@@ -4,6 +4,7 @@
 #include <iris/iris_poly_types.h>
 #include "BaseMem.h"
 #include "Kernel.h"
+#include "Graph.h"
 #include <stddef.h>
 
 #define IRIS_CMD_NOP            0x1000
@@ -24,6 +25,11 @@
 #define IRIS_CMD_H2BROADCAST    0x100f
 #define IRIS_CMD_D2D            0x1010
 
+#ifdef AUTO_PAR
+#ifdef AUTO_SHADOW
+#define IRIS_CMD_MEM_FLUSH_TO_SHADOW      0x1011
+#endif
+#endif
 #define IRIS_CMD_KERNEL_NARGS_MAX   16
 
 namespace iris {
@@ -33,6 +39,7 @@ class DataMem;
 class Mem;
 class DataMem;
 class Task;
+class Graph;
 
 class Command {
 public:
@@ -164,6 +171,13 @@ public:
   static Command* CreateD2H(Task* task, Mem* mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host);
   static Command* CreateD2H(Task* task, Mem* mem, size_t off, size_t size, void* host);
   static Command* CreateMemFlushOut(Task* task, DataMem* mem);
+
+#ifdef AUTO_PAR
+#ifdef AUTO_SHADOW
+  static Command* CreateMemFlushOutToShadow(Task* task, DataMem* mem);
+#endif
+#endif
+
   static Command* CreateMap(Task* task, void* host, size_t size);
   static Command* CreateMapTo(Task* task, void* host);
   static Command* CreateMapFrom(Task* task, void* host);
@@ -172,6 +186,13 @@ public:
   static Command* CreateHost(Task* task, iris_host_task func, void* params);
   static Command* CreateCustom(Task* task, int tag, void* params, size_t params_size);
   static void Release(Command* cmd);
+/*
+#ifdef AUTO_PAR
+  static void create_dependency(Command* cmd, Task* task, int param_info, 
+		  BaseMem* mem, Task* task_prev);
+#endif
+*/
+
 };
 
 } /* namespace rt */

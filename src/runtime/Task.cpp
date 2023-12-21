@@ -9,6 +9,7 @@
 #include "Scheduler.h"
 #include "Timer.h"
 #include "Worker.h"
+#include "AutoDAG.h"
 
 namespace iris {
 namespace rt {
@@ -61,6 +62,14 @@ Task::Task(Platform* platform, int type, const char* name) {
   pthread_mutex_init(&mutex_subtasks_, NULL);
   //pthread_cond_init(&complete_cond_, NULL);
   brs_policy_ = iris_default;
+#ifdef AUTO_PAR
+#ifdef AUTO_FLUSH
+  graph_ = NULL;
+#endif
+#ifdef AUTO_SHADOW
+  shadow_dep_added_ = false;
+#endif
+#endif
   set_object_track(Platform::GetPlatform()->task_track_ptr());
   platform_->task_track().TrackObject(this, uid());
   async_execution_ = platform_->is_async(); // Same as platform by default
@@ -335,6 +344,28 @@ bool Task::HasSubtasks() {
 // Hence, validate the parent task not only from whether object exists or not, but also by
 // comparing the actual parent task uid.
 void Task::AddDepend(Task* task, unsigned long uid) {
+#ifdef AUTO_PAR
+#ifdef IGNORE_MANUAL
+  if ( task->platform()->get_auto_dag()->get_auto_dep() == false) return;
+#endif
+
+#ifdef SANITY_CHECK
+  if(std::string(this->name()).find("Graph") == std::string::npos){  
+    std::string full_dep = std::string(this->name()) + "->" + std::string(task->name());
+    std::cout << full_dep << std::endl;
+    if (task->platform()->get_auto_dag()->get_auto_dep() == false){
+        task->platform()->get_auto_dag()->add_manual_dep_list(full_dep);
+    } else {
+        task->platform()->get_auto_dag()->add_auto_dep_list(full_dep);
+    }
+  }
+
+  task->platform()->get_auto_dag()->extra_dependencies();
+  task->platform()->get_auto_dag()->missing_dependencies();
+#endif
+
+#endif
+
   if (depends_uids_ == NULL) {
       depends_uids_ = new unsigned long[depends_max_];
   }
@@ -387,6 +418,19 @@ void Task::AddAllChilds() {
 }
 
 
+#ifdef AUTO_PAR
+#ifdef AUTO_FLUSH
+void Task::ReplaceDependFlushTask(Task * task) {
+    //if (ndepends_ > 1) 
+        //_error("Flush task should not have more than one dependency:%ld:%s\n", this->uid(), this->name());
+
+    //platform_->get_task_object(depends_uids_[0])->Release();
+    ndepends_ = 0;
+    this->AddDepend(task, task->uid());
+
+}
+#endif
+#endif
 
 /*
 void Task::RemoveDepend(Task* task) {
