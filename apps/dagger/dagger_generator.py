@@ -234,7 +234,7 @@ def prune_edges_from_dependencies(task_dag,edges):
     new_edges = []
     for e in edges:
         for t in task_dag:
-            if t['name'] == 'task'+e[1] and str('task'+e[0]) in t['depends']:
+            if t['name'] == "initial_h2d" or (t['name'] == 'task'+e[1] and str('task'+e[0]) in t['depends']):
                 new_edges.append(e)
     return new_edges
 
@@ -498,13 +498,10 @@ def plot_dag(task_dag,edges,dag_path_plot):
     #edge_d = [(e[0],e[1],{'data':neighs_down_top[i]}) for i,e in enumerate(edges)]
     edge_d = [(e[0],e[1],{"depends":task_dag[int(e[0])]['name']}) for i, e in enumerate(edges)]
     #edge_d = [(e[i][], e['name'],{'data':e['name']}) for i,e in enumerate(task_dag)]
-
     dag = nx.DiGraph()
     #hash the colours in the dag for each kernel name and memory transfers
     unique_kernels = []
     for t in task_dag:
-        #import ipdb
-        #ipdb.set_trace()
         for c in t['commands'][0]:
             if 'kernel' in c:
                 unique_kernels.append(t['commands'][0][c]['name'])
@@ -512,14 +509,40 @@ def plot_dag(task_dag,edges,dag_path_plot):
                 unique_kernels.append(t['name'])
     unique_kernels = set(unique_kernels)
 
-    #unique_kernels = sorted(set([t['commands'][0]['kernel']['name'] for t in task_dag]))
-    assert len(unique_kernels) < 9, "Can't colourize that many unique kernels -- maybe choose a bigger colour palette? <https://docs.bokeh.org/en/latest/docs/reference/palettes.html>"
+    #first and last memory transfers have reserved blue (initial_h2d) and red (final_d2h) colours
+    if 'initial_h2d' in unique_kernels: unique_kernels.remove('initial_h2d')
+    if 'final_d2h' in unique_kernels: unique_kernels.remove('final_d2h')
+    assert len(unique_kernels) < 7, "Can't colourize that many unique kernels -- maybe choose a bigger colour palette? <https://docs.bokeh.org/en/latest/docs/reference/palettes.html>"
     palette = brewer['Pastel1'][9]
     phash = {}
+    phash['final_d2h']   = palette[0]
+    phash['initial_h2d'] = palette[1]
     for i,k in enumerate(unique_kernels):
-        phash[k] = palette[i]
+        phash[k] = palette[i+2]
 
+    #unique shape logic
+    unique_task_types = []
+    for t in task_dag:
+        if 'kernel' in t['commands'][0]:
+            t['task_name'] = t['commands'][0]['kernel']['name']
+            t['task_type'] = t['task_name'] #"Kernel"
+        else:
+            t['task_name'] = t['name']
+            t['task_type'] = "memory transfer"
+        unique_task_types.append(t['task_type'])
+
+    unique_task_types = set(unique_task_types)
+    shapes = []
+    avail_shapes = {0:'s',1:'o',2:'*',3:'^',4:'v',5:'<',6:'>',7:'h',8:'H',9:'D',10:'d',11:'P',12:"X",13:'1',14:'p',15:'.'}
+    assert len(unique_task_types) <= len(avail_shapes.items())
+    for d in range(0,len(unique_task_types)):
+        shapes.append(avail_shapes[d])
+    #associate each kernel name with a shape
+    node_shape_lookup = {}
+    for i,d in enumerate(unique_task_types):
+        node_shape_lookup[d] = shapes[i]
     #if there are edges, create the DAG from it, otherwise just the nodes (there are no edges in the DAG, and so the draw call will fail)
+    #node_d = [(str(i),{"label":e['name'], "position":(i,0), "marker":node_shape_lookup[e['task_type']]}) for i, e in enumerate(task_dag)]
     node_d = [(str(i),{"label":e['name'], "position":(i,0)}) for i, e in enumerate(task_dag)]
     dag.add_nodes_from(node_d)
     node_labels = {str(i):'{}'.format(n['name']) for i,n in enumerate(task_dag)}
@@ -530,14 +553,28 @@ def plot_dag(task_dag,edges,dag_path_plot):
     #plot it
     pos = graphviz_layout(dag,prog='dot')
     #add colour
+
+    node_shapes = []
     node_colours = []
     for n in dag:
         if 'kernel' in task_dag[int(n)]['commands'][0]:
             node_colours.append('{}'.format(phash[task_dag[int(n)]['commands'][0]['kernel']['name']]))
         else: #h2d or d2h transfer tasks
             node_colours.append('{}'.format(phash[task_dag[int(n)]['name']]))
+        node_shapes.append('{}'.format(node_shape_lookup[task_dag[int(n)]['task_type']]))
 
-    nx.draw(dag,pos=pos,labels=node_labels,font_size=8,node_color=node_colours)
+    fig = plt.figure(figsize=(3,9))
+    ax = fig.add_subplot(111)
+    nx.draw(dag,pos=pos,labels=node_labels,font_size=8,node_color=node_colours, node_shape=node_shapes)
+    #`legend_handles = []
+    #`for i,d in enumerate(unique_kernels):
+    #`    import ipdb
+    #`    ipdb.set_trace()
+    #`    legend_handles.append(ax.scatter([], [],color='white', edgecolor='black', marker=node_shape_lookup[d], label=d))
+    #`kernel_legend = ax.legend(handles=legend_handles,loc=1,title="Kernels",fontsize=8)
+    #`if True:#show_kernel_legend:
+    #`    plt.gca().add_artist(kernel_legend)
+    #`    plt.tight_layout()
     #nx.draw_networkx_edge_labels(dag,pos,edge_labels=edge_labels,label_pos=0.75,font_size=6)
     plt.savefig(dag_path_plot)
 
@@ -724,29 +761,10 @@ def main():
     edges,neighs_top_down,neighs_down_top = gen_task_links(_mean,_std_dev,task_per_level,level_per_task,delta_lvl=_skips)
     if _sandwich:
         neighs_down_top = repack_dag_with_missing_edges(neighs_down_top,neighs_top_down)
-    ##old way:
-    #task_dag = gen_attr(neighs_down_top,_kernels,_k_probs)
-    #edges = prune_edges_from_dependencies(task_dag,edges)
-    #task_dag,edges = duplicate_for_concurrency(task_dag,edges)
-
-    #the way:
     task_dag = generate_attributes(neighs_down_top,task_per_level)
     task_dag = rename_special_tasks(task_dag)
     edges = prune_edges_from_dependencies(task_dag,edges)
-
-    #print("task_dag:")
-    #print(task_dag)
-    #print("\n\n")
-    #print("edges:")
-    #print(edges)
-
     plot_dag(task_dag,edges,'./dag.pdf')
-    #dag = get_task_dag(args.conf,"dag.png")
-
-    #get_task_to_dag(dag)
-    #get_task_to_communication(dag)
-    #get_task_to_dummy_app()
-    #get_task_to_generate_file(dag)
     get_task_to_json(task_dag,edges)
 
 
