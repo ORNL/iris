@@ -137,7 +137,7 @@ void Device::Execute(Task* task) {
     if (hook_command_post_) hook_command_post_(cmd);
   }
   if (is_async(task) && task->user()) AddCallback(task);
-  task->set_time_end(timer_->Now());
+  task->set_time_end(timer_);
   _debug2("Task %s:%lu refcnt:%d\n", task->name(), task->uid(), task->ref_cnt());
   TaskPost(task);
   if (hook_task_post_) hook_task_post_(task);
@@ -249,7 +249,7 @@ void Device::ExecuteInit(Command* cmd) {
   MemH2D(cmd->task(), mem, off, host_sizes, dev_sizes, 4, 1, mem->size(), src_arch, "Init H2D");
   async_ = async;
   delete mem;
-  cmd->set_time_end(timer_->Now());
+  cmd->set_time_end(timer_);
   double time = timer_->Stop(IRIS_TIMER_INIT);
   cmd->SetTime(time);
   if (Platform::GetPlatform()->is_scheduling_history_enabled()) Platform::GetPlatform()->scheduling_history()->AddKernel(cmd);
@@ -356,7 +356,7 @@ void Device::ExecuteMalloc(Command* cmd) {
   cmd->set_time_start(timer_);
   Mem* mem = cmd->mem();
   void* arch = mem->arch(this);
-  cmd->set_time_end(timer_->Now());
+  cmd->set_time_end(timer_);
   if (Platform::GetPlatform()->is_scheduling_history_enabled()) Platform::GetPlatform()->scheduling_history()->AddH2D(cmd);
   _trace("dev[%d] malloc[%p]", devno_, arch);
 }
@@ -932,7 +932,7 @@ void Device::ExecuteH2D(Command* cmd, Device *dev) {
   cmd->set_time_start(timer_);
   errid_ = dev->MemH2D(cmd->task(), mem, ptr_off, gws, lws, elem_size, dim, size, host);
   if (errid_ != IRIS_SUCCESS) _error("iret[%d] dev[%d][%s]", errid_, dev->devno(), dev->name());
-  cmd->set_time_end(timer_->Now());
+  cmd->set_time_end(timer_);
   double time = timer_->Stop(IRIS_TIMER_H2D);
   cmd->SetTime(time);
   Command* cmd_kernel = cmd->task()->cmd_kernel();
@@ -983,7 +983,7 @@ void Device::ExecuteD2H(Command* cmd) {
     Reduction::GetInstance()->Reduce(mem, host, size);
   } else errid_ = MemD2H(cmd->task(), mem, ptr_off, gws, lws, elem_size, dim, size, host);
   if (errid_ != IRIS_SUCCESS) _error("iret[%d] dev[%d][%s]", errid_, devno(), name());
-  cmd->set_time_end(timer_->Now());
+  cmd->set_time_end(timer_);
   double time = timer_->Stop(IRIS_TIMER_D2H);
   cmd->SetTime(time);
   Command* cmd_kernel = cmd->task()->cmd_kernel();

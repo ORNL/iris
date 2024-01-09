@@ -644,7 +644,6 @@ int JSON::ProcessTask(Task* task){
       rapidjson::Value cmd_(rapidjson::kObjectType);
       cmd_.AddMember("h2d",h2d_,iris_output_document_.GetAllocator());
       _cmds.PushBack(cmd_,iris_output_document_.GetAllocator());
-      printf("recorded h2d\n");
     }
     else if (cmd->type() == IRIS_CMD_D2H) {
       rapidjson::Value d2h_(rapidjson::kObjectType);
@@ -661,7 +660,7 @@ int JSON::ProcessTask(Task* task){
       rapidjson::Value cmd_(rapidjson::kObjectType);
       cmd_.AddMember("d2h",d2h_,iris_output_document_.GetAllocator());
       _cmds.PushBack(cmd_,iris_output_document_.GetAllocator());
-      printf("recorded d2h\n");    }
+    }
     else if (cmd->type() == IRIS_CMD_KERNEL) {
       rapidjson::Value kernel_(rapidjson::kObjectType);
       //name
@@ -710,7 +709,6 @@ int JSON::ProcessTask(Task* task){
       rapidjson::Value cmd_(rapidjson::kObjectType);
       cmd_.AddMember("kernel",kernel_,iris_output_document_.GetAllocator());
       _cmds.PushBack(cmd_,iris_output_document_.GetAllocator());
-      printf("recorded kernel\n");
     }
   }
   _task.AddMember("commands",_cmds,iris_output_document_.GetAllocator());
