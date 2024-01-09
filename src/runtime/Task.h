@@ -4,6 +4,7 @@
 #include "Retainable.h"
 #include "Command.h"
 #include "Platform.h"
+#include "Timer.h"
 #include <pthread.h>
 #include <vector>
 #include <string>
@@ -77,9 +78,13 @@ public:
   int ncmds() { return ncmds_; }
   int ncmds_kernel();
   int ncmds_memcpy();
-  void set_time_start(double d) { time_start_ = d; }
-  void set_time_end(double d) { time_end_ = d; }
+  void set_time_submit(Timer* d) { ns_time_submit_ = d->NowNS(); }
+  void set_time_start(Timer* d);
+  void set_time_end(Timer* d);
   double time() { return time_; }
+  size_t ns_time_submit() { return ns_time_submit_; }
+  size_t ns_time_start() { return ns_time_start_; }
+  size_t ns_time_end() { return ns_time_end_; }
   double time_start() { return time_start_; }
   double time_end() { return time_end_; }
   void set_parent(Task* task);
@@ -192,6 +197,9 @@ private:
   double time_start_;
   double time_end_;
 
+  size_t ns_time_submit_;
+  size_t ns_time_start_;
+  size_t ns_time_end_;
   pthread_mutex_t stream_mutex_;
   pthread_mutex_t mutex_pending_;
   pthread_mutex_t mutex_executable_;

@@ -155,6 +155,9 @@ typedef enum StreamPolicy StreamPolicy;
 #define iris_ncmds_kernel       2
 #define iris_ncmds_memcpy       3
 #define iris_cmds               4
+#define iris_task_time_submit   5
+#define iris_task_time_start    6
+#define iris_task_time_end      7
 
 // The event wait flags aligned with HIP and CUDA
 #define iris_event_wait_default          0
@@ -883,7 +886,14 @@ extern int iris_params_map(iris_task task, int *params_map);
 /**@brief Gets parameter info for a task
  *
  * @param task target task
- * @param params parameter type
+ * @param params parameter type -- options include:
+ * iris_ncmds: the number of commands associated with this task
+ * iris_ncmds_kernel: the number of kernel commands associated with this task
+ * iris_ncmds_memcpy: the number of memory copy commands associated with this task
+ * iris_cmds: an array of command types associated with this task
+ * iris_task_time_submit: the timestamp of the task submission to the IRIS runtime
+ * iris_task_time_start: the timestamp of the first compute kernel in this task starting
+ * iris_task_time_end: the timestamp of the last compute kernel completion
  * @param value gets the value
  * @param size gets the size
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .

@@ -45,22 +45,17 @@ int main(int argc, char** argv) {
     iris_mem mem_A;
     iris_mem mem_B;
     iris_mem mem_C;
-    iris_mem_create(SIZE * sizeof(int), &mem_A);
-    iris_mem_create(SIZE * sizeof(int), &mem_B);
-    iris_mem_create(SIZE * sizeof(int), &mem_C);
+    iris_data_mem_create(&mem_A, A, SIZE * sizeof(int));
+    iris_data_mem_create(&mem_B, B, SIZE * sizeof(int));
+    iris_data_mem_create(&mem_C, C, SIZE * sizeof(int));
 
     iris_task task0;
     iris_task_create(&task0);
-
-    iris_task_h2d_full(task0, mem_A, A);
-    iris_task_h2d_full(task0, mem_B, B);
-    iris_task_h2d_full(task0, mem_C, C);
-
     void* params0[3] = { &mem_A, &mem_B, &mem_C };
     int pinfo0[3] = { iris_r, iris_r, iris_w };
     iris_task_kernel(task0, "vecadd", 1, NULL, &SIZE, NULL, 3, params0, pinfo0);
     iris_task_dmem_flush_out(task0,mem_C);
-    iris_task_submit(task0, iris_sdq,nullptr, true);
+    iris_task_submit(task0, iris_any,nullptr, true);
     iris_synchronize();
     auto const t_end = std::chrono::high_resolution_clock::now();
     timings.push_back(std::to_string(std::chrono::duration_cast<std::chrono::nanoseconds>(t_end - t_start).count()));

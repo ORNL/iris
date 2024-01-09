@@ -34,6 +34,9 @@ Task::Task(Platform* platform, int type, const char* name) {
   time_ = 0.0;
   time_start_ = 0.0;
   time_end_ = 0.0;
+  ns_time_submit_ = 0;
+  ns_time_start_ = 0;
+  ns_time_end_ = 0;
   user_ = false;
   system_ = false;
   internal_memory_transfer_ = false;
@@ -453,6 +456,16 @@ int Task::ncmds_memcpy() {
     if (cmd->type_h2d() || cmd->type_h2broadcast() || cmd->type_h2dnp() || cmd->type_d2h()) total++;
   }
   return total;
+}
+
+void Task::set_time_start(Timer* d) {
+  time_start_ = d->Now();
+  ns_time_start_ = d->NowNS();
+}
+
+void Task::set_time_end(Timer* d) {
+  time_end_ = d->Now();
+  ns_time_end_ = d->NowNS();
 }
 
 } /* namespace rt */

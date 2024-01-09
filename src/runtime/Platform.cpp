@@ -1309,6 +1309,7 @@ int Platform::TaskSubmit(iris_task brs_task, int brs_policy, const char* opt, in
   assert(task != NULL);
   if (recording_) json_->RecordTask(task);
   task->Retain();
+  task->set_time_submit(timer_);
   task->Submit(brs_policy, opt, sync);
   _trace(" successfully submitted task:%lu:%s", task->uid(), task->name());
   if (scheduler_) {
@@ -1324,6 +1325,7 @@ int Platform::TaskSubmit(Task *task, int brs_policy, const char* opt, int sync) 
   iris_task brs_task = *(task->struct_obj());
   if (recording_) json_->RecordTask(task);
   task->Retain();
+  task->set_time_submit(timer_);
   task->Submit(brs_policy, opt, sync);
   _trace(" successfully submitted task:%lu:%s", task->uid(), task->name());
   if (scheduler_) {
@@ -1434,7 +1436,37 @@ int Platform::TaskInfo(iris_task brs_task, int param, void* value, size_t* size)
     int* cmd_types = (int*) value;
     for (int i = 0; i < task->ncmds(); i++) {
       cmd_types[i] = task->cmd(i)->type();
-    }    
+    }
+  } else if (param == iris_task_time_submit) {
+    if (size) *size = sizeof(size_t);
+    *((size_t*) value) = task->ns_time_submit();
+  } else if (param == iris_task_time_start) {
+    if (size) *size = sizeof(double);
+    size_t first_kernel_time = SIZE_MAX;
+    //get the earliest command kernels time
+    for (int i = 0 ; i < task->ncmds(); i++){
+      if (task->cmd(i)->type_kernel()){
+        size_t this_time = task->cmd(i)->ns_time_start();
+        if (this_time < first_kernel_time) first_kernel_time = this_time;
+      }
+    }
+    //For any given event, this timestamp is always greater than or equal to the iris_task_time_submit timestamp
+    if (first_kernel_time == SIZE_MAX) first_kernel_time = task->ns_time_submit();
+    *((size_t*) value) = first_kernel_time;
+  } else if (param == iris_task_time_end) {
+    if (size) *size = sizeof(double);
+    //get the latest command kernels time
+    size_t last_kernel_time = 0;
+    //get the earliest command kernels time
+    for (int i = 0 ; i < task->ncmds(); i++){
+      if (task->cmd(i)->type_kernel()){
+        size_t this_time = task->cmd(i)->ns_time_end();
+        if (this_time > last_kernel_time) last_kernel_time = this_time;
+      }
+    }
+    //For any given event, this timestamp is always greater than or equal to the iris_task_time_submit timestamp
+    if (last_kernel_time == 0) last_kernel_time = task->ns_time_submit();
+    *((size_t*) value) = last_kernel_time;
   }
   return IRIS_SUCCESS;
 }
@@ -1675,6 +1707,7 @@ int Platform::GraphSubmit(iris_graph brs_graph, int brs_policy, int sync) {
     }
     _debug2("Graph submit task:%lu:%s retained ref_cnt:%d", task->uid(), task->name(), task->ref_cnt());
     task->Retain();
+    task->set_time_submit(timer_);
     task->Submit(task->brs_policy(), task->opt(), sync);
     if (recording_) json_->RecordTask(task);
     if (scheduler_) scheduler_->Enqueue(task);
@@ -1698,6 +1731,7 @@ int Platform::GraphSubmit(iris_graph brs_graph, int *order, int brs_policy, int 
     }
     _debug2("Graph submit task:%lu:%s retained ref_cnt:%d", task->uid(), task->name(), task->ref_cnt());
     task->Retain();
+    task->set_time_submit(timer_);
     task->Submit(task->brs_policy(), task->opt(), sync);
     if (recording_) json_->RecordTask(task);
     if (scheduler_) scheduler_->Enqueue(task);
