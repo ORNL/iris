@@ -39,6 +39,9 @@
 #include "Task.h"
 #include "Timer.h"
 #include "Worker.h"
+#ifdef AUTO_PAR
+#include "AutoDAG.h"
+#endif
 #include <unistd.h>
 #include <algorithm>
 #include <fstream>
@@ -96,6 +99,9 @@ Platform::Platform() {
   pthread_mutex_init(&mutex_, NULL);
   enable_proactive_ = false;
   disable_kernel_launch_ = false;
+#ifdef AUTO_PAR
+  auto_dag_ = NULL;
+#endif
 }
 
 Platform::~Platform() {
@@ -112,6 +118,13 @@ Platform::~Platform() {
       sprintf(cmd, "rm -rf %s", tmp_dir_);
       system(cmd);
   }
+#ifdef AUTO_PAR
+#ifdef AUTO_SHADOW
+  printf("Total Shadow created %d\n", auto_dag_->get_number_of_shadow());
+  _trace("Total Shadow created[%d]", auto_dag_->get_number_of_shadow());
+#endif
+  delete auto_dag_;
+#endif
   /*
   for (std::set<Mem*>::iterator I = mems_.begin(), E = mems_.end(); I != E; ++I) {
       Mem *mem = *I;
@@ -160,6 +173,10 @@ int Platform::Init(int* argc, char*** argv, int sync) {
   sig_handler_ = new SigHandler();
 
   json_ = new JSON(this);
+
+#ifdef AUTO_PAR
+  auto_dag_ = new AutoDAG(this);
+#endif
 
   EnvironmentInit();
 
@@ -1694,13 +1711,20 @@ int Platform::GraphSubmit(iris_graph brs_graph, int brs_policy, int sync) {
   //graph->RecordStartTime(devs_[0]->Now());
   for (std::vector<Task*>::iterator I = tasks->begin(), E = tasks->end(); I != E; ++I) {
     Task* task = *I;
-/* 
-    printf("Task: %s\n", task->name());
+
+#ifdef PRINT_TASK_DEP
+    printf("Task: %s task id %d\n", task->name(), task->uid());
     for(int i = 0; i < task->ndepends(); i++)
-        printf("    Parents %d - %s\n", i, task->depend(i)->name());
+        printf("    Parents %d - %s task id %d\n", i, task->depend(i)->name(), task->depend(i)->uid());
     for(int i = 0; i < task->nchilds(); i++)
+        printf("    Childs %d - %s task id %d\n", i, task->Child(i)->name(), task->Child(i)->uid());
+#endif
+/*    for(int i = 0; i < task->nchilds(); i++)
         printf("    Childs %d - %s\n", i, task->Child(i)->name());
 */ 
+    //printf("Task name %s depend count %d\n", task->name(), task->ndepends());
+    //for(int i = 0; i < task->ndepends(); i++)
+    //    printf("    depend %d - %s\n", i, task->depend(i)->name());
     //preference is to honour the policy embedded in the task-graph.
     if (task->brs_policy() == iris_default) {
       task->set_brs_policy(brs_policy);
@@ -1714,6 +1738,12 @@ int Platform::GraphSubmit(iris_graph brs_graph, int brs_policy, int sync) {
     else { task->Retain(); workers_[0]->Enqueue(task); }
   }
   if (sync) graph->Wait();
+#ifdef AUTO_PAR
+#ifdef AUTO_FLUSH
+  //printf("-------------------------------------------------------\n");
+  auto_dag_->set_current_graph(NULL);
+#endif
+#endif
   return IRIS_SUCCESS;
 }
 

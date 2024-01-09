@@ -6,6 +6,7 @@
 #include "Timer.h"
 #include "Mem.h"
 #include "DataMem.h"
+#include "AutoDAG.h"
 
 namespace iris {
 namespace rt {
@@ -100,6 +101,11 @@ void Command::Set(Task* task, int type) {
     case IRIS_CMD_H2DNP:       type_name_= std::string("H2DNP");   break;
     case IRIS_CMD_D2H:         type_name_= std::string("D2H");     break;
     case IRIS_CMD_MEM_FLUSH:   type_name_= std::string("MemFlush");     break;
+#ifdef AUTO_PAR
+#ifdef AUTO_SHADOW
+    case IRIS_CMD_MEM_FLUSH_TO_SHADOW:   type_name_= std::string("MemFlushToShadow");     break;
+#endif
+#endif
     case IRIS_CMD_MAP:         type_name_= std::string("Map");     break;
     case IRIS_CMD_RELEASE_MEM: type_name_= std::string("Release"); break;
     case IRIS_CMD_HOST:        type_name_= std::string("Host");    break;
@@ -192,6 +198,26 @@ Command* Command::CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off,
     }
     size_t mem_off = 0ULL;
     BaseMem* mem = cmd->platform_->GetMem(*((iris_mem*) param));
+#ifdef AUTO_PAR
+#ifdef AUTO_SHADOW
+    if (mem->GetMemHandlerType() == IRIS_DMEM){
+        if(((DataMem*)mem)->get_has_shadow()){
+            mem = (BaseMem*)(((DataMem*)mem)->get_current_dmem_shadow()); // need to fix this
+        }
+    }
+#endif
+
+    cmd->platform_->get_auto_dag()->create_dependency(cmd, task, param_info, mem, kernel, i);
+
+#ifdef AUTO_SHADOW
+    if (mem->GetMemHandlerType() == IRIS_DMEM){
+        if(((DataMem*)mem)->get_has_shadow()){
+            mem = (BaseMem*)(((DataMem*)mem)->get_current_dmem_shadow()); // need to fix this
+        }
+    }
+#endif
+#endif
+    //_trace_debug("Param %d", param_info);
     if (!mem) mem = cmd->platform_->GetMem(param, &mem_off);
     if (!mem) {
       _error("no mem[%p] task[%ld:%s]", ((iris_mem*) param), task->uid(), task->name());
@@ -267,8 +293,42 @@ Command* Command::CreateMalloc(Task* task, Mem* mem) {
 Command* Command::CreateMemFlushOut(Task* task, DataMem* mem) {
   Command* cmd = Create(task, IRIS_CMD_MEM_FLUSH);
   cmd->mem_ = mem;
+#ifdef AUTO_PAR
+//#ifdef IGNORE_MANUAL
+    
+//#endif
+
+//#ifdef SANITY_CHECK
+//    task->platform()->get_auto_dag()->set_auto_dep();
+//#endif
+   // Fixed it
+   if (mem->get_current_writing_task() != NULL && mem->get_current_writing_task()->uid() != NULL
+        && mem->get_current_writing_task() != task)
+   		task->AddDepend(mem->get_current_writing_task(), mem->get_current_writing_task()->uid());
+
+//#ifdef IGNORE_MANUAL
+//   task->platform()->get_auto_dag()->unset_auto_dep();
+//#endif
+
+//#ifdef SANITY_CHECK
+//   task->platform()->get_auto_dag()->unset_auto_dep();
+//#endif
+
+#endif
+
+
   return cmd;
 }
+
+#ifdef AUTO_PAR
+#ifdef AUTO_SHADOW
+Command* Command::CreateMemFlushOutToShadow(Task* task, DataMem* mem) {
+  Command* cmd = Create(task, IRIS_CMD_MEM_FLUSH_TO_SHADOW);
+  cmd->mem_ = mem;
+  return cmd;
+}
+#endif
+#endif
 
 Command* Command::CreateMemResetInput(Task* task, BaseMem *mem, uint8_t reset_value) {
   Command* cmd = Create(task, IRIS_CMD_RESET_INPUT);

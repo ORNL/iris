@@ -120,7 +120,28 @@ void  Kernel::add_dmem_region(DataMemRegion *mem, int idx, int mode)
     }
     mem_track_.insert(make_pair(mem, idx));
 }
+/*
+#ifdef AUTO_PAR
+#ifdef AUTO_SHADOW
+void Kernel::replace_with_shadow_dmem(DataMem *mem, int idx, int mode){
+    auto it = data_mem_out_.find(idx);
+    if (it == data_mem_out_.end()) 
+        _error("Data mem does not exists in the map:%s\n",name());
 
+    if (mode == iris_r)  {
+        _error("Reading only varible does not need shadow:%s\n",name());
+    }
+    else if (mode == iris_w) {
+        data_mem_out_.at(idx) = mem;
+    }
+    else if (mode == iris_rw)  {
+        data_mem_out_.at(idx) = mem;
+        data_mem_in_.at(idx) = mem;
+    }
+}
+#endif
+#endif
+*/
 KernelArg* Kernel::ExportArgs() {
   KernelArg* new_args = new KernelArg[args_.size()];
   for (std::map<int, KernelArg*>::iterator I = args_.begin(), E = args_.end(); I != E; ++I) {
