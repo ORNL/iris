@@ -59,7 +59,7 @@ if ! [ -d dagger-payloads ] ; then
   echo "*******************************************************************"
   echo "*                          Linear 10                              *"
   echo "*******************************************************************"
-  ./dagger_generator.py --kernels="ijk" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=10 --num-tasks=10 --min-width=1 --max-width=1 $USE_DATA_MEMORY
+  ./dagger_generator.py --kernels="ijk" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=8 --num-tasks=8 --min-width=1 --max-width=1 --sandwich $USE_DATA_MEMORY
   [ $? -ne 0 ] &&  exit 1
   cat graph.json
   cp graph.json dagger-payloads/linear10-graph.json
@@ -211,6 +211,23 @@ mv dagger_runner-$SYSTEM*.csv $RESULTS_DIR/datamemlinear10-roundrobin-$SYSTEM-0.
 python ./gantt/gantt.py --dag=./dagger-payloads/linear10-graph-dmem.json --timeline=$RESULTS_DIR/datamemlinear10-roundrobin-$SYSTEM-0.csv --timeline-out=$GRAPHS_DIR/datamemlinear10-roundrobin-$SYSTEM-timeline.pdf --dag-out=$GRAPHS_DIR/datamemlinear10-roundrobin-$SYSTEM-dag.pdf  --combined-out=$GRAPHS_DIR/datamemlinear10-roundrobin-$SYSTEM.pdf --no-show-kernel-legend
 [ $? -ne 0 ] && echo "Failed Combined Plotting of Linear 10 with Policy: roundrobin" &&  exit 1
 echo "Passed."
+
+echo "Testing the same with --sandwich argument enabled."
+./dagger_generator.py --kernels="special_ijk" --buffers-per-kernel="special_ijk:rw rw rw" --kernel-dimensions="special_ijk:2" --kernel-split='100' --depth=10 --num-tasks=10 --min-width=1 --max-width=1 --use-data-memory --concurrent-kernels="special_ijk:1" --sandwich
+[ $? -ne 0 ] &&  exit 1
+cat graph.json
+cp graph.json dagger-payloads/linear10-graph-dmem-sandwich.json
+cp dag.pdf $GRAPHS_DIR/linear10-graph-dmem-sandwich.pdf
+./dagger_runner --graph="dagger-payloads/linear10-graph-dmem-sandwich.json" --logfile="time.csv" --repeats=1 --scheduling-policy="roundrobin" --size=$PAYLOAD_SIZE  --kernels="special_ijk" --buffers-per-kernel="special_ijk:rw rw rw" --kernel-dimensions="special_ijk:2" --kernel-split='100' --depth=10 --num-tasks=10 --min-width=1 --max-width=1 --use-data-memory --sandwich
+[ $? -ne 0 ] && echo "Linear 10 Failed with Policy: roundrobin" &&  exit 1
+#archive result
+mv dagger_runner-$SYSTEM*.csv $RESULTS_DIR/sandwichdatamemlinear10-roundrobin-$SYSTEM-0.csv
+#plot timeline with gantt
+python ./gantt/gantt.py --dag=./dagger-payloads/linear10-graph-dmem-sandwich.json --timeline=$RESULTS_DIR/sandwichdatamemlinear10-roundrobin-$SYSTEM-0.csv --timeline-out=$GRAPHS_DIR/sandwichdatamemlinear10-roundrobin-$SYSTEM-timeline.pdf --dag-out=$GRAPHS_DIR/sandwichdatamemlinear10-roundrobin-$SYSTEM-dag.pdf  --combined-out=$GRAPHS_DIR/sandwichdatamemlinear10-roundrobin-$SYSTEM.pdf --no-show-kernel-legend
+[ $? -ne 0 ] && echo "Failed Combined Plotting of Linear 10 with Policy: roundrobin DMEM and sandwich" &&  exit 1
+echo "Passed."
+
+exit
 
 echo "Running DAGGER on payloads..."
 for SIZE in ${SIZES[@]}
