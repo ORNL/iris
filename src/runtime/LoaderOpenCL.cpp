@@ -76,6 +76,7 @@ int LoaderOpenCL::LoadFunctions() {
   LOADFUNC(clCreateCommandQueue);
   LOADFUNC(clReleaseCommandQueue);
   LOADFUNC(clSetEventCallback);
+  LOADFUNC(clEnqueueFillBuffer);
   return IRIS_SUCCESS;
 }
 

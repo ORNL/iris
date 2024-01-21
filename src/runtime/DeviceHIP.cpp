@@ -148,8 +148,22 @@ int DeviceHIP::Init() {
   return IRIS_SUCCESS;
 }
 
-int DeviceHIP::ResetMemory(BaseMem *mem, uint8_t reset_value) {
-    hipError_t err = ld_->hipMemset(mem->arch(this), reset_value, mem->size());
+int DeviceHIP::ResetMemory(Task *task, BaseMem *mem, uint8_t reset_value) {
+    int stream_index = 0;
+    hipError_t err;
+    bool async = false;
+    if (is_async(task)) {
+        stream_index = GetStream(task); //task->uid() % nqueues_; 
+        async = true;
+        if (stream_index == DEFAULT_STREAM_INDEX) { async = false; stream_index = 0; }
+    }
+    if (IsContextChangeRequired()) {
+        ld_->hipCtxSetCurrent(ctx_);
+    }
+    if (async)
+        err = ld_->hipMemsetAsync(mem->arch(this), reset_value, mem->size(), streams_[stream_index]);
+    else
+        err = ld_->hipMemset(mem->arch(this), reset_value, mem->size());
     _hiperror(err);
     if (err != hipSuccess) {
        worker_->platform()->IncrementErrorCount();

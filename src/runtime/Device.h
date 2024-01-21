@@ -83,7 +83,7 @@ public:
   int RegisterCommand(int tag, command_handler handler);
   int RegisterHooks();
 
-  virtual int ResetMemory(BaseMem *mem, uint8_t reset_value)=0;
+  virtual int ResetMemory(Task *task, BaseMem *mem, uint8_t reset_value)=0;
   virtual void ResetContext() { }
   virtual bool IsContextChangeRequired() { return false; }
   virtual bool IsDeviceValid() { return true; }

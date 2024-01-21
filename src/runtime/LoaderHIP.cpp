@@ -30,6 +30,7 @@ int LoaderHIP::LoadFunctions() {
   LOADFUNC(hipMalloc);
   LOADFUNC(hipHostRegister);
   LOADFUNC(hipMemset);
+  LOADFUNC(hipMemsetAsync);
   LOADFUNC(hipFree);
   LOADFUNC(hipGetDeviceProperties);
   LOADFUNC(hipDeviceCanAccessPeer);

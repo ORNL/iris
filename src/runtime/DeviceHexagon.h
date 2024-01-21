@@ -13,7 +13,7 @@ public:
   ~DeviceHexagon();
 
   int Init();
-  int ResetMemory(BaseMem *mem, uint8_t reset_value);
+  int ResetMemory(Task *task, BaseMem *mem, uint8_t reset_value);
   int MemAlloc(void** mem, size_t size, bool reset=false);
   int MemFree(void* mem);
   int MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag="");

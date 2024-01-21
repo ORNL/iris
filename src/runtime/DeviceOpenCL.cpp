@@ -199,8 +199,18 @@ int DeviceOpenCL::BuildProgram(char* path) {
   return IRIS_SUCCESS;
 }
 
-int DeviceOpenCL::ResetMemory(BaseMem *mem, uint8_t reset_value) {
-    _error("Reset memory is not implemented yet !");
+int DeviceOpenCL::ResetMemory(Task *task, BaseMem *mem, uint8_t reset_value) {
+    cl_mem clmem = (cl_mem) mem->arch(this);
+    int stream_index = 0;
+    if (is_async(task)) {
+        stream_index = GetStream(task); //task->uid() % nqueues_; 
+        if (stream_index == DEFAULT_STREAM_INDEX) { stream_index = 0; }
+    }
+    cl_int err;
+    int value_to_fill = (int)reset_value;
+    err = ld_->clEnqueueFillBuffer(clcmdq_[stream_index], clmem, &value_to_fill, sizeof(uint8_t), 0, mem->size(), 0, NULL, NULL);
+    _clerror(err);
+    //_error("Reset memory is not implemented yet !");
     return IRIS_ERROR;
 }
 
@@ -365,6 +375,7 @@ int DeviceOpenCL::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem
   void *dev_ptr = NULL;
   //void *param;
   if (off) {
+      //TODO: Use sub-buffers here. Otherwise, it wouldn't work.
       *(mem->archs_off() + devno_) = (void*) ((uint8_t *) *dev_alloc_ptr + off);
       //param = mem->archs_off() + devno_;
       dev_ptr = *(mem->archs_off() + devno_);

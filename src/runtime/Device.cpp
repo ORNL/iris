@@ -39,9 +39,9 @@ Device::Device(int devno, int platform) {
   hook_command_pre_ = NULL;
   hook_command_post_ = NULL;
   worker_ = NULL;
-  //stream_policy_ = STREAM_POLICY_DEFAULT;
+  stream_policy_ = STREAM_POLICY_DEFAULT;
   //stream_policy_ = STREAM_POLICY_SAME_FOR_TASK;
-  stream_policy_ = STREAM_POLICY_GIVE_ALL_STREAMS_TO_KERNEL;
+  //stream_policy_ = STREAM_POLICY_GIVE_ALL_STREAMS_TO_KERNEL;
   n_copy_engines_ = 3;
 }
 
@@ -396,7 +396,7 @@ void Device::ExecuteMemResetInput(Task *task, Command* cmd) {
     if (bmem->GetMemHandlerType() == IRIS_DMEM) {
     DataMem* mem = (DataMem *)cmd->mem();
     mem->dev_lock(devno_);
-    ResetMemory(mem, cmd->reset_value());
+    ResetMemory(task, mem, cmd->reset_value());
     mem->set_host_dirty();
     mem->set_dirty_except(devno_);
     mem->dev_unlock(devno_);
@@ -404,7 +404,7 @@ void Device::ExecuteMemResetInput(Task *task, Command* cmd) {
     else if (bmem->GetMemHandlerType() == IRIS_DMEM_REGION) {
     DataMemRegion* mem = (DataMemRegion *)cmd->mem();
     mem->dev_lock(devno_);
-    ResetMemory(mem, cmd->reset_value());
+    ResetMemory(task, mem, cmd->reset_value());
     mem->set_host_dirty();
     mem->set_dirty_except(devno_);
     mem->dev_unlock(devno_);
@@ -501,7 +501,7 @@ void Device::WaitForDataAvailability(int devno, Task *task, DMemType *mem)
         // Even if the parent task and current task are running on same device, it may be using different streams
         for (void * event: mem->GetWaitEvents(devno_)) {
             _debug2(" from dev:[%d] event to dev:[%d][%s] task:%s:%lu task_stream:%d mem:%lu mem_stream:%d", devno_, devno, dev->name(), task->name(), task->uid(), read_stream, mem->uid(), stream);
-            WaitForEvent(event, stream, iris_event_wait_default);
+            WaitForEvent(event, read_stream, iris_event_wait_default);
         }
     }
 }

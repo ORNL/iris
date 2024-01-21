@@ -210,8 +210,23 @@ int DeviceCUDA::Init() {
   return IRIS_SUCCESS;
 }
 
-int DeviceCUDA::ResetMemory(BaseMem *mem, uint8_t reset_value) {
-    CUresult err = ld_->cudaMemset(mem->arch(this), reset_value, mem->size());
+int DeviceCUDA::ResetMemory(Task *task, BaseMem *mem, uint8_t reset_value) {
+    CUresult err = CUDA_SUCCESS;
+    int stream_index = 0;
+    bool async = false;
+    if (is_async(task)) {
+        stream_index = GetStream(task); //task->uid() % nqueues_; 
+        async = true;
+        if (stream_index == DEFAULT_STREAM_INDEX) { async = false; stream_index = 0; }
+    }
+    if (IsContextChangeRequired()) {
+        err=ld_->cuCtxSetCurrent(ctx_);
+        _cuerror(err);
+    }
+    if (async) 
+        err = ld_->cudaMemsetAsync(mem->arch(this), reset_value, mem->size(), streams_[stream_index]);
+    else 
+        err = ld_->cudaMemset(mem->arch(this), reset_value, mem->size());
     _cuerror(err);
     if (err != CUDA_SUCCESS){
        worker_->platform()->IncrementErrorCount();
@@ -511,7 +526,7 @@ int DeviceCUDA::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
           if (err != CUDA_SUCCESS) error_occured = true;
       }
   }
-  _debug2("Completed D2H DT of %sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] size[%lu] host[%p]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, size, host);
+  _debug2("Completed D2H DT of %sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, size, host, stream_index);
   if (error_occured){
    _debug2("Error D2H DT of %sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] size[%lu] host[%p]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, size, host);
    _error("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, off[0], size, host, stream_index);

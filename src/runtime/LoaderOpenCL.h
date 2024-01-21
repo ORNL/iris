@@ -213,6 +213,16 @@ CL_API_ENTRY cl_int CL_API_CALL
                                                    cl_int   event_command_status,
                                                    void *   user_data),
                    void *      user_data) CL_API_SUFFIX__VERSION_1_1;
+CL_API_ENTRY cl_int CL_API_CALL
+    (*clEnqueueFillBuffer)(cl_command_queue   command_queue,
+            cl_mem             buffer,
+            const void *       pattern,
+            size_t             pattern_size,
+            size_t             offset,
+            size_t             size,
+            cl_uint            num_events_in_wait_list,
+            const cl_event *   event_wait_list,
+            cl_event *         event) CL_API_SUFFIX__VERSION_1_2;
 };
 
 } /* namespace rt */
