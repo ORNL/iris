@@ -116,9 +116,9 @@ add_custom_command(
   COMMAND echo "echo \"IRIS: \$IRIS\"" >> ${CMAKE_BINARY_DIR}/setup.fish
   COMMAND echo "echo \"*************************************************************\"" >> ${CMAKE_BINARY_DIR}/setup.fish
   )
-add_custom_target(setup.source ALL DEPENDS ${CMAKE_BINARY_DIR}/setup.source)
-add_custom_target(setup.zsh ALL DEPENDS ${CMAKE_BINARY_DIR}/setup.zsh)
-add_custom_target(setup.fish ALL DEPENDS ${CMAKE_BINARY_DIR}/setup.fish)
+add_custom_target(setup_source ALL DEPENDS ${CMAKE_BINARY_DIR}/setup.source)
+add_custom_target(setup_zsh ALL DEPENDS ${CMAKE_BINARY_DIR}/setup.zsh)
+add_custom_target(setpu_fish ALL DEPENDS ${CMAKE_BINARY_DIR}/setup.fish)
 install(FILES ${CMAKE_BINARY_DIR}/setup.source DESTINATION ${CMAKE_INSTALL_PREFIX})
 install(FILES ${CMAKE_BINARY_DIR}/setup.zsh DESTINATION ${CMAKE_INSTALL_PREFIX})
 install(FILES ${CMAKE_BINARY_DIR}/setup.fish DESTINATION ${CMAKE_INSTALL_PREFIX})
