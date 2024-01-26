@@ -216,7 +216,12 @@ bool Task::Dispatchable() {
   if (depends_uids_ == NULL) return true;
   for (int i = 0; i < ndepends_; i++) {
       Task *dep = platform_->get_task_object(depends_uids_[i]);
+#if 0
+      if ( dep != NULL && dep->is_async() && !(dep->status() == IRIS_COMPLETE || dep->status() == IRIS_RUNNING)) return false;
+      if ( dep != NULL && !dep->is_async() && dep->status() != IRIS_COMPLETE) return false;
+#else
       if ( dep != NULL && dep->status() != IRIS_COMPLETE) return false;
+#endif
   }
   _debug2("Task task:%lu:%s is ready to run", uid(), name());
   return true;

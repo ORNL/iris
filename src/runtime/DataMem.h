@@ -8,7 +8,6 @@
 #include <set>
 #include <vector>
 #include <assert.h>
-#include "AsyncData.h"
 
 namespace iris {
 namespace rt {
@@ -19,30 +18,14 @@ class Device;
 class DataMemRegion;
 class DataMem;
 
-using DataMemDevice = AsyncData<DataMem>;
-
 class DataMem: public BaseMem {
 public:
   DataMem(Platform* platform, void *host, size_t size);
   DataMem(Platform *platform, void *host_ptr, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim);
-  static void CompleteCallback(void *stream, int status, DataMemDevice *data);
   void Init(Platform *platform, void *host_ptr, size_t size);
   virtual ~DataMem();
   void UpdateHost(void *host);
   void EnableOuterDimensionRegions();
-  void AddWaitEvent(int devno, void *event) { device_map_[devno].AddWaitEvent(event); }
-  void ClearWaitEvents(int devno) { device_map_[devno].ClearWaitEvents(); }
-  vector<void *> & GetWaitEvents(int devno) { return device_map_[devno].GetWaitEvents(); }
-  int GetWriteStream(int devno) { return device_map_[devno].GetWriteStream(); }
-  void SetWriteStream(int devno, int stream) { device_map_[devno].SetWriteStream(stream); }
-  bool IsProactive(int devno) { return device_map_[devno].IsProactive(); }
-  void EnableProactive(int devno) { device_map_[devno].EnableProactive(); }
-  void DisableProactive(int devno) { device_map_[devno].DisableProactive(); }
-  EventExchange *GetEventExchange(int devno) { return device_map_[devno].exchange(); }
-  void *GetCompletionEvent(int devno) { return device_map_[devno].GetCompletionEvent(); }
-  void **GetCompletionEventPtr(int devno) { return device_map_[devno].GetCompletionEventPtr(); }
-  void RecordEvent(int devno, int stream);
-  void WaitForEvent(int devno, int stream, int dep_devno);
   void init_reset(bool reset=true);
   bool is_host_dirty() { return host_dirty_flag_; }
   void clear_host_dirty() { host_dirty_flag_ = false; }
@@ -75,12 +58,6 @@ public:
         all = all & dirty_flag_[i];
     }
     return all;
-  }
-  void dev_unlock(int devno) {
-    device_map_[devno].Unlock();
-  }
-  void dev_lock(int devno) {
-    device_map_[devno].Lock();
   }
   void clear();
   size_t *off() { return off_; }
@@ -136,7 +113,6 @@ protected:
   bool host_ptr_owner_;
   Platform *platform_;
   DataMemRegion **regions_;
-  DataMemDevice *device_map_;
 #ifdef AUTO_PAR
 #ifdef AUTO_SHADOW
   void *host_ptr_shadow_;

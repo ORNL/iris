@@ -32,11 +32,15 @@ DeviceHIP::DeviceHIP(LoaderHIP* ld, LoaderHost2HIP *host2hip_ld, hipDevice_t dev
   strcpy(vendor_, "Advanced Micro Devices");
   hipError_t err = ld_->hipDeviceGetName(name_, sizeof(name_), dev_);
   _hiperror(err);
+  hipDeviceProp_t props;
+  ld_->hipGetDeviceProperties(&props, dev_);
   if (strlen(name_) == 0) {
-      hipDeviceProp_t props;
-      ld_->hipGetDeviceProperties(&props, dev_);
       strcpy(name_, props.gcnArchName);
   }
+  int ae=nqueues_;
+  //ld_->hipDeviceGetAttribute(&ae, hipDeviceAttributeAsyncEngineCount, 0);
+  //n_copy_engines_ = props.copyEngineCount;
+  nqueues_ = ae;
   std::string  name_str = name_;
   if (name_str.find("gfx") != std::string::npos)
       name_str = name_str.replace(name_str.find("gfx"), 3, "GFX");
@@ -47,7 +51,7 @@ DeviceHIP::DeviceHIP(LoaderHIP* ld, LoaderHost2HIP *host2hip_ld, hipDevice_t dev
   err = ld_->hipDriverGetVersion(&driver_version_);
   _hiperror(err);
   sprintf(version_, "AMD HIP %d", driver_version_);
-  _info("device[%d] platform[%d] vendor[%s] device[%s] ordinal[%d] type[%d] version[%s]", devno_, platform_, vendor_, name_, ordinal_, type_, version_);
+  _info("device[%d] platform[%d] vendor[%s] device[%s] ordinal[%d] type[%d] version[%s] async_engines[%d] copy_engines[%d]", devno_, platform_, vendor_, name_, ordinal_, type_, version_, ae, n_copy_engines_);
 }
 
 DeviceHIP::~DeviceHIP() {

@@ -69,6 +69,7 @@ endif()
 
 set(IRIS_RUNTIME_SOURCES
 #AutoDAG.cpp
+  BaseMem.cpp
   CAPI.cpp
   IRIS.cpp
   Command.cpp

@@ -35,15 +35,12 @@ void DataMem::Init(Platform *platform, void *host_ptr, size_t size)
     regions_ = NULL;
     host_dirty_flag_ = false;
     dirty_flag_ = new bool[ndevs_];
-    device_map_ = new DataMemDevice[ndevs_+1];
     for (int i = 0; i < ndevs_; i++) {
         archs_[i] = NULL;
         archs_dev_[i] = platform->device(i);
         dirty_flag_[i] = true;
-        device_map_[i].Init(this, i);
         //dev_ranges_[i] = NULL;
     }
-    device_map_[ndevs_].Init(this, ndevs_);
     elem_size_ = size_;
     for(int i=0; i<3; i++) {
         host_size_[i] = 1;
@@ -77,27 +74,7 @@ DataMem::~DataMem() {
         delete regions_[i];
     }
     if (regions_) delete [] regions_;
-    for(int i=0; i<ndevs_; i++) {
-        if (GetCompletionEvent(i) != NULL) 
-            archs_dev_[i]->DestroyEvent(GetCompletionEvent(i));
-    }
-    delete [] device_map_;
 }
-void DataMem::CompleteCallback(void *stream, int status, DataMemDevice *data)
-{
-    data->EnableCompleted();
-}
-void DataMem::RecordEvent(int devno, int stream) {
-    if (GetCompletionEvent(devno) == NULL)
-        archs_dev_[devno]->CreateEvent(GetCompletionEventPtr(devno), iris_event_disable_timing);
-    _trace(" devno:%d stream:%d uid:%lu event:%p\n", devno, stream, uid(), GetCompletionEvent(devno)); 
-    archs_dev_[devno]->RecordEvent(GetCompletionEvent(devno), stream);
-}
-void DataMem::WaitForEvent(int devno, int stream, int dep_devno) {
-    assert(GetCompletionEvent(devno) != NULL);
-    archs_dev_[devno]->WaitForEvent(GetCompletionEvent(devno), stream, iris_event_disable_timing);
-}
-
 void DataMem::UpdateHost(void *host_ptr)
 {
     if (host_ptr_owner_ && host_ptr_ != NULL) free(host_ptr_);

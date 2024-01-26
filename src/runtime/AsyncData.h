@@ -26,9 +26,10 @@ namespace iris {
                     }
                     CoreClass *core() { return core_; }
                     int devno() { return devno_; }
-                    bool IsCompleted() { return completed_flag_; }
-                    void DisableCompleted() { completed_flag_ = false; }
-                    void EnableCompleted() { completed_flag_ = true; }
+                    void set_devno(int dev) { devno_ = dev; }
+                    //bool IsCompleted() { return completed_flag_; }
+                    //void DisableCompleted() { completed_flag_ = false; }
+                    //void EnableCompleted() { completed_flag_ = true; }
                     void DisableProactive() { proactive_transfer_ = false; }
                     void EnableProactive()  { proactive_transfer_ = true;  }
                     bool IsProactive() { return proactive_transfer_; }
@@ -37,11 +38,21 @@ namespace iris {
                     void SetWriteStream(int stream) { write_streams_ = stream; }
                     int  GetWriteStream()   { return write_streams_; }
                     vector<void *> & GetWaitEvents() { return waiting_events_; }
+                    void ClearAndAddWaitEvent(void *event) {
+                        ClearWaitEvents();
+                        AddWaitEvent(event);
+                    }
                     void AddWaitEvent(void *event) {
                         waiting_events_.push_back(event);
                     }
                     void ClearWaitEvents() {
                         waiting_events_.clear();
+                    }
+                    void ClearDevice() {
+                         devno_ = -1;
+                    }
+                    void Clear() {
+                         write_streams_ = -1;
                     }
                     void Unlock() {
                         pthread_mutex_unlock(&mutex_);

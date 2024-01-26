@@ -3,6 +3,10 @@
 
 namespace iris {
     namespace rt {
+        //This class support event mechanism between heterorgeneous devices
+        //There could be multiple waits for the single fire
+        //Broadcast mechanism will be used for fire
+        //It works based on pthreads
         class EventExchange {
             public:
                 EventExchange() {

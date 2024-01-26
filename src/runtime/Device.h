@@ -48,11 +48,11 @@ public:
   virtual void DestroyEvent(void *event);
   virtual void EventSychronize(void *event);
   void ProactiveTransfers(Task *task, Command *cmd);
-  void WaitForInputAvailability(int devno, Task *task, Command *cmd);
+  void WaitForTaskInputAvailability(int devno, Task *task, Command *cmd);
   template <typename DMemType>
-  void WaitForDataAvailability(int devno, Task *task, DMemType *mem);
+  void WaitForDataAvailability(int devno, Task *task, DMemType *mem, int read_stream=-1);
   template <typename DMemType>
-  void InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem);
+  void InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, BaseMem *parent=NULL);
   void ExecuteMemResetInput(Task *task, Command* cmd);
   void ExecuteMemIn(Task *task, Command* cmd);
   //void ExecuteMemInExternal(Command *cmd);
@@ -139,7 +139,7 @@ public:
   void set_worker(Worker* worker) { worker_ = worker; }
   Worker* worker() { return worker_; }
   int GetStream(Task *task);
-  int GetStream(Task *task, BaseMem *mem);
+  int GetStream(Task *task, BaseMem *mem, bool new_stream=false);
   StreamPolicy stream_policy(Task *task);
   StreamPolicy stream_policy() { return stream_policy_; }
   double Now() { return timer_->Now(); }
@@ -149,7 +149,18 @@ private:
     do {
         new_current_queue = current_queue_ + 1;
     } while (!__sync_bool_compare_and_swap(&current_queue_, current_queue_, new_current_queue));
-    return new_current_queue%(nqueues_-offset);
+    int stream = new_current_queue%((nqueues_-1)-offset)+offset+1;
+    //printf("New queue:%d\n", stream);
+    return stream;
+  }
+  int get_new_copy_stream_queue() {
+    unsigned long new_current_queue;
+    do {
+        new_current_queue = current_copy_queue_ + 1;
+    } while (!__sync_bool_compare_and_swap(&current_copy_queue_, current_copy_queue_, new_current_queue));
+    int stream = new_current_queue%n_copy_engines_ + 1;
+    //printf("New copy queue:%d\n", stream);
+    return stream;
   }
 protected:
   int devno_;
@@ -168,6 +179,7 @@ protected:
   int nqueues_;
   int errid_;
   int current_queue_;
+  int current_copy_queue_;
   int n_copy_engines_;
 
   char kernel_path_[256];
