@@ -27,6 +27,7 @@ int LoaderCUDA::LoadFunctions() {
   LOADFUNC(cuCtxSynchronize);
   LOADFUNC(cuStreamAddCallback);
   LOADFUNC(cuStreamCreate);
+  LOADFUNC(cuStreamQuery);
   LOADFUNC(cuStreamDestroy);
   LOADFUNC(cuStreamSynchronize);
   LOADFUNC(cuModuleGetFunction);

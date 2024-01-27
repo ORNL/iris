@@ -470,6 +470,13 @@ int DeviceCUDA::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
       async = true;
       if (stream_index == DEFAULT_STREAM_INDEX) { async = false; stream_index = 0; }
   }
+  //printf("D2HRegister callback dev:%d stream:%d\n", devno(), stream_index);
+  //CUresult status = ld_->cuStreamQuery(streams_[stream_index]);
+  //if (status == CUDA_SUCCESS) {
+  //    printf("D2HALL ops are completed\n");
+  //}
+  //else printf("D2HcuStreamQuery: %d\n", status);
+  //printf("mem:[%lu] stream_index:%d devno:%d\n", mem->uid(), stream_index, devno());
   if (dim == 3) {
       _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu,%lu,%lu] host_sizes[%lu,%lu,%lu] dev_sizes[%lu,%lu,%lu] size[%lu] host[%p]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, off[0], off[1], off[2], host_sizes[0], host_sizes[1], host_sizes[2], dev_sizes[0], dev_sizes[1], dev_sizes[2], size, host);
       MemCpy3D(cumem, (uint8_t *)host, off, dev_sizes, host_sizes, elem_size, false);
@@ -486,10 +493,12 @@ int DeviceCUDA::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
         if (err != CUDA_SUCCESS) error_occured = true;
     }
     else {
+        //printf("-----D2H here---\n");
         err = ld_->cudaMemcpy2DAsync((void *)host_start, host_sizes[0]*elem_size, (void*)cumem, 
                 dev_sizes[0]*elem_size, dev_sizes[0]*elem_size, dev_sizes[1], 
                 cudaMemcpyDeviceToHost, streams_[stream_index]);
         _cuerror(err);
+        //err = ld_->cuStreamSynchronize(streams_[stream_index]);
         if (err != CUDA_SUCCESS) error_occured = true;
     }
 #if 0
@@ -772,6 +781,12 @@ int DeviceCUDA::RegisterCallback(int stream, CallBackType callback_fn, void *dat
         ld_->cuCtxSetCurrent(ctx_);
     }
     //TODO: cuStreamAddCallback supports only flags = 0, it is reserved in future for nonblocking
+    //printf("Register callback dev:%d stream:%d\n", devno(), stream);
+    //CUresult status = ld_->cuStreamQuery(streams_[stream]);
+    //if (status == CUDA_SUCCESS) {
+    //    printf("ALL ops are completed\n");
+    //}
+    //else printf("cuStreamQuery: %d\n", status);
     CUresult err = ld_->cuStreamAddCallback(streams_[stream], (CUstreamCallback)callback_fn, data, iris_stream_default);
     _cuerror(err);
     if (err != CUDA_SUCCESS){

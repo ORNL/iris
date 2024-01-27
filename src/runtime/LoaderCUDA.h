@@ -32,6 +32,7 @@ public:
   CUresult (*cuCtxSynchronize)(void);
   CUresult (*cuStreamAddCallback)(CUstream hStream, CUstreamCallback callback, void *userData, unsigned int flags);
   CUresult (*cuStreamCreate)(CUstream* phStream, unsigned int Flags);
+  CUresult (*cuStreamQuery)(CUstream hStream);
   CUresult (*cuStreamDestroy)(CUstream hStream);
   CUresult (*cuStreamSynchronize)(CUstream hStream);
   CUresult (*cuModuleGetFunction)(CUfunction* hfunc, CUmodule hmod, const char* name);

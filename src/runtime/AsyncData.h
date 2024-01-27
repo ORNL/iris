@@ -7,7 +7,14 @@ namespace iris {
         template <typename CoreClass>
             class AsyncData {
                 public:
-                    AsyncData() { core_=NULL; devno_ = 0; }
+                    AsyncData() { 
+                        core_=NULL; devno_ = 0; 
+                        exchange_ = NULL;
+                        completed_flag_ = false;
+                        completion_event_ = NULL;
+                        proactive_transfer_ = false;
+                        write_streams_ = -1;
+                    }
                     ~AsyncData() {
                         pthread_mutex_destroy(&mutex_);
                         delete exchange_;
@@ -52,6 +59,7 @@ namespace iris {
                          devno_ = -1;
                     }
                     void Clear() {
+                         if (exchange_ != NULL) exchange_->Clear();
                          write_streams_ = -1;
                     }
                     void Unlock() {
