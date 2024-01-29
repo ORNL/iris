@@ -814,12 +814,8 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         }
         if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
         if (written_stream != -1 && async) { // Source generated data using asynchronous device
-            void *event = NULL;
-            src_dev->CreateEvent(&event, iris_event_disable_timing);
-            src_dev->RecordEvent(event, src_mem_stream);
-            void *dest_event = NULL;
-            CreateEvent(&dest_event, iris_event_disable_timing);
-            /*if (src_dev->model() == model() && 
+#ifdef ENABLE_SAME_TYPE_GPU_OPTIMIZATION
+            if (src_dev->model() == model() && 
                     (model() == iris_cuda || model() == iris_hip)) {
                 _debug3("------------ Inter GPU eventing ------------\n");
                 void *event = NULL;
@@ -827,7 +823,14 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
                 src_dev->RecordEvent(event, src_mem_stream);
                 WaitForEvent(event, mem_stream, iris_event_wait_default);
             }
-            else */{
+            else 
+#endif
+            {
+                void *event = NULL;
+                src_dev->CreateEvent(&event, iris_event_disable_timing);
+                src_dev->RecordEvent(event, src_mem_stream);
+                void *dest_event = NULL;
+                CreateEvent(&dest_event, iris_event_disable_timing);
                 BaseEventExchange *exchange = mem->GetEventExchange(devno());
                 exchange->set_mem(mem->uid(), src_mem_stream, src_dev->devno(), mem_stream, devno(), src_dev, this, dest_event);
                 _debug3("Writing exchange\n");
