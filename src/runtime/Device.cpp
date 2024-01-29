@@ -678,16 +678,16 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         double end = timer_->Now();
         if (written_stream != -1 && async) { // Source generated data using asynchronous device
             _debug3("Writing exchange\n");
-            EventExchange *exchange = mem->GetEventExchange(devno());
+            BaseEventExchange *exchange = mem->GetEventExchange(devno());
             _debug3("   ==========********MemD2H -> MemH2D registered callbacks dev:(%d,%d) exchange:%p\n\n", src_dev->devno(), devno(), exchange);
             mem_stream = GetStream(task, mem, true);
             src_dev->RegisterCallback(src_mem_stream, 
-                    (CallBackType)EventExchange::Fire, 
+                    (CallBackType)BaseEventExchange::Fire, 
                     //This should be current device shared event exchange object
                     exchange,
                     iris_stream_non_blocking);
             RegisterCallback(mem_stream, 
-                    EventExchange::Wait, 
+                    BaseEventExchange::Wait, 
                     exchange,
                     iris_stream_default);
             mem->RecordEvent(devno(), mem_stream);
@@ -771,6 +771,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         _debug3("Completed H2D");
     }
     else {
+        // D2H->H2D case
         // Host doesn't have fresh copy and peer2peer d2d is not possible
         // Fresh copy should be in some other device memory
         // do D2H and follewed by H2D
@@ -813,7 +814,12 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         }
         if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
         if (written_stream != -1 && async) { // Source generated data using asynchronous device
-            if (src_dev->model() == model() && 
+            void *event = NULL;
+            src_dev->CreateEvent(&event, iris_event_disable_timing);
+            src_dev->RecordEvent(event, src_mem_stream);
+            void *dest_event = NULL;
+            CreateEvent(&dest_event, iris_event_disable_timing);
+            /*if (src_dev->model() == model() && 
                     (model() == iris_cuda || model() == iris_hip)) {
                 _debug3("------------ Inter GPU eventing ------------\n");
                 void *event = NULL;
@@ -821,25 +827,27 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
                 src_dev->RecordEvent(event, src_mem_stream);
                 WaitForEvent(event, mem_stream, iris_event_wait_default);
             }
-            else {
-                EventExchange *exchange = mem->GetEventExchange(devno());
-                exchange->set_mem(mem->uid(), src_mem_stream, src_dev->devno(), mem_stream, devno());
+            else */{
+                BaseEventExchange *exchange = mem->GetEventExchange(devno());
+                exchange->set_mem(mem->uid(), src_mem_stream, src_dev->devno(), mem_stream, devno(), src_dev, this, dest_event);
                 _debug3("Writing exchange\n");
-                _debug3("   ******** mem:%lu MemD2H -> MemH2D registered callbacks dev:(%d,%d) exchange:%p\n\n", mem->uid(), src_dev->devno(), devno(), exchange);
+                _info("   ******** mem:%lu MemD2H -> MemH2D registered callbacks dev:(%d,%d) exchange:%p\n\n", mem->uid(), src_dev->devno(), devno(), exchange);
                 src_dev->ResetContext();
                 src_dev->RegisterCallback(src_mem_stream, 
-                        (CallBackType)EventExchange::Fire, 
+                        (CallBackType)BaseEventExchange::Fire, 
                         //This should be current device shared event exchange object
                         exchange, 
                         iris_stream_non_blocking);
                 if (context_shift) ResetContext();
                 RegisterCallback(mem_stream, 
-                        EventExchange::Wait, 
+                        BaseEventExchange::Wait, 
                         exchange,
                         iris_stream_default);
+                _info("Proceeding further exchange:%p\n", exchange);
             }
         }
         else {
+            _info("-------------");
             _debug3("   MemD2H -> MemH2D registered callbacks 1");
             if (written_stream != -1) {
                 _debug3("   MemD2H -> MemH2D registered callbacks 2");
