@@ -826,13 +826,13 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
             else 
 #endif
             {
-                void *event = NULL;
-                src_dev->CreateEvent(&event, iris_event_disable_timing);
-                src_dev->RecordEvent(event, src_mem_stream);
+                void *src_event = NULL;
+                src_dev->CreateEvent(&src_event, iris_event_disable_timing);
+                src_dev->RecordEvent(src_event, src_mem_stream);
                 void *dest_event = NULL;
                 CreateEvent(&dest_event, iris_event_disable_timing);
                 BaseEventExchange *exchange = mem->GetEventExchange(devno());
-                exchange->set_mem(mem->uid(), src_mem_stream, src_dev->devno(), mem_stream, devno(), src_dev, this, dest_event);
+                exchange->set_mem(mem->uid(), src_mem_stream, src_dev->devno(), mem_stream, devno(), src_dev, this, src_event, dest_event);
                 _debug3("Writing exchange\n");
                 _info("   ******** mem:%lu MemD2H -> MemH2D registered callbacks dev:(%d,%d) exchange:%p\n\n", mem->uid(), src_dev->devno(), devno(), exchange);
                 src_dev->ResetContext();
