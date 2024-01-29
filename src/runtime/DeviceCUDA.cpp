@@ -814,7 +814,11 @@ void DeviceCUDA::RecordEvent(void *event, int stream)
     if (IsContextChangeRequired()) {
         ld_->cuCtxSetCurrent(ctx_);
     }
-    CUresult err = ld_->cuEventRecord((CUevent)event, streams_[stream]);
+    CUresult err;
+    if (stream == 0)
+        err = ld_->cuEventRecord((CUevent)event, streams_[stream]);
+    else
+        err = ld_->cuEventRecord((CUevent)event, streams_[stream]);
     _cuerror(err);
     if (err != CUDA_SUCCESS)
         worker_->platform()->IncrementErrorCount();

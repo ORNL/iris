@@ -101,6 +101,7 @@ set(IRIS_RUNTIME_SOURCES
   Message.cpp
   DataMemRegion.cpp
   DataMem.cpp
+  EventExchange.cpp
   Mem.cpp
   MemRange.cpp
   TGPolicy.cpp
