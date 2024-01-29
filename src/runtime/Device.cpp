@@ -1214,6 +1214,7 @@ void Device::ExecuteH2BroadCast(Command *cmd) {
         Device *src_dev = Platform::GetPlatform()->device(i);
         ExecuteH2D(cmd, src_dev);
     }
+    ResetContext();
 }
 void Device::ExecuteD2D(Command* cmd, Device *dev) {
     if (dev == NULL) dev = this;
