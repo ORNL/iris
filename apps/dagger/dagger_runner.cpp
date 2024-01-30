@@ -104,6 +104,7 @@ int main(int argc, char** argv) {
     {"max-width", required_argument, 0, 'x'},
     {"sandwich", no_argument, 0, 'y'},
     {"num-memory-objects",required_argument, 0,'a'},
+    {"skips",required_argument,0,'q'},
     {"use-data-memory",no_argument, 0,'f'}
   };
 
