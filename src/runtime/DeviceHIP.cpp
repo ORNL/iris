@@ -197,6 +197,7 @@ int DeviceHIP::MemAlloc(void** mem, size_t size, bool reset) {
 
 int DeviceHIP::MemFree(void* mem) {
   void* hipmem = mem;
+  if (hipmem && is_shared_memory_buffers()) return IRIS_SUCCESS;
   hipError_t err = ld_->hipFree(hipmem);
   _hiperror(err);
   if (err != hipSuccess){
@@ -224,6 +225,7 @@ void DeviceHIP::ResetContext()
     ld_->hipCtxSetCurrent(ctx_);
 }
 int DeviceHIP::MemD2D(Task *task, BaseMem *mem, void *dst, void *src, size_t size) {
+  if (is_shared_memory_buffers() || (dst == src) ) return IRIS_SUCCESS;
   atleast_one_command_ = true;
   if (IsContextChangeRequired()) {
       _trace("HIP context switch dev[%d][%s] task[%ld:%s] mem[%lu] self:%p thread:%p", devno_, name_, task->uid(), task->name(), mem->uid(), (void *)worker()->self(), (void *)worker()->thread());
@@ -263,7 +265,8 @@ int DeviceHIP::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,
       _trace("HIP context switch dev[%d][%s] task[%ld:%s] mem[%lu] self:%p thread:%p", devno_, name_, task->uid(), task->name(), mem->uid(), (void *)worker()->self(), (void *)worker()->thread());
       ld_->hipCtxSetCurrent(ctx_);
   }
-  void* hipmem = mem->arch(this);
+  void* hipmem = mem->arch(this, host);
+  if (is_shared_memory_buffers()) return IRIS_SUCCESS;
   int stream_index=0;
   bool async = false;
   if (is_async(task)) {
@@ -337,7 +340,8 @@ int DeviceHIP::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,
       _trace("HIP context switch dev[%d][%s] task[%ld:%s] mem[%lu] self:%p thread:%p", devno_, name_, task->uid(), task->name(), mem->uid(), (void *)worker()->self(), (void *)worker()->thread());
       ld_->hipCtxSetCurrent(ctx_);
   }
-  void* hipmem = mem->arch(this);
+  void* hipmem = mem->arch(this, host);
+  if (is_shared_memory_buffers()) return IRIS_SUCCESS;
   int stream_index=0;
   bool async = false;
   if (is_async(task)) {

@@ -132,6 +132,7 @@ public:
   int TaskRelease(iris_task brs_task);
   int TaskReleaseMem(iris_task brs_task, iris_mem brs_mem);
   int SetParamsMap(iris_task brs_task, int *params_map);
+  int SetSharedMemoryModel(DeviceModel model, int flag);
   int SetSharedMemoryModel(int flag);
   int TaskInfo(iris_task brs_task, int param, void* value, size_t* size);
 

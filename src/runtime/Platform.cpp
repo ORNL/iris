@@ -1110,6 +1110,17 @@ int Platform::SetParamsMap(iris_task brs_task, int *params_map)
   return IRIS_SUCCESS;
 }
 
+int Platform::SetSharedMemoryModel(DeviceModel model, int flag)
+{
+    for (int i = 0; i < ndevs_; i++) {
+        if (devs_[i] && (devs_[i]->model() == model)) {
+            devs_[i]->set_can_share_host_memory_flag((bool)flag);
+            devs_[i]->set_shared_memory_buffers((bool)flag);
+        }
+    }
+    return IRIS_SUCCESS;
+}
+
 int Platform::SetSharedMemoryModel(int flag)
 {
     for (int i = 0; i < ndevs_; i++) {

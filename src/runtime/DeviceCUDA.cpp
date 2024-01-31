@@ -259,6 +259,7 @@ int DeviceCUDA::MemAlloc(void** mem, size_t size, bool reset) {
 
 int DeviceCUDA::MemFree(void* mem) {
   CUdeviceptr cumem = (CUdeviceptr) mem;
+  if (cumem && is_shared_memory_buffers()) return IRIS_SUCCESS;
   if (ngarbage_ >= IRIS_MAX_GABAGES) _error("ngarbage[%d]", ngarbage_);
   else garbage_[ngarbage_++] = cumem;
   /*
@@ -311,6 +312,7 @@ void DeviceCUDA::MemCpy3D(CUdeviceptr dev, uint8_t *host, size_t *off,
     }
 }
 int DeviceCUDA::MemD2D(Task *task, BaseMem *mem, void *dst, void *src, size_t size) {
+  if (is_shared_memory_buffers() || (dst == src) ) return IRIS_SUCCESS;
   CUdeviceptr src_cumem = (CUdeviceptr) src;
   CUdeviceptr dst_cumem = (CUdeviceptr) dst;
   if (IsContextChangeRequired()) {
@@ -360,7 +362,8 @@ int DeviceCUDA::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
       ld_->cuCtxSetCurrent(ctx_);
   }
   //testMemcpy(ld_);
-  CUdeviceptr cumem = (CUdeviceptr) mem->arch(this);
+  CUdeviceptr cumem = (CUdeviceptr) mem->arch(this, host);
+  if (is_shared_memory_buffers()) return IRIS_SUCCESS;
   int stream_index = 0;
   bool async = false;
   if (is_async(task)) {
@@ -462,7 +465,8 @@ int DeviceCUDA::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
       _trace("CUDA context switch %sdev[%d][%s] task[%ld:%s] mem[%lu] self:%p thread:%p", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)worker()->self(), (void *)worker()->thread());
       ld_->cuCtxSetCurrent(ctx_);
   }
-  CUdeviceptr cumem = (CUdeviceptr) mem->arch(this);
+  CUdeviceptr cumem = (CUdeviceptr) mem->arch(this, host);
+  if (is_shared_memory_buffers()) return IRIS_SUCCESS;
   int stream_index = 0;
   bool async = false;
   if (is_async(task)) {

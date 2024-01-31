@@ -101,12 +101,20 @@ typedef enum StreamPolicy StreamPolicy;
 #define iris_ocl                (1 << 26)
 #define iris_custom             (1 << 27)
 
-#define iris_cuda               1
-//#define iris_hexagon            2
-#define iris_hip                3
-#define iris_levelzero          4
-#define iris_opencl             5
-#define iris_openmp             6
+enum DeviceModel {
+iris_cuda = 1,
+iris_hip = 3,
+iris_levelzero = 4,
+iris_opencl = 5,
+iris_openmp = 6
+};
+typedef enum DeviceModel DeviceModel;
+//#define iris_cuda               1
+////#define iris_hexagon            2
+//#define iris_hip                3
+//#define iris_levelzero          4
+//#define iris_opencl             5
+//#define iris_openmp             6
 
 #define iris_r                  -1
 #define iris_w                  -2
@@ -299,7 +307,7 @@ extern int iris_set_stream_policy(StreamPolicy policy);
  */
 extern int iris_set_asynchronous(int flag);
 
-/**@brief Sets shared memory model
+/**@brief Sets shared memory model for OpenMP device
  *
  * Using this function shared memory model can be set
  *
@@ -308,6 +316,23 @@ extern int iris_set_asynchronous(int flag);
  */
 extern int iris_set_shared_memory_model(int flag);
 
+/**@brief Enable shared memory model for the given device type
+ *
+ * Using this function shared memory model can be set
+ *
+ * @param type : Device types (iris_cuda, iris_hip, iris_openmp, iris_opencl) 
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_enable_shared_memory_model(DeviceModel type);
+
+/**@brief Enable shared memory model for the given device type
+ *
+ * Using this function shared memory model can be set
+ *
+ * @param type : Device types (iris_cuda, iris_hip, iris_openmp, iris_opencl) 
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_disable_shared_memory_model(DeviceModel type);
 
 /**@brief Enable/disable profiler
  *
