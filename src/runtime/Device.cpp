@@ -784,7 +784,6 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         _debug3("explore D2H->H2D dev[%d][%s] -> dev[%d][%s] task[%ld:%s] mem[%lu] cs:%d", src_dev->devno(), src_dev->name(), devno(), name(), task->uid(), task->name(), mem->uid(), context_shift);
         int src_mem_stream = src_dev->GetStream(task, mem, true);
         int written_stream  = mem->GetWriteStream(src_dev->devno());
-        ASSERT(written_stream != -1);
         if (written_stream != -1) { // Source generated data using asynchronous device
             if (written_stream != src_mem_stream) { 
                 // Wait for event if src_mem_stream is different from previous written stream
@@ -850,7 +849,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
             }
         }
         else {
-            _info("-------------");
+            //_info("-------------");
             _debug3("   MemD2H -> MemH2D registered callbacks 1");
             if (written_stream != -1) {
                 _debug3("   MemD2H -> MemH2D registered callbacks 2");
