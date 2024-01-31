@@ -23,6 +23,12 @@ class Gantt():
         timings['taskname'] = np.where(~timings['taskname'].isnull(),timings['taskname'],timings['type'])
 
         for d in drop:
+          #we now also support wildcard characters for dropping
+          if "*" in d:
+            import re
+            regex = re.compile(d)
+            matches = [string for string in timings.taskname if re.match(regex, string)]
+            drop.extend(matches)
           timings = timings[timings.taskname != d]
 
         # to simplify rename the commands to the parent tasks name
