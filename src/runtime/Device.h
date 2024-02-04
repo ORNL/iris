@@ -90,6 +90,7 @@ public:
   virtual int Compile(char* src) { return IRIS_SUCCESS; }
   virtual int Init() = 0;
   virtual int BuildProgram(char* path) { return IRIS_SUCCESS; }
+  virtual void *GetSharedMemPtr(void* mem, size_t size) { return mem; }
   virtual int MemAlloc(void** mem, size_t size, bool reset=false) = 0;
   virtual int MemFree(void* mem) = 0;
   virtual int MemD2D(Task *task, BaseMem *mem, void *dst, void *src, size_t size) { _error("Device:%d:%s doesn't support MemD2D", devno_, name()); return IRIS_ERROR; }
@@ -112,7 +113,7 @@ public:
   virtual const char* kernel_bin() { return " "; }
 
   void set_shared_memory_buffers(bool flag=true) { shared_memory_buffers_ = flag; }
-  void set_can_share_host_memory_flag(bool flag=true) { can_share_host_memory_ = flag; }
+  virtual void set_can_share_host_memory_flag(bool flag=true) { can_share_host_memory_ = flag; }
   bool is_shared_memory_buffers() { return shared_memory_buffers_ && can_share_host_memory_; }
   void set_async(bool flag=true) { async_ = flag; }
   template <class Task> bool is_async(Task *task, bool stream_policy_check=true) { 

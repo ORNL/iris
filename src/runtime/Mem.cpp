@@ -55,7 +55,7 @@ void* Mem::arch(int devno, void *host) {
       if (host == NULL || !dev->is_shared_memory_buffers()) 
           dev->MemAlloc(archs_ + devno, expansion_ * size_);
       else
-          archs_[devno] = host;
+          archs_[devno] = dev->GetSharedMemPtr(host, size());
   }
   return archs_[devno];
 }

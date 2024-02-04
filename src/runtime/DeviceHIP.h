@@ -19,6 +19,8 @@ public:
   int Init();
   int ResetMemory(Task *task, BaseMem *mem, uint8_t reset_value);
   void RegisterPin(void *host, size_t size);
+  void set_can_share_host_memory_flag(bool flag);
+  void *GetSharedMemPtr(void* mem, size_t size);
   int MemAlloc(void** mem, size_t size, bool reset);
   int MemFree(void* mem);
   int MemD2D(Task *task, BaseMem *mem, void *dst, void *src, size_t size);

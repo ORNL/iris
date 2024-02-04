@@ -6129,6 +6129,9 @@ CUresult CUDAAPI cuMemcpyAtoA(CUarray dstArray, size_t dstOffset, CUarray srcArr
  */
 CUresult CUDAAPI cuMemcpy2D(const CUDA_MEMCPY2D *pCopy);
 CUresult cudaMemcpy2D ( void* dst, size_t dpitch, const void* src, size_t spitch, size_t width, size_t height, cudaMemcpyKind kind );
+CUresult cudaHostGetDevicePointer(void **pDevice, void *pHost, unsigned int flags);  
+#define cudaDeviceMapHost   8
+CUresult cudaSetDeviceFlags(unsigned int flags);
 /**
  * \brief Copies memory for 2D arrays
  *

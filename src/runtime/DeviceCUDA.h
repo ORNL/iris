@@ -16,9 +16,11 @@ public:
   DeviceCUDA(LoaderCUDA* ld, LoaderHost2CUDA *host2cuda_ld, CUdevice cudev, int devno, int platform);
   ~DeviceCUDA();
 
+  void set_can_share_host_memory_flag(bool flag=true); 
   int Compile(char* src);
   int Init();
   int ResetMemory(Task *task, BaseMem *mem, uint8_t reset_value);
+  void *GetSharedMemPtr(void* mem, size_t size);
   int MemAlloc(void** mem, size_t size, bool reset=false);
   int MemFree(void* mem);
   void RegisterPin(void *host, size_t size);

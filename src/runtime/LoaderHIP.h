@@ -42,6 +42,8 @@ public:
   hipError_t (*hipFree)(void* ptr);
   hipError_t (*hipGetDeviceProperties)(hipDeviceProp_t* prop, int deviceId);
   hipError_t (*hipMemcpy2D)(void* dst, size_t dpitch, const void* src, size_t spitch, size_t width, size_t height, hipMemcpyKind kind);
+  hipError_t (*hipHostGetDevicePointer)(void** devPtr, void* hstPtr, unsigned int flags);
+  hipError_t (*hipSetDeviceFlags)(unsigned flags);
   hipError_t (*hipMemcpy2DAsync)(void* dst, size_t dpitch, const void* src, size_t spitch, size_t width, size_t height, hipMemcpyKind kind, hipStream_t stream);
   hipError_t (*hipMemcpyDtoD)(hipDeviceptr_t dst, hipDeviceptr_t src, size_t sizeBytes);
   hipError_t (*hipMemcpyDtoDAsync)(hipDeviceptr_t dst, hipDeviceptr_t src, size_t sizeBytes, hipStream_t stream);

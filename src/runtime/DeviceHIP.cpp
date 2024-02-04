@@ -97,6 +97,9 @@ void DeviceHIP::SetPeerDevices(int *peers, int count)
 int DeviceHIP::Init() {
   int tb=0, mc=0, bx=0, by=0, bz=0, dx=0, dy=0, dz=0, ck=0; //, ae;
   hipError_t err = ld_->hipSetDevice(ordinal_);
+  _hiperror(err);
+  err = ld_->hipInit(0);
+  _hiperror(err);
   err = ld_->hipCtxCreate(&ctx_, hipDeviceScheduleAuto, ordinal_);
   EnablePeerAccess();
   _hiperror(err);
@@ -182,6 +185,23 @@ void DeviceHIP::RegisterPin(void *host, size_t size)
     //ld_->hipHostRegister(host, size, hipHostRegisterMapped);
 }
 
+void DeviceHIP::set_can_share_host_memory_flag(bool flag)
+{
+    hipError_t err;
+    can_share_host_memory_ = flag;
+    err = ld_->hipSetDeviceFlags(hipDeviceMapHost);
+    _hiperror(err);
+}
+void *DeviceHIP::GetSharedMemPtr(void* mem, size_t size) 
+{ 
+    hipError_t err;
+    void** hipmem = NULL;
+    err = ld_->hipHostRegister(mem, size, hipHostRegisterDefault);
+    err = ld_->hipHostGetDevicePointer((void **)&hipmem, mem, 0); 
+    _hiperror(err);
+    ASSERT(hipmem != NULL);
+    return hipmem; 
+}
 int DeviceHIP::MemAlloc(void** mem, size_t size, bool reset) {
   void** hipmem = mem;
   hipError_t err = ld_->hipMalloc(hipmem, size);

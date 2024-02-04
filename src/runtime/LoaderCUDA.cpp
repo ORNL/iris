@@ -46,6 +46,8 @@ int LoaderCUDA::LoadFunctions() {
   LOADFUNCEXT(cudaMemcpy);
   LOADFUNCEXT(cudaMemcpyAsync);
   LOADFUNCEXT(cudaMemcpy2D);
+  LOADFUNCEXT(cudaHostGetDevicePointer);
+  LOADFUNCEXT(cudaSetDeviceFlags);
   LOADFUNCEXT(cudaMemcpy2DAsync);
   LOADFUNCEXT(cudaMemset);
   LOADFUNCEXT(cudaMemsetAsync);

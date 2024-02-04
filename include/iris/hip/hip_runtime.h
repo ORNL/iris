@@ -129,6 +129,9 @@ typedef struct ihipModule_t* hipModule_t;
 typedef struct ihipModuleSymbol_t* hipFunction_t;
 typedef struct ihipStream_t* hipStream_t;
 
+hipError_t hipHostGetDevicePointer(void** devPtr, void* hstPtr, unsigned int flags);
+#define hipDeviceMapHost 0x8
+hipError_t hipSetDeviceFlags(unsigned flags);
 hipError_t hipInit(unsigned int flags);
 hipError_t hipDriverGetVersion(int* driverVersion);
 hipError_t hipSetDevice(int deviceId);

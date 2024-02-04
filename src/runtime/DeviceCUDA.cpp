@@ -169,7 +169,11 @@ void DeviceCUDA::EnablePeerAccess()
 }
 int DeviceCUDA::Init() {
   CUresult err = ld_->cudaSetDevice(dev_);
+  _cuerror(err);
+  err = ld_->cuInit(0);
+  _cuerror(err);
   err = ld_->cuCtxCreate(&ctx_, CU_CTX_SCHED_AUTO, dev_);
+  _cuerror(err);
   EnablePeerAccess();
   _cuerror(err);
 #ifndef TRACE_DISABLE
@@ -236,6 +240,23 @@ int DeviceCUDA::ResetMemory(Task *task, BaseMem *mem, uint8_t reset_value) {
        return IRIS_ERROR;
     }
     return IRIS_SUCCESS;
+}
+void DeviceCUDA::set_can_share_host_memory_flag(bool flag)
+{
+    CUresult err;
+    can_share_host_memory_ = flag;
+    err = ld_->cudaSetDeviceFlags(cudaDeviceMapHost);
+    _cuerror(err);
+}
+void *DeviceCUDA::GetSharedMemPtr(void* mem, size_t size) 
+{ 
+    CUresult err;
+    CUdeviceptr* cumem = NULL; // = (CUdeviceptr *)mem;
+    err = ld_->cudaHostRegister(mem, size, cudaHostRegisterDefault);
+    err = ld_->cudaHostGetDevicePointer((void **)&cumem, mem, 0); 
+    _cuerror(err);
+    ASSERT(cumem != NULL);
+    return cumem; 
 }
 int DeviceCUDA::MemAlloc(void** mem, size_t size, bool reset) {
   if (IsContextChangeRequired()) {
@@ -363,6 +384,7 @@ int DeviceCUDA::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
   }
   //testMemcpy(ld_);
   CUdeviceptr cumem = (CUdeviceptr) mem->arch(this, host);
+  _trace("CUDA %sdev[%d][%s] task[%ld:%s] host_mem:%p dev_mem:%p", tag, devno_, name_, task->uid(), task->name(), host, cumem);
   if (is_shared_memory_buffers()) return IRIS_SUCCESS;
   int stream_index = 0;
   bool async = false;

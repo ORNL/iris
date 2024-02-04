@@ -813,6 +813,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         }
         if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
         if (written_stream != -1 && async) { // Source generated data using asynchronous device
+#define ENABLE_SAME_TYPE_GPU_OPTIMIZATION
 #ifdef ENABLE_SAME_TYPE_GPU_OPTIMIZATION
             if (src_dev->model() == model() && 
                     (model() == iris_cuda || model() == iris_hip)) {
@@ -829,17 +830,19 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
                 src_dev->CreateEvent(&src_event, iris_event_disable_timing);
                 src_dev->RecordEvent(src_event, src_mem_stream);
                 void *dest_event = NULL;
-                CreateEvent(&dest_event, iris_event_disable_timing);
+                //CreateEvent(&dest_event, iris_event_disable_timing);
                 BaseEventExchange *exchange = mem->GetEventExchange(devno());
                 exchange->set_mem(mem->uid(), src_mem_stream, src_dev->devno(), mem_stream, devno(), src_dev, this, src_event, dest_event);
                 _debug3("Writing exchange\n");
                 _info("   ******** mem:%lu MemD2H -> MemH2D registered callbacks dev:(%d,%d) exchange:%p\n\n", mem->uid(), src_dev->devno(), devno(), exchange);
+#if 0
                 src_dev->ResetContext();
                 src_dev->RegisterCallback(src_mem_stream, 
                         (CallBackType)BaseEventExchange::Fire, 
                         //This should be current device shared event exchange object
                         exchange, 
                         iris_stream_non_blocking);
+#endif
                 if (context_shift) ResetContext();
                 RegisterCallback(mem_stream, 
                         BaseEventExchange::Wait, 
