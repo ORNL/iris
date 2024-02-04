@@ -1,0 +1,377 @@
+taskname,type,start,end,duration,size,policy,acclname
+Internal-H2D(task0)-to-0,MemFlushOut,0.00531816,0.00611925,0.000801086,0,roundrobin,NVIDIA GeForce RTX 3090 0
+Internal-H2D(task0)-to-0,MemFlushOut,0.00618076,0.00675726,0.000576496,0,roundrobin,NVIDIA GeForce RTX 3090 0
+Internal-H2D(task0)-to-0,MemFlushOut,0.00676465,0.00730801,0.000543356,0,roundrobin,NVIDIA GeForce RTX 3090 0
+task0,Kernel,0.00731468,0.0904469,0.0831323,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+Internal-H2D(task2)-to-0,MemFlushOut,0.0905259,0.0910747,0.00054884,0,roundrobin,NVIDIA GeForce RTX 3090 0
+Internal-H2D(task2)-to-0,MemFlushOut,0.0910823,0.0916464,0.000564098,0,roundrobin,NVIDIA GeForce RTX 3090 0
+Internal-H2D(task2)-to-0,MemFlushOut,0.0916529,0.0922124,0.000559568,0,roundrobin,NVIDIA GeForce RTX 3090 0
+Internal-H2D(task1)-to-1,MemFlushOut,0.0905285,0.0994105,0.00888205,0,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-H2D(task1)-to-1,MemFlushOut,0.0994377,0.100118,0.00067997,0,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-H2D(task1)-to-1,MemFlushOut,0.100125,0.100819,0.000694513,0,roundrobin,AMD Radeon RX 6900 XT 1
+task2,Kernel,0.0922189,0.17413,0.0819111,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+Internal-H2D(task4)-to-0,MemFlushOut,0.174143,0.174734,0.000590801,0,roundrobin,NVIDIA GeForce RTX 3090 0
+Internal-H2D(task4)-to-0,MemFlushOut,0.174742,0.175298,0.000556231,0,roundrobin,NVIDIA GeForce RTX 3090 0
+Internal-H2D(task4)-to-0,MemFlushOut,0.175305,0.175839,0.000534773,0,roundrobin,NVIDIA GeForce RTX 3090 0
+task4,Kernel,0.175845,0.255465,0.0796192,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task6,Kernel,0.255473,0.335151,0.0796783,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+Internal-H2D(task7)-to-0,MemFlushOut,0.33516,0.335762,0.000602007,0,roundrobin,NVIDIA GeForce RTX 3090 0
+Internal-H2D(task7)-to-0,MemFlushOut,0.33577,0.336309,0.000538826,0,roundrobin,NVIDIA GeForce RTX 3090 0
+Internal-H2D(task7)-to-0,MemFlushOut,0.336315,0.336857,0.000541687,0,roundrobin,NVIDIA GeForce RTX 3090 0
+task7,Kernel,0.336863,0.416684,0.0798218,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task9,Kernel,0.416694,0.496778,0.0800838,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task13,Kernel,0.496785,0.576883,0.0800974,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task14,Kernel,0.57689,0.656958,0.0800679,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task1,Kernel,0.100825,0.74682,0.645995,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-H2D(task3)-to-1,MemFlushOut,0.746836,0.747381,0.000545025,0,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-H2D(task3)-to-1,MemFlushOut,0.747389,0.74799,0.000600815,0,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-H2D(task3)-to-1,MemFlushOut,0.747996,0.748518,0.000521898,0,roundrobin,AMD Radeon RX 6900 XT 1
+task3,Kernel,0.748523,1.3982,0.649672,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-H2D(task5)-to-1,MemFlushOut,1.39823,1.39901,0.000780821,0,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-H2D(task5)-to-1,MemFlushOut,1.39902,1.39961,0.000588894,0,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-H2D(task5)-to-1,MemFlushOut,1.39961,1.40022,0.000609398,0,roundrobin,AMD Radeon RX 6900 XT 1
+task5,Kernel,1.40023,2.05509,0.654866,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task16,Kernel,2.0551,2.70288,0.647782,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task8)-from-0-to-1,MemFlushOut,2.70289,2.7046,0.00170541,0,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task10)-from-1-to-0,MemFlushOut,2.05517,2.7052,0.650029,0,roundrobin,NVIDIA GeForce RTX 3090 0
+Internal-H2D(task8)-to-1,MemFlushOut,2.70461,2.70546,0.000852823,0,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-H2D(task10)-to-0,MemFlushOut,2.70523,2.70619,0.000961304,0,roundrobin,NVIDIA GeForce RTX 3090 0
+Internal-H2D(task8)-to-1,MemFlushOut,2.70547,2.70672,0.00125909,0,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-H2D(task10)-to-0,MemFlushOut,2.70621,2.70708,0.000871897,0,roundrobin,NVIDIA GeForce RTX 3090 0
+task10,Kernel,2.70709,2.79058,0.0834918,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task19,Kernel,2.7906,2.87407,0.0834715,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task17,Kernel,2.87408,2.95677,0.0826972,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task8,Kernel,2.70673,3.35684,0.650108,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task11,Kernel,3.35685,3.99756,0.640708,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task18)-from-0-to-1,MemFlushOut,3.99757,3.99895,0.00138545,0,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-H2D(task18)-to-1,MemFlushOut,3.99896,3.99951,0.000548363,0,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-H2D(task18)-to-1,MemFlushOut,3.99952,4.00001,0.000488758,0,roundrobin,AMD Radeon RX 6900 XT 1
+task18,Kernel,4.00001,4.65531,0.655301,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task30)-from-0-to-1,MemFlushOut,4.65532,4.65656,0.00124264,0,roundrobin,AMD Radeon RX 6900 XT 1
+task30,Kernel,4.65657,5.3096,0.653026,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task24)-from-1-to-0,MemFlushOut,4.65611,5.31015,0.654035,0,roundrobin,NVIDIA GeForce RTX 3090 0
+Internal-D2H-H2D(task12)-from-0-to-1,MemFlushOut,5.30961,5.31155,0.00193596,0,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-H2D(task12)-to-1,MemFlushOut,5.31156,5.3121,0.000546217,0,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-H2D(task12)-to-1,MemFlushOut,5.31211,5.31255,0.000446558,0,roundrobin,AMD Radeon RX 6900 XT 1
+task24,Kernel,5.31016,5.39448,0.0843153,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task29,Kernel,5.39453,5.47815,0.0836163,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task12,Kernel,5.31256,5.96058,0.648021,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task20,Kernel,5.96059,6.60629,0.645698,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task22,Kernel,6.6063,7.25686,0.650566,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task27,Kernel,7.25689,7.90612,0.649235,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task41,Kernel,7.90613,8.55053,0.644402,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task26,Kernel,8.55054,9.20405,0.653503,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task39,Kernel,9.20406,9.85879,0.654734,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task46,Kernel,9.8588,10.5141,0.655286,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task15)-from-1-to-0,MemFlushOut,5.96065,10.5159,4.55526,0,roundrobin,NVIDIA GeForce RTX 3090 0
+task15,Kernel,10.5159,10.5995,0.0835185,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task33,Kernel,10.5995,10.683,0.0835631,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task21,Kernel,10.5995,11.2564,0.656921,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task34,Kernel,11.2564,11.9014,0.644928,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task25,Kernel,11.9014,12.5458,0.644413,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task42)-from-0-to-1,MemFlushOut,12.5458,12.5474,0.00157833,0,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task38)-from-1-to-0,MemFlushOut,10.683,12.5478,1.8648,0,roundrobin,NVIDIA GeForce RTX 3090 0
+Internal-H2D(task38)-to-0,MemFlushOut,12.5479,12.5486,0.000747681,0,roundrobin,NVIDIA GeForce RTX 3090 0
+Internal-H2D(task38)-to-0,MemFlushOut,12.5486,12.5494,0.000746727,0,roundrobin,NVIDIA GeForce RTX 3090 0
+task38,Kernel,12.5494,12.6329,0.0835505,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task42,Kernel,12.5474,13.202,0.654643,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task45,Kernel,13.202,13.8523,0.650279,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task31)-from-1-to-0,MemFlushOut,12.633,13.8538,1.22088,0,roundrobin,NVIDIA GeForce RTX 3090 0
+task31,Kernel,13.8539,13.9339,0.0800917,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+Internal-D2H-H2D(task23)-from-1-to-0,MemFlushOut,13.934,13.9364,0.00249171,0,roundrobin,NVIDIA GeForce RTX 3090 0
+task23,Kernel,13.9365,14.0165,0.0800707,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task44,Kernel,13.934,14.5941,0.660062,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task28,Kernel,14.5941,15.2441,0.649981,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task51)-from-1-to-0,MemFlushOut,14.0165,15.2457,1.22917,0,roundrobin,NVIDIA GeForce RTX 3090 0
+task51,Kernel,15.2457,15.3258,0.0801163,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task32,Kernel,15.3259,15.4059,0.0800734,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+Internal-D2H-H2D(task43)-from-0-to-1,MemFlushOut,15.406,15.4087,0.00271297,0,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task35)-from-1-to-0,MemFlushOut,15.406,15.4087,0.00278068,0,roundrobin,NVIDIA GeForce RTX 3090 0
+task35,Kernel,15.4087,15.4887,0.0800025,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task60,Kernel,15.4888,15.5688,0.0800629,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task48,Kernel,15.5688,15.6488,0.0799649,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task36,Kernel,15.6488,15.7288,0.0799606,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task47,Kernel,15.7288,15.8088,0.080008,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task40,Kernel,15.8088,15.8887,0.0799637,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task53,Kernel,15.8887,15.9688,0.0800767,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task37,Kernel,15.9688,16.0491,0.0802865,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task43,Kernel,15.4087,16.068,0.659292,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task49,Kernel,16.0492,16.1294,0.0802603,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+Internal-D2H-H2D(task50)-from-0-to-1,MemFlushOut,16.068,16.132,0.0640087,0,roundrobin,AMD Radeon RX 6900 XT 1
+task54,Kernel,16.1302,16.2106,0.0803919,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task56,Kernel,16.2106,16.2909,0.0803037,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task69,Kernel,16.291,16.3714,0.0803559,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task88,Kernel,16.3714,16.4517,0.0802813,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task50,Kernel,16.132,16.7896,0.657575,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task64)-from-0-to-1,MemFlushOut,16.7896,16.7909,0.0012455,0,roundrobin,AMD Radeon RX 6900 XT 1
+task64,Kernel,16.7909,17.4413,0.650464,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task59)-from-0-to-1,MemFlushOut,17.4414,17.4427,0.00132179,0,roundrobin,AMD Radeon RX 6900 XT 1
+task59,Kernel,17.4427,18.0948,0.652039,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task58)-from-0-to-1,MemFlushOut,18.0948,18.096,0.00124407,0,roundrobin,AMD Radeon RX 6900 XT 1
+task58,Kernel,18.096,18.7416,0.645627,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task62,Kernel,18.7417,18.8253,0.0835381,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task52,Kernel,18.7417,19.3857,0.64405,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task65,Kernel,19.3857,20.0284,0.642674,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task61,Kernel,20.0284,20.6836,0.655241,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task77,Kernel,20.6837,21.3303,0.646615,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task55,Kernel,21.3303,21.9772,0.646875,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task73,Kernel,21.9772,22.6253,0.648116,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task63,Kernel,22.6253,23.2688,0.643467,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task57)-from-1-to-0,MemFlushOut,19.3858,23.269,3.88323,0,roundrobin,NVIDIA GeForce RTX 3090 0
+task57,Kernel,23.269,23.3525,0.0834217,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task71,Kernel,23.2688,23.919,0.650169,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task68)-from-1-to-0,MemFlushOut,23.3525,23.9208,0.568331,0,roundrobin,NVIDIA GeForce RTX 3090 0
+task68,Kernel,23.9208,24.0045,0.0836189,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task80,Kernel,24.0045,24.0877,0.0832572,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task70,Kernel,23.919,24.5699,0.650831,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task82)-from-1-to-0,MemFlushOut,24.0877,24.5705,0.482778,0,roundrobin,NVIDIA GeForce RTX 3090 0
+task82,Kernel,24.5706,24.6507,0.080112,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task72,Kernel,24.6507,24.7308,0.080106,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task66,Kernel,24.5699,25.2184,0.648507,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task75)-from-1-to-0,MemFlushOut,24.7308,25.2189,0.488112,0,roundrobin,NVIDIA GeForce RTX 3090 0
+task75,Kernel,25.2189,25.2989,0.080014,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task97,Kernel,25.299,25.379,0.0800228,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task78,Kernel,25.2184,25.8714,0.652971,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task120)-from-1-to-0,MemFlushOut,25.379,25.872,0.492927,0,roundrobin,NVIDIA GeForce RTX 3090 0
+Internal-D2H-H2D(task76)-from-0-to-1,MemFlushOut,25.8714,25.8733,0.00188971,0,roundrobin,AMD Radeon RX 6900 XT 1
+task120,Kernel,25.872,25.9528,0.0807917,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task76,Kernel,25.8733,26.5226,0.649312,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task86,Kernel,26.5227,26.6028,0.0800936,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task67,Kernel,26.5227,27.1743,0.651676,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task129,Kernel,27.1743,27.8281,0.653762,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task92)-from-1-to-0,MemFlushOut,26.6028,27.8299,1.22701,0,roundrobin,NVIDIA GeForce RTX 3090 0
+task92,Kernel,27.8299,27.9134,0.0835252,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task89,Kernel,27.8281,28.4724,0.644259,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task74)-from-0-to-1,MemFlushOut,28.4724,28.4739,0.00152135,0,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task79)-from-1-to-0,MemFlushOut,27.9134,28.4742,0.560789,0,roundrobin,NVIDIA GeForce RTX 3090 0
+task79,Kernel,28.4743,28.5552,0.0809474,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task83,Kernel,28.5552,28.6361,0.0808561,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task90,Kernel,28.6361,28.7169,0.0808418,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task74,Kernel,28.4739,29.1198,0.645897,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task87)-from-1-to-0,MemFlushOut,28.7169,29.1204,0.403433,0,roundrobin,NVIDIA GeForce RTX 3090 0
+Internal-D2H-H2D(task81)-from-0-to-1,MemFlushOut,29.1198,29.1217,0.00190687,0,roundrobin,AMD Radeon RX 6900 XT 1
+task87,Kernel,29.1204,29.2014,0.0809853,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task81,Kernel,29.1218,29.776,0.654281,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task84)-from-1-to-0,MemFlushOut,29.2014,29.7767,0.575294,0,roundrobin,NVIDIA GeForce RTX 3090 0
+Internal-D2H-H2D(task85)-from-0-to-1,MemFlushOut,29.776,29.778,0.00192547,0,roundrobin,AMD Radeon RX 6900 XT 1
+task84,Kernel,29.7767,29.8575,0.0808265,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task91,Kernel,29.8576,29.9376,0.0800161,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task96,Kernel,29.9376,30.0176,0.0799944,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task103,Kernel,30.0176,30.0976,0.0799899,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task85,Kernel,29.778,30.4338,0.655865,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task95)-from-0-to-1,MemFlushOut,30.4339,30.4352,0.00130725,0,roundrobin,AMD Radeon RX 6900 XT 1
+task95,Kernel,30.4352,31.082,0.646776,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task94)-from-0-to-1,MemFlushOut,31.082,31.0832,0.00124502,0,roundrobin,AMD Radeon RX 6900 XT 1
+task94,Kernel,31.0832,31.7394,0.656152,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task100)-from-1-to-0,MemFlushOut,31.0828,31.74,0.657261,0,roundrobin,NVIDIA GeForce RTX 3090 0
+task100,Kernel,31.7401,31.8201,0.0800073,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task93,Kernel,31.7394,32.3866,0.647155,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task102)-from-1-to-0,MemFlushOut,31.8201,32.3871,0.567028,0,roundrobin,NVIDIA GeForce RTX 3090 0
+Internal-D2H-H2D(task98)-from-0-to-1,MemFlushOut,32.3866,32.3884,0.00187922,0,roundrobin,AMD Radeon RX 6900 XT 1
+task102,Kernel,32.3871,32.468,0.0808733,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task98,Kernel,32.3885,33.0346,0.64618,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task114)-from-1-to-0,MemFlushOut,32.468,33.0352,0.567162,0,roundrobin,NVIDIA GeForce RTX 3090 0
+task114,Kernel,33.0352,33.1154,0.0801554,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task99,Kernel,33.0346,33.6888,0.654172,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task101)-from-0-to-1,MemFlushOut,33.6888,33.6901,0.00124025,0,roundrobin,AMD Radeon RX 6900 XT 1
+task101,Kernel,33.6901,34.3354,0.645308,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task110)-from-1-to-0,MemFlushOut,33.6896,34.3359,0.646335,0,roundrobin,NVIDIA GeForce RTX 3090 0
+task110,Kernel,34.336,34.416,0.0800202,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task108,Kernel,34.416,34.4961,0.0800705,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task118,Kernel,34.4961,34.5762,0.0800986,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task105,Kernel,34.3354,34.9825,0.647063,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task107,Kernel,34.9825,35.6302,0.647764,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task106,Kernel,35.6302,36.2815,0.651271,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task104)-from-0-to-1,MemFlushOut,36.2815,36.283,0.00150108,0,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task117)-from-1-to-0,MemFlushOut,34.9825,36.2833,1.30075,0,roundrobin,NVIDIA GeForce RTX 3090 0
+task117,Kernel,36.2833,36.365,0.0816925,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task112,Kernel,36.365,36.4486,0.0835843,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task104,Kernel,36.283,36.934,0.650943,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task111,Kernel,36.934,37.5872,0.65322,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task128,Kernel,37.5872,38.2325,0.645317,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task109)-from-0-to-1,MemFlushOut,38.2325,38.2342,0.00162053,0,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task116)-from-1-to-0,MemFlushOut,36.934,38.2344,1.30038,0,roundrobin,NVIDIA GeForce RTX 3090 0
+task116,Kernel,38.2344,38.3145,0.0800843,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task119,Kernel,38.3145,38.3945,0.0799608,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task123,Kernel,38.3946,38.4745,0.079962,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task109,Kernel,38.2342,38.8866,0.652485,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task113)-from-0-to-1,MemFlushOut,38.8867,38.8879,0.00125957,0,roundrobin,AMD Radeon RX 6900 XT 1
+task126,Kernel,38.8875,38.9675,0.0800874,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task113,Kernel,38.8879,39.5349,0.646978,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task125,Kernel,39.535,39.615,0.0800536,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task130,Kernel,39.6151,39.6952,0.0800641,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task115,Kernel,39.5349,40.1805,0.645598,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task137,Kernel,40.1805,40.8327,0.652178,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task122,Kernel,40.8327,41.4846,0.651883,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task121)-from-0-to-1,MemFlushOut,41.4846,41.4862,0.00161195,0,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task124)-from-1-to-0,MemFlushOut,40.1806,41.4865,1.30592,0,roundrobin,NVIDIA GeForce RTX 3090 0
+task124,Kernel,41.4865,41.5684,0.0818303,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task121,Kernel,41.4862,42.1419,0.655639,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task132,Kernel,42.1419,42.796,0.654148,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task143)-from-0-to-1,MemFlushOut,42.796,42.7976,0.0015583,0,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task135)-from-1-to-0,MemFlushOut,41.5684,42.7978,1.22947,0,roundrobin,NVIDIA GeForce RTX 3090 0
+task135,Kernel,42.7979,42.8815,0.0835843,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task136,Kernel,42.8815,42.9633,0.0818858,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task133,Kernel,42.9634,43.0434,0.0800819,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task140,Kernel,43.0434,43.1235,0.0800271,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task141,Kernel,43.1235,43.2035,0.0800624,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task143,Kernel,42.7976,43.45,0.652399,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task150)-from-1-to-0,MemFlushOut,43.2036,43.4515,0.247931,0,roundrobin,NVIDIA GeForce RTX 3090 0
+task150,Kernel,43.4515,43.5315,0.0800393,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task127,Kernel,43.45,44.1066,0.656602,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task156)-from-1-to-0,MemFlushOut,43.5315,44.1071,0.575604,0,roundrobin,NVIDIA GeForce RTX 3090 0
+task156,Kernel,44.1072,44.1872,0.0800531,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task134,Kernel,44.1066,44.7603,0.653659,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task149)-from-1-to-0,MemFlushOut,44.1872,44.7608,0.573605,0,roundrobin,NVIDIA GeForce RTX 3090 0
+Internal-D2H-H2D(task131)-from-0-to-1,MemFlushOut,44.7603,44.7621,0.00185776,0,roundrobin,AMD Radeon RX 6900 XT 1
+task149,Kernel,44.7608,44.8417,0.0808477,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task158,Kernel,44.8418,44.9219,0.0801113,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task131,Kernel,44.7621,45.4133,0.651196,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task138,Kernel,45.4134,46.0641,0.650689,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task144)-from-0-to-1,MemFlushOut,46.0641,46.0657,0.00158763,0,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task139)-from-1-to-0,MemFlushOut,45.4134,46.066,0.652562,0,roundrobin,NVIDIA GeForce RTX 3090 0
+task139,Kernel,46.066,46.1462,0.0801187,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task152,Kernel,46.1462,46.2263,0.0800743,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task144,Kernel,46.0657,46.718,0.652333,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task142)-from-0-to-1,MemFlushOut,46.718,46.7193,0.00124812,0,roundrobin,AMD Radeon RX 6900 XT 1
+task147,Kernel,46.7188,46.7989,0.0800672,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task142,Kernel,46.7193,47.3716,0.652325,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task166)-from-1-to-0,MemFlushOut,46.799,47.3722,0.573186,0,roundrobin,NVIDIA GeForce RTX 3090 0
+task166,Kernel,47.3722,47.4522,0.0800388,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task153,Kernel,47.3717,48.0183,0.646677,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task164,Kernel,48.0184,48.0984,0.0799792,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task151,Kernel,48.0183,48.6689,0.65054,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task145)-from-0-to-1,MemFlushOut,48.6689,48.6702,0.00130653,0,roundrobin,AMD Radeon RX 6900 XT 1
+task145,Kernel,48.6702,49.3227,0.652527,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task160,Kernel,49.3227,49.9735,0.650776,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task148)-from-0-to-1,MemFlushOut,49.9735,49.9752,0.00164628,0,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task172)-from-1-to-0,MemFlushOut,48.6697,49.9755,1.30575,0,roundrobin,NVIDIA GeForce RTX 3090 0
+task172,Kernel,49.9755,50.0591,0.0835905,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task165,Kernel,50.0591,50.1418,0.0827503,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task148,Kernel,49.9752,50.6285,0.653347,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task161,Kernel,50.6285,51.282,0.653445,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task159)-from-0-to-1,MemFlushOut,51.282,51.2832,0.00124693,0,roundrobin,AMD Radeon RX 6900 XT 1
+task159,Kernel,51.2833,51.9349,0.651598,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task146,Kernel,51.9349,52.5811,0.646259,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task155,Kernel,52.5812,52.6648,0.0835669,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task157,Kernel,52.5811,53.2315,0.650368,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task162)-from-1-to-0,MemFlushOut,52.6648,53.2332,0.568315,0,roundrobin,NVIDIA GeForce RTX 3090 0
+task162,Kernel,53.2332,53.3141,0.0808964,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task154,Kernel,53.2315,53.8912,0.659707,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task185,Kernel,53.8912,54.5473,0.656033,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task168)-from-0-to-1,MemFlushOut,54.5473,54.549,0.00167704,0,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task163)-from-1-to-0,MemFlushOut,53.3141,54.5491,1.23502,0,roundrobin,NVIDIA GeForce RTX 3090 0
+task163,Kernel,54.5492,54.6292,0.0800433,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task168,Kernel,54.549,55.2016,0.652636,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task167,Kernel,55.2016,55.8579,0.656282,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task169,Kernel,55.8579,56.5085,0.650552,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task180)-from-0-to-1,MemFlushOut,56.5085,56.5101,0.00162554,0,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task174)-from-1-to-0,MemFlushOut,54.6292,56.5104,1.88115,0,roundrobin,NVIDIA GeForce RTX 3090 0
+task174,Kernel,56.5104,56.5935,0.0831044,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task171,Kernel,56.5935,56.6769,0.0834002,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task180,Kernel,56.5101,57.1595,0.64934,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task173,Kernel,57.1595,57.8072,0.647707,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task178)-from-0-to-1,MemFlushOut,57.8072,57.8088,0.00161195,0,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task177)-from-1-to-0,MemFlushOut,56.6769,57.8091,1.13213,0,roundrobin,NVIDIA GeForce RTX 3090 0
+task177,Kernel,57.8091,57.8892,0.0801182,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task170,Kernel,57.8892,57.9692,0.080019,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task191,Kernel,57.9692,58.0493,0.0800409,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task178,Kernel,57.8088,58.4579,0.649138,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task176,Kernel,58.4579,59.1087,0.650743,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task179)-from-0-to-1,MemFlushOut,59.1087,59.1103,0.00157285,0,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task181)-from-1-to-0,MemFlushOut,58.0493,59.1105,1.0612,0,roundrobin,NVIDIA GeForce RTX 3090 0
+task181,Kernel,59.1105,59.1906,0.0800822,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task179,Kernel,59.1103,59.7635,0.653255,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task192,Kernel,59.7635,60.4135,0.650007,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task183,Kernel,60.4136,61.0646,0.651047,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task182,Kernel,61.0646,61.717,0.652392,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task189,Kernel,61.717,62.3737,0.656721,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task188)-from-0-to-1,MemFlushOut,62.3737,62.3754,0.00162363,0,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task175)-from-1-to-0,MemFlushOut,59.1906,62.3757,3.18505,0,roundrobin,NVIDIA GeForce RTX 3090 0
+task175,Kernel,62.3757,62.4576,0.0818903,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task188,Kernel,62.3754,63.032,0.656649,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task186)-from-1-to-0,MemFlushOut,62.4576,63.0336,0.576026,0,roundrobin,NVIDIA GeForce RTX 3090 0
+task186,Kernel,63.0336,63.115,0.0813854,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task195,Kernel,63.0321,63.6876,0.655518,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task208)-from-1-to-0,MemFlushOut,63.115,63.6882,0.573133,0,roundrobin,NVIDIA GeForce RTX 3090 0
+task208,Kernel,63.6882,63.7691,0.0808783,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+Internal-D2H-H2D(task190)-from-1-to-0,MemFlushOut,63.7691,63.7718,0.00270915,0,roundrobin,NVIDIA GeForce RTX 3090 0
+task190,Kernel,63.7718,63.8528,0.0810065,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task184,Kernel,63.8528,63.9335,0.0807061,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+Internal-D2H-H2D(task193)-from-0-to-1,MemFlushOut,63.8529,63.9363,0.0834577,0,roundrobin,AMD Radeon RX 6900 XT 1
+task209,Kernel,63.9335,64.0143,0.0807924,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task187,Kernel,64.0143,64.0944,0.0800397,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task193,Kernel,63.9363,64.6007,0.664389,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task197)-from-1-to-0,MemFlushOut,64.0944,64.6013,0.506898,0,roundrobin,NVIDIA GeForce RTX 3090 0
+Internal-D2H-H2D(task194)-from-0-to-1,MemFlushOut,64.6007,64.6026,0.00183535,0,roundrobin,AMD Radeon RX 6900 XT 1
+task197,Kernel,64.6013,64.6821,0.0808511,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task196,Kernel,64.6821,64.7623,0.0801334,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task200,Kernel,64.7623,64.8423,0.0800431,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task206,Kernel,64.8423,64.9225,0.0801466,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task204,Kernel,64.9225,65.0029,0.080384,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task222,Kernel,65.0029,65.0833,0.0803981,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task194,Kernel,64.6026,65.257,0.654399,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task198)-from-0-to-1,MemFlushOut,65.257,65.2582,0.00123954,0,roundrobin,AMD Radeon RX 6900 XT 1
+task198,Kernel,65.2582,65.9057,0.647436,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task199)-from-1-to-0,MemFlushOut,65.2577,65.9062,0.64843,0,roundrobin,NVIDIA GeForce RTX 3090 0
+task199,Kernel,65.9062,65.9861,0.0799303,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+Internal-D2H-H2D(task201)-from-0-to-1,MemFlushOut,65.9057,65.9892,0.0835319,0,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task211)-from-1-to-0,MemFlushOut,65.9872,65.9904,0.00320601,0,roundrobin,NVIDIA GeForce RTX 3090 0
+task211,Kernel,65.9904,66.0704,0.080024,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task234,Kernel,66.0705,66.1505,0.0799773,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task201,Kernel,65.9892,66.6491,0.659856,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task203)-from-0-to-1,MemFlushOut,66.6491,66.6504,0.00124574,0,roundrobin,AMD Radeon RX 6900 XT 1
+task203,Kernel,66.6504,67.3022,0.651854,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task202)-from-0-to-1,MemFlushOut,67.3022,67.3035,0.00124407,0,roundrobin,AMD Radeon RX 6900 XT 1
+task202,Kernel,67.3035,67.9632,0.659774,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task207)-from-0-to-1,MemFlushOut,67.9633,67.9645,0.00125504,0,roundrobin,AMD Radeon RX 6900 XT 1
+task205,Kernel,67.9641,68.0477,0.0836041,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task207,Kernel,67.9645,68.6209,0.656424,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task224)-from-1-to-0,MemFlushOut,68.0478,68.6215,0.573738,0,roundrobin,NVIDIA GeForce RTX 3090 0
+task224,Kernel,68.6215,68.702,0.0804925,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task212,Kernel,68.621,69.2765,0.655545,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task210,Kernel,69.2765,69.9333,0.656801,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task219,Kernel,69.9333,70.5911,0.657806,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task217,Kernel,70.5911,71.2389,0.647726,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task213,Kernel,71.2389,71.891,0.652091,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task214,Kernel,71.891,72.5348,0.643807,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+task216,Kernel,72.5348,73.1877,0.652864,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task225)-from-0-to-1,MemFlushOut,73.1877,73.1892,0.00154924,0,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task215)-from-1-to-0,MemFlushOut,69.9334,73.1895,3.25604,0,roundrobin,NVIDIA GeForce RTX 3090 0
+task215,Kernel,73.1895,73.273,0.0835054,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task225,Kernel,73.1892,73.8414,0.652233,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task218)-from-0-to-1,MemFlushOut,73.8415,73.8431,0.00165415,0,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task220)-from-1-to-0,MemFlushOut,73.273,73.8433,0.570312,0,roundrobin,NVIDIA GeForce RTX 3090 0
+task220,Kernel,73.8434,73.9239,0.0805898,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task218,Kernel,73.8431,74.4922,0.649116,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task230)-from-1-to-0,MemFlushOut,73.924,74.4928,0.568823,0,roundrobin,NVIDIA GeForce RTX 3090 0
+task230,Kernel,74.4928,74.5732,0.0804253,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task226,Kernel,74.4922,75.1368,0.644544,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task228)-from-1-to-0,MemFlushOut,74.5732,75.1373,0.564105,0,roundrobin,NVIDIA GeForce RTX 3090 0
+task228,Kernel,75.1374,75.2209,0.0835447,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task229,Kernel,75.1368,75.7923,0.655461,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task221)-from-1-to-0,MemFlushOut,75.2209,75.7928,0.5719,0,roundrobin,NVIDIA GeForce RTX 3090 0
+Internal-D2H-H2D(task232)-from-0-to-1,MemFlushOut,75.7923,75.7941,0.00183797,0,roundrobin,AMD Radeon RX 6900 XT 1
+task221,Kernel,75.7928,75.8741,0.0812364,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task232,Kernel,75.7941,76.4537,0.659564,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task235)-from-1-to-0,MemFlushOut,75.8741,76.4542,0.580145,0,roundrobin,NVIDIA GeForce RTX 3090 0
+task235,Kernel,76.4542,76.5342,0.0800028,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task223,Kernel,76.5343,76.6142,0.0799866,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task231,Kernel,76.4537,77.111,0.657339,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task227)-from-1-to-0,MemFlushOut,76.6143,77.1116,0.497332,0,roundrobin,NVIDIA GeForce RTX 3090 0
+Internal-D2H-H2D(task238)-from-0-to-1,MemFlushOut,77.111,77.113,0.00193095,0,roundrobin,AMD Radeon RX 6900 XT 1
+task227,Kernel,77.1116,77.1926,0.0809796,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task233,Kernel,77.1926,77.2726,0.0800345,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task238,Kernel,77.113,77.7731,0.660095,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task239)-from-1-to-0,MemFlushOut,77.2726,77.7736,0.500998,0,roundrobin,NVIDIA GeForce RTX 3090 0
+task239,Kernel,77.7736,77.8537,0.0800736,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task240,Kernel,77.8537,77.9338,0.0800571,1048576,roundrobin,NVIDIA GeForce RTX 3090 0
+task237,Kernel,77.7731,78.4307,0.657638,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H-H2D(task236)-from-0-to-1,MemFlushOut,78.4307,78.432,0.00126195,0,roundrobin,AMD Radeon RX 6900 XT 1
+task236,Kernel,78.432,79.089,0.656949,1048576,roundrobin,AMD Radeon RX 6900 XT 1
+Internal-D2H(final_d2h)-from-0,MemFlushOut,79.0891,79.0904,0.00124311,0,data,NVIDIA GeForce RTX 3090 0
+Internal-D2H(final_d2h)-from-1,MemFlushOut,79.0904,79.0914,0.00107646,0,data,AMD Radeon RX 6900 XT 1
+Internal-D2H(final_d2h)-from-0,MemFlushOut,79.0915,79.0924,0.000983,0,data,NVIDIA GeForce RTX 3090 0
+Internal-D2H(final_d2h)-from-0,MemFlushOut,79.0924,79.0932,0.000709057,0,data,NVIDIA GeForce RTX 3090 0
+Internal-D2H(final_d2h)-from-1,MemFlushOut,79.0932,79.0942,0.00108528,0,data,AMD Radeon RX 6900 XT 1
+Internal-D2H(final_d2h)-from-1,MemFlushOut,79.0942,79.0952,0.000978231,0,data,AMD Radeon RX 6900 XT 1
