@@ -231,7 +231,6 @@ int DeviceOpenCL::MemAlloc(void** mem, size_t size, bool reset) {
 
 int DeviceOpenCL::MemFree(void* mem) {
   cl_mem clmem = (cl_mem) mem;
-  if (clmem && is_shared_memory_buffers()) return IRIS_SUCCESS;
   cl_int err = ld_->clReleaseMemObject(clmem);
   _clerror(err);
   if (err != CL_SUCCESS){
@@ -243,7 +242,7 @@ int DeviceOpenCL::MemFree(void* mem) {
 
 int DeviceOpenCL::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag) {
   cl_mem clmem = (cl_mem) mem->arch(this, host);
-  if (is_shared_memory_buffers()) return IRIS_SUCCESS;
+  if (mem->is_usm(devno())) return IRIS_SUCCESS;
   int stream_index = 0;
   if (is_async(task)) {
       stream_index = GetStream(task, mem); //task->uid() % nqueues_; 
@@ -295,7 +294,7 @@ int DeviceOpenCL::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_siz
 
 int DeviceOpenCL::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag) {
   cl_mem clmem = (cl_mem) mem->arch(this, host);
-  if (is_shared_memory_buffers()) return IRIS_SUCCESS;
+  if (mem->is_usm(devno())) return IRIS_SUCCESS;
   int stream_index = 0;
   if (is_async(task)) {
       stream_index = GetStream(task, mem); //task->uid() % nqueues_; 

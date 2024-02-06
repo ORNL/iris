@@ -29,7 +29,7 @@ Mem::Mem(size_t size, Platform* platform) : BaseMem(IRIS_MEM, platform->ndevs())
 
 Mem::~Mem() {
   for (int i = 0; i < ndevs_; i++) {
-    if (archs_[i]) archs_dev_[i]->MemFree(archs_[i]);
+    if (archs_[i] && !is_usm(i)) archs_dev_[i]->MemFree(archs_[i]);
   }
   if (!host_inter_) free(host_inter_);
   pthread_mutex_destroy(&mutex_);
@@ -52,10 +52,14 @@ void** Mem::arch_ptr(Device *dev, void *host) {
 void* Mem::arch(int devno, void *host) {
   if (archs_[devno] == NULL) {
       Device *dev = archs_dev_[devno];
-      if (host == NULL || !dev->is_shared_memory_buffers()) 
-          dev->MemAlloc(archs_ + devno, expansion_ * size_);
-      else
+      if (is_usm(devno) && dev->is_shared_memory_buffers() && 
+              host != NULL) {
           archs_[devno] = dev->GetSharedMemPtr(host, size());
+      }
+      else {
+          set_usm_flag(devno, false);
+          dev->MemAlloc(archs_ + devno, expansion_ * size_);
+      }
   }
   return archs_[devno];
 }

@@ -106,7 +106,8 @@ iris_cuda = 1,
 iris_hip = 3,
 iris_levelzero = 4,
 iris_opencl = 5,
-iris_openmp = 6
+iris_openmp = 6,
+iris_model_all = (1 << 25) // Same as iris_all
 };
 typedef enum DeviceModel DeviceModel;
 //#define iris_cuda               1
@@ -316,23 +317,25 @@ extern int iris_set_asynchronous(int flag);
  */
 extern int iris_set_shared_memory_model(int flag);
 
-/**@brief Enable shared memory model for the given device type
+/**@brief Enable shared memory model for the given memory and device type 
  *
  * Using this function shared memory model can be set
  *
+ * @param mem iris memory object
  * @param type : Device types (iris_cuda, iris_hip, iris_openmp, iris_opencl) 
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
-extern int iris_enable_shared_memory_model(DeviceModel type);
+extern int iris_mem_enable_usm(iris_mem mem, DeviceModel type);
 
-/**@brief Enable shared memory model for the given device type
+/**@brief Enable shared memory model for the given memory and device type
  *
  * Using this function shared memory model can be set
  *
+ * @param mem iris memory object
  * @param type : Device types (iris_cuda, iris_hip, iris_openmp, iris_opencl) 
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
-extern int iris_disable_shared_memory_model(DeviceModel type);
+extern int iris_mem_disable_usm(iris_mem mem, DeviceModel type);
 
 /**@brief Enable/disable profiler
  *

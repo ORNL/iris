@@ -80,14 +80,14 @@ int iris_set_shared_memory_model(int flag)
     return Platform::GetPlatform()->SetSharedMemoryModel(flag);
 }
 
-int iris_enable_shared_memory_model(DeviceModel type)
+int iris_mem_enable_usm(iris_mem mem, DeviceModel type)
 {
-    return Platform::GetPlatform()->SetSharedMemoryModel(type, true);
+    return Platform::GetPlatform()->SetSharedMemoryModel(mem, type, true);
 }
 
-int iris_disable_shared_memory_model(DeviceModel type)
+int iris_mem_disable_usm(iris_mem mem, DeviceModel type)
 {
-    return Platform::GetPlatform()->SetSharedMemoryModel(type, false);
+    return Platform::GetPlatform()->SetSharedMemoryModel(mem, type, false);
 }
 
 int iris_device_count(int* ndevs) {

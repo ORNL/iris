@@ -113,7 +113,10 @@ public:
   virtual const char* kernel_bin() { return " "; }
 
   void set_shared_memory_buffers(bool flag=true) { shared_memory_buffers_ = flag; }
-  virtual void set_can_share_host_memory_flag(bool flag=true) { can_share_host_memory_ = flag; }
+  virtual void set_can_share_host_memory_flag(bool flag=true) { 
+      // We leave this decision to device specific
+      // By default it still go with default can_share_host_memory_ 
+  }
   bool is_shared_memory_buffers() { return shared_memory_buffers_ && can_share_host_memory_; }
   void set_async(bool flag=true) { async_ = flag; }
   template <class Task> bool is_async(Task *task, bool stream_policy_check=true) { 

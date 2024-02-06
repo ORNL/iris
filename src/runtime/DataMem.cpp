@@ -67,7 +67,7 @@ void DataMem::Init(Platform *platform, void *host_ptr, size_t size)
 DataMem::~DataMem() {
     if (host_ptr_owner_) free(host_ptr_);
     for (int i = 0; i < ndevs_; i++) {
-        if (archs_[i]) archs_dev_[i]->MemFree(archs_[i]);
+        if (archs_[i] && !is_usm(i)) archs_dev_[i]->MemFree(archs_[i]);
     }
     delete [] dirty_flag_;
     for(int i=0; i<n_regions_; i++) {
@@ -100,7 +100,7 @@ void DataMem::clear() {
   }
   for (int i = 0; i < ndevs_; i++) {
       if (archs_[i]) {
-          archs_dev_[i]->MemFree(archs_[i]);
+          if (! is_usm(i)) archs_dev_[i]->MemFree(archs_[i]);
           archs_[i] = NULL;
       }
   }
@@ -137,9 +137,12 @@ void DataMem::EnableOuterDimensionRegions()
 void DataMem::create_dev_mem(Device *dev, int devno, void *host)
 {
     //printf(" Dev: %d is shared:%d host:%p host_ptr_:%p\n", devno, dev->is_shared_memory_buffers(), host, host_ptr_);
-    if (dev->is_shared_memory_buffers() && (host != NULL || host_ptr_ != NULL)) 
+    if (is_usm(devno) && dev->is_shared_memory_buffers() && 
+            (host != NULL || host_ptr_ != NULL)) {
         archs_[devno] = dev->GetSharedMemPtr((host == NULL) ? host_ptr_ : host, size());
+    }
     else {
+        set_usm_flag(devno, false);
         dev->MemAlloc(archs_ + devno, size_, is_reset());
         if (is_reset()) {
             dirty_flag_[devno] = false;

@@ -37,6 +37,7 @@ namespace rt {
                   archs_[i] = NULL;
                   archs_off_[i] = NULL;
                   archs_dev_[i] = NULL;
+                  is_usm_[i] = false;
                   device_map_[i].Init(this, i);
                   recommended_stream_[i] = -1;
                 }
@@ -134,7 +135,8 @@ namespace rt {
         void RecordEvent(int devno, int stream);
         void WaitForEvent(int devno, int stream, int dep_devno);
         void DestroyEvent(int devno, void *event);
-
+        bool is_usm(int devno) { return is_usm_[devno]; }
+        void set_usm_flag(int devno, bool flag=true) { is_usm_[devno] = flag; }
         protected:
             int recommended_stream_[IRIS_MAX_NDEVS];
             MemHandlerType handler_type_;
@@ -144,6 +146,7 @@ namespace rt {
             size_t size_;
             int ndevs_;
             bool  reset_;
+            bool  is_usm_[IRIS_MAX_NDEVS];
             BaseMemDevice *device_map_;
 #ifdef AUTO_PAR
   	    Task* current_writing_task_;

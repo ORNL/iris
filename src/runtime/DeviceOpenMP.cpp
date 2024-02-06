@@ -39,22 +39,6 @@ DeviceOpenMP::~DeviceOpenMP() {
 }
 
 void DeviceOpenMP::TaskPre(Task *task) {
-    if (!is_shared_memory_buffers()) return;
-    for (int i = 0; i < task->ncmds(); i++) {
-        Command* cmd = task->cmd(i);
-        if (hook_command_pre_) hook_command_pre_(cmd);
-        switch (cmd->type()) {
-            case IRIS_CMD_D2H:          
-                {
-                    Mem* mem = cmd->mem();
-                    void* host = cmd->host();
-                    mem->arch(this, host);
-                    break;
-                }
-            default: break;
-        }
-        if (hook_command_post_) hook_command_post_(cmd);
-    }
 }
 
 int DeviceOpenMP::GetProcessorNameIntel(char* cpuinfo) {
@@ -132,13 +116,13 @@ int DeviceOpenMP::MemAlloc(void** mem, size_t size, bool reset) {
 
 int DeviceOpenMP::MemFree(void* mem) {
   void* mpmem = mem;
-  if (mpmem && !is_shared_memory_buffers()) free(mpmem);
+  if (mpmem) free(mpmem);
   return IRIS_SUCCESS;
 }
 
 int DeviceOpenMP::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag) {
   void* mpmem = mem->arch(this, host);
-  if (!is_shared_memory_buffers()) {
+  if (mem->is_usm(devno())) return IRIS_SUCCESS;
       if (dim == 2 || dim == 3) {
           _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu,%lu,%lu] host_sizes[%lu,%lu,%lu] dev_sizes[%lu,%lu,%lu] size[%lu] host[%p]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), mpmem, off[0], off[1], off[2], host_sizes[0], host_sizes[1], host_sizes[2], dev_sizes[0], dev_sizes[1], dev_sizes[2], size, host);
           Utils::MemCpy3D((uint8_t *)mpmem, (uint8_t *)host, off, dev_sizes, host_sizes, elem_size, true);
@@ -167,13 +151,12 @@ int DeviceOpenMP::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_siz
           printf("\n");
 #endif
       }
-  }
   return IRIS_SUCCESS;
 }
 
 int DeviceOpenMP::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag) {
   void* mpmem = mem->arch(this, host);
-  if (!is_shared_memory_buffers()) {
+  if (mem->is_usm(devno())) return IRIS_SUCCESS;
       if (dim == 2 || dim == 3) {
           _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu,%lu,%lu] host_sizes[%lu,%lu,%lu] dev_sizes[%lu,%lu,%lu] size[%lu] host[%p]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), mpmem, off[0], off[1], off[2], host_sizes[0], host_sizes[1], host_sizes[2], dev_sizes[0], dev_sizes[1], dev_sizes[2], size, host);
           Utils::MemCpy3D((uint8_t *)mpmem, (uint8_t *)host, off, dev_sizes, host_sizes, elem_size, false);
@@ -202,7 +185,6 @@ int DeviceOpenMP::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_siz
           printf("\n");
 #endif
       }
-  }
   return IRIS_SUCCESS;
 }
 
