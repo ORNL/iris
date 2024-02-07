@@ -48,7 +48,7 @@ pushd apps/dagger
 #export REPEATS=10
 make -f Makefile.venv setup
 make -f Makefile.venv clean
-REPEATS=10 make -f Makefile.venv clean run-policy 
+REPEATS=10 make -f Makefile.venv run-policy 
 make -f Makefile.venv validate-run-policy
 #./run-policy-evaluation.sh
 popd

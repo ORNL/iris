@@ -47,7 +47,7 @@ pushd apps/dagger
 # Run command
 make -f Makefile.venv clean
 make -f Makefile.venv setup
-make -f Makefile.venv clean test-correctness
+make -f Makefile.venv test-correctness
 make -f Makefile.venv validate-test-correctness
 #./test_correctness.sh
 popd
