@@ -498,14 +498,15 @@ dagger-zenith-run-policy-evaluations:
   extends: [.dagger, .run-policy-evaluations-artifacts]
   script:
     - bash .gitlab-ci-scripts/slurm-dagger-run-policy-evaluations.sh
-    - echo "Errors $(wc -l errors.txt)"
-    - cat errors.txt
-    - if [ -s errors.txt ]; then exit 1; fi
+    - cat apps/dagger/test-out.txt
+    - echo "Errors $(wc -l apps/dagger/errors.txt)"
+    - cat apps/dagger/errors.txt
+    - if [ -s apps/dagger/errors.txt ]; then exit 1; fi
   artifacts:
     when: always
     paths:
-      - test-out.txt 
-      - errors.txt 
+      - apps/dagger/test-out.txt 
+      - apps/dagger/errors.txt 
 
 
 #- .gitlab-ci-scripts/runner_watcher.sh $$ &
@@ -515,14 +516,15 @@ dagger-zenith-test-correctness:
   extends: [.dagger, .test-correctness-artifacts]
   script:
     - bash .gitlab-ci-scripts/slurm-dagger-test-correctness.sh
-    - echo "Errors $(wc -l errors.txt)"
-    - cat errors.txt
-    - if [ -s errors.txt ]; then exit 1; fi
+    - echo "Errors $(wc -l apps/dagger/errors.txt)"
+    - cat apps/dagger/test-out.txt
+    - cat apps/dagger/errors.txt
+    - if [ -s apps/dagger/errors.txt ]; then exit 1; fi
   artifacts:
     when: always
     paths:
-      - test-out.txt 
-      - errors.txt 
+      - apps/dagger/test-out.txt 
+      - apps/dagger/errors.txt 
 
 coverage-collect:
   tags: [zenith]
