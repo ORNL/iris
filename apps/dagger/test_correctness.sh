@@ -1,5 +1,9 @@
 #!/bin/bash
+export SKIP_SETUP=${SKIP_SETUP:=0}
+set -x;
+if [ "x$SKIP_SETUP" = "x0" ]; then
 source ./setup.sh
+fi
 
 if [ "$SYSTEM" = "leconte" ] ; then
   rm -f *.csv ; make dagger_test kernel.ptx

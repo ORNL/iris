@@ -1,15 +1,49 @@
 IRIS ?= $(HOME)/.iris
 
 SHELL=bash
+REPEATS ?= 10
+
+RUN_POLICY_OUT_DIR=$(shell pwd)/dagger-payloads/*.json
+TEST_CORRECTNESS_OUT_DIR=$(shell pwd)/*-graph.json
+GIT_ROOT=$(shell git rev-parse --show-toplevel)
 
 setup:
 	python3 -m venv daggerpy
 	source daggerpy/bin/activate ; \
 	python3 -m pip install pygraphviz matplotlib numpy bokeh natsort; \
-	python3 -m pip install "networkx @ git+https://github.com/BeauJoh/networkx.git@main"
+	CC=gcc python3 -m pip install "networkx @ git+https://github.com/BeauJoh/networkx.git@main"
 
-all:
-	source daggerpy/bin/activate ; IRIS_ARCHS=cuda,hip IRIS_HISTORY=1 IRIS_INSTALL_ROOT=$(IRIS) SKIP_SETUP=1 bash ./run-policy-evaluation.sh
+all: run-policy
+
+run-policy:
+	source daggerpy/bin/activate ; IRIS_ARCHS=cuda,hip IRIS_HISTORY=1 IRIS_INSTALL_ROOT=$(IRIS) SKIP_SETUP=1 REPEATS=$(REPEATS) bash ./run-policy-evaluation.sh 1>test-out.txt 2>&1 ;
+
+test-correctness:
+	source daggerpy/bin/activate ; IRIS_ARCHS=cuda,hip IRIS_HISTORY=1 IRIS_INSTALL_ROOT=$(IRIS) SKIP_SETUP=1 REPEATS=$(REPEATS) bash ./test_correctness.sh 1>test-out.txt 2>&1 ;
+
+validate-run-policy:
+	rm -rf errors.txt ; touch errors.txt ;
+	[ ! -f test-out.txt ] || grep -e '\[E\]' test-out.txt > errors.txt
+	[ ! -f test-out.txt ] || grep -e 'EnvironmentLocationNotFound' test-out.txt >> errors.txt
+	echo "--${TEST_CORRECTNESS_OUT_DIR}----"    
+	for f in $(shell ls ${RUN_POLICY_OUT_DIR}); do \
+        echo "Validating Json Schema for file $${f}." \
+        $(GIT_ROOT)/utils/validate_schema.py -i $${f} -s $(GIT_ROOT)/schema/dagger.schema.json || echo Json Validation failed for $${f} >> errors.txt ; \
+    done ; \
+    echo "Finished: $$(date)" ; \
+    echo "Errors:" $$(wc -l < errors.txt)  ;
+
+validate-test-correctness:
+	rm -rf errors.txt ; touch errors.txt ;
+	[ ! -f test-out.txt ] || grep -e '\[E\]' test-out.txt > errors.txt
+	[ ! -f test-out.txt ] || grep -e 'EnvironmentLocationNotFound' test-out.txt >> errors.txt
+	echo "${TEST_CORRECTNESS_OUT_DIR}----"    
+	for f in $(shell ls ${TEST_CORRECTNESS_OUT_DIR}); do \
+        echo "Validating Json Schema for file $${f}." \
+        $(GIT_ROOT)/utils/validate_schema.py -i $${f} -s $(GIT_ROOT)/schema/dagger.schema.json || echo Json Validation failed for $${f} >> errors.txt ; \
+    done ; \
+    echo "Finished: $$(date)" ; \
+	echo "Errors:" $$(wc -l < errors.txt)  ;
 
 clean:
 	rm -rf dagger-payloads
