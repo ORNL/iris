@@ -496,9 +496,6 @@ test-backends-37:
 #    - python3 -u .gitlab-ci-scripts/slurm-tee.py slurm-test-err.txt slurm-test-out.txt
 dagger-zenith-run-policy-evaluations:
   extends: [.dagger, .run-policy-evaluations-artifacts]
-  paths:
-    - test-out.txt 
-    - errors.txt 
   script:
     - bash .gitlab-ci-scripts/slurm-dagger-run-policy-evaluations.sh
     - echo "Errors $(wc -l errors.txt)"
