@@ -478,6 +478,10 @@ test-backends-37:
   needs: [build-job]
   before_script:
     - source /auto/software/iris/setup_system.source
+  script:
+    - echo "Installing iris to $IRIS_INSTALL_ROOT"
+    - bash build-coverage.sh
+    - source $IRIS_INSTALL_ROOT/setup.source
 
 .run-policy-evaluations-artifacts:
   artifacts:
