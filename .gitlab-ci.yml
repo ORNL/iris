@@ -476,6 +476,8 @@ test-backends-37:
   tags: [zenith]
   stage: dagger
   needs: [build-job]
+  before_script:
+    - source /auto/software/iris/setup_system.source
 
 .run-policy-evaluations-artifacts:
   artifacts:
