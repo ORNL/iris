@@ -10,7 +10,8 @@ GIT_ROOT=$(shell git rev-parse --show-toplevel)
 setup:
 	python3 -m venv daggerpy
 	source daggerpy/bin/activate ; \
-	python3 -m pip install pygraphviz matplotlib numpy bokeh natsort; \
+	python3 -m pip install --upgrade pip; \
+	CC=gcc python3 -m pip install pygraphviz matplotlib numpy bokeh natsort; \
 	CC=gcc python3 -m pip install "networkx @ git+https://github.com/BeauJoh/networkx.git@main"
 
 all: run-policy
