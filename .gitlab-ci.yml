@@ -505,9 +505,10 @@ dagger-zenith-run-policy-evaluations:
     - cat errors.txt
     - if [ -s errors.txt ]; then exit 1; fi
   artifacts:
+    when: always
     paths:
-        - test-out.txt 
-        - errors.txt 
+      - test-out.txt 
+      - errors.txt 
 
 
 #- .gitlab-ci-scripts/runner_watcher.sh $$ &
@@ -521,9 +522,10 @@ dagger-zenith-test-correctness:
     - cat errors.txt
     - if [ -s errors.txt ]; then exit 1; fi
   artifacts:
+    when: always
     paths:
-        - test-out.txt 
-        - errors.txt 
+      - test-out.txt 
+      - errors.txt 
 
 coverage-collect:
   tags: [zenith]
