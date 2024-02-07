@@ -504,20 +504,26 @@ dagger-zenith-run-policy-evaluations:
     - echo "Errors $(wc -l errors.txt)"
     - cat errors.txt
     - if [ -s errors.txt ]; then exit 1; fi
+  artifacts:
+    paths:
+        - test-out.txt 
+        - errors.txt 
+
 
 #- .gitlab-ci-scripts/runner_watcher.sh $$ &
 #- sbatch --partition=gpu --nodelist=zenith .gitlab-ci-scripts/slurm-dagger-test-correctness.sh
 #- python3 -u .gitlab-ci-scripts/slurm-tee.py slurm-test-err.txt slurm-test-out.txt
 dagger-zenith-test-correctness:
   extends: [.dagger, .test-correctness-artifacts]
-  paths:
-    - test-out.txt 
-    - errors.txt 
   script:
     - bash .gitlab-ci-scripts/slurm-dagger-test-correctness.sh
     - echo "Errors $(wc -l errors.txt)"
     - cat errors.txt
     - if [ -s errors.txt ]; then exit 1; fi
+  artifacts:
+    paths:
+        - test-out.txt 
+        - errors.txt 
 
 coverage-collect:
   tags: [zenith]
