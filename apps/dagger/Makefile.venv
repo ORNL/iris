@@ -24,9 +24,13 @@ test-correctness:
 
 validate-run-policy:
 	rm -rf errors.txt ; touch errors.txt ;
-	[ ! -f test-out.txt ] || grep -e '\[E\]' test-out.txt > errors.txt
-	[ ! -f test-out.txt ] || grep -e 'Segmentation fault' test-out.txt >> errors.txt
-	[ ! -f test-out.txt ] || grep -e 'EnvironmentLocationNotFound' test-out.txt >> errors.txt
+	if [ -e test-out.txt ]; then \
+    grep -e '\[E\]' test-out.txt > errors.txt ; \
+    grep -e 'Segmentation fault' test-out.txt >> errors.txt ; \
+    grep -e 'EnvironmentLocationNotFound' test-out.txt >> errors.txt ; \
+    else \
+    echo 'No output' >> errors.txt ; \
+    fi ; \
 	for f in $(shell ls ${RUN_POLICY_OUT_DIR}); do \
         echo "Validating Json Schema for file $${f}." \
         $(GIT_ROOT)/utils/validate_schema.py -i $${f} -s $(GIT_ROOT)/schema/dagger.schema.json || echo Json Validation failed for $${f} >> errors.txt ; \
@@ -36,9 +40,13 @@ validate-run-policy:
 
 validate-test-correctness:
 	rm -rf errors.txt ; touch errors.txt ;
-	[ ! -f test-out.txt ] || grep -e '\[E\]' test-out.txt > errors.txt
-	[ ! -f test-out.txt ] || grep -e 'Segmentation fault' test-out.txt >> errors.txt
-	[ ! -f test-out.txt ] || grep -e 'EnvironmentLocationNotFound' test-out.txt >> errors.txt
+	if [ -e test-out.txt ]; then \
+	grep -e '\[E\]' test-out.txt > errors.txt ; \
+	grep -e 'Segmentation fault' test-out.txt >> errors.txt ; \
+	grep -e 'EnvironmentLocationNotFound' test-out.txt >> errors.txt ; \
+    else \
+    echo 'No output' >> errors.txt ; \
+    fi ; \
 	for f in $(shell ls ${TEST_CORRECTNESS_OUT_DIR}); do \
         echo "Validating Json Schema for file $${f}." \
         $(GIT_ROOT)/utils/validate_schema.py -i $${f} -s $(GIT_ROOT)/schema/dagger.schema.json || echo Json Validation failed for $${f} >> errors.txt ; \
