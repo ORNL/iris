@@ -504,7 +504,6 @@ dagger-zenith-run-policy-evaluations:
     - bash build-coverage.sh
     - source $IRIS_INSTALL_ROOT/setup.source
     - bash .gitlab-ci-scripts/slurm-dagger-run-policy-evaluations.sh
-    - cat apps/dagger/test-out.txt
     - echo "Errors $(wc -l apps/dagger/errors.txt)"
     - cat apps/dagger/errors.txt
     - if [ -s apps/dagger/errors.txt ]; then exit 1; fi
@@ -527,7 +526,6 @@ dagger-zenith-test-correctness:
     - source $IRIS_INSTALL_ROOT/setup.source
     - bash .gitlab-ci-scripts/slurm-dagger-test-correctness.sh
     - echo "Errors $(wc -l apps/dagger/errors.txt)"
-    - cat apps/dagger/test-out.txt
     - cat apps/dagger/errors.txt
     - if [ -s apps/dagger/errors.txt ]; then exit 1; fi
   artifacts:
