@@ -475,7 +475,7 @@ test-backends-37:
 .dagger:
   tags: [zenith]
   stage: dagger
-  needs: [build-job]
+  needs: []
   before_script:
     - source /auto/software/iris/setup_system.source
   script:
