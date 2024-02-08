@@ -477,11 +477,6 @@ test-backends-37:
   stage: dagger
   needs: []
   before_script:
-    - source /auto/software/iris/setup_system.source
-  script:
-    - echo "Installing iris to $IRIS_INSTALL_ROOT"
-    - bash build-coverage.sh
-    - source $IRIS_INSTALL_ROOT/setup.source
 
 .run-policy-evaluations-artifacts:
   artifacts:
@@ -504,6 +499,10 @@ test-backends-37:
 dagger-zenith-run-policy-evaluations:
   extends: [.dagger, .run-policy-evaluations-artifacts]
   script:
+    - source /auto/software/iris/setup_system.source
+    - echo "Installing iris to $IRIS_INSTALL_ROOT"
+    - bash build-coverage.sh
+    - source $IRIS_INSTALL_ROOT/setup.source
     - bash .gitlab-ci-scripts/slurm-dagger-run-policy-evaluations.sh
     - cat apps/dagger/test-out.txt
     - echo "Errors $(wc -l apps/dagger/errors.txt)"
@@ -522,6 +521,10 @@ dagger-zenith-run-policy-evaluations:
 dagger-zenith-test-correctness:
   extends: [.dagger, .test-correctness-artifacts]
   script:
+    - source /auto/software/iris/setup_system.source
+    - echo "Installing iris to $IRIS_INSTALL_ROOT"
+    - bash build-coverage.sh
+    - source $IRIS_INSTALL_ROOT/setup.source
     - bash .gitlab-ci-scripts/slurm-dagger-test-correctness.sh
     - echo "Errors $(wc -l apps/dagger/errors.txt)"
     - cat apps/dagger/test-out.txt
