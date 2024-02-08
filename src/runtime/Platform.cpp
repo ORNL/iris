@@ -774,8 +774,8 @@ void Platform::ShowOverview() {
   std::cout << "IRIS is using " << ndevices << " devices with " << nplatforms << " platforms:" << std::endl;
   char name[256];
   char vendor[256];
-  const char* backend;
-  const char* type;
+  const char* backend="Unknown";
+  const char* type="Unknown";
   //print table header
   std::cout << setw(8) << setfill('-') << "--" << "-+-" <<
     setw(32) << setfill('-') << "----" << "-+-" <<
