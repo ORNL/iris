@@ -32,8 +32,10 @@ static void bigk(double* C, double* A, double* B, IRIS_OPENMP_KERNEL_ARGS) {
   size_t j, k;
   for (size_t j = 0; j < SIZE; j++) {
     double sum = 0.0;
-    for (size_t k = 0; k < SIZE; k++) {
-      sum += A[_id * SIZE + k] * B[k * SIZE + j];
+    for (size_t l = 0; l < 10; l++) {
+      for (size_t k = 0; k < SIZE; k++) {
+        sum += A[_id * SIZE + k] * B[k * SIZE + j];
+      }
     }
     C[_id * SIZE + j] += sum;
   }
