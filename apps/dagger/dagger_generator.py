@@ -36,6 +36,7 @@ _total_num_concurrent_kernels = 0
 _dimensionality = {}
 _graph = None
 _memory_object_pool = None
+_local_sizes = {}
 
 def init_parser(parser):
     parser.add_argument("--graph",default="graph.json",type=str,help="The DAGGER json graph file to load, e.g. \"graph.json\".")
@@ -45,6 +46,7 @@ def init_parser(parser):
     parser.add_argument("--concurrent-kernels",required=False,type=str,help="The number of concurrent memory buffers allowed for each kernel, stored as a key value pair, e.g. \"process:2\" indicates that the kernel called \"process\" will only allow two unique sets of memory buffers in the generated DAG, effectively limiting concurrency by indicating a data dependency.",default=None)
     parser.add_argument("--buffers-per-kernel",required=True,type=str,help="The number and type of buffers of buffers required for each kernel, stored as a key value pair, with each buffer separated by white-space, e.g. \"process:r r w rw\" indicates that the kernel called \"process\" requires four separate buffers with read, read, write and read/write permissions respectively.")
     parser.add_argument("--kernel-dimensions",required=True,type=str,help="The dimensionality of each kernel, presented as a key-value store, multiple kernels are specified as a comma-separated-value string e.g. \"process:1,matmul:2\". indicates that kernel \"process\" is 1-D while \"matmul\" uses 2-D workgroups.")
+    parser.add_argument("--local-sizes",required=False,type=str,help="The local-workgroup size of each kernel, presented as a key-value store, multiple kernels are specified as a comma-separated-value string e.g. \"process:128 128,matmul:256 1 1\".")
     parser.add_argument("--depth",required=True,type=int,help="Depth of tree, e.g. 10.")
     parser.add_argument("--num-tasks",required=True,type=int,help="Total number of tasks to build in the DAG, e.g. 100.")
     parser.add_argument("--min-width",required=True,type=int,help="Minimum width of the DAG, e.g. 1.")
@@ -71,7 +73,7 @@ def parse_args(pargs=None,additional_arguments=[]):
     else:
         args = parser.parse_args(shlex.split(pargs))
 
-    global _kernels, _k_probs, _depth, _num_tasks, _min_width, _max_width, _mean, _std_dev, _skips, _seed, _sandwich, _concurrent_kernels, _duplicates, _dimensionality, _graph, _memory_object_pool, _use_data_memory, _total_num_concurrent_kernels
+    global _kernels, _k_probs, _depth, _num_tasks, _min_width, _max_width, _mean, _std_dev, _skips, _seed, _sandwich, _concurrent_kernels, _duplicates, _dimensionality, _graph, _memory_object_pool, _use_data_memory, _total_num_concurrent_kernels, _local_sizes
 
     _graph = args.graph
     _depth = args.depth
@@ -82,6 +84,7 @@ def parse_args(pargs=None,additional_arguments=[]):
     _seed = args.seed
     _sandwich = args.sandwich
     _duplicates = args.duplicates
+
     if _duplicates <= 1: _duplicates = 1
     #if _duplicates > 1: print("currently duplicates flag unsupported!\n")
     #_duplicates = 1
@@ -153,6 +156,15 @@ def parse_args(pargs=None,additional_arguments=[]):
             _dimensionality[kernel_name] = int(kernel_dimensionality)
         except:
             assert False, "Incorrect arguments given to --kernel-dimensions. Broken on {}".format(i)
+
+    #process local-workgroup-sizes
+    #MARK can be used for offset and gws?
+    for i in args.local_sizes.split(','):
+        try:
+            kernel_name, dims = i.split(':')
+            _local_sizes[kernel_name] = [ int(x) for x in dims.split(' ') ]
+        except:
+            assert False, "Incorrect arguments given to --local-sizes. Broken on {}".format(i)
     return args
 
 def random_list(depth,total_num,width_min,width_max):
@@ -299,6 +311,8 @@ def generate_attributes(task_dependencies,tasks_per_level):
         for c in range(0,_concurrent_kernels[k]):
             x = {}
             x["name"] = k
+            if k in _local_sizes.keys():
+                x["local_size"] = _local_sizes[k]
 
             x["global_size"] = []
             for z in range(0,_dimensionality[k]):
@@ -546,6 +560,7 @@ def plot_dag(task_dag,edges,dag_path_plot):
     node_d = [(str(i),{"label":e['name'], "position":(i,0)}) for i, e in enumerate(task_dag)]
     dag.add_nodes_from(node_d)
     node_labels = {str(i):'{}'.format(n['name']) for i,n in enumerate(task_dag)}
+    #node_labels = {str(i):'' for i,n in enumerate(task_dag)}
     if edge_d != []:
         dag.add_edges_from(edge_d)
         edge_labels = {(e1,e2):'{}'.format(d) for e1,e2,d in dag.edges(data=True)}

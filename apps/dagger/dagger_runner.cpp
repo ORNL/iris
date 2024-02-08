@@ -9,7 +9,6 @@
 #include <vector>
 #include <string>
 #include <cstring>
-#include <signal.h>
 #include <cmath>
 #include <limits>
 #include <ctype.h>
@@ -66,6 +65,7 @@ int main(int argc, char** argv) {
     std::vector<char*> buffers;
     int concurrency;
     int dimensions;
+    std::vector<size_t> lws;
   };
 
   std::map<std::string,int> scheduling_policy_lookup = {
@@ -105,7 +105,8 @@ int main(int argc, char** argv) {
     {"sandwich", no_argument, 0, 'y'},
     {"num-memory-objects",required_argument, 0,'a'},
     {"skips",required_argument,0,'q'},
-    {"use-data-memory",no_argument, 0,'f'}
+    {"use-data-memory",no_argument, 0,'f'},
+    {"local-sizes",required_argument, 0, 'w'}
   };
 
   while((opt_char = getopt_long(argc, argv, "s=", long_options, &option_index)) != -1) {
@@ -288,6 +289,49 @@ int main(int argc, char** argv) {
 
       case (int)'a'://num-memory-objects
         break;
+
+      case (int)'w':{//local-sizes
+          printf("The --local-sizes argument provided to the runner currently doesn't override the DAG, instead whatever is passed to the generator is used.\n");
+          //sample: --local-sizes="ijk:256 256,process:128"
+          int num_kernels_with_lws_set = 0;
+
+          //split all kernels by ,
+          char* kernel_str = strtok(optarg,",");
+          std::vector<char*> kernel_strings;
+          while(kernel_str){
+            kernel_strings.push_back(kernel_str);
+            kernel_str = strtok(NULL, ",");
+          }
+          //for each kernel (key-value) string
+          for (auto & kernel_str : kernel_strings){
+            char* key_str = strtok(kernel_str,":");
+            char* val_str = strtok(NULL,":");
+            //find the matching kernel on which to add the lws arguments
+            for (auto & kernel : kernels){
+              if (strcmp(kernel.name,key_str) == 0){//found it!
+                //now split up the string of ints...
+                char* wgsize_buffer = strtok(val_str," ");
+                while(wgsize_buffer != NULL){
+                  size_t lws_val = strtol(wgsize_buffer,NULL,10);
+                  kernel.lws.push_back(lws_val);
+                  wgsize_buffer = strtok(NULL ," ");
+                }
+                //check to make sure at least one buffer was specified for this kernel
+                if (kernel.lws.size() != kernel.dimensions){
+                  printf("\033[41mError: Incorrect --local-sizes don't match the kernel dimensions.\n%s\033[0m",optarg);
+                }
+                else{
+                  num_kernels_with_lws_set ++;
+                }
+              }
+            }
+          }
+          //final check of goodness
+          if(num_kernels_with_lws_set == num_kernels){
+            printf("\033[41mError: Incorrect --local-sizes supplied.\n%s\033[0m",optarg);
+          }
+        } break;
+      //TODO: copy the previous chunk for gws and these could be passed as inputs for the graph
 
       case (int)'f':{//use-data-memory
         use_data_memory = true; 
