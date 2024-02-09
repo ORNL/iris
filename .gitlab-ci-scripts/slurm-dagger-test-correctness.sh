@@ -39,6 +39,8 @@ source /etc/profile.d/lmod.sh
 source /auto/software/iris/setup_system.source
 source $IRIS_INSTALL_ROOT/setup.source
 
+set -e
+
 # Local conda environment setup
 pushd apps/dagger
 #conda env create --force -p ./envs -f dagger.yaml

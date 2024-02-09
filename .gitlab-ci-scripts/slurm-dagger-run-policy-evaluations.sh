@@ -39,6 +39,8 @@ source /etc/profile.d/lmod.sh
 source /auto/software/iris/setup_system.source
 source $IRIS_INSTALL_ROOT/setup.source
 
+set -e
+
 # Local conda environment setup
 pushd apps/dagger
 #conda env create --force -p ./envs -f dagger.yaml
@@ -48,7 +50,7 @@ pushd apps/dagger
 #export REPEATS=10
 make -f Makefile.venv setup
 make -f Makefile.venv clean
-REPEATS=10 make -f Makefile.venv run-policy 
+REPEATS=10 make -f Makefile.venv run-policy
 make -f Makefile.venv validate-run-policy
 #./run-policy-evaluation.sh
 popd
