@@ -17,10 +17,10 @@ setup:
 all: run-policy
 
 run-policy:
-	source daggerpy/bin/activate ; IRIS_INSTALL_ROOT=$(IRIS) SKIP_SETUP=1 REPEATS=$(REPEATS) bash ./run-policy-evaluation.sh 1> test-out.txt 2>&1 ;
+	source daggerpy/bin/activate ; IRIS_HISTORY=1 IRIS_INSTALL_ROOT=$(IRIS) SKIP_SETUP=1 REPEATS=$(REPEATS) bash ./run-policy-evaluation.sh 1> test-out.txt 2>&1 ;
 
 test-correctness:
-	source daggerpy/bin/activate ; IRIS_INSTALL_ROOT=$(IRIS) SKIP_SETUP=1 bash ./test_correctness.sh 1> test-out.txt 2>&1 
+	source daggerpy/bin/activate ; IRIS_HISTORY=1 IRIS_INSTALL_ROOT=$(IRIS) SKIP_SETUP=1 bash ./test_correctness.sh 1> test-out.txt 2>&1 
 
 validate-run-policy:
 	rm -rf errors.txt ; touch errors.txt ;
