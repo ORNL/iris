@@ -6,15 +6,15 @@ source ./setup.sh
 fi
 
 if [ "$SYSTEM" = "leconte" ] ; then
-  rm -f *.csv ; make dagger_test kernel.ptx
+  rm -f *.csv ; make dagger_test kernel.ptx kernel.openmp.so
 elif [ "$SYSTEM" = "equinox" ] ; then
-  rm -f *.csv ; make dagger_test kernel.ptx
+  rm -f *.csv ; make dagger_test kernel.ptx kernel.openmp.so
 elif [ "$SYSTEM" = "explorer" ] ; then
-  rm -f *.csv ; make dagger_test kernel.hip
+  rm -f *.csv ; make dagger_test kernel.hip kernel.openmp.so
 elif [ "$SYSTEM" = "radeon" ] ; then
-  rm -f *.csv ; make dagger_test kernel.hip;
+  rm -f *.csv ; make dagger_test kernel.hip kernel.openmp.so
 elif [ "$SYSTEM" = "zenith" ] ; then
-  rm -f *.csv ; make dagger_test kernel.hip kernel.ptx kernel.openmp.so;
+  rm -f *.csv ; make dagger_test kernel.hip kernel.ptx kernel.openmp.so
 else
   echo "Unknown system." && exit 1
 fi
