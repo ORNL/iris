@@ -26,6 +26,7 @@ validate-run-policy:
 	rm -rf errors.txt ; touch errors.txt ;
 	if [ -e test-out.txt ]; then \
     grep -e '\[E\]' test-out.txt > errors.txt ; \
+    grep -e 'No such file or directory' test-out.txt >> errors.txt ; \
     grep -e 'Segmentation fault' test-out.txt >> errors.txt ; \
     grep -e 'EnvironmentLocationNotFound' test-out.txt >> errors.txt ; \
     else \
@@ -42,6 +43,7 @@ validate-test-correctness:
 	rm -rf errors.txt ; touch errors.txt ;
 	if [ -e test-out.txt ]; then \
 	grep -e '\[E\]' test-out.txt > errors.txt ; \
+    grep -e 'No such file or directory' test-out.txt >> errors.txt ; \
 	grep -e 'Segmentation fault' test-out.txt >> errors.txt ; \
 	grep -e 'EnvironmentLocationNotFound' test-out.txt >> errors.txt ; \
     else \
