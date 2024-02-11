@@ -16,19 +16,19 @@ fi
 
 make clean
 if [ "$SYSTEM" = "leconte" ] ; then
-  rm -f *.csv ; make dagger_runner kernel.ptx
+  rm -f *.csv ; make dagger_runner kernel.ptx kernel.openmp.so
 elif [ "$SYSTEM" = "equinox" ] ; then
-  rm -f *.csv ; make dagger_runner kernel.ptx
+  rm -f *.csv ; make dagger_runner kernel.ptx kernel.openmp.so
 elif [ "$SYSTEM" = "oswald" ] ; then
-  rm -f *.csv ; make dagger_runner kernel.ptx
+  rm -f *.csv ; make dagger_runner kernel.ptx kernel.openmp.so
 elif [ "$SYSTEM" = "explorer" ] ; then
-  rm -f *.csv ; make dagger_runner kernel.hip
+  rm -f *.csv ; make dagger_runner kernel.hip kernel.openmp.so
 elif [ "$SYSTEM" = "radeon" ] ; then
-  rm -f *.csv ; make dagger_runner kernel.hip
+  rm -f *.csv ; make dagger_runner kernel.hip kernel.openmp.so
 elif [ "$SYSTEM" = "zenith" ] ; then
-  rm -f *.csv ; make dagger_runner kernel.hip kernel.ptx
+  rm -f *.csv ; make dagger_runner kernel.hip kernel.ptx kernel.openmp.so
 elif [ "$SYSTEM" = "orc-open-hyp" ] ; then
-  rm -f *.csv ; make dagger_runner kernel.hip kernel.ptx
+  rm -f *.csv ; make dagger_runner kernel.hip kernel.ptx kernel.openmp.so
 else
    echo "Unknown system ($SYSTEM)." && exit 1
 fi
