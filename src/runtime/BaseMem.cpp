@@ -3,6 +3,21 @@
 
 namespace iris {
 namespace rt {
+void BaseMem::HostRecordEvent(int devno, int stream) 
+{
+    HostLock();
+    if (d2h_events_[devno] == NULL) {
+        Device *dev = archs_dev_[devno];
+        dev->CreateEvent(&d2h_events_[devno], iris_event_default);
+    }
+    void **host_event = GetHostCompletionEventPtr();
+    if (*host_event != d2h_events_[devno]) {
+        _debug2("Recording event mem:%lu dev:%d stream:%d event:%p\n", uid(), devno, stream, d2h_events_[devno]);
+        archs_dev_[devno]->RecordEvent(d2h_events_[devno], stream);
+        *host_event = d2h_events_[devno];
+    }
+    HostUnlock();
+}
 void BaseMem::RecordEvent(int devno, int stream) {
     if (GetCompletionEvent(devno) == NULL) {
         Device *dev = archs_dev_[devno];

@@ -33,6 +33,7 @@ namespace rt {
                 size_ = 0;
                 ndevs_ = ndevs;
                 device_map_ = new BaseMemDevice[ndevs_+1];
+                d2h_events_ = new void *[ndevs_];
                 for (int i = 0; i < ndevs_; i++) {
                   archs_[i] = NULL;
                   archs_off_[i] = NULL;
@@ -40,7 +41,9 @@ namespace rt {
                   is_usm_[i] = false;
                   device_map_[i].Init(this, i);
                   recommended_stream_[i] = -1;
+                  d2h_events_[i] = NULL;
                 }
+                pthread_mutex_init(&host_mutex_, NULL);
                 // Special device map for host
                 device_map_[ndevs_].Init(this, -1);
                 Retain();
@@ -56,7 +59,14 @@ namespace rt {
             */
             void SetMemHandlerType(MemHandlerType type) { handler_type_ = type; }
             MemHandlerType GetMemHandlerType() { return handler_type_; }
+            void HostUnlock() {
+                pthread_mutex_unlock(&host_mutex_);
+            }
+            void HostLock() {
+                pthread_mutex_lock(&host_mutex_);
+            }
             virtual ~BaseMem() { 
+                pthread_mutex_destroy(&host_mutex_);
                 _trace("Memory object is deleted:%lu:%p", uid(), this);
                 for(int i=0; i<ndevs_; i++) {
                     if (GetCompletionEvent(i) != NULL) 
@@ -107,12 +117,13 @@ namespace rt {
             EventExchange *GetEventExchange(int devno) { return device_map_[devno].exchange(); }
             void *GetCompletionEvent(int devno) { return device_map_[devno].GetCompletionEvent(); }
             void **GetCompletionEventPtr(int devno) { return device_map_[devno].GetCompletionEventPtr(); }
-            void *GetHostCompletionEvent() { return device_map_[ndevs_].GetCompletionEvent(); }
-            void **GetHostCompletionEventPtr(int devno) { return device_map_[ndevs_].GetCompletionEventPtr(); }
             int GetHostWriteStream() { return device_map_[ndevs_].GetWriteStream(); }
             void SetHostWriteStream(int stream) { device_map_[ndevs_].SetWriteStream(stream); }
             int GetHostWriteDevice() { return device_map_[ndevs_].devno(); }
             void SetHostWriteDevice(int dev) { device_map_[ndevs_].set_devno(dev); }
+            void HostRecordEvent(int devno, int stream);
+            void *GetHostCompletionEvent() { return device_map_[ndevs_].GetCompletionEvent(); }
+            void **GetHostCompletionEventPtr() { return device_map_[ndevs_].GetCompletionEventPtr(); }
 #ifdef AUTO_PAR
   	    inline Task* get_current_writing_task() { return current_writing_task_;}
   	    inline void set_current_writing_task(Task* task) { current_writing_task_ = task;}
@@ -148,6 +159,8 @@ namespace rt {
             bool  reset_;
             bool  is_usm_[IRIS_MAX_NDEVS];
             BaseMemDevice *device_map_;
+            void **d2h_events_;
+            pthread_mutex_t host_mutex_;
 #ifdef AUTO_PAR
   	    Task* current_writing_task_;
   	    std::vector<Task*> read_task_list_;
