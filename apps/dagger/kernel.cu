@@ -40,8 +40,10 @@ extern "C" __global__ void bigk(double* C, double* A, double* B) {
   size_t SIZE = gridDim.x * blockDim.x;
 
   double sum = 0.0;
-  for (size_t k = 0; k < SIZE; k++) {
-    sum += A[i * SIZE + k] * B[k * SIZE + j];
+  for (size_t l = 0; l < 10; l++) {
+    for (size_t k = 0; k < SIZE; k++) {
+      sum += A[i * SIZE + k] * B[k * SIZE + j];
+    }
   }
   C[i * SIZE + j] += sum;
 }

@@ -5,7 +5,7 @@
 REPEATS=100
 
 execute_over_range () {
-  for i in {5..16}
+  for i in {5..10} #{5..16}
   do
     let SIZE="2**$i"
     $1 $SIZE $REPEATS $SIZE.csv;
@@ -15,7 +15,7 @@ execute_over_range () {
 
 make clean
 # ensure we have all the binaries
-make kernel.ptx kernel.hip kernel.openmp.so vecadd-iris vecadd-sycl vecadd-sycl-dpc++ vecadd-opensycl-openmp
+make kernel.ptx kernel.hip kernel.openmp.so vecadd-iris vecadd-sycl vecadd-sycl-dpc++ #vecadd-opensycl-openmp
 [ $? -ne 0 ] && exit
 
 #start with a clean log

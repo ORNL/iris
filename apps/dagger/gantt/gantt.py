@@ -18,11 +18,17 @@ class Gantt():
         self.use_device_background_colour = use_device_background_colour
         self.drop_memory_transfer_commands = drop_memory_transfer_commands
 
-    def _createGanttChart(self, timings, title=None, edgepalette=None, insidepalette=None, time_range=None, zoom=False, drop=[], outline=True, inner_label=False, timeline_output_file=None):
+    def _createGanttChart(self, timings, title=None, edgepalette=None, insidepalette=None, time_range=None, zoom=False, drop=[], outline=True, inner_label=False, timeline_output_file=None, show_task_legend=True):
         import numpy as np
         timings['taskname'] = np.where(~timings['taskname'].isnull(),timings['taskname'],timings['type'])
 
         for d in drop:
+          #we now also support wildcard characters for dropping
+          if "*" in d:
+            import re
+            regex = re.compile(d)
+            matches = [string for string in timings.taskname if re.match(regex, string)]
+            drop.extend(matches)
           timings = timings[timings.taskname != d]
 
         # to simplify rename the commands to the parent tasks name
@@ -109,8 +115,8 @@ class Gantt():
         # sort both labels and handles by labels
         handles, labels = ax.get_legend_handles_labels()
         neworder = dict(humansorted(zip(labels, handles)))
-        ax.legend(neworder.values(), neworder.keys(), title="Tasks",fontsize=8)#bbox_to_anchor=(0, .5), ncol = 1,
-
+        if show_task_legend:
+            ax.legend(neworder.values(), neworder.keys(), title="Tasks",fontsize=8)#bbox_to_anchor=(0, .5), ncol = 1,
         if time_range and not zoom:
             ax.set_xlim(time_range)
         elif zoom:
@@ -316,7 +322,7 @@ class DAG():
 
 
 class CombinePlots():
-    def __init__(self, timeline_file=None,dag_file=None,combined_output_file=None,timeline_output_file=None,dag_output_file=None,title_string=None,drop=None,drop_memory_transfer_commands=True,**kargs):
+    def __init__(self, timeline_file=None,dag_file=None,combined_output_file=None,timeline_output_file=None,dag_output_file=None,title_string=None,drop=None,drop_memory_transfer_commands=True,show_task_legend=True,**kargs):
         assert timeline_file is not None, f"timeline file not provided"
         assert dag_file is not None, f"dag file not provided"
         if combined_output_file is None and timeline_output_file is None and dag_output_file is None:
@@ -331,6 +337,7 @@ class CombinePlots():
         self.drop = drop
         self.title_string = title_string
         self.drop_memory_transfer_commands = drop_memory_transfer_commands
+        self.show_task_legend = show_task_legend
         self.kargs = kargs
         self.PlotBoth()
 
@@ -370,7 +377,7 @@ class CombinePlots():
         if 'use_device_background_colour' in self.kargs:
             use_device_background_colour = self.kargs['use_device_background_colour']
         gantt = Gantt(device_colour_palette=dag.device_colour_palette,use_device_background_colour=use_device_background_colour,drop_memory_transfer_commands=self.drop_memory_transfer_commands)
-        left = gantt.plotGanttChart(timing_log=self.timeline_file,drop=self.drop,title=self.title_string,time_range=time_range,outline=False,timeline_output_file=self.timeline_output_file)
+        left = gantt.plotGanttChart(timing_log=self.timeline_file,drop=self.drop,title=self.title_string,time_range=time_range,outline=False,timeline_output_file=self.timeline_output_file,show_task_legend=self.show_task_legend)
         if self.output_file is not None:
             self.write_pdf([left, right])
         return
@@ -396,6 +403,7 @@ if __name__ == '__main__':
     parser.add_argument('--no-colour-background-by-device', dest='use_device_background_colour', action='store_false')
     parser.add_argument('--colour-background-by-device', dest='use_device_background_colour', action='store_true')
     parser.add_argument('--no-show-kernel-legend', dest='show_kernel_legend', action='store_false')
+    parser.add_argument('--no-show-task-legend', dest='show_task_legend', action='store_false')
     parser.add_argument('--show-kernel-legend', dest='show_kernel_legend', action='store_true')
     parser.add_argument('--keep-memory-transfer-commands', dest='drop_memory_transfer_commands', action='store_false')
 
@@ -418,5 +426,5 @@ if __name__ == '__main__':
     if args.combinedout is None and args.timelineout is None and args.dagout is None:
         print("Incorrect Arguments. Please provide *at least* one output medium (--combined-out, --timeline-out, --dag-out)")
         sys.exit(1)
-    cp = CombinePlots(timeline_file=args.timeline, dag_file=args.dag, combined_output_file=args.combinedout, timeline_output_file=args.timelineout, dag_output_file=args.dagout, title_string=args.titlestring, drop=dropsy, use_device_background_colour=args.use_device_background_colour, show_kernel_legend=args.show_kernel_legend, drop_memory_transfer_commands=args.drop_memory_transfer_commands)
+    cp = CombinePlots(timeline_file=args.timeline, dag_file=args.dag, combined_output_file=args.combinedout, timeline_output_file=args.timelineout, dag_output_file=args.dagout, title_string=args.titlestring, drop=dropsy, use_device_background_colour=args.use_device_background_colour, show_kernel_legend=args.show_kernel_legend, drop_memory_transfer_commands=args.drop_memory_transfer_commands,show_task_legend=args.show_task_legend)
 
