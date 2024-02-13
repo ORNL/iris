@@ -159,12 +159,13 @@ def parse_args(pargs=None,additional_arguments=[]):
 
     #process local-workgroup-sizes
     #MARK can be used for offset and gws?
-    for i in args.local_sizes.split(','):
-        try:
-            kernel_name, dims = i.split(':')
-            _local_sizes[kernel_name] = [ int(x) for x in dims.split(' ') ]
-        except:
-            assert False, "Incorrect arguments given to --local-sizes. Broken on {}".format(i)
+    if args.local_sizes != None:
+        for i in args.local_sizes.split(','):
+            try:
+                kernel_name, dims = i.split(':')
+                _local_sizes[kernel_name] = [ int(x) for x in dims.split(' ') ]
+            except:
+                assert False, "Incorrect arguments given to --local-sizes. Broken on {}".format(i)
     return args
 
 def random_list(depth,total_num,width_min,width_max):
