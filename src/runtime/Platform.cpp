@@ -445,7 +445,7 @@ int Platform::InitCUDA() {
     _cuerror(err);
     devs_[ndevs_] = new DeviceCUDA(loaderCUDA_, loaderHost2CUDA_, dev, ndevs_, nplatforms_);
     arch_available_ |= devs_[ndevs_]->type();
-    cudevs[i] = dev;
+    cudevs[mdevs] = dev;
     ndevs_++;
     mdevs++;
 #ifdef ENABLE_SINGLE_DEVICE_PER_CU
@@ -505,7 +505,7 @@ int Platform::InitHIP() {
     hipDevice_t dev;
     err = loaderHIP_->hipDeviceGet(&dev, i);
     _hiperror(err);
-    hipdevs[i] = dev;
+    hipdevs[mdevs] = dev;
     devs_[ndevs_] = new DeviceHIP(loaderHIP_, loaderHost2HIP_, dev, i, ndevs_, nplatforms_);
     arch_available_ |= devs_[ndevs_]->type();
     ndevs_++;
