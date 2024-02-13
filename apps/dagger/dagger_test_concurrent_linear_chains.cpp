@@ -9,7 +9,6 @@
 #include <vector>
 #include <string>
 #include <cstring>
-#include <signal.h>
 #include <cmath>
 #include <limits>
 #include <ctype.h>
@@ -404,16 +403,14 @@ int indexer = 0;
         C[i] = i;
       }
       //reproduce test computation on the host
-      for (size_t z = 0; z < num_tasks; z++){
       for (size_t i = 0; i < SIZE; i++)
         for (size_t j = 0; j < SIZE; j++){
           double sum = 0.0;
             for (size_t k = 0; k < SIZE; k++) {
               sum += A[i * SIZE + k] * B[k * SIZE + j];
             }
-          C[i * SIZE + j] += sum;
+          C[i * SIZE + j] = sum;
         }
-      }
       double* D;
       for(auto concurrent_device = 0; concurrent_device < duplicates; concurrent_device++){
         printf("Validation on results, set no. %i with size = %zu\n",concurrent_device,SIZE);
