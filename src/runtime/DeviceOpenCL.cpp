@@ -430,7 +430,7 @@ int DeviceOpenCL::KernelLaunchInit(Command *cmd, Kernel* kernel) {
 int DeviceOpenCL::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws) {
   cl_int err;
   int stream_index = 0;
-  cl_command_queue *kstream = NULL;
+  cl_command_queue *kstream = &clcmdq_[0];
   bool async = false;
   int nstreams = 0;
   if (is_async(kernel->task(), false)) { //Disable stream policy check

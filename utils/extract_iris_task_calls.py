@@ -396,9 +396,9 @@ static int iris_kernel_idx = -1;
 #define iris_launch_with_obj iris_host2opencl_launch_with_obj
 #define iris_kernel_set_queue_with_obj iris_host2opencl_set_queue_with_obj
 #define iris_kernel_get_queue_with_obj iris_host2opencl_get_queue_with_obj
-#define HANDLE  iris_host2opencl_get_queue(), 
-#define HANDLE_WITH_OBJ iris_host2opencl_get_queue_with_obj(obj), 
-#define HANDLETYPE void *,
+#define HANDLE              //iris_host2opencl_get_queue(), 
+#define HANDLE_WITH_OBJ     //iris_host2opencl_get_queue_with_obj(obj), 
+#define HANDLETYPE          //void *,
 #define DEVICE_NUM devno,
 #define DEVICE_NUM_TYPE int,
 #define StreamType void **
