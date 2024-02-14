@@ -686,14 +686,16 @@ void DeviceHIP::CreateEvent(void **event, int flags)
     if (err != hipSuccess)
         worker_->platform()->IncrementErrorCount();
 }
-void DeviceHIP::RecordEvent(void *event, int stream)
+void DeviceHIP::RecordEvent(void **event, int stream)
 {
-    _trace(" event:%p stream:%d", event, stream);
+    _trace(" event:%p stream:%d", *event, stream);
     if (IsContextChangeRequired()) {
         ld_->hipCtxSetCurrent(ctx_);
     }
+    if (*event == NULL)
+        CreateEvent(event, iris_event_disable_timing);
     ASSERT(event != NULL && "Event shouldn't be null");
-    hipError_t err = ld_->hipEventRecord((hipEvent_t)event, streams_[stream]);
+    hipError_t err = ld_->hipEventRecord(*((hipEvent_t*)event), streams_[stream]);
     _hiperror(err);
     if (err != hipSuccess)
         worker_->platform()->IncrementErrorCount();

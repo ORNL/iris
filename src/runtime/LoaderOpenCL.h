@@ -53,6 +53,15 @@ CL_API_ENTRY cl_context CL_API_CALL
                 void *               user_data,
                 cl_int *             errcode_ret) CL_API_SUFFIX__VERSION_1_0;
 
+CL_API_ENTRY cl_int CL_API_CALL
+    (*clWaitForEvents)(cl_uint             num_events,
+            const cl_event *    event_list) CL_API_SUFFIX__VERSION_1_0;
+CL_API_ENTRY cl_int CL_API_CALL (*clEnqueueMarker)(	cl_command_queue command_queue,
+        cl_event *event);
+
+CL_API_ENTRY cl_int CL_API_CALL (*clEnqueueWaitForEvents)(	cl_command_queue command_queue,
+ 	cl_uint num_events,
+ 	const cl_event *event_list);
 CL_API_ENTRY cl_mem CL_API_CALL
 (*clCreateBuffer)(cl_context   context,
                cl_mem_flags flags,

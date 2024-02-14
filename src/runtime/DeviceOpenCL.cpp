@@ -47,7 +47,7 @@ std::string DeviceOpenCL::GetLoaderHost2OpenCLSuffix(LoaderOpenCL *ld, cl_device
 }
 DeviceOpenCL::DeviceOpenCL(LoaderOpenCL* ld, LoaderHost2OpenCL *host2opencl_ld, cl_device_id cldev, cl_context clctx, int devno, int ocldevno, int platform) : Device(devno, platform) {
   ld_ = ld;
-  set_async(false && Platform::GetPlatform()->is_async()); 
+  set_async(true && Platform::GetPlatform()->is_async()); 
   ocldevno_ = ocldevno;
   host2opencl_ld_ = host2opencl_ld;
   cldev_ = cldev;
@@ -677,6 +677,36 @@ int DeviceOpenCL::CreateProgram(const char* suffix, char** src, size_t* srclen) 
   return IRIS_ERROR;
 }
 
+void DeviceOpenCL::CreateEvent(void **event, int flags)
+{
+    *event = NULL;
+}
+void DeviceOpenCL::RecordEvent(void **event, int stream)
+{
+    cl_int err;
+    err = ld_->clEnqueueMarker(clcmdq_[stream], (cl_event*)event);
+    _clerror(err);
+}
+void DeviceOpenCL::WaitForEvent(void *event, int stream, int flags)
+{
+    cl_event event_arr[1];
+    event_arr[0] = (cl_event) event;
+    cl_int err;
+    err = ld_->clEnqueueWaitForEvents(clcmdq_[stream], 1, event_arr);
+    _clerror(err);
+}
+void DeviceOpenCL::DestroyEvent(void *event)
+{
+    // Do nothing
+}
+void DeviceOpenCL::EventSychronize(void *event)
+{
+    cl_event event_arr[1];
+    event_arr[0] = (cl_event) event;
+    cl_int err;
+    err = ld_->clWaitForEvents(1, event_arr);
+    _clerror(err);
+}
 int DeviceOpenCL::RecreateContext(){
   //for the device to interpret environment variables (such as AIWC) -- setenv(name, value, 1);
   cl_int err;

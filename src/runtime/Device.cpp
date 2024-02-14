@@ -702,7 +702,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
                 void *event = NULL;
                 //TODO: Is there a better way without disturbing the GetCompletionEvent DS of device
                 src_dev->CreateEvent(&event, iris_event_disable_timing);
-                src_dev->RecordEvent(event, src_mem_stream);
+                src_dev->RecordEvent(&event, src_mem_stream);
                 src_dev->EventSychronize(event);
                 src_dev->DestroyEvent(event);
             }
@@ -879,7 +879,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
                 void *event = NULL;
                 //TODO: Is there a better way without disturbing the GetCompletionEvent DS of device
                 src_dev->CreateEvent(&event, iris_event_disable_timing);
-                src_dev->RecordEvent(event, src_mem_stream);
+                src_dev->RecordEvent(&event, src_mem_stream);
                 src_dev->EventSychronize(event);
                 src_dev->DestroyEvent(event);
             }
@@ -1090,7 +1090,7 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
             if (is_async(task)) {
                 void *event = NULL;
                 src_dev->CreateEvent(&event, iris_event_disable_timing);
-                src_dev->RecordEvent(event, src_mem_stream);
+                src_dev->RecordEvent(&event, src_mem_stream);
                 src_dev->EventSychronize(event);
                 src_dev->DestroyEvent(event);
             }
@@ -1112,7 +1112,7 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
             if (is_async(task)) {
                 void *event = NULL;
                 CreateEvent(&event, iris_event_disable_timing);
-                RecordEvent(event, mem_stream);
+                RecordEvent(&event, mem_stream);
                 EventSychronize(event);
                 DestroyEvent(event);
             }
@@ -1445,11 +1445,6 @@ int Device::RegisterHooks() {
   hook_command_post_ = Platform::GetPlatform()->hook_command_post();
   return IRIS_SUCCESS;
 }
-void Device::RecordEvent(void **event, int stream) {
-    if (*event == NULL)
-        CreateEvent(event, iris_event_disable_timing);
-    RecordEvent(*event, stream);
-}
 int Device::RegisterCallback(int stream, CallBackType callback_fn, void *data, int flags)
 {
     _error("Device:%d:%s Invalid function call!", devno_, name()); 
@@ -1462,7 +1457,7 @@ void Device::CreateEvent(void **event, int flags) {
     //CPUEvent *levent = new CPUEvent();
     //*event = levent;
 }
-void Device::RecordEvent(void *event, int stream) {
+void Device::RecordEvent(void **event, int stream) {
     _error("Device:%d:%s Invalid function call!", devno_, name()); 
     worker_->platform()->IncrementErrorCount();
     //CPUEvent *levent = (CPUEvent *)event;

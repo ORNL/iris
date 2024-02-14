@@ -834,16 +834,18 @@ void DeviceCUDA::CreateEvent(void **event, int flags)
     if (err != CUDA_SUCCESS)
         worker_->platform()->IncrementErrorCount();
 }
-void DeviceCUDA::RecordEvent(void *event, int stream)
+void DeviceCUDA::RecordEvent(void **event, int stream)
 {
     if (IsContextChangeRequired()) {
         ld_->cuCtxSetCurrent(ctx_);
     }
+    if (*event == NULL)
+        CreateEvent(event, iris_event_disable_timing);
     CUresult err;
     if (stream == 0)
-        err = ld_->cuEventRecord((CUevent)event, streams_[stream]);
+        err = ld_->cuEventRecord(*((CUevent *)event), streams_[stream]);
     else
-        err = ld_->cuEventRecord((CUevent)event, streams_[stream]);
+        err = ld_->cuEventRecord(*((CUevent *)event), streams_[stream]);
     _cuerror(err);
     if (err != CUDA_SUCCESS)
         worker_->platform()->IncrementErrorCount();

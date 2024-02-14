@@ -42,8 +42,7 @@ public:
   void ExecuteMalloc(Command* cmd);
   void RegisterHost(BaseMem *mem);
   virtual void CreateEvent(void **event, int flags);
-  virtual void RecordEvent(void *event, int stream);
-  void RecordEvent(void **event, int stream);
+  virtual void RecordEvent(void **event, int stream);
   virtual void WaitForEvent(void *event, int stream, int flags=0);
   virtual void DestroyEvent(void *event);
   virtual void EventSychronize(void *event);

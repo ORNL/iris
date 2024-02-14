@@ -16,7 +16,7 @@ namespace iris
             fired = true;
             _debug2("Broadcast fire:%d mem:%lu src_mem_stream:%d src_dev:%d dev:%d mem_stream:%d object:%p", fired, uid_, src_mem_stream_, src_devno_, devno_, dest_mem_stream_, this);
             dest_dev_->ResetContext();
-            dest_dev_->RecordEvent(dest_event_, 0);
+            dest_dev_->RecordEvent(&dest_event_, 0);
             _debug2("Broadcast completed fire:%d mem:%lu src_mem_stream:%d src_dev:%d dev:%d mem_stream:%d object:%p", fired, uid_, src_mem_stream_, src_devno_, devno_, dest_mem_stream_, this);
         }
         void SrcCentricGPUEventExchange::Wait()

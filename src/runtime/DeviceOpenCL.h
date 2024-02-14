@@ -40,7 +40,11 @@ public:
 
 private:
   int CreateProgram(const char* suffix, char** src, size_t* srclen);
-
+  void CreateEvent(void **event, int flags);
+  void RecordEvent(void **event, int stream);
+  void WaitForEvent(void *event, int stream, int flags);
+  void DestroyEvent(void *event);
+  void EventSychronize(void *event);
 private:
   LoaderOpenCL* ld_;
   LoaderHost2OpenCL *host2opencl_ld_;
