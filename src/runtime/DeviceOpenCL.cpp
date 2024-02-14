@@ -47,7 +47,7 @@ std::string DeviceOpenCL::GetLoaderHost2OpenCLSuffix(LoaderOpenCL *ld, cl_device
 }
 DeviceOpenCL::DeviceOpenCL(LoaderOpenCL* ld, LoaderHost2OpenCL *host2opencl_ld, cl_device_id cldev, cl_context clctx, int devno, int ocldevno, int platform) : Device(devno, platform) {
   ld_ = ld;
-  set_async(true && Platform::GetPlatform()->is_async()); 
+  set_async(false && Platform::GetPlatform()->is_async()); 
   ocldevno_ = ocldevno;
   host2opencl_ld_ = host2opencl_ld;
   cldev_ = cldev;
@@ -244,9 +244,11 @@ int DeviceOpenCL::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_siz
   cl_mem clmem = (cl_mem) mem->arch(this, host);
   if (mem->is_usm(devno())) return IRIS_SUCCESS;
   int stream_index = 0;
+  bool async = false;
   if (is_async(task)) {
       stream_index = GetStream(task, mem); //task->uid() % nqueues_; 
-      if (stream_index == DEFAULT_STREAM_INDEX) { stream_index = 0; }
+      async = true;
+      if (stream_index == DEFAULT_STREAM_INDEX) { async = false; stream_index = 0; }
   }
   cl_int err;
   if (dim == 2 || dim ==3) {
@@ -296,9 +298,11 @@ int DeviceOpenCL::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_siz
   cl_mem clmem = (cl_mem) mem->arch(this, host);
   if (mem->is_usm(devno())) return IRIS_SUCCESS;
   int stream_index = 0;
+  bool async = false;
   if (is_async(task)) {
       stream_index = GetStream(task, mem); //task->uid() % nqueues_; 
-      if (stream_index == DEFAULT_STREAM_INDEX) { stream_index = 0; }
+      async = true;
+      if (stream_index == DEFAULT_STREAM_INDEX) { async = false; stream_index = 0; }
   }
   cl_int err;
   if (dim == 2 || dim ==3) {
