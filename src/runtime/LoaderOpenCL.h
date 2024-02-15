@@ -16,6 +16,8 @@ public:
   const char* library();
   int LoadFunctions();
 
+CL_API_ENTRY cl_int CL_API_CALL
+(*clReleaseEvent)(cl_event event) CL_API_SUFFIX__VERSION_1_0;
 cl_int
 (*clGetPlatformIDs)(cl_uint          num_entries,
                  cl_platform_id * platforms,

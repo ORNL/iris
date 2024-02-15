@@ -870,7 +870,7 @@ void DeviceCUDA::DestroyEvent(void *event)
     if (err != CUDA_SUCCESS)
         worker_->platform()->IncrementErrorCount();
 }
-void DeviceCUDA::EventSychronize(void *event)
+void DeviceCUDA::EventSynchronize(void *event)
 {
     if (IsContextChangeRequired()) {
         ld_->cuCtxSetCurrent(ctx_);

@@ -724,7 +724,7 @@ void DeviceHIP::DestroyEvent(void *event)
     if (err != hipSuccess)
         worker_->platform()->IncrementErrorCount();
 }
-void DeviceHIP::EventSychronize(void *event)
+void DeviceHIP::EventSynchronize(void *event)
 {
     _trace(" event:%p ", event);
     ASSERT(event != NULL && "Event shouldn't be null");

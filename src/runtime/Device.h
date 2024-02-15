@@ -45,7 +45,7 @@ public:
   virtual void RecordEvent(void **event, int stream);
   virtual void WaitForEvent(void *event, int stream, int flags=0);
   virtual void DestroyEvent(void *event);
-  virtual void EventSychronize(void *event);
+  virtual void EventSynchronize(void *event);
   void ProactiveTransfers(Task *task, Command *cmd);
   void WaitForTaskInputAvailability(int devno, Task *task, Command *cmd);
   template <typename DMemType>

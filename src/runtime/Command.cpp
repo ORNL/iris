@@ -223,6 +223,7 @@ Command* Command::CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off,
       _error("no mem[%p] task[%ld:%s]", ((iris_mem*) param), task->uid(), task->name());
       continue;
     }
+    if (mem->GetMemHandlerType() == IRIS_MEM) kernel->add_mem((Mem*)mem, i, param_info);
     if (mem->GetMemHandlerType() == IRIS_DMEM) kernel->add_dmem((DataMem *)mem, i, param_info);
     if (mem->GetMemHandlerType() == IRIS_DMEM_REGION) kernel->add_dmem_region((DataMemRegion *)mem, i, param_info);
     arg->mem = mem;

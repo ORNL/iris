@@ -46,7 +46,7 @@ public:
   void RecordEvent(void **event, int stream);
   void WaitForEvent(void *event, int stream, int flags=0);
   void DestroyEvent(void *event);
-  void EventSychronize(void *event);
+  void EventSynchronize(void *event);
 
 private:
   LoaderHIP* ld_;

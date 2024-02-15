@@ -47,7 +47,7 @@ std::string DeviceOpenCL::GetLoaderHost2OpenCLSuffix(LoaderOpenCL *ld, cl_device
 }
 DeviceOpenCL::DeviceOpenCL(LoaderOpenCL* ld, LoaderHost2OpenCL *host2opencl_ld, cl_device_id cldev, cl_context clctx, int devno, int ocldevno, int platform) : Device(devno, platform) {
   ld_ = ld;
-  set_async(false && Platform::GetPlatform()->is_async()); 
+  set_async(true && Platform::GetPlatform()->is_async()); 
   ocldevno_ = ocldevno;
   host2opencl_ld_ = host2opencl_ld;
   cldev_ = cldev;
@@ -80,6 +80,7 @@ DeviceOpenCL::DeviceOpenCL(LoaderOpenCL* ld, LoaderHost2OpenCL *host2opencl_ld, 
   for (int i = 0; i < nqueues_; i++) {
     clcmdq_[i] = NULL;
   }
+  default_queue_ = NULL;
   if (IsDeviceValid()) {
       _info("device[%d] platform[%d] vendor[%s] device[%s] type[0x%x:%d] version[%s] max_compute_units[%zu] max_work_group_size[%zu] max_work_item_sizes[%zu,%zu,%zu] compiler_available[%d]", devno_, platform_, vendor_, name_, type_, type_, version_, max_compute_units_, max_work_group_size_, max_work_item_sizes_[0], max_work_item_sizes_[1], max_work_item_sizes_[2], compiler_available_);
   }
@@ -93,6 +94,10 @@ DeviceOpenCL::~DeviceOpenCL() {
           _clerror(err);
       }
     }
+    if (default_queue_) {
+        cl_int err = ld_->clReleaseCommandQueue(default_queue_);
+        _clerror(err);
+    }
 }
 
 int DeviceOpenCL::Init() {
@@ -103,10 +108,10 @@ int DeviceOpenCL::Init() {
       }
   }
   else {
-      clcmdq_[0] = ld_->clCreateCommandQueue(clctx_, cldev_, 0, &err);
-      _clerror(err);
-      nqueues_ = 1;
+      nqueues_ = 0;
   }
+  default_queue_ = ld_->clCreateCommandQueue(clctx_, cldev_, 0, &err);
+  _clerror(err);
   host2opencl_ld_->init(ocldevno_);
   if (err != CL_SUCCESS){
     worker_->platform()->IncrementErrorCount();
@@ -202,13 +207,15 @@ int DeviceOpenCL::BuildProgram(char* path) {
 int DeviceOpenCL::ResetMemory(Task *task, BaseMem *mem, uint8_t reset_value) {
     cl_mem clmem = (cl_mem) mem->arch(this);
     int stream_index = 0;
+    cl_command_queue queue = default_queue_;
     if (is_async(task)) {
         stream_index = GetStream(task); //task->uid() % nqueues_; 
         if (stream_index == DEFAULT_STREAM_INDEX) { stream_index = 0; }
+        queue = clcmdq_[stream_index];
     }
     cl_int err;
     int value_to_fill = (int)reset_value;
-    err = ld_->clEnqueueFillBuffer(clcmdq_[stream_index], clmem, &value_to_fill, sizeof(uint8_t), 0, mem->size(), 0, NULL, NULL);
+    err = ld_->clEnqueueFillBuffer(queue, clmem, &value_to_fill, sizeof(uint8_t), 0, mem->size(), 0, NULL, NULL);
     _clerror(err);
     //_error("Reset memory is not implemented yet !");
     return IRIS_ERROR;
@@ -244,11 +251,13 @@ int DeviceOpenCL::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_siz
   cl_mem clmem = (cl_mem) mem->arch(this, host);
   if (mem->is_usm(devno())) return IRIS_SUCCESS;
   int stream_index = 0;
+  cl_command_queue queue = default_queue_;
   bool async = false;
   if (is_async(task)) {
       stream_index = GetStream(task, mem); //task->uid() % nqueues_; 
       async = true;
       if (stream_index == DEFAULT_STREAM_INDEX) { async = false; stream_index = 0; }
+      queue = clcmdq_[stream_index];
   }
   cl_int err;
   if (dim == 2 || dim ==3) {
@@ -260,7 +269,7 @@ int DeviceOpenCL::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_siz
       size_t host_origin[3] = {off[0] * elem_size, off[1], off[2]};
       size_t region[3] = { dev_sizes[0]*elem_size, dev_sizes[1], dev_sizes[2] };
       _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu,%lu,%lu] host_sizes[%lu,%lu,%lu] dev_sizes[%lu,%lu,%lu] size[%lu] host[%p]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), clmem, off[0], off[1], off[2], host_sizes[0], host_sizes[1], host_sizes[2], dev_sizes[0], dev_sizes[1], dev_sizes[2], size, host);
-      err = ld_->clEnqueueWriteBufferRect(clcmdq_[stream_index], clmem, CL_TRUE, buffer_origin, host_origin, region, dev_row_pitch, dev_slice_pitch, host_row_pitch, host_slice_pitch, host, 0, NULL, NULL);
+      err = ld_->clEnqueueWriteBufferRect(queue, clmem, CL_TRUE, buffer_origin, host_origin, region, dev_row_pitch, dev_slice_pitch, host_row_pitch, host_slice_pitch, host, 0, NULL, NULL);
 #if 0
       float *hostA = new float[dev_sizes[0] * dev_sizes[1]];
       int SIZE = dev_sizes[0]*dev_sizes[1];
@@ -276,7 +285,7 @@ int DeviceOpenCL::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_siz
   }
   else {
       _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), clmem, off[0], size, host, stream_index);
-      err = ld_->clEnqueueWriteBuffer(clcmdq_[stream_index], clmem, CL_TRUE, off[0], size, host, 0, NULL, NULL);
+      err = ld_->clEnqueueWriteBuffer(queue, clmem, CL_TRUE, off[0], size, host, 0, NULL, NULL);
 #if 0
       printf("H2D: Dev%d: ", devno_);
       float *A = (float *) host;
@@ -299,10 +308,12 @@ int DeviceOpenCL::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_siz
   if (mem->is_usm(devno())) return IRIS_SUCCESS;
   int stream_index = 0;
   bool async = false;
+  cl_command_queue queue = default_queue_;
   if (is_async(task)) {
       stream_index = GetStream(task, mem); //task->uid() % nqueues_; 
       async = true;
       if (stream_index == DEFAULT_STREAM_INDEX) { async = false; stream_index = 0; }
+      queue = clcmdq_[stream_index];
   }
   cl_int err;
   if (dim == 2 || dim ==3) {
@@ -314,11 +325,11 @@ int DeviceOpenCL::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_siz
       size_t host_origin[3] = {off[0] * elem_size, off[1], off[2]};
       size_t region[3] = { dev_sizes[0]*elem_size, dev_sizes[1], dev_sizes[2] };
       _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu,%lu,%lu] host_sizes[%lu,%lu,%lu] dev_sizes[%lu,%lu,%lu] size[%lu] host[%p]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), clmem, off[0], off[1], off[2], host_sizes[0], host_sizes[1], host_sizes[2], dev_sizes[0], dev_sizes[1], dev_sizes[2], size, host);
-      err = ld_->clEnqueueReadBufferRect(clcmdq_[stream_index], clmem, CL_TRUE, buffer_origin, host_origin, region, dev_row_pitch, dev_slice_pitch, host_row_pitch, host_slice_pitch, host, 0, NULL, NULL);
+      err = ld_->clEnqueueReadBufferRect(queue, clmem, CL_TRUE, buffer_origin, host_origin, region, dev_row_pitch, dev_slice_pitch, host_row_pitch, host_slice_pitch, host, 0, NULL, NULL);
   }
   else {
       _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d] ref_cnt[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), clmem, off[0], size, host, stream_index, task->ref_cnt());
-      err = ld_->clEnqueueReadBuffer(clcmdq_[stream_index], clmem, CL_TRUE, off[0], size, host, 0, NULL, NULL);
+      err = ld_->clEnqueueReadBuffer(queue, clmem, CL_TRUE, off[0], size, host, 0, NULL, NULL);
 #if 0
       printf("D2H: Dev:%d: ", devno_);
       float *A = (float *) host;
@@ -419,8 +430,8 @@ void DeviceOpenCL::CheckVendorSpecificKernel(Kernel *kernel) {
 }
 int DeviceOpenCL::KernelLaunchInit(Command *cmd, Kernel* kernel) {
     int stream_index = 0;
-    cl_command_queue *kstream = NULL;
-    int nstreams = 0;
+    cl_command_queue *kstream = &default_queue_;
+    int nstreams = 1;
     if (is_async(kernel->task(), false)) {
         stream_index = GetStream(kernel->task()); //task->uid() % nqueues_; 
         if (stream_index == DEFAULT_STREAM_INDEX) { stream_index = 0; }
@@ -434,9 +445,9 @@ int DeviceOpenCL::KernelLaunchInit(Command *cmd, Kernel* kernel) {
 int DeviceOpenCL::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws) {
   cl_int err;
   int stream_index = 0;
-  cl_command_queue *kstream = &clcmdq_[0];
+  cl_command_queue *kstream = &default_queue_;
   bool async = false;
-  int nstreams = 0;
+  int nstreams = 1;
   if (is_async(kernel->task(), false)) { //Disable stream policy check
       stream_index = GetStream(kernel->task()); //task->uid() % nqueues_; 
       async = true;
@@ -451,7 +462,7 @@ int DeviceOpenCL::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws
                  kernel->GetParamWrapperMemory(), ocldevno_,
                  dim, off, gws) == IRIS_SUCCESS) {
          if (!async) {
-             err = ld_->clFinish(clcmdq_[stream_index]);
+             err = ld_->clFinish(*kstream);
              _clerror(err);
              if (err != CL_SUCCESS){
                  _error("dev[%d][%s] task[%ld:%s] kernel launch::%ld:%s failed q[%d]", devno_, name_, kernel->task()->uid(), kernel->task()->name(), kernel->uid(), kernel->name(), stream_index);
@@ -474,14 +485,14 @@ int DeviceOpenCL::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws
           block[0], block[1], block[2]
           );
   cl_kernel clkernel = (cl_kernel) kernel->arch(this);
-  err = ld_->clEnqueueNDRangeKernel(clcmdq_[stream_index], clkernel, (cl_uint) dim, (const size_t*) off, (const size_t*) gws, (const size_t*) block, 0, NULL, NULL);
+  err = ld_->clEnqueueNDRangeKernel(*kstream, clkernel, (cl_uint) dim, (const size_t*) off, (const size_t*) gws, (const size_t*) block, 0, NULL, NULL);
   _clerror(err);
   if (err != CL_SUCCESS){
     worker_->platform()->IncrementErrorCount();
     return IRIS_ERROR;
   }
   if (!async) {
-      err = ld_->clFinish(clcmdq_[stream_index]);
+      err = ld_->clFinish(*kstream);
       _clerror(err);
       if (err != CL_SUCCESS){
           worker_->platform()->IncrementErrorCount();
@@ -499,6 +510,12 @@ int DeviceOpenCL::Synchronize() {
         worker_->platform()->IncrementErrorCount();
         return IRIS_ERROR;
       }
+  }
+  cl_int err = ld_->clFinish(default_queue_);
+  _clerror(err);
+  if (err != CL_SUCCESS){
+    worker_->platform()->IncrementErrorCount();
+    return IRIS_ERROR;
   }
   return IRIS_SUCCESS;
 }
@@ -701,9 +718,10 @@ void DeviceOpenCL::WaitForEvent(void *event, int stream, int flags)
 }
 void DeviceOpenCL::DestroyEvent(void *event)
 {
-    // Do nothing
+    cl_int err = ld_->clReleaseEvent((cl_event)event);
+    _clerror(err);
 }
-void DeviceOpenCL::EventSychronize(void *event)
+void DeviceOpenCL::EventSynchronize(void *event)
 {
     cl_event event_arr[1];
     event_arr[0] = (cl_event) event;

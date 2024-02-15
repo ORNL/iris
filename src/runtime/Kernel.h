@@ -64,6 +64,7 @@ public:
   Platform* platform() { return platform_; }
   shared_ptr<History> history() { return history_; }
   map<BaseMem*, int> & in_mems() { return in_mem_track_; }
+  map<BaseMem*, int> & out_mems() { return out_mem_track_; }
   map<BaseMem*, int> & mems() { return mem_track_; }
   map<int, DataMem *> & data_mems_in() { return data_mems_in_; }
   map<int, DataMem *> & data_mems_out() { return data_mems_out_; }
@@ -89,6 +90,7 @@ public:
   void* arch(Device* dev, bool report_error=true);
   int set_order(int *order);
   int isSupported(Device* dev);
+  void add_mem(Mem *mem, int idx, int mode);
   void add_dmem(DataMem *mem, int idx, int mode);
   void add_dmem_region(DataMemRegion *mem, int idx, int mode);
   void **GetCompletionEventPtr() { return async_data_.GetCompletionEventPtr(); }
@@ -120,6 +122,7 @@ private:
   vector<int> data_mems_in_order_;
   vector<BaseMem *> all_data_mems_in_;
   std::map<BaseMem *, int> in_mem_track_;
+  std::map<BaseMem *, int> out_mem_track_;
   std::map<BaseMem *, int> mem_track_;
   std::map<int, DataMem *> data_mems_in_;
   std::map<int, DataMemRegion *> data_mem_regions_in_;

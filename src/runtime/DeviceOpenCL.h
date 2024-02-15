@@ -44,7 +44,7 @@ private:
   void RecordEvent(void **event, int stream);
   void WaitForEvent(void *event, int stream, int flags);
   void DestroyEvent(void *event);
-  void EventSychronize(void *event);
+  void EventSynchronize(void *event);
 private:
   LoaderOpenCL* ld_;
   LoaderHost2OpenCL *host2opencl_ld_;
@@ -52,6 +52,7 @@ private:
   cl_device_id cldev_;
   cl_context clctx_;
   cl_command_queue clcmdq_[IRIS_MAX_DEVICE_NQUEUES];
+  cl_command_queue default_queue_;
   cl_program clprog_;
   cl_device_type cltype_;
   cl_bool compiler_available_;

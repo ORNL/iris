@@ -32,6 +32,7 @@ namespace rt {
                 reset_ = false;
                 size_ = 0;
                 ndevs_ = ndevs;
+                write_dev_ = -1;
                 device_map_ = new BaseMemDevice[ndevs_+1];
                 d2h_events_ = new void *[ndevs_];
                 for (int i = 0; i < ndevs_; i++) {
@@ -104,11 +105,14 @@ namespace rt {
                     device_map_[i].Clear();
                 }
                 device_map_[ndevs_].ClearDevice();
+                write_dev_ = -1;
             }
             void ClearAndAddWaitEvent(int devno, void *event) { device_map_[devno].ClearAndAddWaitEvent(event); }
             void AddWaitEvent(int devno, void *event) { device_map_[devno].AddWaitEvent(event); }
             void ClearWaitEvents(int devno) { device_map_[devno].ClearWaitEvents(); }
             vector<void *> & GetWaitEvents(int devno) { return device_map_[devno].GetWaitEvents(); }
+            void SetWriteDevice(int devno) { write_dev_ = devno; }
+            int GetWriteDevice() { return write_dev_; }
             int GetWriteStream(int devno) { return device_map_[devno].GetWriteStream(); }
             void SetWriteStream(int devno, int stream) { device_map_[devno].SetWriteStream(stream); }
             bool IsProactive(int devno) { return device_map_[devno].IsProactive(); }
@@ -159,6 +163,7 @@ namespace rt {
             bool  reset_;
             bool  is_usm_[IRIS_MAX_NDEVS];
             BaseMemDevice *device_map_;
+            int write_dev_;
             void **d2h_events_;
             pthread_mutex_t host_mutex_;
 #ifdef AUTO_PAR

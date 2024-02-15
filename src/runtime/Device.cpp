@@ -490,8 +490,8 @@ void Device::WaitForTaskInputAvailability(int devno, Task *task, Command *cmd)
     for(auto && z : cmd->kernel()->in_mems()) {
         BaseMem *mem = z.first;
         int idx = z.second;
-        if (mem->GetMemHandlerType() == IRIS_MEM) continue;
-        DataMem *dmem = (DataMem *)mem;
+        //if (mem->GetMemHandlerType() == IRIS_MEM) continue;
+        BaseMem *dmem = (BaseMem *)mem;
         int task_stream = GetStream(task);
         int dmem_stream = dmem->GetWriteStream(devno);
         void *event = dmem->GetCompletionEvent(devno);
@@ -703,7 +703,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
                 //TODO: Is there a better way without disturbing the GetCompletionEvent DS of device
                 src_dev->CreateEvent(&event, iris_event_disable_timing);
                 src_dev->RecordEvent(&event, src_mem_stream);
-                src_dev->EventSychronize(event);
+                src_dev->EventSynchronize(event);
                 src_dev->DestroyEvent(event);
             }
         }
@@ -742,7 +742,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
             //WaitForEvent(event, mem_stream, iris_event_wait_default);
             Device *src_dev = Platform::GetPlatform()->device(write_dev);
             _debug3("*********** H2D    dev[%d][%s] -> dev[%d][%s] mem_stream:%d written_stream:%d", src_dev->devno(), src_dev->name(), devno(), name(), mem_stream, written_stream);
-            src_dev->EventSychronize(event);
+            src_dev->EventSynchronize(event);
             _debug3("Event synchronization done\n");
             //TODO: Optimize this later
         }
@@ -861,7 +861,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
 #endif
                 //ResetContext();
 #ifdef HALT_UNTIL
-                src_dev->EventSychronize(src_event);
+                src_dev->EventSynchronize(src_event);
 #else // HALT_UNTIL
                 RegisterCallback(mem_stream, 
                         BaseEventExchange::Wait, 
@@ -880,7 +880,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
                 //TODO: Is there a better way without disturbing the GetCompletionEvent DS of device
                 src_dev->CreateEvent(&event, iris_event_disable_timing);
                 src_dev->RecordEvent(&event, src_mem_stream);
-                src_dev->EventSychronize(event);
+                src_dev->EventSynchronize(event);
                 src_dev->DestroyEvent(event);
             }
         }
@@ -1007,40 +1007,26 @@ void Device::ExecuteMemOut(Task *task, Command* cmd) {
     if (cmd == NULL || cmd->kernel() == NULL) return;
     int *params_map = cmd->get_params_map();
     //int nargs = cmd->kernel_nargs();
-    for(pair<int, DataMem *> it : cmd->kernel()->data_mems_out()) {
-        int idx = it.first;
-        DataMem *mem = it.second;
+    for(auto && z : cmd->kernel()->out_mems()) {
+        BaseMem *mem = z.first;
+        int idx = z.second;
         if (params_map != NULL && 
                 (params_map[idx] & iris_all) == 0 && 
                 !(params_map[idx] & type_) ) continue;
-        mem->set_dirty_except(devno_);
-        mem->set_host_dirty();
+        if (mem->GetMemHandlerType() == IRIS_DMEM ||
+                mem->GetMemHandlerType() == IRIS_DMEM_REGION) {
+            DataMem *dmem = (DataMem *)mem;
+            dmem->set_dirty_except(devno_);
+            dmem->set_host_dirty();
+        }
         if (is_async(task)) {
             int mem_stream = task->recommended_stream();
             mem->clear_streams();
             mem->SetWriteStream(devno(), mem_stream);
+            mem->SetWriteDevice(devno());
             mem->RecordEvent(devno(), mem_stream);
             _debug3("   task:[%lu][%s] output dmem:%lu stream:%d, dev:%d\n", task->uid(), task->name(), mem->uid(), mem_stream, devno());
         }
-        //mem->ClearAndAddWaitEvent(devno(), cmd->kernel()->GetCompletionEvent());
-    }
-    for(pair<int, DataMemRegion *> it : cmd->kernel()->data_mem_regions_out()) {
-        int idx = it.first;
-        DataMemRegion *mem = it.second;
-        if (params_map != NULL && 
-                (params_map[idx] & iris_all) == 0 && 
-                !(params_map[idx] & type_) ) continue;
-        mem->set_dirty_except(devno_);
-        mem->set_host_dirty();
-        if (is_async(task)) {
-            int mem_stream = task->recommended_stream();
-            mem->clear_streams();
-            mem->SetWriteStream(devno(), mem_stream);
-            mem->RecordEvent(devno(), mem_stream);
-            _debug3("   task:[%lu][%s] output dmem:%lu stream:%d, dev:%d event:%p\n", task->uid(), task->name(), mem->uid(), mem_stream, devno(), mem->GetCompletionEvent(devno()));
-        }
-        //mem->SetWriteStream(devno(), task->recommended_stream());
-        //mem->ClearAndAddWaitEvent(devno(), cmd->kernel()->GetCompletionEvent());
     }
 }
 void Device::ExecuteMemFlushOut(Command* cmd) {
@@ -1091,7 +1077,7 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
                 void *event = NULL;
                 src_dev->CreateEvent(&event, iris_event_disable_timing);
                 src_dev->RecordEvent(&event, src_mem_stream);
-                src_dev->EventSychronize(event);
+                src_dev->EventSynchronize(event);
                 src_dev->DestroyEvent(event);
             }
             if (context_shift) ResetContext();
@@ -1113,7 +1099,7 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
                 void *event = NULL;
                 CreateEvent(&event, iris_event_disable_timing);
                 RecordEvent(&event, mem_stream);
-                EventSychronize(event);
+                EventSynchronize(event);
                 DestroyEvent(event);
             }
         }
@@ -1314,6 +1300,7 @@ void Device::ExecuteH2D(Command* cmd, Device *dev) {
   size_t size = cmd->size();
   bool exclusive = cmd->exclusive();
   void* host = cmd->host();
+
   if (exclusive) mem->SetOwner(off, size, this);
   else mem->AddOwner(off, size, this);
   timer_->Start(IRIS_TIMER_H2D);
@@ -1366,11 +1353,35 @@ void Device::ExecuteD2H(Command* cmd) {
   cmd->set_time_start(timer_);
   errid_ = IRIS_SUCCESS;
 
+  Task *task = cmd->task();
+  bool async = is_async(task);
+  int mem_stream = -1;
+  if (async) {
+      mem_stream = GetStream(task, mem, true);
+      int write_dev = mem->GetWriteDevice();
+      if (write_dev != -1) {
+          int written_stream  = mem->GetWriteStream(write_dev);
+          if (written_stream != -1) {
+              void *event = mem->GetCompletionEvent(write_dev);
+              //The upcoming D2H depends on previous complete event
+              WaitForEvent(event, mem_stream, iris_event_wait_default);
+              //printf("Event:%p mem_stream:%d write_dev:%d dev:%d\n", event, mem_stream, write_dev, devno_);
+          }
+      }
+  }
   if (mode & iris_reduction) {
     errid_ = MemD2H(cmd->task(), mem, ptr_off, gws, lws, elem_size, dim, mem->size() * expansion, mem->host_inter());
     Reduction::GetInstance()->Reduce(mem, host, size);
   } else errid_ = MemD2H(cmd->task(), mem, ptr_off, gws, lws, elem_size, dim, size, host);
   if (errid_ != IRIS_SUCCESS) _error("iret[%d] dev[%d][%s]", errid_, devno(), name());
+  //printf("D2H mem_stream:%d\n", mem_stream);
+  if (async && model_ == iris_opencl) {
+    void *event = NULL;
+    CreateEvent(&event, iris_event_disable_timing);
+    RecordEvent(&event, mem_stream);
+    EventSynchronize(event);
+    DestroyEvent(event);
+  }
   cmd->set_time_end(timer_);
   double time = timer_->Stop(IRIS_TIMER_D2H);
   cmd->SetTime(time);
@@ -1475,7 +1486,7 @@ void Device::DestroyEvent(void *event) {
     //CPUEvent *levent = (CPUEvent *)event;
     //delete levent;
 }
-void Device::EventSychronize(void *event) {
+void Device::EventSynchronize(void *event) {
     _error("Device:%d:%s Invalid function call!", devno_, name()); 
     worker_->platform()->IncrementErrorCount();
 }

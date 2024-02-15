@@ -72,6 +72,7 @@ int Kernel::SetMem(int idx, BaseMem* mem, size_t off, int mode) {
     platform_->IncrementErrorCount();
     return IRIS_ERROR;
   }
+  if (mem->GetMemHandlerType() == IRIS_MEM) add_mem((Mem*)mem, idx, mode);
   if (mem->GetMemHandlerType() == IRIS_DMEM) add_dmem((DataMem *)mem, idx, mode);
   if (mem->GetMemHandlerType() == IRIS_DMEM_REGION) add_dmem_region((DataMemRegion *)mem, idx, mode);
   arg->mem = mem;
@@ -84,6 +85,20 @@ int Kernel::SetMem(int idx, BaseMem* mem, size_t off, int mode) {
   return IRIS_SUCCESS;
 }
 
+void Kernel::add_mem(Mem *mem, int idx, int mode)
+{
+    if (mode == iris_r) {
+        in_mem_track_.insert(make_pair((BaseMem *)mem, idx));
+    }
+    else if (mode == iris_w)  {
+        out_mem_track_.insert(make_pair((BaseMem *)mem, idx));
+    }
+    else if (mode == iris_rw)  {
+        in_mem_track_.insert(make_pair((BaseMem *)mem, idx));
+        out_mem_track_.insert(make_pair((BaseMem *)mem, idx));
+    }
+    mem_track_.insert(make_pair((BaseMem *)mem, idx));
+}
 void Kernel::add_dmem(DataMem *mem, int idx, int mode)
 {
     if (mode == iris_r) {
@@ -93,12 +108,14 @@ void Kernel::add_dmem(DataMem *mem, int idx, int mode)
     }
     else if (mode == iris_w)  {
         data_mems_out_.insert(make_pair(idx, mem));
+        out_mem_track_.insert(make_pair(mem, idx));
     }
     else if (mode == iris_rw)  {
         data_mems_in_.insert(make_pair(idx, mem));
         data_mems_out_.insert(make_pair(idx, mem));
         all_data_mems_in_.push_back(mem);
         in_mem_track_.insert(make_pair(mem, idx));
+        out_mem_track_.insert(make_pair(mem, idx));
     }
     mem_track_.insert(make_pair(mem, idx));
 }
@@ -111,12 +128,14 @@ void  Kernel::add_dmem_region(DataMemRegion *mem, int idx, int mode)
     }
     else if (mode == iris_w)  {
         data_mem_regions_out_.insert(make_pair(idx, mem));
+        out_mem_track_.insert(make_pair(mem, idx));
     }
     else if (mode == iris_rw)  {
         data_mem_regions_in_.insert(make_pair(idx, mem));
         data_mem_regions_out_.insert(make_pair(idx, mem));
         all_data_mems_in_.push_back(mem);
         in_mem_track_.insert(make_pair(mem, idx));
+        out_mem_track_.insert(make_pair(mem, idx));
     }
     mem_track_.insert(make_pair(mem, idx));
 }

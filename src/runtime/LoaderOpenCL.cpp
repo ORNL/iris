@@ -62,6 +62,7 @@ int LoaderOpenCL::LoadFunctions() {
   LOADFUNC(clCreateProgramWithBinary);
   LOADFUNCSILENT(clCreateProgramWithIL);
   LOADFUNC(clReleaseProgram);
+  LOADFUNC(clReleaseEvent);
   LOADFUNC(clBuildProgram);
   LOADFUNC(clGetProgramInfo);
   LOADFUNC(clGetProgramBuildInfo);
