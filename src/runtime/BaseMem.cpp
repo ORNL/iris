@@ -9,11 +9,12 @@ void BaseMem::HostRecordEvent(int devno, int stream)
     if (d2h_events_[devno] == NULL) {
         Device *dev = archs_dev_[devno];
         dev->CreateEvent(&d2h_events_[devno], iris_event_default);
+        archs_dev_[devno]->RecordEvent(&d2h_events_[devno], stream);
     }
     void **host_event = GetHostCompletionEventPtr();
+    //printf("host_event:%p host_event_ptr:%p d2h:%p\n", host_event, *host_event, d2h_events_[devno]);
     if (*host_event != d2h_events_[devno]) {
         _debug2("Recording event mem:%lu dev:%d stream:%d event:%p\n", uid(), devno, stream, d2h_events_[devno]);
-        archs_dev_[devno]->RecordEvent(&d2h_events_[devno], stream);
         *host_event = d2h_events_[devno];
     }
     HostUnlock();
