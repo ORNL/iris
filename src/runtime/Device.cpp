@@ -1368,7 +1368,7 @@ void Device::ExecuteD2H(Command* cmd) {
               //printf("Event:%p mem_stream:%d write_dev:%d dev:%d\n", event, mem_stream, write_dev, devno_);
               // Even if device model is same (OpenCL), their types could be different
               if (src_dev->model() != model() || src_dev->type() != type()) 
-                  EventSynchronize(event);
+                  src_dev->EventSynchronize(event);
               else
                   WaitForEvent(event, mem_stream, iris_event_wait_default);
           }
