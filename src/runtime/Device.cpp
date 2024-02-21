@@ -1025,7 +1025,7 @@ void Device::ExecuteMemOut(Task *task, Command* cmd) {
             mem->SetWriteStream(devno(), mem_stream);
             mem->SetWriteDevice(devno());
             mem->RecordEvent(devno(), mem_stream);
-            _debug3("   task:[%lu][%s] output dmem:%lu stream:%d, dev:%d\n", task->uid(), task->name(), mem->uid(), mem_stream, devno());
+            _debug3("   task:[%lu][%s] output dmem:%lu stream:%d, dev:%d event:%p\n", task->uid(), task->name(), mem->uid(), mem_stream, devno(), mem->GetCompletionEvent(devno()));
         }
     }
 }
@@ -1362,10 +1362,15 @@ void Device::ExecuteD2H(Command* cmd) {
       if (write_dev != -1) {
           int written_stream  = mem->GetWriteStream(write_dev);
           if (written_stream != -1) {
+              Device *src_dev = Platform::GetPlatform()->device(write_dev);
               void *event = mem->GetCompletionEvent(write_dev);
               //The upcoming D2H depends on previous complete event
-              WaitForEvent(event, mem_stream, iris_event_wait_default);
               //printf("Event:%p mem_stream:%d write_dev:%d dev:%d\n", event, mem_stream, write_dev, devno_);
+              // Even if device model is same (OpenCL), their types could be different
+              if (src_dev->model() != model() || src_dev->type() != type()) 
+                  EventSynchronize(event);
+              else
+                  WaitForEvent(event, mem_stream, iris_event_wait_default);
           }
       }
   }
