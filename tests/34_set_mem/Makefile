@@ -23,4 +23,4 @@ kernel.nvopenmp.so: kernel.openmp.c
 endif
 
 clean:
-	rm -f vecadd vecadd-iris vecadd-m kernel.ptx kernel.openmp.so kernel.hip
+	rm -f vecadd vecadd-iris vecadd-m kernel.ptx kernel.nvopenmp.so kernel.openmp.so kernel.hip test34_set_mem
