@@ -80,7 +80,7 @@
                                                                     "permission": {"type": "string", "pattern":"^((r)|(rw)|(w))$"},
                                                                     "size_bytes": {"type": ["integer", "string"]},
                                                                     "data_size": {"type": ["integer", "string"]},
-                                                                    "data_type": {"type": "string"}
+                                                                    "data_type": {"type": "string", "pattern":"^((int)|(float)|(short)|(long)|(double))$"}
                                                                 }
                                                             }
                                                         }
