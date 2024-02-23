@@ -34,16 +34,16 @@ echo "*******************************************************************"
 echo "*                          Linear 50                              *"
 echo "*******************************************************************"
 ##build linear-50 DAG
-./dagger_generator.py --kernels="bigk" --duplicates="0" --buffers-per-kernel="bigk:rw r r" --kernel-dimensions="bigk:2" --kernel-split='100' --depth=50 --num-tasks=50 --min-width=1 --max-width=1 --concurrent-kernels="bigk:1"
-[ $? -ne 0 ] && exit $?
+./dagger_generator.py --kernels="ijk" --duplicates="0" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=50 --num-tasks=50 --min-width=1 --max-width=1 --concurrent-kernels="ijk:1"
+[ $? -ne 0 ] && exit
 cat graph.json
 cp graph.json linear50-graph.json
-for POLICY in roundrobin depend profile random ftf sdq
+for POLICY in roundrobin #depend profile random ftf sdq
 do
   echo "Running IRIS with Policy: $POLICY"
-  IRIS_HISTORY=1 ./dagger_test --logfile="time.csv" --repeats=1 --scheduling-policy="$POLICY" --size=256  --kernels="bigk" --duplicates="0" --buffers-per-kernel="bigk:rw r r" --kernel-dimensions="bigk:2" --kernel-split='100' --depth=50 --num-tasks=50 --min-width=1 --max-width=1
-  echo "outcome: $?"
-  [ $? -ne 0 ] && exit $?
+  IRIS_HISTORY=1 gdb --args ./dagger_test --logfile="time.csv" --repeats=1 --scheduling-policy="$POLICY" --size=256  --kernels="ijk" --duplicates="0" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=50 --num-tasks=50 --min-width=1 --max-width=1
+
+  [ $? -ne 0 ] && exit
 done
 exit 0
 
@@ -51,14 +51,14 @@ exit 0
 #echo "*                          Linear 50x3                            *"
 #echo "*******************************************************************"
 ##build linear-50 DAG
-#./dagger_generator.py --kernels="bigk" --duplicates="3" --buffers-per-kernel="bigk:rw r r" --kernel-dimensions="bigk:2" --kernel-split='100' --depth=50 --num-tasks=50 --min-width=1 --max-width=1
+#./dagger_generator.py --kernels="ijk" --duplicates="3" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=50 --num-tasks=50 --min-width=1 --max-width=1
 #[ $? -ne 0 ] && exit
 #cat graph.json
 #cp graph.json linear50x3-graph.json
 #for POLICY in roundrobin depend profile random any all
 #do
 #  echo "Running IRIS with Policy: $POLICY"
-#  IRIS_HISTORY=1 ./dagger_test --logfile="time.csv" --repeats=1 --scheduling-policy="$POLICY" --size=256  --kernels="bigk" --duplicates="3" --buffers-per-kernel="bigk:rw r r" --kernel-dimensions="bigk:2" --kernel-split='100' --depth=50 --num-tasks=50 --min-width=1 --max-width=1
+#  IRIS_HISTORY=1 ./dagger_test --logfile="time.csv" --repeats=1 --scheduling-policy="$POLICY" --size=256  --kernels="ijk" --duplicates="3" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=50 --num-tasks=50 --min-width=1 --max-width=1
 #  [ $? -ne 0 ] && exit
 #done
 #
@@ -66,14 +66,14 @@ exit 0
 #echo "*                          Linear 50x8                            *"
 #echo "*******************************************************************"
 ##build linear-50 DAG
-#./dagger_generator.py --kernels="bigk" --duplicates="8" --buffers-per-kernel="bigk:rw r r" --kernel-dimensions="bigk:2" --kernel-split='100' --depth=50 --num-tasks=50 --min-width=1 --max-width=1
+#./dagger_generator.py --kernels="ijk" --duplicates="8" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=50 --num-tasks=50 --min-width=1 --max-width=1
 #[ $? -ne 0 ] && exit
 #cat graph.json
 #cp graph.json linear50x8-graph.json
 #for POLICY in roundrobin depend profile random any all
 #do
 #  echo "Running IRIS with Policy: $POLICY"
-#  IRIS_HISTORY=1 ./dagger_test --logfile="time.csv" --repeats=1 --scheduling-policy="$POLICY" --size=256  --kernels="bigk" --duplicates="8" --buffers-per-kernel="bigk:rw r r" --kernel-dimensions="bigk:2" --kernel-split='100' --depth=50 --num-tasks=50 --min-width=1 --max-width=1
-##  IRIS_HISTORY=1 gdb --args ./dagger_runner --logfile="time.csv" --repeats=1 --scheduling-policy="$POLICY" --size=256  --kernels="bigk" --duplicates="3" --buffers-per-kernel="bigk:rw r r" --kernel-dimensions="bigk:2" --kernel-split='100' --depth=50 --num-tasks=50 --min-width=1 --max-width=1
+#  IRIS_HISTORY=1 ./dagger_test --logfile="time.csv" --repeats=1 --scheduling-policy="$POLICY" --size=256  --kernels="ijk" --duplicates="8" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=50 --num-tasks=50 --min-width=1 --max-width=1
+##  IRIS_HISTORY=1 gdb --args ./dagger_runner --logfile="time.csv" --repeats=1 --scheduling-policy="$POLICY" --size=256  --kernels="ijk" --duplicates="3" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=50 --num-tasks=50 --min-width=1 --max-width=1
 #  [ $? -ne 0 ] && exit
 #done

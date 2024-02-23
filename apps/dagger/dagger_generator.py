@@ -59,6 +59,20 @@ def init_parser(parser):
     parser.add_argument("--num-memory-objects",required=False,type=int,help="Enables sharing of memory objects dealt between tasks! It is the total number of memory objects to be passed around in the DAG between tasks (allows greater task interactions).", default=None)
     parser.add_argument("--use-data-memory",required=False,help="Enables the graph to use memory instead of the default explicit memory buffers. This results in final explicit flush events of buffers that are written.",default=False,action='store_true')
 
+#TODO: Add dagger_generator to support additional arguments:
+#                  {
+#                    "type": "scalar",
+#                    "value": 100000000,
+#                    "data_size":"int",
+#                    "data_type":"int"
+#                  },
+#                  {
+#                    "type": "scalar",
+#                    "value": 25000000,
+#                    "data_size":"int",
+#                    "data_type":"int"
+#                  },
+
 def parse_args(pargs=None,additional_arguments=[]):
     parser = argparse.ArgumentParser(description='DAGGER: Directed Acyclic Graph Generator for Evaluating Runtimes')
 
@@ -112,7 +126,26 @@ def parse_args(pargs=None,additional_arguments=[]):
             for j in memory_buffer_permissions.split(" "):
                 if j == '':
                     continue
-                if j != 'r' and j != 'w' and j != 'rw':
+                if "scalar" in j:
+                    scalar_type,value,data_type,data_size = j.split(";");
+                    # and convert to the appropriate type
+                    data_size = int(data_size)
+                    if data_type == "int":
+                        value = int(value)
+                    if data_type == "float":
+                        value = float(value)
+                    if data_type == "short":
+                        value = int(value)
+                    if data_type == "long":
+                        value = int(value)
+                    if data_type == "double":
+                        value = float(value)
+                    memory_buffers.append({"type":scalar_type,
+                        "value": value,
+                        "data_type":data_type,
+                        "data_size":data_size})
+                    continue
+                elif j != 'r' and j != 'w' and j != 'rw':
                     raise Exception("{} is not of type r, w or rw".format(j))
                 memory_buffers.append(j)
             _kernel_buffs[kernel_name] = memory_buffers
@@ -159,7 +192,7 @@ def parse_args(pargs=None,additional_arguments=[]):
 
     #process local-workgroup-sizes
     #MARK can be used for offset and gws?
-    if args.local_sizes != None:
+    if args.local_sizes is not None:
         for i in args.local_sizes.split(','):
             try:
                 kernel_name, dims = i.split(':')
@@ -321,6 +354,10 @@ def generate_attributes(task_dependencies,tasks_per_level):
 
             x["parameters"] = []
             for index,permission in enumerate(_kernel_buffs[k]):
+                #if a scalar argument has been set, just pass it on
+                if type(permission) is dict and permission['type'] == 'scalar':
+                    x["parameters"].append(permission)
+                    continue
                 x["parameters"].append({
                     "type":"memory_object",
                     "value":"devicemem-{}-buffer{}-instance{}".format(k,index,c),
@@ -348,16 +385,30 @@ def generate_attributes(task_dependencies,tasks_per_level):
         #TODO: do all the old payloads look and behave the same?
         #TODO: contact Monil with changes to test out with his data-dependency tracker tool
         tasks_this_level = tasks_per_level[level_num]
-        selected_kernels_this_level = random.choices(_kernels, weights=_k_probs, k=len(tasks_this_level))
-        selected_tasks_this_level = []
-        for unique_kernel in set(selected_kernels_this_level):
-            num_memory_instances = selected_kernels_this_level.count(unique_kernel)
-            selected_tasks_this_level = random.sample(_kernel_bag[unique_kernel],k = num_memory_instances)
-        for selected_task in selected_tasks_this_level:
-            deps = ["task"+str(d) for d in task_dependencies[current_task_number]]
-            task = {"name":"task"+str(current_task_number), "commands":[selected_task], "depends":deps, "target":"user-target-data"}
-            dag.append(task)
-            current_task_number += 1
+        #flatten the _kernel_bag to yield a flattened list to help with the kernel selection
+        pool = []
+        for k in [_kernel_bag[k] for k in _kernel_bag.keys()]:
+            pool.extend(k)
+        #if we only have enough tasks as their are task instances then ignore the probabilities of each kernel being used---we've specified the exact instances instead
+        if len(tasks_this_level) <= len(pool):
+            selected_tasks_this_level = random.sample(pool, k=len(tasks_this_level))
+            for selected_task in selected_tasks_this_level:
+                deps = ["task"+str(d) for d in task_dependencies[current_task_number]]
+                task = {"name":"task"+str(current_task_number), "commands":[selected_task], "depends":deps, "target":"user-target-data"}
+                dag.append(task)
+                current_task_number += 1
+        #default to the original probabilities of each kernel
+        else:
+            selected_kernels_this_level = random.choices(_kernels, weights=_k_probs, k=len(tasks_this_level))
+            selected_tasks_this_level = []
+            for unique_kernel in set(selected_kernels_this_level):
+                num_memory_instances = selected_kernels_this_level.count(unique_kernel)
+                selected_tasks_this_level = random.sample(_kernel_bag[unique_kernel],k = num_memory_instances)
+            for selected_task in selected_tasks_this_level:
+                deps = ["task"+str(d) for d in task_dependencies[current_task_number]]
+                task = {"name":"task"+str(current_task_number), "commands":[selected_task], "depends":deps, "target":"user-target-data"}
+                dag.append(task)
+                current_task_number += 1
     return dag
 
 def rename_special_tasks(task_dag):
@@ -605,6 +656,15 @@ def determine_iris_inputs():
     for k in _kernels:
         for ck in range(0,_concurrent_kernels[k]):
             for i,j in enumerate(_kernel_buffs[k]):
+                if type(j) is dict and j['type'] == 'scalar' and type(j['value']) is str:
+                    print("Error: we still need to add kernel argument passing to the runner, currently we only accept numerical values to the dagger_generator.py") 
+                    import ipdb
+                    ipdb.set_trace()
+                    import sys
+                    sys.exit("Error: we still need to add kernel argument passing to the runner, currently we only accept numerical values to the dagger_generator.py")
+
+                if type(j) is dict and j['type'] == 'scalar':
+                    continue
                 #inputs.append("hostmem-{}-buffer{}".format(k,i))
                 #TODO could facilitate concurrent-kernels with :
                 inputs.append("hostmem-{}-buffer{}-instance{}".format(k,i,ck))
