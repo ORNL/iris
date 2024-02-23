@@ -17,24 +17,7 @@ __kernel void ijk(__global double* restrict C, __global double* restrict A, __gl
 
 }
 
-#pragma OPENCL EXTENSION cl_khr_fp64 : enable
-__kernel void bigk(__global double* restrict C, __global double* restrict A, __global double* restrict B) {
-  size_t i = get_global_id(1);
-  size_t j = get_global_id(0);
-  size_t SIZE = get_global_size(0);
-
-  for (size_t j = 0; j < SIZE; j++) {
-    double sum = 0.0;
-    for (size_t l = 0; l < 10; l++) {
-      for (size_t k = 0; k < SIZE; k++) {
-        sum += A[i * SIZE + k] * B[k * SIZE + j];
-      }
-    }
-    C[i * SIZE + j] += sum;
-  }
-}
-
-#include "eth_crc32_lut.h"
+//#include "eth_crc32_lut.h"
 
 __kernel void crc32_slice8(__global const uint* restrict data, uint length_bytes, const uint length_ints, __global uint* restrict res)
 {
@@ -65,7 +48,7 @@ __kernel void crc32_slice8(__global const uint* restrict data, uint length_bytes
   while(length_bytes) // remaining 1 to 7 bytes
   {
     one = data[i++];
-    currentChar = (unsigned char*) &one;
+    currentChar = (__private unsigned char*) &one;
     j=0;
     while (length_bytes && j < 4)
     {
