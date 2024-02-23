@@ -78,7 +78,7 @@ int iris_openmp_setmem(int idx, void* mem) {
   return IRIS_ERROR;
 }
 
-int iris_openmp_launch(int dim, size_t off, size_t ndr) {
+int iris_openmp_launch(int dim, size_t *off, size_t *ndr) {
   switch (iris_openmp_kernel_idx) {
     case 0: kernel0(kernel0_args.dst, kernel0_args.src, off, ndr); break;
     case 1: kernel1(kernel1_args.dst, kernel1_args.src, off, ndr); break;

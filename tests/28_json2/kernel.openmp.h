@@ -1,6 +1,6 @@
 #include <iris/iris_openmp.h>
 
-static void vecadd(int* C, int* A, int* B, IRIS_OPENMP_KERNEL_ARGS) {
+void vecadd(int* C, int* A, int* B, IRIS_OPENMP_KERNEL_ARGS) {
   int i;
 #pragma omp parallel for shared(C, A, B) private(i)
   IRIS_OPENMP_KERNEL_BEGIN(i)

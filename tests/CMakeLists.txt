@@ -95,7 +95,7 @@ list(APPEND TEST_EXES "14_permanent_task" "test14_permanent_task" "")
 endif()
 list(APPEND TEST_EXES "15_graph" "test15_graph" "")
 #[FIXME] Temporarily disabled due to a deadlock issue.
-#list(APPEND TEST_EXES "16_task_host" "test16_task_host" "")
+list(APPEND TEST_EXES "16_task_host" "test16_task_host" "")
 list(APPEND TEST_EXES "17_json" "test17_json" "")
 list(APPEND TEST_EXES "18_record" "test18_record" "")
 list(APPEND TEST_EXES "19_replay" "test19_replay" "")
@@ -119,11 +119,15 @@ list(APPEND TEST_EXES "30_task_info" "test30_task_info" " ")
 endif()
 #[FIXME] Temporarily disabled due to improper configuration.
 #list(APPEND TEST_EXES "31_isaxpy" "test31_isaxpy" "")
-list(APPEND TEST_EXES "32_json3" "test32_json3" "--kernels=ijk --duplicates=0 --buffers-per-kernel=\"ijk:w-r-r\" --kernel-dimensions=ijk:2 --kernel-split=100 --depth=10 --num-tasks=10 --min-width=1 --max-width=1 --logfile=log.txt --repeats=1 --scheduling-policy=any --size=128")
+list(APPEND TEST_EXES "32_json3" "test32_json3" "--kernels=ijk --duplicates=0 --buffers-per-kernel=\"ijk:w-r-r\" --kernel-dimensions=ijk:2 --kernel-split=100 --depth=10 --num-tasks=10 --min-width=1 --max-width=1 --logfile=log.txt --repeats=1 --scheduling-policy=sdq --size=128")
 list(APPEND TEST_EXES "33_graph_cpp" "test33_graph_cpp" " ")
 list(APPEND TEST_EXES "34_set_mem" "test34_set_mem" " ")
 list(APPEND TEST_EXES "35_json_mixed_args_record_replay" "test35_json_mixed_args_record_replay" " ")
 list(APPEND TEST_EXES "36_double_json_mixed_args_record_replay" "test36_double_json_mixed_args_record_replay" " ")
+#list(APPEND TEST_EXES "37_opencl_icd" "test37_opencl_icd" " ")
+list(APPEND TEST_EXES "38_offset" "test38_offset" " ")
+# FIXME: This test is disabled for now due to no support subbuffer in IRIS/OpenCL
+# list(APPEND TEST_EXES "38_offset_subbuffer" "test38_offset_subbuffer" " ")
 
 # Run each test in TEST_EXES
 list(LENGTH TEST_EXES count)
@@ -143,14 +147,14 @@ foreach(i RANGE 0 ${count} 3)
    add_custom_target(
       ${dir}
       ALL
-      COMMAND make IRIS=${IRIS} CC=${CMAKE_C_COMPILER} CXX=${CMAKE_CXX_COMPILER} EXT_INCLUDE="${EXT_INCLUDE}" EXT_LDFLAGS="${EXT_LDFLAGS}"
+      COMMAND make VERBOSE=1 IRIS=${IRIS} CC=${CMAKE_C_COMPILER} CXX=${CMAKE_CXX_COMPILER} EXT_INCLUDE="${EXT_INCLUDE}" EXT_LDFLAGS="${EXT_LDFLAGS}"
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${dir}
    )
    else()
    add_custom_target(
       ${dir}
       ALL
-      COMMAND make CC=${CMAKE_C_COMPILER} CXX=${CMAKE_CXX_COMPILER} EXT_INCLUDE="${EXT_INCLUDE}" EXT_LDFLAGS="${EXT_LDFLAGS}"
+      COMMAND make VERBOSE=1 CC=${CMAKE_C_COMPILER} CXX=${CMAKE_CXX_COMPILER} EXT_INCLUDE="${EXT_INCLUDE}" EXT_LDFLAGS="${EXT_LDFLAGS}"
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${dir}
    )
    endif()

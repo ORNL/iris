@@ -8,8 +8,8 @@ namespace rt {
 LoaderPolicy::LoaderPolicy(const char* lib, const char* name) : Loader() {
   memset(lib_, 0, sizeof(lib_));
   memset(name_, 0, sizeof(name_));
-  strncpy(lib_, lib, strlen(lib));
-  strncpy(name_, name, strlen(name));
+  strncpy(lib_, lib, strlen(lib)+1);
+  strncpy(name_, name, strlen(name)+1);
 }
 
 LoaderPolicy::~LoaderPolicy() {

@@ -1,5 +1,20 @@
 option(BUILD_SHARED_LIBS "Build shared libs" ON)
 
+if (ENABLE_FFI) 
+include(CPM.cmake)
+if (CMAKE_C_COMPILER MATCHES "nvc$")
+CPMAddPackage(NAME libffi
+        GITHUB_REPOSITORY "miniskar/libffi-cmake"
+        OPTIONS "HAVE_AS_X86_PCREL"
+        GIT_TAG master)
+else()
+CPMAddPackage(NAME libffi
+        GITHUB_REPOSITORY "miniskar/libffi-cmake"
+        GIT_TAG master)
+endif()
+include_directories(${libffi_BINARY_DIR}/include)
+#add_subdirectory(libffi)
+endif()
 include_directories(${IRIS_INC_DIR})
 include_directories(${IRIS_BIN_DIR}/runtime)
 include_directories(${IRIS_BIN_DIR}/runtime/rapidjson)
@@ -23,6 +38,7 @@ endif()
 if (IRIS_ASYNC_STREAMING) 
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DIRIS_ASYNC_STREAMING")
 endif()
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DIRIS_ASYNC_STREAMING")
 
 if (ENABLE_SINGLE_DEVICE_PER_CU) 
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DENABLE_SINGLE_DEVICE_PER_CU")
@@ -36,6 +52,10 @@ if (DISABLE_CONSISTENCY_CHECK)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDISABLE_CONSISTENCY_CHECK")
 endif()
 
+if (ENABLE_FFI) 
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DENABLE_FFI")
+endif()
+
 if (TRACE_DISABLE) 
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DTRACE_DISABLE")
 endif()
@@ -46,7 +66,10 @@ if (DEBUG_DISABLE)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDEBUG_DISABLE")
 endif()
 
+
 set(IRIS_RUNTIME_SOURCES
+#AutoDAG.cpp
+  BaseMem.cpp
   CAPI.cpp
   IRIS.cpp
   Command.cpp
@@ -78,17 +101,20 @@ set(IRIS_RUNTIME_SOURCES
   Message.cpp
   DataMemRegion.cpp
   DataMem.cpp
+  EventExchange.cpp
   Mem.cpp
   MemRange.cpp
+  TGPolicy.cpp
   Platform.cpp
   Policies.cpp
   Policy.cpp
-  PolicyAll.cpp
-  PolicyAny.cpp
+  HostInterface.cpp
+  PolicyFirstToFinish.cpp
   PolicyData.cpp
   PolicyDefault.cpp
   PolicyDepend.cpp
   PolicyDevice.cpp
+  PolicyShortestDeviceQueue.cpp
   PolicyProfile.cpp
   PolicyRandom.cpp
   PolicyRoundRobin.cpp
@@ -112,6 +138,7 @@ set(IRIS_RUNTIME_SOURCES
   Worker.cpp)
 
 set(IRIS_RUNTIME_HEADERS
+# AutoDAG.h
   Command.h
   Consistency.h
   Debug.h
@@ -119,6 +146,7 @@ set(IRIS_RUNTIME_HEADERS
   DeviceCUDA.h
   DeviceHexagon.h
   DeviceHIP.h
+  HostInterface.h
   DeviceLevelZero.h
   DeviceOpenCL.h
   DeviceOpenMP.h
@@ -136,6 +164,8 @@ set(IRIS_RUNTIME_HEADERS
   LoaderLevelZero.h
   LoaderHost2HIP.h
   LoaderHost2CUDA.h
+  AsyncData.h
+  EventExchange.h
   LoaderCUDA.h
   LoaderHexagon.h
   LoaderHIP.h
@@ -152,8 +182,8 @@ set(IRIS_RUNTIME_HEADERS
   ObjectTrack.h
   Policies.h
   Policy.h
-  PolicyAll.h
-  PolicyAny.h
+  PolicyFirstToFinish.h
+  PolicyShortestDeviceQueue.h
   PolicyData.h
   PolicyDefault.h
   PolicyDevice.h
@@ -163,6 +193,7 @@ set(IRIS_RUNTIME_HEADERS
   PolicyRoundRobin.h
   Polyhedral.h
   Pool.h
+  TGPolicy.h
   PresentTable.h
   Profiler.h
   ProfilerDOT.h
@@ -181,6 +212,38 @@ set(IRIS_RUNTIME_HEADERS
   Utils.h
   Worker.h)
 
+
+if (AUTO_PARALLEL) 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DAUTO_PAR")
+list(APPEND IRIS_RUNTIME_SOURCES AutoDAG.cpp)
+list(APPEND IRIS_RUNTIME_HEADERS AutoDAG.h)
+if (AUTO_FLUSH) 
+   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DAUTO_FLUSH")
+endif()
+
+if (AUTO_SHADOW) 
+   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DAUTO_SHADOW")
+endif()
+
+if (IGNORE_MANUAL_DEP) 
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DIGNORE_MANUAL")
+endif()
+
+if (DEP_SANITY_CHECK) 
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSANITY_CHECK")
+endif()
+
+endif()
+
+if (ENABLE_PER_TASK_COLOR_DOT) 
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DPER_TASK_COLOR")
+endif()
+
+if (ENABLE_PRINT_TASK_DEP) 
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DPRINT_TASK_DEP")
+endif()
+
+
 if(USE_FORTRAN)
   MESSAGE(STATUS "USE_FORTRAN")
   enable_language(Fortran)
@@ -194,6 +257,15 @@ if(USE_PYTHON)
 endif()
 
 add_library(iris ${IRIS_RUNTIME_SOURCES})
+if (ENABLE_FFI)
+install(FILES ${libffi_BINARY_DIR}/libffi.so DESTINATION ${CMAKE_INSTALL_LIBDIR})
+install(FILES ${libffi_BINARY_DIR}/libffi.a DESTINATION ${CMAKE_INSTALL_LIBDIR})
+install(FILES ${libffi_BINARY_DIR}/include/fficonfig.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+install(FILES ${libffi_BINARY_DIR}/include/ffi.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+install(FILES ${libffi_BINARY_DIR}/include/ffitarget.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+set_target_properties(iris PROPERTIES LINK_FLAGS "-L${libffi_BINARY_DIR} ")
+target_link_libraries(iris ffi)
+endif() #ENABLE_FFI
 
 target_compile_options(iris PRIVATE -Wall)
 

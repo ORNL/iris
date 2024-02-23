@@ -134,8 +134,8 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
       else if(strcmp(target_str, "cpu") == 0) target = iris_cpu;
       else if(strcmp(target_str, "gpu") == 0) target = iris_gpu;
       //iris policies
-      else if(strcmp(target_str, "all") == 0) target = iris_all;
-      else if(strcmp(target_str, "any") == 0) target = iris_any;
+      else if(strcmp(target_str, "ftf") == 0) target = iris_ftf;
+      else if(strcmp(target_str, "sdq") == 0) target = iris_sdq;
       else if(strcmp(target_str, "data") == 0) target = iris_data;
       else if(strcmp(target_str, "default")== 0) target = iris_default;
       else if(strcmp(target_str, "depend") == 0) target = iris_depend;
@@ -437,13 +437,6 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
       }
       else if (iris_tasks_[i]["commands"][j].HasMember("d2h")){
         const rapidjson::Value& d2h_ = iris_tasks_[i]["commands"][j]["d2h"];
-        //host_memory
-        if(!d2h_.HasMember("host_memory") or !d2h_["host_memory"].IsString()){
-          _error("malformed command d2h host_memory in file[%s]", path);
-          platform_->IncrementErrorCount();
-          return IRIS_ERROR;
-        }
-        void* host_mem = GetParameterInput(params, d2h_["host_memory"].GetString());
         //device_memory
         if(!d2h_.HasMember("device_memory") or !d2h_["device_memory"].IsString()){
           _error("malformed command d2h device_memory in file[%s]", path);
@@ -451,6 +444,30 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
           return IRIS_ERROR;
         }
         iris_mem *dev_mem = (iris_mem*) GetParameterInput(params, d2h_["device_memory"].GetString());
+        //if IRIS data memory --- break early
+        if(d2h_.HasMember("data-memory-flush")){
+          iris_mem *dev_mem = (iris_mem*) GetParameterInput(params, d2h_["device_memory"].GetString());
+          Command* cmd = Command::CreateMemFlushOut(task, (DataMem *)platform_->get_mem_object(*dev_mem));
+          if(d2h_.HasMember("name")){
+            if(!d2h_["name"].IsString()){
+              _error("malformed command d2h name in file[%s]", path);
+              platform_->IncrementErrorCount();
+              return IRIS_ERROR;
+            }
+            cmd->set_name(const_cast<char*>(d2h_["name"].GetString()));
+            if (!task->given_name()) task->set_name(cmd->name());
+          }
+          _trace("adding data_memory flush: %s\n",cmd->name());
+          task->AddCommand(cmd);
+          continue;
+        }
+        //host_memory
+        if(!d2h_.HasMember("host_memory") or !d2h_["host_memory"].IsString()){
+          _error("malformed command d2h host_memory in file[%s]", path);
+          platform_->IncrementErrorCount();
+          return IRIS_ERROR;
+        }
+        void* host_mem = GetParameterInput(params, d2h_["host_memory"].GetString());
         //offset
         if(!d2h_.HasMember("offset")){
           _error("missing command d2h offset in file[%s]", path);
@@ -627,7 +644,6 @@ int JSON::ProcessTask(Task* task){
       rapidjson::Value cmd_(rapidjson::kObjectType);
       cmd_.AddMember("h2d",h2d_,iris_output_document_.GetAllocator());
       _cmds.PushBack(cmd_,iris_output_document_.GetAllocator());
-      printf("recorded h2d\n");
     }
     else if (cmd->type() == IRIS_CMD_D2H) {
       rapidjson::Value d2h_(rapidjson::kObjectType);
@@ -644,7 +660,7 @@ int JSON::ProcessTask(Task* task){
       rapidjson::Value cmd_(rapidjson::kObjectType);
       cmd_.AddMember("d2h",d2h_,iris_output_document_.GetAllocator());
       _cmds.PushBack(cmd_,iris_output_document_.GetAllocator());
-      printf("recorded d2h\n");    }
+    }
     else if (cmd->type() == IRIS_CMD_KERNEL) {
       rapidjson::Value kernel_(rapidjson::kObjectType);
       //name
@@ -693,7 +709,6 @@ int JSON::ProcessTask(Task* task){
       rapidjson::Value cmd_(rapidjson::kObjectType);
       cmd_.AddMember("kernel",kernel_,iris_output_document_.GetAllocator());
       _cmds.PushBack(cmd_,iris_output_document_.GetAllocator());
-      printf("recorded kernel\n");
     }
   }
   _task.AddMember("commands",_cmds,iris_output_document_.GetAllocator());

@@ -27,6 +27,8 @@ int LoaderCUDA::LoadFunctions() {
   LOADFUNC(cuCtxSynchronize);
   LOADFUNC(cuStreamAddCallback);
   LOADFUNC(cuStreamCreate);
+  LOADFUNC(cuStreamQuery);
+  LOADFUNC(cuStreamDestroy);
   LOADFUNC(cuStreamSynchronize);
   LOADFUNC(cuModuleGetFunction);
   LOADFUNC(cuModuleLoad);
@@ -39,10 +41,16 @@ int LoaderCUDA::LoadFunctions() {
   LOADFUNC(cuMemcpy2D);
   //LOADFUNC(cuMemset);
   LOADFUNC(cuMemcpyDtoD);
+  LOADFUNC(cuMemcpyDtoDAsync);
   LOADFUNCEXT(cudaMalloc);
   LOADFUNCEXT(cudaMemcpy);
+  LOADFUNCEXT(cudaMemcpyAsync);
   LOADFUNCEXT(cudaMemcpy2D);
+  LOADFUNCEXT(cudaHostGetDevicePointer);
+  LOADFUNCEXT(cudaSetDeviceFlags);
+  LOADFUNCEXT(cudaMemcpy2DAsync);
   LOADFUNCEXT(cudaMemset);
+  LOADFUNCEXT(cudaMemsetAsync);
   LOADFUNCEXT(cudaHostRegister);
   LOADFUNC(cuMemcpy2DUnaligned);
   LOADFUNC(cuMemcpy2DAsync);
@@ -51,8 +59,15 @@ int LoaderCUDA::LoadFunctions() {
   LOADFUNCSYM(cuMemcpyHtoD, cuMemcpyHtoD_v2);
   LOADFUNCSYM(cuMemcpyHtoDAsync, cuMemcpyHtoDAsync_v2);
   LOADFUNCSYM(cuMemcpyDtoH, cuMemcpyDtoH_v2);
-  LOADFUNCSYM(cuMemcpyDtoHAsync, cuMemcpyDtoHAsync);
+  LOADFUNCSYM(cuMemcpyDtoHAsync, cuMemcpyDtoHAsync_v2);
   LOADFUNC(cuLaunchKernel);
+  LOADFUNC(cuEventCreate);
+  LOADFUNC(cuEventRecord);
+  LOADFUNC(cuEventDestroy);
+  LOADFUNC(cuEventSynchronize);
+  LOADFUNC(cuEventElapsedTime);
+  LOADFUNC(cuEventQuery);
+  LOADFUNC(cuStreamWaitEvent);
   return IRIS_SUCCESS;
 }
 

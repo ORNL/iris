@@ -4,6 +4,8 @@
 #include <iris/iris_poly_types.h>
 #include "BaseMem.h"
 #include "Kernel.h"
+#include "Timer.h"
+#include "Graph.h"
 #include <stddef.h>
 
 #define IRIS_CMD_NOP            0x1000
@@ -24,6 +26,11 @@
 #define IRIS_CMD_H2BROADCAST    0x100f
 #define IRIS_CMD_D2D            0x1010
 
+#ifdef AUTO_PAR
+#ifdef AUTO_SHADOW
+#define IRIS_CMD_MEM_FLUSH_TO_SHADOW      0x1011
+#endif
+#endif
 #define IRIS_CMD_KERNEL_NARGS_MAX   16
 
 namespace iris {
@@ -33,6 +40,7 @@ class DataMem;
 class Mem;
 class DataMem;
 class Task;
+class Graph;
 
 class Command {
 public:
@@ -88,16 +96,19 @@ public:
   int *get_params_map() { return params_map_; }
   const char* type_name() { return type_name_.c_str(); }
   const char* name() { return name_.c_str(); }
-  void set_name(std::string name) { name_ = name; }
-  void set_name(const char* name) { name_ = std::string(name); }
+  void set_name(std::string name);
+  void set_name(const char* name);
+  bool given_name(){return given_name_;}
   uint8_t reset_value() { return reset_value_; }
   double SetTime(double t, bool incr=true);
   double time() { return time_; }
-  void set_time_start(double d) { time_start_ = d; }
-  void set_time_end(double d) { time_end_ = d; }
+  void set_time_start(Timer* d);
+  void set_time_end(Timer* d);
   double time_start() { return time_start_; }
   double time_end() { return time_end_; }
   double time_duration() { return time_end_-time_start_; }
+  size_t ns_time_start() { return ns_time_start_; }
+  size_t ns_time_end() { return ns_time_end_; }
   int get_access_index() { return access_index_; }
   int src_dev() { return src_dev_; }
   void set_src_dev(int devno) { src_dev_ = devno; }
@@ -122,11 +133,14 @@ private:
   double time_;
   double time_start_;
   double time_end_;
+  size_t ns_time_start_;
+  size_t ns_time_end_;
   bool last_;
   bool exclusive_;
   KernelArg* kernel_args_;
   int kernel_nargs_;
   int kernel_nargs_max_;
+  int n_mems_;
   iris_poly_mem* polymems_;
   int npolymems_;
   int tag_;
@@ -139,6 +153,7 @@ private:
   char* params_;
   std::string type_name_;
   std::string name_;
+  bool given_name_;
   int access_index_;
   bool internal_memory_transfer_;
   uint8_t reset_value_;
@@ -161,6 +176,13 @@ public:
   static Command* CreateD2H(Task* task, Mem* mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host);
   static Command* CreateD2H(Task* task, Mem* mem, size_t off, size_t size, void* host);
   static Command* CreateMemFlushOut(Task* task, DataMem* mem);
+
+#ifdef AUTO_PAR
+#ifdef AUTO_SHADOW
+  static Command* CreateMemFlushOutToShadow(Task* task, DataMem* mem);
+#endif
+#endif
+
   static Command* CreateMap(Task* task, void* host, size_t size);
   static Command* CreateMapTo(Task* task, void* host);
   static Command* CreateMapFrom(Task* task, void* host);
@@ -169,6 +191,13 @@ public:
   static Command* CreateHost(Task* task, iris_host_task func, void* params);
   static Command* CreateCustom(Task* task, int tag, void* params, size_t params_size);
   static void Release(Command* cmd);
+/*
+#ifdef AUTO_PAR
+  static void create_dependency(Command* cmd, Task* task, int param_info, 
+		  BaseMem* mem, Task* task_prev);
+#endif
+*/
+
 };
 
 } /* namespace rt */

@@ -236,8 +236,9 @@ iris_data       =       (1 << 20)
 iris_profile    =       (1 << 21)
 iris_random     =       (1 << 22)
 iris_pending    =       (1 << 23)
-iris_any        =       (1 << 24)
+iris_sdq        =       (1 << 24)
 iris_all        =       (1 << 25)
+iris_ftf        =       (1 << 25)
 iris_custom     =       (1 << 26)
 
 
@@ -246,10 +247,21 @@ iris_w          =   -2
 iris_rw         =   -3
 iris_flush      =   -4
 
-iris_int        =   (1 << 0)
-iris_long       =   (1 << 1)
-iris_float      =   (1 << 2)
-iris_double     =   (1 << 3)
+iris_int              =  ((1 << 1) << 16)
+iris_uint             =  ((1 << 1) << 16)
+iris_float            =  ((1 << 2) << 16)
+iris_double           =  ((1 << 3) << 16)
+iris_char             =  ((1 << 4) << 16)
+iris_int8             =  ((1 << 4) << 16)
+iris_uint8            =  ((1 << 4) << 16)
+iris_int16            =  ((1 << 5) << 16)
+iris_uint16           =  ((1 << 5) << 16)
+iris_int32            =  ((1 << 6) << 16)
+iris_uint32           =  ((1 << 6) << 16)
+iris_int64            =  ((1 << 7) << 16)
+iris_uint64           =  ((1 << 7) << 16)
+iris_long             =  ((1 << 8 << 16))
+iris_unsigned_long    =  ((1 << 8 << 16))
 
 iris_normal     =   (1 << 10)
 iris_reduction  =   (1 << 11)
@@ -404,10 +416,15 @@ def kernel_create(name):
     return k
 
 def kernel_setarg(kernel, idx, size, value):
+    iris_datatype_code = 0
     if type(value) == int: cvalue = byref(c_int(value))
-    elif type(value) == float and size == 4: cvalue = byref(c_float(value))
-    elif type(value) == float and size == 8: cvalue = byref(c_double(value))
-    return dll.iris_kernel_setarg(kernel, c_int(idx), c_size_t(size), cvalue)
+    elif type(value) == float and size == 4: 
+        cvalue = byref(c_float(value))
+        iris_datatype_code = iris_float
+    elif type(value) == float and size == 8: 
+        cvalue = byref(c_double(value))
+        iris_datatype_code = iris_double
+    return dll.iris_kernel_setarg(kernel, c_int(idx), c_size_t(size) | iris_datatype_code, cvalue)
 
 def kernel_setmem(kernel, idx, mem, mode):
     return dll.iris_kernel_setmem(kernel, c_int(idx), mem, c_size_t(mode))
@@ -1108,7 +1125,7 @@ class graph:
         ntasks, tasks = self.get_tasks()
         SIZE = ntasks+1
         dep_graph, dep_graph_2d_ptr = dll.alloc_int8((SIZE,SIZE))
-        dll.call_ret_ptr(dll.iris_get_graph_dependency_adj_matrix, self.handle, dep_graph)
+        dll.call_ret(dll.iris_get_graph_dependency_adj_matrix, np.int32, self.handle, dep_graph)
         #print("Dependency matrix", dep_graph)
         if pdf:
             task_names = self.get_task_names()
@@ -1212,7 +1229,7 @@ class graph:
         ntasks, tasks = self.get_tasks()
         SIZE = ntasks+1
         comm_2d, comm_2d_ptr = dll.alloc_size_t((SIZE,SIZE))
-        dll.call_ret_ptr(dll.iris_get_graph_2d_comm_adj_matrix, self.handle, comm_2d)
+        dll.call_ret(dll.iris_get_graph_2d_comm_adj_matrix, np.int32, self.handle, comm_2d)
         print("Extracting 2d communication cost")
         #print("Communication cost matrix", comm_2d)
         if pdf:
@@ -1257,10 +1274,10 @@ class graph:
             col_names = all_platform_info()
         comp_2d, comp_2d_ptr = dll.alloc_double((SIZE, cols))
         if only_device_type:
-            dll.call_ret_ptr(dll.iris_calibrate_compute_cost_adj_matrix_only_for_types, self.handle, comp_2d)
+            dll.call_ret(dll.iris_calibrate_compute_cost_adj_matrix_only_for_types, np.int32, self.handle, comp_2d)
         else:
-            dll.call_ret_ptr(dll.iris_calibrate_compute_cost_adj_matrix, self.handle, comp_2d)
-        #print("Computation cost matrix", comp_2d)
+            dll.call_ret(dll.iris_calibrate_compute_cost_adj_matrix, np.int32, self.handle, comp_2d)
+        print("Completed computation cost matrix calibration", comp_2d)
         if pdf:
             task_names = self.get_task_names()
             task_uids =  self.get_task_uids()

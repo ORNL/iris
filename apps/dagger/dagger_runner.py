@@ -20,20 +20,20 @@ EXIT_FAILURE = 1
 
 scheduling_policy_lookup = {
     "roundrobin": iris.iris_roundrobin,
-    "depend": iris.iris_depend,
-    "data": iris.iris_data,
-    "profile": iris.iris_profile,
-    "random": iris.iris_random,
-    "any": iris.iris_any,
-    "all": iris.iris_all,
-    "custom": iris.iris_custom,
+    "depend"    : iris.iris_depend,
+    "data"      : iris.iris_data,
+    "profile"   : iris.iris_profile,
+    "random"    : iris.iris_random,
+    "sdq"       : iris.iris_sdq,
+    "ftf"       : iris.iris_ftf,
+    "custom"    : iris.iris_custom,
 }
 
 def init_parser(parser):
     parser.add_argument("--size",required=True,type=int,help="The size of the memory buffers to use in this IRIS test.")
     parser.add_argument("--repeats",required=True,type=int,help="The number of repeats.")
     parser.add_argument("--logfile",required=True,type=str,help="The location to log the timing results.")
-    parser.add_argument("--scheduling-policy",default='roundrobin',help="all options include (roundrobin, depend, profile, random, any, all, custom) or any integer [0-9] denoting the device id to run all tasks on.")
+    parser.add_argument("--scheduling-policy",default='roundrobin',help="all options include (roundrobin, depend, profile, random, sdq, ftf, custom) or any integer [0-9] denoting the device id to run all tasks on.")
     parser.add_argument("--attach-debugger",action='store_true',help="Attach debugger on port 5678.")
 
 def create_graph(args):
@@ -42,6 +42,7 @@ def create_graph(args):
     host_mem = []
     buffer_type = []
     dev_mem = []
+    memory_task_target = iris.iris_pending
     sizecb = []
     input_arrays = {
         "host_mem": host_mem,
@@ -51,7 +52,7 @@ def create_graph(args):
     }
 
     for kernel in dg._kernels:
-        for concurrent_device in range(dg._duplicates):
+        for concurrent_device in range(dg._concurrent_kernels[kernel]):
             argument_index = 0
             for buffer in dg._kernel_buffs[kernel]:
                 # Create and add the host-side buffer based on it's type
@@ -77,7 +78,11 @@ def create_graph(args):
                     print(f"\033[41mInvalid memory argument! Kernel {kernel} has a buffer of memory type {buffer} but only r,w or rw are allowed.\n\033[0m")
                     exit(EXIT_FAILURE)
                 buffer_type.append(buffer)
-                iris_mem = iris.mem(host_mem[-1].nbytes)
+                if args.use_data_memory:
+                    iris_mem = iris.dmem(host_mem[-1])
+                    memory_task_target = iris.iris_default
+                else:
+                    iris_mem = iris.mem(host_mem[-1].nbytes)
                 dev_mem.append(iris_mem)
 
         sizecb.append(args.size**dg._dimensionality[kernel]*np.double(0).itemsize)
@@ -89,7 +94,7 @@ def create_graph(args):
     json_inputs.extend(sizecb)
     json_inputs.extend(host_mem)
     json_inputs.extend(dev_mem)
-    json_inputs.append(iris.iris_pending)
+    json_inputs.append(memory_task_target)
     json_inputs.append(args.task_target)
 
     print("JSON input parameters")

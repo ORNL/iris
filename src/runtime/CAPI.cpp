@@ -23,6 +23,12 @@ int iris_error_count() {
   return platform->NumErrors();
 }
 
+void iris_overview() {
+  Platform *platform = Platform::GetPlatform();
+  platform->ShowOverview();
+  return;
+}
+
 void iris_task_retain(iris_task task, bool flag) {
   Platform *platform = Platform::GetPlatform(); 
   platform->set_release_task_flag(!flag, task);
@@ -41,6 +47,16 @@ void iris_set_enable_profiler(int flag) {
 
 int iris_synchronize() {
   return Platform::GetPlatform()->Synchronize();
+}
+
+int iris_set_stream_policy(StreamPolicy policy) {
+ Platform::GetPlatform()->set_stream_policy(policy);
+ return IRIS_SUCCESS;
+}
+
+int iris_set_asynchronous(int flag) {
+ Platform::GetPlatform()->set_async((bool)flag);
+ return IRIS_SUCCESS;
 }
 
 int iris_env_set(const char* key, const char* value) {
@@ -62,6 +78,16 @@ int iris_platform_info(int platform, int param, void* value, size_t* size) {
 int iris_set_shared_memory_model(int flag)
 {
     return Platform::GetPlatform()->SetSharedMemoryModel(flag);
+}
+
+int iris_mem_enable_usm(iris_mem mem, DeviceModel type)
+{
+    return Platform::GetPlatform()->SetSharedMemoryModel(mem, type, true);
+}
+
+int iris_mem_disable_usm(iris_mem mem, DeviceModel type)
+{
+    return Platform::GetPlatform()->SetSharedMemoryModel(mem, type, false);
 }
 
 int iris_device_count(int* ndevs) {
@@ -110,6 +136,17 @@ int iris_task_malloc(iris_task task, iris_mem mem) {
 
 int iris_task_cmd_reset_mem(iris_task task, iris_mem mem, uint8_t reset) {
   return Platform::GetPlatform()->TaskMemResetInput(task, mem, reset);
+}
+
+int iris_task_set_stream_policy(iris_task brs_task, StreamPolicy policy) {
+ Task *task = Platform::GetPlatform()->get_task_object(brs_task);
+ if (task != NULL) task->set_stream_policy(policy);
+ return IRIS_SUCCESS;
+}
+
+void iris_task_disable_asynchronous(iris_task brs_task) {
+    Task *task = Platform::GetPlatform()->get_task_object(brs_task);
+    task->set_async(false);
 }
 
 int iris_task_get_metadata(iris_task brs_task, int index) {
@@ -562,6 +599,14 @@ int iris_graph_tasks_count(iris_graph graph)
 {
     return Platform::GetPlatform()->GetGraphTasksCount(graph);
 }
+int iris_get_graph_max_theoretical_parallelism(iris_graph brs_graph)
+{
+    Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
+    shared_ptr<GraphMetadata> gm = graph->get_metadata();
+    gm->get_max_parallelism();
+    return IRIS_SUCCESS;
+}
+
 int iris_get_graph_dependency_adj_matrix(iris_graph brs_graph, int8_t *dep_matrix)
 {
     Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);

@@ -15,7 +15,7 @@ dagger_test: dagger_test_concurrent_linear_chains.cpp
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
 kernel.ptx: kernel.cu
-	$(NVCC) -ptx $^
+	$(NVCC) -allow-unsupported-compiler -ptx $^
 
 kernel.spv: kernel.cl
 	clang -cc1 -finclude-default-header -triple spir $^ -O0 -emit-llvm-bc -o kernel.bc

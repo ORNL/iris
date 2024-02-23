@@ -16,12 +16,15 @@ public:
   DeviceCUDA(LoaderCUDA* ld, LoaderHost2CUDA *host2cuda_ld, CUdevice cudev, int devno, int platform);
   ~DeviceCUDA();
 
+  void set_can_share_host_memory_flag(bool flag=true); 
   int Compile(char* src);
   int Init();
-  int ResetMemory(BaseMem *mem, uint8_t reset_value);
+  int ResetMemory(Task *task, BaseMem *mem, uint8_t reset_value);
+  void *GetSharedMemPtr(void* mem, size_t size);
   int MemAlloc(void** mem, size_t size, bool reset=false);
   int MemFree(void* mem);
   void RegisterPin(void *host, size_t size);
+  int RegisterCallback(int stream, CallBackType callback_fn, void* data, int flags=0);
   void EnablePeerAccess();
   void SetPeerDevices(int *peers, int count);
   void MemCpy3D(CUdeviceptr dev, uint8_t *host, size_t *off, 
@@ -32,13 +35,17 @@ public:
   int MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag="");
   int KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bool report_error=true);
   void CheckVendorSpecificKernel(Kernel* kernel);
-  int KernelLaunchInit(Kernel* kernel);
+  int KernelLaunchInit(Command *cmd, Kernel* kernel);
   int KernelSetArg(Kernel* kernel, int idx, int kindex, size_t size, void* value);
   int KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, size_t off);
   int KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws);
   int Synchronize();
-  int AddCallback(Task* task);
   int Custom(int tag, char* params);
+  void CreateEvent(void **event, int flags);
+  void RecordEvent(void **event, int stream);
+  void WaitForEvent(void *event, int stream, int flags=0);
+  void DestroyEvent(void *event);
+  void EventSynchronize(void *event);
 
   const char* kernel_src() { return "KERNEL_SRC_CUDA"; }
   const char* kernel_bin() { return "KERNEL_BIN_CUDA"; }
@@ -54,7 +61,6 @@ public:
   void SetContextToCurrentThread();
 
 private:
-  static void Callback(CUstream stream, CUresult status, void* data);
   void ClearGarbage();
 
 private:
@@ -66,7 +72,6 @@ private:
   CUcontext ctx_;
   CUstream streams_[IRIS_MAX_DEVICE_NQUEUES];
   CUmodule module_;
-  CUresult err_;
   unsigned int shared_mem_bytes_;
   unsigned int shared_mem_offs_[IRIS_MAX_KERNEL_NARGS];
   void* params_[IRIS_MAX_KERNEL_NARGS];

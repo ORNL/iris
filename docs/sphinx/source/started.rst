@@ -253,8 +253,8 @@ iris_data                Submit task to device to minimize data movement
 iris_profile             Submit the task to the device based on execution time history
 iris_random              Randomly assign this task to any of the available devices
 iris_pending             Delay submitting the task until the memory it depends on has been assigned, then use that device
-iris_any                 Submit task to the device with the fewest assigned tasks
-iris_all                 Submit the task to all device queues, the device that accesses it first has exclusive execution (it is removed from the other device queues)
+iris_sdq                 Submit task to the device with the fewest assigned tasks
+iris_ftf                 Submit the task to all device queues, the device that accesses it first has exclusive execution (it is removed from the other device queues)
 iris_custom              Submit the task based on a used provided, custom policy
 ======================== =============================================================================================================================================
 

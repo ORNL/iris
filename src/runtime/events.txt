@@ -1,0 +1,82 @@
+# This are events for current Retain-Release logic of Tasks
+
+Platform::Init() 
+{
+    for(ndevs) {
+        task = Task("Initialize");
+        task->set_system();
+        task->Retain(); // Equivalent to Platform::TaskSubmit Retain
+        task->Retain(); // Equivalent to Scheduler::Submit Retain
+        worker->Enqueue(task);
+    }
+    for(task: init_tasks) {
+        TaskWait(task);
+    }
+}
+Platform::Marker()
+{
+    task = Task();
+    for(ndevs) {
+        subtask = Task();
+        subtask->set_marker();
+        subtask->set_user(true);
+        subtask->set_devno(dev);
+        subtask->Retain();
+        task->AddSubtask(subtask);
+    }
+    scheduler->Enqueue(task);
+}
+Platform::TaskCreate(task)
+{
+    //Create user task
+}
+Platform::TaskSubmit(task)
+{
+    task->Retain();
+    scheduler->Enqueue(task);
+}
+Scheduler::Submit(task)
+{
+    if (task->is_marker()) {
+        for (subtask) {
+        subtask->Retain();
+        workers->Enqueue(subtask);
+        return
+    }
+    if (not subtasks){
+        SubmitTask(task);
+    }
+    for(subtask) 
+        SubmitTask(subtask);
+}
+Scheduler::SubmitTask(task) {
+    policy->GetDevices(task, devs);
+    for (worker: devs) {
+        task->Retain();
+        worker->Enqueue(task);
+    }
+}
+Worker::Execute(task) {
+    if (!task->Executable()) {
+        task->Release(); //Scheduler::Submit/SubmitTask Retain
+        return;
+    }  
+    task->Retain();
+    dev->Execute(task);
+    task->Release();
+}
+Device::Execute(task) {
+    Execute(task);
+    task->Complete();
+}
+Task::Complete() {
+    if (parent_exist) parent_task->CompleteSub();
+    Release(); // Platform::TaskSubmit Retain
+}
+Task::CompleteSub() {
+  Retain();
+  pthread_mutex_lock(&mutex_subtasks_);
+  if (++subtasks_complete_ == subtasks_.size()) Complete();
+  pthread_mutex_unlock(&mutex_subtasks_);
+  Release();
+}

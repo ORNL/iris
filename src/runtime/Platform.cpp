@@ -39,9 +39,14 @@
 #include "Task.h"
 #include "Timer.h"
 #include "Worker.h"
+#ifdef AUTO_PAR
+#include "AutoDAG.h"
+#endif
 #include <unistd.h>
 #include <algorithm>
 #include <fstream>
+#include <iostream>
+#include <iomanip>
 
 namespace iris {
 namespace rt {
@@ -54,6 +59,7 @@ Platform::Platform() {
   disable_d2d_ = false;
   finalize_ = false;
   release_task_flag_ = true;
+  async_ = false;
   nplatforms_ = 0;
   ndevs_ = 0;
   ndevs_enabled_ = 0;
@@ -78,6 +84,7 @@ Platform::Platform() {
   loaderHexagon_ = NULL;
   arch_available_ = 0UL;
   present_table_ = NULL;
+  stream_policy_ = STREAM_POLICY_DEFAULT;
   recording_ = false;
   enable_profiler_ = getenv("IRIS_PROFILE");
   enable_scheduling_history_ = getenv("IRIS_HISTORY");
@@ -90,6 +97,11 @@ Platform::Platform() {
   hook_command_post_ = NULL;
   scheduling_history_ = NULL;
   pthread_mutex_init(&mutex_, NULL);
+  enable_proactive_ = false;
+  disable_kernel_launch_ = false;
+#ifdef AUTO_PAR
+  auto_dag_ = NULL;
+#endif
 }
 
 Platform::~Platform() {
@@ -106,6 +118,13 @@ Platform::~Platform() {
       sprintf(cmd, "rm -rf %s", tmp_dir_);
       system(cmd);
   }
+#ifdef AUTO_PAR
+#ifdef AUTO_SHADOW
+  printf("Total Shadow created %d\n", auto_dag_->get_number_of_shadow());
+  _trace("Total Shadow created[%d]", auto_dag_->get_number_of_shadow());
+#endif
+  delete auto_dag_;
+#endif
   /*
   for (std::set<Mem*>::iterator I = mems_.begin(), E = mems_.end(); I != E; ++I) {
       Mem *mem = *I;
@@ -132,6 +151,7 @@ Platform::~Platform() {
   if (pool_) delete pool_;
   kernel_history_.clear();
   pthread_mutex_destroy(&mutex_);
+  _debug2("Platform deleted");
 }
 
 int Platform::Init(int* argc, char*** argv, int sync) {
@@ -154,6 +174,10 @@ int Platform::Init(int* argc, char*** argv, int sync) {
 
   json_ = new JSON(this);
 
+#ifdef AUTO_PAR
+  auto_dag_ = new AutoDAG(this);
+#endif
+
   EnvironmentInit();
 
   char* logo = NULL;
@@ -168,13 +192,26 @@ int Platform::Init(int* argc, char*** argv, int sync) {
 
   SetDevsAvailable();
 
+  char *disable_kernel_launch = NULL;
+  EnvironmentGet("DISABLE_KERNEL_LAUNCH", &disable_kernel_launch, NULL);
+  if (disable_kernel_launch != NULL && atoi(disable_kernel_launch) == 1)
+      set_kernel_launch_disabled(true);
+  char *async = NULL;
+  EnvironmentGet("ASYNC", &async, NULL);
+  if (async != NULL && atoi(async) == 1)
+      set_async(true);
+#ifdef IRIS_ASYNC_STREAMING
+  set_async(true);
+#endif
+  if (is_async()) 
+      _info("Asynchronous is enabled");
   char* archs = NULL;
   EnvironmentGet("ARCHS", &archs, NULL);
   _info("IRIS architectures[%s]", archs);
   const char* delim = " :;.,";
   char arch_str[128];
   memset(arch_str, 0, 128);
-  strncpy(arch_str, archs, strlen(archs));
+  strncpy(arch_str, archs, strlen(archs)+1);
   char* rest = arch_str;
   char* a = NULL;
   while ((a = strtok_r(rest, delim, &rest))) {
@@ -354,7 +391,7 @@ int Platform::SetDevsAvailable() {
   const char* delim = " :;.,";
   char str[128];
   memset(str, 0, 128);
-  strncpy(str, enabled, strlen(enabled));
+  strncpy(str, enabled, strlen(enabled)+1);
   char* rest = str;
   char* a = NULL;
   while ((a = strtok_r(rest, delim, &rest))) {
@@ -408,7 +445,7 @@ int Platform::InitCUDA() {
     _cuerror(err);
     devs_[ndevs_] = new DeviceCUDA(loaderCUDA_, loaderHost2CUDA_, dev, ndevs_, nplatforms_);
     arch_available_ |= devs_[ndevs_]->type();
-    cudevs[i] = dev;
+    cudevs[mdevs] = dev;
     ndevs_++;
     mdevs++;
 #ifdef ENABLE_SINGLE_DEVICE_PER_CU
@@ -468,7 +505,7 @@ int Platform::InitHIP() {
     hipDevice_t dev;
     err = loaderHIP_->hipDeviceGet(&dev, i);
     _hiperror(err);
-    hipdevs[i] = dev;
+    hipdevs[mdevs] = dev;
     devs_[ndevs_] = new DeviceHIP(loaderHIP_, loaderHost2HIP_, dev, i, ndevs_, nplatforms_);
     arch_available_ |= devs_[ndevs_]->type();
     ndevs_++;
@@ -658,16 +695,29 @@ int Platform::InitOpenCL() {
         _trace("%s", "skipping Host2OpenCL wrapper calls");
       }
       loaderHost2OpenCL_.push_back(loaderHost2OpenCL);
-      devs_[ndevs_] = new DeviceOpenCL(loaderOpenCL_, loaderHost2OpenCL, cl_devices[j], cl_contexts[i], ndevs_, ocldevno, nplatforms_);
+      DeviceOpenCL *dev = new DeviceOpenCL(loaderOpenCL_, loaderHost2OpenCL, cl_devices[j], cl_contexts[i], ndevs_, ocldevno, nplatforms_);
+      if (!dev->IsDeviceValid()) {
+          delete dev;
+          continue;
+      }
+      devs_[ndevs_] = dev;
       arch_available_ |= devs_[ndevs_]->type();
       ndevs_++;
       mdevs++;
       ocldevno++;
+#ifdef ENABLE_SINGLE_DEVICE_PER_CU
+      break;
+#endif
     }
-    _trace("adding platform[%d] [%s %s] ndevs[%u]", nplatforms_, vendor, platform_name, ndevs);
-    sprintf(platform_names_[nplatforms_], "OpenCL %s", vendor);
-    first_dev_of_type_[nplatforms_] = devs_[ndevs_-mdevs];
-    nplatforms_++;
+    if (mdevs > 0) {
+        _trace("adding platform[%d] [%s %s] ndevs[%u]", nplatforms_, vendor, platform_name, ndevs);
+        sprintf(platform_names_[nplatforms_], "OpenCL %s", vendor);
+        first_dev_of_type_[nplatforms_] = devs_[ndevs_-mdevs];
+        nplatforms_++;
+#ifdef ENABLE_SINGLE_DEVICE_PER_CU
+        if (ocldevno > 0) break;
+#endif
+    }
   }
   return IRIS_SUCCESS;
 }
@@ -681,24 +731,101 @@ int Platform::InitDevices(bool sync) {
   char* c = getenv("IRIS_DEVICE_DEFAULT");
   if (c) dev_default_ = atoi(c);
 
-  Task** tasks = new Task*[ndevs_];
+  //Task** tasks = new Task*[ndevs_];
+  iris_task *tasks = new iris_task[ndevs_];
   char task_name[128];
   for (int i = 0; i < ndevs_; i++) {
     sprintf(task_name, "Initialize-%d", i);
-    tasks[i] = new Task(this, IRIS_TASK, task_name);
-    tasks[i]->set_system();
-    Command* cmd = Command::CreateInit(tasks[i]);
-    tasks[i]->AddCommand(cmd);
-    tasks[i]->Retain();
-    workers_[i]->Enqueue(tasks[i]);
+    //tasks[i] = new Task(this, IRIS_TASK, task_name);
+    TaskCreate(task_name, false, &tasks[i]);
+    Task *task = get_task_object(tasks[i]);
+    task->set_system();
+    task->Retain();
+    Command* cmd = Command::CreateInit(task);
+    task->AddCommand(cmd);
+    _debug2("Initialize task:%lu:%s ref_cnt:%d", task->uid(), task->name(), task->ref_cnt());
+    task->Retain();
+    task->Retain();
+    workers_[i]->Enqueue(task);
   }
-  if (sync) for (int i = 0; i < ndevs_; i++) tasks[i]->Wait();
-  for (int i = 0; i < ndevs_; i++) {
-    //delete tasks[i];
-    tasks[i]->Release();
+  if (sync) for (int i = 0; i < ndevs_; i++) {
+    Task *task = get_task_object(tasks[i]);
+    task->Wait();
+    task->Release();
+    //Task *task = get_task_object(tasks[i]);
+    //TODO: add clause to send `call workers_[1]->Enqueue(task)` if task has been missed? 1 in 20k run deadlock
+    //if(task != NULL && task->status() != IRIS_COMPLETE) {task->Retain(); task->Wait(); task->Release();}
+    //TaskWait(tasks[i]);
   }
+  //for (int i = 0; i < ndevs_; i++) {
+    //Task *task = get_task_object(tasks[i]);
+    //_debug2("Release Initialize task:%lu:%s ref_cnt:%d", task->uid(), task->name(), task->ref_cnt());
+    //task->Release();
+  //}
   delete[] tasks;
   return IRIS_SUCCESS;
+}
+
+void Platform::ShowOverview() {
+  int nplatforms = 0;
+  int ndevices = 0;
+  PlatformCount(&nplatforms);
+  DeviceCount(&ndevices);
+  std::cout << "IRIS is using " << ndevices << " devices with " << nplatforms << " platforms:" << std::endl;
+  char name[256];
+  char vendor[256];
+  const char* backend="Unknown";
+  const char* type="Unknown";
+  //print table header
+  std::cout << setw(8) << setfill('-') << "--" << "-+-" <<
+    setw(32) << setfill('-') << "----" << "-+-" <<
+    setw(32) << setfill('-') << "-----" << "-+-" <<
+    setw(32) << setfill('-') << "------" <<  "-+-" <<
+    setw(12) << setfill('-') << "----" << "-" << std::endl;
+  std::cout << setw(8) << setfill(' ') << "id" << " | " <<
+    setw(32) << setfill(' ') << "name" << " | " <<
+    setw(32) << setfill(' ') << "vendor" << " | " <<
+    setw(32) << setfill(' ') << "backend" <<  " | " <<
+    setw(12) << setfill(' ') << "type" << " " << std::endl;
+  std::cout << setw(8) << setfill('-') << "--" << "-+-" <<
+    setw(32) << setfill('-') << "----" << "-+-" <<
+    setw(32) << setfill('-') << "-----" << "-+-" <<
+    setw(32) << setfill('-') << "------" <<  "-+-" <<
+    setw(12) << setfill('-') << "----" << "-" << std::endl;
+  for (int i = 0; i < ndevices; i++){
+    int type_id;
+    int backend_id;
+    DeviceInfo(i, iris_name,    name,       NULL);
+    DeviceInfo(i, iris_vendor,  vendor,     NULL);
+    DeviceInfo(i, iris_type,    &type_id,   NULL);
+    DeviceInfo(i, iris_backend, &backend_id,NULL);
+    switch(backend_id){
+      case (iris_cuda):     backend = "cuda";       break;
+      case (iris_hexagon):  backend = "hexagon";    break;
+      case (iris_hip):      backend = "hip";        break;
+      case (iris_levelzero):backend = "levelzero";  break;
+      case (iris_opencl):   backend = "opencl";     break;
+    }
+    switch(type_id){
+      case (iris_cpu):      type = "CPU";         break;
+      case (iris_gpu):      type = "GPU";         break;
+      case (iris_amd) :     type = "AMD GPU";     break;
+      case (iris_nvidia) :  type = "NVIDIA GPU";  break;
+      case (iris_phi):      type = "PHI";         break;
+      case (iris_fpga):     type = "FPGA";        break;
+      case (iris_dsp):      type = "DSP";         break;
+    }
+    std::cout << setw(8) << setfill(' ') << i << " | " <<
+      setw(32) << setfill(' ') << name << " | "<<
+      setw(32) << setfill(' ') << vendor  << " | " <<
+      setw(32) << setfill(' ') << backend <<  " | " <<
+      setw(12) << setfill(' ') << type << " " << std::endl;
+  } 
+  std::cout << setw(8) << setfill('-') << "--" << "-+-" <<
+    setw(32) << setfill('-') << "----" << "-+-" <<
+    setw(32) << setfill('-') << "-----" << "-+-" <<
+    setw(32) << setfill('-') << "------" <<  "-+-" <<
+    setw(12) << setfill('-') << "----" << "-" << std::endl;
 }
 
 int Platform::PlatformCount(int* nplatforms) {
@@ -755,6 +882,9 @@ int Platform::DeviceGetDefault(int* device) {
 
 int Platform::DeviceSynchronize(int ndevs, int* devices) {
   Task* task = new Task(this, IRIS_MARKER, "Marker");
+  task->Retain();
+  task->Retain();
+  iris_task brs_task = *(task->struct_obj());
   if (scheduler_) {
     char sync_task[128];
     for (int i = 0; i < ndevs; i++) {
@@ -765,13 +895,21 @@ int Platform::DeviceSynchronize(int ndevs, int* devices) {
       sprintf(sync_task, "Marker-%d", i);
       Task* subtask = new Task(this, IRIS_MARKER, sync_task);
       subtask->set_devno(devices[i]);
+      subtask->Retain();
       subtask->set_user(true);
+      _debug2("Created marker task:%lu:%s ref_cnt:%d", subtask->uid(), subtask->name(), subtask->ref_cnt());
       task->AddSubtask(subtask);
     }
     scheduler_->Enqueue(task);
-  } else workers_[0]->Enqueue(task);
+  } else{
+    workers_[0]->Enqueue(task);
+  }
   task->Wait();
-  return task->Ok();
+  task->Release();
+  //TaskWait(brs_task);
+  // Task::Ok returns only Device::Ok. However, the parent task doesn't map to any 
+  // device. It is meaningless to call task->Ok(). Hence, returning  IRIS_SUCCESS.
+  return IRIS_SUCCESS;
 }
 
 int Platform::PolicyRegister(const char* lib, const char* name, void* params) {
@@ -970,6 +1108,19 @@ int Platform::SetParamsMap(iris_task brs_task, int *params_map)
   Command *cmd_kernel = task->cmd_kernel();
   cmd_kernel->set_params_map(params_map);
   return IRIS_SUCCESS;
+}
+
+int Platform::SetSharedMemoryModel(iris_mem brs_mem, DeviceModel model, int flag)
+{
+    BaseMem* mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+    for (int i = 0; i < ndevs_; i++) {
+        if (devs_[i] && (model == iris_model_all || devs_[i]->model() == model)) {
+            devs_[i]->set_can_share_host_memory_flag((bool)flag);
+            devs_[i]->set_shared_memory_buffers((bool)flag);
+            mem->set_usm_flag(i, flag);
+        }
+    }
+    return IRIS_SUCCESS;
 }
 
 int Platform::SetSharedMemoryModel(int flag)
@@ -1187,31 +1338,54 @@ int Platform::TaskSubmit(iris_task brs_task, int brs_policy, const char* opt, in
   Task *task = get_task_object(brs_task);
   assert(task != NULL);
   if (recording_) json_->RecordTask(task);
+  task->Retain();
+  task->set_time_submit(timer_);
   task->Submit(brs_policy, opt, sync);
   _trace(" successfully submitted task:%lu:%s", task->uid(), task->name());
   if (scheduler_) {
     FilterSubmitExecute(task);
     scheduler_->Enqueue(task);
-  } else workers_[0]->Enqueue(task);
-  if (sync) task->Wait();
+  } else { task->Retain(); workers_[0]->Enqueue(task); }
+  _debug2("Task wait release:%lu:%s ref_cnt:%d before TaskSubmit\n", task->uid(), task->name(), task->ref_cnt());
+  if (sync) TaskWait(brs_task);
   return nfailures_;
 }
 
 int Platform::TaskSubmit(Task *task, int brs_policy, const char* opt, int sync) {
+  iris_task brs_task = *(task->struct_obj());
   if (recording_) json_->RecordTask(task);
+  task->Retain();
+  task->set_time_submit(timer_);
   task->Submit(brs_policy, opt, sync);
   _trace(" successfully submitted task:%lu:%s", task->uid(), task->name());
   if (scheduler_) {
     FilterSubmitExecute(task);
     scheduler_->Enqueue(task);
-  } else workers_[0]->Enqueue(task);
-  if (sync) task->Wait();
+  } else { task->Retain(); workers_[0]->Enqueue(task); }
+  if (sync) TaskWait(brs_task);
   return nfailures_;
 }
-
+void Platform::TaskSafeRetainStatic(void *data) {
+  Task *task = (Task *)data;
+  task->Retain();
+}
+void Platform::TaskSafeRetain(unsigned long uid) {
+  task_track_.CallBackIfObjectExists(uid, Platform::TaskSafeRetainStatic);
+}
+void Platform::TaskSafeRetain(iris_task brs_task) {
+  task_track_.CallBackIfObjectExists(brs_task.uid, Platform::TaskSafeRetainStatic);
+}
 int Platform::TaskWait(iris_task brs_task) {
+  _debug2("waiting for brs_task:%lu\n", brs_task.uid);
+  TaskSafeRetain(brs_task);
   Task *task = get_task_object(brs_task);
-  if (task != NULL) task->Wait();
+  if (task != NULL) {
+    unsigned long uid = task->uid(); string lname = task->name(); _debug2("Task wait release:%lu:%s ref_cnt:%d after callback\n", task->uid(), task->name(), task->ref_cnt());
+    task->Wait();
+    _debug2("Task wait before release:%lu:%s ref_cnt:%d\n", uid, lname.c_str(), task->ref_cnt());
+    int ref_cnt = task->Release();
+    _debug2("Task wait after release:%lu:%s ref_cnt:%d\n", uid, lname.c_str(), ref_cnt);
+  }
   return IRIS_SUCCESS;
 }
 
@@ -1235,13 +1409,30 @@ int Platform::TaskKernelCmdOnly(iris_task brs_task) {
   return (task->ncmds() == 1 && task->cmd_kernel()) ? IRIS_SUCCESS : IRIS_ERROR;
 }
 
+void Platform::TaskReleaseStatic(void *data)
+{
+    Task *task = (Task *)data;
+    // This is only for tasks which has to be manuallay released. 
+    // Otherwise, runtime will take care of when to release it
+    if (!task->IsRelease()) {
+        _debug2("Force releasing the task id:%lu:%s", task->uid(), task->name());
+        assert(task->ref_cnt() == 1);
+        task->EnableRelease();
+        task->ForceRelease();
+    }
+}
+
 int Platform::TaskRelease(iris_task brs_task) {
+    _debug2("Releasing the task id:%lu", brs_task.uid);
+    //task_track_.CallBackIfObjectExists(brs_task.uid, Platform::TaskReleaseStatic);
+    //Retainable object should alive 
     Task *task = get_task_object(brs_task);
-    if (task != NULL) {
-        if (!task->IsRelease())
-            task->ForceRelease();
-        else 
-            task->Release();
+    if (task != NULL && !task->IsRelease()) {
+        task->EnableRelease();
+        _debug2("Releasing the task id:%lu ref_cnt:%d\n", brs_task.uid, task->ref_cnt());
+        //assert(task->ref_cnt() == 1);
+        task->Release();
+        //Task should be alive yet.
     }
     return IRIS_SUCCESS;
 }
@@ -1275,7 +1466,37 @@ int Platform::TaskInfo(iris_task brs_task, int param, void* value, size_t* size)
     int* cmd_types = (int*) value;
     for (int i = 0; i < task->ncmds(); i++) {
       cmd_types[i] = task->cmd(i)->type();
-    }    
+    }
+  } else if (param == iris_task_time_submit) {
+    if (size) *size = sizeof(size_t);
+    *((size_t*) value) = task->ns_time_submit();
+  } else if (param == iris_task_time_start) {
+    if (size) *size = sizeof(double);
+    size_t first_kernel_time = SIZE_MAX;
+    //get the earliest command kernels time
+    for (int i = 0 ; i < task->ncmds(); i++){
+      if (task->cmd(i)->type_kernel()){
+        size_t this_time = task->cmd(i)->ns_time_start();
+        if (this_time < first_kernel_time) first_kernel_time = this_time;
+      }
+    }
+    //For any given event, this timestamp is always greater than or equal to the iris_task_time_submit timestamp
+    if (first_kernel_time == SIZE_MAX) first_kernel_time = task->ns_time_submit();
+    *((size_t*) value) = first_kernel_time;
+  } else if (param == iris_task_time_end) {
+    if (size) *size = sizeof(double);
+    //get the latest command kernels time
+    size_t last_kernel_time = 0;
+    //get the earliest command kernels time
+    for (int i = 0 ; i < task->ncmds(); i++){
+      if (task->cmd(i)->type_kernel()){
+        size_t this_time = task->cmd(i)->ns_time_end();
+        if (this_time > last_kernel_time) last_kernel_time = this_time;
+      }
+    }
+    //For any given event, this timestamp is always greater than or equal to the iris_task_time_submit timestamp
+    if (last_kernel_time == 0) last_kernel_time = task->ns_time_submit();
+    *((size_t*) value) = last_kernel_time;
   }
   return IRIS_SUCCESS;
 }
@@ -1455,28 +1676,42 @@ void Platform::set_release_task_flag(bool flag, iris_task brs_task)
 {
     Task *task = get_task_object(brs_task);
     assert(task != NULL);
-    task->DisableRelease();
+    if (!flag && task->IsRelease()) {
+        task->Retain();
+        task->DisableRelease();
+    }
+    else if (flag && !task->IsRelease()) {
+        task->EnableRelease();
+        task->Release();
+    }
+    _debug2(" reatined task id:%lu ref_cnt:%d\n", brs_task.uid, task->ref_cnt());
 }
 
 int Platform::GraphRelease(iris_graph brs_graph) {
-  Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
-  graph->ForceRelease();
+  graph_track_.CallBackIfObjectExists(brs_graph.uid, Graph::GraphRelease);
   return IRIS_SUCCESS;
 }
 
 int Platform::GraphRetain(iris_graph brs_graph, bool flag) {
   Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
-  if (flag)
+  if (flag && graph->IsRelease()) {
       graph->enable_retainable();
-  else
+  }
+  else if (!flag && !graph->IsRelease()) {
       graph->disable_retainable();
+  }
   std::vector<Task*>* tasks = graph->tasks();
   for (std::vector<Task*>::iterator I = tasks->begin(), E = tasks->end(); I != E; ++I) {
     Task* task = *I;
-    if (flag)
+    if (flag && task->IsRelease()) {
+        task->Retain();
         task->DisableRelease();
-    else
+        _debug2("Graph task:%lu:%s retained ref_cnt:%d", task->uid(), task->name(), task->ref_cnt());
+    }
+    else if (!flag && !task->IsRelease()) {
         task->EnableRelease();
+        task->Release();
+    }
   }
   return IRIS_SUCCESS;
 }
@@ -1484,26 +1719,51 @@ int Platform::GraphRetain(iris_graph brs_graph, bool flag) {
 int Platform::GraphSubmit(iris_graph brs_graph, int brs_policy, int sync) {
   Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
   if (graph == NULL) { if (sync) return Synchronize(); else return IRIS_SUCCESS; }
+  graph->Retain();
   std::vector<Task*>* tasks = graph->tasks();
   //graph->RecordStartTime(devs_[0]->Now());
   for (std::vector<Task*>::iterator I = tasks->begin(), E = tasks->end(); I != E; ++I) {
     Task* task = *I;
+
+#ifdef PRINT_TASK_DEP
+    printf("Task: %s task id %d\n", task->name(), task->uid());
+    for(int i = 0; i < task->ndepends(); i++)
+        printf("    Parents %d - %s task id %d\n", i, task->depend(i)->name(), task->depend(i)->uid());
+    for(int i = 0; i < task->nchilds(); i++)
+        printf("    Childs %d - %s task id %d\n", i, task->Child(i)->name(), task->Child(i)->uid());
+#endif
+/*    for(int i = 0; i < task->nchilds(); i++)
+        printf("    Childs %d - %s\n", i, task->Child(i)->name());
+*/ 
+    //printf("Task name %s depend count %d\n", task->name(), task->ndepends());
+    //for(int i = 0; i < task->ndepends(); i++)
+    //    printf("    depend %d - %s\n", i, task->depend(i)->name());
     //preference is to honour the policy embedded in the task-graph.
     if (task->brs_policy() == iris_default) {
       task->set_brs_policy(brs_policy);
     }
+    _debug2("Graph submit task:%lu:%s retained ref_cnt:%d", task->uid(), task->name(), task->ref_cnt());
+    task->Retain();
+    task->set_time_submit(timer_);
     task->Submit(task->brs_policy(), task->opt(), sync);
     if (recording_) json_->RecordTask(task);
     if (scheduler_) scheduler_->Enqueue(task);
-    else workers_[0]->Enqueue(task);
+    else { task->Retain(); workers_[0]->Enqueue(task); }
   }
   if (sync) graph->Wait();
+#ifdef AUTO_PAR
+#ifdef AUTO_FLUSH
+  //printf("-------------------------------------------------------\n");
+  auto_dag_->set_current_graph(NULL);
+#endif
+#endif
   return IRIS_SUCCESS;
 }
 
 int Platform::GraphSubmit(iris_graph brs_graph, int *order, int brs_policy, int sync) {
   Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
   if (graph == NULL) { if (sync) return Synchronize(); else return IRIS_SUCCESS; }
+  graph->Retain();
   std::vector<Task*> & tasks = graph->tasks_list();
   //graph->RecordStartTime(devs_[0]->Now());
   for(size_t i=0; i<tasks.size(); i++) {
@@ -1512,10 +1772,13 @@ int Platform::GraphSubmit(iris_graph brs_graph, int *order, int brs_policy, int 
     if (task->brs_policy() == iris_default) {
       task->set_brs_policy(brs_policy);
     }
+    _debug2("Graph submit task:%lu:%s retained ref_cnt:%d", task->uid(), task->name(), task->ref_cnt());
+    task->Retain();
+    task->set_time_submit(timer_);
     task->Submit(task->brs_policy(), task->opt(), sync);
     if (recording_) json_->RecordTask(task);
     if (scheduler_) scheduler_->Enqueue(task);
-    else workers_[0]->Enqueue(task);
+    else { task->Retain(); workers_[0]->Enqueue(task); }
   }
   if (sync) graph->Wait();
   return IRIS_SUCCESS;
@@ -1547,7 +1810,7 @@ int Platform::RecordStop() {
 int Platform::FilterSubmitExecute(Task* task) {
   if (!polyhedral_available_) return IRIS_SUCCESS;
   if (!task->cmd_kernel()) return IRIS_SUCCESS;
-  if (task->brs_policy() & iris_all) {
+  if (task->brs_policy() & iris_ftf) {
     if (filter_task_split_->Execute(task) != IRIS_SUCCESS) {
       _trace("poly is not available kernel[%s] task[%lu]", task->cmd_kernel()->kernel()->name(), task->uid());
       return IRIS_ERROR;
@@ -1818,13 +2081,13 @@ int Platform::ShowKernelHistory() {
 #endif
 }
 
-unique_ptr<Platform> Platform::singleton_ = nullptr;
+shared_ptr<Platform> Platform::singleton_ = nullptr;
 std::once_flag Platform::flag_singleton_;
 std::once_flag Platform::flag_finalize_;
 
 Platform* Platform::GetPlatform() {
 //  if (singleton_ == NULL) singleton_ = new Platform();
-  std::call_once(flag_singleton_, []() { singleton_ = std::unique_ptr<Platform>(new Platform()); });
+  std::call_once(flag_singleton_, []() { singleton_ = std::shared_ptr<Platform>(new Platform()); });
   return singleton_.get();
 }
 int Platform::GetGraphTasksCount(iris_graph brs_graph) {

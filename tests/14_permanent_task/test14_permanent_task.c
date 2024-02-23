@@ -26,7 +26,7 @@ int main(int argc, char** argv) {
   iris_task_create(&task1);
 
   iris_task_h2d_full(task1, mem, A);
-  iris_task_submit(task1, iris_any, NULL, true);
+  iris_task_submit(task1, iris_sdq, NULL, true);
 
   void* params[1] = { &mem };
   int params_info[1] = { iris_rw };
@@ -38,12 +38,12 @@ int main(int argc, char** argv) {
   iris_task_retain(task2, true);
 #endif
   iris_task_kernel(task2, "process", 1, NULL, &SIZE, NULL, 1, params, params_info);
-  for (int i = 0; i < LOOP; i++) iris_task_submit(task2, iris_any, NULL, true);
+  for (int i = 0; i < LOOP; i++) iris_task_submit(task2, iris_sdq, NULL, true);
 
   iris_task task3;
   iris_task_create(&task3);
   iris_task_d2h_full(task3, mem, B);
-  iris_task_submit(task3, iris_any, NULL, true);
+  iris_task_submit(task3, iris_sdq, NULL, true);
 
   for (int i = 0; i < SIZE; i++) printf("[%3d] %3d\n", i, B[i]);
 

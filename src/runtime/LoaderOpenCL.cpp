@@ -58,9 +58,11 @@ int LoaderOpenCL::LoadFunctions() {
   LOADFUNC(clCreateBuffer);
   LOADFUNC(clReleaseMemObject);
   LOADFUNC(clCreateProgramWithSource);
+  LOADFUNC(clGetCommandQueueInfo);
   LOADFUNC(clCreateProgramWithBinary);
   LOADFUNCSILENT(clCreateProgramWithIL);
   LOADFUNC(clReleaseProgram);
+  LOADFUNC(clReleaseEvent);
   LOADFUNC(clBuildProgram);
   LOADFUNC(clGetProgramInfo);
   LOADFUNC(clGetProgramBuildInfo);
@@ -73,7 +75,12 @@ int LoaderOpenCL::LoadFunctions() {
   LOADFUNC(clEnqueueWriteBufferRect);
   LOADFUNC(clEnqueueNDRangeKernel);
   LOADFUNC(clCreateCommandQueue);
+  LOADFUNC(clEnqueueMarker);
+  LOADFUNC(clEnqueueWaitForEvents);
+  LOADFUNC(clWaitForEvents);
+  LOADFUNC(clReleaseCommandQueue);
   LOADFUNC(clSetEventCallback);
+  LOADFUNC(clEnqueueFillBuffer);
   return IRIS_SUCCESS;
 }
 

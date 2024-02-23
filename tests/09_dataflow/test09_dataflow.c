@@ -51,9 +51,9 @@ int main(int argc, char** argv) {
   iris_task_d2h_full(task_C, mem_BC, BC);
   iris_task_depend(task_C, 1, &task_B);
 
-  iris_task_submit(task_A, iris_any, NULL, false);
-  iris_task_submit(task_B, iris_any, NULL, false);
-  iris_task_submit(task_C, iris_any, NULL, false);
+  iris_task_submit(task_A, iris_sdq, NULL, false);
+  iris_task_submit(task_B, iris_sdq, NULL, false);
+  iris_task_submit(task_C, iris_sdq, NULL, false);
 
   iris_synchronize();
 

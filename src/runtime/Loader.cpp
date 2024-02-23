@@ -5,9 +5,6 @@
 #include <dlfcn.h>
 #include <stdlib.h>
 
-#ifdef DISABLE_DYNAMIC_LINKING
-#define ENABLE_STATIC_LINKING
-#endif
 #include "Loader.h"
 
 namespace CLinkage {
@@ -22,6 +19,7 @@ namespace rt {
 Loader::Loader() {
   handle_ = NULL;
   handle_ext_ = NULL;
+  strict_handle_check_ = false;
   iris_get_kernel_names = NULL;
   iris_set_kernel_ptr_with_obj = NULL;
 }
@@ -86,11 +84,13 @@ int Loader::LoadFunctions() {
 }
 
 void *Loader::GetFunctionPtr(const char *kernel_name) {
+    if (strict_handle_check_ && handle_ == NULL) return NULL;
     void *kptr = dlsym(handle_, kernel_name);
     return kptr;
 }
 
 bool Loader::IsFunctionExists(const char *kernel_name) {
+    if (strict_handle_check_ && handle_ == NULL) return false;
     __iris_kernel_ptr kptr;
     kptr = (__iris_kernel_ptr) dlsym(handle_, kernel_name);
     if (kptr == NULL) return false;
@@ -100,6 +100,7 @@ bool Loader::IsFunctionExists(const char *kernel_name) {
 int Loader::SetKernelPtr(void *obj, char *kernel_name)
 {
     if (iris_set_kernel_ptr_with_obj) {
+        if (strict_handle_check_ && handle_ == NULL) return IRIS_ERROR;
         __iris_kernel_ptr kptr;
         kptr = (__iris_kernel_ptr) dlsym(handle_, kernel_name);
         iris_set_kernel_ptr_with_obj(obj, kptr);

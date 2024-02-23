@@ -139,7 +139,7 @@ int iris_openmp_setmem(int idx, void* mem) {
   return IRIS_ERROR;
 }
 
-int iris_openmp_launch(int dim, size_t off, size_t ndr) {
+int iris_openmp_launch(int dim, size_t *off, size_t *ndr) {
   switch (iris_openmp_kernel_idx) {
     case 0: kernel0(kernel0_args.C, kernel0_args.loop, off, ndr); break;
     case 1: kernel1(kernel1_args.C, kernel1_args.loop, off, ndr); break;

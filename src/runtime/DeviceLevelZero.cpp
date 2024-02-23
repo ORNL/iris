@@ -93,7 +93,7 @@ int DeviceLevelZero::Init() {
   return IRIS_SUCCESS;
 }
 
-int DeviceLevelZero::ResetMemory(BaseMem *mem, uint8_t reset_value)
+int DeviceLevelZero::ResetMemory(Task *task, BaseMem *mem, uint8_t reset_value)
 {
     _error("Reset Memory is not implemented");
     return IRIS_ERROR;

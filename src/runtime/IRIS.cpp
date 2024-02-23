@@ -13,7 +13,8 @@ typedef iris::rt::BaseMem BaseMemIRIS;
 typedef iris::rt::Mem MemIRIS;
 Mem::Mem(size_t size) {
 #ifdef ENABLE_SMART_PTR_MEM
-    assert(PlatformIRIS::GetPlatform()->MemCreate(size, &mem_) == IRIS_SUCCESS);
+    int status = PlatformIRIS::GetPlatform()->MemCreate(size, &mem_);
+    assert(status == IRIS_SUCCESS);
 #else
     iris_mem_create(size, &mem_);
 #endif
@@ -25,16 +26,20 @@ Mem::~Mem() {
 }
 DMem::DMem(void *host, size_t size) {
 #ifdef ENABLE_SMART_PTR_MEM
-    assert(PlatformIRIS::GetPlatform()->DataMemCreate(&mem_, host, size) == IRIS_SUCCESS);
+    int status = PlatformIRIS::GetPlatform()->DataMemCreate(&mem_, host, size);
+    assert(status == IRIS_SUCCESS);
 #else
-    assert(iris_data_mem_create(&mem_, host, size) == IRIS_SUCCESS);
+    int status = iris_data_mem_create(&mem_, host, size);
+    assert(status == IRIS_SUCCESS);
 #endif
 }
 DMem::DMem(void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim) {
 #ifdef ENABLE_SMART_PTR_MEM
-    assert(PlatformIRIS::GetPlatform()->DataMemCreate(&mem_, host, off, host_size, dev_size, elem_size, dim) == IRIS_SUCCESS);
+    int status = PlatformIRIS::GetPlatform()->DataMemCreate(&mem_, host, off, host_size, dev_size, elem_size, dim);
+    assert(status == IRIS_SUCCESS);
 #else
-    assert(iris_data_mem_create_tile(&mem_, host, off, host_size, dev_size, elem_size, dim) == IRIS_SUCCESS);
+    int status = iris_data_mem_create_tile(&mem_, host, off, host_size, dev_size, elem_size, dim);
+    assert(status == IRIS_SUCCESS);
 #endif
 }
 DMem::~DMem() {
@@ -65,7 +70,8 @@ int DMem::enable_outer_dim_regions() {
 }
 DMemRegion::DMemRegion(iris_mem_type root_mem, int region) {
 #ifdef ENABLE_SMART_PTR_MEM
-    assert(PlatformIRIS::GetPlatform()->DataMemCreate(&mem_, root_mem, region) == IRIS_SUCCESS);
+    int status = PlatformIRIS::GetPlatform()->DataMemCreate(&mem_, root_mem, region);
+    assert(status == IRIS_SUCCESS);
 #else
     iris_data_mem_create_region(&mem_, root_mem, region);
 #endif
@@ -73,21 +79,28 @@ DMemRegion::DMemRegion(iris_mem_type root_mem, int region) {
 DMemRegion::DMemRegion(DMem *root_mem, int region) {
     dmem_ = root_mem;
 #ifdef ENABLE_SMART_PTR_MEM
-    assert(PlatformIRIS::GetPlatform()->DataMemCreate(&mem_, root_mem->mem(), region) == IRIS_SUCCESS);
+    int status = PlatformIRIS::GetPlatform()->DataMemCreate(&mem_, root_mem->mem(), region);
+    assert(status == IRIS_SUCCESS);
 #else
-    assert(iris_data_mem_create_region(&mem_, root_mem->mem(), region) == IRIS_SUCCESS);
+    int status = iris_data_mem_create_region(&mem_, root_mem->mem(), region);
+    assert(status == IRIS_SUCCESS);
 #endif
 }
 Task::Task(const char *name, bool perm, bool retainable) 
 {
     retainable_ = retainable;
 #ifdef ENABLE_SMART_PTR_TASK
-    assert(PlatformIRIS::GetPlatform()->TaskCreate(name, perm, &task_) == IRIS_SUCCESS);
+    int status = PlatformIRIS::GetPlatform()->TaskCreate(name, perm, &task_);
+    assert(status == IRIS_SUCCESS);
     if (retainable) platform->set_release_task_flag(!retainable, task_);
 #else
-    assert(PlatformIRIS::GetPlatform()->TaskCreate(name, perm, &task_) == IRIS_SUCCESS);
+    int status = PlatformIRIS::GetPlatform()->TaskCreate(name, perm, &task_);
+    assert(status == IRIS_SUCCESS);
     if (retainable) iris_task_retain(task_, !retainable);
 #endif
+}
+void Task::disable_async() {
+    return iris_task_disable_asynchronous(task_);
 }
 int Task::set_order(int *order) {
     return iris_task_kernel_dmem_fetch_order(task_, order);
@@ -205,6 +218,9 @@ void Task::depends_on(Task & d_task) {
     TaskIRIS *c_task = (TaskIRIS *)(PlatformIRIS::GetPlatform()->get_task_object(task()));
     TaskIRIS *i_task = (TaskIRIS*)(PlatformIRIS::GetPlatform()->get_task_object(d_task.task()));
     c_task->AddDepend(i_task, d_task.task().uid);
+}
+int Task::wait() {
+    return iris_task_wait(task_);
 }
 Graph::Graph(bool retainable) {
     retainable_ = retainable;

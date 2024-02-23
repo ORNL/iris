@@ -31,7 +31,7 @@ task.h2d(mem_y, 0, y.nbytes, y)
 task.kernel("saxpy", 1, [0], [SIZE], [1], 
         [mem_s,       mem_x,       mem_y,       SIZE,  A] , 
         [iris.iris_w, iris.iris_r, iris.iris_r, 4,     4] )
-task.params_map([iris.iris_all, iris.iris_all, iris.iris_all, iris.iris_cpu, iris.iris_all])
+task.params_map([iris.iris_ftf, iris.iris_ftf, iris.iris_ftf, iris.iris_cpu, iris.iris_ftf])
 task.d2h(mem_s, 0, s.nbytes, s)
 task.submit(iris.iris_fpga)
 

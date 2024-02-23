@@ -42,12 +42,15 @@ public:
   void *GetFunctionPtr(const char *name);
   int SetKernelPtr(void *obj, char *kernel_name);
   int LoadExtHandle(const char *libname);
+  void *handle() { return handle_; }
+  void enable_strict_handle_check() { strict_handle_check_ = true; }
 private:
   int LoadHandle();
 
 protected:
   void* handle_;
   void* handle_ext_;
+  bool strict_handle_check_;
 };
 
 } /* namespace rt */

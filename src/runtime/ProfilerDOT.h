@@ -4,6 +4,9 @@
 #include "Profiler.h"
 #include "pthread.h"
 #include <set>
+#include <map>
+#include <vector>
+#include <iostream>
 
 namespace iris {
 namespace rt {
@@ -24,6 +27,12 @@ private:
   std::set<unsigned long> tasks_exit_;
   pthread_mutex_t   dot_lock_;
   bool no_task_;
+#ifdef PER_TASK_COLOR
+  std::vector<std::string> list_color;
+  std::map<std::string, std::string> map_color;
+  int round_robin_counter;
+#endif
+
 };
 
 } /* namespace rt */

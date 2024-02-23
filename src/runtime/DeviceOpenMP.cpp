@@ -35,32 +35,10 @@ DeviceOpenMP::DeviceOpenMP(LoaderOpenMP* ld, int devno, int platform) : Device(d
 }
 
 DeviceOpenMP::~DeviceOpenMP() {
-  if (ld_->iris_openmp_finalize)
-      ld_->iris_openmp_finalize();
-  if (ld_->iris_openmp_finalize_handles)
-      ld_->iris_openmp_finalize_handles(devno_);
+  ld_->finalize(devno());
 }
 
 void DeviceOpenMP::TaskPre(Task *task) {
-    if (!is_shared_memory_buffers()) return;
-    for (int i = 0; i < task->ncmds(); i++) {
-        Command* cmd = task->cmd(i);
-        if (hook_command_pre_) hook_command_pre_(cmd);
-        switch (cmd->type()) {
-            case IRIS_CMD_D2H:          
-                {
-                    Mem* mem = cmd->mem();
-                    void* host = cmd->host();
-                    mem->arch(this, host);
-                    break;
-                }
-            default: break;
-        }
-        if (hook_command_post_) hook_command_post_(cmd);
-#ifndef IRIS_SYNC_EXECUTION
-        if (cmd->last()) AddCallback(task);
-#endif
-    }
 }
 
 int DeviceOpenMP::GetProcessorNameIntel(char* cpuinfo) {
@@ -114,14 +92,12 @@ int DeviceOpenMP::GetProcessorNameQualcomm(char* cpuinfo) {
 }
 
 int DeviceOpenMP::Init() {
-  if (ld_->iris_openmp_init) 
-      ld_->iris_openmp_init();
-  if (ld_->iris_openmp_init_handles) 
-      ld_->iris_openmp_init_handles(devno_);
+  //ld_->set_dev(devno(), model());
+  ld_->init(devno());
   return IRIS_SUCCESS;
 }
 
-int DeviceOpenMP::ResetMemory(BaseMem *mem, uint8_t reset_value)
+int DeviceOpenMP::ResetMemory(Task *task, BaseMem *mem, uint8_t reset_value)
 {
     memset(mem->arch(this), reset_value, mem->size());
     return IRIS_SUCCESS;
@@ -140,13 +116,13 @@ int DeviceOpenMP::MemAlloc(void** mem, size_t size, bool reset) {
 
 int DeviceOpenMP::MemFree(void* mem) {
   void* mpmem = mem;
-  if (mpmem && !is_shared_memory_buffers()) free(mpmem);
+  if (mpmem) free(mpmem);
   return IRIS_SUCCESS;
 }
 
 int DeviceOpenMP::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag) {
   void* mpmem = mem->arch(this, host);
-  if (!is_shared_memory_buffers()) {
+  if (mem->is_usm(devno())) return IRIS_SUCCESS;
       if (dim == 2 || dim == 3) {
           _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu,%lu,%lu] host_sizes[%lu,%lu,%lu] dev_sizes[%lu,%lu,%lu] size[%lu] host[%p]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), mpmem, off[0], off[1], off[2], host_sizes[0], host_sizes[1], host_sizes[2], dev_sizes[0], dev_sizes[1], dev_sizes[2], size, host);
           Utils::MemCpy3D((uint8_t *)mpmem, (uint8_t *)host, off, dev_sizes, host_sizes, elem_size, true);
@@ -175,13 +151,12 @@ int DeviceOpenMP::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_siz
           printf("\n");
 #endif
       }
-  }
   return IRIS_SUCCESS;
 }
 
 int DeviceOpenMP::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag) {
   void* mpmem = mem->arch(this, host);
-  if (!is_shared_memory_buffers()) {
+  if (mem->is_usm(devno())) return IRIS_SUCCESS;
       if (dim == 2 || dim == 3) {
           _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu,%lu,%lu] host_sizes[%lu,%lu,%lu] dev_sizes[%lu,%lu,%lu] size[%lu] host[%p]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), mpmem, off[0], off[1], off[2], host_sizes[0], host_sizes[1], host_sizes[2], dev_sizes[0], dev_sizes[1], dev_sizes[2], size, host);
           Utils::MemCpy3D((uint8_t *)mpmem, (uint8_t *)host, off, dev_sizes, host_sizes, elem_size, false);
@@ -210,30 +185,32 @@ int DeviceOpenMP::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_siz
           printf("\n");
 #endif
       }
-  }
   return IRIS_SUCCESS;
 }
 
 int DeviceOpenMP::KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bool report_error) {
-  int status = IRIS_ERROR;
-  if (!ld_->IsFunctionExists(name)) {
-      if (report_error) {
-          _error("Missing function for OpenMP kernel:%s", kernel->name());
-          worker_->platform()->IncrementErrorCount();
-      }
-      return IRIS_ERROR;
+  int kernel_idx=-1;
+  if (ld_->host_kernel(&kernel_idx, name) == IRIS_SUCCESS) {
+      *kernel_bin = ld_->GetFunctionPtr(name);
+      return IRIS_SUCCESS;
   }
-  *kernel_bin = ld_->GetFunctionPtr(name);
-  return IRIS_SUCCESS;
+  if (report_error) {
+      _error("Missing function for OpenMP kernel:%s", kernel->name());
+      worker_->platform()->IncrementErrorCount();
+  }
+  return IRIS_ERROR;
 }
 
-int DeviceOpenMP::KernelLaunchInit(Kernel* kernel) {
+int DeviceOpenMP::KernelLaunchInit(Command *cmd, Kernel* kernel) {
   //c_string_array data = ld_->iris_get_kernel_names();
   int status=IRIS_ERROR;
+  status = ld_->launch_init(model(), devno_, 0, NULL, kernel->GetParamWrapperMemory(), cmd);
+  /*
   if (ld_->iris_openmp_kernel_with_obj)
       status = ld_->iris_openmp_kernel_with_obj(kernel->GetParamWrapperMemory(), kernel->name());
   else if (ld_->iris_openmp_kernel)
       status = ld_->iris_openmp_kernel(kernel->name());
+      */
   if (status == IRIS_ERROR) {
       _error("Missing iris_openmp_kernel/iris_openmp_kernel_with_obj for OpenMP kernel:%s", kernel->name());
       worker_->platform()->IncrementErrorCount();
@@ -242,33 +219,51 @@ int DeviceOpenMP::KernelLaunchInit(Kernel* kernel) {
 }
 
 int DeviceOpenMP::KernelSetArg(Kernel* kernel, int idx, int kindex, size_t size, void* value) {
+    int status = ld_->setarg(
+            kernel->GetParamWrapperMemory(), kindex, size, value);
+  /*
   if (ld_->iris_openmp_setarg_with_obj)
       return ld_->iris_openmp_setarg_with_obj(kernel->GetParamWrapperMemory(), kindex, size, value);
   if (ld_->iris_openmp_setarg)
       return ld_->iris_openmp_setarg(kindex, size, value);
+      */
+  if (status != IRIS_SUCCESS) {
   _error("Missing host iris_openmp_setarg/iris_openmp_setarg_with_obj function for OpenMP kernel:%s", kernel->name());
   worker_->platform()->IncrementErrorCount();
+  }
   return IRIS_ERROR;
 }
 
 int DeviceOpenMP::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, size_t off) {
   void* mpmem = (char*) mem->arch(this) + off;
+  size_t size = mem->size() - off;
+  int status = ld_->setmem(kernel->GetParamWrapperMemory(), kindex, mpmem, size);
+  /*
   if (ld_->iris_openmp_setmem_with_obj)
     return ld_->iris_openmp_setmem_with_obj(kernel->GetParamWrapperMemory(), kindex, mpmem);
   if (ld_->iris_openmp_setmem)
     return ld_->iris_openmp_setmem(kindex, mpmem);
+  */
+  if (status == IRIS_SUCCESS) return IRIS_SUCCESS;
   _error("Missing host iris_openmp_setmem/iris_openmp_setmem_with_obj function for OpenMP kernel:%s", kernel->name());
   worker_->platform()->IncrementErrorCount();
   return IRIS_ERROR;
 }
 
 int DeviceOpenMP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws) {
+  //printf(" Task %s\n", kernel->get_task_name());
   _trace("dev[%d] kernel[%s:%s] dim[%d] off[%lu] gws[%lu]", devno_, kernel->name(), kernel->get_task_name(), dim, off[0], gws[0]);
+  if (ld_->host_launch(NULL, 0, kernel->name(), kernel->GetParamWrapperMemory(), devno(),
+              dim, off, gws) == IRIS_SUCCESS) 
+      return IRIS_SUCCESS;
+  /*
   ld_->SetKernelPtr(kernel->GetParamWrapperMemory(), kernel->name());
   if (ld_->iris_openmp_launch_with_obj)
-    return ld_->iris_openmp_launch_with_obj(kernel->GetParamWrapperMemory(), 0, dim, off[0], gws[0]);
+    return ld_->iris_openmp_launch_with_obj(NULL, 
+            kernel->GetParamWrapperMemory(), 0, dim, off[0], gws[0]);
   if (ld_->iris_openmp_launch)
     return ld_->iris_openmp_launch(dim, off[0], gws[0]);
+    */
   _error("Missing host iris_openmp_launch/iris_openmp_launch_with_obj function for OpenMP kernel:%s", kernel->name());
   worker_->platform()->IncrementErrorCount();
   return IRIS_ERROR;

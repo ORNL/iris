@@ -10,22 +10,14 @@ extern "C" __global__ void ijk(double* C, double* A, double* B) {
   size_t j = blockIdx.y * blockDim.y + threadIdx.y;
   size_t SIZE = gridDim.x * blockDim.x;
 
-  //logic to span over local area as separate threads
-  for (;i < SIZE;i++){
-    for (;j < SIZE;j++){
-
-      double sum = 0.0;
-      for (size_t k = 0; k < SIZE; k++) {
-        sum += A[i * SIZE + k] * B[k * SIZE + j];
-      }
-      C[i * SIZE + j] = sum;
-
-    }
+  double sum = 0.0;
+  for (size_t k = 0; k < SIZE; k++) {
+    sum += A[i * SIZE + k] * B[k * SIZE + j];
   }
+  C[i * SIZE + j] = sum;
 }
 
-//the bigk kernel is the ijk task with an added for-loop to increase the kernel running time
-extern "C" __global__ void bigk(double* C, double* A, double* B) {
+extern "C" __global__ void special_ijk(double* C, double* A, double* B) {
   size_t i = blockIdx.x * blockDim.x + threadIdx.x;
   size_t j = blockIdx.y * blockDim.y + threadIdx.y;
   size_t SIZE = gridDim.x * blockDim.x;
@@ -34,5 +26,27 @@ extern "C" __global__ void bigk(double* C, double* A, double* B) {
   for (size_t k = 0; k < SIZE; k++) {
     sum += A[i * SIZE + k] * B[k * SIZE + j];
   }
-  C[i * SIZE + j] += sum;
+  C[i * SIZE + j] = sum;
+  ///quick value-swap test
+  double tmp = A[i];
+  A[i] = B[i];
+  B[i] = tmp;
 }
+
+extern "C" __global__ void bigk(double* C, double* A, double* B) {
+  size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  size_t j = blockIdx.y * blockDim.y + threadIdx.y;
+  size_t SIZE = gridDim.x * blockDim.x;
+
+  for (size_t j = 0; j < SIZE; j++) {
+    double sum = 0.0;
+    for (size_t l = 0; l < 10; l++) {
+      for (size_t k = 0; k < SIZE; k++) {
+        sum += A[i * SIZE + k] * B[k * SIZE + j];
+      }
+    }
+    C[i * SIZE + j] += sum;
+  }
+}
+
+

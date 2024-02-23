@@ -24,7 +24,7 @@ public:
   int (*iris_hexagon_kernel_with_obj)(void *obj, const char* name);
   int (*iris_hexagon_setarg_with_obj)(void *obj, int idx, size_t size, void* value);
   int (*iris_hexagon_setmem_with_obj)(void *obj, int idx, void* mem, int size);
-  int (*iris_hexagon_launch_with_obj)(void *obj, int devno, int dim, size_t off, size_t gws);
+  int (*iris_hexagon_launch_with_obj)(void *obj, void *stream, int devno, int dim, size_t off, size_t gws);
   c_string_array (*iris_get_kernel_names)();
   
   void* (*iris_hexagon_rpcmem_alloc)(int heapid, uint32_t flags, int size);

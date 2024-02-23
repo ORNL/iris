@@ -6,7 +6,8 @@ size_t SIZE;
 
 int getFactor(void* argp) {
   printf("input factor: ");
-  scanf("%d", (int*) argp);
+  *((int *)argp) = 2;
+  //scanf("%d", (int*) argp);
   return 0;
 }
 
@@ -22,6 +23,7 @@ int main(int argc, char** argv) {
   int LOOP;
   int* A;
   int factor;
+  printf("Factor: %p\n", &factor);
 
   SIZE = argc > 1 ? atol(argv[1]) : 8;
   LOOP = argc > 2 ? atoi(argv[2]) : 3;
@@ -39,30 +41,41 @@ int main(int argc, char** argv) {
   iris_mem_create(sizeof(int), &memFactor);
 
   iris_task task1;
-  iris_task_create(&task1);
+  iris_task_create_name("task1", &task1);
   iris_task_host(task1, getFactor, &factor);
-  iris_graph_task(graph, task1, iris_any, NULL);
+  iris_graph_task(graph, task1, iris_sdq, NULL);
 
   void* params[2] = { &memA, &memFactor };
   int params_info[2] = { iris_w, iris_r };
   iris_task task2;
-  iris_task_create(&task2);
+  iris_task_create_name("task2", &task2);
   iris_task_h2d_full(task2, memFactor, &factor);
   iris_task_kernel(task2, "process", 1, NULL, &SIZE, NULL, 2, params, params_info);
   iris_task_d2h_full(task2, memA, A);
-  iris_graph_task(graph, task2, iris_any, NULL);
-
+  iris_task_depend(task2, 1, &task1);
+  iris_graph_task(graph, task2, iris_sdq, NULL);
   iris_task task3;
-  iris_task_create(&task3);
+  iris_task_create_name("task3", &task3);
   iris_task_host(task3, printA, A);
-  iris_graph_task(graph, task3, iris_any, NULL);
+  iris_task_depend(task3, 1, &task2);
+  iris_graph_task(graph, task3, iris_sdq, NULL);
 
   iris_graph_retain(graph, true);
-  for (int loop = 0; loop < LOOP; loop++)
-    iris_graph_submit(graph, iris_any, 0);
-
+  int errors = 0;
+  for (int loop = 0; loop < LOOP; loop++) {
+    factor = loop+1;
+    iris_graph_submit(graph, iris_sdq, 0);
+    iris_synchronize();
+    for(int i=0; i<SIZE; i++) {
+        if (A[i] != i * factor) 
+            errors++;
+    }
+  }
+  iris_graph_release(graph);
   iris_finalize();
-
-  return iris_error_count();
+  
+  errors += iris_error_count();
+  printf("N-Errors: %d\n", errors);
+  return errors;
 }
 

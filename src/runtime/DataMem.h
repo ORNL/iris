@@ -4,7 +4,6 @@
 #include "Config.h"
 #include "Retainable.h"
 #include "BaseMem.h"
-#include "DataMemRegion.h"
 #include <pthread.h>
 #include <set>
 #include <vector>
@@ -16,6 +15,8 @@ namespace rt {
 class Platform;
 class Command;
 class Device;
+class DataMemRegion;
+class DataMem;
 
 class DataMem: public BaseMem {
 public:
@@ -58,20 +59,33 @@ public:
     }
     return all;
   }
-  void dev_unlock(int devno) {
-    pthread_mutex_unlock(&dev_mutex_[devno]);
-  }
-  void dev_lock(int devno) {
-    pthread_mutex_lock(&dev_mutex_[devno]);
-  }
   void clear();
   size_t *off() { return off_; }
-  size_t *local_off() { return off_; }
+  virtual size_t *local_off() { return off_; }
   size_t *host_size() { return host_size_; }
   size_t *dev_size() { return dev_size_; }
   size_t elem_size() { return elem_size_; }
   int dim() { return dim_; }
   void *host_ptr() { return host_ptr_; }
+#ifdef AUTO_PAR
+#ifdef AUTO_SHADOW
+  void* get_host_ptr_shadow(){return host_ptr_shadow_;}
+  void set_host_ptr_shadow(void* host_ptr_shadow){
+	  host_ptr_shadow_ = host_ptr_shadow;}
+  bool is_host_shadow_dirty() { return host_dirty_flag_; }
+  void clear_host_shadow_dirty() { host_shadow_dirty_flag_ = false; }
+  void set_host_shadow_dirty(bool flag=true) { host_shadow_dirty_flag_ = flag; }
+  DataMem* get_current_dmem_shadow(){return current_dmem_shadow_;}
+  void set_current_dmem_shadow(DataMem* current_dmem_shadow){current_dmem_shadow_  = current_dmem_shadow; has_shadow_ = true;}
+  DataMem* get_main_dmem(){return main_dmem_;}
+  void set_main_dmem(DataMem* main_dmem){ main_dmem_ = main_dmem;}
+  bool get_is_shadow(){ return is_shadow_;}
+  void set_is_shadow(bool is_shadow){ is_shadow_ = is_shadow;}
+  bool get_has_shadow(){ return has_shadow_;}
+  void set_has_shadow(bool has_shadow){ has_shadow_ = has_shadow;}
+#endif
+#endif
+
   void *host_root_memory() { return host_memory(); }
   void *host_memory();
   void lock_host_region(int region);
@@ -79,16 +93,15 @@ public:
   int get_n_regions() { return n_regions_; }
   bool is_regions_enabled() { return n_regions_ != -1; }
   DataMemRegion *get_region(int i) { return regions_[i]; }
-  void* arch(int devno, void *host=NULL);
-  void* arch(Device* dev, void *host=NULL);
-  void** arch_ptr(int devno, void *host=NULL);
-  void** arch_ptr(Device *dev, void *host=NULL);
+  virtual void* arch(int devno, void *host=NULL);
+  virtual void* arch(Device* dev, void *host=NULL);
+  virtual void** arch_ptr(int devno, void *host=NULL);
+  virtual void** arch_ptr(Device *dev, void *host=NULL);
   inline void create_dev_mem(Device *dev, int devno, void *host);
   Platform *platform() { return platform_; }
-private:
+protected:
   bool host_dirty_flag_;
-  bool  dirty_flag_[IRIS_MAX_NDEVS];
-  pthread_mutex_t dev_mutex_[IRIS_MAX_NDEVS];
+  bool  *dirty_flag_;
   pthread_mutex_t host_mutex_;
   int n_regions_;
   void *host_ptr_;
@@ -100,6 +113,16 @@ private:
   bool host_ptr_owner_;
   Platform *platform_;
   DataMemRegion **regions_;
+#ifdef AUTO_PAR
+#ifdef AUTO_SHADOW
+  void *host_ptr_shadow_;
+  bool host_shadow_dirty_flag_;
+  DataMem* current_dmem_shadow_;  // shadow object
+  DataMem* main_dmem_; // shadow of this main dmem 
+  bool is_shadow_;
+  bool has_shadow_;
+#endif
+#endif
 };
 
 } /* namespace rt */

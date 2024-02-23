@@ -57,7 +57,7 @@ void Scheduler::CompleteTask(Task* task, Worker* worker) {
   //task->set_time_end(timer_->Now());
   Device* dev = worker->device();
   int devno = dev->devno();
-  task->set_devno(dev->devno());
+  //task->set_devno(dev->devno());
   if (hub_available_) hub_client_->TaskDec(devno, 1);
   if (platform_->is_scheduling_history_enabled()) platform_->scheduling_history()->AddTask(task);
   //if (enable_profiler_ & !task->system()) {
@@ -88,23 +88,25 @@ void Scheduler::Enqueue(Task* task) {
 
 void Scheduler::Run() {
   while (true) {
-    _trace("Scheduler entering into sleep mode qsize:%lu", queue_->Size());
+    _debug2("Scheduler entering into sleep mode qsize:%lu", queue_->Size());
     Sleep();
-    _trace("Scheduler invoked");
+    _debug2("Scheduler invoked");
     if (!running_) break;
-    _trace("Scheduler in running state qsize:%lu", queue_->Size());
+    _debug2("Scheduler in running state qsize:%lu", queue_->Size());
     Task* task = NULL;
     while (queue_->Dequeue(&task)) Submit(task);
   }
+  _debug2("Scheduler exited");
 }
 
 void Scheduler::SubmitTaskDirect(Task* task, Device* dev) {
+  task->Retain();
   dev->worker()->Enqueue(task);
   if (hub_available_) hub_client_->TaskInc(dev->devno(), 1);
 }
 
 void Scheduler::Submit(Task* task) {
-  _trace("Dequeued task:%lu:%s", task->uid(), task->name());
+  _debug2("Dequeued task:%lu:%s ndevs:%d cond:%d", task->uid(), task->name(), ndevs_, !ndevs_);
   if (!ndevs_) {
     if (!task->marker()) { 
        _error("%s", "no device");
@@ -113,18 +115,22 @@ void Scheduler::Submit(Task* task) {
     task->Complete();
     return;
   }
+  _debug2("checking marker task:%lu:%s", task->uid(), task->name());
   if (task->marker()) {
-    _trace("Identified marker task:%lu:%s", task->uid(), task->name());
+    _debug2("Identified marker task:%lu:%s", task->uid(), task->name());
     std::vector<Task*>* subtasks = task->subtasks();
     for (std::vector<Task*>::iterator I = subtasks->begin(), E = subtasks->end(); I != E; ++I) {
       Task* subtask = *I;
       int dev = subtask->devno();
-      _trace("Enquing marker task:%lu:%s of subtask:%lu:%s to device", task->uid(), task->name(), subtask->uid(), subtask->name());
+      _debug2("Enquing marker task:%lu:%s of subtask:%lu:%s to device", task->uid(), task->name(), subtask->uid(), subtask->name());
+      subtask->Retain();
       workers_[dev]->Enqueue(subtask);
     }
     return;
   }
+  _debug2("checking subtasks:%lu:%s", task->uid(), task->name());
   if (!task->HasSubtasks()) {
+    _debug2("submitting task:%lu:%s", task->uid(), task->name());
     SubmitTask(task);
     return;
   }
@@ -145,6 +151,9 @@ void Scheduler::SubmitTask(Task* task) {
       devs[0] = devs_[brs_policy];
     }
   } else policies_->GetPolicy(brs_policy, opt)->GetDevices(task, devs, &ndevs);
+  if (ndevs == 1) {
+    task->set_recommended_dev(devs[0]->devno());
+  }
   if (ndevs == 0) {
     int dev_default = platform_->device_default();
     _trace("no device for policy[0x%x], run the task on device[%d]", brs_policy, dev_default);
@@ -154,6 +163,9 @@ void Scheduler::SubmitTask(Task* task) {
   //if any dependencies were pending, time to process them now.
   if (!task->Dispatchable()) task->DispatchDependencies();
 
+  for (int i = 0; i < ndevs; i++) {
+      task->Retain();
+  }
   for (int i = 0; i < ndevs; i++) {
     devs[i]->worker()->Enqueue(task);
     if (hub_available_) hub_client_->TaskInc(devs[i]->devno(), 1);

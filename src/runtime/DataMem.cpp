@@ -1,4 +1,5 @@
 #include "DataMem.h"
+#include "DataMemRegion.h"
 #include "Debug.h"
 #include "Platform.h"
 #include "Device.h"
@@ -12,6 +13,19 @@ namespace rt {
 DataMem::DataMem(Platform* platform, void *host_ptr, size_t size) : BaseMem(IRIS_DMEM, platform->ndevs()) {
     Init(platform, host_ptr, size);
 }
+DataMem::DataMem(Platform *platform, void *host_ptr, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim) : BaseMem(IRIS_DMEM, platform->ndevs()) 
+{
+    size_t size = elem_size;
+    for(int i=0; i<dim; i++) {
+        size = size * dev_size[i];
+    }
+    Init(platform, host_ptr, size);
+    dim_ = dim;
+    memcpy(off_, off, sizeof(size_t)*dim_);
+    memcpy(dev_size_, dev_size, sizeof(size_t)*dim_);
+    memcpy(host_size_, host_size, sizeof(size_t)*dim_);
+    elem_size_ = elem_size;
+}
 void DataMem::Init(Platform *platform, void *host_ptr, size_t size)
 {
     platform_ = platform;
@@ -20,14 +34,13 @@ void DataMem::Init(Platform *platform, void *host_ptr, size_t size)
     n_regions_ = -1;
     regions_ = NULL;
     host_dirty_flag_ = false;
+    dirty_flag_ = new bool[ndevs_];
     for (int i = 0; i < ndevs_; i++) {
         archs_[i] = NULL;
         archs_dev_[i] = platform->device(i);
         dirty_flag_[i] = true;
-        pthread_mutex_init(&dev_mutex_[i], NULL);
         //dev_ranges_[i] = NULL;
     }
-    pthread_mutex_init(&host_mutex_, NULL);
     elem_size_ = size_;
     for(int i=0; i<3; i++) {
         host_size_[i] = 1;
@@ -36,6 +49,31 @@ void DataMem::Init(Platform *platform, void *host_ptr, size_t size)
     }
     dim_ = 1;
     host_ptr_ = host_ptr;
+    //printf("host pointer %p\n", host_ptr_);
+#ifdef AUTO_PAR
+  current_writing_task_ = NULL;
+#ifdef AUTO_FLUSH
+  flush_task_ = NULL;
+#endif
+#ifdef AUTO_SHADOW
+  host_shadow_dirty_flag_ = true; //initially the shadow is dirty
+  current_dmem_shadow_ = NULL; //initially the shadow is dirty
+  is_shadow_ = false; // 0: not a shadow, 1: a shadow
+  main_dmem_ = NULL; // 0: not a shadow, 1: a shadow
+  has_shadow_ = false; // 0: does not have a shadow, 1: has a shadow
+#endif
+#endif
+}
+DataMem::~DataMem() {
+    if (host_ptr_owner_) free(host_ptr_);
+    for (int i = 0; i < ndevs_; i++) {
+        if (archs_[i] && !is_usm(i)) archs_dev_[i]->MemFree(archs_[i]);
+    }
+    delete [] dirty_flag_;
+    for(int i=0; i<n_regions_; i++) {
+        delete regions_[i];
+    }
+    if (regions_) delete [] regions_;
 }
 void DataMem::UpdateHost(void *host_ptr)
 {
@@ -50,9 +88,9 @@ void DataMem::UpdateHost(void *host_ptr)
 void DataMem::init_reset(bool reset)
 {
     reset_ = reset;
-    host_dirty_flag_ = !reset;
+    host_dirty_flag_ = reset;
     for(int i=0;  i<ndevs_; i++) {
-        dirty_flag_[i] = reset;
+        dirty_flag_[i] = !reset;
     }
 }
 void DataMem::clear() {
@@ -62,25 +100,10 @@ void DataMem::clear() {
   }
   for (int i = 0; i < ndevs_; i++) {
       if (archs_[i]) {
-          archs_dev_[i]->MemFree(archs_[i]);
+          if (! is_usm(i)) archs_dev_[i]->MemFree(archs_[i]);
           archs_[i] = NULL;
       }
   }
-}
-DataMem::DataMem(Platform *platform, void *host_ptr, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim) : BaseMem(IRIS_DMEM, platform->ndevs()) 
-{
-    size_t size = elem_size;
-    for(int i=0; i<dim; i++) {
-        size = size * dev_size[i];
-    }
-    Init(platform, host_ptr, size);
-    dim_ = dim;
-    for(int i=0; i<dim; i++) {
-        off_[i] = off[i];
-        dev_size_[i] = dev_size[i];
-        host_size_[i] = host_size[i];
-    }
-    elem_size_ = elem_size;
 }
 void *DataMem::host_memory() {
     if (!host_ptr_)  {
@@ -110,27 +133,16 @@ void DataMem::EnableOuterDimensionRegions()
         regions_[i] = new DataMemRegion(this, i, off, loff, host_size_, dev_size, elem_size_, dim_, dev_offset_from_root);
     }
 }
-DataMem::~DataMem() {
-    if (host_ptr_owner_) free(host_ptr_);
-    for (int i = 0; i < ndevs_; i++) {
-        if (archs_[i]) archs_dev_[i]->MemFree(archs_[i]);
-    }
-    for(int i=0; i<ndevs_; i++) {
-        pthread_mutex_destroy(&dev_mutex_[i]);
-    }
-    pthread_mutex_destroy(&host_mutex_);
-    for(int i=0; i<n_regions_; i++) {
-        delete regions_[i];
-    }
-    if (regions_) delete [] regions_;
-}
 
 void DataMem::create_dev_mem(Device *dev, int devno, void *host)
 {
     //printf(" Dev: %d is shared:%d host:%p host_ptr_:%p\n", devno, dev->is_shared_memory_buffers(), host, host_ptr_);
-    if (dev->is_shared_memory_buffers() && (host != NULL || host_ptr_ != NULL)) 
-        archs_[devno] = (host == NULL) ? host_ptr_ : host;
+    if (is_usm(devno) && dev->is_shared_memory_buffers() && 
+            (host != NULL || host_ptr_ != NULL)) {
+        archs_[devno] = dev->GetSharedMemPtr((host == NULL) ? host_ptr_ : host, size());
+    }
     else {
+        set_usm_flag(devno, false);
         dev->MemAlloc(archs_ + devno, size_, is_reset());
         if (is_reset()) {
             dirty_flag_[devno] = false;

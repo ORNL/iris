@@ -18,8 +18,9 @@ public:
   ~DeviceOpenCL();
 
   int Init();
+  bool IsDeviceValid();
   int BuildProgram(char* path);
-  int ResetMemory(BaseMem *mem, uint8_t reset_value);
+  int ResetMemory(Task *task, BaseMem *mem, uint8_t reset_value);
   int MemAlloc(void** mem, size_t size, bool reset=false);
   int MemFree(void* mem);
   int MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag="");
@@ -28,29 +29,33 @@ public:
   int KernelSetArg(Kernel* kernel, int idx, int kindex, size_t size, void* value);
   int KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, size_t off);
   int KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws);
-  int KernelLaunchInit(Kernel* kernel);
+  int KernelLaunchInit(Command *cmd, Kernel* kernel);
   void CheckVendorSpecificKernel(Kernel *kernel);
   int Synchronize();
   int AddCallback(Task* task);
   int RecreateContext();
-  void ExecuteKernel(Command* cmd);
+  //void ExecuteKernel(Command* cmd);
   static std::string GetLoaderHost2OpenCLSuffix(LoaderOpenCL *ld, cl_device_id cldev);
   bool SupportJIT() { return false; }
 
 private:
   int CreateProgram(const char* suffix, char** src, size_t* srclen);
-
+  void CreateEvent(void **event, int flags);
+  void RecordEvent(void **event, int stream);
+  void WaitForEvent(void *event, int stream, int flags);
+  void DestroyEvent(void *event);
+  void EventSynchronize(void *event);
 private:
   LoaderOpenCL* ld_;
   LoaderHost2OpenCL *host2opencl_ld_;
   Timer* timer_;
   cl_device_id cldev_;
   cl_context clctx_;
-  cl_command_queue clcmdq_;
+  cl_command_queue clcmdq_[IRIS_MAX_DEVICE_NQUEUES];
+  cl_command_queue default_queue_;
   cl_program clprog_;
   cl_device_type cltype_;
   cl_bool compiler_available_;
-  cl_int err_;
   int ocldevno_;
   std::string fpga_bin_suffix_;
 };

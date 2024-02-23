@@ -5,6 +5,7 @@
 #include "Retainable.h"
 #include "Platform.h"
 #include "History.h"
+#include "AsyncData.h"
 #include <stdint.h>
 #include <map>
 #include <vector>
@@ -26,8 +27,14 @@ typedef struct _KernelArg {
   size_t mem_size;
   size_t off;
   int mode;
+  int data_type;
+  int mem_index;
+  int proactive;
+  void proactive_enabled() { proactive = true; }
+  void proactive_disabled() { proactive = false; }
 } KernelArg;
 
+using KernelAsyncData = AsyncData<Kernel>;
 class Kernel: public Retainable<struct _iris_kernel, Kernel> {
 public:
   Kernel(const char* name, Platform* platform);
@@ -36,6 +43,8 @@ public:
   int SetArg(int idx, size_t size, void* value);
   int SetMem(int idx, BaseMem* mem, size_t off, int mode);
   KernelArg* ExportArgs();
+  void* GetFFIdata() { return ffi_data_; }
+  void CreateFFIdata(size_t size) { ffi_data_ = malloc(size); }
   void* GetParamWrapperMemory() { return (void *)param_wrapper_mem_; }
 
   char* name() { return name_; }
@@ -49,29 +58,60 @@ public:
   bool is_vendor_specific_kernel(int devno) { return is_vendor_specific_kernel_[devno]; }
   void set_vendor_specific_kernel(int devno, bool flag=true) { is_vendor_specific_kernel_[devno] = flag; }
   void set_task_name(const char *name) { strcpy(task_name_, name); }
+  void set_task(Task *task) { task_ = task; }
+  Task *task() { return task_; }
   char *get_task_name() { return task_name_; }
   Platform* platform() { return platform_; }
   shared_ptr<History> history() { return history_; }
+  map<BaseMem*, int> & in_mems() { return in_mem_track_; }
+  map<BaseMem*, int> & out_mems() { return out_mem_track_; }
+  map<BaseMem*, int> & mems() { return mem_track_; }
   map<int, DataMem *> & data_mems_in() { return data_mems_in_; }
   map<int, DataMem *> & data_mems_out() { return data_mems_out_; }
   map<int, DataMemRegion *> & data_mem_regions_in() { return data_mem_regions_in_; }
   map<int, DataMemRegion *> & data_mem_regions_out() { return data_mem_regions_out_; }
   vector<int> & data_mems_in_order() { return data_mems_in_order_; }
   vector<BaseMem*> & all_data_mems_in() { return all_data_mems_in_; }
+  int get_mem_karg_index(BaseMem *mem) { 
+    return (mem_track_.find(mem) != mem_track_.end()) ? mem_track_[mem] : -1;
+  }
+  KernelArg *get_mem_karg(BaseMem *mem) { 
+    return (mem_track_.find(mem) != mem_track_.end()) ? karg(mem_track_[mem]) : NULL;
+  }
+  KernelArg *get_in_mem_karg(BaseMem *mem) { 
+    return (in_mem_track_.find(mem) != in_mem_track_.end()) ? karg(in_mem_track_[mem]) : NULL;
+  }
+  bool is_in_mem_exist(BaseMem *mem) { 
+    return in_mem_track_.find(mem) != in_mem_track_.end();
+  }
   void** archs() { return archs_; }
   size_t nargs() { return args_.size(); }
+  KernelArg *karg(int index) { return args_[index]; }
   void* arch(Device* dev, bool report_error=true);
   int set_order(int *order);
   int isSupported(Device* dev);
+  void add_mem(Mem *mem, int idx, int mode);
   void add_dmem(DataMem *mem, int idx, int mode);
   void add_dmem_region(DataMemRegion *mem, int idx, int mode);
+  void **GetCompletionEventPtr() { return async_data_.GetCompletionEventPtr(); }
+  void *GetCompletionEvent() { return async_data_.GetCompletionEvent(); }
+/*
+#ifdef AUTO_PAR
+#ifdef AUTO_SHADOW
+  void replace_with_shadow_dmem(DataMem *mem, int idx, int mode);
+#endif
+#endif
+*/
 
 private:
+  int n_mems_;
   char name_[256];
   char task_name_[256];
+  Task *task_;
   std::map<int, KernelArg*> args_;
   void* archs_[IRIS_MAX_NDEVS];
   Device* archs_devs_[IRIS_MAX_NDEVS];
+  void *ffi_data_;
   uint8_t param_wrapper_mem_[8*128];
   Platform* platform_;
   shared_ptr<History> history_;
@@ -81,10 +121,14 @@ private:
   vector<DataObjectProfile>       in_dataobject_profiles;
   vector<int> data_mems_in_order_;
   vector<BaseMem *> all_data_mems_in_;
+  std::map<BaseMem *, int> in_mem_track_;
+  std::map<BaseMem *, int> out_mem_track_;
+  std::map<BaseMem *, int> mem_track_;
   std::map<int, DataMem *> data_mems_in_;
   std::map<int, DataMemRegion *> data_mem_regions_in_;
   std::map<int, DataMem *> data_mems_out_;
   std::map<int, DataMemRegion *> data_mem_regions_out_;
+  KernelAsyncData async_data_;
 };
 
 } /* namespace rt */

@@ -38,7 +38,8 @@ IRIS_ARCHS=openmp IRIS_KERNEL_BIN_OPENMP=`pwd`/kernel.openmp.so ./test34_set_mem
 [ $? -ne 0 ] && echo "Failed! (OpenMP [GNU] backend) Exiting." && exit 1
 module unload gcc/12.1.0
 
-export CUDA_PATH=/opt/nvidia/hpc_sdk/Linux_x86_64/22.9/cuda/11.7
+CUDA_PATH_CORE="${CUDA_PATH:-/opt/nvidia/hpc_sdk/Linux_x86_64/23.11/cuda/11.8}"
+export CUDA_PATH=$CUDA_PATH_CORE
 make clean
 make kernel.nvopenmp.so test34_set_mem
 [ $? -ne 0 ] && echo "Failed! Couldn't compile openmp kernels. Exiting." && exit 1
