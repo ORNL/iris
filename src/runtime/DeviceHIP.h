@@ -42,6 +42,7 @@ public:
   void ResetContext();
   bool IsContextChangeRequired();
   void SetContextToCurrentThread();
+  float GetEventTime(void *event, int stream);
   void CreateEvent(void **event, int flags);
   void RecordEvent(void **event, int stream);
   void WaitForEvent(void *event, int stream, int flags=0);
@@ -55,6 +56,7 @@ private:
   hipDevice_t dev_;
   hipDevice_t peers_[IRIS_MAX_NDEVS];
   hipStream_t streams_[IRIS_MAX_DEVICE_NQUEUES];
+  hipEvent_t start_time_event_[IRIS_MAX_DEVICE_NQUEUES];
   int peers_count_;
   hipModule_t module_;
   int ordinal_;

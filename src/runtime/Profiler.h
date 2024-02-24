@@ -2,7 +2,8 @@
 #define IRIS_SRC_RT_PROFILER_H
 
 #include <stdio.h>
-
+#include <string>
+using namespace std;
 namespace iris {
 namespace rt {
 
@@ -25,6 +26,7 @@ protected:
   int OpenFD(const char *path=NULL);
   int CloseFD();
   int Write(const char* s, int tab = 0);
+  int Write(string s, int tab = 0);
 
   const char* policy_str(int policy);
 

@@ -14,6 +14,25 @@
 namespace iris {
 namespace rt {
 
+void ProfileEvent::Clean() {
+    if (start_event_ != NULL && event_dev_ != NULL) 
+        event_dev_->DestroyEvent(start_event_);
+    if (end_event_ != NULL && event_dev_ != NULL) 
+        event_dev_->DestroyEvent(end_event_);
+}
+float ProfileEvent::GetStartTime() {
+    float etime =0.0;
+    if (start_event_ != NULL && event_dev_ != NULL) 
+        etime = event_dev_->GetEventTime(start_event_, stream_);
+    return etime;
+}
+float ProfileEvent::GetEndTime() {
+    float etime =0.0;
+    if (end_event_ != NULL && event_dev_ != NULL) 
+        etime = event_dev_->GetEventTime(end_event_, stream_);
+    return etime;
+
+}
 Task::Task(Platform* platform, int type, const char* name) {
   //printf("Creating task:%lu:%s ptr:%p\n", uid(), name, this);
   is_kernel_launch_disabled_ = false;
@@ -84,6 +103,10 @@ Task::~Task() {
   //printf("released task:%lu:%s released ptr:%p ref_cnt:%d\n", uid(), name(), this, ref_cnt());
   //Platform::GetPlatform()->task_track().UntrackObject(this, uid());
   _trace("Task deleted %lu %s %p ref_cnt:%d", uid(), name(), this, ref_cnt());
+  for (ProfileEvent & p : profile_events_) {
+    p.Clean();
+  }
+  profile_events_.clear();
   for (int i = 0; i < ncmds_; i++) delete cmds_[i];
   if (depends_uids_) delete [] depends_uids_;
   pthread_mutex_destroy(&stream_mutex_);

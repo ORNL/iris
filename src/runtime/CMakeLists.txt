@@ -123,6 +123,7 @@ set(IRIS_RUNTIME_SOURCES
   PresentTable.cpp
   Profiler.cpp
   ProfilerDOT.cpp
+  ProfilerEventRecord.cpp
   ProfilerGoogleCharts.cpp
   QueueReady.cpp
   QueueTask.cpp
@@ -197,6 +198,7 @@ set(IRIS_RUNTIME_HEADERS
   PresentTable.h
   Profiler.h
   ProfilerDOT.h
+  ProfilerEventRecord.h
   ProfilerGoogleCharts.h
   QueueReady.h
   QueueTask.h

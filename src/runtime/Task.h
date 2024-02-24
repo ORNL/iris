@@ -29,6 +29,51 @@ namespace rt {
 class Scheduler;
 class Graph;
 class AutoDAG;
+class Device; 
+
+enum ProfileRecordType 
+{ 
+    PROFILE_H2D = 0,
+    PROFILE_D2H = 1,
+    PROFILE_D2D = 2,
+    PROFILE_D2H_H2D = 3,
+    PROFILE_KERNEL = 4,
+    PROFILE_O2D = 5,
+    PROFILE_D2O = 6,
+}; 
+class ProfileEvent {
+    public:
+        ProfileEvent(unsigned long id, int connect_dev, ProfileRecordType type, Device *event_dev, int stream) {
+            start_event_ = NULL;
+            end_event_ = NULL;
+            type_ = type;
+            id_ = id;
+            connect_dev_ = connect_dev;
+            event_dev_ = event_dev;
+            stream_ = stream;
+        }
+        ~ProfileEvent(){ /*It shouldn't destroy any events*/ }
+        void Clean();
+        float GetStartTime();
+        float GetEndTime();
+        void **start_event_ptr() { return &start_event_; }
+        void **end_event_ptr()   { return &end_event_; }
+        void *start_event()      { return start_event_; }
+        void *end_event()        { return end_event_; }
+        Device *event_dev(){ return event_dev_; }
+        void set_event_dev(Device *dev)   { event_dev_ = dev; }
+        ProfileRecordType type() { return type_; }
+        int connect_dev() { return connect_dev_; }
+        unsigned long uid() { return id_; }
+    private:
+        Device *event_dev_;
+        void *start_event_;
+        void *end_event_;
+        ProfileRecordType type_;
+        unsigned long id_;
+        int connect_dev_;
+        int stream_;
+};
 
 class Task: public Retainable<struct _iris_task, Task> {
 public:
@@ -240,8 +285,20 @@ private:
   pthread_mutex_t mutex_subtasks_;
   //pthread_cond_t complete_cond_;
   vector<DataObjectProfile>       out_dataobject_profiles;
-
+  vector<ProfileEvent>            profile_events_;
 public:
+  vector<ProfileEvent> & profile_events() { return profile_events_; }
+  ProfileEvent & CreateProfileEvent(BaseMem *mem, int connect_dev, ProfileRecordType type, Device *dev, int stream) { 
+      profile_events_.push_back(ProfileEvent(mem->uid(), connect_dev, type, dev, stream));
+      return profile_events_.back();
+  }/*
+  ProfileEvent & CreateProfileEvent(Kernel *kernl, ProfileRecordType type) { 
+      profile_events_.push_back(ProfileEvent(kernel->uid(), type));
+      return profile_events_.back();
+  }*/
+  ProfileEvent & LastProfileEvent() {
+      return profile_events_.back();
+  }
   static Task* Create(Platform* platform, int type, const char* name);
   static Task* Create(Platform* platform, int type, std::string name) {
     return Create(platform, type, name.c_str());

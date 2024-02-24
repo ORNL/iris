@@ -7,7 +7,7 @@
 namespace iris {
 namespace rt {
 
-#define IRIS_MSG_SIZE           512
+#define IRIS_MSG_SIZE           2048
 
 class Message {
 public:

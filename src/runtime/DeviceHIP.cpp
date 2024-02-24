@@ -48,6 +48,7 @@ DeviceHIP::DeviceHIP(LoaderHIP* ld, LoaderHost2HIP *host2hip_ld, hipDevice_t dev
   type_ = iris_amd;
   model_ = iris_hip;
   memset(streams_, 0, sizeof(hipStream_t)*IRIS_MAX_DEVICE_NQUEUES);
+  memset(start_time_event_, 0, sizeof(hipEvent_t)*IRIS_MAX_DEVICE_NQUEUES);
   err = ld_->hipDriverGetVersion(&driver_version_);
   _hiperror(err);
   sprintf(version_, "AMD HIP %d", driver_version_);
@@ -59,6 +60,7 @@ DeviceHIP::~DeviceHIP() {
     for (int i = 0; i < nqueues_; i++) {
       hipError_t err = ld_->hipStreamDestroy(streams_[i]);
       _hiperror(err);
+      DestroyEvent(start_time_event_[i]);
     }
 }
 void DeviceHIP::EnablePeerAccess()
@@ -107,6 +109,8 @@ int DeviceHIP::Init() {
       for (int i = 0; i < nqueues_; i++) {
           err = ld_->hipStreamCreate(streams_ + i);
           _hiperror(err);
+          RecordEvent((void **)(start_time_event_+i), i);
+          EventSynchronize(start_time_event_[i]);
       }
   }
   err = ld_->hipGetDevice(&devid_);
@@ -675,6 +679,20 @@ int DeviceHIP::RegisterCallback(int stream, CallBackType callback_fn, void *data
     return IRIS_SUCCESS;
 }
 
+float DeviceHIP::GetEventTime(void *event, int stream) 
+{ 
+    if (IsContextChangeRequired()) {
+        ld_->hipCtxSetCurrent(ctx_);
+    }
+    float elapsed=0.0f;
+    if (event != NULL) {
+        printf("Elapsed:%f start_time_event:%p event:%p\n", elapsed, start_time_event_[stream], event);
+        hipError_t err = ld_->hipEventElapsedTime(&elapsed, start_time_event_[stream], (hipEvent_t)event);
+        printf("Elapsed time:%f\n", elapsed);
+        _hiperror(err);
+    }
+    return elapsed; 
+}
 void DeviceHIP::CreateEvent(void **event, int flags)
 {
     if (IsContextChangeRequired()) {
@@ -685,6 +703,7 @@ void DeviceHIP::CreateEvent(void **event, int flags)
     _trace(" event:%p flags:%d", event, flags);
     if (err != hipSuccess)
         worker_->platform()->IncrementErrorCount();
+    printf("Create dev:%d event:%p\n", devno(), *event);
 }
 void DeviceHIP::RecordEvent(void **event, int stream)
 {
@@ -699,6 +718,7 @@ void DeviceHIP::RecordEvent(void **event, int stream)
     _hiperror(err);
     if (err != hipSuccess)
         worker_->platform()->IncrementErrorCount();
+    printf("Recorded dev:%d event:%p\n", devno(), *event);
 }
 void DeviceHIP::WaitForEvent(void *event, int stream, int flags)
 {
@@ -719,6 +739,7 @@ void DeviceHIP::DestroyEvent(void *event)
     if (IsContextChangeRequired()) {
         ld_->hipCtxSetCurrent(ctx_);
     }
+    printf("Destroy dev:%d event:%p\n", devno(), event);
     hipError_t err = ld_->hipEventDestroy((hipEvent_t) event);
     _hiperror(err);
     if (err != hipSuccess)

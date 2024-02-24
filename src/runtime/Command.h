@@ -41,6 +41,7 @@ class Mem;
 class DataMem;
 class Task;
 class Graph;
+class Device;
 
 class Command {
 public:
@@ -109,6 +110,8 @@ public:
   double time_duration() { return time_end_-time_start_; }
   size_t ns_time_start() { return ns_time_start_; }
   size_t ns_time_end() { return ns_time_end_; }
+  void set_devno(int dev) { devno_ = dev; }
+  int devno() { return devno_; }
   int get_access_index() { return access_index_; }
   int src_dev() { return src_dev_; }
   void set_src_dev(int devno) { src_dev_ = devno; }
@@ -117,6 +120,7 @@ private:
 
 private:
   int type_;
+  int devno_;
   int src_dev_;
   size_t size_;
   void* host_;
@@ -194,7 +198,7 @@ public:
 /*
 #ifdef AUTO_PAR
   static void create_dependency(Command* cmd, Task* task, int param_info, 
-		  BaseMem* mem, Task* task_prev);
+        BaseMem* mem, Task* task_prev);
 #endif
 */
 

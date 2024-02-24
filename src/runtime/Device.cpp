@@ -532,6 +532,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
     size_t elem_size = mem->elem_size();
     int dim = mem->dim();
     size_t size = mem->size();
+    cmd->set_devno(devno_);
     mem->dev_lock(devno_);
     int cpu_dev = -1;
     int non_cpu_dev = -1;
@@ -573,12 +574,16 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
                 //it support inter device synchronization through its event
                 WaitForEvent(event, mem_stream, iris_event_wait_default);
             }
+            ProfileEvent & prof_event = task->CreateProfileEvent(mem, src_dev->devno(), PROFILE_D2D, this, mem_stream);
+            RecordEvent(prof_event.start_event_ptr(), mem_stream);
         }
         // Now do D2D
         MemD2D(task, mem, dst_arch, src_arch, mem->size());
         double end = timer_->Now();
         // If device is not asynchronous, you don't need to record event in CUDA/HIP device
         if (async) {
+            ProfileEvent & prof_event = task->LastProfileEvent();
+            RecordEvent(prof_event.end_event_ptr(), mem_stream);
             mem->RecordEvent(devno(), mem_stream);
             mem->SetWriteStream(devno(), mem_stream);
         }
@@ -620,12 +625,16 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
                 void *event = mem->GetCompletionEvent(src_dev->devno());
                 WaitForEvent(event, mem_stream, iris_event_wait_default);
             }
+            ProfileEvent & prof_event = task->CreateProfileEvent(mem, src_dev->devno(), PROFILE_O2D, this, mem_stream);
+            RecordEvent(prof_event.start_event_ptr(), mem_stream);
             //WaitForDataAvailability(src_dev->devno(), task, mem, mem_stream);
         }
         double start = timer_->Now();
         MemH2D(task, mem, off, host_sizes, dev_sizes, 1, 1, mem->size(), src_arch, "OpenMP2DEV ");
         double end = timer_->Now();
         if (async) {
+            ProfileEvent & prof_event = task->LastProfileEvent();
+            RecordEvent(prof_event.end_event_ptr(), mem_stream);
             mem->RecordEvent(devno(), mem_stream);
             mem->SetWriteStream(devno_, mem_stream);
         }
@@ -674,9 +683,15 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
                 src_dev->WaitForEvent(event, src_mem_stream, iris_event_wait_default);
             }
         }
+        if (async) {
+            ProfileEvent & prof_event = task->CreateProfileEvent(mem, devno(), PROFILE_D2O, src_dev, src_mem_stream);
+            src_dev->RecordEvent(prof_event.start_event_ptr(), src_mem_stream);
+        }
         src_dev->MemD2H(task, mem, off, host_sizes, dev_sizes, 1, 1, mem->size(), src_arch, "DEV2OpenMP ");
         double end = timer_->Now();
         if (written_stream != -1 && async) { // Source generated data using asynchronous device
+            ProfileEvent & prof_event = task->LastProfileEvent();
+            src_dev->RecordEvent(prof_event.end_event_ptr(), src_mem_stream);
             _debug3("Writing exchange\n");
             BaseEventExchange *exchange = mem->GetEventExchange(devno());
             _debug3("   ==========********MemD2H -> MemH2D registered callbacks dev:(%d,%d) exchange:%p\n\n", src_dev->devno(), devno(), exchange);
@@ -744,7 +759,10 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
             _debug3("*********** H2D    dev[%d][%s] -> dev[%d][%s] mem_stream:%d written_stream:%d", src_dev->devno(), src_dev->name(), devno(), name(), mem_stream, written_stream);
             src_dev->EventSynchronize(event);
             _debug3("Event synchronization done\n");
-            //TODO: Optimize this later
+        }
+        if (async) {
+            ProfileEvent & prof_event = task->CreateProfileEvent(mem, -1, PROFILE_H2D, this, mem_stream);
+            RecordEvent(prof_event.start_event_ptr(), mem_stream);
         }
         errid_ = MemH2D(task, mem, ptr_off, 
                 gws, lws, elem_size, dim, size, host);
@@ -752,6 +770,8 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         _debug2("explore Host2Device (H2D) dev[%d][%s] task[%ld:%s] mem[%lu] q[%d]", devno_, name_, task->uid(), task->name(), mem->uid(), mem_stream);
         if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
         if (async) {
+            ProfileEvent & prof_event = task->LastProfileEvent();
+            RecordEvent(prof_event.end_event_ptr(), mem_stream);
             mem->RecordEvent(devno(), mem_stream);
             mem->SetWriteStream(devno(), mem_stream);
             _debug3("         adding event (H2D) dev[%d][%s] task[%ld:%s] mem[%lu] q[%d] ", devno_, name_, task->uid(), task->name(), mem->uid(), mem_stream);
@@ -810,10 +830,18 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
             double start = timer_->Now();
             d2h_start = start;
             src_dev->ResetContext();
+            if (async) {
+                ProfileEvent & prof_event = task->CreateProfileEvent(mem, -1, PROFILE_D2H, src_dev, src_mem_stream);
+                src_dev->RecordEvent(prof_event.start_event_ptr(), src_mem_stream);
+            }
             _debug3("In mem:[%lu] src_mem_stream:%d written_stream:%d src_dev:%d dev:%d\n", mem->uid(), src_mem_stream, written_stream, src_dev->devno(), devno());
             errid_ = src_dev->MemD2H(task, mem, ptr_off, 
                     gws, lws, elem_size, dim, size, host, "D2H->H2D(1) ");
             double end = timer_->Now();
+            if (async) {
+                ProfileEvent & prof_event = task->LastProfileEvent();
+                src_dev->RecordEvent(prof_event.end_event_ptr(), src_mem_stream);
+            }
             d2htime = end - start;
             mem->HostRecordEvent(src_dev->devno(), src_mem_stream);
             if (written_stream != -1) { // Source generated data using asynchronous device
@@ -886,6 +914,10 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         }
         _debug3("   MemD2H -> MemH2D registered callbacks completed callbacks");
         // H2D should be issued from this current device
+        if (async) {
+            ProfileEvent & prof_event = task->CreateProfileEvent(mem, -1, PROFILE_H2D, this, mem_stream);
+            RecordEvent(prof_event.start_event_ptr(), mem_stream);
+        }
         double start = timer_->Now();
         if (context_shift) ResetContext();
         errid_ = MemH2D(task, mem, ptr_off, 
@@ -893,6 +925,8 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         double end = timer_->Now();
         _debug3("   MemD2H -> MemH2D done");
         if (async) {
+            ProfileEvent & prof_event = task->LastProfileEvent();
+            RecordEvent(prof_event.end_event_ptr(), mem_stream);
             mem->RecordEvent(devno(), mem_stream);
             mem->SetWriteStream(devno(), mem_stream);
         }
@@ -1050,6 +1084,7 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
         void* host = mem->host_memory(); // It should work even if host_ptr is null
         double start = timer_->Now();
         Task *task = cmd->task();
+        bool async = is_async(task);
         Device *src_dev = this;
         if (mem->is_dev_dirty(devno_)) {
             int cpu_dev = -1;
@@ -1071,9 +1106,15 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
                 }
             }
             bool context_shift = src_dev->IsContextChangeRequired();
+            if (async) {
+                ProfileEvent & prof_event = task->CreateProfileEvent(mem, -1, PROFILE_D2H, src_dev, src_mem_stream);
+                src_dev->RecordEvent(prof_event.start_event_ptr(), src_mem_stream);
+            }
             errid_ = src_dev->MemD2H(task, mem, ptr_off, 
                     gws, lws, elem_size, dim, size, host, "MemFlushOut ");
-            if (is_async(task)) {
+            if (async) {
+                ProfileEvent & prof_event = task->LastProfileEvent();
+                src_dev->RecordEvent(prof_event.end_event_ptr(), src_mem_stream);
                 void *event = NULL;
                 src_dev->CreateEvent(&event, iris_event_disable_timing);
                 src_dev->RecordEvent(&event, src_mem_stream);
@@ -1093,9 +1134,15 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
                     WaitForEvent(event, mem_stream, iris_event_wait_default);
                 }
             }
+            if (async) {
+                ProfileEvent & prof_event = task->CreateProfileEvent(mem, -1, PROFILE_D2H, this, mem_stream);
+                RecordEvent(prof_event.start_event_ptr(), mem_stream);
+            }
             errid_ = MemD2H(task, mem, ptr_off, 
                     gws, lws, elem_size, dim, size, host, "MemFlushOut ");
-            if (is_async(task)) {
+            if (async) {
+                ProfileEvent & prof_event = task->LastProfileEvent();
+                RecordEvent(prof_event.end_event_ptr(), mem_stream);
                 void *event = NULL;
                 CreateEvent(&event, iris_event_disable_timing);
                 RecordEvent(&event, mem_stream);

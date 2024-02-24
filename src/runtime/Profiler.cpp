@@ -51,6 +51,16 @@ int Profiler::Exit() {
   return IRIS_SUCCESS;
 }
 
+int Profiler::Write(string s, int tab) {
+  Flush();
+  if (!msg_->WriteString(s.c_str())) {
+      _error("s[%s]", s.c_str());
+      return IRIS_ERROR;
+  }
+  Flush();
+  return IRIS_SUCCESS;
+}
+
 int Profiler::Write(const char* s, int tab) {
   if (!msg_->WriteString(s)) {
     Flush();
