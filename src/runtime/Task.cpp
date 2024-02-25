@@ -17,9 +17,9 @@ namespace rt {
 void ProfileEvent::Clean() {
     printf("prof_event trying to destroy :%p %p\n", &start_event_, start_event_);
     if (start_event_ != NULL && event_dev_ != NULL) 
-        event_dev_->DestroyEvent(start_event_);
+        event_dev_->AddDestroyEvent(start_event_);
     if (end_event_ != NULL && event_dev_ != NULL) 
-        event_dev_->DestroyEvent(end_event_);
+        event_dev_->AddDestroyEvent(end_event_);
     printf("completed prof_event trying to destroy :%p %p\n", &start_event_, start_event_);
 }
 float ProfileEvent::GetStartTime() {
@@ -105,6 +105,11 @@ Task::~Task() {
   printf("Releasedd task:%lu:%s released ptr:%p ref_cnt:%d\n", uid(), name(), this, ref_cnt());
   //Platform::GetPlatform()->task_track().UntrackObject(this, uid());
   _trace("Task deleted %lu %s %p ref_cnt:%d", uid(), name(), this, ref_cnt());
+  printf("Trying to delete profile events\n");
+  for (ProfileEvent & p : profile_events_) {
+    p.Clean();
+  }
+  profile_events_.clear();
   for (int i = 0; i < ncmds_; i++) delete cmds_[i];
   if (depends_uids_) delete [] depends_uids_;
   pthread_mutex_destroy(&stream_mutex_);
@@ -302,11 +307,6 @@ void Task::Complete() {
   //pthread_mutex_unlock(&mutex_complete_);
   printf("calling profile events\n");
   if (user_) platform_->ProfileCompletedTask(this);
-  printf("Trying to delete profile events\n");
-  for (ProfileEvent * p : profile_events_) {
-    p->Clean();
-  }
-  profile_events_.clear();
   // For task with subtasks, the parent task is not in any worker queue. 
   // However, it has to call the completion of parent task each time.
   // Parent marker task was never go through Worker::Execute.

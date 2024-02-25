@@ -56,7 +56,8 @@ private:
   hipDevice_t dev_;
   hipDevice_t peers_[IRIS_MAX_NDEVS];
   hipStream_t streams_[IRIS_MAX_DEVICE_NQUEUES];
-  hipEvent_t start_time_event_[IRIS_MAX_DEVICE_NQUEUES];
+  hipEvent_t single_start_time_event_;
+  //hipEvent_t start_time_event_[IRIS_MAX_DEVICE_NQUEUES];
   int peers_count_;
   hipModule_t module_;
   int ordinal_;

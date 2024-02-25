@@ -13,14 +13,18 @@
 #include "Utils.h"
 #include "Worker.h"
 
+#define ENABLE_PROF_EVENT
 #define _debug3 _debug2
 namespace iris {
 namespace rt {
 
 Device::Device(int devno, int platform) {
   devno_ = devno;
+  root_dev_ = NULL;
   current_queue_ = 0;
   current_copy_queue_ = 0;
+  first_event_cpu_end_time_ = 0.0f;
+  first_event_cpu_begin_time_ = 0.0f;
   platform_ = platform;
   platform_obj_ = Platform::GetPlatform();
   busy_ = false;
@@ -49,6 +53,8 @@ Device::Device(int devno, int platform) {
 }
 
 Device::~Device() {
+  printf("Device:%d deleted\n", devno());
+  FreeDestroyEvents();
   delete timer_;
 }
 
@@ -107,6 +113,8 @@ int Device::GetStream(Task *task, BaseMem *mem, bool new_stream) {
 }
 
 void Device::Execute(Task* task) {
+  printf("Inside device execute and calling free destroy events %lu:%s\n", task->uid(), task->name());
+  FreeDestroyEvents();
   busy_ = true;
   if (is_async(task) && task->user()) task->set_recommended_stream(GetStream(task));
   if (hook_task_pre_) hook_task_pre_(task);
@@ -345,25 +353,41 @@ void Device::ExecuteKernel(Command* cmd) {
   //double ktime_start = timer_->GetCurrentTime();
   StreamPolicy policy = stream_policy(cmd->task());
   // Though STREAM_POLICY_SAME_FOR_TASK doesn't require for every input to check, it is required for the cases where the D2O (CUDA to OpenMP) device data transfers are enabled.
-  if (is_async(cmd->task()) && (
-              policy == STREAM_POLICY_DEFAULT ||
-              policy == STREAM_POLICY_SAME_FOR_TASK))
+  int stream_index = 0;
+  bool async_launch = is_async(cmd->task());
+  if (async_launch) {
       WaitForTaskInputAvailability(devno(), cmd->task(), cmd);
+      async_launch = true;
+      stream_index = GetStream(cmd->task()); //task->uid() % nqueues_; 
+  }
   bool enabled = true;
   if (cmd->task() != NULL && (
               cmd->task()->is_kernel_launch_disabled() ||
               Platform::GetPlatform()->is_kernel_launch_disabled()))
       enabled = false;
   if (enabled) {
+      Task *task = cmd->task();
       _debug2("Launching kernel:%s:%lu task:%s:%lu", kernel->name(), kernel->uid(), cmd->task()->name(), cmd->task()->uid());
+#ifdef ENABLE_PROF_EVENT
+        if (async_launch) {
+            ProfileEvent &prof_event = task->CreateProfileEvent(cmd->task(), devno(), PROFILE_KERNEL, this, stream_index);
+            RecordEvent(prof_event.start_event_ptr(), stream_index, iris_event_default);
+        }
+#endif
       errid_ = KernelLaunch(kernel, dim, off, gws, lws[0] > 0 ? lws : NULL);
+#ifdef ENABLE_PROF_EVENT
+      if (async_launch) {
+          ProfileEvent &prof_event = task->LastProfileEvent();
+          RecordEvent(prof_event.end_event_ptr(), stream_index, iris_event_default);
+      }
+#endif
       _debug2("Completed kernel:%s:%lu task:%s:%lu", kernel->name(), kernel->uid(), cmd->task()->name(), cmd->task()->uid());
   }
   //double ktime = timer_->GetCurrentTime() - ktime_start;
   cmd->set_time_end(timer_);
   double time = timer_->Stop(IRIS_TIMER_KERNEL);
   cmd->SetTime(time);
-  if (is_async(cmd->task())) 
+  if (async_launch) 
       RecordEvent(cmd->kernel()->GetCompletionEventPtr(), cmd->task()->recommended_stream());
   //printf("Task:%s time:%f ktime:%f init:%f atime:%f setmemtime:%f\n", cmd->task()->name(), time, ktime, ltime, atime, set_mem_time);
   cmd->kernel()->history()->AddKernel(cmd, this, time);
@@ -788,9 +812,9 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         if (async) {
 #if 1//def ENABLE_PROF_EVENT
             if (platform_obj_->is_event_profile_enabled()) {
-                ProfileEvent * prof_event = task->CreateProfileEvent(mem, -1, PROFILE_H2D, this, mem_stream);
-                RecordEvent(prof_event->start_event_ptr(), mem_stream, iris_event_default);
-                printf("prof_event ptr:%p %p\n", prof_event->start_event_ptr(), prof_event->start_event());
+                ProfileEvent & prof_event = task->CreateProfileEvent(mem, -1, PROFILE_H2D, this, mem_stream);
+                RecordEvent(prof_event.start_event_ptr(), mem_stream, iris_event_default);
+                printf("prof_event ptr:%p %p\n", prof_event.start_event_ptr(), prof_event.start_event());
             }
 #endif
         }
@@ -800,7 +824,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         _debug2("explore Host2Device (H2D) dev[%d][%s] task[%ld:%s] mem[%lu] q[%d]", devno_, name_, task->uid(), task->name(), mem->uid(), mem_stream);
         if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
         if (async) {
-#ifdef ENABLE_PROF_EVENT
+#if 1//def ENABLE_PROF_EVENT
             if (platform_obj_->is_event_profile_enabled()) {
                 ProfileEvent & prof_event = task->LastProfileEvent();
                 printf("prof_event ptr:%p\n", prof_event.start_event_ptr());

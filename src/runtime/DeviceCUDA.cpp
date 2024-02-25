@@ -115,7 +115,8 @@ DeviceCUDA::DeviceCUDA(LoaderCUDA* ld, LoaderHost2CUDA *host2cuda_ld, CUdevice c
   max_work_item_sizes_[1] = (size_t) by * (size_t) dy;
   max_work_item_sizes_[2] = (size_t) bz * (size_t) dz;
   memset(streams_, 0, sizeof(CUstream)*IRIS_MAX_DEVICE_NQUEUES);
-  memset(start_time_event_, 0, sizeof(CUevent)*IRIS_MAX_DEVICE_NQUEUES);
+  //memset(start_time_event_, 0, sizeof(CUevent)*IRIS_MAX_DEVICE_NQUEUES);
+  single_start_time_event_ = NULL;
   _info("device[%d] platform[%d] vendor[%s] device[%s] type[%d] version[%s] max_compute_units[%zu] max_work_group_size_[%zu] max_work_item_sizes[%zu,%zu,%zu] max_block_dims[%d,%d,%d] concurrent_kernels[%d] async_engines[%d] ncopy_engines[%d]", devno_, platform_, vendor_, name_, type_, version_, max_compute_units_, max_work_group_size_, max_work_item_sizes_[0], max_work_item_sizes_[1], max_work_item_sizes_[2], max_block_dims_[0], max_block_dims_[1], max_block_dims_[2], ck, ae, n_copy_engines_);
 }
 
@@ -130,8 +131,10 @@ DeviceCUDA::~DeviceCUDA() {
     for (int i = 0; i < nqueues_; i++) {
       CUresult err = ld_->cuStreamDestroy(streams_[i]);
       _cuerror(err);
-      DestroyEvent(start_time_event_[i]);
+      //DestroyEvent(start_time_event_[i]);
     }
+    if (is_async(false)) 
+        DestroyEvent(single_start_time_event_);
 }
 
 int DeviceCUDA::Compile(char* src) {
@@ -194,8 +197,12 @@ int DeviceCUDA::Init() {
       for (int i = 0; i < nqueues_; i++) {
           err = ld_->cuStreamCreate(streams_ + i, CU_STREAM_NON_BLOCKING);
           _cuerror(err);
-          RecordEvent((void **)(start_time_event_+i), i, iris_event_default);
+          //RecordEvent((void **)(start_time_event_+i), i, iris_event_default);
       }
+      set_first_event_cpu_begin_time(timer_->Now());
+      RecordEvent((void **)(&single_start_time_event_), 0, iris_event_default);
+      set_first_event_cpu_end_time(timer_->Now());
+      printf("Start time of device:%f end time of record:%f\n", first_event_cpu_begin_time(), first_event_cpu_end_time());
   }
   host2cuda_ld_->init(devno());
 
@@ -845,9 +852,11 @@ float DeviceCUDA::GetEventTime(void *event, int stream)
     }
     float elapsed=0.0f;
     if (event != NULL) {
-        CUresult err = ld_->cuEventElapsedTime(&elapsed, start_time_event_[stream], (CUevent)event);
+        //CUresult err = ld_->cuEventElapsedTime(&elapsed, ((DeviceCUDA *)root_device())->single_start_time_event_, (CUevent)event);
+        CUresult err = ld_->cuEventElapsedTime(&elapsed, single_start_time_event_, (CUevent)event);
         _cuerror(err);
-        printf("Elapsed:%f start_time_event:%p event:%p\n", elapsed, start_time_event_[stream], event);
+        printf("Elapsed:%f single_start_time_event:%p event:%p\n", elapsed, single_start_time_event_, event);
+        //printf("Elapsed:%f single_start_time_event:%p start_time_event:%p event:%p\n", elapsed, single_start_time_event_, start_time_event_[stream], event);
     }
     return elapsed; 
 }
@@ -883,7 +892,6 @@ void DeviceCUDA::DestroyEvent(void *event)
     if (IsContextChangeRequired()) {
         ld_->cuCtxSetCurrent(ctx_);
     }
-    ld_->cuEventSynchronize((CUevent) event);
     printf("Trying to Destroy dev:%d event:%p\n", devno(), event);
     CUresult err1 = ld_->cuEventQuery((CUevent) event);
     printf("Query result: %d\n", err1);

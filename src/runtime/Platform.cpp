@@ -452,6 +452,7 @@ int Platform::InitCUDA() {
     err = loaderCUDA_->cuDeviceGet(&dev, i);
     _cuerror(err);
     devs_[ndevs_] = new DeviceCUDA(loaderCUDA_, loaderHost2CUDA_, dev, ndevs_, nplatforms_);
+    devs_[ndevs_]->set_root_device(devs_[ndevs_-i]);
     arch_available_ |= devs_[ndevs_]->type();
     cudevs[mdevs] = dev;
     ndevs_++;
@@ -515,6 +516,7 @@ int Platform::InitHIP() {
     _hiperror(err);
     hipdevs[mdevs] = dev;
     devs_[ndevs_] = new DeviceHIP(loaderHIP_, loaderHost2HIP_, dev, i, ndevs_, nplatforms_);
+    devs_[ndevs_]->set_root_device(devs_[ndevs_-i]);
     arch_available_ |= devs_[ndevs_]->type();
     ndevs_++;
     mdevs++;
@@ -708,6 +710,7 @@ int Platform::InitOpenCL() {
           delete dev;
           continue;
       }
+      devs_[ndevs_]->set_root_device(devs_[ndevs_-mdevs]);
       devs_[ndevs_] = dev;
       arch_available_ |= devs_[ndevs_]->type();
       ndevs_++;

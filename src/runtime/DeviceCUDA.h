@@ -72,7 +72,8 @@ private:
   int peers_count_;
   CUcontext ctx_;
   CUstream streams_[IRIS_MAX_DEVICE_NQUEUES];
-  CUevent  start_time_event_[IRIS_MAX_DEVICE_NQUEUES];
+  CUevent  single_start_time_event_;
+  //CUevent  start_time_event_[IRIS_MAX_DEVICE_NQUEUES];
   CUmodule module_;
   unsigned int shared_mem_bytes_;
   unsigned int shared_mem_offs_[IRIS_MAX_KERNEL_NARGS];

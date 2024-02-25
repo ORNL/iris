@@ -48,7 +48,8 @@ DeviceHIP::DeviceHIP(LoaderHIP* ld, LoaderHost2HIP *host2hip_ld, hipDevice_t dev
   type_ = iris_amd;
   model_ = iris_hip;
   memset(streams_, 0, sizeof(hipStream_t)*IRIS_MAX_DEVICE_NQUEUES);
-  memset(start_time_event_, 0, sizeof(hipEvent_t)*IRIS_MAX_DEVICE_NQUEUES);
+  //memset(start_time_event_, 0, sizeof(hipEvent_t)*IRIS_MAX_DEVICE_NQUEUES);
+  single_start_time_event_ = NULL;
   err = ld_->hipDriverGetVersion(&driver_version_);
   _hiperror(err);
   sprintf(version_, "AMD HIP %d", driver_version_);
@@ -60,8 +61,10 @@ DeviceHIP::~DeviceHIP() {
     for (int i = 0; i < nqueues_; i++) {
       hipError_t err = ld_->hipStreamDestroy(streams_[i]);
       _hiperror(err);
-      DestroyEvent(start_time_event_[i]);
+      //DestroyEvent(start_time_event_[i]);
     }
+    if (is_async(false)) 
+        DestroyEvent(single_start_time_event_);
 }
 void DeviceHIP::EnablePeerAccess()
 {
@@ -109,9 +112,12 @@ int DeviceHIP::Init() {
       for (int i = 0; i < nqueues_; i++) {
           err = ld_->hipStreamCreate(streams_ + i);
           _hiperror(err);
-          RecordEvent((void **)(start_time_event_+i), i, iris_event_default);
-          //EventSynchronize(start_time_event_[i]);
+          //RecordEvent((void **)(start_time_event_+i), i, iris_event_default);
       }
+      set_first_event_cpu_begin_time(timer_->Now());
+      RecordEvent((void **)(&single_start_time_event_), 0, iris_event_default);
+      set_first_event_cpu_end_time(timer_->Now());
+      printf("Start time of device:%f end time of record:%f\n", first_event_cpu_begin_time(), first_event_cpu_end_time());
   }
   err = ld_->hipGetDevice(&devid_);
   _hiperror(err);
@@ -686,8 +692,8 @@ float DeviceHIP::GetEventTime(void *event, int stream)
     }
     float elapsed=0.0f;
     if (event != NULL) {
-        hipError_t err = ld_->hipEventElapsedTime(&elapsed, start_time_event_[stream], (hipEvent_t)event);
-        printf("Elapsed:%f start_time_event:%p event:%p\n", elapsed, start_time_event_[stream], event);
+        hipError_t err = ld_->hipEventElapsedTime(&elapsed, single_start_time_event_, (hipEvent_t)event);
+        printf("Elapsed:%f start_time_event:%p event:%p\n", elapsed, single_start_time_event_, event);
         _hiperror(err);
     }
     return elapsed; 

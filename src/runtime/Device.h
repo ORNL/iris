@@ -7,6 +7,7 @@
 //#include "CPUEvent.h"
 #include <map>
 #include <vector>
+#include <mutex>
 using namespace std;
 
 
@@ -39,6 +40,23 @@ public:
 
   void ExecuteInit(Command* cmd);
   virtual void ExecuteKernel(Command* cmd);
+  void AddDestroyEvent(void *event) { 
+      printf("Adding event:%p size:%ld obj:%p\n", event, destroy_events_.size(), &destroy_events_);
+      destroy_events_mutex_.lock();
+      destroy_events_.push_back(event); 
+      destroy_events_mutex_.unlock();
+      printf("Added event:%p size:%ld\n", event, destroy_events_.size());
+  }
+  void FreeDestroyEvents() 
+  {
+      printf("FreeDestroyEvents size:%ld obj:%p\n", destroy_events_.size(), &destroy_events_);
+      destroy_events_mutex_.lock();
+      for(void *p : destroy_events_) {
+          DestroyEvent(p);
+      }
+      destroy_events_.clear();
+      destroy_events_mutex_.unlock();
+  }
   virtual void RegisterPin(void *host, size_t size) { }
   void ExecuteMalloc(Command* cmd);
   void RegisterHost(BaseMem *mem);
@@ -129,6 +147,11 @@ public:
       return async_ && (!stream_policy_check || 
               stream_policy() != STREAM_POLICY_GIVE_ALL_STREAMS_TO_KERNEL); 
   }
+  void set_root_device(Device *root) { root_dev_ = root; }
+  double first_event_cpu_end_time() { return first_event_cpu_end_time_; }
+  double first_event_cpu_begin_time() { return first_event_cpu_begin_time_; }
+  void set_first_event_cpu_end_time(double time) { first_event_cpu_end_time_ = time; }
+  void set_first_event_cpu_begin_time(double time) { first_event_cpu_begin_time_ = time; }
   int platform() { return platform_; }
   int devno() { return devno_; }
   int type() { return type_; }
@@ -208,6 +231,14 @@ protected:
   std::map<int, command_handler> cmd_handlers_;
   StreamPolicy stream_policy_;
   Platform *platform_obj_;
+private:
+  mutex destroy_events_mutex_;
+  vector<void *> destroy_events_;
+  Device *root_dev_;
+  double first_event_cpu_begin_time_;
+  double first_event_cpu_end_time_;
+protected:
+  Device *root_device() { return root_dev_; }
 };
 
 } /* namespace rt */

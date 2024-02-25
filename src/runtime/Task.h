@@ -286,18 +286,18 @@ private:
   pthread_mutex_t mutex_subtasks_;
   //pthread_cond_t complete_cond_;
   vector<DataObjectProfile>       out_dataobject_profiles;
-  vector<ProfileEvent *>            profile_events_;
+  vector<ProfileEvent>            profile_events_;
 public:
-  vector<ProfileEvent *> & profile_events() { return profile_events_; }
-  ProfileEvent * CreateProfileEvent(BaseMem *mem, int connect_dev, ProfileRecordType type, Device *dev, int stream) { 
-      profile_events_.push_back(new ProfileEvent(mem->uid(), connect_dev, type, dev, stream));
+  vector<ProfileEvent> & profile_events() { return profile_events_; }
+  ProfileEvent & CreateProfileEvent(BaseMem *mem, int connect_dev, ProfileRecordType type, Device *dev, int stream) { 
+      profile_events_.push_back(ProfileEvent(mem->uid(), connect_dev, type, dev, stream));
       return profile_events_.back();
-  }/*
-  ProfileEvent & CreateProfileEvent(Kernel *kernl, ProfileRecordType type) { 
-      profile_events_.push_back(ProfileEvent(kernel->uid(), type));
+  }
+  ProfileEvent & CreateProfileEvent(Task *task, int connect_dev, ProfileRecordType type, Device *dev, int stream) { 
+      profile_events_.push_back(ProfileEvent(task->uid(), connect_dev, type, dev, stream));
       return profile_events_.back();
-  }*/
-  ProfileEvent * LastProfileEvent() {
+  }
+  ProfileEvent & LastProfileEvent() {
       return profile_events_.back();
   }
   static Task* Create(Platform* platform, int type, const char* name);
