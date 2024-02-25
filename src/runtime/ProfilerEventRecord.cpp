@@ -149,7 +149,7 @@ int ProfilerEventRecord::CompleteTask(Task* task) {
   //unsigned long tid = task->uid();
   Device* dev = task->dev();
   int policy = task->brs_policy();
-  vector<ProfileEvent> pevents = task->profile_events();
+  //vector<ProfileEvent> & pevents = task->profile_events();
   char s[1024];
   if (dev != NULL) {
       sprintf(s, "[ '%s %d', '%s (%s)', %lf, %lf, -1 ],\n", dev->name(), dev->devno(), task->name(), policy_str(policy), (task->time_start() * 1.e+3) - first_task_, (task->time_end() * 1.e+3) - first_task_);
@@ -158,6 +158,7 @@ int ProfilerEventRecord::CompleteTask(Task* task) {
       pthread_mutex_unlock(&chart_lock_);
       printf("Profiling Task: %s %lf %lf\n", s, task->time_start()*1.e+3, task->time_end()*1.e+3);
   }
+#if 0
   printf("Profiling task:%lu:%s\n", task->uid(), task->name());
   for (ProfileEvent & p : pevents) {
      double start_time = p.GetStartTime();
@@ -173,6 +174,8 @@ int ProfilerEventRecord::CompleteTask(Task* task) {
          sprintf(s, "[ '%s %d', 'm%lu from (%d)', %lf, %lf, %d],\n", event_dev->name(), event_dev->devno(), uid, connect_dev, (start_time * 1.e+3) - first_task_, (end_time * 1.e+3) - first_task_, (int)p.type());
      }
   }
+#endif
+  printf("Completed ProfilerEventRecord::CompleteTask\n");
   return IRIS_SUCCESS;
 }
 

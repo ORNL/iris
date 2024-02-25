@@ -194,8 +194,7 @@ int DeviceCUDA::Init() {
       for (int i = 0; i < nqueues_; i++) {
           err = ld_->cuStreamCreate(streams_ + i, CU_STREAM_NON_BLOCKING);
           _cuerror(err);
-          RecordEvent((void **)(start_time_event_+i), i);
-          EventSynchronize(start_time_event_[i]);
+          RecordEvent((void **)(start_time_event_+i), i, iris_event_default);
       }
   }
   host2cuda_ld_->init(devno());
@@ -452,7 +451,7 @@ int DeviceCUDA::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
           if (err != CUDA_SUCCESS) error_occured = true;
       }
   }
-  _trace("Completed H2D DT of %sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, size, host, stream_index);
+  _info("Completed H2D DT of %sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, size, host, stream_index);
   ASSERT(!error_occured && "CUDA Error occured");
   if (error_occured){
    worker_->platform()->IncrementErrorCount();
@@ -837,6 +836,7 @@ void DeviceCUDA::CreateEvent(void **event, int flags)
     _cuerror(err);
     if (err != CUDA_SUCCESS)
         worker_->platform()->IncrementErrorCount();
+    printf("Create dev:%d event:%p %p\n", devno(), event, *event);
 }
 float DeviceCUDA::GetEventTime(void *event, int stream) 
 { 
@@ -847,22 +847,23 @@ float DeviceCUDA::GetEventTime(void *event, int stream)
     if (event != NULL) {
         CUresult err = ld_->cuEventElapsedTime(&elapsed, start_time_event_[stream], (CUevent)event);
         _cuerror(err);
+        printf("Elapsed:%f start_time_event:%p event:%p\n", elapsed, start_time_event_[stream], event);
     }
     return elapsed; 
 }
-void DeviceCUDA::RecordEvent(void **event, int stream)
+void DeviceCUDA::RecordEvent(void **event, int stream, int event_creation_flag)
 {
     if (IsContextChangeRequired()) {
         ld_->cuCtxSetCurrent(ctx_);
     }
     if (*event == NULL)
-        CreateEvent(event, iris_event_disable_timing);
+        CreateEvent(event, event_creation_flag);
     CUresult err;
     if (stream == 0)
         err = ld_->cuEventRecord(*((CUevent *)event), streams_[stream]);
     else
         err = ld_->cuEventRecord(*((CUevent *)event), streams_[stream]);
-    _cuerror(err);
+    printf("Recorded dev:%d event:%p stream:%d\n", devno(), *event, stream);
     if (err != CUDA_SUCCESS)
         worker_->platform()->IncrementErrorCount();
 }
@@ -878,11 +879,17 @@ void DeviceCUDA::WaitForEvent(void *event, int stream, int flags)
 }
 void DeviceCUDA::DestroyEvent(void *event)
 {
+    ASSERT(event != NULL && "Event shouldn't be null");
     if (IsContextChangeRequired()) {
         ld_->cuCtxSetCurrent(ctx_);
     }
+    ld_->cuEventSynchronize((CUevent) event);
+    printf("Trying to Destroy dev:%d event:%p\n", devno(), event);
+    CUresult err1 = ld_->cuEventQuery((CUevent) event);
+    printf("Query result: %d\n", err1);
     CUresult err = ld_->cuEventDestroy((CUevent) event);
     _cuerror(err);
+    printf("Destroyed dev:%d event:%p\n", devno(), event);
     if (err != CUDA_SUCCESS)
         worker_->platform()->IncrementErrorCount();
 }

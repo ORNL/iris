@@ -702,7 +702,7 @@ void DeviceOpenCL::CreateEvent(void **event, int flags)
 {
     *event = NULL;
 }
-void DeviceOpenCL::RecordEvent(void **event, int stream)
+void DeviceOpenCL::RecordEvent(void **event, int stream, int event_creation_flag)
 {
     cl_int err;
     err = ld_->clEnqueueMarker(clcmdq_[stream], (cl_event*)event);

@@ -109,8 +109,8 @@ int DeviceHIP::Init() {
       for (int i = 0; i < nqueues_; i++) {
           err = ld_->hipStreamCreate(streams_ + i);
           _hiperror(err);
-          RecordEvent((void **)(start_time_event_+i), i);
-          EventSynchronize(start_time_event_[i]);
+          RecordEvent((void **)(start_time_event_+i), i, iris_event_default);
+          //EventSynchronize(start_time_event_[i]);
       }
   }
   err = ld_->hipGetDevice(&devid_);
@@ -686,9 +686,8 @@ float DeviceHIP::GetEventTime(void *event, int stream)
     }
     float elapsed=0.0f;
     if (event != NULL) {
-        printf("Elapsed:%f start_time_event:%p event:%p\n", elapsed, start_time_event_[stream], event);
         hipError_t err = ld_->hipEventElapsedTime(&elapsed, start_time_event_[stream], (hipEvent_t)event);
-        printf("Elapsed time:%f\n", elapsed);
+        printf("Elapsed:%f start_time_event:%p event:%p\n", elapsed, start_time_event_[stream], event);
         _hiperror(err);
     }
     return elapsed; 
@@ -705,14 +704,14 @@ void DeviceHIP::CreateEvent(void **event, int flags)
         worker_->platform()->IncrementErrorCount();
     printf("Create dev:%d event:%p\n", devno(), *event);
 }
-void DeviceHIP::RecordEvent(void **event, int stream)
+void DeviceHIP::RecordEvent(void **event, int stream, int event_creation_flag)
 {
     _trace(" event:%p stream:%d", *event, stream);
     if (IsContextChangeRequired()) {
         ld_->hipCtxSetCurrent(ctx_);
     }
     if (*event == NULL)
-        CreateEvent(event, iris_event_disable_timing);
+        CreateEvent(event, event_creation_flag);
     ASSERT(event != NULL && "Event shouldn't be null");
     hipError_t err = ld_->hipEventRecord(*((hipEvent_t*)event), streams_[stream]);
     _hiperror(err);

@@ -43,7 +43,7 @@ public:
   int Custom(int tag, char* params);
   float GetEventTime(void *event, int stream);
   void CreateEvent(void **event, int flags);
-  void RecordEvent(void **event, int stream);
+  void RecordEvent(void **event, int stream, int event_creation_flag=iris_event_disable_timing);
   void WaitForEvent(void *event, int stream, int flags=0);
   void DestroyEvent(void *event);
   void EventSynchronize(void *event);

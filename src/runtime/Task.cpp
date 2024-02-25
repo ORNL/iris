@@ -15,10 +15,12 @@ namespace iris {
 namespace rt {
 
 void ProfileEvent::Clean() {
+    printf("prof_event trying to destroy :%p %p\n", &start_event_, start_event_);
     if (start_event_ != NULL && event_dev_ != NULL) 
         event_dev_->DestroyEvent(start_event_);
     if (end_event_ != NULL && event_dev_ != NULL) 
         event_dev_->DestroyEvent(end_event_);
+    printf("completed prof_event trying to destroy :%p %p\n", &start_event_, start_event_);
 }
 float ProfileEvent::GetStartTime() {
     float etime =0.0;
@@ -100,13 +102,9 @@ Task::Task(Platform* platform, int type, const char* name) {
 }
 
 Task::~Task() {
-  //printf("released task:%lu:%s released ptr:%p ref_cnt:%d\n", uid(), name(), this, ref_cnt());
+  printf("Releasedd task:%lu:%s released ptr:%p ref_cnt:%d\n", uid(), name(), this, ref_cnt());
   //Platform::GetPlatform()->task_track().UntrackObject(this, uid());
   _trace("Task deleted %lu %s %p ref_cnt:%d", uid(), name(), this, ref_cnt());
-  for (ProfileEvent & p : profile_events_) {
-    p.Clean();
-  }
-  profile_events_.clear();
   for (int i = 0; i < ncmds_; i++) delete cmds_[i];
   if (depends_uids_) delete [] depends_uids_;
   pthread_mutex_destroy(&stream_mutex_);
@@ -295,13 +293,20 @@ void Task::Complete() {
   bool is_user_task = user_;
   bool platform_release_flag = platform_->release_task_flag();
   if (dev_ && type() != IRIS_MARKER) set_devno(dev_->devno());
+  status_ = IRIS_COMPLETE;
   std::unique_lock<std::mutex> lock(mutex_complete_cpp_);
   status_ = IRIS_COMPLETE;
   complete_cond_cpp_.notify_all();
   //pthread_mutex_lock(&mutex_complete_);
   //pthread_cond_broadcast(&complete_cond_);
   //pthread_mutex_unlock(&mutex_complete_);
+  printf("calling profile events\n");
   if (user_) platform_->ProfileCompletedTask(this);
+  printf("Trying to delete profile events\n");
+  for (ProfileEvent * p : profile_events_) {
+    p->Clean();
+  }
+  profile_events_.clear();
   // For task with subtasks, the parent task is not in any worker queue. 
   // However, it has to call the completion of parent task each time.
   // Parent marker task was never go through Worker::Execute.

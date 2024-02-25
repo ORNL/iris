@@ -24,6 +24,7 @@ class DataMemRegion;
 class Task;
 class Timer;
 class Worker;
+class Platform;
 
 typedef void (*CallBackType)(void *stream, int status, void *data);
 class Device {
@@ -43,7 +44,7 @@ public:
   void RegisterHost(BaseMem *mem);
   virtual float GetEventTime(void *event, int stream) { return 0.0f; }
   virtual void CreateEvent(void **event, int flags);
-  virtual void RecordEvent(void **event, int stream);
+  virtual void RecordEvent(void **event, int stream, int event_creation_flag=iris_event_disable_timing);
   virtual void WaitForEvent(void *event, int stream, int flags=0);
   virtual void DestroyEvent(void *event);
   virtual void EventSynchronize(void *event);
@@ -206,6 +207,7 @@ protected:
 
   std::map<int, command_handler> cmd_handlers_;
   StreamPolicy stream_policy_;
+  Platform *platform_obj_;
 };
 
 } /* namespace rt */

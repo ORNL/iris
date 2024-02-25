@@ -51,6 +51,7 @@ class ProfileEvent {
             connect_dev_ = connect_dev;
             event_dev_ = event_dev;
             stream_ = stream;
+            printf("prof_event created:%p %p\n", &start_event_, start_event_);
         }
         ~ProfileEvent(){ /*It shouldn't destroy any events*/ }
         void Clean();
@@ -285,18 +286,18 @@ private:
   pthread_mutex_t mutex_subtasks_;
   //pthread_cond_t complete_cond_;
   vector<DataObjectProfile>       out_dataobject_profiles;
-  vector<ProfileEvent>            profile_events_;
+  vector<ProfileEvent *>            profile_events_;
 public:
-  vector<ProfileEvent> & profile_events() { return profile_events_; }
-  ProfileEvent & CreateProfileEvent(BaseMem *mem, int connect_dev, ProfileRecordType type, Device *dev, int stream) { 
-      profile_events_.push_back(ProfileEvent(mem->uid(), connect_dev, type, dev, stream));
+  vector<ProfileEvent *> & profile_events() { return profile_events_; }
+  ProfileEvent * CreateProfileEvent(BaseMem *mem, int connect_dev, ProfileRecordType type, Device *dev, int stream) { 
+      profile_events_.push_back(new ProfileEvent(mem->uid(), connect_dev, type, dev, stream));
       return profile_events_.back();
   }/*
   ProfileEvent & CreateProfileEvent(Kernel *kernl, ProfileRecordType type) { 
       profile_events_.push_back(ProfileEvent(kernel->uid(), type));
       return profile_events_.back();
   }*/
-  ProfileEvent & LastProfileEvent() {
+  ProfileEvent * LastProfileEvent() {
       return profile_events_.back();
   }
   static Task* Create(Platform* platform, int type, const char* name);
