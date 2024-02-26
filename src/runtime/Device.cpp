@@ -367,7 +367,7 @@ void Device::ExecuteKernel(Command* cmd) {
       enabled = false;
   if (enabled) {
       Task *task = cmd->task();
-      _debug2("Launching kernel:%s:%lu task:%s:%lu", kernel->name(), kernel->uid(), cmd->task()->name(), cmd->task()->uid());
+      _debug2("Launching kernel:%s:%lu task:%s:%lu stream:%d", kernel->name(), kernel->uid(), cmd->task()->name(), cmd->task()->uid(), stream_index);
 #ifdef ENABLE_PROF_EVENT
         if (async_launch) {
             ProfileEvent &prof_event = task->CreateProfileEvent(cmd->task(), devno(), PROFILE_KERNEL, this, stream_index);
