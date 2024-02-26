@@ -70,19 +70,12 @@ int Profiler::Write(string s, int tab) {
           return IRIS_ERROR;
       }
   }
-  Flush();
   return IRIS_SUCCESS;
 }
 
 int Profiler::Write(const char* s, int tab) {
-  if (!msg_->WriteString(s)) {
-    Flush();
-    if (!msg_->WriteString(s)) {
-      _error("s[%s]", s);
-      return IRIS_ERROR;
-    }
-  }
-  return IRIS_SUCCESS;
+  string s_str = s;
+  return Write(s_str, tab);
 }
 
 int Profiler::Flush() {
