@@ -51,7 +51,7 @@ class ProfileEvent {
             connect_dev_ = connect_dev;
             event_dev_ = event_dev;
             stream_ = stream;
-            printf("prof_event created:%p %p\n", &start_event_, start_event_);
+            //printf("prof_event created:%p %p\n", &start_event_, start_event_);
         }
         ~ProfileEvent(){ /*It shouldn't destroy any events*/ }
         void Clean();

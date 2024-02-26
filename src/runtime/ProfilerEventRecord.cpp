@@ -182,7 +182,7 @@ int ProfilerEventRecord::CompleteTask(Task* task) {
   }
 #endif
 #if 1
-  printf("Profiling task:%lu:%s size:%lu\n", task->uid(), task->name(), pevents.size());
+  //printf("Profiling task:%lu:%s size:%lu\n", task->uid(), task->name(), pevents.size());
   for (ProfileEvent & p : pevents) {
      Device *event_dev = p.event_dev();
      double first_event_cpu_begin_time = event_dev->first_event_cpu_begin_time();
@@ -194,22 +194,22 @@ int ProfilerEventRecord::CompleteTask(Task* task) {
      ProfileRecordType type = p.type();
      int connect_dev = p.connect_dev();
      if (type == PROFILE_KERNEL) {
-         sprintf(s, "[ '%s %d', '%lu:%s (%s)', %lf, %lf, %d],\n", event_dev->name(), event_dev->devno(), task->uid(), task->name(), policy_str(policy), start_time, end_time, (int)p.type());
+         sprintf(s, "[ '%s %d', '%lu:%s (%s)', %lf, %lf, ProfileRecordType.PROFILE_KERNEL],\n", event_dev->name(), event_dev->devno(), task->uid(), task->name(), policy_str(policy), start_time, end_time);
      }
      else if (type == PROFILE_D2D) {
-         sprintf(s, "[ '%s %d', 'D2D: m%lu from (%d) task (%llu:%s)', %lf, %lf, %d],\n", event_dev->name(), event_dev->devno(), uid, connect_dev, task->uid(), task->name(), start_time, end_time, (int)p.type());
+         sprintf(s, "[ '%s %d', 'D2D: m%lu from (%d) task (%llu:%s)', %lf, %lf, ProfileRecordType.PROFILE_D2D],\n", event_dev->name(), event_dev->devno(), uid, connect_dev, task->uid(), task->name(), start_time, end_time);
      }
      else if (type == PROFILE_H2D) {
-         sprintf(s, "[ '%s %d', 'H2D: m%lu from (Host) task (%llu:%s)', %lf, %lf, %d],\n", event_dev->name(), event_dev->devno(), uid, task->uid(), task->name(), start_time, end_time, (int)p.type());
+         sprintf(s, "[ '%s %d', 'H2D: m%lu from (Host) task (%llu:%s)', %lf, %lf, ProfileRecordType.PROFILE_H2D],\n", event_dev->name(), event_dev->devno(), uid, task->uid(), task->name(), start_time, end_time);
      }
      else if (type == PROFILE_D2O) {
-         sprintf(s, "[ '%s %d', 'D2O: m%lu from (%d) task (%llu:%s)', %lf, %lf, %d],\n", event_dev->name(), event_dev->devno(), uid, connect_dev, task->uid(), task->name(), start_time, end_time, (int)p.type());
+         sprintf(s, "[ '%s %d', 'D2O: m%lu from (%d) task (%llu:%s)', %lf, %lf, ProfileRecordType.PROFILE_D2O],\n", event_dev->name(), event_dev->devno(), uid, connect_dev, task->uid(), task->name(), start_time, end_time);
      }
      else if (type == PROFILE_O2D) {
-         sprintf(s, "[ '%s %d', 'O2D: m%lu from (%d) task (%llu:%s)', %lf, %lf, %d],\n", event_dev->name(), event_dev->devno(), uid, connect_dev, task->uid(), task->name(), start_time, end_time, (int)p.type());
+         sprintf(s, "[ '%s %d', 'O2D: m%lu from (%d) task (%llu:%s)', %lf, %lf, ProfileRecordType.PROFILE_O2D],\n", event_dev->name(), event_dev->devno(), uid, connect_dev, task->uid(), task->name(), start_time, end_time);
      }
      else if (type == PROFILE_D2H) {
-         sprintf(s, "[ '%s %d', 'D2H: m%lu to (Host) task (%llu:%s)', %lf, %lf, %d],\n", event_dev->name(), event_dev->devno(), uid, task->uid(), task->name(), start_time, end_time, (int)p.type());
+         sprintf(s, "[ '%s %d', 'D2H: m%lu to (Host) task (%llu:%s)', %lf, %lf, ProfileRecordType.PROFILE_D2H],\n", event_dev->name(), event_dev->devno(), uid, task->uid(), task->name(), start_time, end_time);
      }
      else {
          sprintf(s, "[ '%s %d', 'D2D: m%lu from (%d) task (%llu:%s)', %lf, %lf, %d],\n", event_dev->name(), event_dev->devno(), uid, connect_dev, task->uid(), task->name(), start_time, end_time, (int)p.type());
@@ -219,7 +219,7 @@ int ProfilerEventRecord::CompleteTask(Task* task) {
      pthread_mutex_unlock(&chart_lock_);
   }
 #endif
-  printf("Completed ProfilerEventRecord::CompleteTask\n");
+  //printf("Completed ProfilerEventRecord::CompleteTask\n");
   return IRIS_SUCCESS;
 }
 

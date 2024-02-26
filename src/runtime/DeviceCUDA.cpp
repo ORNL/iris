@@ -843,7 +843,7 @@ void DeviceCUDA::CreateEvent(void **event, int flags)
     _cuerror(err);
     if (err != CUDA_SUCCESS)
         worker_->platform()->IncrementErrorCount();
-    printf("Create dev:%d event:%p %p\n", devno(), event, *event);
+    //printf("Create dev:%d event:%p %p\n", devno(), event, *event);
 }
 float DeviceCUDA::GetEventTime(void *event, int stream) 
 { 
@@ -855,7 +855,7 @@ float DeviceCUDA::GetEventTime(void *event, int stream)
         //CUresult err = ld_->cuEventElapsedTime(&elapsed, ((DeviceCUDA *)root_device())->single_start_time_event_, (CUevent)event);
         CUresult err = ld_->cuEventElapsedTime(&elapsed, single_start_time_event_, (CUevent)event);
         _cuerror(err);
-        printf("Elapsed:%f single_start_time_event:%p event:%p\n", elapsed, single_start_time_event_, event);
+        //printf("Elapsed:%f single_start_time_event:%p event:%p\n", elapsed, single_start_time_event_, event);
         //printf("Elapsed:%f single_start_time_event:%p start_time_event:%p event:%p\n", elapsed, single_start_time_event_, start_time_event_[stream], event);
     }
     return elapsed; 
@@ -872,7 +872,7 @@ void DeviceCUDA::RecordEvent(void **event, int stream, int event_creation_flag)
         err = ld_->cuEventRecord(*((CUevent *)event), streams_[stream]);
     else
         err = ld_->cuEventRecord(*((CUevent *)event), streams_[stream]);
-    printf("Recorded dev:%d event:%p stream:%d\n", devno(), *event, stream);
+    //printf("Recorded dev:%d event:%p stream:%d\n", devno(), *event, stream);
     if (err != CUDA_SUCCESS)
         worker_->platform()->IncrementErrorCount();
 }
@@ -892,12 +892,12 @@ void DeviceCUDA::DestroyEvent(void *event)
     if (IsContextChangeRequired()) {
         ld_->cuCtxSetCurrent(ctx_);
     }
-    printf("Trying to Destroy dev:%d event:%p\n", devno(), event);
+    //printf("Trying to Destroy dev:%d event:%p\n", devno(), event);
     CUresult err1 = ld_->cuEventQuery((CUevent) event);
-    printf("Query result: %d\n", err1);
+    //printf("Query result: %d\n", err1);
     CUresult err = ld_->cuEventDestroy((CUevent) event);
     _cuerror(err);
-    printf("Destroyed dev:%d event:%p\n", devno(), event);
+    //printf("Destroyed dev:%d event:%p\n", devno(), event);
     if (err != CUDA_SUCCESS)
         worker_->platform()->IncrementErrorCount();
 }

@@ -113,7 +113,7 @@ int Device::GetStream(Task *task, BaseMem *mem, bool new_stream) {
 }
 
 void Device::Execute(Task* task) {
-  printf("Inside device execute and calling free destroy events %lu:%s\n", task->uid(), task->name());
+  _debug2("Inside device execute and calling free destroy events %lu:%s\n", task->uid(), task->name());
   FreeDestroyEvents();
   busy_ = true;
   if (is_async(task) && task->user()) task->set_recommended_stream(GetStream(task));
@@ -814,7 +814,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
             if (platform_obj_->is_event_profile_enabled()) {
                 ProfileEvent & prof_event = task->CreateProfileEvent(mem, -1, PROFILE_H2D, this, mem_stream);
                 RecordEvent(prof_event.start_event_ptr(), mem_stream, iris_event_default);
-                printf("prof_event ptr:%p %p\n", prof_event.start_event_ptr(), prof_event.start_event());
+                _debug3("prof_event ptr:%p %p\n", prof_event.start_event_ptr(), prof_event.start_event());
             }
 #endif
         }
@@ -827,7 +827,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
 #if 1//def ENABLE_PROF_EVENT
             if (platform_obj_->is_event_profile_enabled()) {
                 ProfileEvent & prof_event = task->LastProfileEvent();
-                printf("prof_event ptr:%p\n", prof_event.start_event_ptr());
+                _debug3("prof_event ptr:%p\n", prof_event.start_event_ptr());
                 RecordEvent(prof_event.end_event_ptr(), mem_stream, iris_event_default);
             }
 #endif

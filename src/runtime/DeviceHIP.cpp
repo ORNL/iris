@@ -693,7 +693,7 @@ float DeviceHIP::GetEventTime(void *event, int stream)
     float elapsed=0.0f;
     if (event != NULL) {
         hipError_t err = ld_->hipEventElapsedTime(&elapsed, single_start_time_event_, (hipEvent_t)event);
-        printf("Elapsed:%f start_time_event:%p event:%p\n", elapsed, single_start_time_event_, event);
+        //printf("Elapsed:%f start_time_event:%p event:%p\n", elapsed, single_start_time_event_, event);
         _hiperror(err);
     }
     return elapsed; 
@@ -708,7 +708,7 @@ void DeviceHIP::CreateEvent(void **event, int flags)
     _trace(" event:%p flags:%d", event, flags);
     if (err != hipSuccess)
         worker_->platform()->IncrementErrorCount();
-    printf("Create dev:%d event:%p\n", devno(), *event);
+    //printf("Create dev:%d event:%p\n", devno(), *event);
 }
 void DeviceHIP::RecordEvent(void **event, int stream, int event_creation_flag)
 {
@@ -723,7 +723,7 @@ void DeviceHIP::RecordEvent(void **event, int stream, int event_creation_flag)
     _hiperror(err);
     if (err != hipSuccess)
         worker_->platform()->IncrementErrorCount();
-    printf("Recorded dev:%d event:%p\n", devno(), *event);
+    //printf("Recorded dev:%d event:%p\n", devno(), *event);
 }
 void DeviceHIP::WaitForEvent(void *event, int stream, int flags)
 {
@@ -744,7 +744,7 @@ void DeviceHIP::DestroyEvent(void *event)
     if (IsContextChangeRequired()) {
         ld_->hipCtxSetCurrent(ctx_);
     }
-    printf("Destroy dev:%d event:%p\n", devno(), event);
+    //printf("Destroy dev:%d event:%p\n", devno(), event);
     hipError_t err = ld_->hipEventDestroy((hipEvent_t) event);
     _hiperror(err);
     if (err != hipSuccess)

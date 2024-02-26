@@ -41,15 +41,15 @@ public:
   void ExecuteInit(Command* cmd);
   virtual void ExecuteKernel(Command* cmd);
   void AddDestroyEvent(void *event) { 
-      printf("Adding event:%p size:%ld obj:%p\n", event, destroy_events_.size(), &destroy_events_);
+      //printf("Adding event:%p size:%ld obj:%p\n", event, destroy_events_.size(), &destroy_events_);
       destroy_events_mutex_.lock();
       destroy_events_.push_back(event); 
       destroy_events_mutex_.unlock();
-      printf("Added event:%p size:%ld\n", event, destroy_events_.size());
+      //printf("Added event:%p size:%ld\n", event, destroy_events_.size());
   }
   void FreeDestroyEvents() 
   {
-      printf("FreeDestroyEvents size:%ld obj:%p\n", destroy_events_.size(), &destroy_events_);
+      //printf("FreeDestroyEvents size:%ld obj:%p\n", destroy_events_.size(), &destroy_events_);
       destroy_events_mutex_.lock();
       for(void *p : destroy_events_) {
           DestroyEvent(p);
