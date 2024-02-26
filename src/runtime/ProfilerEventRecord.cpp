@@ -20,6 +20,18 @@ const ProfileRecordType = \
     PROFILE_D2D : 2, \
     PROFILE_D2H_H2D : 3, \
     PROFILE_KERNEL : 4, \
+    PROFILE_O2D : 5, \
+    PROFILE_D2O : 6, \
+}; \
+const ProfileTypeColor = \
+{ \
+    0: 'red', \
+    1: 'cyan', \
+    2: 'yellow', \
+    3: 'darkmagenta', \
+    4: 'green', \
+    5: 'coral', \
+    6: 'brown', \
 }; \
 function drawChart() { \
 var container = document.getElementById('iris'); \
@@ -32,44 +44,54 @@ dataTable.addColumn({ type: 'string', id: 'Device' }); \
 dataTable.addColumn({ type: 'string', id: 'Task' }); \
 dataTable.addColumn({ type: 'number', id: 'Start' }); \
 dataTable.addColumn({ type: 'number', id: 'End' }); \
-// Function to load rows from another data structure and add to the data table. \
-function loadRowsAndDrawChart(rows) { \
+dataTable.addColumn({ type: 'string', role: 'style'}); \
+/* Function to load rows from another data structure and add to the data table. */\
+function loadRowsAndDrawChart(rows, color_options) { \
     dataTable.addRows(rows); \
+    /*var options = { \
+      colors: color_options, \
+    }; \
+    chart.draw(dataTable, options); */\
     chart.draw(dataTable); \
 } \
-// Checkbox change event handler \
-function extract_data(newData, pattern) { \
-    // Add data based on a flag (in this case, just a sample) \
+/* Checkbox change event handler */\
+function extract_data(newData, color_options, pattern) { \
+    /* Add data based on a flag (in this case, just a sample) */ \
     for (let i=0; i<iris_data.length; i++) { \
-        if  (iris_data[i][4] === pattern) \
-            newData.push(iris_data[i].slice(0,-1)); \
+        if  (iris_data[i][4] === pattern) { \
+            var data = iris_data[i].slice(0,4); \
+            data.push('color:'+ProfileTypeColor[iris_data[i][4]]); \
+            newData.push(data); \
+            color_options.push(ProfileTypeColor[iris_data[i][4]]); \
+        } \
     } \
 } \
 function handleCheckboxChange() { \
     console.log(dataTable.getNumberOfRows()); \
     dataTable.removeRows(0, dataTable.getNumberOfRows()); \
     var newData = []; \
+    var color_options = []; \
     var kernel_enable = document.getElementById('kernel'); \
     var d2h_enable = document.getElementById('d2h_enable'); \
     var d2d_enable = document.getElementById('d2d_enable'); \
     var h2d_enable = document.getElementById('h2d_enable'); \
     var d2h_h2d_enable = document.getElementById('d2h_h2d_enable'); \
     if (d2h_enable.checked) { \
-        extract_data(newData, ProfileRecordType.PROFILE_D2H); \
+        extract_data(newData, color_options, ProfileRecordType.PROFILE_D2H); \
     }  \
     if (h2d_enable.checked) { \
-        extract_data(newData, ProfileRecordType.PROFILE_H2D); \
+        extract_data(newData, color_options, ProfileRecordType.PROFILE_H2D); \
     }  \
     if (d2h_h2d_enable.checked) { \
-        extract_data(newData, ProfileRecordType.PROFILE_D2H_H2D); \
+        extract_data(newData, color_options, ProfileRecordType.PROFILE_D2H_H2D); \
     }  \
     if (d2d_enable.checked) { \
-        extract_data(newData, ProfileRecordType.PROFILE_D2D); \
+        extract_data(newData, color_options, ProfileRecordType.PROFILE_D2D); \
     }  \
     if (kernel_enable.checked) { \
-        extract_data(newData, ProfileRecordType.PROFILE_KERNEL); \
+        extract_data(newData, color_options, ProfileRecordType.PROFILE_KERNEL); \
     }  \
-    loadRowsAndDrawChart(newData); \
+    loadRowsAndDrawChart(newData, color_options); \
 } \
 var iris_data = [ \
 )delimiter"
@@ -150,6 +172,7 @@ int ProfilerEventRecord::CompleteTask(Task* task) {
   int policy = task->brs_policy();
   vector<ProfileEvent> & pevents = task->profile_events();
   char s[1024];
+#if 0
   if (dev != NULL) {
       sprintf(s, "[ '%s %d', '%s (%s)', %lf, %lf, -1 ],\n", dev->name(), dev->devno(), task->name(), policy_str(policy), (task->time_start() * 1.e+3) - first_task_, (task->time_end() * 1.e+3) - first_task_);
       pthread_mutex_lock(&chart_lock_);
@@ -157,6 +180,7 @@ int ProfilerEventRecord::CompleteTask(Task* task) {
       pthread_mutex_unlock(&chart_lock_);
       printf("Profiling Task: %s %lf %lf\n", s, task->time_start()*1.e+3, task->time_end()*1.e+3);
   }
+#endif
 #if 1
   printf("Profiling task:%lu:%s size:%lu\n", task->uid(), task->name(), pevents.size());
   for (ProfileEvent & p : pevents) {
@@ -170,10 +194,25 @@ int ProfilerEventRecord::CompleteTask(Task* task) {
      ProfileRecordType type = p.type();
      int connect_dev = p.connect_dev();
      if (type == PROFILE_KERNEL) {
-         sprintf(s, "[ '%s %d', '%s (%s)', %lf, %lf, %d],\n", event_dev->name(), event_dev->devno(), task->name(), policy_str(policy), start_time, end_time, (int)p.type());
+         sprintf(s, "[ '%s %d', '%lu:%s (%s)', %lf, %lf, %d],\n", event_dev->name(), event_dev->devno(), task->uid(), task->name(), policy_str(policy), start_time, end_time, (int)p.type());
+     }
+     else if (type == PROFILE_D2D) {
+         sprintf(s, "[ '%s %d', 'D2D: m%lu from (%d) task (%llu:%s)', %lf, %lf, %d],\n", event_dev->name(), event_dev->devno(), uid, connect_dev, task->uid(), task->name(), start_time, end_time, (int)p.type());
+     }
+     else if (type == PROFILE_H2D) {
+         sprintf(s, "[ '%s %d', 'H2D: m%lu from (Host) task (%llu:%s)', %lf, %lf, %d],\n", event_dev->name(), event_dev->devno(), uid, task->uid(), task->name(), start_time, end_time, (int)p.type());
+     }
+     else if (type == PROFILE_D2O) {
+         sprintf(s, "[ '%s %d', 'D2O: m%lu from (%d) task (%llu:%s)', %lf, %lf, %d],\n", event_dev->name(), event_dev->devno(), uid, connect_dev, task->uid(), task->name(), start_time, end_time, (int)p.type());
+     }
+     else if (type == PROFILE_O2D) {
+         sprintf(s, "[ '%s %d', 'O2D: m%lu from (%d) task (%llu:%s)', %lf, %lf, %d],\n", event_dev->name(), event_dev->devno(), uid, connect_dev, task->uid(), task->name(), start_time, end_time, (int)p.type());
+     }
+     else if (type == PROFILE_D2H) {
+         sprintf(s, "[ '%s %d', 'D2H: m%lu to (Host) task (%llu:%s)', %lf, %lf, %d],\n", event_dev->name(), event_dev->devno(), uid, task->uid(), task->name(), start_time, end_time, (int)p.type());
      }
      else {
-         sprintf(s, "[ '%s %d', 'm%lu from (%d)', %lf, %lf, %d],\n", event_dev->name(), event_dev->devno(), uid, connect_dev, start_time, end_time, (int)p.type());
+         sprintf(s, "[ '%s %d', 'D2D: m%lu from (%d) task (%llu:%s)', %lf, %lf, %d],\n", event_dev->name(), event_dev->devno(), uid, connect_dev, task->uid(), task->name(), start_time, end_time, (int)p.type());
      }
      pthread_mutex_lock(&chart_lock_);
      Write(s);

@@ -52,10 +52,23 @@ int Profiler::Exit() {
 }
 
 int Profiler::Write(string s, int tab) {
-  Flush();
-  if (!msg_->WriteString(s.c_str())) {
-      _error("s[%s]", s.c_str());
-      return IRIS_ERROR;
+  //Flush();
+  size_t space_left = msg_->free_buf_size();
+  while(space_left < s.length()) {
+     string s1 = s.substr(0, space_left);
+     s = s.substr(space_left);
+     if (!msg_->WriteString(s1.c_str())) {
+         _error("s[%s]", s.c_str());
+         return IRIS_ERROR;
+     }
+     Flush();
+     space_left = msg_->free_buf_size();
+  }
+  if (s.length() <= space_left) {
+      if (!msg_->WriteString(s.c_str())) {
+          _error("s[%s]", s.c_str());
+          return IRIS_ERROR;
+      }
   }
   Flush();
   return IRIS_SUCCESS;
