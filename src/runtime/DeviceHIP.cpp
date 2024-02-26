@@ -191,7 +191,8 @@ int DeviceHIP::ResetMemory(Task *task, BaseMem *mem, uint8_t reset_value) {
 
 void DeviceHIP::RegisterPin(void *host, size_t size)
 {
-    ld_->hipHostRegister(host, size, hipHostRegisterDefault);
+    hipError_t err = ld_->hipHostRegister(host, size, hipHostRegisterDefault);
+    _hiperror(err);
     //ld_->hipHostRegister(host, size, hipHostRegisterMapped);
 }
 
@@ -207,6 +208,7 @@ void *DeviceHIP::GetSharedMemPtr(void* mem, size_t size)
     hipError_t err;
     void** hipmem = NULL;
     err = ld_->hipHostRegister(mem, size, hipHostRegisterDefault);
+    _hiperror(err);
     err = ld_->hipHostGetDevicePointer((void **)&hipmem, mem, 0); 
     _hiperror(err);
     ASSERT(hipmem != NULL);
