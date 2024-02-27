@@ -210,7 +210,8 @@ public:
 #endif
   void set_last_cmd_stream(int stream) { last_cmd_stream_ = stream; }
   int last_cmd_stream() { return last_cmd_stream_; }
-
+  void set_last_cmd_device(Device *dev) { last_cmd_device_ = dev; }
+  Device *last_cmd_device() { return last_cmd_device_; }
 private:
   void CompleteSub();
 
@@ -308,6 +309,7 @@ public:
   }
   bool IsKernelSupported(Device *dev);
   int last_cmd_stream_;
+  Device *last_cmd_device_;
 };
 
 } /* namespace rt */
