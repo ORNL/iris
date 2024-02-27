@@ -710,8 +710,8 @@ int Platform::InitOpenCL() {
           delete dev;
           continue;
       }
-      devs_[ndevs_]->set_root_device(devs_[ndevs_-mdevs]);
       devs_[ndevs_] = dev;
+      devs_[ndevs_]->set_root_device(devs_[ndevs_-mdevs]);
       arch_available_ |= devs_[ndevs_]->type();
       ndevs_++;
       mdevs++;
