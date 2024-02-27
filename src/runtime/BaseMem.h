@@ -70,8 +70,12 @@ namespace rt {
                 pthread_mutex_destroy(&host_mutex_);
                 _trace("Memory object is deleted:%lu:%p", uid(), this);
                 for(int i=0; i<ndevs_; i++) {
-                    if (GetCompletionEvent(i) != NULL) 
-                        DestroyEvent(i, GetCompletionEvent(i));
+                    stack<void *> & stk = device_map_[i].GetCompletionStack();
+                    int n = stk.size();
+                    for(int j=0; j<n; j++) { 
+                        void *top = stk.top();
+                        DestroyEvent(i, top);
+                    } 
                 }
                 delete [] device_map_;
                 //track()->UntrackObject(this, uid());
@@ -120,7 +124,7 @@ namespace rt {
             void DisableProactive(int devno) { device_map_[devno].DisableProactive(); }
             EventExchange *GetEventExchange(int devno) { return device_map_[devno].exchange(); }
             void *GetCompletionEvent(int devno) { return device_map_[devno].GetCompletionEvent(); }
-            void **GetCompletionEventPtr(int devno) { return device_map_[devno].GetCompletionEventPtr(); }
+            void **GetCompletionEventPtr(int devno, bool new_entry=false) { return device_map_[devno].GetCompletionEventPtr(new_entry); }
             int GetHostWriteStream() { return device_map_[ndevs_].GetWriteStream(); }
             void SetHostWriteStream(int stream) { device_map_[ndevs_].SetWriteStream(stream); }
             int GetHostWriteDevice() { return device_map_[ndevs_].devno(); }
@@ -147,7 +151,7 @@ namespace rt {
             virtual inline void clear() { }
         void set_recommended_stream(int devno, int stream) { recommended_stream_[devno] = stream; }
         int recommended_stream(int devno) { return recommended_stream_[devno]; }
-        void RecordEvent(int devno, int stream);
+        void RecordEvent(int devno, int stream, bool new_entry=false);
         void WaitForEvent(int devno, int stream, int dep_devno);
         void DestroyEvent(int devno, void *event);
         bool is_usm(int devno) { return is_usm_[devno]; }

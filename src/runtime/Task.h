@@ -208,6 +208,8 @@ public:
   bool get_shadow_dep_added(){ return shadow_dep_added_;}
 #endif
 #endif
+  void set_last_cmd_stream(int stream) { last_cmd_stream_ = stream; }
+  int last_cmd_stream() { return last_cmd_stream_; }
 
 private:
   void CompleteSub();
@@ -305,6 +307,7 @@ public:
     return Create(platform, type, name.c_str());
   }
   bool IsKernelSupported(Device *dev);
+  int last_cmd_stream_;
 };
 
 } /* namespace rt */

@@ -53,7 +53,7 @@ Device::Device(int devno, int platform) {
 }
 
 Device::~Device() {
-  printf("Device:%d deleted\n", devno());
+  _event_prof_debug("Device:%d deleted\n", devno());
   FreeDestroyEvents();
   delete timer_;
 }
@@ -172,15 +172,17 @@ void Device::Execute(Task* task) {
 }
 
 int Device::AddCallback(Task* task) {
-  int stream_index = 0;
-  stream_index = GetStream(task); //task->uid() % nqueues_; 
+  int stream_index = task->last_cmd_stream(); //TODO: What if there are multiple parallel cmds in the task
+  _event_prof_debug("Waiting call back complete for task:%lu:%s on stream:%d\n", task->uid(), task->name(), stream_index);
   return RegisterCallback(stream_index, (CallBackType)Device::Callback, task, iris_stream_non_blocking);
 }
 
 void Device::Callback(void *stream, int status, void* data) {
   Task* task = (Task*) data;
+  _event_prof_debug(" ------ Completed task stream_ptr:%p task:%p:%s:%lu status:%d\n", stream, task, task->name(), task->uid(), status);
   _debug3(" ----- stream_ptr:%p task:%p:%s:%lu status:%d", stream, task, task->name(), task->uid(), status);
   task->Complete();
+  _debug3(" ------ Completed task stream_ptr:%p task:%p:%s:%lu status:%d", stream, task, task->name(), task->uid(), status);
   _debug3(" ------ Completed task stream_ptr:%p task:%p:%s:%lu status:%d", stream, task, task->name(), task->uid(), status);
 }
 
@@ -360,6 +362,7 @@ void Device::ExecuteKernel(Command* cmd) {
       async_launch = true;
       stream_index = GetStream(cmd->task()); //task->uid() % nqueues_; 
   }
+  cmd->task()->set_last_cmd_stream(stream_index);
   bool enabled = true;
   if (cmd->task() != NULL && (
               cmd->task()->is_kernel_launch_disabled() ||
@@ -387,8 +390,10 @@ void Device::ExecuteKernel(Command* cmd) {
   cmd->set_time_end(timer_);
   double time = timer_->Stop(IRIS_TIMER_KERNEL);
   cmd->SetTime(time);
-  if (async_launch) 
-      RecordEvent(cmd->kernel()->GetCompletionEventPtr(), cmd->task()->recommended_stream());
+  if (async_launch) {
+      _event_prof_debug("Task recording event for task:%lu %s stream:%d\n", cmd->task()->uid(), cmd->task()->name(), cmd->task()->recommended_stream());
+      RecordEvent(cmd->kernel()->GetCompletionEventPtr(true), cmd->task()->recommended_stream());
+  }
   //printf("Task:%s time:%f ktime:%f init:%f atime:%f setmemtime:%f\n", cmd->task()->name(), time, ktime, ltime, atime, set_mem_time);
   cmd->kernel()->history()->AddKernel(cmd, this, time);
   if (Platform::GetPlatform()->is_scheduling_history_enabled()) Platform::GetPlatform()->scheduling_history()->AddKernel(cmd);
@@ -521,8 +526,9 @@ void Device::WaitForTaskInputAvailability(int devno, Task *task, Command *cmd)
         int dmem_stream = dmem->GetWriteStream(devno);
         void *event = dmem->GetCompletionEvent(devno);
         // If DMEM input is not yet happened due to reset flag enabled
+        _event_prof_debug(" task:%s:%lu Waiting for event:%p to be fired devno:%d task_stream:%d waiting for dmem_stream:%d\n", task->name(), task->uid(), event, devno, task_stream, dmem_stream);
         if (dmem_stream != task_stream && event != NULL) {
-            _debug2(" task:%s:%lu Waiting for event to be fired devno:%d task_stream:%d waiting for dmem_stream:%d", task->name(), task->uid(), devno, task_stream, dmem_stream);
+            _event_prof_debug("Wait for event\n");
             WaitForEvent(event, task_stream, iris_event_wait_default);
         }
 
@@ -833,7 +839,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
 #endif
             mem->RecordEvent(devno(), mem_stream);
             mem->SetWriteStream(devno(), mem_stream);
-            _debug3("         adding event (H2D) dev[%d][%s] task[%ld:%s] mem[%lu] q[%d] ", devno_, name_, task->uid(), task->name(), mem->uid(), mem_stream);
+            _event_prof_debug("h2d:         adding event (H2D) dev[%d][%s] task[%ld:%s] mem[%lu] q[%d] event:%p\n", devno_, name_, task->uid(), task->name(), mem->uid(), mem_stream, mem->GetCompletionEvent(devno()));
         }
         if (kernel->is_profile_data_transfers()) {
             kernel->AddInDataObjectProfile({(uint32_t) cmd->task()->uid(), (uint32_t) mem->uid(), (uint32_t) iris_dt_h2d, (uint32_t) -1, (uint32_t) devno_, start, end});
@@ -1133,8 +1139,8 @@ void Device::ExecuteMemOut(Task *task, Command* cmd) {
             mem->clear_streams();
             mem->SetWriteStream(devno(), mem_stream);
             mem->SetWriteDevice(devno());
-            mem->RecordEvent(devno(), mem_stream);
-            _debug3("   task:[%lu][%s] output dmem:%lu stream:%d, dev:%d event:%p\n", task->uid(), task->name(), mem->uid(), mem_stream, devno(), mem->GetCompletionEvent(devno()));
+            mem->RecordEvent(devno(), mem_stream, true); //It should create new entry of event instead of using existing one
+            _event_prof_debug("mem set stream   task:[%lu][%s] output dmem:%lu stream:%d, dev:%d event:%p\n", task->uid(), task->name(), mem->uid(), mem_stream, devno(), mem->GetCompletionEvent(devno()));
         }
     }
 }
@@ -1207,6 +1213,7 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
             if (context_shift) ResetContext();
         }
         else {
+            // This should be same device and has valid copy
             int mem_stream = GetStream(task, mem, true);
             int written_stream  = mem->GetWriteStream(devno());
             if (written_stream != -1) {
@@ -1214,6 +1221,7 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
                     // Wait for event if src_mem_stream is different from previous written stream
                     void *event = mem->GetCompletionEvent(devno());
                     //The upcoming D2H depends on previous complete event
+                    _event_prof_debug("Flush dev:%d task:%lu:%s wait for event:%p written_stream:%d mem_stream:%d\n", devno(), task->uid(), task->name(), event, written_stream, mem_stream);
                     WaitForEvent(event, mem_stream, iris_event_wait_default);
                 }
             }
@@ -1227,6 +1235,7 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
             }
             errid_ = MemD2H(task, mem, ptr_off, 
                     gws, lws, elem_size, dim, size, host, "MemFlushOut ");
+            task->set_last_cmd_stream(mem_stream);
             if (async) {
 #ifdef ENABLE_PROF_EVENT
                 if (platform_obj_->is_event_profile_enabled()) {
@@ -1237,6 +1246,7 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
                 void *event = NULL;
                 CreateEvent(&event, iris_event_disable_timing);
                 RecordEvent(&event, mem_stream);
+                _event_prof_debug("Waiting for task:%ld:%s flush mem_stream:%d event:%p\n", task->uid(), task->name(), mem_stream, event);
                 EventSynchronize(event);
                 DestroyEvent(event);
             }

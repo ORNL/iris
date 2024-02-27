@@ -202,7 +202,7 @@ int DeviceCUDA::Init() {
       set_first_event_cpu_begin_time(timer_->Now());
       RecordEvent((void **)(&single_start_time_event_), 0, iris_event_default);
       set_first_event_cpu_end_time(timer_->Now());
-      printf("Start time of device:%f end time of record:%f\n", first_event_cpu_begin_time(), first_event_cpu_end_time());
+      _info("Event start time of device:%f end time of record:%f\n", first_event_cpu_begin_time(), first_event_cpu_end_time());
   }
   host2cuda_ld_->init(devno());
 

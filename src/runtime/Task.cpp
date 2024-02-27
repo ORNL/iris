@@ -59,6 +59,7 @@ Task::Task(Platform* platform, int type, const char* name) {
   ns_time_submit_ = 0;
   ns_time_start_ = 0;
   ns_time_end_ = 0;
+  last_cmd_stream_ = -1;
   user_ = false;
   system_ = false;
   internal_memory_transfer_ = false;

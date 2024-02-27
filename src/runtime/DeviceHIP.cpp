@@ -117,7 +117,7 @@ int DeviceHIP::Init() {
       set_first_event_cpu_begin_time(timer_->Now());
       RecordEvent((void **)(&single_start_time_event_), 0, iris_event_default);
       set_first_event_cpu_end_time(timer_->Now());
-      printf("Start time of device:%f end time of record:%f\n", first_event_cpu_begin_time(), first_event_cpu_end_time());
+      _info("Event start time of device:%f end time of record:%f\n", first_event_cpu_begin_time(), first_event_cpu_end_time());
   }
   err = ld_->hipGetDevice(&devid_);
   _hiperror(err);
@@ -357,6 +357,7 @@ int DeviceHIP::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,
       printf("\n");
 #endif
   }
+  _event_prof_debug("Completed H2D DT of %sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] size[%lu] host[%p] q[%d]\n", tag, devno_, name_, task->uid(), task->name(), mem->uid(), hipmem, size, host, stream_index);
   _trace("Completed H2D DT of %sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] size[%lu] host[%p] q[%d]\n", tag, devno_, name_, task->uid(), task->name(), mem->uid(), hipmem, size, host, stream_index);
   if (error_occured){
     worker_->platform()->IncrementErrorCount();
@@ -586,6 +587,7 @@ int DeviceHIP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, s
   if (IsContextChangeRequired()) {
       ld_->hipCtxSetCurrent(ctx_);
   }
+  _event_prof_debug("kernel start dev[%d][%s] kernel[%s:%s] dim[%d] q[%d]\n", devno_, name_, kernel->name(), kernel->get_task_name(), dim, stream_index);
   if (kernel->is_vendor_specific_kernel(devno_)) {
      if (host2hip_ld_->host_launch((void **)kstream, nstreams, kernel->name(), 
                  kernel->GetParamWrapperMemory(), devno(), 
