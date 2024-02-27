@@ -172,12 +172,13 @@ void Device::Execute(Task* task) {
 }
 
 int Device::AddCallback(Task* task) {
-  int stream_index = task->last_cmd_stream(); //TODO: What if there are multiple parallel cmds in the task
+  int stream_index = GetStream(task); //task->last_cmd_stream(); //TODO: What if there are multiple parallel cmds in the task
   _event_prof_debug("Waiting call back complete for task:%lu:%s on stream:%d\n", task->uid(), task->name(), stream_index);
-  Device *dev = task->last_cmd_device();
-  if (dev == NULL) 
-      dev = this;
-  return dev->RegisterCallback(stream_index, (CallBackType)Device::Callback, task, iris_stream_non_blocking);
+  if (stream_index == -1) return IRIS_SUCCESS;
+  //Device *dev = task->last_cmd_device();
+  //if (dev == NULL) 
+  //    dev = this;
+  return RegisterCallback(stream_index, (CallBackType)Device::Callback, task, iris_stream_non_blocking);
 }
 
 void Device::Callback(void *stream, int status, void* data) {
@@ -1211,8 +1212,8 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
             }
             errid_ = src_dev->MemD2H(task, mem, ptr_off, 
                     gws, lws, elem_size, dim, size, host, "MemFlushOut ");
-            task->set_last_cmd_stream(src_mem_stream);
-            task->set_last_cmd_device(src_dev);
+            //task->set_last_cmd_stream(src_mem_stream);
+            //task->set_last_cmd_device(src_dev);
             //TODO: Shouldn't task call back from the source device
             if (async) {
 #ifdef ENABLE_PROF_EVENT
@@ -1255,8 +1256,8 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
             }
             errid_ = MemD2H(task, mem, ptr_off, 
                     gws, lws, elem_size, dim, size, host, "MemFlushOut ");
-            task->set_last_cmd_stream(mem_stream);
-            task->set_last_cmd_device(this);
+            //task->set_last_cmd_stream(mem_stream);
+            //task->set_last_cmd_device(this);
             if (async) {
 #ifdef ENABLE_PROF_EVENT
                 if (platform_obj_->is_event_profile_enabled()) {
