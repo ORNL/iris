@@ -35,10 +35,12 @@ namespace rt {
                 write_dev_ = -1;
                 device_map_ = new BaseMemDevice[ndevs_+1];
                 d2h_events_ = new void *[ndevs_];
+                write_event_ = new void *[ndevs];
                 for (int i = 0; i < ndevs_; i++) {
                   archs_[i] = NULL;
                   archs_off_[i] = NULL;
                   archs_dev_[i] = NULL;
+                  write_event_[i] = NULL;
                   is_usm_[i] = false;
                   device_map_[i].Init(this, i);
                   recommended_stream_[i] = -1;
@@ -107,6 +109,7 @@ namespace rt {
             void clear_streams() {
                 for(int i=0; i<ndevs_+1; i++) {
                     device_map_[i].Clear();
+                    write_event_[i] = NULL;
                 }
                 device_map_[ndevs_].ClearDevice();
                 write_dev_ = -1;
@@ -117,6 +120,8 @@ namespace rt {
             vector<void *> & GetWaitEvents(int devno) { return device_map_[devno].GetWaitEvents(); }
             void SetWriteDevice(int devno) { write_dev_ = devno; }
             int GetWriteDevice() { return write_dev_; }
+            void SetWriteDeviceEvent(int devno, void *event) { write_event_[devno] = event; }
+            void *GetWriteDeviceEvent(int devno) { return write_event_[devno]; }
             int GetWriteStream(int devno) { return device_map_[devno].GetWriteStream(); }
             void SetWriteStream(int devno, int stream) { device_map_[devno].SetWriteStream(stream); }
             bool IsProactive(int devno) { return device_map_[devno].IsProactive(); }
@@ -168,6 +173,7 @@ namespace rt {
             bool  is_usm_[IRIS_MAX_NDEVS];
             BaseMemDevice *device_map_;
             int write_dev_;
+            void **write_event_;
             void **d2h_events_;
             pthread_mutex_t host_mutex_;
 #ifdef AUTO_PAR

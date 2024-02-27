@@ -391,8 +391,11 @@ void Device::ExecuteKernel(Command* cmd) {
   double time = timer_->Stop(IRIS_TIMER_KERNEL);
   cmd->SetTime(time);
   if (async_launch) {
-      _event_prof_debug("Task recording event for task:%lu %s stream:%d\n", cmd->task()->uid(), cmd->task()->name(), cmd->task()->recommended_stream());
-      RecordEvent(cmd->kernel()->GetCompletionEventPtr(true), cmd->task()->recommended_stream());
+      void **event = cmd->kernel()->GetCompletionEventPtr(true);
+      RecordEvent(event, cmd->task()->recommended_stream());
+      _event_prof_debug("Task recording event for task:%lu %s stream:%d event:%p\n", cmd->task()->uid(), cmd->task()->name(), cmd->task()->recommended_stream(), *event);
+      //if (cmd->task()->uid() == 14)
+      //EventSynchronize(cmd->kernel()->GetCompletionEvent());
   }
   //printf("Task:%s time:%f ktime:%f init:%f atime:%f setmemtime:%f\n", cmd->task()->name(), time, ktime, ltime, atime, set_mem_time);
   cmd->kernel()->history()->AddKernel(cmd, this, time);
@@ -524,7 +527,7 @@ void Device::WaitForTaskInputAvailability(int devno, Task *task, Command *cmd)
         BaseMem *dmem = (BaseMem *)mem;
         int task_stream = GetStream(task);
         int dmem_stream = dmem->GetWriteStream(devno);
-        void *event = dmem->GetCompletionEvent(devno);
+        void *event = dmem->GetWriteDeviceEvent(devno);
         // If DMEM input is not yet happened due to reset flag enabled
         _event_prof_debug(" task:%s:%lu Waiting for event:%p to be fired devno:%d task_stream:%d waiting for dmem_stream:%d\n", task->name(), task->uid(), event, devno, task_stream, dmem_stream);
         if (dmem_stream != task_stream && event != NULL) {
@@ -600,7 +603,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
             int written_stream  = mem->GetWriteStream(src_dev->devno());
             if (written_stream != -1) {
                 //Some it is written by asynchronous task 
-                void *event = mem->GetCompletionEvent(src_dev->devno());
+                void *event = mem->GetWriteDeviceEvent(src_dev->devno());
                 //Because it is D2D, it must be homogeneous and assume that 
                 //it support inter device synchronization through its event
                 WaitForEvent(event, mem_stream, iris_event_wait_default);
@@ -625,6 +628,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
 #endif
             mem->RecordEvent(devno(), mem_stream);
             mem->SetWriteStream(devno(), mem_stream);
+            mem->SetWriteDeviceEvent(devno(), mem->GetCompletionEvent(devno()));
         }
         if (kernel->is_profile_data_transfers()) {
             kernel->AddInDataObjectProfile({(uint32_t) cmd->task()->uid(), (uint32_t) mem->uid(), (uint32_t) iris_dt_d2d, (uint32_t) d2d_dev, (uint32_t) devno_, start, end});
@@ -661,7 +665,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         if (async) {
             int written_stream  = mem->GetWriteStream(src_dev->devno());
             if(written_stream != -1) {
-                void *event = mem->GetCompletionEvent(src_dev->devno());
+                void *event = mem->GetWriteDeviceEvent(src_dev->devno());
                 WaitForEvent(event, mem_stream, iris_event_wait_default);
             }
 #ifdef ENABLE_PROF_EVENT
@@ -683,7 +687,8 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
             }
 #endif
             mem->RecordEvent(devno(), mem_stream);
-            mem->SetWriteStream(devno_, mem_stream);
+            mem->SetWriteStream(devno(), mem_stream);
+            mem->SetWriteDeviceEvent(devno(), mem->GetCompletionEvent(devno()));
         }
         o2dtime = end - start;
         if (kernel->is_profile_data_transfers()) {
@@ -725,7 +730,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         if (written_stream != -1) { // Source generated data using asynchronous device
             if (written_stream != src_mem_stream) { 
                 // Wait for event if src_mem_stream is different from previous written stream
-                void *event = mem->GetCompletionEvent(src_dev->devno());
+                void *event = mem->GetWriteDeviceEvent(src_dev->devno());
                 //The upcoming D2H depends on previous complete event
                 src_dev->WaitForEvent(event, src_mem_stream, iris_event_wait_default);
             }
@@ -766,6 +771,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
                     iris_stream_default);
             mem->RecordEvent(devno(), mem_stream);
             mem->SetWriteStream(devno(), mem_stream);
+            mem->SetWriteDeviceEvent(devno(), mem->GetCompletionEvent(devno()));
         }
         else {
             if (written_stream != -1) {
@@ -839,6 +845,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
 #endif
             mem->RecordEvent(devno(), mem_stream);
             mem->SetWriteStream(devno(), mem_stream);
+            mem->SetWriteDeviceEvent(devno(), mem->GetCompletionEvent(devno()));
             _event_prof_debug("h2d:         adding event (H2D) dev[%d][%s] task[%ld:%s] mem[%lu] q[%d] event:%p\n", devno_, name_, task->uid(), task->name(), mem->uid(), mem_stream, mem->GetCompletionEvent(devno()));
         }
         if (kernel->is_profile_data_transfers()) {
@@ -883,7 +890,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         if (written_stream != -1) { // Source generated data using asynchronous device
             if (written_stream != src_mem_stream) { 
                 // Wait for event if src_mem_stream is different from previous written stream
-                void *event = mem->GetCompletionEvent(src_dev->devno());
+                void *event = mem->GetWriteDeviceEvent(src_dev->devno());
                 //The upcoming D2H depends on previous complete event
                 src_dev->WaitForEvent(event, src_mem_stream, iris_event_wait_default);
                 _debug3("Adding completion mem:%lu event:%p src_mem_stream:%d written_stream:%d\n", mem->uid(), event, src_mem_stream, written_stream);
@@ -916,8 +923,9 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
 #endif
             }
             d2htime = end - start;
-            mem->HostRecordEvent(src_dev->devno(), src_mem_stream);
-            if (written_stream != -1) { // Source generated data using asynchronous device
+            if (async) { 
+                mem->HostRecordEvent(src_dev->devno(), src_mem_stream);
+                // Source generated data using asynchronous device
                 mem->SetHostWriteDevice(src_dev->devno());
                 mem->SetHostWriteStream(src_mem_stream);
             }
@@ -1010,6 +1018,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
 #endif
             mem->RecordEvent(devno(), mem_stream);
             mem->SetWriteStream(devno(), mem_stream);
+            mem->SetWriteDeviceEvent(devno(), mem->GetCompletionEvent(devno()));
         }
         h2dtime = end - start;
         if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
@@ -1073,7 +1082,7 @@ void Device::ExecuteMemInDMemIn(Task *task, Command* cmd, DataMem *mem) {
                 _debug3("Skipped DMEM_REGION region(%d) H2D data transfer dev[%d:%s] task[%ld:%s] dmem_reg[%lu] dmem[%lu] dptr[%p]", i, devno_, name_, task->uid(), task->name(), rmem->uid(), rmem->get_dmem()->uid(), rmem->arch(devno_));
                 if (async) {
                     int written_stream = rmem->GetWriteStream(devno());
-                    void *event = rmem->GetCompletionEvent(devno());
+                    void *event = rmem->GetWriteDeviceEvent(devno());
                     if (mem_stream != written_stream) {
                         WaitForEvent(event, mem_stream, iris_event_wait_default);
                     }
@@ -1086,6 +1095,7 @@ void Device::ExecuteMemInDMemIn(Task *task, Command* cmd, DataMem *mem) {
         if (async) {
             mem->RecordEvent(devno(), mem_stream);
             mem->SetWriteStream(devno(), mem_stream);
+            mem->SetWriteDeviceEvent(devno(), mem->GetCompletionEvent(devno()));
         }
 #if 0
         size_t *off = mem->off();
@@ -1139,8 +1149,9 @@ void Device::ExecuteMemOut(Task *task, Command* cmd) {
             mem->clear_streams();
             mem->SetWriteStream(devno(), mem_stream);
             mem->SetWriteDevice(devno());
-            mem->RecordEvent(devno(), mem_stream, true); //It should create new entry of event instead of using existing one
-            _event_prof_debug("mem set stream   task:[%lu][%s] output dmem:%lu stream:%d, dev:%d event:%p\n", task->uid(), task->name(), mem->uid(), mem_stream, devno(), mem->GetCompletionEvent(devno()));
+            mem->SetWriteDeviceEvent(devno(), cmd->kernel()->GetCompletionEvent());
+            //mem->RecordEvent(devno(), mem_stream, true); //It should create new entry of event instead of using existing one
+            _event_prof_debug("mem set stream   task:[%lu][%s] output dmem:%lu stream:%d, dev:%d event:%p\n", task->uid(), task->name(), mem->uid(), mem_stream, devno(), cmd->kernel()->GetCompletionEvent());
         }
     }
 }
@@ -1181,7 +1192,7 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
             if (written_stream != -1) {
                 if (written_stream != src_mem_stream) { 
                     // Wait for event if src_mem_stream is different from previous written stream
-                    void *event = mem->GetCompletionEvent(src_dev->devno());
+                    void *event = mem->GetWriteDeviceEvent(src_dev->devno());
                     //The upcoming D2H depends on previous complete event
                     src_dev->WaitForEvent(event, src_mem_stream, iris_event_wait_default);
                 }
@@ -1197,6 +1208,8 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
             }
             errid_ = src_dev->MemD2H(task, mem, ptr_off, 
                     gws, lws, elem_size, dim, size, host, "MemFlushOut ");
+            task->set_last_cmd_stream(src_mem_stream);
+            //TODO: Shouldn't task call back from the source device
             if (async) {
 #ifdef ENABLE_PROF_EVENT
                 if (platform_obj_->is_event_profile_enabled()) {
@@ -1204,6 +1217,9 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
                     src_dev->RecordEvent(prof_event.end_event_ptr(), src_mem_stream, iris_event_default);
                 }
 #endif
+                mem->HostRecordEvent(src_dev->devno(), src_mem_stream);
+                mem->SetHostWriteDevice(src_dev->devno());
+                mem->SetHostWriteStream(src_mem_stream);
                 void *event = NULL;
                 src_dev->CreateEvent(&event, iris_event_disable_timing);
                 src_dev->RecordEvent(&event, src_mem_stream);
@@ -1219,7 +1235,7 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
             if (written_stream != -1) {
                 if (written_stream != mem_stream) { 
                     // Wait for event if src_mem_stream is different from previous written stream
-                    void *event = mem->GetCompletionEvent(devno());
+                    void *event = mem->GetWriteDeviceEvent(devno());
                     //The upcoming D2H depends on previous complete event
                     _event_prof_debug("Flush dev:%d task:%lu:%s wait for event:%p written_stream:%d mem_stream:%d\n", devno(), task->uid(), task->name(), event, written_stream, mem_stream);
                     WaitForEvent(event, mem_stream, iris_event_wait_default);
@@ -1243,6 +1259,9 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
                     RecordEvent(prof_event.end_event_ptr(), mem_stream, iris_event_default);
                 }
 #endif
+                mem->HostRecordEvent(devno(), mem_stream);
+                mem->SetHostWriteDevice(devno());
+                mem->SetHostWriteStream(mem_stream);
                 void *event = NULL;
                 CreateEvent(&event, iris_event_disable_timing);
                 RecordEvent(&event, mem_stream);
@@ -1511,7 +1530,7 @@ void Device::ExecuteD2H(Command* cmd) {
           int written_stream  = mem->GetWriteStream(write_dev);
           if (written_stream != -1) {
               Device *src_dev = Platform::GetPlatform()->device(write_dev);
-              void *event = mem->GetCompletionEvent(write_dev);
+              void *event = mem->GetWriteDeviceEvent(write_dev);
               //The upcoming D2H depends on previous complete event
               //printf("Event:%p mem_stream:%d write_dev:%d dev:%d\n", event, mem_stream, write_dev, devno_);
               // Even if device model is same (OpenCL), their types could be different
