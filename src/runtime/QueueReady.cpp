@@ -1,5 +1,6 @@
 #include "QueueReady.h"
 #include "Task.h"
+#include "Device.h"
 #include <utility>
 
 using namespace std;
@@ -38,8 +39,8 @@ bool QueueReady::Enqueue(Task* task) {
   std::lock_guard<std::mutex> lock(mutex_);
   //if the task to be enqueued is a memory transfer it should be prioritized
   if (task->marker()) {
-    queue_.push_back(std::make_pair(task->uid(), task));
-    _trace("Pushed marker task:%lu:%s to queue pq:%lu q:%lu", task->uid(), task->name(), pqueue_.size(), queue_.size());
+    mqueue_.push_back(std::make_pair(task->uid(), task));
+    _trace("Pushed marker task:%lu:%s to queue pq:%lu q:%lu", task->uid(), task->name(), pqueue_.size(), mqueue_.size());
   }
   else if (task->ncmds_memcpy() == task->ncmds()) {
     pqueue_.push_back(make_pair(task->uid(), task));
@@ -68,6 +69,13 @@ bool QueueReady::Dequeue(Task **task) {
     queue_.pop_front();
     return true;
   }
+  if (!mqueue_.empty()){
+    auto &data = mqueue_.front();
+    *task = (Task*) data.second;
+    _trace("Popped task:%lu:%s to mqueue mq:%lu q:%lu", (*task)->uid(), (*task)->name(), mqueue_.size(), queue_.size());
+    mqueue_.pop_front();
+    return true;
+  }
   return false;
 }
 bool QueueReady::Dequeue(pair<unsigned long, Task *> *task) {
@@ -84,6 +92,38 @@ bool QueueReady::Dequeue(pair<unsigned long, Task *> *task) {
     *task = data; //(Task*) data.second;
     _trace("Popped task:%lu:%s to queue pq:%lu q:%lu", data.second->uid(), data.second->name(), pqueue_.size(), queue_.size());
     queue_.pop_front();
+    return true;
+  }
+  if (!mqueue_.empty()){
+    auto &data = mqueue_.front();
+    *task = data; //(Task*) data.second;
+    _trace("Popped task:%lu:%s to mqueue pq:%lu q:%lu", data.second->uid(), data.second->name(), mqueue_.size(), queue_.size());
+    mqueue_.pop_front();
+    return true;
+  }
+  return false;
+}
+bool QueueReady::Dequeue(pair<unsigned long, Task *> *task, Device *device) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  if (!pqueue_.empty()){
+    auto &data = pqueue_.front();
+    *task = data; //(Task*) data.second;
+    _trace("Popped task:%lu:%s to pqueue pq:%lu q:%lu", data.second->uid(), data.second->name(), pqueue_.size(), queue_.size());
+    pqueue_.pop_front();
+    return true;
+  }
+  if (!queue_.empty()){
+    auto &data = queue_.front();
+    *task = data; //(Task*) data.second;
+    _trace("Popped task:%lu:%s to queue pq:%lu q:%lu", data.second->uid(), data.second->name(), pqueue_.size(), queue_.size());
+    queue_.pop_front();
+    return true;
+  }
+  if (!mqueue_.empty() && device->IsFree()){
+    auto &data = mqueue_.front();
+    *task = data; //(Task*) data.second;
+    _trace("Popped task:%lu:%s to mqueue pq:%lu q:%lu", data.second->uid(), data.second->name(), mqueue_.size(), queue_.size());
+    mqueue_.pop_front();
     return true;
   }
   return false;

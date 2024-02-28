@@ -17,9 +17,9 @@ namespace rt {
 void ProfileEvent::Clean() {
     //printf("prof_event trying to destroy :%p %p\n", &start_event_, start_event_);
     if (start_event_ != NULL && event_dev_ != NULL) 
-        event_dev_->AddDestroyEvent(start_event_);
+        event_dev_->EnableDestroyEvent(start_event_);
     if (end_event_ != NULL && event_dev_ != NULL) 
-        event_dev_->AddDestroyEvent(end_event_);
+        event_dev_->EnableDestroyEvent(end_event_);
     //printf("completed prof_event trying to destroy :%p %p\n", &start_event_, start_event_);
 }
 float ProfileEvent::GetStartTime() {
@@ -34,6 +34,14 @@ float ProfileEvent::GetEndTime() {
         etime = event_dev_->GetEventTime(end_event_, stream_);
     return etime;
 
+}
+void ProfileEvent::RecordStartEvent() {
+    event_dev_->RecordEvent(&start_event_, stream_, iris_event_default);
+    event_dev_->TrackDestroyEvent(start_event_);
+}
+void ProfileEvent::RecordEndEvent() {
+    event_dev_->RecordEvent(&end_event_, stream_, iris_event_default);
+    event_dev_->TrackDestroyEvent(end_event_);
 }
 Task::Task(Platform* platform, int type, const char* name) {
   //printf("Creating task:%lu:%s ptr:%p\n", uid(), name, this);
@@ -111,7 +119,7 @@ Task::~Task() {
   for (ProfileEvent & p : profile_events_) {
     p.Clean();
   }
-  profile_events_.clear();
+  //profile_events_.clear();
   for (int i = 0; i < ncmds_; i++) delete cmds_[i];
   if (depends_uids_) delete [] depends_uids_;
   pthread_mutex_destroy(&stream_mutex_);

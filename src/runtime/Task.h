@@ -57,6 +57,9 @@ class ProfileEvent {
         void Clean();
         float GetStartTime();
         float GetEndTime();
+        void RecordStartEvent();
+        void RecordEndEvent();
+        int stream() { return stream_; }
         void **start_event_ptr() { return &start_event_; }
         void **end_event_ptr()   { return &end_event_; }
         void *start_event()      { return start_event_; }

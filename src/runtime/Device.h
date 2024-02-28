@@ -8,6 +8,7 @@
 #include <map>
 #include <vector>
 #include <mutex>
+#include <atomic>
 using namespace std;
 
 
@@ -40,21 +41,31 @@ public:
 
   void ExecuteInit(Command* cmd);
   virtual void ExecuteKernel(Command* cmd);
-  void AddDestroyEvent(void *event) { 
+  void TrackDestroyEvent(void *event) { 
       //printf("Adding event:%p size:%ld obj:%p\n", event, destroy_events_.size(), &destroy_events_);
       destroy_events_mutex_.lock();
-      destroy_events_.push_back(event); 
+      destroy_events_[event] = false;
       destroy_events_mutex_.unlock();
+      //printf("Added event:%p size:%ld\n", event, destroy_events_.size());
+  }
+  void EnableDestroyEvent(void *event) { 
+      //printf("Adding event:%p size:%ld obj:%p\n", event, destroy_events_.size(), &destroy_events_);
+      destroy_events_[event] = true;
       //printf("Added event:%p size:%ld\n", event, destroy_events_.size());
   }
   void FreeDestroyEvents() 
   {
       //printf("FreeDestroyEvents size:%ld obj:%p\n", destroy_events_.size(), &destroy_events_);
       destroy_events_mutex_.lock();
-      for(void *p : destroy_events_) {
-          DestroyEvent(p);
+      for(auto it = destroy_events_.begin(); it != destroy_events_.end(); ) {
+          if (it->second) {
+              //printf("Destroying event:%p\n", it->first);
+              DestroyEvent(it->first);
+              it = destroy_events_.erase(it);
+          }
+          else
+              ++it;
       }
-      destroy_events_.clear();
       destroy_events_mutex_.unlock();
   }
   virtual void RegisterPin(void *host, size_t size) { }
@@ -152,6 +163,9 @@ public:
   double first_event_cpu_begin_time() { return first_event_cpu_begin_time_; }
   void set_first_event_cpu_end_time(double time) { first_event_cpu_end_time_ = time; }
   void set_first_event_cpu_begin_time(double time) { first_event_cpu_begin_time_ = time; }
+  bool IsFree();
+  void FreeActiveTask() { active_tasks_--; }
+  void ReserveActiveTask() { active_tasks_++; }
   int platform() { return platform_; }
   int devno() { return devno_; }
   int type() { return type_; }
@@ -233,10 +247,11 @@ protected:
   Platform *platform_obj_;
 private:
   mutex destroy_events_mutex_;
-  vector<void *> destroy_events_;
+  map<void *, bool> destroy_events_;
   Device *root_dev_;
   double first_event_cpu_begin_time_;
   double first_event_cpu_end_time_;
+  std::atomic<int> active_tasks_;
 protected:
   Device *root_device() { return root_dev_; }
 };
