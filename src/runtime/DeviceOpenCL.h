@@ -44,6 +44,7 @@ private:
   void RecordEvent(void **event, int stream, int event_creation_flag=iris_event_disable_timing);
   void WaitForEvent(void *event, int stream, int flags);
   void DestroyEvent(void *event);
+  float GetEventTime(void *event, int stream);
   void EventSynchronize(void *event);
 private:
   LoaderOpenCL* ld_;
@@ -51,6 +52,7 @@ private:
   Timer* timer_;
   cl_device_id cldev_;
   cl_context clctx_;
+  cl_event single_start_time_event_;
   cl_command_queue clcmdq_[IRIS_MAX_DEVICE_NQUEUES];
   cl_command_queue default_queue_;
   cl_program clprog_;

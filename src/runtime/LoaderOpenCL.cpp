@@ -81,6 +81,7 @@ int LoaderOpenCL::LoadFunctions() {
   LOADFUNC(clReleaseCommandQueue);
   LOADFUNC(clSetEventCallback);
   LOADFUNC(clEnqueueFillBuffer);
+  LOADFUNC(clGetEventProfilingInfo);
   return IRIS_SUCCESS;
 }
 
