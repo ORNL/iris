@@ -1,6 +1,6 @@
 TEST=test29_data_mem
 
-all: $(TEST) kernel.openmp.so 
+all: $(TEST) kernel.openmp.so  kernel.hip kernel.ptx kernel.nvopenmp.so
 
 include ../Makefile.tests
 

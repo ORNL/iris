@@ -1,6 +1,6 @@
 TEST=test07_policy_register
 
-all: $(TEST) libPolicyGWS.so libPolicyGWSHook.so policy_last.so kernel.openmp.so
+all: $(TEST) libPolicyGWS.so libPolicyGWSHook.so policy_last.so kernel.openmp.so kernel.hip kernel.ptx
 
 include ../Makefile.tests
 

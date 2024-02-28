@@ -1,6 +1,6 @@
 TEST=test16_task_host
 
-all: $(TEST) kernel.openmp.so 
+all: $(TEST) kernel.openmp.so kernel.ptx kernel.hip
 
 include ../Makefile.tests
 

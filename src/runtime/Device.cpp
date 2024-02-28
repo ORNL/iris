@@ -175,7 +175,7 @@ void Device::Execute(Task* task) {
 
 bool Device::IsFree()
 {
-    printf("Active tasks:%d\n", active_tasks_);
+    //printf("Active tasks:%d\n", active_tasks_);
     if (active_tasks_ == 0) return true;
     return false;
 }

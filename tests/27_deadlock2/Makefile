@@ -2,7 +2,7 @@ CPP=1
 
 TEST=test27_deadlock2
 
-all: $(TEST) kernel.openmp.so 
+all: $(TEST) kernel.openmp.so kernel.hip kernel.ptx
 
 include ../Makefile.tests
 
