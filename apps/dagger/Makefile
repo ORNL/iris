@@ -25,7 +25,10 @@ kernel.hip: kernel.hip.cpp
 	$(HIPCC) --genco -o $@ $^
 
 kernel.openmp.so: kernel.openmp.c
-	$(CC) $(CFLAGS) -O3 -lgomp -fPIC -shared -I. -o $@ $^
+	$(CC) $(CFLAGS) -O3 -fopenmp -fPIC -shared -I. -o $@ $^
+
+#kernel.openmp.so: kernel.openmp.c
+#	$(CC) $(CFLAGS) -O3 -lgomp -fPIC -shared -I. -o $@ $^
 
 clean:
 	rm -f dagger_runner dagger_test dagger dagger_dgemm dagger_coarse kernel.ptx kernel.spv kernel.hip kernel.openmp.so
