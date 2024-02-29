@@ -325,7 +325,7 @@ do
     for (( num_run=0; num_run<=$REPEATS; num_run++ ))
     do
       echo "Running IRIS on Chainlink $SIZE with Policy: $POLICY  run no. $num_run"
-      ./dagger_runner --graph="dagger-payloads/chainlink$SIZE-graph.json" --logfile="time.csv" --repeats=1 --scheduling-policy="$POLICY" --size=$PAYLOAD_SIZE --kernels="ijk" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=$SIZE --num-tasks=$SIZE --min-width=1 --max-width=2  --sandwich $USE_DATA_MEMORY #--concurrent-kernels="ijk:2"
+      ./dagger_runner --graph="dagger-payloads/chainlink$SIZE-graph.json" --logfile="time.csv" --repeats=1 --scheduling-policy="$POLICY" --size=$PAYLOAD_SIZE --kernels="ijk" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=$SIZE --num-tasks=$SIZE --min-width=1 --max-width=2  --sandwich $USE_DATA_MEMORY --concurrent-kernels="ijk:2"
       [ $? -ne 0 ] && echo "Chainlink $SIZE Failed with Policy: $POLICY at Run no. $num_run and with Size: $SIZE and with $USE_DATA_MEMORY" &&  exit $?
       mv dagger_runner-$SYSTEM*.csv $RESULTS_DIR/chainlink$SIZE-$POLICY-$SYSTEM-$num_run.csv
       [ $? -ne 0 ] &&  exit $?
@@ -365,7 +365,7 @@ do
     for (( num_run=0; num_run<=$REPEATS; num_run++ ))
     do
       echo "Running IRIS on Tangled $SIZE with Policy: $POLICY  run no. $num_run"
-      IRIS_HISTORY=1 ./dagger_runner --graph="dagger-payloads/tangled$SIZE-graph.json" --logfile="time.csv" --repeats=1 --scheduling-policy="$POLICY" --size=$PAYLOAD_SIZE --kernels="ijk" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=$SIZE --num-tasks=$SIZE --min-width=1 --max-width=12  --sandwich $USE_DATA_MEMORY #--concurrent-kernels="ijk:12"
+      IRIS_HISTORY=1 ./dagger_runner --graph="dagger-payloads/tangled$SIZE-graph.json" --logfile="time.csv" --repeats=1 --scheduling-policy="$POLICY" --size=$PAYLOAD_SIZE --kernels="ijk" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=$SIZE --num-tasks=$SIZE --min-width=1 --max-width=12  --sandwich $USE_DATA_MEMORY --concurrent-kernels="ijk:12"
       [ $? -ne 0 ] && echo "Tangled $SIZE Failed with Policy: $POLICY" &&  exit $?
       mv dagger_runner-$SYSTEM*.csv $RESULTS_DIR/tangled$SIZE-$POLICY-$SYSTEM-$num_run.csv
       [ $? -ne 0 ] &&  exit $?
