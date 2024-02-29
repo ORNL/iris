@@ -42,15 +42,15 @@ source $IRIS_INSTALL_ROOT/setup.source
 
 if [[ ! -n "$SKIP_DAG_REGEN" ]]; then
   #generate dagger payload for this experiment
-  $SCRIPT_DIR/dagger_generator.py --kernels="ijk" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=40 --num-tasks=240 --min-width=6 --max-width=6 --concurrent-kernels="ijk:6" --skips=3 --sandwich --use-data-memory --local-sizes="ijk:1 1"
+  $SCRIPT_DIR/dagger_generator.py --kernels="ijk" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=40 --num-tasks=240 --min-width=6 --max-width=6 --concurrent-kernels="ijk:6" --skips=3 --sandwich --use-data-memory --local-sizes="ijk:8 8"
   [ $? -ne 0 ] && echo "Failed to generate DAG" && exit 1
   mv $SCRIPT_DIR/graph.json $WORKING_DIR/graph.json
 fi
 
 #run the payload (note, we have to omit the data policy since it is incompatible with dmem)
-for POLICY in roundrobin #depend profile random ftf sdq #data
+for POLICY in roundrobin depend profile random ftf sdq #data
 do
-  LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$SCRIPT_DIR time $SCRIPT_DIR/dagger_runner --graph="$WORKING_DIR/graph.json" --logfile="$WORKING_DIR/time.csv" --repeats=1 --scheduling-policy="$POLICY" --size=$PAYLOAD_SIZE --kernels="ijk" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=40 --num-tasks=240 --min-width=6 --max-width=6 --concurrent-kernels="ijk:6" --skips=3  --sandwich --use-data-memory #--local-sizes="ijk:256 1 1"
+  LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$SCRIPT_DIR $SCRIPT_DIR/dagger_runner --graph="$WORKING_DIR/graph.json" --logfile="$WORKING_DIR/time.csv" --repeats=1 --scheduling-policy="$POLICY" --size=$PAYLOAD_SIZE --kernels="ijk" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=40 --num-tasks=240 --min-width=6 --max-width=6 --concurrent-kernels="ijk:6" --skips=3  --sandwich --use-data-memory #--local-sizes="ijk:256 1 1"
   [ $? -ne 0 ] && echo "Failed to run DAG" && exit 1
   mv $SCRIPT_DIR/dagger_runner-$HOST*\.csv $WORKING_DIR/$HOST-$POLICY-time.csv
   #joint plot
