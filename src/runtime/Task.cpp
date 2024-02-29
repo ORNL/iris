@@ -558,5 +558,11 @@ void Task::set_time_end(Timer* d) {
   ns_time_end_ = d->NowNS();
 }
 
+ProfileEvent & Task::CreateProfileEvent(BaseMem *mem, int connect_dev, ProfileRecordType type, Device *dev, int stream) { 
+      profile_events_.push_back(ProfileEvent(mem->uid(), connect_dev, type, dev, stream));
+      return profile_events_.back();
+}
+
+
 } /* namespace rt */
 } /* namespace iris */

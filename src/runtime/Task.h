@@ -297,11 +297,8 @@ private:
   vector<ProfileEvent>            profile_events_;
 public:
   vector<ProfileEvent> & profile_events() { return profile_events_; }
-  ProfileEvent & CreateProfileEvent(BaseMem *mem, int connect_dev, ProfileRecordType type, Device *dev, int stream) { 
-      profile_events_.push_back(ProfileEvent(mem->uid(), connect_dev, type, dev, stream));
-      return profile_events_.back();
-  }
-  ProfileEvent & CreateProfileEvent(Task *task, int connect_dev, ProfileRecordType type, Device *dev, int stream) { 
+  ProfileEvent & CreateProfileEvent(BaseMem *mem, int connect_dev, ProfileRecordType type, Device *dev, int stream);
+  ProfileEvent & CreateProfileEvent(Task *task, int connect_dev, ProfileRecordType type, Device *dev, int stream) {
       profile_events_.push_back(ProfileEvent(task->uid(), connect_dev, type, dev, stream));
       return profile_events_.back();
   }
