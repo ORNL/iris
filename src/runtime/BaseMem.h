@@ -35,16 +35,18 @@ namespace rt {
                 write_dev_ = -1;
                 device_map_ = new BaseMemDevice[ndevs_+1];
                 d2h_events_ = new void *[ndevs_];
-                write_event_ = new void *[ndevs];
+                write_event_ = new void *[ndevs+1];
+                for (int i = 0; i < ndevs_+1; i++) {
+                    device_map_[i].Init(this, i);
+                    write_event_[i] = NULL;
+                }
                 for (int i = 0; i < ndevs_; i++) {
                   archs_[i] = NULL;
                   archs_off_[i] = NULL;
                   archs_dev_[i] = NULL;
-                  write_event_[i] = NULL;
                   is_usm_[i] = false;
-                  device_map_[i].Init(this, i);
-                  recommended_stream_[i] = -1;
                   d2h_events_[i] = NULL;
+                  recommended_stream_[i] = -1;
                 }
                 pthread_mutex_init(&host_mutex_, NULL);
                 // Special device map for host
