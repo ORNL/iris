@@ -23,6 +23,7 @@
 #define IRIS_TASK_PERM  0x1
 #define IRIS_MARKER     0x2
 
+#define IRIS_TASK_MAX_CMDS  128
 namespace iris {
 namespace rt {
 
@@ -224,7 +225,7 @@ private:
   unsigned long parent_;
   bool parent_exist_;
   int ncmds_;
-  Command* cmds_[64];
+  Command* cmds_[IRIS_TASK_MAX_CMDS];
   Command* cmd_kernel_;
   Command* cmd_last_;
   Device* dev_;
@@ -262,7 +263,7 @@ private:
   int recommended_stream_;
   int recommended_dev_;
   int brs_policy_;
-  char opt_[64];
+  char opt_[128];
 
   int type_;
   int status_;

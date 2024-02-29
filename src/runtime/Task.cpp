@@ -209,7 +209,7 @@ void Task::AddMemResetCommand(Command* cmd) {
 }
 
 void Task::AddCommand(Command* cmd) {
-  if (ncmds_ >= 63) _error("ncmds[%d]", ncmds_);
+  if (ncmds_ >= IRIS_TASK_MAX_CMDS) _error("ncmds[%d]", ncmds_);
   cmds_[ncmds_++] = cmd;
   if (cmd->type() == IRIS_CMD_KERNEL) {
     if (cmd_kernel_) _error("kernel[%s] is already set", cmd->kernel()->name());
