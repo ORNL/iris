@@ -82,7 +82,7 @@ class ProfileEvent {
 
 class Task: public Retainable<struct _iris_task, Task> {
 public:
-  Task(Platform* platform, int type = IRIS_TASK, const char* name = NULL);
+  Task(Platform* platform, int type = IRIS_TASK, const char* name = NULL, int max_cmds=IRIS_TASK_MAX_CMDS);
   virtual ~Task();
 
   void AddCommand(Command* cmd);
@@ -225,7 +225,8 @@ private:
   unsigned long parent_;
   bool parent_exist_;
   int ncmds_;
-  Command* cmds_[IRIS_TASK_MAX_CMDS];
+  int max_cmds_;
+  Command **cmds_;
   Command* cmd_kernel_;
   Command* cmd_last_;
   Device* dev_;
@@ -307,9 +308,9 @@ public:
   ProfileEvent & LastProfileEvent() {
       return profile_events_.back();
   }
-  static Task* Create(Platform* platform, int type, const char* name);
-  static Task* Create(Platform* platform, int type, std::string name) {
-    return Create(platform, type, name.c_str());
+  static Task* Create(Platform* platform, int type, const char* name, int max_cmds=IRIS_TASK_MAX_CMDS);
+  static Task* Create(Platform* platform, int type, std::string name, int max_cmds=IRIS_TASK_MAX_CMDS) {
+    return Create(platform, type, name.c_str(), max_cmds);
   }
   bool IsKernelSupported(Device *dev);
   int last_cmd_stream_;

@@ -86,7 +86,10 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
   }
   const rapidjson::Value& iris_tasks_ = iris_graph_["graph"]["tasks"];
   for (rapidjson::SizeType i = 0; i < iris_tasks_.Size(); i++){
-    Task* task = Task::Create(platform_, IRIS_TASK_PERM, NULL);
+    int ncmds = 0;
+    if (iris_tasks_[i].HasMember("commands"))
+        ncmds = (int)iris_tasks_[i]["commands"].Size();
+    Task* task = Task::Create(platform_, IRIS_TASK_PERM, NULL, ncmds);
     tasks_.push_back(task);
     //name
     if(!iris_tasks_[i].HasMember("name") or !iris_tasks_[i]["name"].IsString()){

@@ -43,14 +43,16 @@ void ProfileEvent::RecordEndEvent() {
     event_dev_->RecordEvent(&end_event_, stream_, iris_event_default);
     event_dev_->TrackDestroyEvent(end_event_);
 }
-Task::Task(Platform* platform, int type, const char* name) {
+Task::Task(Platform* platform, int type, const char* name, int max_cmds) {
   //printf("Creating task:%lu:%s ptr:%p\n", uid(), name, this);
   is_kernel_launch_disabled_ = false;
   type_ = type;
   recommended_stream_ = -1;
   recommended_dev_ = -1;
+  max_cmds_ = (max_cmds < IRIS_TASK_MAX_CMDS) ? IRIS_TASK_MAX_CMDS : max_cmds;
   ncmds_ = 0;
   disable_consistency_ = false;
+  cmds_ = new Command *[max_cmds_];
   cmd_kernel_ = NULL;
   cmd_last_ = NULL;
   stream_policy_ = STREAM_POLICY_DEFAULT;
@@ -121,6 +123,7 @@ Task::~Task() {
   }
   //profile_events_.clear();
   for (int i = 0; i < ncmds_; i++) delete cmds_[i];
+  delete [] cmds_;
   if (depends_uids_) delete [] depends_uids_;
   pthread_mutex_destroy(&stream_mutex_);
   pthread_mutex_destroy(&mutex_pending_);
@@ -209,7 +212,7 @@ void Task::AddMemResetCommand(Command* cmd) {
 }
 
 void Task::AddCommand(Command* cmd) {
-  if (ncmds_ >= IRIS_TASK_MAX_CMDS) _error("ncmds[%d]", ncmds_);
+  if (ncmds_ >= max_cmds_) _error("ncmds[%d]", ncmds_);
   cmds_[ncmds_++] = cmd;
   if (cmd->type() == IRIS_CMD_KERNEL) {
     if (cmd_kernel_) _error("kernel[%s] is already set", cmd->kernel()->name());
@@ -517,8 +520,8 @@ void Task::Submit(int brs_policy, const char* opt, int sync) {
   }
 }
 
-Task* Task::Create(Platform* platform, int type, const char* name) {
-  return new Task(platform, type, name);
+Task* Task::Create(Platform* platform, int type, const char* name, int max_cmds) {
+  return new Task(platform, type, name, max_cmds);
 //  return platform->pool()->GetTask();
 }
 
