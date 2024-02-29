@@ -9,10 +9,54 @@
 #include <time.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <execinfo.h>
+#include <cstdlib>
+#include <regex>
+#include <cxxabi.h>
 
 namespace iris {
 namespace rt {
 
+// # Spec
+// # Print backtrace of a function
+void Utils::PrintStackTrace() {
+    const int max_frames = 16;
+    void* frame_addrs[max_frames];
+    int num_frames = backtrace(frame_addrs, max_frames);
+
+    char** symbols = backtrace_symbols(frame_addrs, num_frames);
+
+    std::regex pattern1(".*\\(([a-zA-Z_0-9][a-zA-Z0-9_]*)\\).*");
+    std::regex pattern2(".*\\(([a-zA-Z_0-9][a-zA-Z0-9_]*)[+](0x[a-zA-Z0-9]*)\\).*");
+    std::smatch match;
+    char func_name[1024];
+    for (int i = 0; i < num_frames; ++i) {
+        // Demangle C++ function names
+        size_t func_name_size = 1024;
+        int func_name_offset;
+        int status;
+        std::string symbol = symbols[i];
+        std::string hex_str = "";
+        unsigned long long hex_value = 0;
+        if (std::regex_match(symbol, match, pattern1)) {
+            symbol = match[1].str();
+        }
+        else if (std::regex_match(symbol, match, pattern2)) {
+            symbol = match[1].str();
+            hex_str = match[2].str();
+            //char *end_ptr;
+            //hex_value = strtoull(match[2].str().c_str(), &end_ptr, 16);
+        }
+        char* demangled = abi::__cxa_demangle(symbol.c_str(), func_name, &func_name_size, &status);
+        if (status == 0) {
+            std::cout << "[" << i << "] " << demangled << "("<<hex_str<<")"<< std::endl;
+        } else {
+            std::cout << "[" << i << "] " << symbols[i] << std::endl;
+        }
+    }
+
+    free(symbols);
+}
 // # Spec
 // # dev_sizes[] = { n-cols, n-rows, n-depth }
 // # off[] = { x, y, z } (With respective to number of elements)

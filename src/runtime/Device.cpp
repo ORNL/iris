@@ -1216,7 +1216,7 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
                 }
             }
             bool context_shift = src_dev->IsContextChangeRequired();
-            if (async) {
+            if (async && src_dev->is_async(false)) {
 #ifdef ENABLE_PROF_EVENT
                 if (platform_obj_->is_event_profile_enabled()) {
                     ProfileEvent & prof_event = task->CreateProfileEvent(mem, -1, PROFILE_D2H, src_dev, src_mem_stream);
@@ -1227,7 +1227,7 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
             errid_ = src_dev->MemD2H(task, mem, ptr_off, 
                     gws, lws, elem_size, dim, size, host, "MemFlushOut ");
             //TODO: Shouldn't task call back from the source device
-            if (async) {
+            if (async && src_dev->is_async(false)) {
 #ifdef ENABLE_PROF_EVENT
                 if (platform_obj_->is_event_profile_enabled()) {
                     ProfileEvent & prof_event = task->LastProfileEvent();
@@ -1654,35 +1654,41 @@ int Device::RegisterCallback(int stream, CallBackType callback_fn, void *data, i
 {
     _error("Device:%d:%s Invalid function call!", devno_, name()); 
     worker_->platform()->IncrementErrorCount();
+    Utils::PrintStackTrace();
     return IRIS_ERROR;
 }
 void Device::CreateEvent(void **event, int flags) { 
     _error("Device:%d:%s Invalid function call!", devno_, name()); 
     worker_->platform()->IncrementErrorCount();
+    Utils::PrintStackTrace();
     //CPUEvent *levent = new CPUEvent();
     //*event = levent;
 }
 void Device::RecordEvent(void **event, int stream, int event_creation_flag) {
     _error("Device:%d:%s Invalid function call!", devno_, name()); 
     worker_->platform()->IncrementErrorCount();
+    Utils::PrintStackTrace();
     //CPUEvent *levent = (CPUEvent *)event;
     //levent->Record();
 }
 void Device::WaitForEvent(void *event, int stream, int flags) {
     _error("Device:%d:%s Invalid function call!", devno_, name()); 
     worker_->platform()->IncrementErrorCount();
+    Utils::PrintStackTrace();
     //CPUEvent *levent = (CPUEvent *)event;
     //levent->Wait();
 }
 void Device::DestroyEvent(void *event) {
     _error("Device:%d:%s Invalid function call!", devno_, name()); 
     worker_->platform()->IncrementErrorCount();
+    Utils::PrintStackTrace();
     //CPUEvent *levent = (CPUEvent *)event;
     //delete levent;
 }
 void Device::EventSynchronize(void *event) {
     _error("Device:%d:%s Invalid function call!", devno_, name()); 
     worker_->platform()->IncrementErrorCount();
+    Utils::PrintStackTrace();
 }
 
 } /* namespace rt */
