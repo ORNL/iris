@@ -236,6 +236,7 @@ public:
   Kernel *get_kernel_object(iris_kernel brs_kernel) { return (Kernel *)kernel_track_.GetObject(brs_kernel.uid); }
   int nprofilers() { return nprofilers_; }
   bool is_scheduling_history_enabled() { return enable_scheduling_history_; }
+  bool is_event_profile_enabled() { return event_profile_enabled_; }
   bool is_async() { return async_; }
   void set_async(bool flag=true) { async_ = flag; enable_proactive_ = true; }
   SchedulingHistory* scheduling_history() { return scheduling_history_; }
@@ -343,6 +344,7 @@ private:
   bool disable_d2d_;
   bool disable_kernel_launch_;
   bool release_task_flag_;
+  bool event_profile_enabled_;
   SchedulingHistory* scheduling_history_;
 
   Kernel* null_kernel_;

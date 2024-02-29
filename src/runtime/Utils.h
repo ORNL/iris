@@ -18,6 +18,7 @@ namespace iris {
                 static bool Exist(char* path);
                 static long Mtime(char* path);
                 static void Datetime(char* str);
+                static void PrintStackTrace();
                 static void MemCpy3D(uint8_t *dev, uint8_t *host, size_t *off, size_t *dev_sizes, size_t *host_sizes, size_t elem_size, bool host_2_dev=true);
 
                 template<typename DType>

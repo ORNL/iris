@@ -1,14 +1,12 @@
 #!/bin/bash
-#source /etc/profile
-#source /etc/profile.d/z00_lmod.sh
-#source ~/.bashrc
+
+#uncomment to use data memory rather than explicit memory transfers
+export USE_DATA_MEMORY=--use-data-memory
 export REPEATS=${REPEATS:=100}
 export PAYLOAD_SIZE=${PAYLOAD_SIZE:=128}
 export SIZES=("10" "25" "100")
 export SKIP_SETUP=${SKIP_SETUP:=0}
 
-#uncomment to use data memory rather than explicit memory transfers
-#export USE_DATA_MEMORY=--use-data-memory
 set -x;
 if [ "x$SKIP_SETUP" = "x0" ]; then
 source ./setup.sh
@@ -41,6 +39,13 @@ if ! [ -f dagger_runner ] ; then
    echo "No dagger_runner app! " && exit 1
 fi
 
+#data policy is unsupported if DMEM is used
+if [ -n "$USE_DATA_MEMORY" ]; then
+  export POLICIES=(roundrobin depend profile random ftf sdq);
+else
+  export POLICIES=(roundrobin depend profile random ftf sdq data);
+fi
+echo Using policies: ${POLICIES[@]}
 
 export RESULTS_DIR=`pwd`/dagger-results
 export GRAPHS_DIR=`pwd`/dagger-graphs
@@ -234,7 +239,7 @@ do
   echo "*                          Linear $SIZE                           *"
   echo "*******************************************************************"
   cp dagger-payloads/linear$SIZE-graph.json graph.json ; cat graph.json
-  for POLICY in roundrobin depend profile random ftf data sdq
+  for POLICY in ${POLICIES[@]}
   do
     for (( num_run=0; num_run<=$REPEATS; num_run++ ))
     do
@@ -259,7 +264,7 @@ done
 ##./dagger_generator.py --kernels="ijk" --duplicates="2" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=10 --num-tasks=10 --min-width=1 --max-width=1
 ##[ $? -ne 0 ] &&  exit 1
 #cp graph.json dagger-payloads/parallel2by10-graph.json
-#for POLICY in roundrobin depend profile random ftf data sdq
+#for POLICY in ${POLICIES[@]}
 #do
 #  echo "Running IRIS on Parallel 2by10 with Policy: $POLICY"
 #  IRIS_HISTORY=1 ./dagger_runner --graph="dagger-payloads/parallel2by10-graph.json" --logfile="time.csv" --repeats=1 --scheduling-policy="$POLICY" --size=$PAYLOAD_SIZE  --kernels="ijk" --duplicates="2" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=10 --num-tasks=10 --min-width=1 --max-width=1 $USE_DATA_MEMORY
@@ -276,7 +281,7 @@ done
 ##cp graph.json dagger-payloads/parallel5by100-graph.json
 ##cp dag.pdf $RESULTS_DIR/parallel5by100-graph.pdf
 #cp dagger-payloads/parallel5by100-graph.json graph.json ; cat graph.json
-#for POLICY in roundrobin depend profile random ftf data sdq
+#for POLICY in ${POLICIES[@]}
 #do
 #  echo "Running IRIS on Parallel 5by100 with Policy: $POLICY"
 #  IRIS_HISTORY=1 ./dagger_runner --graph="parallel5by100-graph.json" --logfile="time.csv" --repeats=1 --scheduling-policy="$POLICY" --size=$PAYLOAD_SIZE  --kernels="ijk" --duplicates="5" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=100 --num-tasks=100 --min-width=1 --max-width=1 $USE_DATA_MEMORY
@@ -291,7 +296,7 @@ do
   echo "*                          Diamond $SIZE                          *"
   echo "*******************************************************************"
   cp dagger-payloads/diamond$SIZE-graph.json graph.json ; cat graph.json
-  for POLICY in roundrobin depend profile random ftf data sdq
+  for POLICY in ${POLICIES[@]}
   do
     for (( num_run=0; num_run<=$REPEATS; num_run++ ))
     do
@@ -315,12 +320,12 @@ do
   echo "*                          Chainlink $SIZE                        *"
   echo "*******************************************************************"
   cp dagger-payloads/chainlink$SIZE-graph.json graph.json ; cat graph.json
-  for POLICY in roundrobin depend profile random ftf data sdq
+  for POLICY in ${POLICIES[@]}
   do
     for (( num_run=0; num_run<=$REPEATS; num_run++ ))
     do
       echo "Running IRIS on Chainlink $SIZE with Policy: $POLICY  run no. $num_run"
-      ./dagger_runner --graph="dagger-payloads/chainlink$SIZE-graph.json" --logfile="time.csv" --repeats=1 --scheduling-policy="$POLICY" --size=$PAYLOAD_SIZE --kernels="ijk" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=$SIZE --num-tasks=$SIZE --min-width=1 --max-width=2  --sandwich $USE_DATA_MEMORY #--concurrent-kernels="ijk:2"
+      ./dagger_runner --graph="dagger-payloads/chainlink$SIZE-graph.json" --logfile="time.csv" --repeats=1 --scheduling-policy="$POLICY" --size=$PAYLOAD_SIZE --kernels="ijk" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=$SIZE --num-tasks=$SIZE --min-width=1 --max-width=2  --sandwich $USE_DATA_MEMORY --concurrent-kernels="ijk:2"
       [ $? -ne 0 ] && echo "Chainlink $SIZE Failed with Policy: $POLICY at Run no. $num_run and with Size: $SIZE and with $USE_DATA_MEMORY" &&  exit 1
       mv dagger_runner-$SYSTEM*.csv $RESULTS_DIR/chainlink$SIZE-$POLICY-$SYSTEM-$num_run.csv
       [ $? -ne 0 ] &&  exit 1
@@ -341,7 +346,7 @@ done
 ##cp graph.json dagger-payloads/galaga-25-graph.json
 ##cp dag.pdf $RESULTS_DIR/galaga-25-graph.pdf
 #cp dagger-payloads/galaga-25-graph.json graph.json ; cat graph.json
-#for POLICY in roundrobin depend profile random ftf data sdq
+#for POLICY in ${POLICIES[@]}
 #do
 #  echo "Running IRIS on Galaga 25 with Policy: $POLICY"
 #  IRIS_HISTORY=1 ./dagger_runner --graph="dagger-payloads/galaga-25-graph.json" --logfile="time.csv" --repeats=1 --scheduling-policy="$POLICY" --size=$PAYLOAD_SIZE --kernels="ijk" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=25 --num-tasks=25 --min-width=1 --max-width=12 --sandwich $USE_DATA_MEMORY
@@ -355,12 +360,12 @@ do
   echo "*                          Tangled $SIZE                             *"
   echo "*******************************************************************"
   cp dagger-payloads/tangled$SIZE-graph.json graph.json ; cat graph.json
-  for POLICY in roundrobin depend profile random ftf data sdq
+  for POLICY in ${POLICIES[@]}
   do
     for (( num_run=0; num_run<=$REPEATS; num_run++ ))
     do
       echo "Running IRIS on Tangled $SIZE with Policy: $POLICY  run no. $num_run"
-      IRIS_HISTORY=1 ./dagger_runner --graph="dagger-payloads/tangled$SIZE-graph.json" --logfile="time.csv" --repeats=1 --scheduling-policy="$POLICY" --size=$PAYLOAD_SIZE --kernels="ijk" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=$SIZE --num-tasks=$SIZE --min-width=1 --max-width=12  --sandwich $USE_DATA_MEMORY #--concurrent-kernels="ijk:12"
+      IRIS_HISTORY=1 ./dagger_runner --graph="dagger-payloads/tangled$SIZE-graph.json" --logfile="time.csv" --repeats=1 --scheduling-policy="$POLICY" --size=$PAYLOAD_SIZE --kernels="ijk" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=$SIZE --num-tasks=$SIZE --min-width=1 --max-width=12  --sandwich $USE_DATA_MEMORY --concurrent-kernels="ijk:12"
       [ $? -ne 0 ] && echo "Tangled $SIZE Failed with Policy: $POLICY" &&  exit 1
       mv dagger_runner-$SYSTEM*.csv $RESULTS_DIR/tangled$SIZE-$POLICY-$SYSTEM-$num_run.csv
       [ $? -ne 0 ] &&  exit 1
@@ -381,7 +386,7 @@ done
 ##cp graph.json dagger-payloads/brain-1000-graph.json
 ##cp dag.pdf $RESULTS_DIR/brain-100-graph.pdf
 #cp dagger-payloads/brain-1000-graph.json graph.json ; cat graph.json
-#for POLICY in roundrobin depend profile random ftf data sdq
+#for POLICY in ${POLICIES[@]}
 #do
 #  echo "Running IRIS on Brain 1000 with Policy: $POLICY"
 #  IRIS_HISTORY=1 ./dagger_runner --graph="dagger-payloads/brain-1000-graph.json" --logfile="time.csv" --repeats=1 --scheduling-policy="$POLICY" --size=$PAYLOAD_SIZE --kernels="ijk" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=25 --num-tasks=1000 --min-width=1 --max-width=50 --sandwich $USE_DATA_MEMORY

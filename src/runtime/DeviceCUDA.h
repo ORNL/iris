@@ -41,8 +41,9 @@ public:
   int KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws);
   int Synchronize();
   int Custom(int tag, char* params);
+  float GetEventTime(void *event, int stream);
   void CreateEvent(void **event, int flags);
-  void RecordEvent(void **event, int stream);
+  void RecordEvent(void **event, int stream, int event_creation_flag=iris_event_disable_timing);
   void WaitForEvent(void *event, int stream, int flags=0);
   void DestroyEvent(void *event);
   void EventSynchronize(void *event);
@@ -71,6 +72,8 @@ private:
   int peers_count_;
   CUcontext ctx_;
   CUstream streams_[IRIS_MAX_DEVICE_NQUEUES];
+  CUevent  single_start_time_event_;
+  //CUevent  start_time_event_[IRIS_MAX_DEVICE_NQUEUES];
   CUmodule module_;
   unsigned int shared_mem_bytes_;
   unsigned int shared_mem_offs_[IRIS_MAX_KERNEL_NARGS];

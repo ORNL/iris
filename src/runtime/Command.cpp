@@ -5,6 +5,7 @@
 #include "Task.h"
 #include "Timer.h"
 #include "Mem.h"
+#include "Device.h"
 #include "DataMem.h"
 #include "AutoDAG.h"
 
@@ -305,7 +306,7 @@ Command* Command::CreateMemFlushOut(Task* task, DataMem* mem) {
    // Fixed it
    if (mem->get_current_writing_task() != NULL && mem->get_current_writing_task()->uid() != NULL
         && mem->get_current_writing_task() != task)
-   		task->AddDepend(mem->get_current_writing_task(), mem->get_current_writing_task()->uid());
+       task->AddDepend(mem->get_current_writing_task(), mem->get_current_writing_task()->uid());
 
 //#ifdef IGNORE_MANUAL
 //   task->platform()->get_auto_dag()->unset_auto_dep();

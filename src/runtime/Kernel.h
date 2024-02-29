@@ -93,7 +93,7 @@ public:
   void add_mem(Mem *mem, int idx, int mode);
   void add_dmem(DataMem *mem, int idx, int mode);
   void add_dmem_region(DataMemRegion *mem, int idx, int mode);
-  void **GetCompletionEventPtr() { return async_data_.GetCompletionEventPtr(); }
+  void **GetCompletionEventPtr(bool new_entry=false) { return async_data_.GetCompletionEventPtr(new_entry); }
   void *GetCompletionEvent() { return async_data_.GetCompletionEvent(); }
 /*
 #ifdef AUTO_PAR

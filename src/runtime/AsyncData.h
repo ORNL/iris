@@ -1,6 +1,7 @@
 #pragma once
 #include <pthread.h>
 #include "EventExchange.h"
+#include <stack>
 
 namespace iris {
     namespace rt {
@@ -11,7 +12,7 @@ namespace iris {
                         core_=NULL; devno_ = 0; 
                         exchange_ = NULL;
                         completed_flag_ = false;
-                        completion_event_ = NULL;
+                        //completion_event_ = NULL;
                         proactive_transfer_ = false;
                         write_streams_ = -1;
                     }
@@ -21,7 +22,7 @@ namespace iris {
                     }
                     void Init(CoreClass *core, int devno) {
                         devno_ = devno; core_ = core;
-                        completion_event_ = NULL;
+                        //completion_event_ = NULL;
                         completed_flag_ = false;
                         exchange_ = new EventExchange();
                         write_streams_ = -1;
@@ -40,8 +41,18 @@ namespace iris {
                     void DisableProactive() { proactive_transfer_ = false; }
                     void EnableProactive()  { proactive_transfer_ = true;  }
                     bool IsProactive() { return proactive_transfer_; }
-                    void *GetCompletionEvent() { return completion_event_; }
-                    void **GetCompletionEventPtr() { return &completion_event_; }
+                    stack<void *> & GetCompletionStack() {  return completion_event_; }
+                    void *GetCompletionEvent() { 
+                        if (completion_event_.size()==0) 
+                            return NULL; 
+                        return completion_event_.top(); 
+                    }
+                    void **GetCompletionEventPtr(bool new_entry=false) 
+                    { 
+                        if (new_entry || completion_event_.size() == 0)
+                            completion_event_.push(NULL);
+                        return &completion_event_.top(); 
+                    }
                     void SetWriteStream(int stream) { write_streams_ = stream; }
                     int  GetWriteStream()   { return write_streams_; }
                     vector<void *> & GetWaitEvents() { return waiting_events_; }
@@ -71,7 +82,7 @@ namespace iris {
                 private:
                     CoreClass *core_;
                     EventExchange *exchange_;
-                    void *completion_event_;
+                    stack<void *> completion_event_;
                     pthread_mutex_t mutex_;
                     vector<void *> waiting_events_;
                     int devno_;

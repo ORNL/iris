@@ -7,6 +7,8 @@
 //#include "CPUEvent.h"
 #include <map>
 #include <vector>
+#include <mutex>
+#include <atomic>
 using namespace std;
 
 
@@ -24,6 +26,7 @@ class DataMemRegion;
 class Task;
 class Timer;
 class Worker;
+class Platform;
 
 typedef void (*CallBackType)(void *stream, int status, void *data);
 class Device {
@@ -38,11 +41,39 @@ public:
 
   void ExecuteInit(Command* cmd);
   virtual void ExecuteKernel(Command* cmd);
+  void TrackDestroyEvent(void *event) { 
+      //printf("Adding event:%p size:%ld obj:%p\n", event, destroy_events_.size(), &destroy_events_);
+      destroy_events_mutex_.lock();
+      destroy_events_[event] = false;
+      destroy_events_mutex_.unlock();
+      //printf("Added event:%p size:%ld\n", event, destroy_events_.size());
+  }
+  void EnableDestroyEvent(void *event) { 
+      //printf("Adding event:%p size:%ld obj:%p\n", event, destroy_events_.size(), &destroy_events_);
+      destroy_events_[event] = true;
+      //printf("Added event:%p size:%ld\n", event, destroy_events_.size());
+  }
+  void FreeDestroyEvents() 
+  {
+      //printf("FreeDestroyEvents size:%ld obj:%p\n", destroy_events_.size(), &destroy_events_);
+      destroy_events_mutex_.lock();
+      for(auto it = destroy_events_.begin(); it != destroy_events_.end(); ) {
+          if (it->second) {
+              //printf("Destroying event:%p\n", it->first);
+              DestroyEvent(it->first);
+              it = destroy_events_.erase(it);
+          }
+          else
+              ++it;
+      }
+      destroy_events_mutex_.unlock();
+  }
   virtual void RegisterPin(void *host, size_t size) { }
   void ExecuteMalloc(Command* cmd);
   void RegisterHost(BaseMem *mem);
+  virtual float GetEventTime(void *event, int stream) { return 0.0f; }
   virtual void CreateEvent(void **event, int flags);
-  virtual void RecordEvent(void **event, int stream);
+  virtual void RecordEvent(void **event, int stream, int event_creation_flag=iris_event_disable_timing);
   virtual void WaitForEvent(void *event, int stream, int flags=0);
   virtual void DestroyEvent(void *event);
   virtual void EventSynchronize(void *event);
@@ -127,6 +158,14 @@ public:
       return async_ && (!stream_policy_check || 
               stream_policy() != STREAM_POLICY_GIVE_ALL_STREAMS_TO_KERNEL); 
   }
+  void set_root_device(Device *root) { root_dev_ = root; }
+  double first_event_cpu_end_time() { return first_event_cpu_end_time_; }
+  double first_event_cpu_begin_time() { return first_event_cpu_begin_time_; }
+  void set_first_event_cpu_end_time(double time) { first_event_cpu_end_time_ = time; }
+  void set_first_event_cpu_begin_time(double time) { first_event_cpu_begin_time_ = time; }
+  bool IsFree();
+  void FreeActiveTask() { active_tasks_--; }
+  void ReserveActiveTask() { active_tasks_++; }
   int platform() { return platform_; }
   int devno() { return devno_; }
   int type() { return type_; }
@@ -205,6 +244,16 @@ protected:
 
   std::map<int, command_handler> cmd_handlers_;
   StreamPolicy stream_policy_;
+  Platform *platform_obj_;
+private:
+  mutex destroy_events_mutex_;
+  map<void *, bool> destroy_events_;
+  Device *root_dev_;
+  double first_event_cpu_begin_time_;
+  double first_event_cpu_end_time_;
+  std::atomic<int> active_tasks_;
+protected:
+  Device *root_device() { return root_dev_; }
 };
 
 } /* namespace rt */

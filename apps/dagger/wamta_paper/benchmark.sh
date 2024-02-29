@@ -1,12 +1,16 @@
 #!/bin/bash
 #TODO support --local-sizes="ijk:256 256" 
-export PAYLOAD_SIZE=${PAYLOAD_SIZE:=1024}
+export PAYLOAD_SIZE=${PAYLOAD_SIZE:=2048}
 export SKIP_SETUP=${SKIP_SETUP:=0}
 
 export SCRIPT_DIR=`realpath ..`
 export WORKING_DIR=`realpath .`
-source /auto/software/iris/setup_system.source
+#source /auto/software/iris/setup_system.source
 source $SCRIPT_DIR/setup_gpu_backends.sh
+#export OCL_ICD_VENDORS=/opt/rocm/lib/libOpenCL.so
+#export OCL_ICD_FILENAMES=libOpenCL.so
+#export IRIS_ARCHS=opencl
+#TODO: when evaluating the crc add the kernel.cl and eth_crc32_lut.h as KERNEL targets to copy
 export IRIS_ARCHS=$BACKENDS
 export IRIS_HISTORY=1
 
@@ -36,9 +40,9 @@ if [[ $SKIP_SETUP -eq 0 ]]; then
 fi
 source $IRIS_INSTALL_ROOT/setup.source
 
-if [[ ! -n $SKIP_DAG_REGEN ]]; then
+if [[ ! -n "$SKIP_DAG_REGEN" ]]; then
   #generate dagger payload for this experiment
-  $SCRIPT_DIR/dagger_generator.py --kernels="bigk" --buffers-per-kernel="bigk:rw r r" --kernel-dimensions="bigk:2" --kernel-split='100' --depth=40 --num-tasks=240 --min-width=6 --max-width=6 --concurrent-kernels="bigk:6" --skips=3 --sandwich --use-data-memory
+  $SCRIPT_DIR/dagger_generator.py --kernels="ijk" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=40 --num-tasks=240 --min-width=6 --max-width=6 --concurrent-kernels="ijk:6" --skips=3 --sandwich --use-data-memory --local-sizes="ijk:8 8"
   [ $? -ne 0 ] && echo "Failed to generate DAG" && exit 1
   mv $SCRIPT_DIR/graph.json $WORKING_DIR/graph.json
 fi
@@ -46,7 +50,7 @@ fi
 #run the payload (note, we have to omit the data policy since it is incompatible with dmem)
 for POLICY in roundrobin depend profile random ftf sdq #data
 do
-  LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$SCRIPT_DIR $SCRIPT_DIR/dagger_runner --graph="$WORKING_DIR/graph.json" --logfile="$WORKING_DIR/time.csv" --repeats=1 --scheduling-policy="$POLICY" --size=$PAYLOAD_SIZE --kernels="bigk" --buffers-per-kernel="bigk:rw r r" --kernel-dimensions="bigk:2" --kernel-split='100' --depth=40 --num-tasks=240 --min-width=6 --max-width=6 --concurrent-kernels="bigk:6" --skips=3  --sandwich --use-data-memory
+  LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$SCRIPT_DIR $SCRIPT_DIR/dagger_runner --graph="$WORKING_DIR/graph.json" --logfile="$WORKING_DIR/time.csv" --repeats=1 --scheduling-policy="$POLICY" --size=$PAYLOAD_SIZE --kernels="ijk" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=40 --num-tasks=240 --min-width=6 --max-width=6 --concurrent-kernels="ijk:6" --skips=3  --sandwich --use-data-memory #--local-sizes="ijk:256 1 1"
   [ $? -ne 0 ] && echo "Failed to run DAG" && exit 1
   mv $SCRIPT_DIR/dagger_runner-$HOST*\.csv $WORKING_DIR/$HOST-$POLICY-time.csv
   #joint plot

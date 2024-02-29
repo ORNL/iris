@@ -35,14 +35,18 @@ namespace rt {
                 write_dev_ = -1;
                 device_map_ = new BaseMemDevice[ndevs_+1];
                 d2h_events_ = new void *[ndevs_];
+                write_event_ = new void *[ndevs+1];
+                for (int i = 0; i < ndevs_+1; i++) {
+                    device_map_[i].Init(this, i);
+                    write_event_[i] = NULL;
+                }
                 for (int i = 0; i < ndevs_; i++) {
                   archs_[i] = NULL;
                   archs_off_[i] = NULL;
                   archs_dev_[i] = NULL;
                   is_usm_[i] = false;
-                  device_map_[i].Init(this, i);
-                  recommended_stream_[i] = -1;
                   d2h_events_[i] = NULL;
+                  recommended_stream_[i] = -1;
                 }
                 pthread_mutex_init(&host_mutex_, NULL);
                 // Special device map for host
@@ -70,8 +74,12 @@ namespace rt {
                 pthread_mutex_destroy(&host_mutex_);
                 _trace("Memory object is deleted:%lu:%p", uid(), this);
                 for(int i=0; i<ndevs_; i++) {
-                    if (GetCompletionEvent(i) != NULL) 
-                        DestroyEvent(i, GetCompletionEvent(i));
+                    stack<void *> & stk = device_map_[i].GetCompletionStack();
+                    int n = stk.size();
+                    for(int j=0; j<n; j++) { 
+                        void *top = stk.top();
+                        DestroyEvent(i, top);
+                    } 
                 }
                 delete [] device_map_;
                 //track()->UntrackObject(this, uid());
@@ -103,6 +111,7 @@ namespace rt {
             void clear_streams() {
                 for(int i=0; i<ndevs_+1; i++) {
                     device_map_[i].Clear();
+                    write_event_[i] = NULL;
                 }
                 device_map_[ndevs_].ClearDevice();
                 write_dev_ = -1;
@@ -113,6 +122,8 @@ namespace rt {
             vector<void *> & GetWaitEvents(int devno) { return device_map_[devno].GetWaitEvents(); }
             void SetWriteDevice(int devno) { write_dev_ = devno; }
             int GetWriteDevice() { return write_dev_; }
+            void SetWriteDeviceEvent(int devno, void *event) { write_event_[devno] = event; }
+            void *GetWriteDeviceEvent(int devno) { return write_event_[devno]; }
             int GetWriteStream(int devno) { return device_map_[devno].GetWriteStream(); }
             void SetWriteStream(int devno, int stream) { device_map_[devno].SetWriteStream(stream); }
             bool IsProactive(int devno) { return device_map_[devno].IsProactive(); }
@@ -120,7 +131,7 @@ namespace rt {
             void DisableProactive(int devno) { device_map_[devno].DisableProactive(); }
             EventExchange *GetEventExchange(int devno) { return device_map_[devno].exchange(); }
             void *GetCompletionEvent(int devno) { return device_map_[devno].GetCompletionEvent(); }
-            void **GetCompletionEventPtr(int devno) { return device_map_[devno].GetCompletionEventPtr(); }
+            void **GetCompletionEventPtr(int devno, bool new_entry=false) { return device_map_[devno].GetCompletionEventPtr(new_entry); }
             int GetHostWriteStream() { return device_map_[ndevs_].GetWriteStream(); }
             void SetHostWriteStream(int stream) { device_map_[ndevs_].SetWriteStream(stream); }
             int GetHostWriteDevice() { return device_map_[ndevs_].devno(); }
@@ -147,7 +158,7 @@ namespace rt {
             virtual inline void clear() { }
         void set_recommended_stream(int devno, int stream) { recommended_stream_[devno] = stream; }
         int recommended_stream(int devno) { return recommended_stream_[devno]; }
-        void RecordEvent(int devno, int stream);
+        void RecordEvent(int devno, int stream, bool new_entry=false);
         void WaitForEvent(int devno, int stream, int dep_devno);
         void DestroyEvent(int devno, void *event);
         bool is_usm(int devno) { return is_usm_[devno]; }
@@ -164,6 +175,7 @@ namespace rt {
             bool  is_usm_[IRIS_MAX_NDEVS];
             BaseMemDevice *device_map_;
             int write_dev_;
+            void **write_event_;
             void **d2h_events_;
             pthread_mutex_t host_mutex_;
 #ifdef AUTO_PAR

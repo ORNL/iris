@@ -81,6 +81,7 @@ DeviceOpenCL::DeviceOpenCL(LoaderOpenCL* ld, LoaderHost2OpenCL *host2opencl_ld, 
     clcmdq_[i] = NULL;
   }
   default_queue_ = NULL;
+  single_start_time_event_ = NULL;
   if (IsDeviceValid()) {
       _info("device[%d] platform[%d] vendor[%s] device[%s] type[0x%x:%d] version[%s] max_compute_units[%zu] max_work_group_size[%zu] max_work_item_sizes[%zu,%zu,%zu] compiler_available[%d]", devno_, platform_, vendor_, name_, type_, type_, version_, max_compute_units_, max_work_group_size_, max_work_item_sizes_[0], max_work_item_sizes_[1], max_work_item_sizes_[2], compiler_available_);
   }
@@ -98,6 +99,8 @@ DeviceOpenCL::~DeviceOpenCL() {
         cl_int err = ld_->clReleaseCommandQueue(default_queue_);
         _clerror(err);
     }
+    if (is_async(false)) 
+        DestroyEvent(single_start_time_event_);
 }
 
 int DeviceOpenCL::Init() {
@@ -106,6 +109,10 @@ int DeviceOpenCL::Init() {
       for (int i = 0; i < nqueues_; i++) {
           clcmdq_[i] = ld_->clCreateCommandQueue(clctx_, cldev_, CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE, &err);
       }
+      set_first_event_cpu_begin_time(timer_->Now());
+      RecordEvent((void **)(&single_start_time_event_), 0, iris_event_default);
+      set_first_event_cpu_end_time(timer_->Now());
+      _info("Event start time of device:%f end time of record:%f\n", first_event_cpu_begin_time(), first_event_cpu_end_time());
   }
   else {
       nqueues_ = 0;
@@ -698,11 +705,26 @@ int DeviceOpenCL::CreateProgram(const char* suffix, char** src, size_t* srclen) 
   return IRIS_ERROR;
 }
 
+float DeviceOpenCL::GetEventTime(void *event, int stream) 
+{ 
+    float elapsed=0.0f;
+    if (event != NULL) {
+        cl_ulong start_time, stop_time;
+        cl_int err = ld_->clGetEventProfilingInfo(single_start_time_event_, CL_PROFILING_COMMAND_START, sizeof(cl_ulong), &start_time, NULL);
+        _clerror(err);
+        err = ld_->clGetEventProfilingInfo((cl_event)event, CL_PROFILING_COMMAND_END, sizeof(cl_ulong), &stop_time, NULL);
+        _clerror(err);
+        elapsed = ((float)(stop_time - start_time))/1e6;
+        //printf("Elapsed:%f single_start_time_event:%p event:%p\n", elapsed, single_start_time_event_, event);
+        //printf("Elapsed:%f single_start_time_event:%p start_time_event:%p event:%p\n", elapsed, single_start_time_event_, start_time_event_[stream], event);
+    }
+    return elapsed; 
+}
 void DeviceOpenCL::CreateEvent(void **event, int flags)
 {
     *event = NULL;
 }
-void DeviceOpenCL::RecordEvent(void **event, int stream)
+void DeviceOpenCL::RecordEvent(void **event, int stream, int event_creation_flag)
 {
     cl_int err;
     err = ld_->clEnqueueMarker(clcmdq_[stream], (cl_event*)event);

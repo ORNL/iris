@@ -14,14 +14,45 @@
 namespace iris {
 namespace rt {
 
-Task::Task(Platform* platform, int type, const char* name) {
+void ProfileEvent::Clean() {
+    //printf("prof_event trying to destroy :%p %p\n", &start_event_, start_event_);
+    if (start_event_ != NULL && event_dev_ != NULL) 
+        event_dev_->EnableDestroyEvent(start_event_);
+    if (end_event_ != NULL && event_dev_ != NULL) 
+        event_dev_->EnableDestroyEvent(end_event_);
+    //printf("completed prof_event trying to destroy :%p %p\n", &start_event_, start_event_);
+}
+float ProfileEvent::GetStartTime() {
+    float etime =0.0;
+    if (start_event_ != NULL && event_dev_ != NULL) 
+        etime = event_dev_->GetEventTime(start_event_, stream_);
+    return etime;
+}
+float ProfileEvent::GetEndTime() {
+    float etime =0.0;
+    if (end_event_ != NULL && event_dev_ != NULL) 
+        etime = event_dev_->GetEventTime(end_event_, stream_);
+    return etime;
+
+}
+void ProfileEvent::RecordStartEvent() {
+    event_dev_->RecordEvent(&start_event_, stream_, iris_event_default);
+    event_dev_->TrackDestroyEvent(start_event_);
+}
+void ProfileEvent::RecordEndEvent() {
+    event_dev_->RecordEvent(&end_event_, stream_, iris_event_default);
+    event_dev_->TrackDestroyEvent(end_event_);
+}
+Task::Task(Platform* platform, int type, const char* name, int max_cmds) {
   //printf("Creating task:%lu:%s ptr:%p\n", uid(), name, this);
   is_kernel_launch_disabled_ = false;
   type_ = type;
   recommended_stream_ = -1;
   recommended_dev_ = -1;
+  max_cmds_ = (max_cmds < IRIS_TASK_MAX_CMDS) ? IRIS_TASK_MAX_CMDS : max_cmds;
   ncmds_ = 0;
   disable_consistency_ = false;
+  cmds_ = new Command *[max_cmds_];
   cmd_kernel_ = NULL;
   cmd_last_ = NULL;
   stream_policy_ = STREAM_POLICY_DEFAULT;
@@ -38,6 +69,8 @@ Task::Task(Platform* platform, int type, const char* name) {
   ns_time_submit_ = 0;
   ns_time_start_ = 0;
   ns_time_end_ = 0;
+  last_cmd_stream_ = -1;
+  last_cmd_device_ = NULL;
   user_ = false;
   system_ = false;
   internal_memory_transfer_ = false;
@@ -81,10 +114,16 @@ Task::Task(Platform* platform, int type, const char* name) {
 }
 
 Task::~Task() {
-  //printf("released task:%lu:%s released ptr:%p ref_cnt:%d\n", uid(), name(), this, ref_cnt());
+  //printf("Releasedd task:%lu:%s released ptr:%p ref_cnt:%d\n", uid(), name(), this, ref_cnt());
   //Platform::GetPlatform()->task_track().UntrackObject(this, uid());
   _trace("Task deleted %lu %s %p ref_cnt:%d", uid(), name(), this, ref_cnt());
+  //printf("Trying to delete profile events\n");
+  for (ProfileEvent & p : profile_events_) {
+    p.Clean();
+  }
+  //profile_events_.clear();
   for (int i = 0; i < ncmds_; i++) delete cmds_[i];
+  delete [] cmds_;
   if (depends_uids_) delete [] depends_uids_;
   pthread_mutex_destroy(&stream_mutex_);
   pthread_mutex_destroy(&mutex_pending_);
@@ -173,7 +212,7 @@ void Task::AddMemResetCommand(Command* cmd) {
 }
 
 void Task::AddCommand(Command* cmd) {
-  if (ncmds_ >= 63) _error("ncmds[%d]", ncmds_);
+  if (ncmds_ >= max_cmds_) _error("ncmds[%d]", ncmds_);
   cmds_[ncmds_++] = cmd;
   if (cmd->type() == IRIS_CMD_KERNEL) {
     if (cmd_kernel_) _error("kernel[%s] is already set", cmd->kernel()->name());
@@ -272,12 +311,14 @@ void Task::Complete() {
   bool is_user_task = user_;
   bool platform_release_flag = platform_->release_task_flag();
   if (dev_ && type() != IRIS_MARKER) set_devno(dev_->devno());
+  status_ = IRIS_COMPLETE;
   std::unique_lock<std::mutex> lock(mutex_complete_cpp_);
   status_ = IRIS_COMPLETE;
   complete_cond_cpp_.notify_all();
   //pthread_mutex_lock(&mutex_complete_);
   //pthread_cond_broadcast(&complete_cond_);
   //pthread_mutex_unlock(&mutex_complete_);
+  //printf("calling profile events\n");
   if (user_) platform_->ProfileCompletedTask(this);
   // For task with subtasks, the parent task is not in any worker queue. 
   // However, it has to call the completion of parent task each time.
@@ -479,8 +520,8 @@ void Task::Submit(int brs_policy, const char* opt, int sync) {
   }
 }
 
-Task* Task::Create(Platform* platform, int type, const char* name) {
-  return new Task(platform, type, name);
+Task* Task::Create(Platform* platform, int type, const char* name, int max_cmds) {
+  return new Task(platform, type, name, max_cmds);
 //  return platform->pool()->GetTask();
 }
 
@@ -516,6 +557,12 @@ void Task::set_time_end(Timer* d) {
   time_end_ = d->Now();
   ns_time_end_ = d->NowNS();
 }
+
+ProfileEvent & Task::CreateProfileEvent(BaseMem *mem, int connect_dev, ProfileRecordType type, Device *dev, int stream) { 
+      profile_events_.push_back(ProfileEvent(mem->uid(), connect_dev, type, dev, stream));
+      return profile_events_.back();
+}
+
 
 } /* namespace rt */
 } /* namespace iris */

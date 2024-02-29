@@ -23,16 +23,66 @@
 #define IRIS_TASK_PERM  0x1
 #define IRIS_MARKER     0x2
 
+#define IRIS_TASK_MAX_CMDS  128
 namespace iris {
 namespace rt {
 
 class Scheduler;
 class Graph;
 class AutoDAG;
+class Device; 
+
+enum ProfileRecordType 
+{ 
+    PROFILE_H2D = 0,
+    PROFILE_D2H = 1,
+    PROFILE_D2D = 2,
+    PROFILE_D2H_H2D = 3,
+    PROFILE_KERNEL = 4,
+    PROFILE_O2D = 5,
+    PROFILE_D2O = 6,
+}; 
+class ProfileEvent {
+    public:
+        ProfileEvent(unsigned long id, int connect_dev, ProfileRecordType type, Device *event_dev, int stream) {
+            start_event_ = NULL;
+            end_event_ = NULL;
+            type_ = type;
+            id_ = id;
+            connect_dev_ = connect_dev;
+            event_dev_ = event_dev;
+            stream_ = stream;
+            //printf("prof_event created:%p %p\n", &start_event_, start_event_);
+        }
+        ~ProfileEvent(){ /*It shouldn't destroy any events*/ }
+        void Clean();
+        float GetStartTime();
+        float GetEndTime();
+        void RecordStartEvent();
+        void RecordEndEvent();
+        int stream() { return stream_; }
+        void **start_event_ptr() { return &start_event_; }
+        void **end_event_ptr()   { return &end_event_; }
+        void *start_event()      { return start_event_; }
+        void *end_event()        { return end_event_; }
+        Device *event_dev(){ return event_dev_; }
+        void set_event_dev(Device *dev)   { event_dev_ = dev; }
+        ProfileRecordType type() { return type_; }
+        int connect_dev() { return connect_dev_; }
+        unsigned long uid() { return id_; }
+    private:
+        Device *event_dev_;
+        void *start_event_;
+        void *end_event_;
+        ProfileRecordType type_;
+        unsigned long id_;
+        int connect_dev_;
+        int stream_;
+};
 
 class Task: public Retainable<struct _iris_task, Task> {
 public:
-  Task(Platform* platform, int type = IRIS_TASK, const char* name = NULL);
+  Task(Platform* platform, int type = IRIS_TASK, const char* name = NULL, int max_cmds=IRIS_TASK_MAX_CMDS);
   virtual ~Task();
 
   void AddCommand(Command* cmd);
@@ -162,7 +212,10 @@ public:
   bool get_shadow_dep_added(){ return shadow_dep_added_;}
 #endif
 #endif
-
+  void set_last_cmd_stream(int stream) { last_cmd_stream_ = stream; }
+  int last_cmd_stream() { return last_cmd_stream_; }
+  void set_last_cmd_device(Device *dev) { last_cmd_device_ = dev; }
+  Device *last_cmd_device() { return last_cmd_device_; }
 private:
   void CompleteSub();
 
@@ -172,7 +225,8 @@ private:
   unsigned long parent_;
   bool parent_exist_;
   int ncmds_;
-  Command* cmds_[64];
+  int max_cmds_;
+  Command **cmds_;
   Command* cmd_kernel_;
   Command* cmd_last_;
   Device* dev_;
@@ -210,7 +264,7 @@ private:
   int recommended_stream_;
   int recommended_dev_;
   int brs_policy_;
-  char opt_[64];
+  char opt_[128];
 
   int type_;
   int status_;
@@ -240,13 +294,24 @@ private:
   pthread_mutex_t mutex_subtasks_;
   //pthread_cond_t complete_cond_;
   vector<DataObjectProfile>       out_dataobject_profiles;
-
+  vector<ProfileEvent>            profile_events_;
 public:
-  static Task* Create(Platform* platform, int type, const char* name);
-  static Task* Create(Platform* platform, int type, std::string name) {
-    return Create(platform, type, name.c_str());
+  vector<ProfileEvent> & profile_events() { return profile_events_; }
+  ProfileEvent & CreateProfileEvent(BaseMem *mem, int connect_dev, ProfileRecordType type, Device *dev, int stream);
+  ProfileEvent & CreateProfileEvent(Task *task, int connect_dev, ProfileRecordType type, Device *dev, int stream) {
+      profile_events_.push_back(ProfileEvent(task->uid(), connect_dev, type, dev, stream));
+      return profile_events_.back();
+  }
+  ProfileEvent & LastProfileEvent() {
+      return profile_events_.back();
+  }
+  static Task* Create(Platform* platform, int type, const char* name, int max_cmds=IRIS_TASK_MAX_CMDS);
+  static Task* Create(Platform* platform, int type, std::string name, int max_cmds=IRIS_TASK_MAX_CMDS) {
+    return Create(platform, type, name.c_str(), max_cmds);
   }
   bool IsKernelSupported(Device *dev);
+  int last_cmd_stream_;
+  Device *last_cmd_device_;
 };
 
 } /* namespace rt */

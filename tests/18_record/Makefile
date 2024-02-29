@@ -1,6 +1,6 @@
 TEST=test18_record
 
-all: $(TEST) kernel.openmp.so 
+all: $(TEST) kernel.openmp.so kernel.hip kernel.ptx
 
 include ../Makefile.tests
 

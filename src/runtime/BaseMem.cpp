@@ -19,13 +19,14 @@ void BaseMem::HostRecordEvent(int devno, int stream)
     }
     HostUnlock();
 }
-void BaseMem::RecordEvent(int devno, int stream) {
-    if (GetCompletionEvent(devno) == NULL) {
-        Device *dev = archs_dev_[devno];
-        dev->CreateEvent(GetCompletionEventPtr(devno), iris_event_disable_timing);
+void BaseMem::RecordEvent(int devno, int stream, bool new_entry) {
+    Device *dev = archs_dev_[devno];
+    void **event_ptr = GetCompletionEventPtr(devno, new_entry);
+    if (*event_ptr == NULL) {
+        dev->CreateEvent(event_ptr, iris_event_disable_timing);
     }
     _trace(" devno:%d stream:%d uid:%lu event:%p\n", devno, stream, uid(), GetCompletionEvent(devno)); 
-    archs_dev_[devno]->RecordEvent(GetCompletionEventPtr(devno), stream);
+    archs_dev_[devno]->RecordEvent(event_ptr, stream);
 }
 void BaseMem::WaitForEvent(int devno, int stream, int dep_devno) {
     assert(GetCompletionEvent(devno) != NULL);

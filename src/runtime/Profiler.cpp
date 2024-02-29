@@ -51,15 +51,31 @@ int Profiler::Exit() {
   return IRIS_SUCCESS;
 }
 
-int Profiler::Write(const char* s, int tab) {
-  if (!msg_->WriteString(s)) {
-    Flush();
-    if (!msg_->WriteString(s)) {
-      _error("s[%s]", s);
-      return IRIS_ERROR;
-    }
+int Profiler::Write(string s, int tab) {
+  //Flush();
+  size_t space_left = msg_->free_buf_size();
+  while(space_left < s.length()) {
+     string s1 = s.substr(0, space_left);
+     s = s.substr(space_left);
+     if (!msg_->WriteString(s1.c_str())) {
+         _error("s[%s]", s.c_str());
+         return IRIS_ERROR;
+     }
+     Flush();
+     space_left = msg_->free_buf_size();
+  }
+  if (s.length() <= space_left) {
+      if (!msg_->WriteString(s.c_str())) {
+          _error("s[%s]", s.c_str());
+          return IRIS_ERROR;
+      }
   }
   return IRIS_SUCCESS;
+}
+
+int Profiler::Write(const char* s, int tab) {
+  string s_str = s;
+  return Write(s_str, tab);
 }
 
 int Profiler::Flush() {

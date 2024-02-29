@@ -32,6 +32,7 @@
 #include "Profiler.h"
 #include "ProfilerDOT.h"
 #include "ProfilerGoogleCharts.h"
+#include "ProfilerEventRecord.h"
 #include "SchedulingHistory.h"
 #include "QueueTask.h"
 #include "Scheduler.h"
@@ -144,8 +145,7 @@ Platform::~Platform() {
   if (filter_task_split_) delete filter_task_split_;
   if (timer_) delete timer_;
   if (null_kernel_) delete null_kernel_;
-  if (enable_profiler_)
-    for (int i = 0; i < nprofilers_; i++) delete profilers_[i];
+  for (int i = 0; i < nprofilers_; i++) delete profilers_[i];
   if (sig_handler_) delete sig_handler_;
   if (json_) delete json_;
   if (pool_) delete pool_;
@@ -196,6 +196,11 @@ int Platform::Init(int* argc, char*** argv, int sync) {
   EnvironmentGet("DISABLE_KERNEL_LAUNCH", &disable_kernel_launch, NULL);
   if (disable_kernel_launch != NULL && atoi(disable_kernel_launch) == 1)
       set_kernel_launch_disabled(true);
+  event_profile_enabled_ = false;
+  char *event_profile = NULL;
+  EnvironmentGet("EVENT_PROFILE", &event_profile, NULL);
+  if (event_profile != NULL && atoi(event_profile) == 1)
+      event_profile_enabled_ = true;
   char *async = NULL;
   EnvironmentGet("ASYNC", &async, NULL);
   if (async != NULL && atoi(async) == 1)
@@ -243,6 +248,9 @@ int Platform::Init(int* argc, char*** argv, int sync) {
     profilers_[nprofilers_++] = new ProfilerGoogleCharts(this);
     profilers_[nprofilers_++] = new ProfilerGoogleCharts(this, true);
   }
+  if (event_profile_enabled_) 
+    profilers_[nprofilers_++] = new ProfilerEventRecord(this);
+
   if (enable_scheduling_history_) scheduling_history_ = new SchedulingHistory(this);
 
 
@@ -444,6 +452,7 @@ int Platform::InitCUDA() {
     err = loaderCUDA_->cuDeviceGet(&dev, i);
     _cuerror(err);
     devs_[ndevs_] = new DeviceCUDA(loaderCUDA_, loaderHost2CUDA_, dev, ndevs_, nplatforms_);
+    devs_[ndevs_]->set_root_device(devs_[ndevs_-i]);
     arch_available_ |= devs_[ndevs_]->type();
     cudevs[mdevs] = dev;
     ndevs_++;
@@ -507,6 +516,7 @@ int Platform::InitHIP() {
     _hiperror(err);
     hipdevs[mdevs] = dev;
     devs_[ndevs_] = new DeviceHIP(loaderHIP_, loaderHost2HIP_, dev, i, ndevs_, nplatforms_);
+    devs_[ndevs_]->set_root_device(devs_[ndevs_-i]);
     arch_available_ |= devs_[ndevs_]->type();
     ndevs_++;
     mdevs++;
@@ -701,6 +711,7 @@ int Platform::InitOpenCL() {
           continue;
       }
       devs_[ndevs_] = dev;
+      devs_[ndevs_]->set_root_device(devs_[ndevs_-mdevs]);
       arch_available_ |= devs_[ndevs_]->type();
       ndevs_++;
       mdevs++;
@@ -1321,7 +1332,7 @@ shared_ptr<History> Platform::CreateHistory(string kname)
 }
 void Platform::ProfileCompletedTask(Task *task)
 {
-    if (enable_profiler_ && !task->marker()){
+    if (!task->marker()){
         for (int i = 0; i < nprofilers_; i++) profilers_[i]->CompleteTask(task);
     }
 }

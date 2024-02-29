@@ -16,8 +16,8 @@ __kernel void ijk(__global double* restrict C, __global double* restrict A, __gl
   C[i * SIZE + j] = sum;
 
 }
-
-//#include "eth_crc32_lut.h"
+/*
+#include "eth_crc32_lut.h"
 
 __kernel void crc32_slice8(__global const uint* restrict data, uint length_bytes, const uint length_ints, __global uint* restrict res)
 {
@@ -60,4 +60,4 @@ __kernel void crc32_slice8(__global const uint* restrict data, uint length_bytes
 
   res[gid] = ~crc;
 }
-
+*/

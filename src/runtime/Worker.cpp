@@ -68,6 +68,7 @@ void Worker::Execute(Task* task) {
   task->Release(); // This is for Scheduler::Submit task retain
   task->set_dev(dev_);
   if (task->marker()) {
+    dev_->FreeDestroyEvents();
     dev_->Synchronize();
     task->Complete();
     //task->TryReleaseTask();
