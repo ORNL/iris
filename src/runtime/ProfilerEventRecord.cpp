@@ -35,6 +35,11 @@ const ProfileTypeColor = \
     6: 'brown', \
     7: 'black', \
 }; \
+function sort_compare_fn(a, b) { \
+    const v1 = a[0]; \
+    const v2 = b[0]; \
+    return v1.localeCompare(v2); \
+}; \
 function drawChart() { \
 var container = document.getElementById('iris'); \
 var chart = new google.visualization.Timeline(container); \
@@ -49,6 +54,7 @@ dataTable.addColumn({ type: 'number', id: 'End' }); \
 dataTable.addColumn({ type: 'string', role: 'style'}); \
 /* Function to load rows from another data structure and add to the data table. */\
 function loadRowsAndDrawChart(rows, color_options) { \
+    const sorted_rows = rows.sort(sort_compare_fn); \
     dataTable.addRows(rows); \
     /*var options = { \
       colors: color_options, \

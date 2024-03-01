@@ -253,10 +253,14 @@ bool Task::Dispatchable() {
   //print_incomplete_tasks();
   if (status_ == IRIS_PENDING) return false;
   if (depends_uids_ == NULL) return true;
+  bool has_cmds = (ncmds() > 0) ? true: false;
+  _event_prof_debug("Checking task:%lu:%s dispatchable depends_uids_:%p ndepends_:%d pending:%d has_cmds:%d", uid(), name(), depends_uids_, ndepends_, (status_ == IRIS_PENDING), has_cmds);
   for (int i = 0; i < ndepends_; i++) {
       Task *dep = platform_->get_task_object(depends_uids_[i]);
-#if 0
-      if ( dep != NULL && dep->is_async() && !(dep->status() == IRIS_COMPLETE || dep->status() == IRIS_RUNNING)) return false;
+      //printf("dep:%p dep async:%d dep_status:%d,%d dep->status():%d IRIS_COMPLETE:%d IRIS_RUNNING:%d\n", dep, dep->is_async(), dep->status() == IRIS_COMPLETE, dep->status() == IRIS_RUNNING, dep->status(), IRIS_COMPLETE, IRIS_RUNNING);
+#if 1
+      if ( dep != NULL && dep->is_async() && has_cmds && !(dep->status() == IRIS_COMPLETE || dep->status() == IRIS_SUBMITTED)) return false;
+      if ( dep != NULL && dep->is_async() && !has_cmds && dep->status() != IRIS_COMPLETE) return false;
       if ( dep != NULL && !dep->is_async() && dep->status() != IRIS_COMPLETE) return false;
 #else
       if ( dep != NULL && dep->status() != IRIS_COMPLETE) return false;

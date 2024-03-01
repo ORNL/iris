@@ -119,6 +119,7 @@ public:
   void set_system() { system_ = true; }
   bool marker() { return type_ == IRIS_MARKER; }
   int status() { return status_; }
+  void update_status(int status) { status_ = status; }
   Task* parent() { return platform_->get_task_object(parent_); }
   Command* cmd(int i) { return cmds_[i]; }
   Command* cmd_kernel() { return cmd_kernel_; }

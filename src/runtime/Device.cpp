@@ -118,6 +118,7 @@ void Device::Execute(Task* task) {
   FreeDestroyEvents();
   ReserveActiveTask();
   busy_ = true;
+  _event_prof_debug("Execute task:%lu:%s dev:%d:%s\n", task->uid(), task->name(), devno(), name());
   if (is_async(task) && task->user()) task->set_recommended_stream(GetStream(task));
   if (hook_task_pre_) hook_task_pre_(task);
   TaskPre(task);
@@ -161,6 +162,7 @@ void Device::Execute(Task* task) {
     cmd->set_time_end(timer_);
     if (hook_command_post_) hook_command_post_(cmd);
   }
+  task->update_status(IRIS_SUBMITTED);
   if (is_async(task) && task->user()) AddCallback(task);
   task->set_time_end(timer_);
   _debug2("Task %s:%lu refcnt:%d\n", task->name(), task->uid(), task->ref_cnt());
@@ -252,6 +254,7 @@ void Device::ResolveH2DStartEvents(Task *task, BaseMem *mem, bool async)
         //TODO: Think here; Can the source of write could be different type device; The best would be to synchronize instead of cross synchronization
         //WaitForEvent(event, mem_stream, iris_event_wait_default);
         Device *src_dev = Platform::GetPlatform()->device(write_dev);
+        _event_prof_debug(" H2D    dev[%d][%s] -> dev[%d][%s] mem_stream:%d written_stream:%d", src_dev->devno(), src_dev->name(), devno(), name(), mem_stream, written_stream);
         _debug3("*********** H2D    dev[%d][%s] -> dev[%d][%s] mem_stream:%d written_stream:%d", src_dev->devno(), src_dev->name(), devno(), name(), mem_stream, written_stream);
         src_dev->EventSynchronize(event);
         _debug3("Event synchronization done\n");
