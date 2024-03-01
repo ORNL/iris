@@ -472,11 +472,10 @@ test-backends-37:
         path: coverage.xml
 
 .dagger:
-  tags: [slurm]
+  tags: [zenith]
   stage: dagger
   resource_group: slurm_zenith
   needs: []
-  before_script:
 
 .dagger-zenith-run-policy-evaluations:
   extends: [.dagger]
