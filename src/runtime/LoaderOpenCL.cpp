@@ -64,6 +64,7 @@ int LoaderOpenCL::LoadFunctions() {
   LOADFUNC(clReleaseProgram);
   LOADFUNC(clReleaseEvent);
   LOADFUNC(clBuildProgram);
+  LOADFUNC(clEnqueueMarkerWithWaitList);
   LOADFUNC(clGetProgramInfo);
   LOADFUNC(clGetProgramBuildInfo);
   LOADFUNC(clCreateKernel);

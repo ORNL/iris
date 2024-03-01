@@ -164,6 +164,7 @@ public:
   void set_first_event_cpu_end_time(double time) { first_event_cpu_end_time_ = time; }
   void set_first_event_cpu_begin_time(double time) { first_event_cpu_begin_time_ = time; }
   bool IsFree();
+  int active_tasks() { return active_tasks_; }
   void FreeActiveTask() { active_tasks_--; }
   void ReserveActiveTask() { active_tasks_++; }
   int platform() { return platform_; }

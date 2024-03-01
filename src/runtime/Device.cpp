@@ -175,7 +175,7 @@ void Device::Execute(Task* task) {
 
 bool Device::IsFree()
 {
-    //printf("Active tasks:%d\n", active_tasks_);
+    //cout <<"Active tasks: "<<active_tasks_<<endl;
     if (active_tasks_ == 0) return true;
     return false;
 }
@@ -192,11 +192,12 @@ int Device::AddCallback(Task* task) {
 
 void Device::Callback(void *stream, int status, void* data) {
   Task* task = (Task*) data;
+  //printf("----Function is callbacked stream:%p status:%d data:%p\n", stream, status, data);
   unsigned long uid = task->uid();
   string tname = task->name();
-  _event_prof_debug(" ------ Completed task stream_ptr:%p task:%p:%s:%lu status:%d\n", stream, task, task->name(), task->uid(), status);
-  _debug3(" ----- stream_ptr:%p task:%p:%s:%lu status:%d", stream, task, task->name(), task->uid(), status);
   task->dev()->FreeActiveTask();
+  _event_prof_debug(" ------ Completed task stream_ptr:%p task:%p:%s:%lu status:%d data:%p\n", stream, task, task->name(), task->uid(), status, data);
+  _debug3(" ----- stream_ptr:%p task:%p:%s:%lu status:%d", stream, task, task->name(), task->uid(), status);
   _event_prof_debug(" ------ Just before task complete from callback task stream_ptr:%p task:%p:%s:%lu status:%d\n", stream, task, tname.c_str(), uid, status);
   task->Complete();
   _event_prof_debug(" ------ Safe return from callback task stream_ptr:%p task:%p:%s:%lu status:%d\n", stream, task, tname.c_str(), uid, status);

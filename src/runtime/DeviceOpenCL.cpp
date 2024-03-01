@@ -527,10 +527,21 @@ int DeviceOpenCL::Synchronize() {
   return IRIS_SUCCESS;
 }
 
+int DeviceOpenCL::RegisterCallback(int stream, CallBackType callback_fn, void *data, int flags) 
+{
+    // Create an event for the callback
+    cl_event callbackEvent;
+    //cl_int err = ld_->clEnqueueMarker(clcmdq_[stream], &callbackEvent);
+    cl_int err = ld_->clEnqueueMarkerWithWaitList(clcmdq_[stream], 0, NULL, &callbackEvent);
+
+    // Set up callback function
+    ld_->clSetEventCallback(callbackEvent, CL_COMPLETE, (OpenCLCallBack)callback_fn, data);
+}
+/*
 int DeviceOpenCL::AddCallback(Task* task) {
   task->Complete();
   return IRIS_SUCCESS;
-}
+}*/
 
 #if 0
 void DeviceOpenCL::ExecuteKernel(Command* cmd) {

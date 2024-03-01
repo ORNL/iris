@@ -32,13 +32,14 @@ public:
   int KernelLaunchInit(Command *cmd, Kernel* kernel);
   void CheckVendorSpecificKernel(Kernel *kernel);
   int Synchronize();
-  int AddCallback(Task* task);
+  //int AddCallback(Task* task);
   int RecreateContext();
   //void ExecuteKernel(Command* cmd);
   static std::string GetLoaderHost2OpenCLSuffix(LoaderOpenCL *ld, cl_device_id cldev);
   bool SupportJIT() { return false; }
 
 private:
+  int RegisterCallback(int stream, CallBackType callback_fn, void* data, int flags=0);
   int CreateProgram(const char* suffix, char** src, size_t* srclen);
   void CreateEvent(void **event, int flags);
   void RecordEvent(void **event, int stream, int event_creation_flag=iris_event_disable_timing);

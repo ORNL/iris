@@ -8,6 +8,7 @@
 namespace iris {
 namespace rt {
 
+typedef void (*OpenCLCallBack)(cl_event, cl_int, void*);
 class LoaderOpenCL : public Loader {
 public:
   LoaderOpenCL();
@@ -22,6 +23,12 @@ cl_int
 (*clGetPlatformIDs)(cl_uint          num_entries,
                  cl_platform_id * platforms,
                  cl_uint *        num_platforms) CL_API_SUFFIX__VERSION_1_0;
+
+CL_API_ENTRY cl_int CL_API_CALL
+(*clEnqueueMarkerWithWaitList)(cl_command_queue  command_queue,
+                            cl_uint           num_events_in_wait_list,
+                            const cl_event *  event_wait_list,
+                            cl_event *        event) CL_API_SUFFIX__VERSION_1_2;
 
 CL_API_ENTRY cl_int CL_API_CALL
 (*clGetPlatformInfo)(cl_platform_id   platform,

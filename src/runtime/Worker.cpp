@@ -108,7 +108,7 @@ void Worker::Run() {
     if (!running_) break;
     pair<unsigned long, Task*> task;
     _debug2("Device:%d:%s Queue size:%lu", dev_->devno(), dev_->name(), queue_->Size());
-    while (running_ && queue_->Dequeue(&task)){
+    while (running_ && queue_->Dequeue(&task, dev_)){
       //printf("Device:%d:%s Qsize:%lu dequeued task:%lu:%s:%p\n", dev_->devno(), dev_->name(), queue_->Size(), task->uid(), task->name(), task);
       _debug2("Device:%d:%s Qsize:%lu dequeued task:%lu:%s:%p", dev_->devno(), dev_->name(), queue_->Size(), task.first, task.second->name(), task.second);
       //FIX: This check is not needed. For the policies like ALL, when the task is in some worker queue, it couldn't be deleted unless all worker queues release them
