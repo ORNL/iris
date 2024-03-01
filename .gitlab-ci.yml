@@ -540,10 +540,6 @@ dagger-zenith-test-correctness:
     paths:
       - apps/dagger/test-out.txt 
       - apps/dagger/errors.txt 
-      - apps/dagger/dagger-payloads
-      - apps/dagger/dagger-graphs
-      - apps/dagger/dagger-results
-      - apps/dagger/dagger-figures
       - slurm*.txt
       - errors.txt
 
