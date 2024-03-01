@@ -507,19 +507,19 @@ dagger-zenith-run-policy-evaluations-synchronous-explicit-data-transfers:
 
 dagger-zenith-run-policy-evaluations-synchronous-dmem:
   extends: [.dagger-zenith-run-policy-evaluations]
-  before_script:
-    - export USE_DATA_MEMORY=--use-data-memory
+  variables:
+    USE_DATA_MEMORY: --use-data-memory
 
 dagger-zenith-run-policy-evaluations-asynchronous-explicit-data-transfers:
   extends: [.dagger-zenith-run-policy-evaluations]
-  before_script:
-    - export IRIS_ASYNC=1
+  variables:
+    IRIS_ASYNC: 1
 
 dagger-zenith-run-policy-evaluations-asynchronous-dmem:
   extends: [.dagger-zenith-run-policy-evaluations]
-  before_script:
-    - export IRIS_ASYNC=1
-    - export USE_DATA_MEMORY=--use-data-memory
+  variables:
+    IRIS_ASYNC: 1
+    USE_DATA_MEMORY: --use-data-memory
 
 dagger-zenith-test-correctness:
   extends: [.dagger]
