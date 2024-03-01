@@ -540,7 +540,6 @@ dagger-zenith-test-correctness:
       - apps/dagger/test-out.txt 
       - apps/dagger/errors.txt 
       - slurm*.txt
-      - errors.txt
 
 coverage-collect:
   tags: [zenith]
