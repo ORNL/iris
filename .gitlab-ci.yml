@@ -498,9 +498,7 @@ test-backends-37:
       - apps/dagger/dagger-payloads
       - apps/dagger/dagger-graphs
       - apps/dagger/dagger-results
-      - apps/dagger/dagger-figures
       - slurm*.txt
-      - errors.txt
 
 dagger-zenith-run-policy-evaluations-synchronous-explicit-data-transfers:
   extends: [.dagger-zenith-run-policy-evaluations]
