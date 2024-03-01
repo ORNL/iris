@@ -37,10 +37,11 @@ enum ProfileRecordType
     PROFILE_H2D = 0,
     PROFILE_D2H = 1,
     PROFILE_D2D = 2,
-    PROFILE_D2H_H2D = 3,
-    PROFILE_KERNEL = 4,
-    PROFILE_O2D = 5,
-    PROFILE_D2O = 6,
+    PROFILE_D2HH2D_D2H = 3,
+    PROFILE_D2HH2D_H2D = 4,
+    PROFILE_KERNEL = 5,
+    PROFILE_O2D = 6,
+    PROFILE_D2O = 7,
 }; 
 class ProfileEvent {
     public:

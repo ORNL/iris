@@ -107,6 +107,9 @@ public:
 
   Kernel* ExecuteSelectorKernel(Command* cmd);
 
+  void ResolveH2DStartEvents(Task *task, BaseMem *mem, bool async);
+  void ResolveH2DEndEvents(Task *task, BaseMem *mem, bool async);
+  void SynchronizeInputToMemory(Task *task, BaseMem *mem);
   void GetPossibleDevices(int devno, int *nddevs, 
           int &d2d_dev, int &cpu_dev, int &non_cpu_dev);
   virtual int RegisterCallback(int stream, CallBackType callback_fn, void *data, int flags=0);

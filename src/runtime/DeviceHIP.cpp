@@ -117,7 +117,7 @@ int DeviceHIP::Init() {
       set_first_event_cpu_begin_time(timer_->Now());
       RecordEvent((void **)(&single_start_time_event_), 0, iris_event_default);
       set_first_event_cpu_end_time(timer_->Now());
-      _info("Event start time of device:%f end time of record:%f\n", first_event_cpu_begin_time(), first_event_cpu_end_time());
+      _event_prof_debug("Event start time of device:%f end time of record:%f", first_event_cpu_begin_time(), first_event_cpu_end_time());
   }
   err = ld_->hipGetDevice(&devid_);
   _hiperror(err);
