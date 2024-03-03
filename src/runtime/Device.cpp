@@ -117,6 +117,7 @@ void Device::Execute(Task* task) {
   _debug2("Inside device execute and calling free destroy events %lu:%s\n", task->uid(), task->name());
   FreeDestroyEvents();
   ReserveActiveTask();
+  double execute_start = (timer_->Now()-first_event_cpu_mid_point_time())*1000.0;
   busy_ = true;
   _event_prof_debug("Execute task:%lu:%s dev:%d:%s\n", task->uid(), task->name(), devno(), name());
   if (is_async(task) && task->user()) task->set_recommended_stream(GetStream(task));
@@ -163,6 +164,12 @@ void Device::Execute(Task* task) {
     if (hook_command_post_) hook_command_post_(cmd);
   }
   task->update_status(IRIS_SUBMITTED);
+#ifdef ENABLE_PROF_EVENT
+  double execute_end = (timer_->Now()-first_event_cpu_mid_point_time())*1000.0;
+  if (platform_obj_->is_event_profile_enabled()) {
+      task->CreateProfileEvent(task, devno(), PROFILE_INIT, this, (float)execute_start, (float)execute_end);
+  }
+#endif
   if (is_async(task) && task->user()) AddCallback(task);
   task->set_time_end(timer_);
   _debug2("Task %s:%lu refcnt:%d\n", task->name(), task->uid(), task->ref_cnt());

@@ -13,7 +13,13 @@
 #include <cstdlib>
 #include <regex>
 #include <cxxabi.h>
+#include <thread>
 
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <pthread.h>
+#endif
 namespace iris {
 namespace rt {
 
@@ -158,6 +164,31 @@ void Utils::Datetime(char* str) {
   time_t t = time(NULL);
   struct tm* tm = localtime(&t);
   strftime(str, 256, "%Y%m%d%H%M%S", tm);
+}
+
+int Utils::CPUCoresCount() {
+    unsigned int num_cores = std::thread::hardware_concurrency();
+    return num_cores;
+}
+void Utils::SetThreadAffinity(unsigned int core_id) {
+    unsigned int num_cores = std::thread::hardware_concurrency();
+    unsigned int lcore_id = core_id;
+    if (lcore_id >= num_cores) 
+        lcore_id = lcore_id % num_cores;
+#ifdef _WIN32
+    DWORD_PTR mask = 1ULL << lcore_id;
+    SetThreadAffinityMask(GetCurrentThread(), mask);
+#else //_WIN32
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    CPU_SET(lcore_id, &cpuset);
+
+    pthread_t current_thread = pthread_self();
+    int s = pthread_setaffinity_np(current_thread, sizeof(cpu_set_t), &cpuset);
+    printf("Device:%u Setting affinity of thread to core id:%u\n", core_id, lcore_id);
+    if (s != 0)
+        _error("CPU affinity set to %u is failed with pthread_setaffinity_np", core_id);
+#endif // _WIN32
 }
 
 } /* namespace rt */

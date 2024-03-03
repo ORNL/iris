@@ -6,6 +6,7 @@
 #include "QueueReady.h"
 #include "Scheduler.h"
 #include "Task.h"
+#include "Utils.h"
 #include "Timer.h"
 
 namespace iris {
@@ -14,6 +15,7 @@ namespace rt {
 Worker::Worker(Device* dev, Platform* platform, bool single) {
   dev_ = dev;
   platform_ = platform;
+  //Utils::SetThreadAffinity(dev_->devno());
   dev_->set_worker(this);
   scheduler_ = platform_->scheduler();
   if (scheduler_) consistency_ = scheduler_->consistency();

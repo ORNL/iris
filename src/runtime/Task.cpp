@@ -23,12 +23,14 @@ void ProfileEvent::Clean() {
     //printf("completed prof_event trying to destroy :%p %p\n", &start_event_, start_event_);
 }
 float ProfileEvent::GetStartTime() {
+    if (!event_fetch_flag_) return start_time_; 
     float etime =0.0;
     if (start_event_ != NULL && event_dev_ != NULL) 
         etime = event_dev_->GetEventTime(start_event_, stream_);
     return etime;
 }
 float ProfileEvent::GetEndTime() {
+    if (!event_fetch_flag_) return end_time_; 
     float etime =0.0;
     if (end_event_ != NULL && event_dev_ != NULL) 
         etime = event_dev_->GetEventTime(end_event_, stream_);

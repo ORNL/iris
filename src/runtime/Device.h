@@ -164,7 +164,11 @@ public:
   void set_root_device(Device *root) { root_dev_ = root; }
   double first_event_cpu_end_time() { return first_event_cpu_end_time_; }
   double first_event_cpu_begin_time() { return first_event_cpu_begin_time_; }
-  void set_first_event_cpu_end_time(double time) { first_event_cpu_end_time_ = time; }
+  double first_event_cpu_mid_point_time() { return first_event_cpu_mid_point_time_; }
+  void set_first_event_cpu_end_time(double time) { 
+      first_event_cpu_end_time_ = time; 
+      first_event_cpu_mid_point_time_ = first_event_cpu_begin_time_ + (first_event_cpu_end_time_-first_event_cpu_begin_time_)/2.0f;
+  }
   void set_first_event_cpu_begin_time(double time) { first_event_cpu_begin_time_ = time; }
   bool IsFree();
   int active_tasks() { return active_tasks_; }
@@ -255,6 +259,7 @@ private:
   Device *root_dev_;
   double first_event_cpu_begin_time_;
   double first_event_cpu_end_time_;
+  double first_event_cpu_mid_point_time_;
   std::atomic<int> active_tasks_;
 protected:
   Device *root_device() { return root_dev_; }

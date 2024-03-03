@@ -94,6 +94,8 @@ int DeviceOpenMP::GetProcessorNameQualcomm(char* cpuinfo) {
 int DeviceOpenMP::Init() {
   //ld_->set_dev(devno(), model());
   ld_->init(devno());
+  set_first_event_cpu_begin_time(timer_->Now());
+  set_first_event_cpu_end_time(timer_->Now());
   return IRIS_SUCCESS;
 }
 

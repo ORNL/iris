@@ -774,6 +774,7 @@ int Platform::InitDevices(bool sync) {
     //task->Release();
   //}
   delete[] tasks;
+  Synchronize();
   return IRIS_SUCCESS;
 }
 

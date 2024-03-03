@@ -42,6 +42,7 @@ enum ProfileRecordType
     PROFILE_KERNEL = 5,
     PROFILE_O2D = 6,
     PROFILE_D2O = 7,
+    PROFILE_INIT = 8,
 }; 
 class ProfileEvent {
     public:
@@ -53,14 +54,29 @@ class ProfileEvent {
             connect_dev_ = connect_dev;
             event_dev_ = event_dev;
             stream_ = stream;
+            event_fetch_flag_ = true;
             //printf("prof_event created:%p %p\n", &start_event_, start_event_);
+        }
+        ProfileEvent(unsigned long id, int connect_dev, ProfileRecordType type, Device *event_dev, float start_time, float end_time) {
+            start_event_ = NULL;
+            end_event_ = NULL;
+            type_ = type;
+            id_ = id;
+            connect_dev_ = connect_dev;
+            event_dev_ = event_dev;
+            stream_ = -1;
+            start_time_ = start_time;
+            end_time_ = end_time;
+            event_fetch_flag_ = false;
         }
         ~ProfileEvent(){ /*It shouldn't destroy any events*/ }
         void Clean();
         float GetStartTime();
         float GetEndTime();
         void RecordStartEvent();
+        void RecordStartEvent(float start_time) { start_time_ = start_time; }
         void RecordEndEvent();
+        void RecordEndEvent(float end_time) { end_time_ = end_time; }
         int stream() { return stream_; }
         void **start_event_ptr() { return &start_event_; }
         void **end_event_ptr()   { return &end_event_; }
@@ -73,6 +89,9 @@ class ProfileEvent {
         unsigned long uid() { return id_; }
     private:
         Device *event_dev_;
+        float start_time_;
+        float end_time_;
+        bool event_fetch_flag_; 
         void *start_event_;
         void *end_event_;
         ProfileRecordType type_;
@@ -302,6 +321,10 @@ public:
   ProfileEvent & CreateProfileEvent(BaseMem *mem, int connect_dev, ProfileRecordType type, Device *dev, int stream);
   ProfileEvent & CreateProfileEvent(Task *task, int connect_dev, ProfileRecordType type, Device *dev, int stream) {
       profile_events_.push_back(ProfileEvent(task->uid(), connect_dev, type, dev, stream));
+      return profile_events_.back();
+  }
+  ProfileEvent &CreateProfileEvent(Task *task, int connect_dev, ProfileRecordType type, Device *dev, float start, float end) {
+      profile_events_.push_back(ProfileEvent(task->uid(), connect_dev, type, dev, start, end));
       return profile_events_.back();
   }
   ProfileEvent & LastProfileEvent() {

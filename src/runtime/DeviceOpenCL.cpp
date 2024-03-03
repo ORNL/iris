@@ -536,6 +536,7 @@ int DeviceOpenCL::RegisterCallback(int stream, CallBackType callback_fn, void *d
 
     // Set up callback function
     ld_->clSetEventCallback(callbackEvent, CL_COMPLETE, (OpenCLCallBack)callback_fn, data);
+    return IRIS_SUCCESS;
 }
 /*
 int DeviceOpenCL::AddCallback(Task* task) {
