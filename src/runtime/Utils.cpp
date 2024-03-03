@@ -14,6 +14,7 @@
 #include <regex>
 #include <cxxabi.h>
 #include <thread>
+#include <sched.h>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -183,11 +184,15 @@ void Utils::SetThreadAffinity(unsigned int core_id) {
     CPU_ZERO(&cpuset);
     CPU_SET(lcore_id, &cpuset);
 
+#if 1
+    sched_setaffinity(0, sizeof(cpuset), &cpuset);
+#else
     pthread_t current_thread = pthread_self();
     int s = pthread_setaffinity_np(current_thread, sizeof(cpu_set_t), &cpuset);
     printf("Device:%u Setting affinity of thread to core id:%u\n", core_id, lcore_id);
     if (s != 0)
         _error("CPU affinity set to %u is failed with pthread_setaffinity_np", core_id);
+#endif
 #endif // _WIN32
 }
 
