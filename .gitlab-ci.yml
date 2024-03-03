@@ -471,39 +471,22 @@ test-backends-37:
         coverage_format: cobertura
         path: coverage.xml
 
-#tags: [slurm]
 .dagger:
   tags: [zenith]
   stage: dagger
+  resource_group: slurm_zenith
   needs: []
-  before_script:
 
-.run-policy-evaluations-artifacts:
-  artifacts:
-    when: always
-    paths:
-      - apps/dagger/dagger-figures/*.csv
-      - slurm*.txt
-      - errors.txt
-
-.test-correctness-artifacts:
-  artifacts:
-    when: always
-    paths:
-      - slurm*.txt
-      - errors.txt
-
-#- .gitlab-ci-scripts/runner_watcher.sh $$ &
-#- sbatch --partition=gpu --nodelist=zenith .gitlab-ci-scripts/slurm-dagger-run-policy-evaluations.sh
-#    - python3 -u .gitlab-ci-scripts/slurm-tee.py slurm-test-err.txt slurm-test-out.txt
-dagger-zenith-run-policy-evaluations:
-  extends: [.dagger, .run-policy-evaluations-artifacts]
+.dagger-zenith-run-policy-evaluations:
+  extends: [.dagger]
   script:
     - source /auto/software/iris/setup_system.source
     - echo "Installing iris to $IRIS_INSTALL_ROOT"
     - bash build-coverage.sh
     - source $IRIS_INSTALL_ROOT/setup.source
-    - bash .gitlab-ci-scripts/slurm-dagger-run-policy-evaluations.sh
+    - .gitlab-ci-scripts/runner_watcher.sh $$ &
+    - sbatch --partition=gpu --nodelist=zenith .gitlab-ci-scripts/slurm-dagger-run-policy-evaluations.sh
+    - python3 -u .gitlab-ci-scripts/slurm-tee.py slurm-test-err.txt slurm-test-out.txt
     - echo "Errors $(wc -l apps/dagger/errors.txt)"
     - cat apps/dagger/errors.txt
     - if [ -s apps/dagger/errors.txt ]; then exit 1; fi
@@ -512,19 +495,40 @@ dagger-zenith-run-policy-evaluations:
     paths:
       - apps/dagger/test-out.txt 
       - apps/dagger/errors.txt 
+      - apps/dagger/dagger-payloads
+      - apps/dagger/dagger-graphs
+      - apps/dagger/dagger-results
+      - slurm*.txt
 
+dagger-zenith-run-policy-evaluations-synchronous-explicit-data-transfers:
+  extends: [.dagger-zenith-run-policy-evaluations]
 
-#- .gitlab-ci-scripts/runner_watcher.sh $$ &
-#- sbatch --partition=gpu --nodelist=zenith .gitlab-ci-scripts/slurm-dagger-test-correctness.sh
-#- python3 -u .gitlab-ci-scripts/slurm-tee.py slurm-test-err.txt slurm-test-out.txt
+dagger-zenith-run-policy-evaluations-synchronous-dmem:
+  extends: [.dagger-zenith-run-policy-evaluations]
+  variables:
+    USE_DATA_MEMORY: --use-data-memory
+
+dagger-zenith-run-policy-evaluations-asynchronous-explicit-data-transfers:
+  extends: [.dagger-zenith-run-policy-evaluations]
+  variables:
+    IRIS_ASYNC: 1
+
+dagger-zenith-run-policy-evaluations-asynchronous-dmem:
+  extends: [.dagger-zenith-run-policy-evaluations]
+  variables:
+    IRIS_ASYNC: 1
+    USE_DATA_MEMORY: --use-data-memory
+
 dagger-zenith-test-correctness:
-  extends: [.dagger, .test-correctness-artifacts]
+  extends: [.dagger]
   script:
     - source /auto/software/iris/setup_system.source
     - echo "Installing iris to $IRIS_INSTALL_ROOT"
     - bash build-coverage.sh
     - source $IRIS_INSTALL_ROOT/setup.source
-    - bash .gitlab-ci-scripts/slurm-dagger-test-correctness.sh
+    - .gitlab-ci-scripts/runner_watcher.sh $$ &
+    - sbatch --partition=gpu --nodelist=zenith .gitlab-ci-scripts/slurm-dagger-test-correctness.sh
+    - python3 -u .gitlab-ci-scripts/slurm-tee.py slurm-test-err.txt slurm-test-out.txt
     - echo "Errors $(wc -l apps/dagger/errors.txt)"
     - cat apps/dagger/errors.txt
     - if [ -s apps/dagger/errors.txt ]; then exit 1; fi
@@ -533,6 +537,7 @@ dagger-zenith-test-correctness:
     paths:
       - apps/dagger/test-out.txt 
       - apps/dagger/errors.txt 
+      - slurm*.txt
 
 coverage-collect:
   tags: [zenith]
