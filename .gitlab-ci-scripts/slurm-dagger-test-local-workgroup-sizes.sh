@@ -50,7 +50,7 @@ pushd apps/dagger
 #export REPEATS=10
 make -f Makefile.venv setup
 make -f Makefile.venv clean
-REPEATS=10 make -f Makefile.venv test-local-workgroup-sizes
+make -f Makefile.venv test-local-workgroup-sizes
 make -f Makefile.venv validate-local-workgroup-sizes
 #./run-policy-evaluation.sh
 popd
