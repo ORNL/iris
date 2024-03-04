@@ -4,11 +4,14 @@ export PAYLOAD_SIZE=${PAYLOAD_SIZE:=1024}
 export SKIP_SETUP=${SKIP_SETUP:=0}
 export SCRIPT_DIR=`realpath .`
 export WORKING_DIR=`realpath .`
-source $SCRIPT_DIR/setup_backends.sh
+#source $SCRIPT_DIR/setup_backends.sh
 
 export LOCAL_SIZES=("1 1" "2 1" "4 1" "8 1" "16 1" "32 1" "64 1" "128 1" "256 1" "512 1" "1024 1" \
   "1 1" "1 2" "1 4" "1 8" "1 16" "1 32" "1 64" "1 128" "1 256" "1 512" "1 1024"\
   "1 1" "2 2" "4 4" "8 8" "16 16" "32 32")
+  export DIMS=("x" "x" "x" "x" "x" "x" "x" "x" "x" "x" "x" \
+  "y" "y" "y" "y" "y" "y" "y" "y" "y" "y" "y"\
+  "xy" "xy" "xy" "xy" "xy" "xy")
 
 export IRIS_ARCHS=$BACKENDS
 export IRIS_HISTORY=1
@@ -42,9 +45,10 @@ source $IRIS_INSTALL_ROOT/setup.source
 echo "Running DAGGER on payloads..."
 rm -f dagger-results/lws_times.csv
 touch dagger-results/lws_times.csv
-echo "size,secs" > dagger-results/lws_times.csv
+echo "size,secs,dim" > dagger-results/lws_times.csv
 for ((idx=0; idx<${#LOCAL_SIZES[@]}; idx++)); do
   export LWS="${LOCAL_SIZES[idx]}"
+  export DIM="${DIMS[idx]}"
   echo "*******************************************************************"
   echo "Generating DAG (using --local-sizes=ijk:$LWS"
   echo "*******************************************************************"
@@ -62,7 +66,7 @@ for ((idx=0; idx<${#LOCAL_SIZES[@]}; idx++)); do
     end=`date +%s.%N`
     runtime=$( echo "$end - $start" | bc -l )
     echo "RUNTIME took $runtime"
-    echo "$FILENAME,$runtime" >> dagger-results/lws_times.csv
+    echo "$FILENAME,$runtime,$DIM" >> dagger-results/lws_times.csv
     mv $SCRIPT_DIR/dagger_runner-$HOST*\.csv $WORKING_DIR/dagger-results/$HOST-$POLICY-lws-$FILENAME-time.csv
     #joint plot
     python $SCRIPT_DIR/gantt/gantt.py --dag="$WORKING_DIR/dagger-payloads/lws-graph-$FILENAME.json" --timeline="$WORKING_DIR/dagger-results/$HOST-$POLICY-lws-$FILENAME-time.csv" --timeline-out="$WORKING_DIR/dagger-graphs/$HOST-$POLICY-time-lws-graph-$FILENAME-timeline.pdf" --dag-out="$WORKING_DIR/dagger-graphs/$HOST-$POLICY-time-lws-graph-$FILENAME-recoloured_dag.pdf"  --combined-out="$WORKING_DIR/dagger-graphs/$HOST-$POLICY-time-lws-graph-$FILENAME-combined.pdf" --no-show-kernel-legend --no-show-task-legend #--drop="Internal-*"
@@ -70,4 +74,6 @@ for ((idx=0; idx<${#LOCAL_SIZES[@]}; idx++)); do
 
 done
 
+python ./plot_local_workgroup_sizes.py
+[ $? -ne 0 ] && echo "Failed plot the combined timing results" && exit 1
 
