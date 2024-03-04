@@ -539,6 +539,50 @@ dagger-zenith-test-correctness:
       - apps/dagger/errors.txt 
       - slurm*.txt
 
+.dagger-zenith-test-local-workgroup-sizes:
+  extends: [.dagger]
+  script:
+    - source /auto/software/iris/setup_system.source
+    - echo "Installing iris to $IRIS_INSTALL_ROOT"
+    - bash build-coverage.sh
+    - source $IRIS_INSTALL_ROOT/setup.source
+    - .gitlab-ci-scripts/runner_watcher.sh $$ &
+    - sbatch --partition=gpu --nodelist=zenith .gitlab-ci-scripts/slurm-dagger-test-local-workgroup-sizes.sh
+    - python3 -u .gitlab-ci-scripts/slurm-tee.py slurm-test-err.txt slurm-test-out.txt
+    - echo "Errors $(wc -l apps/dagger/errors.txt)"
+    - cat apps/dagger/errors.txt
+    - if [ -s apps/dagger/errors.txt ]; then exit 1; fi
+  variables:
+    - REPEATS: 1
+  artifacts:
+    when: always
+    paths:
+      - apps/dagger/test-out.txt 
+      - apps/dagger/errors.txt 
+      - apps/dagger/dagger-payloads
+      - apps/dagger/dagger-graphs
+      - apps/dagger/dagger-results
+      - slurm*.txt
+
+dagger-zenith-test-local-workgroup-sizes-synchronous-explicit-data-transfers:
+  extends: [.dagger-zenith-test-local-workgroup-sizes]
+
+dagger-zenith-test-local-workgroup-sizes-synchronous-dmem:
+  extends: [.dagger-zenith-test-local-workgroup-sizes]
+  variables:
+    USE_DATA_MEMORY: --use-data-memory
+
+dagger-zenith-test-local-workgroup-sizes-asynchronous-explicit-data-transfers:
+  extends: [.dagger-zenith-test-local-workgroup-sizes]
+  variables:
+    IRIS_ASYNC: 1
+
+dagger-zenith-test-local-workgroup-sizes-asynchronous-dmem:
+  extends: [.dagger-zenith-test-local-workgroup-sizes]
+  variables:
+    IRIS_ASYNC: 1
+    USE_DATA_MEMORY: --use-data-memory
+
 coverage-collect:
   tags: [zenith]
   stage: coverage
