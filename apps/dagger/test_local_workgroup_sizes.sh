@@ -20,8 +20,9 @@ export IRIS_HISTORY=1
 #micromamba create -f dagger.yaml
 #micromamba activate dagger
 #if we don't have a conda env set, then load it.
-if [[ -z "$CONDA_PREFIX" ]] ; then
-  echo "Please ensure this script is run from a conda session (hint: mamba activate dagger)"
+INVENV=$(python -c 'import sys; print ("1" if hasattr(sys, "real_prefix") else "0")')
+if [ [ -z "$CONDA_PREFIX" ] && [$INVENV == 0] ] ; then
+  echo "Please ensure this script is run from a conda session or python venv (hint: mamba activate dagger)"
   echo "Aborting..."
   exit
 fi
