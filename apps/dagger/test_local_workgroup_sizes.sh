@@ -21,7 +21,7 @@ export IRIS_HISTORY=1
 #micromamba activate dagger
 #if we don't have a conda env set, then load it.
 INVENV=$(python -c 'import sys; print ("1" if hasattr(sys, "real_prefix") else "0")')
-if [ [ -z "$CONDA_PREFIX" ] && [$INVENV == 0] ] ; then
+if [[ -z "$CONDA_PREFIX" ]] && [[ $INVENV == 0 ]] ; then
   echo "Please ensure this script is run from a conda session or python venv (hint: mamba activate dagger)"
   echo "Aborting..."
   exit
