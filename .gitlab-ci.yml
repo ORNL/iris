@@ -552,8 +552,6 @@ dagger-zenith-test-correctness:
     - echo "Errors $(wc -l apps/dagger/errors.txt)"
     - cat apps/dagger/errors.txt
     - if [ -s apps/dagger/errors.txt ]; then exit 1; fi
-  variables:
-    - REPEATS: 1
   artifacts:
     when: always
     paths:
@@ -566,20 +564,25 @@ dagger-zenith-test-correctness:
 
 dagger-zenith-test-local-workgroup-sizes-synchronous-explicit-data-transfers:
   extends: [.dagger-zenith-test-local-workgroup-sizes]
+  variables:
+    REPEATS: 1
 
 dagger-zenith-test-local-workgroup-sizes-synchronous-dmem:
   extends: [.dagger-zenith-test-local-workgroup-sizes]
   variables:
+    REPEATS: 1
     USE_DATA_MEMORY: --use-data-memory
 
 dagger-zenith-test-local-workgroup-sizes-asynchronous-explicit-data-transfers:
   extends: [.dagger-zenith-test-local-workgroup-sizes]
   variables:
+    REPEATS: 1
     IRIS_ASYNC: 1
 
 dagger-zenith-test-local-workgroup-sizes-asynchronous-dmem:
   extends: [.dagger-zenith-test-local-workgroup-sizes]
   variables:
+    REPEATS: 1
     IRIS_ASYNC: 1
     USE_DATA_MEMORY: --use-data-memory
 
