@@ -20,7 +20,7 @@ export IRIS_HISTORY=1
 #micromamba create -f dagger.yaml
 #micromamba activate dagger
 #if we don't have a conda env set, then load it.
-INVENV=$(python -c 'import sys; print ("1" if hasattr(sys, "real_prefix") else "0")')
+INVENV=$(python3 -c 'import sys; print ("1" if sys.prefix != sys.base_prefix else "0")')
 if [[ -z "$CONDA_PREFIX" ]] && [[ $INVENV == 0 ]] ; then
   echo "Please ensure this script is run from a conda session or python venv (hint: mamba activate dagger)"
   echo "Aborting..."
@@ -45,6 +45,7 @@ source $IRIS_INSTALL_ROOT/setup.source
 
 echo "Running DAGGER on payloads..."
 rm -f dagger-results/lws_times.csv
+mkdir -p dagger-results
 touch dagger-results/lws_times.csv
 echo "size,secs,dim" > dagger-results/lws_times.csv
 for ((idx=0; idx<${#LOCAL_SIZES[@]}; idx++)); do
@@ -53,7 +54,7 @@ for ((idx=0; idx<${#LOCAL_SIZES[@]}; idx++)); do
   echo "*******************************************************************"
   echo "Generating DAG (using --local-sizes=ijk:$LWS"
   echo "*******************************************************************"
-  generate dagger payload for this experiment
+  # generate dagger payload for this experiment
   $SCRIPT_DIR/dagger_generator.py --kernels="ijk" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=40 --num-tasks=240 --min-width=6 --max-width=6 --concurrent-kernels="ijk:6" --skips=3 --sandwich $USE_DATA_MEMORY --local-sizes="ijk:$LWS"
   [ $? -ne 0 ] && echo "Failed to generate DAG" && exit 1
   export FILENAME=${LWS// /x}
