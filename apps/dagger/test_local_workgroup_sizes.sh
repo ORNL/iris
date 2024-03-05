@@ -58,6 +58,7 @@ for ((idx=0; idx<${#LOCAL_SIZES[@]}; idx++)); do
   $SCRIPT_DIR/dagger_generator.py --kernels="ijk" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=40 --num-tasks=240 --min-width=6 --max-width=6 --concurrent-kernels="ijk:6" --skips=3 --sandwich $USE_DATA_MEMORY --local-sizes="ijk:$LWS"
   [ $? -ne 0 ] && echo "Failed to generate DAG" && exit 1
   export FILENAME=${LWS// /x}
+  mkdir -p dagger-payloads
   mv $SCRIPT_DIR/graph.json $WORKING_DIR/dagger-payloads/lws-graph-$FILENAME.json
   #run the payload (note, we have to omit the data policy since it is incompatible with dmem)
   for POLICY in roundrobin #depend profile random ftf sdq
