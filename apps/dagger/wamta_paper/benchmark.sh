@@ -1,5 +1,5 @@
 #!/bin/bash
-#TODO support --local-sizes="ijk:256 256" 
+#this script tests DAGGER support for --local-sizes="ijk:256 256"
 export PAYLOAD_SIZE=${PAYLOAD_SIZE:=2048}
 export SKIP_SETUP=${SKIP_SETUP:=0}
 
