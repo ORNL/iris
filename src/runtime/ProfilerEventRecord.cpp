@@ -152,14 +152,14 @@ document.getElementById('d2h_h2d_enable').addEventListener('change', handleCheck
 document.getElementById('task_enable').addEventListener('change', handleCheckboxChange); \
 } \
 </script> \
-<label for="init_enable">Init:</label>  <input type="checkbox" id="init_enable"> \
+<label for="init_enable">Commander dispatcher:</label>  <input type="checkbox" id="init_enable"> \
 <label for="kernel">Kernel:</label>  <input type="checkbox" id="kernel" checked> \
 <label for="h2d_enable">H2D:</label> <input type="checkbox" id="h2d_enable" checked> \
 <label for="d2d_enable">D2D:</label> <input type="checkbox" id="d2d_enable" checked> \
 <label for="d2h_enable">D2H:</label> <input type="checkbox" id="d2h_enable" checked> \
 <label for="d2h_h2d_enable">D2H-H2D:</label> <input type="checkbox" id="d2h_h2d_enable" checked> \
 <br> \
-<label for="task_enable">Task level details:</label>  <input type="checkbox" id="task_enable" checked> \
+<label for="task_enable">Task level details:</label>  <input type="checkbox" id="task_enable"> \
 <br> \
 <div id='iris' style='height: 100%;'></div> \
 )delimiter"
@@ -258,7 +258,7 @@ int ProfilerEventRecord::CompleteTask(Task* task) {
          sprintf(s, "[ '%s %d', 'O2D: m%lu from (%d) task (%lu:%s) stream (%d)', %lf, %lf, ProfileRecordType.PROFILE_O2D, %lu, '%s'],\n", event_dev->name(), event_dev->devno(), uid, connect_dev, task->uid(), task->name(), stream, start_time, end_time, task->uid(), task->name());
      }
      else if (type == PROFILE_INIT) {
-         sprintf(s, "[ '%s %d', 'Init Task:%lu:%s (%s) stream (%d)', %lf, %lf, ProfileRecordType.PROFILE_INIT, %lu, '%s'],\n", event_dev->name(), event_dev->devno(), task->uid(), task->name(), policy_str(policy), stream, start_time, end_time, task->uid(), task->name());
+         sprintf(s, "[ '%s %d', 'Command dispatcher Task:%lu:%s (%s) stream (%d)', %lf, %lf, ProfileRecordType.PROFILE_INIT, %lu, '%s'],\n", event_dev->name(), event_dev->devno(), task->uid(), task->name(), policy_str(policy), stream, start_time, end_time, task->uid(), task->name());
      }
      else {
          sprintf(s, "[ '%s %d', 'D2D: m%lu from (%d) task (%lu:%s) stream (%d)', %lf, %lf, %d, %lu, '%s'],\n", event_dev->name(), event_dev->devno(), uid, connect_dev, task->uid(), task->name(), stream, start_time, end_time, (int)p.type(), task->uid(), task->name());

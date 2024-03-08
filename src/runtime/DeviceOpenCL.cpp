@@ -228,9 +228,9 @@ int DeviceOpenCL::ResetMemory(Task *task, BaseMem *mem, uint8_t reset_value) {
     return IRIS_ERROR;
 }
 
-int DeviceOpenCL::MemAlloc(void** mem, size_t size, bool reset) {
+int DeviceOpenCL::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset) {
   cl_int err;
-  cl_mem* clmem = (cl_mem*) mem;
+  cl_mem* clmem = (cl_mem*) mem_addr;
   *clmem = ld_->clCreateBuffer(clctx_, CL_MEM_READ_WRITE, size, NULL, &err);
   if (reset) {
     _error("OpenCL not supported with reset for size:%lu", size);
@@ -243,8 +243,8 @@ int DeviceOpenCL::MemAlloc(void** mem, size_t size, bool reset) {
   return IRIS_SUCCESS;
 }
 
-int DeviceOpenCL::MemFree(void* mem) {
-  cl_mem clmem = (cl_mem) mem;
+int DeviceOpenCL::MemFree(BaseMem *mem, void* mem_addr) {
+  cl_mem clmem = (cl_mem) mem_addr;
   cl_int err = ld_->clReleaseMemObject(clmem);
   _clerror(err);
   if (err != CL_SUCCESS){

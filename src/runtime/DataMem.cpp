@@ -67,7 +67,7 @@ void DataMem::Init(Platform *platform, void *host_ptr, size_t size)
 DataMem::~DataMem() {
     if (host_ptr_owner_) free(host_ptr_);
     for (int i = 0; i < ndevs_; i++) {
-        if (archs_[i] && !is_usm(i)) archs_dev_[i]->MemFree(archs_[i]);
+        if (archs_[i] && !is_usm(i)) archs_dev_[i]->MemFree(this, archs_[i]);
     }
     delete [] dirty_flag_;
     for(int i=0; i<n_regions_; i++) {
@@ -100,7 +100,7 @@ void DataMem::clear() {
   }
   for (int i = 0; i < ndevs_; i++) {
       if (archs_[i]) {
-          if (! is_usm(i)) archs_dev_[i]->MemFree(archs_[i]);
+          if (! is_usm(i)) archs_dev_[i]->MemFree(this, archs_[i]);
           archs_[i] = NULL;
       }
   }
@@ -143,7 +143,7 @@ void DataMem::create_dev_mem(Device *dev, int devno, void *host)
     }
     else {
         set_usm_flag(devno, false);
-        dev->MemAlloc(archs_ + devno, size_, is_reset());
+        dev->MemAlloc(this, archs_ + devno, size_, is_reset());
         if (is_reset()) {
             dirty_flag_[devno] = false;
             host_dirty_flag_ = true;

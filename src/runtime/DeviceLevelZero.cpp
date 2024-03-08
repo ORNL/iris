@@ -98,8 +98,8 @@ int DeviceLevelZero::ResetMemory(Task *task, BaseMem *mem, uint8_t reset_value)
     _error("Reset Memory is not implemented");
     return IRIS_ERROR;
 }
-int DeviceLevelZero::MemAlloc(void** mem, size_t size, bool reset) {
-  void** dptr = mem;
+int DeviceLevelZero::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset) {
+  void** dptr = mem_addr;
   ze_device_mem_alloc_desc_t desc = {};
   desc.stype = ZE_STRUCTURE_TYPE_DEVICE_MEM_ALLOC_DESC;
   err_ = ld_->zeMemAllocDevice(zectx_, &desc, size, align_, zedev_, dptr);
@@ -110,8 +110,8 @@ int DeviceLevelZero::MemAlloc(void** mem, size_t size, bool reset) {
   return IRIS_SUCCESS;
 }
 
-int DeviceLevelZero::MemFree(void* mem) {
-  void* dptr = mem;
+int DeviceLevelZero::MemFree(BaseMem *mem, void* mem_addr) {
+  void* dptr = mem_addr;
   err_ = ld_->zeMemFree(zectx_, dptr);
   _zeerror(err_);
   return IRIS_SUCCESS;

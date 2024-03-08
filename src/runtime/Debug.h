@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#define _PRINTF_ENABLE
 #define FFLUSH(X)    //fflush(X)
 #ifndef NDEBUG
 #ifndef TRACE_DISABLE
@@ -105,7 +106,6 @@ extern char iris_log_prefix_[];
 #define  _event_prof_debug(fmt, ...) do { } while (0)
 #endif
 
-#define  _printf(fmt, ...) do { printf( GREEN "[T] %s [%s:%d:%s] " fmt RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, ##__VA_ARGS__); FFLUSH(stdout); } while (0)
 #ifdef _TRACE_ENABLE
 #define  _trace(fmt, ...) do { printf( BLUE "[T] %s [%s:%d:%s] " fmt RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, ##__VA_ARGS__); FFLUSH(stdout); } while (0)
 #define  _trace_debug(fmt, ...) do { printf( BRED "[T] Manual Debug %s [%s:%d:%s] " fmt RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, ##__VA_ARGS__); FFLUSH(stdout); } while (0)
@@ -132,6 +132,14 @@ extern char iris_log_prefix_[];
 #else
 #define  _debug(fmt, ...) do { } while (0)
 #define __debug(fmt, ...) do { } while (0)
+#endif
+
+#ifdef _PRINTF_ENABLE
+#define  _printf(fmt, ...) do { printf( YELLOW "[I] %s [%s:%d:%s] " fmt RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, ##__VA_ARGS__); FFLUSH(stdout); } while (0)
+#define __printf(fmt, ...) do { printf(_YELLOW "[I] %s [%s:%d:%s] " fmt RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, ##__VA_ARGS__); FFLUSH(stdout); } while (0)
+#else
+#define  _printf(fmt, ...) do { } while (0)
+#define __printf(fmt, ...) do { } while (0)
 #endif
 
 #ifdef _INFO_ENABLE

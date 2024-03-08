@@ -44,9 +44,11 @@ public:
   CUresult (*cuTexRefSetFlags)(CUtexref hTexRef, unsigned int Flags);
   CUresult (*cuTexRefSetFormat)(CUtexref hTexRef, CUarray_format fmt, int NumPackedComponents);
   CUresult (*cudaMalloc)(CUdeviceptr* dptr, size_t bytesize);
+  CUresult (*cuMemAllocAsync) ( CUdeviceptr* dptr, size_t bytesize, CUstream hStream );
   CUresult (*cuMemAlloc)(CUdeviceptr* dptr, size_t bytesize);
   //CUresult (*cuMemset)(CUdeviceptr dptr, int init, size_t bytesize);
   CUresult (*cuMemFree)(CUdeviceptr dptr);
+  CUresult (*cuMemFreeAsync)(CUdeviceptr dptr, CUstream hStream);
   CUresult (*cuMemcpy2D)(const CUDA_MEMCPY2D *pCopy);
   CUresult (*cudaHostRegister)(void *ptr, size_t size, unsigned int flags);
   CUresult (*cudaMemset)(void *devPtr, int value, size_t count);

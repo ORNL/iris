@@ -34,12 +34,14 @@ public:
   hipError_t (*hipModuleLoad)(hipModule_t* module, const char* fname);
   hipError_t (*hipModuleGetFunction)(hipFunction_t* function, hipModule_t module, const char* kname);
   hipError_t (*hipMalloc)(void** ptr, size_t size);
+  hipError_t (*hipMallocAsync)(void** ptr, size_t size, hipStream_t stream);
   hipError_t (*hipHostRegister)(void *ptr, size_t size, unsigned int flags);
   hipError_t (*hipMemset)(hipDeviceptr_t ptr, int init, size_t size);
   hipError_t (*hipMemsetAsync)(hipDeviceptr_t ptr, int init, size_t size, hipStream_t stream);
   hipError_t (*hipDeviceEnablePeerAccess)(int peerDevice, unsigned int flags);
   hipError_t (*hipDeviceCanAccessPeer)(int *canaccess, int device, int peerDevice);
   hipError_t (*hipFree)(void* ptr);
+  hipError_t (*hipFreeAsync)(void* ptr, hipStream_t stream);
   hipError_t (*hipGetDeviceProperties)(hipDeviceProp_t* prop, int deviceId);
   hipError_t (*hipMemcpy2D)(void* dst, size_t dpitch, const void* src, size_t spitch, size_t width, size_t height, hipMemcpyKind kind);
   hipError_t (*hipHostGetDevicePointer)(void** devPtr, void* hstPtr, unsigned int flags);

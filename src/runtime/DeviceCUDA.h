@@ -21,8 +21,8 @@ public:
   int Init();
   int ResetMemory(Task *task, BaseMem *mem, uint8_t reset_value);
   void *GetSharedMemPtr(void* mem, size_t size);
-  int MemAlloc(void** mem, size_t size, bool reset=false);
-  int MemFree(void* mem);
+  int MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset=false);
+  int MemFree(BaseMem *mem, void* mem_addr);
   void RegisterPin(void *host, size_t size);
   int RegisterCallback(int stream, CallBackType callback_fn, void* data, int flags=0);
   void EnablePeerAccess();

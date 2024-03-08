@@ -21,8 +21,8 @@ public:
   void RegisterPin(void *host, size_t size);
   void set_can_share_host_memory_flag(bool flag);
   void *GetSharedMemPtr(void* mem, size_t size);
-  int MemAlloc(void** mem, size_t size, bool reset);
-  int MemFree(void* mem);
+  int MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset);
+  int MemFree(BaseMem *mem, void* mem_addr);
   int MemD2D(Task *task, BaseMem *mem, void *dst, void *src, size_t size);
   int MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag="");
   int MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag="");

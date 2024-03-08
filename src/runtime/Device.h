@@ -124,8 +124,8 @@ public:
   virtual int Init() = 0;
   virtual int BuildProgram(char* path) { return IRIS_SUCCESS; }
   virtual void *GetSharedMemPtr(void* mem, size_t size) { return mem; }
-  virtual int MemAlloc(void** mem, size_t size, bool reset=false) = 0;
-  virtual int MemFree(void* mem) = 0;
+  virtual int MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset=false) = 0;
+  virtual int MemFree(BaseMem *mem, void* mem_addr) = 0;
   virtual int MemD2D(Task *task, BaseMem *mem, void *dst, void *src, size_t size) { _error("Device:%d:%s doesn't support MemD2D", devno_, name()); return IRIS_ERROR; }
   virtual int MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag="") = 0;
   virtual int MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag="") = 0;

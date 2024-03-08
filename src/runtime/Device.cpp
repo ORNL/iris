@@ -92,8 +92,11 @@ int Device::GetStream(Task *task, BaseMem *mem, bool new_stream) {
     StreamPolicy policy = stream_policy(task);
     if (policy == STREAM_POLICY_GIVE_ALL_STREAMS_TO_KERNEL)
         return DEFAULT_STREAM_INDEX;
-    if (policy == STREAM_POLICY_SAME_FOR_TASK)
-        return GetStream(task);
+    if (policy == STREAM_POLICY_SAME_FOR_TASK) {
+        int stream = GetStream(task);
+        mem->set_recommended_stream(devno(), stream);
+        return stream;
+    }
     int stream = mem->recommended_stream(devno());
 #if 1
     if (new_stream || stream == -1) {
@@ -114,7 +117,8 @@ int Device::GetStream(Task *task, BaseMem *mem, bool new_stream) {
 }
 
 void Device::Execute(Task* task) {
-  _debug2("Inside device execute and calling free destroy events %lu:%s\n", task->uid(), task->name());
+  //printf("Inside device execute and calling free destroy events %lu:%s %lf\n", task->uid(), task->name(), timer_->Now());
+  _info("Inside device execute and calling free destroy events %lu:%s\n", task->uid(), task->name());
   FreeDestroyEvents();
   ReserveActiveTask();
   double execute_start = (timer_->Now()-first_event_cpu_mid_point_time())*1000.0;
@@ -132,6 +136,7 @@ void Device::Execute(Task* task) {
   }
   if (task->cmd_kernel()) ExecuteMemIn(task, task->cmd_kernel());     
   for (int i = 0; i < task->ncmds(); i++) {
+    //printf("Inside device cmd:%d execute and calling free destroy events %lu:%s %lf\n", i, task->uid(), task->name(), timer_->Now());
     Command* cmd = task->cmd(i);
     if (hook_command_pre_) hook_command_pre_(cmd);
     cmd->set_time_start(timer_);
@@ -160,6 +165,7 @@ void Device::Execute(Task* task) {
       case IRIS_CMD_CUSTOM:       ExecuteCustom(cmd);     break;
       default: {_error("cmd type[0x%x]", cmd->type());  printf("TODO: determine why name (%s) is set, but type isn't\n",cmd->type_name());};
     }
+    //printf("Inside post device execute and calling free destroy events %lu:%s %lf\n", task->uid(), task->name(), timer_->Now());
     cmd->set_time_end(timer_);
     if (hook_command_post_) hook_command_post_(cmd);
   }
@@ -684,8 +690,6 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         _debug3("explore D2D dev[%d][%s] task[%ld:%s] mem[%lu] q[%d]", devno_, name_, task->uid(), task->name(), mem->uid(), mem_stream);
         _trace("explore D2D dev[%d][%s] task[%ld:%s] mem[%lu] q[%d]", devno_, name_, task->uid(), task->name(), mem->uid(), mem_stream);
         Device *src_dev = Platform::GetPlatform()->device(d2d_dev);
-        void* dst_arch = mem->arch(this);
-        void* src_arch = mem->arch(src_dev);
         double start = timer_->Now();
 
         if (async) {
@@ -705,6 +709,10 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
             }
 #endif
         }
+        //printf("----\n");
+        void* dst_arch = mem->arch(this);
+        void* src_arch = mem->arch(src_dev);
+        //printf("D2D: src:%d dest:%d src_arch:%p dst_arch:%p mem_stream:%d\n", src_dev->devno(), this->devno(), src_arch, dst_arch, mem_stream);
         // Now do D2D
         MemD2D(task, mem, dst_arch, src_arch, mem->size());
         double end = timer_->Now();
@@ -744,7 +752,6 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         // Fetch it through H2D
         _debug3("explore Device(OpenMP)2Device (O2D) dev[%d][%s] task[%ld:%s] mem[%lu]", devno_, name_, task->uid(), task->name(), mem->uid());
         Device *src_dev = Platform::GetPlatform()->device(cpu_dev);
-        void* src_arch = mem->arch(src_dev);
         size_t off[3] = { 0 };
         size_t host_sizes[3] = { mem->size() };
         size_t dev_sizes[3] = { mem->size() };
@@ -766,6 +773,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
 #endif
             //WaitForDataAvailability(src_dev->devno(), task, mem, mem_stream);
         }
+        void* src_arch = mem->arch(src_dev);
         double start = timer_->Now();
         MemH2D(task, mem, off, host_sizes, dev_sizes, 1, 1, mem->size(), src_arch, "OpenMP2DEV ");
         double end = timer_->Now();
@@ -804,7 +812,6 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         //_trace("explore Device2Device(OpenMP) (D2O) dev[%d][%s] task[%ld:%s] mem[%lu]", devno_, name_, task->uid(), task->name(), mem->uid());
         int mem_stream;
         Device *src_dev = Platform::GetPlatform()->device(non_cpu_dev);
-        void* src_arch = mem->arch(this);
         size_t off[3] = { 0 };
         size_t host_sizes[3] = { mem->size() };
         size_t dev_sizes[3] = { mem->size() };
@@ -833,6 +840,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
             }
 #endif
         }
+        void* src_arch = mem->arch(this);
         src_dev->MemD2H(task, mem, off, host_sizes, dev_sizes, 1, 1, mem->size(), src_arch, "DEV2OpenMP ");
         double end = timer_->Now();
         if (written_stream != -1 && async) { // Source generated data using asynchronous device

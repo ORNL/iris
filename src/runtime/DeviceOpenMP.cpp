@@ -105,8 +105,8 @@ int DeviceOpenMP::ResetMemory(Task *task, BaseMem *mem, uint8_t reset_value)
     return IRIS_SUCCESS;
 }
 
-int DeviceOpenMP::MemAlloc(void** mem, size_t size, bool reset) {
-  void** mpmem = mem;
+int DeviceOpenMP::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset) {
+  void** mpmem = mem_addr;
   if (posix_memalign(mpmem, 0x1000, size) != 0) {
     _error("%s", "posix_memalign");
     worker_->platform()->IncrementErrorCount();
@@ -116,8 +116,8 @@ int DeviceOpenMP::MemAlloc(void** mem, size_t size, bool reset) {
   return IRIS_SUCCESS;
 }
 
-int DeviceOpenMP::MemFree(void* mem) {
-  void* mpmem = mem;
+int DeviceOpenMP::MemFree(BaseMem *mem, void* mem_addr) {
+  void* mpmem = mem_addr;
   if (mpmem) free(mpmem);
   return IRIS_SUCCESS;
 }

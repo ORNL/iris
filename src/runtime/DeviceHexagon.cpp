@@ -36,8 +36,8 @@ int DeviceHexagon::ResetMemory(Task *task, BaseMem *mem, uint8_t reset_value) {
     return IRIS_ERROR;
 }
 
-int DeviceHexagon::MemAlloc(void** mem, size_t size, bool reset) {
-  void** hxgmem = mem;
+int DeviceHexagon::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset) {
+  void** hxgmem = mem_addr;
   *hxgmem = ld_->iris_hexagon_rpcmem_alloc(RPCMEM_HEAP_ID_SYSTEM, RPCMEM_DEFAULT_FLAGS, (int) size);
   if (*hxgmem == 0) {
     _error("hxgmem[%p]", hxgmem);
@@ -50,8 +50,8 @@ int DeviceHexagon::MemAlloc(void** mem, size_t size, bool reset) {
   return IRIS_SUCCESS;
 }
 
-int DeviceHexagon::MemFree(void* mem) {
-  void* hxgmem = mem;
+int DeviceHexagon::MemFree(BaseMem *mem, void* mem_addr) {
+  void* hxgmem = mem_addr;
   if (hxgmem) ld_->iris_hexagon_rpcmem_free(hxgmem);
   return IRIS_SUCCESS;
 }

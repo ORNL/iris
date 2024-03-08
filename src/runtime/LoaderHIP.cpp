@@ -27,11 +27,13 @@ int LoaderHIP::LoadFunctions() {
   LOADFUNC(hipCtxSynchronize);
   LOADFUNC(hipModuleLoad);
   LOADFUNC(hipModuleGetFunction);
+  LOADFUNC(hipMallocAsync);
   LOADFUNC(hipMalloc);
   LOADFUNC(hipHostRegister);
   LOADFUNC(hipMemset);
   LOADFUNC(hipMemsetAsync);
   LOADFUNC(hipFree);
+  LOADFUNC(hipFreeAsync);
   LOADFUNC(hipGetDeviceProperties);
   LOADFUNC(hipDeviceCanAccessPeer);
   LOADFUNC(hipDeviceEnablePeerAccess);

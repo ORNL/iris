@@ -54,6 +54,8 @@ int LoaderCUDA::LoadFunctions() {
   LOADFUNCEXT(cudaHostRegister);
   LOADFUNC(cuMemcpy2DUnaligned);
   LOADFUNC(cuMemcpy2DAsync);
+  LOADFUNC(cuMemAllocAsync);
+  LOADFUNC(cuMemFreeAsync);
   LOADFUNCSYM(cuMemAlloc, cuMemAlloc_v2);
   LOADFUNCSYM(cuMemFree, cuMemFree_v2);
   LOADFUNCSYM(cuMemcpyHtoD, cuMemcpyHtoD_v2);

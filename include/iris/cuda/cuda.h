@@ -4820,6 +4820,7 @@ CUresult CUDAAPI cuMemAllocPitch(CUdeviceptr *dptr, size_t *pPitch, size_t Width
  * ::cudaFree
  */
 CUresult CUDAAPI cuMemFree(CUdeviceptr dptr);
+CUresult CUDAAPI cuMemFreeAsync(CUdeviceptr dptr, CUstream stream);
 
 /**
  * \brief Get information on memory allocations
@@ -14770,6 +14771,7 @@ CUresult CUDAAPI cuEventDestroy(CUevent hEvent);
     CUresult CUDAAPI cuStreamIsCapturing(CUstream hStream, CUstreamCaptureStatus *captureStatus);
     CUresult CUDAAPI cuStreamGetCaptureInfo(CUstream hStream, CUstreamCaptureStatus *captureStatus, cuuint64_t *id);
     CUresult CUDAAPI cuGraphLaunch(CUgraphExec hGraph, CUstream hStream);
+    CUresult cuMemAllocAsync ( CUdeviceptr* dptr, size_t bytesize, CUstream hStream );
 #endif
 
 #ifdef __cplusplus

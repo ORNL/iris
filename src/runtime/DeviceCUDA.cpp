@@ -211,6 +211,8 @@ int DeviceCUDA::Init() {
   size_t srclen = 0;
   if (Utils::ReadFile(path, &src, &srclen) == IRIS_ERROR) {
     _trace("dev[%d][%s] has no kernel file [%s]", devno_, name_, path);
+    err = ld_->cuMemFree(0);
+    _cuerror(err);
     return IRIS_SUCCESS;
   }
   _trace("dev[%d][%s] kernels[%s]", devno_, name_, path);
@@ -224,6 +226,8 @@ int DeviceCUDA::Init() {
     return IRIS_ERROR;
   }
   if (src) free(src);
+  //err = ld_->cuMemFree(0);
+  //_cuerror(err);
   return IRIS_SUCCESS;
 }
 
@@ -268,18 +272,34 @@ void *DeviceCUDA::GetSharedMemPtr(void* mem, size_t size)
     ASSERT(cumem != NULL);
     return cumem; 
 }
-int DeviceCUDA::MemAlloc(void** mem, size_t size, bool reset) {
+//#define MALLOC_ASYNC
+int DeviceCUDA::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset) {
   if (IsContextChangeRequired()) {
       CUresult err=ld_->cuCtxSetCurrent(ctx_);
       _cuerror(err);
   }
-  CUdeviceptr* cumem = (CUdeviceptr*) mem;
+  CUdeviceptr* cumem = (CUdeviceptr*) mem_addr;
+  int stream = mem->recommended_stream(devno());
+  bool async = (stream != DEFAULT_STREAM_INDEX && stream >=0);
   //double mtime = timer_->Now();
-  CUresult err = ld_->cuMemAlloc(cumem, size);
+  CUresult err;
+#ifdef MALLOC_ASYNC
+  if (async)
+      err = ld_->cuMemAllocAsync(cumem, size, streams_[stream]);
+  else
+#endif
+      err = ld_->cuMemAlloc(cumem, size);
   //mtime = timer_->Now() - mtime;
-  //_printf("CUDA MemAlloc dev:%d:%s size:%zu ptr:%p\n", devno_, name_, size, *cumem);
+  //printf("CUDA MemAlloc dev:%d:%s size:%zu ptr:%p async:%d stream:%d\n", devno_, name_, size, *cumem, async, stream);
   _cuerror(err);
-  if (reset) ld_->cudaMemset(*mem, 0, size);
+  if (reset)  {
+#ifdef MALLOC_ASYNC
+      if (async) 
+          ld_->cudaMemsetAsync((void *)(*cumem), 0, size, streams_[stream]);
+      else
+#endif
+          ld_->cudaMemset((void *)(*cumem), 0, size);
+  }
   //printf("CUDA Malloc: %p size:%d reset:%d\n", *mem, size, reset);
   if (err != CUDA_SUCCESS){
     worker_->platform()->IncrementErrorCount();
@@ -288,15 +308,22 @@ int DeviceCUDA::MemAlloc(void** mem, size_t size, bool reset) {
   return IRIS_SUCCESS;
 }
 
-int DeviceCUDA::MemFree(void* mem) {
-  CUdeviceptr cumem = (CUdeviceptr) mem;
+int DeviceCUDA::MemFree(BaseMem *mem, void* mem_addr) {
+  CUdeviceptr cumem = (CUdeviceptr) mem_addr;
+#ifdef ENABLE_GC_CUDA
   if (ngarbage_ >= IRIS_MAX_GABAGES) _error("ngarbage[%d]", ngarbage_);
   else garbage_[ngarbage_++] = cumem;
-  /*
+#else
   _trace("dptr[%p]", cumem);
-  err = ld_->cuMemFree(cumem);
+  int stream = mem->recommended_stream(devno());
+  bool async = (stream != DEFAULT_STREAM_INDEX && stream >=0);
+  CUresult err;
+  //if (async)
+  //    err = ld_->cuMemFreeAsync(cumem, streams_[stream]);
+  //else
+      err = ld_->cuMemFree(cumem);
   _cuerror(err);
-  */
+#endif
   return IRIS_SUCCESS;
 }
 
@@ -304,6 +331,7 @@ void DeviceCUDA::ClearGarbage() {
   if (ngarbage_ == 0) return;
   for (int i = 0; i < ngarbage_; i++) {
     CUdeviceptr cumem = garbage_[i];
+    //printf("Freeing garbage cumem:%p\n", cumem);
     CUresult err = ld_->cuMemFree(cumem);
     _cuerror(err);
   }
@@ -359,6 +387,7 @@ int DeviceCUDA::MemD2D(Task *task, BaseMem *mem, void *dst, void *src, size_t si
       async = true;
       if (stream_index == DEFAULT_STREAM_INDEX) { async = false; stream_index = 0; }
   }
+  //_printf("dev[%d][%s] task[%ld:%s] mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] size[%lu] q[%d] async:%d", devno_, name_, task->uid(), task->name(), mem->uid(), dst, src, size, stream_index, async);
   if (async) {
       err = ld_->cudaMemcpyAsync((void *)dst_cumem, (void *)src_cumem, size, cudaMemcpyDeviceToDevice, streams_[stream_index]);
       _cuerror(err);
@@ -418,6 +447,8 @@ int DeviceCUDA::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
            if (err != CUDA_SUCCESS) error_occured = true;
        }
        else {
+           //err = ld_->cuMemFreeAsync(0, streams_[stream_index]);
+           //_cuerror(err);
            err = ld_->cudaMemcpy2DAsync((void *)cumem, dev_sizes[0]*elem_size, host_start, 
                    host_row_pitch, dev_sizes[0]*elem_size, dev_sizes[1], 
                    cudaMemcpyHostToDevice, streams_[stream_index]);

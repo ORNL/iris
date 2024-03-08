@@ -214,22 +214,44 @@ void *DeviceHIP::GetSharedMemPtr(void* mem, size_t size)
     ASSERT(hipmem != NULL);
     return hipmem; 
 }
-int DeviceHIP::MemAlloc(void** mem, size_t size, bool reset) {
-  void** hipmem = mem;
-  hipError_t err = ld_->hipMalloc(hipmem, size);
+int DeviceHIP::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset) {
+  void** hipmem = mem_addr;
+  int stream = mem->recommended_stream(devno());
+  bool async = (stream != DEFAULT_STREAM_INDEX && stream >=0);
+  hipError_t err;
+#ifdef MALLOC_ASYNC
+  if (async)
+     err = ld_->hipMallocAsync(hipmem, size, streams_[stream]);
+  else
+#endif
+     err = ld_->hipMalloc(hipmem, size);
   _hiperror(err);
   if (err != hipSuccess) {
      worker_->platform()->IncrementErrorCount();
      return IRIS_ERROR;
   }
-  if (reset) err = ld_->hipMemset(*hipmem, 0, size);
+  if (reset)  {
+#ifdef MALLOC_ASYNC
+      if (async)
+          err = ld_->hipMemsetAsync(*hipmem, 0, size, streams_[stream]);
+      else
+#endif
+          err = ld_->hipMemset(*hipmem, 0, size);
+  }
   _hiperror(err);
   return IRIS_SUCCESS;
 }
 
-int DeviceHIP::MemFree(void* mem) {
-  void* hipmem = mem;
-  hipError_t err = ld_->hipFree(hipmem);
+int DeviceHIP::MemFree(BaseMem *mem, void* mem_addr) {
+  void* hipmem = mem_addr;
+  int stream = mem->recommended_stream(devno());
+  bool async = (stream != DEFAULT_STREAM_INDEX && stream >=0);
+  hipError_t err;
+  //printf("Addr: %p free async:%d\n", mem_addr, async);
+  //if (async) 
+      //err = ld_->hipFreeAsync(hipmem, streams_[stream]);
+  //else
+      err = ld_->hipFree(hipmem);
   _hiperror(err);
   if (err != hipSuccess){
     worker_->platform()->IncrementErrorCount();
