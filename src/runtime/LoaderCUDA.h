@@ -55,6 +55,7 @@ public:
   CUresult (*cudaMemsetAsync)(void *devPtr, int value, size_t count, CUstream hStream);
   CUresult (*cudaMemcpy)( void* dst, const void* src, size_t count, cudaMemcpyKind kind );
   CUresult (*cudaMemcpyAsync)( void* dst, const void* src, size_t count, cudaMemcpyKind kind, CUstream stream);
+  CUresult (*cuMemcpyAsync)( void* dst, const void* src, size_t count, CUstream stream);
   CUresult (*cudaMemcpy2D)( void* dst, size_t dpitch, const void* src, size_t spitch, size_t width, size_t height, cudaMemcpyKind kind );
   CUresult (*cudaHostGetDevicePointer)(void **pDevice, void *pHost, unsigned int flags);  
   CUresult (*cudaSetDeviceFlags)(unsigned int flags);

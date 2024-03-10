@@ -217,7 +217,7 @@ void *DeviceHIP::GetSharedMemPtr(void* mem, size_t size)
 int DeviceHIP::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset) {
   void** hipmem = mem_addr;
   int stream = mem->recommended_stream(devno());
-  bool async = (stream != DEFAULT_STREAM_INDEX && stream >=0);
+  bool async = (is_async(false) && stream != DEFAULT_STREAM_INDEX && stream >=0);
   hipError_t err;
 #ifdef MALLOC_ASYNC
   if (async)
@@ -245,7 +245,7 @@ int DeviceHIP::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset) 
 int DeviceHIP::MemFree(BaseMem *mem, void* mem_addr) {
   void* hipmem = mem_addr;
   int stream = mem->recommended_stream(devno());
-  bool async = (stream != DEFAULT_STREAM_INDEX && stream >=0);
+  bool async = (is_async(false) && stream != DEFAULT_STREAM_INDEX && stream >=0);
   hipError_t err;
   //printf("Addr: %p free async:%d\n", mem_addr, async);
   //if (async) 

@@ -280,17 +280,17 @@ int DeviceCUDA::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset)
   }
   CUdeviceptr* cumem = (CUdeviceptr*) mem_addr;
   int stream = mem->recommended_stream(devno());
-  bool async = (stream != DEFAULT_STREAM_INDEX && stream >=0);
+  bool async = (is_async(false) && stream != DEFAULT_STREAM_INDEX && stream >=0);
   //double mtime = timer_->Now();
   CUresult err;
 #ifdef MALLOC_ASYNC
-  if (async)
+  if (async && mem->uid() == 13)
       err = ld_->cuMemAllocAsync(cumem, size, streams_[stream]);
   else
 #endif
       err = ld_->cuMemAlloc(cumem, size);
   //mtime = timer_->Now() - mtime;
-  //printf("CUDA MemAlloc dev:%d:%s size:%zu ptr:%p async:%d stream:%d\n", devno_, name_, size, *cumem, async, stream);
+  _event_debug("CUDA MemAlloc dev:%d:%s mem:%lu size:%zu ptr:%p async:%d stream:%d\n", devno_, name_, mem->uid(), size, *cumem, async, stream);
   _cuerror(err);
   if (reset)  {
 #ifdef MALLOC_ASYNC
@@ -316,7 +316,7 @@ int DeviceCUDA::MemFree(BaseMem *mem, void* mem_addr) {
 #else
   _trace("dptr[%p]", cumem);
   int stream = mem->recommended_stream(devno());
-  bool async = (stream != DEFAULT_STREAM_INDEX && stream >=0);
+  bool async = (is_async(false) && stream != DEFAULT_STREAM_INDEX && stream >=0);
   CUresult err;
   //if (async)
   //    err = ld_->cuMemFreeAsync(cumem, streams_[stream]);
@@ -387,8 +387,13 @@ int DeviceCUDA::MemD2D(Task *task, BaseMem *mem, void *dst, void *src, size_t si
       async = true;
       if (stream_index == DEFAULT_STREAM_INDEX) { async = false; stream_index = 0; }
   }
-  //_printf("dev[%d][%s] task[%ld:%s] mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] size[%lu] q[%d] async:%d", devno_, name_, task->uid(), task->name(), mem->uid(), dst, src, size, stream_index, async);
+  _event_debug("D2D dev[%d][%s] task[%ld:%s] mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] size[%lu] q[%d] async:%d", devno_, name_, task->uid(), task->name(), mem->uid(), dst, src, size, stream_index, async);
   if (async) {
+      //ld_->cuCtxSetCurrent(ctx_);
+      //err = ld_->cuMemcpyDtoDAsync(dst_cumem, src_cumem, size, streams_[stream_index]);
+      //err = ld_->cuMemcpyAsync((void *)dst_cumem, (void *)src_cumem, size, streams_[stream_index]);
+      //printf("cuMemcpyAsync:%p\n", ld_->cuMemcpyAsync);
+      //printf("cuMemcpyDtoDAsync:%p\n", ld_->cuMemcpyDtoDAsync);
       err = ld_->cudaMemcpyAsync((void *)dst_cumem, (void *)src_cumem, size, cudaMemcpyDeviceToDevice, streams_[stream_index]);
       _cuerror(err);
       if (err != CUDA_SUCCESS) error_occured = true;
@@ -489,6 +494,7 @@ int DeviceCUDA::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
           if (err != CUDA_SUCCESS) error_occured = true;
       }
   }
+  _event_debug("Completed H2D DT of %sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] size[%lu] host[%p] q[%d]\n", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, size, host, stream_index);
   _event_prof_debug("Completed H2D DT of %sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] size[%lu] host[%p] q[%d]\n", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, size, host, stream_index);
   _debug2("Completed H2D DT of %sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, size, host, stream_index);
   ASSERT(!error_occured && "CUDA Error occured");
@@ -606,6 +612,7 @@ int DeviceCUDA::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
       }
   }
   _event_prof_debug("Completed D2H DT of %sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] size[%lu] host[%p] q[%d]\n", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, size, host, stream_index);
+  _event_debug("Completed D2H DT of %sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, size, host, stream_index);
   _debug2("Completed D2H DT of %sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, size, host, stream_index);
   if (error_occured){
    _debug2("Error D2H DT of %sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] size[%lu] host[%p]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, size, host);
@@ -794,6 +801,7 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
   _debug2("lws[%lu, %lu, %lu]", (lws != NULL) ? lws[0] : 1, (lws != NULL && dim > 1) ? lws[1] : 1, (lws != NULL && dim > 2) ? lws[2] : 1);
   _debug2("gws[%lu, %lu, %lu]", gws[0], (dim > 1) ? gws[1] : 0, (dim > 2) ? gws[2] : 0);
   _debug2("dev[%d][%s] kernel[%s:%s] dim[%d] grid[%d,%d,%d] block[%d,%d,%d] blockoff[%lu,%lu,%lu] max_arg_idx[%d] shared_mem_bytes[%u] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, grid[0], grid[1], grid[2], block[0], block[1], block[2], blockOff_x, blockOff_y, blockOff_z, max_arg_idx_, shared_mem_bytes_, stream_index);
+  _event_debug("dev[%d][%s] kernel[%s:%s] dim[%d] grid[%d,%d,%d] off[%d,%d,%d] block[%d,%d,%d] blockoff[%lu,%lu,%lu] max_arg_idx[%d] shared_mem_bytes[%u] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, grid[0], grid[1], grid[2], off[0], off[1], off[2], block[0], block[1], block[2], blockOff_x, blockOff_y, blockOff_z, max_arg_idx_, shared_mem_bytes_, stream_index);
   _trace("dev[%d][%s] kernel[%s:%s] dim[%d] grid[%d,%d,%d] off[%d,%d,%d] block[%d,%d,%d] blockoff[%lu,%lu,%lu] max_arg_idx[%d] shared_mem_bytes[%u] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, grid[0], grid[1], grid[2], off[0], off[1], off[2], block[0], block[1], block[2], blockOff_x, blockOff_y, blockOff_z, max_arg_idx_, shared_mem_bytes_, stream_index);
   if (!async) {
       err = ld_->cuLaunchKernel(cukernel, grid[0], grid[1], grid[2], block[0], block[1], block[2], shared_mem_bytes_, 0, params_, NULL);
@@ -877,7 +885,7 @@ void DeviceCUDA::CreateEvent(void **event, int flags)
     _cuerror(err);
     if (err != CUDA_SUCCESS)
         worker_->platform()->IncrementErrorCount();
-    //printf("Create dev:%d event:%p %p\n", devno(), event, *event);
+    _event_debug("Create dev:%d event_ptr:%p event:%p\n", devno(), event, *event);
 }
 float DeviceCUDA::GetEventTime(void *event, int stream) 
 { 

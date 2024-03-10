@@ -321,6 +321,7 @@ void Task::Complete() {
   std::unique_lock<std::mutex> lock(mutex_complete_cpp_);
   status_ = IRIS_COMPLETE;
   complete_cond_cpp_.notify_all();
+  lock.unlock();
   //pthread_mutex_lock(&mutex_complete_);
   //pthread_cond_broadcast(&complete_cond_);
   //pthread_mutex_unlock(&mutex_complete_);

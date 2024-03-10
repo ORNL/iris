@@ -118,6 +118,7 @@ public:
 
   virtual int ResetMemory(Task *task, BaseMem *mem, uint8_t reset_value)=0;
   virtual void ResetContext() { }
+  virtual void SetContextToCurrentThread() { }
   virtual bool IsContextChangeRequired() { return false; }
   virtual bool IsDeviceValid() { return true; }
   virtual int Compile(char* src) { return IRIS_SUCCESS; }
