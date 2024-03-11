@@ -339,6 +339,7 @@ private:
   bool enable_profiler_;
   Profiler* profilers_[8];
   int nprofilers_;
+  int device_factor_;
 
   bool enable_scheduling_history_;
   bool disable_d2d_;

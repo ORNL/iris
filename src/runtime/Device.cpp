@@ -119,7 +119,7 @@ int Device::GetStream(Task *task, BaseMem *mem, bool new_stream) {
 void Device::Execute(Task* task) {
   //TODO: Clear the proile event created here
   _event_debug("Inside device execute and calling free destroy events %lu:%s %lf\n", task->uid(), task->name(), timer_->Now());
-  _info("Inside device execute and calling free destroy events %lu:%s\n", task->uid(), task->name());
+  _debug("Inside device execute and calling free destroy events %lu:%s\n", task->uid(), task->name());
   FreeDestroyEvents();
   ReserveActiveTask();
   double execute_start = (timer_->Now()-first_event_cpu_mid_point_time())*1000.0;

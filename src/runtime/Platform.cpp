@@ -196,6 +196,11 @@ int Platform::Init(int* argc, char*** argv, int sync) {
   EnvironmentGet("DISABLE_KERNEL_LAUNCH", &disable_kernel_launch, NULL);
   if (disable_kernel_launch != NULL && atoi(disable_kernel_launch) == 1)
       set_kernel_launch_disabled(true);
+  char *device_factor = NULL;
+  device_factor_ = 1;
+  EnvironmentGet("DEVICE_FACTOR", &device_factor, NULL);
+  if (device_factor != NULL && atoi(device_factor) != 0)
+      device_factor_ = atoi(device_factor);
   event_profile_enabled_ = false;
   char *event_profile = NULL;
   EnvironmentGet("EVENT_PROFILE", &event_profile, NULL);
@@ -447,9 +452,9 @@ int Platform::InitCUDA() {
   _trace("CUDA platform[%d] ndevs[%d]", nplatforms_, ndevs);
   int mdevs =0;
   int cudevs[IRIS_MAX_NDEVS];
-  for (int i = 0; i < ndevs; i++) {
+  for (int i = 0; i < ndevs*device_factor_; i++) {
     CUdevice dev;
-    err = loaderCUDA_->cuDeviceGet(&dev, i);
+    err = loaderCUDA_->cuDeviceGet(&dev, i%ndevs);
     _cuerror(err);
     devs_[ndevs_] = new DeviceCUDA(loaderCUDA_, loaderHost2CUDA_, dev, ndevs_, nplatforms_);
     devs_[ndevs_]->set_root_device(devs_[ndevs_-i]);
@@ -510,12 +515,12 @@ int Platform::InitHIP() {
   _trace("HIP platform[%d] ndevs[%d]", nplatforms_, ndevs);
   int mdevs =0;
   int hipdevs[IRIS_MAX_NDEVS];
-  for (int i = 0; i < ndevs; i++) {
+  for (int i = 0; i < ndevs*device_factor_; i++) {
     hipDevice_t dev;
-    err = loaderHIP_->hipDeviceGet(&dev, i);
+    err = loaderHIP_->hipDeviceGet(&dev, i%ndevs);
     _hiperror(err);
     hipdevs[mdevs] = dev;
-    devs_[ndevs_] = new DeviceHIP(loaderHIP_, loaderHost2HIP_, dev, i, ndevs_, nplatforms_);
+    devs_[ndevs_] = new DeviceHIP(loaderHIP_, loaderHost2HIP_, dev, i%ndevs, ndevs_, nplatforms_);
     devs_[ndevs_]->set_root_device(devs_[ndevs_-i]);
     arch_available_ |= devs_[ndevs_]->type();
     ndevs_++;
