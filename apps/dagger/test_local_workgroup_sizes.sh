@@ -36,12 +36,13 @@ if [[ $SKIP_SETUP -eq 0 ]]; then
   rm -f kernel.ptx kernel.hip kernel.openmp.so
   rm -f $IRIS_INSTALL_ROOT/lib64/libiris.so ; rm -f $IRIS_INSTALL_ROOT/lib/libiris.so ;
   cd $IRIS_SRC_DIR ; ./build.sh; [ $? -ne 0 ] && exit ;
-  echo "target kernels are : " $KERNELS
-  cd $SCRIPT_DIR ; make clean; make clean-results; make $KERNELS dagger_runner ;
-  [ $? -ne 0 ] && exit ;
-  cd $WORKING_DIR ;
 fi
 source $IRIS_INSTALL_ROOT/setup.source
+
+echo "target kernels are : " $KERNELS
+cd $SCRIPT_DIR ; make clean; make clean-results; make $KERNELS dagger_runner ;
+[ $? -ne 0 ] && exit ;
+cd $WORKING_DIR ;
 
 echo "Running DAGGER on payloads..."
 rm -f dagger-results/lws_times.csv
