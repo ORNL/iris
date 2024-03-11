@@ -5,6 +5,7 @@ export SKIP_SETUP=${SKIP_SETUP:=0}
 export SCRIPT_DIR=`realpath .`
 export WORKING_DIR=`realpath .`
 #source $SCRIPT_DIR/setup_backends.sh
+#export IRIS_ARCHS=$BACKENDS
 
 export LOCAL_SIZES=("1 1" "2 1" "4 1" "8 1" "16 1" "32 1" "64 1" "128 1" "256 1" "512 1" "1024 1" \
   "1 1" "1 2" "1 4" "1 8" "1 16" "1 32" "1 64" "1 128" "1 256" "1 512" "1 1024"\
@@ -13,7 +14,6 @@ export LOCAL_SIZES=("1 1" "2 1" "4 1" "8 1" "16 1" "32 1" "64 1" "128 1" "256 1"
   "y" "y" "y" "y" "y" "y" "y" "y" "y" "y" "y"\
   "xy" "xy" "xy" "xy" "xy" "xy")
 
-export IRIS_ARCHS=$BACKENDS
 export IRIS_HISTORY=1
 
 #installed with:
