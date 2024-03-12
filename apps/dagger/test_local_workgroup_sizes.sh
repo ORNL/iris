@@ -4,7 +4,9 @@ export PAYLOAD_SIZE=${PAYLOAD_SIZE:=1024}
 export SKIP_SETUP=${SKIP_SETUP:=0}
 export SCRIPT_DIR=`realpath .`
 export WORKING_DIR=`realpath .`
+set -x
 #source $SCRIPT_DIR/setup_backends.sh
+#export IRIS_ARCHS=$BACKENDS
 
 export LOCAL_SIZES=("1 1" "2 1" "4 1" "8 1" "16 1" "32 1" "64 1" "128 1" "256 1" "512 1" "1024 1" \
   "1 1" "1 2" "1 4" "1 8" "1 16" "1 32" "1 64" "1 128" "1 256" "1 512" "1 1024"\
@@ -13,7 +15,6 @@ export LOCAL_SIZES=("1 1" "2 1" "4 1" "8 1" "16 1" "32 1" "64 1" "128 1" "256 1"
   "y" "y" "y" "y" "y" "y" "y" "y" "y" "y" "y"\
   "xy" "xy" "xy" "xy" "xy" "xy")
 
-export IRIS_ARCHS=$BACKENDS
 export IRIS_HISTORY=1
 
 #installed with:
@@ -36,16 +37,18 @@ if [[ $SKIP_SETUP -eq 0 ]]; then
   rm -f kernel.ptx kernel.hip kernel.openmp.so
   rm -f $IRIS_INSTALL_ROOT/lib64/libiris.so ; rm -f $IRIS_INSTALL_ROOT/lib/libiris.so ;
   cd $IRIS_SRC_DIR ; ./build.sh; [ $? -ne 0 ] && exit ;
-  echo "target kernels are : " $KERNELS
-  cd $SCRIPT_DIR ; make clean; make clean-results; make $KERNELS dagger_runner ;
-  [ $? -ne 0 ] && exit ;
-  cd $WORKING_DIR ;
 fi
 source $IRIS_INSTALL_ROOT/setup.source
+
+echo "target kernels are : " $KERNELS
+cd $SCRIPT_DIR ; make clean; make clean-results; make $KERNELS dagger_runner ;
+[ $? -ne 0 ] && exit ;
+cd $WORKING_DIR ;
 
 echo "Running DAGGER on payloads..."
 rm -f dagger-results/lws_times.csv
 mkdir -p dagger-results
+mkdir -p dagger-graphs
 touch dagger-results/lws_times.csv
 echo "size,secs,dim" > dagger-results/lws_times.csv
 for ((idx=0; idx<${#LOCAL_SIZES[@]}; idx++)); do
