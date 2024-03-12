@@ -47,6 +47,7 @@ cd $WORKING_DIR ;
 echo "Running DAGGER on payloads..."
 rm -f dagger-results/lws_times.csv
 mkdir -p dagger-results
+mkdir -p dagger-graphs
 touch dagger-results/lws_times.csv
 echo "size,secs,dim" > dagger-results/lws_times.csv
 for ((idx=0; idx<${#LOCAL_SIZES[@]}; idx++)); do
