@@ -42,6 +42,10 @@ function sort_compare_fn(a, b) { \
     const v2 = b[0]; \
     return v1.localeCompare(v2); \
 }; \
+var options = { \
+timeline: { colorByRowLabel: true }, \
+avoidOverlappingGridLines: false \
+}; \
 function drawChart() { \
 var container = document.getElementById('iris'); \
 var chart = new google.visualization.Timeline(container); \
@@ -58,11 +62,11 @@ dataTable.addColumn({ type: 'string', role: 'style'}); \
 function loadRowsAndDrawChart(rows, color_options) { \
     const sorted_rows = rows.sort(sort_compare_fn); \
     dataTable.addRows(sorted_rows); \
-    /*var options = { \
+    /*var col_options = { \
       colors: color_options, \
     }; \
-    chart.draw(dataTable, options); */\
-    chart.draw(dataTable); \
+    chart.draw(dataTable, col_options); */\
+    chart.draw(dataTable, options); \
 } \
 /* Checkbox change event handler */\
 function extract_task_data(newData, color_options) { \
@@ -74,7 +78,7 @@ function extract_task_data(newData, color_options) { \
         var start_time = iris_data[i][2]; \
         var end_time = iris_data[i][3]; \
         if (task_map[task_uid] === undefined) { \
-            task_map[task_uid] = [iris_data[i][0], task_name, -1.0, 0.0, 'color: red']; \
+            task_map[task_uid] = [iris_data[i][0], task_name, -1.0, 0.0, '']; /*color:red*/ \
         } \
         if (task_map[task_uid][2] < 0.0 || task_map[task_uid][2] > start_time) \
             task_map[task_uid][2] = start_time; \
@@ -92,7 +96,7 @@ function extract_data(newData, color_options, pattern) { \
     for (let i=0; i<iris_data.length; i++) { \
         if  (iris_data[i][4] === pattern) { \
             var data = iris_data[i].slice(0,4); \
-            data.push('color:'+ProfileTypeColor[iris_data[i][4]]); \
+            data.push(''); /*color:'+ProfileTypeColor[iris_data[i][4]]*/ \
             newData.push(data); \
             color_options.push(ProfileTypeColor[iris_data[i][4]]); \
         } \
@@ -138,10 +142,6 @@ var iris_data = [ \
 
 #define PROFILER_FOOTER  R"delimiter( \
 ]; \
-var options = { \
-timeline: { colorByRowLabel: true }, \
-avoidOverlappingGridLines: false \
-}; \
 handleCheckboxChange(); \
 document.getElementById('kernel').addEventListener('change', handleCheckboxChange); \
 document.getElementById('init_enable').addEventListener('change', handleCheckboxChange); \

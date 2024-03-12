@@ -211,8 +211,8 @@ int DeviceCUDA::Init() {
   size_t srclen = 0;
   if (Utils::ReadFile(path, &src, &srclen) == IRIS_ERROR) {
     _trace("dev[%d][%s] has no kernel file [%s]", devno_, name_, path);
-    err = ld_->cuMemFree(0);
-    _cuerror(err);
+    //err = ld_->cuMemFree(0);
+    //_cuerror(err);
     return IRIS_SUCCESS;
   }
   _trace("dev[%d][%s] kernels[%s]", devno_, name_, path);
@@ -290,8 +290,8 @@ int DeviceCUDA::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset)
 #endif
       err = ld_->cuMemAlloc(cumem, size);
   //mtime = timer_->Now() - mtime;
-  _event_debug("CUDA MemAlloc dev:%d:%s mem:%lu size:%zu ptr:%p async:%d stream:%d\n", devno_, name_, mem->uid(), size, *cumem, async, stream);
   _cuerror(err);
+  _event_debug("CUDA MemAlloc dev:%d:%s mem:%lu size:%zu ptr:%p async:%d stream:%d\n", devno_, name_, mem->uid(), size, *cumem, async, stream);
   if (reset)  {
 #ifdef MALLOC_ASYNC
       if (async) 
