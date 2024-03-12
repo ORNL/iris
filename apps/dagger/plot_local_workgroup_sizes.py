@@ -8,7 +8,7 @@ plt.rcParams["figure.autolayout"] = True
 df = pd.read_csv("dagger-results/lws_times.csv")
 
 print("Local workgroup execution times in csv file:", df)
-sns.barplot(data=df,x='size',y='secs',hue='dims')
+sns.barplot(data=df,x='size',y='secs',hue='dim')
 plt.xticks(rotation=45)
 plt.show()
 plt.savefig('dagger-graphs/lws_times.pdf')
