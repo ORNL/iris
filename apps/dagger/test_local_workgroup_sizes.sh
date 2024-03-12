@@ -4,6 +4,7 @@ export PAYLOAD_SIZE=${PAYLOAD_SIZE:=1024}
 export SKIP_SETUP=${SKIP_SETUP:=0}
 export SCRIPT_DIR=`realpath .`
 export WORKING_DIR=`realpath .`
+set -x
 #source $SCRIPT_DIR/setup_backends.sh
 #export IRIS_ARCHS=$BACKENDS
 
