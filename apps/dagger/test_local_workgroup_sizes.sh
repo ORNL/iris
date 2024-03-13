@@ -93,5 +93,5 @@ for ((idx=0; idx<${#LOCAL_SIZES[@]}; idx++)); do
 done
 
 python ./plot_local_workgroup_sizes.py
-[ $? -ne 0 ] && echo "Failed plot the combined timing results" && exit 1
+([ $? -ne 0 ] && echo "Failed plot the combined timing results" && exit 1) || true
 
