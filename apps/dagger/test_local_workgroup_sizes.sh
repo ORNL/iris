@@ -8,7 +8,7 @@ set -x
 #source $SCRIPT_DIR/setup_backends.sh
 #export IRIS_ARCHS=$BACKENDS
 
-export IRIS_ARCHS=opencl
+# export IRIS_ARCHS=opencl
 #$BACKENDS
 export IRIS_HISTORY=1
 
