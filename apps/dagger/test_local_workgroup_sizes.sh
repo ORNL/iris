@@ -27,6 +27,7 @@ else
   export DIMS=("x" "x" "x" "x" "x" "x" "x" "x" "x" "x" "x" \
   "y" "y" "y" "y" "y" "y" "y" "y" "y" "y" "y"\
   "xy" "xy" "xy" "xy" "xy" "xy")
+fi
 
 #installed with:
 #micromamba create -f dagger.yaml
