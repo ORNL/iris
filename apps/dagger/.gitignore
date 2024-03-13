@@ -9,3 +9,7 @@ graph.json
 kernel.hip
 kernel.ptx
 src/
+/daggerpy/
+dag.pdf
+*.csv
+test-out.txt
