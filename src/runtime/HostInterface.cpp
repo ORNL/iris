@@ -20,6 +20,35 @@ namespace iris {
             INIT_SYM_FN(iris_host_launch_with_obj);
             INIT_SYM_FN(iris_ffi_launch);
         }
+        uint32_t HostInterfaceLoader::get_encoded_stream_device(int stream_index, int nstreams, int devno)
+        {
+            ASSERT(stream_index < 256 && "Stream index should be <256");
+            ASSERT(nstreams < 256 && "Stream index should be <256");
+            ASSERT(device < 65536 && "Stream index should be <256");
+            uint32_t dev_info = ((uint32_t)(nstreams << 24)) | (((uint32_t)stream_index) << 16) | devno;
+            return dev_info;
+        }
+        uint32_t HostInterfaceLoader::update_dev_info_nstreams(int dev_info, int nstreams)
+        {
+            uint32_t stream_index = (dev_info >> 16) & 0xFF;
+            //uint32_t nstreams = (dev_info >> 24);
+            uint32_t devno = (dev_info & 0xFFFF);
+            return get_encoded_stream_device(stream_index, nstreams, devno);
+        }
+        uint32_t HostInterfaceLoader::update_dev_info_stream_index(int dev_info, int stream_index)
+        {
+            //uint32_t stream_index = (dev_info >> 16) & 0xFF;
+            uint32_t nstreams = (dev_info >> 24);
+            uint32_t devno = (dev_info & 0xFFFF);
+            return get_encoded_stream_device(stream_index, nstreams, devno);
+        }
+        uint32_t HostInterfaceLoader::update_dev_info_devno(int dev_info, int devno)
+        {
+            uint32_t stream_index = (dev_info >> 16) & 0xFF;
+            uint32_t nstreams = (dev_info >> 24);
+            //uint32_t devno = (dev_info & 0xFFFF);
+            return get_encoded_stream_device(stream_index, nstreams, devno);
+        }
         void HostInterfaceLoader::init(int dev) 
         {
             if (iris_host_init != NULL) {
@@ -126,10 +155,10 @@ namespace iris {
             }
             return IRIS_ERROR;
         }
-        int BoilerPlateHostInterfaceLoader::host_launch(void **stream, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *off, size_t *bws) 
+        int BoilerPlateHostInterfaceLoader::host_launch(void **stream, int stream_index, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *off, size_t *bws) 
         {
             if(iris_host_launch_with_obj) {
-                int dev_info = nstreams << 16 | devno;
+                uint32_t dev_info = get_encoded_stream_device(nstreams, stream_index, devno);
                 SetKernelPtr(param_mem, kname);
                 int status = iris_host_launch_with_obj(
                         stream, 
@@ -197,9 +226,11 @@ namespace iris {
                 ffi_data->set_host_launch_type(HOST_LAUNCH_WITH_STREAM_DEV);
                 if (model != iris_openmp) {
                     ffi_data->add_stream(stream); 
-                    ffi_data->set_devno(devno);
-                    ffi_data->set_nstream(nstreams);
-                    ffi_data->add_nstreams_device(); 
+                    ffi_data->set_dev_info(stream_index, nstreams, devno);
+                    //ffi_data->set_stream_index(stream_index);
+                    //ffi_data->set_devno(devno);
+                    //ffi_data->set_nstream(nstreams);
+                    ffi_data->add_dev_info(); 
                 }
             }
             else if (iris_host_launch) {
@@ -229,7 +260,7 @@ namespace iris {
             }
             return IRIS_ERROR;
         }
-        int FFIHostInterfaceLoader::host_launch(void **stream, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *off, size_t *bws)
+        int FFIHostInterfaceLoader::host_launch(void **stream, int stream_index, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *off, size_t *bws)
         {
             if (IsFunctionExists(kname)) {
                 KernelFFI *ffi_data = get_kernel_ffi(param_mem);

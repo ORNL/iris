@@ -465,7 +465,7 @@ int DeviceOpenCL::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws
   }
   _debug2("dev[%d][%s] task[%ld:%s] kernel launch::%ld:%s q[%d]", devno_, name_, kernel->task()->uid(), kernel->task()->name(), kernel->uid(), kernel->name(), stream_index);
   if (kernel->is_vendor_specific_kernel(devno_)) {
-     if (host2opencl_ld_->host_launch((void **)kstream, nstreams, kernel->name(), 
+     if (host2opencl_ld_->host_launch((void **)kstream, stream_index, nstreams, kernel->name(), 
                  kernel->GetParamWrapperMemory(), ocldevno_,
                  dim, off, gws) == IRIS_SUCCESS) {
          if (!async) {

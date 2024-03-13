@@ -612,7 +612,7 @@ int DeviceHIP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, s
   }
   _event_prof_debug("kernel start dev[%d][%s] kernel[%s:%s] dim[%d] q[%d]\n", devno_, name_, kernel->name(), kernel->get_task_name(), dim, stream_index);
   if (kernel->is_vendor_specific_kernel(devno_)) {
-     if (host2hip_ld_->host_launch((void **)kstream, nstreams, kernel->name(), 
+     if (host2hip_ld_->host_launch((void **)kstream, stream_index, nstreams, kernel->name(), 
                  kernel->GetParamWrapperMemory(), devno(), 
                  dim, off, gws) == IRIS_SUCCESS) {
          if (!async) {
