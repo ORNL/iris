@@ -87,8 +87,8 @@ Platform::Platform() {
   present_table_ = NULL;
   stream_policy_ = STREAM_POLICY_DEFAULT;
   recording_ = false;
-  enable_profiler_ = getenv("IRIS_PROFILE");
-  enable_scheduling_history_ = getenv("IRIS_HISTORY");
+  enable_profiler_ = false;
+  enable_scheduling_history_ = false; 
   nprofilers_ = 0;
   time_app_ = 0.0;
   time_init_ = 0.0;
@@ -202,6 +202,14 @@ int Platform::Init(int* argc, char*** argv, int sync) {
   if (device_factor != NULL && atoi(device_factor) != 0)
       device_factor_ = atoi(device_factor);
   event_profile_enabled_ = false;
+  char *profile = NULL;
+  EnvironmentGet("PROFILE", &profile, NULL);
+  if (profile != NULL && atoi(profile) == 1)
+      enable_profiler_ = true;
+  char *history = NULL;
+  EnvironmentGet("HISTORY", &history, NULL);
+  if (history != NULL && atoi(history) == 1)
+      enable_scheduling_history_ = true;
   char *event_profile = NULL;
   EnvironmentGet("EVENT_PROFILE", &event_profile, NULL);
   if (event_profile != NULL && atoi(event_profile) == 1)
