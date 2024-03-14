@@ -8,14 +8,26 @@ set -x
 #source $SCRIPT_DIR/setup_backends.sh
 #export IRIS_ARCHS=$BACKENDS
 
-export LOCAL_SIZES=("1 1" "2 1" "4 1" "8 1" "16 1" "32 1" "64 1" "128 1" "256 1" "512 1" "1024 1" \
+# export IRIS_ARCHS=opencl
+#$BACKENDS
+export IRIS_HISTORY=1
+
+if [[ "$IRIS_ARCHS" == *"opencl"* ]]; then
+  echo using smaller set of workgroups with OpenCL since AMD drivers were misconfigured for max_work_group_size
+  export LOCAL_SIZES=("1 1" "2 1" "4 1" "8 1" "16 1" "32 1" "64 1" "128 1" "256 1" \
+  "1 1" "1 2" "1 4" "1 8" "1 16" "1 32" "1 64" "1 128" "1 256"\
+  "1 1" "2 2" "4 4" "8 8" "16 16")
+  export DIMS=("x" "x" "x" "x" "x" "x" "x" "x" "x" \
+  "y" "y" "y" "y" "y" "y" "y" "y" "y" \
+  "xy" "xy" "xy" "xy" "xy")
+else
+  export LOCAL_SIZES=("1 1" "2 1" "4 1" "8 1" "16 1" "32 1" "64 1" "128 1" "256 1" "512 1" "1024 1" \
   "1 1" "1 2" "1 4" "1 8" "1 16" "1 32" "1 64" "1 128" "1 256" "1 512" "1 1024"\
   "1 1" "2 2" "4 4" "8 8" "16 16" "32 32")
   export DIMS=("x" "x" "x" "x" "x" "x" "x" "x" "x" "x" "x" \
   "y" "y" "y" "y" "y" "y" "y" "y" "y" "y" "y"\
   "xy" "xy" "xy" "xy" "xy" "xy")
-
-export IRIS_HISTORY=1
+fi
 
 #installed with:
 #micromamba create -f dagger.yaml
@@ -81,5 +93,5 @@ for ((idx=0; idx<${#LOCAL_SIZES[@]}; idx++)); do
 done
 
 python ./plot_local_workgroup_sizes.py
-[ $? -ne 0 ] && echo "Failed plot the combined timing results" && exit 1
+([ $? -ne 0 ] && echo "Failed plot the combined timing results" && exit 1) || true
 

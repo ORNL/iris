@@ -1,0 +1,10 @@
+bokeh
+matplotlib
+natsort
+networkx @ git+https://github.com/BeauJoh/networkx.git@main
+numpy
+pandas
+pygraphviz
+seaborn
+tqdm
+pyyaml
