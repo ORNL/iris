@@ -78,6 +78,8 @@ typedef enum StreamPolicy StreamPolicy;
 #ifndef UNDEF_IRIS_MACROS
 #define IRIS_MAX_NPLATFORMS     32
 #define IRIS_MAX_NDEVS          (1 << 5) - 1
+#define IRIS_MAX_KERNEL_NARGS     64
+#define IRIS_MAX_DEVICE_NQUEUES   9
 
 #define iris_default            (1 << 5)
 #define iris_cpu                (1 << 6)
