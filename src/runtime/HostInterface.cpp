@@ -24,7 +24,7 @@ namespace iris {
         {
             ASSERT(stream_index < 256 && "Stream index should be <256");
             ASSERT(nstreams < 256 && "Stream index should be <256");
-            ASSERT(device < 65536 && "Stream index should be <256");
+            ASSERT(devno < 65536 && "Stream index should be <256");
             uint32_t dev_info = ((uint32_t)(nstreams << 24)) | (((uint32_t)stream_index) << 16) | devno;
             return dev_info;
         }
