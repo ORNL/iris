@@ -157,7 +157,7 @@ def parse_args(pargs=None,additional_arguments=[]):
             num_provided_memory_objects += len(_kernel_buffs[k])
         assert args.num_memory_objects < num_provided_memory_objects, "Incorrect arguments given to --num-memory-objects. The number should be less than the default {} . Broken on {}".format(num_provided_memory_objects,i)
         _memory_object_pool = []
-        n = 0 
+        n = 0
         for kname in _kernel_buffs:
             kinstk = 0
             for i,j in enumerate(_kernel_buffs[kname]):
@@ -181,7 +181,7 @@ def parse_args(pargs=None,additional_arguments=[]):
             except:
                 assert False, "Incorrect arguments given to --concurrent-kernels. Broken on {}".format(i)
            # \"process:2\" indicates that the kernel called \"process\" will only allow two unique sets of memory buffers in the generated DAG, effectively limiting concurrency by indicating a data dependency.")
-    assert _total_num_concurrent_kernels == _max_width, "Incorrect arguments given: the total number of concurrent kernels must be equal to the maximum width of any level in the graph. The total number of concurrent kernels are: {} while the width is {}\n".format(_total_num_concurrent_kernels,_max_width)
+    assert _total_num_concurrent_kernels == _max_width, f"Incorrect arguments given: the total number of concurrent kernels must be equal to the maximum width of any level in the graph. The total number of concurrent kernels are: {_total_num_concurrent_kernels} while the width is {_max_width}\n"
 
     for i in args.kernel_dimensions.split(','):
         try:
@@ -445,7 +445,7 @@ def gen_attr(tasks,kernel_names,kernel_probs):
 
     #set of kernel names to use based on the probabilities
     bag_of_kernels = random.choices(kernel_names, weights=kernel_probs, k=len(tasks))
-    
+
     dag = []
     for i in range(0,len(tasks)):
         tname = "task"+str(i)
@@ -657,7 +657,7 @@ def determine_iris_inputs():
         for ck in range(0,_concurrent_kernels[k]):
             for i,j in enumerate(_kernel_buffs[k]):
                 if type(j) is dict and j['type'] == 'scalar' and type(j['value']) is str:
-                    print("Error: we still need to add kernel argument passing to the runner, currently we only accept numerical values to the dagger_generator.py") 
+                    print("Error: we still need to add kernel argument passing to the runner, currently we only accept numerical values to the dagger_generator.py")
                     import ipdb
                     ipdb.set_trace()
                     import sys
