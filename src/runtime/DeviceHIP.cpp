@@ -579,7 +579,7 @@ int DeviceHIP::KernelLaunchInit(Command *cmd, Kernel* kernel) {
         kstream = &streams_[stream_index];
         nstreams = nqueues_ - stream_index;
     }
-    host2hip_ld_->launch_init(model(), devno_, nstreams, (void **)kstream, kernel->GetParamWrapperMemory(), cmd);
+    host2hip_ld_->launch_init(model(), devno_, stream_index, nstreams, (void **)kstream, kernel->GetParamWrapperMemory(), cmd);
     return IRIS_SUCCESS;
 }
 

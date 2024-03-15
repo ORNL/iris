@@ -445,7 +445,7 @@ int DeviceOpenCL::KernelLaunchInit(Command *cmd, Kernel* kernel) {
         kstream = &clcmdq_[stream_index];
         nstreams = nqueues_ - stream_index;
     }
-    host2opencl_ld_->launch_init(model(), ocldevno_, nstreams, (void **)kstream, kernel->GetParamWrapperMemory(), cmd);
+    host2opencl_ld_->launch_init(model(), ocldevno_, stream_index, nstreams, (void **)kstream, kernel->GetParamWrapperMemory(), cmd);
     return IRIS_SUCCESS;
 }
 

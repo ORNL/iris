@@ -112,7 +112,7 @@ namespace iris {
                 INIT_SYM_FN(iris_get_kernel_names);
                 INIT_SYM_FN(iris_set_kernel_ptr_with_obj);
             }
-        int BoilerPlateHostInterfaceLoader::launch_init(int model, int devno, int nstreams, void **stream, void *param_mem, Command *cmd) 
+        int BoilerPlateHostInterfaceLoader::launch_init(int model, int devno, int stream_index, int nstreams, void **stream, void *param_mem, Command *cmd) 
         {
             const char *kname = cmd->kernel()->name();
             if (iris_host_kernel_with_obj) {
@@ -210,7 +210,7 @@ namespace iris {
             KernelFFI **ffi_ptr = (KernelFFI **)(((uint8_t *)param_mem)+ sizeof(int));
             *ffi_ptr = ffi_data;
         }
-        int FFIHostInterfaceLoader::launch_init(int model, int devno, int nstreams, void **stream, void *param_mem, Command *cmd) 
+        int FFIHostInterfaceLoader::launch_init(int model, int devno, int stream_index, int nstreams, void **stream, void *param_mem, Command *cmd) 
         {
             Kernel *kernel = cmd->kernel();
             const char *name = kernel->name();
