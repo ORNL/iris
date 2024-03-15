@@ -13,8 +13,9 @@ void BaseMem::HostRecordEvent(int devno, int stream)
     }
     void **host_event = GetHostCompletionEventPtr();
     //printf("host_event:%p host_event_ptr:%p d2h:%p\n", host_event, *host_event, d2h_events_[devno]);
+    _event_debug("host_event:%p host_event_ptr:%p d2h:%p", host_event, *host_event, d2h_events_[devno]);
     if (*host_event != d2h_events_[devno]) {
-        _debug2("Recording event mem:%lu dev:%d stream:%d event:%p\n", uid(), devno, stream, d2h_events_[devno]);
+        _debug2("Recording event mem:%lu dev:%d stream:%d event:%p", uid(), devno, stream, d2h_events_[devno]);
         *host_event = d2h_events_[devno];
     }
     HostUnlock();
@@ -25,7 +26,8 @@ void BaseMem::RecordEvent(int devno, int stream, bool new_entry) {
     if (*event_ptr == NULL) {
         dev->CreateEvent(event_ptr, iris_event_disable_timing);
     }
-    _trace(" devno:%d stream:%d uid:%lu event:%p\n", devno, stream, uid(), GetCompletionEvent(devno)); 
+    _trace(" devno:%d stream:%d uid:%lu event:%p", devno, stream, uid(), GetCompletionEvent(devno)); 
+    _event_debug(" devno:%d stream:%d uid:%lu event:%p", devno, stream, uid(), GetCompletionEvent(devno)); 
     archs_dev_[devno]->RecordEvent(event_ptr, stream);
 }
 void BaseMem::WaitForEvent(int devno, int stream, int dep_devno) {

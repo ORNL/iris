@@ -264,7 +264,7 @@ void Device::ResolveH2DStartEvents(Task *task, BaseMem *mem, bool async)
     if (write_dev != -1 && async) {
         //Written by some device 
         int written_stream = mem->GetHostWriteStream();
-        void *event = mem->GetCompletionEvent(write_dev);
+        void *event = mem->GetHostCompletionEvent();
         //TODO: Think here; Can the source of write could be different type device; The best would be to synchronize instead of cross synchronization
         //WaitForEvent(event, mem_stream, iris_event_wait_default);
         Device *src_dev = Platform::GetPlatform()->device(write_dev);
@@ -944,9 +944,9 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         // do D2H and follewed by H2D
         //_trace("explore D2H->H2D dev[%d][%s] task[%ld:%s] mem[%lu]", devno_, name_, task->uid(), task->name(), mem->uid());
         int mem_stream = GetStream(task, mem, true); 
-#define HALT_UNTIL
+//#define HALT_UNTIL
 #ifndef HALT_UNTIL
-        mem_stream = 0; mem->set_recommended_stream(devno(), mem_stream);
+        //mem_stream = 0; mem->set_recommended_stream(devno(), mem_stream);
 #endif
         void* host = mem->host_memory(); // It should work even if host_ptr is null
         Device *src_dev = Platform::GetPlatform()->device(nddevs[0]);
@@ -955,10 +955,10 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         _event_debug("explore D2H->H2D dev[%d][%s] -> dev[%d][%s] task[%ld:%s] mem[%lu] cs:%d", src_dev->devno(), src_dev->name(), devno(), name(), task->uid(), task->name(), mem->uid(), context_shift);
         int src_mem_stream = src_dev->GetStream(task, mem, true); 
 #ifndef HALT_UNTIL
-        src_mem_stream = 1; mem->set_recommended_stream(src_dev->devno(), src_mem_stream);
+        //src_mem_stream = 1; mem->set_recommended_stream(src_dev->devno(), src_mem_stream);
 #endif
         int written_stream  = mem->GetWriteStream(src_dev->devno());
-        if (written_stream != -1) { // Source generated data using asynchronous device
+        if (src_dev->is_async(false) && written_stream != -1) { // Source generated data using asynchronous device
             if (written_stream != src_mem_stream) { 
                 // Wait for event if src_mem_stream is different from previous written stream
                 void *event = mem->GetWriteDeviceEvent(src_dev->devno());
