@@ -28,6 +28,12 @@ class Timer;
 class Worker;
 class Platform;
 
+enum AsyncResolveType
+{
+    ASYNC_GENERIC_RESOLVE,
+    ASYNC_D2D_RESOLVE,
+    ASYNC_H2D_RESOLVE,
+};
 typedef void (*CallBackType)(void *stream, int status, void *data);
 class Device {
 public:
@@ -109,6 +115,9 @@ public:
 
   void ResolveH2DStartEvents(Task *task, BaseMem *mem, bool async);
   void ResolveH2DEndEvents(Task *task, BaseMem *mem, bool async);
+  template <AsyncResolveType resolve_type>
+  inline void ResolveInputWriteDependency(Task *task, BaseMem *mem, bool async, Device *select_src_dev=NULL);
+  inline void DeviceEventExchange(Task *task, BaseMem *mem, void *input_event, int input_stream, Device *input_dev);
   void SynchronizeInputToMemory(Task *task, BaseMem *mem);
   void GetPossibleDevices(int devno, int *nddevs, 
           int &d2d_dev, int &cpu_dev, int &non_cpu_dev);

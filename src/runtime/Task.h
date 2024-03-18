@@ -208,6 +208,8 @@ public:
   void DispatchDependencies();
   bool is_internal_memory_transfer() { return internal_memory_transfer_;}
   void set_internal_memory_transfer() { internal_memory_transfer_ = true;}
+  bool is_task_with_single_flush();
+  int get_device_affinity();
   void set_metadata(int index, int data) { meta_data_[index] = data; }
   int metadata(int index) { return meta_data_[index]; }
   void print_incomplete_tasks();

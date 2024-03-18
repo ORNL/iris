@@ -246,10 +246,10 @@ int ProfilerEventRecord::CompleteTask(Task* task) {
          sprintf(s, "[ '%s %d', 'D2H: m%lu to (Host) task (%lu:%s) stream (%d)', %lf, %lf, ProfileRecordType.PROFILE_D2H, %lu, '%s'],\n", event_dev->name(), event_dev->devno(), uid, task->uid(), task->name(), stream, start_time, end_time, task->uid(), task->name());
      }
      else if (type == PROFILE_D2HH2D_H2D) {
-         sprintf(s, "[ '%s %d', 'D2H-H2D (H2D): m%lu from (Host) task (%lu:%s) stream (%d)', %lf, %lf, ProfileRecordType.PROFILE_H2D, %lu, '%s'],\n", event_dev->name(), event_dev->devno(), uid, task->uid(), task->name(), stream, start_time, end_time, task->uid(), task->name());
+         sprintf(s, "[ '%s %d', 'D2H-H2D (H2D): m%lu from (Host) task (%lu:%s) stream (%d)', %lf, %lf, ProfileRecordType.PROFILE_D2HH2D_H2D, %lu, '%s'],\n", event_dev->name(), event_dev->devno(), uid, task->uid(), task->name(), stream, start_time, end_time, task->uid(), task->name());
      }
      else if (type == PROFILE_D2HH2D_D2H) {
-         sprintf(s, "[ '%s %d', 'D2H-H2D (D2H): m%lu to (Host) task (%lu:%s) stream (%d)', %lf, %lf, ProfileRecordType.PROFILE_D2H, %lu, '%s'],\n", event_dev->name(), event_dev->devno(), uid, task->uid(), task->name(), stream, start_time, end_time, task->uid(), task->name());
+         sprintf(s, "[ '%s %d', 'D2H-H2D (D2H): m%lu to (Host) task (%lu:%s) stream (%d)', %lf, %lf, ProfileRecordType.PROFILE_D2HH2D_D2H, %lu, '%s'],\n", event_dev->name(), event_dev->devno(), uid, task->uid(), task->name(), stream, start_time, end_time, task->uid(), task->name());
      }
      else if (type == PROFILE_D2O) {
          sprintf(s, "[ '%s %d', 'D2O: m%lu from (%d) task (%lu:%s) stream (%d)', %lf, %lf, ProfileRecordType.PROFILE_D2O, %lu, '%s'],\n", event_dev->name(), event_dev->devno(), uid, connect_dev, task->uid(), task->name(), stream, start_time, end_time, task->uid(), task->name());

@@ -259,11 +259,11 @@ int DeviceOpenCL::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_siz
   if (mem->is_usm(devno())) return IRIS_SUCCESS;
   int stream_index = 0;
   cl_command_queue queue = default_queue_;
-  bool async = false;
+  //bool async = false;
   if (is_async(task)) {
       stream_index = GetStream(task, mem); //task->uid() % nqueues_; 
-      async = true;
-      if (stream_index == DEFAULT_STREAM_INDEX) { async = false; stream_index = 0; }
+      //async = true;
+      if (stream_index == DEFAULT_STREAM_INDEX) { /*async = false;*/ stream_index = 0; }
       queue = clcmdq_[stream_index];
   }
   cl_int err;
@@ -314,12 +314,12 @@ int DeviceOpenCL::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_siz
   cl_mem clmem = (cl_mem) mem->arch(this, host);
   if (mem->is_usm(devno())) return IRIS_SUCCESS;
   int stream_index = 0;
-  bool async = false;
+  //bool async = false;
   cl_command_queue queue = default_queue_;
   if (is_async(task)) {
       stream_index = GetStream(task, mem); //task->uid() % nqueues_; 
-      async = true;
-      if (stream_index == DEFAULT_STREAM_INDEX) { async = false; stream_index = 0; }
+      //async = true;
+      if (stream_index == DEFAULT_STREAM_INDEX) { /*async = false;*/ stream_index = 0; }
       queue = clcmdq_[stream_index];
   }
   cl_int err;

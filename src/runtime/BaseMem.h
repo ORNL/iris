@@ -84,6 +84,7 @@ namespace rt {
                 delete [] device_map_;
                 //track()->UntrackObject(this, uid());
             }
+            virtual int  get_dev_affinity()  { return -1; }
             virtual void* arch(Device* dev, void *host=NULL) = 0;
             virtual void* arch(int devno, void *host=NULL) = 0;
             virtual void** arch_ptr(Device *dev, void *host=NULL) = 0;

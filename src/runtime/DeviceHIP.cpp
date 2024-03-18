@@ -722,6 +722,10 @@ float DeviceHIP::GetEventTime(void *event, int stream)
     if (event != NULL) {
         hipError_t err = ld_->hipEventElapsedTime(&elapsed, single_start_time_event_, (hipEvent_t)event);
         //printf("Elapsed:%f start_time_event:%p event:%p\n", elapsed, single_start_time_event_, event);
+        if (err != 0) {
+            _event_prof_debug("Error:%d dev:[%d][%s] Elapsed:%f start_time_event:%p event:%p stream:%d\n", err, devno(), name(), elapsed, single_start_time_event_, event, stream);
+            
+        }
         _hiperror(err);
     }
     return elapsed; 

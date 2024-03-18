@@ -291,7 +291,7 @@ int DeviceCUDA::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset)
       err = ld_->cuMemAlloc(cumem, size);
   //mtime = timer_->Now() - mtime;
   _cuerror(err);
-  _event_debug("CUDA MemAlloc dev:%d:%s mem:%lu size:%zu ptr:%p async:%d stream:%d\n", devno_, name_, mem->uid(), size, *cumem, async, stream);
+  _event_debug("CUDA MemAlloc dev:%d:%s mem:%lu size:%zu ptr:%p async:%d stream:%d\n", devno_, name_, mem->uid(), size, (void *)*cumem, async, stream);
   if (reset)  {
 #ifdef MALLOC_ASYNC
       if (async) 

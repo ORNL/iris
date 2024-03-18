@@ -40,10 +40,12 @@ float ProfileEvent::GetEndTime() {
 void ProfileEvent::RecordStartEvent() {
     event_dev_->RecordEvent(&start_event_, stream_, iris_event_default);
     event_dev_->TrackDestroyEvent(start_event_);
+    _event_prof_debug("Recorded id:%lu type:%d Start event:%p stream:%d", id_, type_, start_event_, stream_);
 }
 void ProfileEvent::RecordEndEvent() {
     event_dev_->RecordEvent(&end_event_, stream_, iris_event_default);
     event_dev_->TrackDestroyEvent(end_event_);
+    _event_prof_debug("Recorded id:%lu type:%d End event:%p stream:%d", id_, type_, end_event_, stream_);
 }
 Task::Task(Platform* platform, int type, const char* name, int max_cmds) {
   //printf("Creating task:%lu:%s ptr:%p\n", uid(), name, this);
@@ -213,6 +215,19 @@ void Task::AddMemResetCommand(Command* cmd) {
   reset_mems_.push_back(cmd);
 }
 
+bool Task::is_task_with_single_flush() {
+    if (ncmds_ == 1 && cmds_[0]->type() == IRIS_CMD_MEM_FLUSH) {
+        return true;
+    }
+    return false;
+}
+int Task::get_device_affinity() {
+    if (is_task_with_single_flush()) {
+        BaseMem* mem = (BaseMem *)cmds_[0]->mem();
+        return mem->get_dev_affinity();
+    }
+    return -1;
+}
 void Task::AddCommand(Command* cmd) {
   if (ncmds_ >= max_cmds_) _error("ncmds[%d]", ncmds_);
   cmds_[ncmds_++] = cmd;

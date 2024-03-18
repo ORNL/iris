@@ -32,6 +32,12 @@ public:
   void set_host_dirty(bool flag=true) { host_dirty_flag_ = flag; }
   bool is_dev_dirty(int devno) { return dirty_flag_[devno]; }
   void set_dev_dirty(int devno, bool flag=true) { dirty_flag_[devno] = flag; }
+  int  get_dev_affinity() { 
+      for(int i=0; i<ndevs_; i++) 
+          if (!dirty_flag_[i]) 
+              return i; 
+      return -1;
+  }
   void clear_dev_dirty(int devno) { dirty_flag_[devno] = false; }
   void set_dirty_except(int devno) {
     for(int i=0; i<ndevs_; i++) {
