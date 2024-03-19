@@ -22,12 +22,22 @@ fi
 
 #<application name> <memory size> <verbose?> <number of devices to use> <number of statistical samples> <log file to store samples>
 #run CUDA baseline to see FLOP scaling over increasing device count
-REPEATS=1
-#for num_devices in {6..6}
-#REPEATS=100
+SIZE=2048
+REPEATS=10
+VERIFY=0
+
+#performing the repeats this way highlights a degradation in performance in longer running instances of IRIS --- this is bad if we aim to have one shared host instance of IRIS per node.
+#for num_devices in {1..13}
+#do
+#  IRIS_ARCHS=cuda ./compute-performance-iris ${SIZE} ${VERIFY} ${num_devices} ${REPEATS} dgemm-iris-cuda-${HOST}-${num_devices}.csv
+#done
+
 for num_devices in {1..13}
 do
-    IRIS_ARCHS=cuda ./compute-performance-iris 4096 0 ${num_devices} ${REPEATS} dgemm-iris-cuda-${HOST}-${num_devices}.csv
+  for (( num_run=0; num_run<=$REPEATS; num_run++ ))
+  do
+    IRIS_ARCHS=cuda ./compute-performance-iris ${SIZE} ${VERIFY} ${num_devices} ${REPEATS} dgemm-iris-cuda-${HOST}-${num_devices}.csv
+  done
 done
 
 source ./setup.sh
