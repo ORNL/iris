@@ -21,13 +21,14 @@ if ! [ -f memory-performance-iris ] || ! [ -f kernel.hip ] ; then
 fi
 
 export RUNTIME=hip
+export REPEATS=25
 # Final experiment: Lock the number of transfers and increase the buffer-size---starting from 1KiB onwards
-for SIZE in {1..25}
+for SIZE in {1..26}
 do
   ((ELEMENTS=2**${SIZE}))
   echo ${ELEMENTS}
   echo ${KIB}
-  IRIS_ARCHS=hip ./memory-performance-iris ${ELEMENTS} 1000 1000 membench-${RUNTIME}-${HOST}-${ELEMENTS}.csv
+  IRIS_ARCHS=hip ./memory-performance-iris ${ELEMENTS} ${REPEATS} 1000 membench-${RUNTIME}-${HOST}-${ELEMENTS}.csv
 done
 
 source ./setup.sh
