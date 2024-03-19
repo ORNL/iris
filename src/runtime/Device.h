@@ -11,6 +11,9 @@
 #include <atomic>
 using namespace std;
 
+//TODO:
+//#define MALLOC_ASYNC
+//#define IN_HALT_UNTIL
 
 #define DEFAULT_STREAM_INDEX -2
 
@@ -32,7 +35,9 @@ enum AsyncResolveType
 {
     ASYNC_GENERIC_RESOLVE,
     ASYNC_D2D_RESOLVE,
+    ASYNC_D2H_RESOLVE,
     ASYNC_H2D_RESOLVE,
+    ASYNC_H2D_RESOLVE_SYNC,
 };
 typedef void (*CallBackType)(void *stream, int status, void *data);
 class Device {

@@ -214,7 +214,6 @@ void *DeviceHIP::GetSharedMemPtr(void* mem, size_t size)
     ASSERT(hipmem != NULL);
     return hipmem; 
 }
-#define MALLOC_ASYNC
 int DeviceHIP::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset) {
   void** hipmem = mem_addr;
   int stream = mem->recommended_stream(devno());

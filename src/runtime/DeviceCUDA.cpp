@@ -272,7 +272,6 @@ void *DeviceCUDA::GetSharedMemPtr(void* mem, size_t size)
     ASSERT(cumem != NULL);
     return cumem; 
 }
-#define MALLOC_ASYNC
 int DeviceCUDA::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset) {
   if (IsContextChangeRequired()) {
       CUresult err=ld_->cuCtxSetCurrent(ctx_);
