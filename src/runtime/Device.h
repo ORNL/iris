@@ -13,7 +13,9 @@ using namespace std;
 
 //TODO:
 //#define MALLOC_ASYNC
-//#define IN_HALT_UNTIL
+#define ENABLE_SAME_TYPE_GPU_OPTIMIZATION
+#define DISABLE_D2D
+#define IN_HALT_UNTIL
 
 #define DEFAULT_STREAM_INDEX -2
 
@@ -36,6 +38,7 @@ enum AsyncResolveType
     ASYNC_GENERIC_RESOLVE,
     ASYNC_D2D_RESOLVE,
     ASYNC_D2H_RESOLVE,
+    ASYNC_D2H_SYNC,
     ASYNC_H2D_RESOLVE,
     ASYNC_H2D_RESOLVE_SYNC,
 };

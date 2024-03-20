@@ -27,7 +27,9 @@ DeviceHIP::DeviceHIP(LoaderHIP* ld, LoaderHost2HIP *host2hip_ld, hipDevice_t dev
   shared_mem_bytes_ = 0;
   ordinal_ = ordinal;
   peers_count_ = 0;
+#ifndef DISABLE_D2D
   enableD2D();
+#endif
   dev_ = dev;
   strcpy(vendor_, "Advanced Micro Devices");
   hipError_t err = ld_->hipDeviceGetName(name_, sizeof(name_), dev_);

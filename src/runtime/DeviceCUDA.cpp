@@ -82,7 +82,9 @@ DeviceCUDA::DeviceCUDA(LoaderCUDA* ld, LoaderHost2CUDA *host2cuda_ld, CUdevice c
   shared_mem_bytes_ = 0;
   dev_ = cudev;
   strcpy(vendor_, "NVIDIA Corporation");
+#ifndef DISABLE_D2D
   enableD2D();
+#endif
   CUresult err = ld_->cuDeviceGetName(name_, sizeof(name_), dev_);
   _cuerror(err);
   type_ = iris_nvidia;
@@ -896,8 +898,10 @@ float DeviceCUDA::GetEventTime(void *event, int stream)
         //CUresult err = ld_->cuEventElapsedTime(&elapsed, ((DeviceCUDA *)root_device())->single_start_time_event_, (CUevent)event);
         CUresult err = ld_->cuEventElapsedTime(&elapsed, single_start_time_event_, (CUevent)event);
         _cuerror(err);
-        //printf("Elapsed:%f single_start_time_event:%p event:%p\n", elapsed, single_start_time_event_, event);
-        //printf("Elapsed:%f single_start_time_event:%p start_time_event:%p event:%p\n", elapsed, single_start_time_event_, start_time_event_[stream], event);
+        if (err != 0) {
+        //_event_prof_debug("Elapsed:%f single_start_time_event:%p start_time_event:%p event:%p\n", elapsed, single_start_time_event_, start_time_event_[stream], event);
+        _event_prof_debug("Dev:%d:%s Elapsed:%f single_start_time_event:%p event:%p stream:%d\n", devno(), name(), elapsed, single_start_time_event_, event, stream);
+        }
     }
     return elapsed; 
 }
