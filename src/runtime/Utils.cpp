@@ -9,7 +9,9 @@
 #include <time.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#ifndef ANDROID
 #include <execinfo.h>
+#endif
 #include <cstdlib>
 #include <regex>
 #include <cxxabi.h>
@@ -20,6 +22,9 @@ namespace rt {
 // # Spec
 // # Print backtrace of a function
 void Utils::PrintStackTrace() {
+#ifdef ANDROID
+    printf("[Error] PrintStackTrace is not supported\n");
+#else
     const int max_frames = 16;
     void* frame_addrs[max_frames];
     int num_frames = backtrace(frame_addrs, max_frames);
@@ -56,6 +61,7 @@ void Utils::PrintStackTrace() {
     }
 
     free(symbols);
+#endif
 }
 // # Spec
 // # dev_sizes[] = { n-cols, n-rows, n-depth }
