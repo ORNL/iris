@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #uncomment to use data memory rather than explicit memory transfers
-#export USE_DATA_MEMORY=--use-data-memory
+export USE_DATA_MEMORY=--use-data-memory
 export REPEATS=${REPEATS:=100}
 export PAYLOAD_SIZE=${PAYLOAD_SIZE:=128}
 export SIZES=("10" "25" "100")
@@ -230,6 +230,38 @@ mv dagger_runner-$SYSTEM*.csv $RESULTS_DIR/sandwichdatamemlinear10-roundrobin-$S
 #plot timeline with gantt
 python ./gantt/gantt.py --dag=./dagger-payloads/linear10-graph-dmem-sandwich.json --timeline=$RESULTS_DIR/sandwichdatamemlinear10-roundrobin-$SYSTEM-0.csv --timeline-out=$GRAPHS_DIR/sandwichdatamemlinear10-roundrobin-$SYSTEM-timeline.pdf --dag-out=$GRAPHS_DIR/sandwichdatamemlinear10-roundrobin-$SYSTEM-dag.pdf  --combined-out=$GRAPHS_DIR/sandwichdatamemlinear10-roundrobin-$SYSTEM.pdf --no-show-kernel-legend
 [ $? -ne 0 ] && echo "Failed Combined Plotting of Linear 10 with Policy: roundrobin DMEM and sandwich" &&  exit 1
+echo "Passed."
+
+echo "Running memory-shuffle test..."
+echo "Running IRIS (explicit memory-shuffle) on Linear 10 with Policy: roundrobin"
+./dagger_generator.py --kernels="ijk" --buffers-per-kernel="ijk:w r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=10 --num-tasks=10 --min-width=1 --max-width=1 --num-memory-shuffles=5 --concurrent-kernels="ijk:3"
+[ $? -ne 0 ] &&  exit 1
+cat graph.json
+cp graph.json dagger-payloads/linear10-graph-memshuf.json
+cp dag.pdf $GRAPHS_DIR/linear10-graph-memshuf.pdf
+./dagger_runner --graph="dagger-payloads/linear10-graph-memshuf.json" --logfile="time.csv" --repeats=1 --scheduling-policy="roundrobin" --size=$PAYLOAD_SIZE  --kernels="ijk" --buffers-per-kernel="ijk:w r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=10 --num-tasks=10 --min-width=1 --max-width=1 --concurrent-kernels="ijk:3"
+[ $? -ne 0 ] && echo "Linear 10 (explicit memory-shuffle) Failed with Policy: roundrobin" &&  exit 1
+#archive result
+mv dagger_runner-$SYSTEM*.csv $RESULTS_DIR/memshuflinear10-roundrobin-$SYSTEM-0.csv
+#plot timeline with gantt
+python ./gantt/gantt.py --dag=./dagger-payloads/linear10-graph-memshuf.json --timeline=$RESULTS_DIR/memshuflinear10-roundrobin-$SYSTEM-0.csv --timeline-out=$GRAPHS_DIR/memshuflinear10-roundrobin-$SYSTEM-timeline.pdf --dag-out=$GRAPHS_DIR/memshuflinear10-roundrobin-$SYSTEM-dag.pdf  --combined-out=$GRAPHS_DIR/memshuflinear10-roundrobin-$SYSTEM.pdf --no-show-kernel-legend
+[ $? -ne 0 ] && echo "Failed Combined Plotting of Linear 10 (explicit memory-shuffle) with Policy: roundrobin" &&  exit 1
+echo "Passed."
+
+
+echo "Running IRIS (memory-shuffle with DMEM) on Linear 10 with Policy: roundrobin"
+./dagger_generator.py --kernels="ijk" --buffers-per-kernel="ijk:w r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=10 --num-tasks=10 --min-width=1 --max-width=1 --use-data-memory --num-memory-shuffles=5 --concurrent-kernels="ijk:3"
+[ $? -ne 0 ] &&  exit 1
+cat graph.json
+cp graph.json dagger-payloads/linear10-graph-dmemshuf.json
+cp dag.pdf $GRAPHS_DIR/linear10-graph-dmemshuf.pdf
+./dagger_runner --graph="dagger-payloads/linear10-graph-dmemshuf.json" --logfile="time.csv" --repeats=1 --scheduling-policy="roundrobin" --size=$PAYLOAD_SIZE  --kernels="ijk" --buffers-per-kernel="ijk:w r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=10 --num-tasks=10 --min-width=1 --max-width=1 --use-data-memory --concurrent-kernels="ijk:3"
+[ $? -ne 0 ] && echo "Linear 10 (memory-shuffle with DMEM) Failed with Policy: roundrobin" &&  exit 1
+#archive result
+mv dagger_runner-$SYSTEM*.csv $RESULTS_DIR/dmemshuflinear10-roundrobin-$SYSTEM-0.csv
+#plot timeline with gantt
+python ./gantt/gantt.py --dag=./dagger-payloads/linear10-graph-dmemshuf.json --timeline=$RESULTS_DIR/dmemshuflinear10-roundrobin-$SYSTEM-0.csv --timeline-out=$GRAPHS_DIR/dmemshuflinear10-roundrobin-$SYSTEM-timeline.pdf --dag-out=$GRAPHS_DIR/dmemshuflinear10-roundrobin-$SYSTEM-dag.pdf  --combined-out=$GRAPHS_DIR/dmemshuflinear10-roundrobin-$SYSTEM.pdf --no-show-kernel-legend
+[ $? -ne 0 ] && echo "Failed Combined Plotting of Linear 10 (memory-shuffle with DMEM) with Policy: roundrobin" &&  exit 1
 echo "Passed."
 
 echo "Running DAGGER on payloads..."
