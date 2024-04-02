@@ -23,6 +23,7 @@ class Gantt():
         timings['taskname'] = np.where(~timings['taskname'].isnull(),timings['taskname'],timings['type'])
 
         for d in drop:
+          print("dropping {}".format(d))
           #we now also support wildcard characters for dropping
           if "*" in d:
             import re
@@ -35,6 +36,9 @@ class Gantt():
         if self.drop_memory_transfer_commands:
             timings["taskname"].replace("transferto-.*$", "initial_h2d", inplace=True, regex=True)
             timings["taskname"].replace("transferfrom-.*$", "final_d2h", inplace=True, regex=True)
+            #and get rid of any d2d or DMEM transfers (these start with an "Internal-*")
+            droppings = [i for i, si in enumerate(timings['taskname']) if si.startswith('Internal-')]
+            timings = timings.drop(droppings)
 
         from natsort import humansorted
         try:
@@ -44,10 +48,13 @@ class Gantt():
             ipdb.set_trace()
 
         proc_names = [p for p in processors]
+        #replace any underscores in the taskname since matplotlib will ignore those entries
+        timings['taskname'] = [v.replace('_', '') if isinstance(v, str) else v for v in timings['taskname']]
         
         # color_choices = ['red', 'blue', 'green', 'cyan', 'magenta']
         # Assign colors based on the palette or default to a palette.
         unique_kernels = humansorted(set(timings['taskname']))
+        #print(unique_kernels)
         if insidepalette is None:
             unique_kernels_count = len(unique_kernels)
             if unique_kernels_count < 9:
@@ -81,25 +88,25 @@ class Gantt():
         for i,k in enumerate(unique_kernels):
             edgephash[k] = edgepalette[i]
 
-
         ilen=len(processors)
         pos = self.np.arange(0.5,ilen*0.5+0.5,0.5)
         fig = self.plt.figure(figsize=(12,6)) # orig
-        ax = fig.add_subplot(111)
+        ax = self.plt.axes()
+        #fig, ax = fig.add_subplot(111)
         used_labels = []
         for idx, proc in enumerate(processors):
             for idy in timings[timings['acclname'] == proc].index.tolist():
                 job = timings.loc[[idy]]
-
                 #extra logic to avoid duplicate labels
                 fresh_label = job['taskname'].values[0] not in used_labels
                 used_labels.append(job['taskname'].values[0])
-
+                if fresh_label:
+                    print(job['taskname'].values[0])
                 ax.barh((idx*0.5)+0.5, job['end'] - job['start'], left=job['start'], height=0.3, align='center', edgecolor=edgephash[job['taskname'].values[0]], color=insidephash[job['taskname'].values[0]], alpha=0.95,label=job['taskname'].values[0] if fresh_label else "__no_legend__")
+
                 if inner_label:
                     #uncomment the following to have the kernel name directly onto the bars rather than as a label
                     ax.text(job['start'] + (.05*(job['end']-job['start'])), (idx*0.5)+0.5 - 0.03125, job['taskname'].values[0], fontweight='bold', fontsize=9, alpha=0.75, rotation=90)
-
         locsy, labelsy = self.plt.yticks(pos, proc_names)
         self.plt.ylabel('Devices', fontsize=10)
         self.plt.xlabel('Time (s)', fontsize=10)
@@ -113,10 +120,16 @@ class Gantt():
                 tl.set_backgroundcolor(self.device_colour_palette[txt])
                 tl.set_text(txt)
         # sort both labels and handles by labels
-        handles, labels = ax.get_legend_handles_labels()
-        neworder = dict(humansorted(zip(labels, handles)))
-        if show_task_legend:
-            ax.legend(neworder.values(), neworder.keys(), title="Tasks",fontsize=8)#bbox_to_anchor=(0, .5), ncol = 1,
+        ax.legend(title="Tasks",fontsize=8)
+        #ax.legend(ax.containers,title="Tasks",fontsize=8)
+        #ax.legend(handles,labels=labels,title="Tasks",fontsize=8)
+
+        #handles, labels = ax.get_legend_handles_labels()
+        #print(handles)
+        #print(labels)
+        #neworder = dict(humansorted(zip(labels, handles)))
+        #if show_task_legend:
+        #    ax.legend(neworder.values(), neworder.keys(), title="Tasks",fontsize=8)#bbox_to_anchor=(0, .5), ncol = 1,
         if time_range and not zoom:
             ax.set_xlim(time_range)
         elif zoom:
@@ -132,7 +145,7 @@ class Gantt():
         font = self.font_manager.FontProperties(size='small')
         return fig
 
-    def plotGanttChart(self,timing_log,title=None, **kargs):
+    def plotGanttChart(self,timing_log,title=None,timeline_output_file=None, **kargs):
         """
             Given a dictionary of processor-task schedules, displays a Gantt chart generated using Matplotlib
         """  
@@ -145,7 +158,7 @@ class Gantt():
             print("File format for {} is {} and unsupported, please provide the url to the timing log instead.".format(timing_log,type(timing_log)))
             return
         fig = self._createGanttChart(timing_content,title, **kargs)
-        self.plt.show()
+
         if timeline_output_file is not None:
           self.plt.savefig(timeline_output_file)
           print("timeline written to "+str(timeline_output_file))
@@ -406,7 +419,6 @@ if __name__ == '__main__':
     parser.add_argument('--no-show-task-legend', dest='show_task_legend', action='store_false')
     parser.add_argument('--show-kernel-legend', dest='show_kernel_legend', action='store_true')
     parser.add_argument('--keep-memory-transfer-commands', dest='drop_memory_transfer_commands', action='store_false')
-
     #todo cell colour
     #todo separate plots
     parser.set_defaults(show_kernel_legend=True)
@@ -426,5 +438,11 @@ if __name__ == '__main__':
     if args.combinedout is None and args.timelineout is None and args.dagout is None:
         print("Incorrect Arguments. Please provide *at least* one output medium (--combined-out, --timeline-out, --dag-out)")
         sys.exit(1)
+
+    if args.timelineout is not None and args.combinedout is None and args.dagout is None:
+        g = Gantt(drop_memory_transfer_commands=args.drop_memory_transfer_commands)
+        g.plotGanttChart(timeline_file,args.titlestring,timeline_output_file=args.timelineout)
+        sys.exit(0)
+
     cp = CombinePlots(timeline_file=args.timeline, dag_file=args.dag, combined_output_file=args.combinedout, timeline_output_file=args.timelineout, dag_output_file=args.dagout, title_string=args.titlestring, drop=dropsy, use_device_background_colour=args.use_device_background_colour, show_kernel_legend=args.show_kernel_legend, drop_memory_transfer_commands=args.drop_memory_transfer_commands,show_task_legend=args.show_task_legend)
 
