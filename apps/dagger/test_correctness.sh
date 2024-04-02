@@ -38,10 +38,10 @@ echo "*******************************************************************"
 [ $? -ne 0 ] && exit
 cat graph.json
 cp graph.json linear50-graph.json
-for POLICY in roundrobin #depend profile random ftf sdq
+for POLICY in roundrobin depend profile random ftf sdq
 do
   echo "Running IRIS with Policy: $POLICY"
-  IRIS_HISTORY=1 gdb --args ./dagger_test --logfile="time.csv" --repeats=1 --scheduling-policy="$POLICY" --size=256  --kernels="ijk" --duplicates="0" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=50 --num-tasks=50 --min-width=1 --max-width=1
+  IRIS_HISTORY=1 ./dagger_test --logfile="time.csv" --repeats=1 --scheduling-policy="$POLICY" --size=256  --kernels="ijk" --duplicates="0" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=50 --num-tasks=50 --min-width=1 --max-width=1
 
   [ $? -ne 0 ] && exit
 done
