@@ -103,7 +103,6 @@ function extract_data(newData, color_options, pattern) { \
     } \
 } \
 function handleCheckboxChange() { \
-    console.log(dataTable.getNumberOfRows()); \
     dataTable.removeRows(0, dataTable.getNumberOfRows()); \
     var newData = []; \
     var color_options = []; \
