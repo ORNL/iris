@@ -81,6 +81,8 @@ namespace rt {
                         DestroyEvent(i, top);
                     } 
                 }
+                delete [] d2h_events_;
+                delete [] write_event_;
                 delete [] device_map_;
                 //track()->UntrackObject(this, uid());
             }
@@ -139,7 +141,13 @@ namespace rt {
             void SetHostWriteDevice(int dev) { device_map_[ndevs_].set_devno(dev); }
             void HostRecordEvent(int devno, int stream);
             void *GetHostCompletionEvent() { return device_map_[ndevs_].GetCompletionEvent(); }
-            void **GetHostCompletionEventPtr() { return device_map_[ndevs_].GetCompletionEventPtr(); }
+            void **GetHostCompletionEventPtr(bool new_entry=false) { return device_map_[ndevs_].GetCompletionEventPtr(new_entry); }
+            void *GetDeviceSpecificHostCompletionEvent(int devno) {
+                return d2h_events_[devno];
+            }
+            void clear_d2h_events() { 
+                for (int i=0; i<ndevs_; i++) d2h_events_[i] = NULL; 
+            }
 #ifdef AUTO_PAR
   	    inline Task* get_current_writing_task() { return current_writing_task_;}
   	    inline void set_current_writing_task(Task* task) { current_writing_task_ = task;}
@@ -159,7 +167,7 @@ namespace rt {
             virtual inline void clear() { }
         void set_recommended_stream(int devno, int stream) { recommended_stream_[devno] = stream; }
         int recommended_stream(int devno) { return recommended_stream_[devno]; }
-        void RecordEvent(int devno, int stream, bool new_entry=false);
+        void *RecordEvent(int devno, int stream, bool new_entry=false);
         void WaitForEvent(int devno, int stream, int dep_devno);
         void DestroyEvent(int devno, void *event);
         bool is_usm(int devno) { return is_usm_[devno]; }

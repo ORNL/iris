@@ -14,7 +14,8 @@ using namespace std;
 //TODO:
 //#define MALLOC_ASYNC
 #define ENABLE_SAME_TYPE_GPU_OPTIMIZATION
-#define DISABLE_D2D
+#define DIRECT_H2D_SYNC
+//#define DISABLE_D2D
 #define IN_HALT_UNTIL
 
 #define DEFAULT_STREAM_INDEX -2
@@ -35,12 +36,14 @@ class Platform;
 
 enum AsyncResolveType
 {
-    ASYNC_GENERIC_RESOLVE,
+    //ASYNC_GENERIC_RESOLVE,
     ASYNC_D2D_RESOLVE,
-    ASYNC_D2H_RESOLVE,
+    ASYNC_DEV_INPUT_RESOLVE,
     ASYNC_D2H_SYNC,
-    ASYNC_H2D_RESOLVE,
-    ASYNC_H2D_RESOLVE_SYNC,
+    ASYNC_KNOWN_H2D_RESOLVE,
+    ASYNC_UNKNOWN_H2D_RESOLVE,
+    ASYNC_SAME_DEVICE_DEPENDENCY,
+    //ASYNC_H2D_RESOLVE_SYNC,
 };
 typedef void (*CallBackType)(void *stream, int status, void *data);
 class Device {
@@ -123,8 +126,11 @@ public:
 
   void ResolveH2DStartEvents(Task *task, BaseMem *mem, bool async);
   void ResolveH2DEndEvents(Task *task, BaseMem *mem, bool async);
+  void ResolveDeviceWrite(Task *task, BaseMem *mem, Device *input_dev, bool instant_wait);
   template <AsyncResolveType resolve_type>
   inline void ResolveInputWriteDependency(Task *task, BaseMem *mem, bool async, Device *select_src_dev=NULL);
+  template <AsyncResolveType resolve_type>
+  inline void ResolveOutputWriteDependency(Task *task, BaseMem *mem, bool async, Device *select_src_dev);
   inline void DeviceEventExchange(Task *task, BaseMem *mem, void *input_event, int input_stream, Device *input_dev);
   void SynchronizeInputToMemory(Task *task, BaseMem *mem);
   void GetPossibleDevices(int devno, int *nddevs, 

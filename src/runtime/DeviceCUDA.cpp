@@ -201,9 +201,11 @@ int DeviceCUDA::Init() {
           _cuerror(err);
           //RecordEvent((void **)(start_time_event_+i), i, iris_event_default);
       }
-      set_first_event_cpu_begin_time(timer_->Now());
+      double start_time = timer_->Now();
       RecordEvent((void **)(&single_start_time_event_), 0, iris_event_default);
-      set_first_event_cpu_end_time(timer_->Now());
+      double end_time = timer_->Now();
+      set_first_event_cpu_begin_time(start_time);
+      set_first_event_cpu_end_time(end_time);
       _event_prof_debug("Event start time of device:%f end time of record:%f", first_event_cpu_begin_time(), first_event_cpu_end_time());
   }
   host2cuda_ld_->init(devno());
@@ -886,7 +888,7 @@ void DeviceCUDA::CreateEvent(void **event, int flags)
     _cuerror(err);
     if (err != CUDA_SUCCESS)
         worker_->platform()->IncrementErrorCount();
-    _event_debug("Create dev:%d event_ptr:%p event:%p\n", devno(), event, *event);
+    _event_debug("Create dev:%d event_ptr:%p event:%p", devno(), event, *event);
 }
 float DeviceCUDA::GetEventTime(void *event, int stream) 
 { 
@@ -917,7 +919,8 @@ void DeviceCUDA::RecordEvent(void **event, int stream, int event_creation_flag)
         err = ld_->cuEventRecord(*((CUevent *)event), streams_[stream]);
     else
         err = ld_->cuEventRecord(*((CUevent *)event), streams_[stream]);
-    //printf("Recorded dev:%d event:%p stream:%d\n", devno(), *event, stream);
+    _cuerror(err);
+    _event_debug("Recorded dev:[%d]:[%s] event:%p stream:%d", devno(), name(), *event, stream);
     if (err != CUDA_SUCCESS)
         worker_->platform()->IncrementErrorCount();
 }
