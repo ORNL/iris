@@ -909,7 +909,7 @@ int Platform::DeviceSynchronize(int ndevs, int* devices) {
   Task* task = new Task(this, IRIS_MARKER, "Marker");
   task->Retain();
   task->Retain();
-  iris_task brs_task = *(task->struct_obj());
+  //iris_task brs_task = *(task->struct_obj());
   if (scheduler_) {
     char sync_task[128];
     for (int i = 0; i < ndevs; i++) {

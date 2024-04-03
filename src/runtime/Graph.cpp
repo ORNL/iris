@@ -754,7 +754,7 @@ bool GraphMetadata::exists_edge(unsigned long u,
 
 int GraphMetadata::get_max_parallelism()
 { 
-  int max_par = 0;
+  size_t max_par = 0;
   vector<Task *> tasks = graph_->formatted_tasks();
   int ntasks = tasks.size()+1;
   int8_t * dep_matrix = (int8_t *)calloc(ntasks*ntasks, sizeof(int8_t));
