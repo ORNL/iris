@@ -86,7 +86,7 @@ add_custom_command(
   COMMAND echo "export CPATH=\$IRIS/include:\$CPATH" >> ${CMAKE_BINARY_DIR}/setup.zsh
   COMMAND echo "export PYTHONPATH=\$IRIS/include/iris:\$PYTHONPATH" >> ${CMAKE_BINARY_DIR}/setup.zsh
   COMMAND echo "export SYSTEM=\$(hostname|cut -d . -f 1|sed 's/[0-9]*//g')" >>  ${CMAKE_BINARY_DIR}/setup.zsh
-  COMMAND echo "export MACHINE=\${SYSTEM^}" >>  ${CMAKE_BINARY_DIR}/setup.zsh
+  COMMAND echo "export MACHINE=\$(tr '[:lower:]' '[:upper:]' <<< \${SYSTEM:0:1})\${SYSTEM:1}" >>  ${CMAKE_BINARY_DIR}/setup.zsh
   COMMAND echo "echo \"*********************** IRIS Environent *********************\"" >> ${CMAKE_BINARY_DIR}/setup.zsh
   COMMAND echo "echo \"IRIS: \$IRIS\"" >> ${CMAKE_BINARY_DIR}/setup.zsh
   COMMAND echo "echo \"*************************************************************\"" >> ${CMAKE_BINARY_DIR}/setup.zsh
