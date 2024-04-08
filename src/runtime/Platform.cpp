@@ -214,7 +214,11 @@ int Platform::Init(int* argc, char*** argv, int sync) {
   EnvironmentGet("EVENT_PROFILE", &event_profile, NULL);
   if (event_profile != NULL && atoi(event_profile) == 1)
       event_profile_enabled_ = true;
-  char *async = NULL;
+  char *stream_policy = NULL;
+  EnvironmentGet("STREAM_POLICY", &stream_policy, NULL);
+  if (stream_policy != NULL && atoi(stream_policy) > 0)
+      set_stream_policy((StreamPolicy) atoi(stream_policy));
+  char *async= NULL;
   EnvironmentGet("ASYNC", &async, NULL);
   if (async != NULL && atoi(async) == 1)
       set_async(true);
