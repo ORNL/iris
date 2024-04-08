@@ -38,6 +38,7 @@ int LoaderCUDA::LoadFunctions() {
   LOADFUNC(cuTexRefSetFilterMode);
   LOADFUNC(cuTexRefSetFlags);
   LOADFUNC(cuTexRefSetFormat);
+  LOADFUNC(cuGetErrorString);
   LOADFUNC(cuMemcpy2D);
   //LOADFUNC(cuMemset);
   LOADFUNC(cuMemcpyDtoD);
