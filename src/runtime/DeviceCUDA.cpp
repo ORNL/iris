@@ -135,7 +135,7 @@ DeviceCUDA::~DeviceCUDA() {
       _cuerror(err);
       //DestroyEvent(start_time_event_[i]);
     }
-    if (is_async(false)) 
+    if (is_async(false) && platform_obj_->is_event_profile_enabled()) 
         DestroyEvent(single_start_time_event_);
 }
 
@@ -201,12 +201,14 @@ int DeviceCUDA::Init() {
           _cuerror(err);
           //RecordEvent((void **)(start_time_event_+i), i, iris_event_default);
       }
-      double start_time = timer_->Now();
-      RecordEvent((void **)(&single_start_time_event_), 0, iris_event_default);
-      double end_time = timer_->Now();
-      set_first_event_cpu_begin_time(start_time);
-      set_first_event_cpu_end_time(end_time);
-      _event_prof_debug("Event start time of device:%f end time of record:%f", first_event_cpu_begin_time(), first_event_cpu_end_time());
+      if (platform_obj_->is_event_profile_enabled()) {
+          double start_time = timer_->Now();
+          RecordEvent((void **)(&single_start_time_event_), -1, iris_event_default);
+          double end_time = timer_->Now();
+          set_first_event_cpu_begin_time(start_time);
+          set_first_event_cpu_end_time(end_time);
+          _event_prof_debug("Event start time of device:%f end time of record:%f", first_event_cpu_begin_time(), first_event_cpu_end_time());
+      }
   }
   host2cuda_ld_->init(devno());
 
@@ -884,11 +886,15 @@ void DeviceCUDA::CreateEvent(void **event, int flags)
     if (IsContextChangeRequired()) {
         ld_->cuCtxSetCurrent(ctx_);
     }
-    CUresult err = ld_->cuEventCreate((CUevent *)event, flags);   
+    CUresult err;
+    CUcontext ctx;
+    err = ld_->cuCtxGetCurrent(&ctx);
+    _cuerror(err);
+    err = ld_->cuEventCreate((CUevent *)event, flags);   
     _cuerror(err);
     if (err != CUDA_SUCCESS)
         worker_->platform()->IncrementErrorCount();
-    _event_debug("Create dev:%d event_ptr:%p event:%p", devno(), event, *event);
+    _event_debug("Create dev:%d event_ptr:%p event:%p, ctx:%p", devno(), event, *event, ctx);
 }
 float DeviceCUDA::GetEventTime(void *event, int stream) 
 { 
@@ -912,15 +918,26 @@ void DeviceCUDA::RecordEvent(void **event, int stream, int event_creation_flag)
     if (IsContextChangeRequired()) {
         ld_->cuCtxSetCurrent(ctx_);
     }
-    if (*event == NULL)
+    if (*event == NULL) 
         CreateEvent(event, event_creation_flag);
     CUresult err;
-    if (stream == 0)
-        err = ld_->cuEventRecord(*((CUevent *)event), streams_[stream]);
+    CUcontext ctx;
+    err = ld_->cuCtxGetCurrent(&ctx);
+    _cuerror(err);
+    CUresult status = ld_->cuEventQuery(*((CUevent *)event));
+    if (stream == -1)
+        err = ld_->cuEventRecord(*((CUevent *)event), 0);
     else
         err = ld_->cuEventRecord(*((CUevent *)event), streams_[stream]);
     _cuerror(err);
-    _event_debug("Recorded dev:[%d]:[%s] event:%p stream:%d", devno(), name(), *event, stream);
+    if (err != 0) {
+        const char *str;
+        ld_->cuGetErrorString(err, &str);
+        CUcontext ctx1;
+        ld_->cuCtxGetCurrent(&ctx1);
+        _event_debug("Error:%s event:%p stream:%d ctx:%p ctx:%p status:%d", str, *event, stream, ctx, ctx1, status);
+    }
+    _event_debug("Recorded dev:[%d]:[%s] event:%p stream:%d ctx:%p", devno(), name(), *event, stream, ctx);
     if (err != CUDA_SUCCESS)
         worker_->platform()->IncrementErrorCount();
 }

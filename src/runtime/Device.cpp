@@ -479,10 +479,11 @@ void Device::ResolveH2DEndEvents(Task *task, BaseMem *mem, bool async)
 #endif
         assert(mem_stream != -1);
         EVENT_DEBUG(void *event = )mem->RecordEvent(devno(), mem_stream, true);
+        //EventSynchronize(event);
         //mem->SetWriteDevice(devno());
         //mem->SetWriteStream(devno(), mem_stream);
         //mem->SetWriteDeviceEvent(devno(), event);
-        _event_prof_debug("h2d: RecordEvent adding event (H2D) dev[%d][%s] task[%ld:%s] mem[%lu] q[%d] event:%p\n", devno_, name_, task->uid(), task->name(), mem->uid(), mem_stream, event);
+        _event_debug("h2d: RecordEvent adding event (H2D) dev[%d][%s] task[%ld:%s] mem:%lu q[%d] event:%p\n", devno_, name_, task->uid(), task->name(), mem->uid(), mem_stream, event);
     }
 }
 void Device::ResolveH2DStartEvents(Task *task, BaseMem *mem, bool async)

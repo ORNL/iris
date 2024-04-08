@@ -23,6 +23,9 @@ void *BaseMem::RecordEvent(int devno, int stream, bool new_entry) {
     if (*event_ptr == NULL) {
         dev->CreateEvent(event_ptr, iris_event_disable_timing);
     }
+    else {
+    _event_debug("Reusing dev:[%d][%s] mem:%lu event:%p event_ptr:%p stream:%d",  dev->devno(), dev->name(), uid(), *event_ptr, event_ptr, stream);
+    }
     _trace(" devno:%d stream:%d uid:%lu event:%p", devno, stream, uid(), GetCompletionEvent(devno)); 
     _event_debug("dev:[%d][%s] mem:%lu event:%p event_ptr:%p stream:%d",  dev->devno(), dev->name(), uid(), *event_ptr, event_ptr, stream);
     dev->RecordEvent(event_ptr, stream);
