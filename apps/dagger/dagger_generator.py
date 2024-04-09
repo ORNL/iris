@@ -60,6 +60,8 @@ def init_parser(parser):
     parser.add_argument("--num-memory-objects",required=False,type=int,help="Enables sharing of memory objects dealt between tasks! It is the total number of memory objects to be passed around in the DAG between tasks (allows greater task interactions).", default=None)
     parser.add_argument("--use-data-memory",required=False,help="Enables the graph to use memory instead of the default explicit memory buffers. This results in final explicit flush events of buffers that are written.",default=False,action='store_true')
     parser.add_argument("--num-memory-shuffles",required=False,type=int,help="Memory shuffles is the number of swaps (positive integer) between memory buffers based on a random task selection and random memory buffer selection.",default=0)
+    parser.add_argument("--handover-in-memory-shuffle",required=False,help="Setting this argument to True yields a stricter form of Memory shuffle where each swap ensures the selected memory buffer is of different permissions, this results in the same memory being written to in one kernel then later read from.",default=False,action='store_true')
+
 
 def parse_args(pargs=None,additional_arguments=[]):
     parser = argparse.ArgumentParser(description='DAGGER: Directed Acyclic Graph Generator for Evaluating Runtimes')
@@ -75,7 +77,7 @@ def parse_args(pargs=None,additional_arguments=[]):
     else:
         args = parser.parse_args(shlex.split(pargs))
 
-    global _kernels, _k_probs, _depth, _num_tasks, _min_width, _max_width, _mean, _std_dev, _skips, _seed, _sandwich, _concurrent_kernels, _duplicates, _dimensionality, _graph, _memory_object_pool, _use_data_memory, _total_num_concurrent_kernels, _local_sizes, _memory_shuffle_count
+    global _kernels, _k_probs, _depth, _num_tasks, _min_width, _max_width, _mean, _std_dev, _skips, _seed, _sandwich, _concurrent_kernels, _duplicates, _dimensionality, _graph, _memory_object_pool, _use_data_memory, _total_num_concurrent_kernels, _local_sizes, _memory_shuffle_count, _handover
 
     _graph = args.graph
     _depth = args.depth
@@ -87,6 +89,7 @@ def parse_args(pargs=None,additional_arguments=[]):
     _sandwich = args.sandwich
     _duplicates = args.duplicates
     _memory_shuffle_count = args.num_memory_shuffles
+    _handover = args.handover_in_memory_shuffle
 
     if _duplicates <= 1: _duplicates = 1
     #if _duplicates > 1: print("currently duplicates flag unsupported!\n")
@@ -327,7 +330,7 @@ def create_d2h_task_from_kernel_bag(_kernel_bag,dag):
     return transfer_task
 
 def generate_attributes(task_dependencies,tasks_per_level):
-    global _memory_shuffle_count
+    global _memory_shuffle_count, _handover
     #generate internal kernel instance names based on duplicates
     _kernel_bag = {}
     for k in _kernels:
@@ -403,9 +406,11 @@ def generate_attributes(task_dependencies,tasks_per_level):
     #0) for each memory_shuffle_count
     #1) perform random selection of task and memory buffer
     #2) look for another task with memory buffer
-    #3) ensure the selected memory buffer not currently being used in the task (we don't want the kernel reading and writing to the same buffer since that's undefined and dangerous)
-    #4) perform swap
-    #5) decrement the memory_shuffle_count
+    #3) ensure the we aren't swapping the same buffer
+    #4) ensure the selected memory buffer not currently being used in the task (we don't want the kernel reading and writing to the same buffer since that's undefined and dangerous)
+    #5) if handover (a stricter form of memory swap) ensure the opposite permission (if the first selected buffer was read only, swap with a write buffer) --- akin to a producer/consumer model
+    #6) perform swap
+    #7) decrement the memory_shuffle_count
     while _memory_shuffle_count > 0: #0)
         #1)
         selected_tasks = random.sample(range(len(dag)),k=2)
@@ -416,11 +421,25 @@ def generate_attributes(task_dependencies,tasks_per_level):
         first_mobj = random.choice(range(len(first)))
         second_mobj = random.choice(range(len(second)))
         #3)
-        if second[second_mobj]['value'] in [x['value'] for x in first]:
+        if first[first_mobj]['value'] == second[second_mobj]['value']:
             continue
         #4)
-        first[first_mobj]['value'], second[second_mobj]['value'] = second[second_mobj]['value'], first[first_mobj]['value']
+        if second[second_mobj]['value'] in [x['value'] for x in first]:
+            continue
         #5)
+        if _handover and first[first_mobj]['permissions'] == second[second_mobj]['permissions']:
+            continue
+        #6)
+        #print("dag was: t0 = {}".format(dag[selected_tasks[0]]['commands'][0]['kernel']['parameters'][first_mobj]['value']))
+        #print("swapping task: {} arg: {} buffer: {} and task: {} arg: {} buffer: {}".format(dag[selected_tasks[0]]["name"],first_mobj,first[first_mobj]['value'], dag[selected_tasks[1]]["name"], second_mobj, second[second_mobj]['value']))
+        print("replacing task: {} arg: {} buffer: {} with buffer: {}".format(dag[selected_tasks[0]]["name"],first_mobj,first[first_mobj]['value'], second[second_mobj]['value']))
+        dag[selected_tasks[0]]['commands'][0]['kernel']['parameters'][first_mobj]['value'] = second[second_mobj]['value']
+        dag[selected_tasks[1]]['commands'][0]['kernel']['parameters'][second_mobj]['value'] = first[first_mobj]['value']
+        #first[first_mobj]['value'], second[second_mobj]['value'] = second[second_mobj]['value'], first[first_mobj]['value']
+        #print("dag now: t0 = {}".format(dag[selected_tasks[0]]['commands'][0]['kernel']['parameters'][first_mobj]['value']))
+        #import ipdb
+        #ipdb.set_trace()
+        #7)
         _memory_shuffle_count -= 1
     return dag
 
