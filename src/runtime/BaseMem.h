@@ -129,8 +129,8 @@ namespace rt {
             void *GetWriteDeviceEvent(int devno) { return write_event_[devno]; }
             int GetWriteStream(int devno) { return device_map_[devno].GetWriteStream(); }
             void SetWriteStream(int devno, int stream) { device_map_[devno].SetWriteStream(stream); }
-            void HardDeviceWriteSynchronize(Device *dev, void *event);
-            void HardHostWriteSynchronize(Device *dev, void *event);
+            void HardDeviceWriteEventSynchronize(Device *dev, void *event);
+            void HardHostWriteEventSynchronize(Device *dev, void *event);
             bool IsProactive(int devno) { return device_map_[devno].IsProactive(); }
             void EnableProactive(int devno) { device_map_[devno].EnableProactive(); }
             void DisableProactive(int devno) { device_map_[devno].DisableProactive(); }

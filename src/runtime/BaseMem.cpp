@@ -8,6 +8,7 @@ void BaseMem::HostRecordEvent(int devno, int stream)
     Device *dev = archs_dev_[devno];
     HostLock();
     void **host_event = GetHostCompletionEventPtr(true);
+    dev->ResetContext();
     dev->CreateEvent(host_event, iris_event_disable_timing);
     d2h_events_[devno] = *host_event; 
     dev->RecordEvent(host_event, stream);
@@ -20,6 +21,7 @@ void BaseMem::HostRecordEvent(int devno, int stream)
 void *BaseMem::RecordEvent(int devno, int stream, bool new_entry) {
     Device *dev = archs_dev_[devno];
     void **event_ptr = GetCompletionEventPtr(devno, new_entry);
+    dev->ResetContext();
     if (*event_ptr == NULL) {
         dev->CreateEvent(event_ptr, iris_event_disable_timing);
     }
@@ -34,12 +36,14 @@ void *BaseMem::RecordEvent(int devno, int stream, bool new_entry) {
     SetWriteDeviceEvent(devno, *event_ptr);
     return *event_ptr;
 }
-void BaseMem::HardHostWriteSynchronize(Device *dev, void *event) {
+void BaseMem::HardHostWriteEventSynchronize(Device *dev, void *event) {
+    dev->ResetContext();
     dev->EventSynchronize(event);
     SetHostWriteStream(-1);
     SetHostWriteDevice(-1);
 }
-void BaseMem::HardDeviceWriteSynchronize(Device *dev, void *event) {
+void BaseMem::HardDeviceWriteEventSynchronize(Device *dev, void *event) {
+    dev->ResetContext();
     dev->EventSynchronize(event);
     SetWriteStream(dev->devno(), -1);
     SetWriteDevice(-1);
@@ -47,10 +51,12 @@ void BaseMem::HardDeviceWriteSynchronize(Device *dev, void *event) {
 void BaseMem::WaitForEvent(int devno, int stream, int dep_devno) {
     assert(GetCompletionEvent(devno) != NULL);
     Device *dev = archs_dev_[devno];
+    dev->ResetContext();
     dev->WaitForEvent(GetCompletionEvent(devno), stream, iris_event_wait_default);
 }
 void BaseMem::DestroyEvent(int devno, void *event) {
     Device *dev = archs_dev_[devno];
+    dev->ResetContext();
     dev->DestroyEvent(event);
 }
 

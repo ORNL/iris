@@ -116,10 +116,14 @@ int DeviceHIP::Init() {
           _hiperror(err);
           //RecordEvent((void **)(start_time_event_+i), i, iris_event_default);
       }
-      set_first_event_cpu_begin_time(timer_->Now());
-      RecordEvent((void **)(&single_start_time_event_), 0, iris_event_default);
-      set_first_event_cpu_end_time(timer_->Now());
-      _event_prof_debug("Event start time of device:%f end time of record:%f", first_event_cpu_begin_time(), first_event_cpu_end_time());
+      if (platform_obj_->is_event_profile_enabled()) {
+          double start_time = timer_->Now();
+          RecordEvent((void **)(&single_start_time_event_), -1, iris_event_default);
+          double end_time = timer_->Now();
+          set_first_event_cpu_begin_time(start_time);
+          set_first_event_cpu_end_time(end_time);
+          _event_prof_debug("Event start time of device:%f end time of record:%f", first_event_cpu_begin_time(), first_event_cpu_end_time());
+      }
   }
   err = ld_->hipGetDevice(&devid_);
   _hiperror(err);
@@ -273,10 +277,10 @@ void DeviceHIP::SetContextToCurrentThread()
 }
 void DeviceHIP::ResetContext()
 {
-    hipCtx_t ctx;
-    ld_->hipCtxGetCurrent(&ctx);
-    _trace("HIP resetting context switch dev[%d][%s] self:%p thread:%p", devno_, name_, (void *)worker()->self(), (void *)worker()->thread());
-    _trace("Resetting Context Switch: %p %p", ctx, ctx_);
+    //hipCtx_t ctx;
+    //ld_->hipCtxGetCurrent(&ctx);
+    //_trace("HIP resetting context switch dev[%d][%s] self:%p thread:%p", devno_, name_, (void *)worker()->self(), (void *)worker()->thread());
+    //_trace("Resetting Context Switch: %p %p", ctx, ctx_);
     ld_->hipCtxSetCurrent(ctx_);
 }
 int DeviceHIP::MemD2D(Task *task, BaseMem *mem, void *dst, void *src, size_t size) {
@@ -752,11 +756,15 @@ void DeviceHIP::RecordEvent(void **event, int stream, int event_creation_flag)
     if (*event == NULL)
         CreateEvent(event, event_creation_flag);
     ASSERT(event != NULL && "Event shouldn't be null");
-    hipError_t err = ld_->hipEventRecord(*((hipEvent_t*)event), streams_[stream]);
+    hipError_t err;
+    if (stream == -1)
+        err = ld_->hipEventRecord(*((hipEvent_t*)event), 0);
+    else
+        err = ld_->hipEventRecord(*((hipEvent_t*)event), streams_[stream]);
     _hiperror(err);
     if (err != hipSuccess)
         worker_->platform()->IncrementErrorCount();
-    //printf("Recorded dev:%d event:%p\n", devno(), *event);
+    _event_debug("Recorded dev:[%d]:[%s] event:%p stream:%d err:%d", devno(), name(), *event, stream, err);
 }
 void DeviceHIP::WaitForEvent(void *event, int stream, int flags)
 {

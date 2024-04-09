@@ -520,10 +520,10 @@ void DeviceCUDA::SetContextToCurrentThread()
 }
 void DeviceCUDA::ResetContext()
 {
-    CUcontext ctx;
-    ld_->cuCtxGetCurrent(&ctx);
-    _trace("CUDA resetting context switch dev[%d][%s] self:%p thread:%p", devno_, name_, (void *)worker()->self(), (void *)worker()->thread());
-    _trace("Resetting Context Switch: %p %p", ctx, ctx_);
+    //CUcontext ctx;
+    //ld_->cuCtxGetCurrent(&ctx);
+    //_trace("CUDA resetting context switch dev[%d][%s] self:%p thread:%p", devno_, name_, (void *)worker()->self(), (void *)worker()->thread());
+    //_trace("Resetting Context Switch: %p %p", ctx, ctx_);
     ld_->cuCtxSetCurrent(ctx_);
 }
 
@@ -806,8 +806,8 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
   _debug2("lws[%lu, %lu, %lu]", (lws != NULL) ? lws[0] : 1, (lws != NULL && dim > 1) ? lws[1] : 1, (lws != NULL && dim > 2) ? lws[2] : 1);
   _debug2("gws[%lu, %lu, %lu]", gws[0], (dim > 1) ? gws[1] : 0, (dim > 2) ? gws[2] : 0);
   _debug2("dev[%d][%s] kernel[%s:%s] dim[%d] grid[%d,%d,%d] block[%d,%d,%d] blockoff[%lu,%lu,%lu] max_arg_idx[%d] shared_mem_bytes[%u] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, grid[0], grid[1], grid[2], block[0], block[1], block[2], blockOff_x, blockOff_y, blockOff_z, max_arg_idx_, shared_mem_bytes_, stream_index);
-  _event_debug("dev[%d][%s] kernel[%s:%s] dim[%d] grid[%d,%d,%d] off[%d,%d,%d] block[%d,%d,%d] blockoff[%lu,%lu,%lu] max_arg_idx[%d] shared_mem_bytes[%u] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, grid[0], grid[1], grid[2], off[0], off[1], off[2], block[0], block[1], block[2], blockOff_x, blockOff_y, blockOff_z, max_arg_idx_, shared_mem_bytes_, stream_index);
-  _trace("dev[%d][%s] kernel[%s:%s] dim[%d] grid[%d,%d,%d] off[%d,%d,%d] block[%d,%d,%d] blockoff[%lu,%lu,%lu] max_arg_idx[%d] shared_mem_bytes[%u] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, grid[0], grid[1], grid[2], off[0], off[1], off[2], block[0], block[1], block[2], blockOff_x, blockOff_y, blockOff_z, max_arg_idx_, shared_mem_bytes_, stream_index);
+  _event_debug("dev[%d][%s] kernel[%s:%s] dim[%d] grid[%d,%d,%d] off[%ld,%ld,%ld] block[%d,%d,%d] blockoff[%lu,%lu,%lu] max_arg_idx[%d] shared_mem_bytes[%u] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, grid[0], grid[1], grid[2], off[0], off[1], off[2], block[0], block[1], block[2], blockOff_x, blockOff_y, blockOff_z, max_arg_idx_, shared_mem_bytes_, stream_index);
+  _trace("dev[%d][%s] kernel[%s:%s] dim[%d] grid[%d,%d,%d] off[%ld,%ld,%ld] block[%d,%d,%d] blockoff[%lu,%lu,%lu] max_arg_idx[%d] shared_mem_bytes[%u] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, grid[0], grid[1], grid[2], off[0], off[1], off[2], block[0], block[1], block[2], blockOff_x, blockOff_y, blockOff_z, max_arg_idx_, shared_mem_bytes_, stream_index);
   if (!async) {
       err = ld_->cuLaunchKernel(cukernel, grid[0], grid[1], grid[2], block[0], block[1], block[2], shared_mem_bytes_, 0, params_, NULL);
       _cuerror(err);
@@ -887,14 +887,11 @@ void DeviceCUDA::CreateEvent(void **event, int flags)
         ld_->cuCtxSetCurrent(ctx_);
     }
     CUresult err;
-    CUcontext ctx;
-    err = ld_->cuCtxGetCurrent(&ctx);
-    _cuerror(err);
     err = ld_->cuEventCreate((CUevent *)event, flags);   
     _cuerror(err);
     if (err != CUDA_SUCCESS)
         worker_->platform()->IncrementErrorCount();
-    _event_debug("Create dev:%d event_ptr:%p event:%p, ctx:%p", devno(), event, *event, ctx);
+    _event_debug("Create dev:%d event_ptr:%p event:%p err:%d", devno(), event, *event, err);
 }
 float DeviceCUDA::GetEventTime(void *event, int stream) 
 { 
@@ -921,23 +918,13 @@ void DeviceCUDA::RecordEvent(void **event, int stream, int event_creation_flag)
     if (*event == NULL) 
         CreateEvent(event, event_creation_flag);
     CUresult err;
-    CUcontext ctx;
-    err = ld_->cuCtxGetCurrent(&ctx);
-    _cuerror(err);
     CUresult status = ld_->cuEventQuery(*((CUevent *)event));
     if (stream == -1)
         err = ld_->cuEventRecord(*((CUevent *)event), 0);
     else
         err = ld_->cuEventRecord(*((CUevent *)event), streams_[stream]);
     _cuerror(err);
-    if (err != 0) {
-        const char *str;
-        ld_->cuGetErrorString(err, &str);
-        CUcontext ctx1;
-        ld_->cuCtxGetCurrent(&ctx1);
-        _event_debug("Error:%s event:%p stream:%d ctx:%p ctx:%p status:%d", str, *event, stream, ctx, ctx1, status);
-    }
-    _event_debug("Recorded dev:[%d]:[%s] event:%p stream:%d ctx:%p", devno(), name(), *event, stream, ctx);
+    _event_debug("Recorded dev:[%d]:[%s] event:%p stream:%d err:%d", devno(), name(), *event, stream, err);
     if (err != CUDA_SUCCESS)
         worker_->platform()->IncrementErrorCount();
 }
@@ -960,7 +947,7 @@ void DeviceCUDA::DestroyEvent(void *event)
     //printf("Trying to Destroy dev:%d event:%p\n", devno(), event);
     CUresult err1 = ld_->cuEventQuery((CUevent) event);
     //printf("Query result: %d\n", err1);
-    _event_debug("Destroyed dev:%d event:%p\n", devno(), event);
+    //_event_debug("Destroyed dev:%d event:%p", devno(), event);
     CUresult err = ld_->cuEventDestroy((CUevent) event);
     _cuerror(err);
     if (err != CUDA_SUCCESS)
