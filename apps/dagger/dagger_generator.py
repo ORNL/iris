@@ -430,15 +430,9 @@ def generate_attributes(task_dependencies,tasks_per_level):
         if _handover and first[first_mobj]['permissions'] == second[second_mobj]['permissions']:
             continue
         #6)
-        #print("dag was: t0 = {}".format(dag[selected_tasks[0]]['commands'][0]['kernel']['parameters'][first_mobj]['value']))
-        #print("swapping task: {} arg: {} buffer: {} and task: {} arg: {} buffer: {}".format(dag[selected_tasks[0]]["name"],first_mobj,first[first_mobj]['value'], dag[selected_tasks[1]]["name"], second_mobj, second[second_mobj]['value']))
         print("replacing task: {} arg: {} buffer: {} with buffer: {}".format(dag[selected_tasks[0]]["name"],first_mobj,first[first_mobj]['value'], second[second_mobj]['value']))
         dag[selected_tasks[0]]['commands'][0]['kernel']['parameters'][first_mobj]['value'] = second[second_mobj]['value']
         dag[selected_tasks[1]]['commands'][0]['kernel']['parameters'][second_mobj]['value'] = first[first_mobj]['value']
-        #first[first_mobj]['value'], second[second_mobj]['value'] = second[second_mobj]['value'], first[first_mobj]['value']
-        #print("dag now: t0 = {}".format(dag[selected_tasks[0]]['commands'][0]['kernel']['parameters'][first_mobj]['value']))
-        #import ipdb
-        #ipdb.set_trace()
         #7)
         _memory_shuffle_count -= 1
     return dag
