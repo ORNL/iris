@@ -960,9 +960,9 @@ void DeviceCUDA::DestroyEvent(void *event)
     //printf("Trying to Destroy dev:%d event:%p\n", devno(), event);
     CUresult err1 = ld_->cuEventQuery((CUevent) event);
     //printf("Query result: %d\n", err1);
+    _event_debug("Destroyed dev:%d event:%p\n", devno(), event);
     CUresult err = ld_->cuEventDestroy((CUevent) event);
     _cuerror(err);
-    //printf("Destroyed dev:%d event:%p\n", devno(), event);
     if (err != CUDA_SUCCESS)
         worker_->platform()->IncrementErrorCount();
 }

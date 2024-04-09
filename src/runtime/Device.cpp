@@ -227,6 +227,7 @@ void Device::ResolveDeviceWrite(Task *task, BaseMem *mem, Device *input_dev, boo
         if (instant_wait) {
             input_dev->EventSynchronize(input_event);
             mem->SetWriteStream(input_devno, -1);
+            mem->SetWriteDevice(-1);
             _event_debug(" EventSynchronize dev:[%d][%s] src_dev:[%d][%s] Wait for event:%p input_stream:%d", devno(), name(), input_dev->devno(), input_dev->name(), input_event, input_stream); 
         }
         else {
@@ -384,6 +385,7 @@ void Device::ResolveInputWriteDependency(Task *task, BaseMem *mem, bool async, D
                 ASSERT(input_dev != NULL);
                 ASSERT(input_event != NULL);
                 //It belongs to input_dev to synchronize its own event
+                input_dev->ResetContext();
                 input_dev->EventSynchronize(input_event); 
                 mem->SetHostWriteStream(-1);
                 mem->SetHostWriteDevice(-1);
@@ -458,6 +460,7 @@ void Device::SynchronizeInputToMemory(Task *task, BaseMem *mem)
             if (src_dev->model() != model() || src_dev->type() != type()) {
                 src_dev->EventSynchronize(event);
                 mem->SetWriteStream(src_dev->devno(), -1);
+                mem->SetWriteDevice(-1);
             }
             else {
                 WaitForEvent(event, mem_stream, iris_event_wait_default);
@@ -489,23 +492,8 @@ void Device::ResolveH2DEndEvents(Task *task, BaseMem *mem, bool async)
 void Device::ResolveH2DStartEvents(Task *task, BaseMem *mem, bool async)
 {
     int mem_stream = GetStream(task, mem);
-#if 1
     ResolveInputWriteDependency<ASYNC_UNKNOWN_H2D_RESOLVE>(task, mem, async);
-#else
-    int write_dev = mem->GetHostWriteDevice();
-    if (write_dev != -1 && async) {
-        //Written by some device 
-        int written_stream = mem->GetHostWriteStream();
-        void *event = mem->GetHostCompletionEvent();
-        //TODO: Think here; Can the source of write could be different type device; The best would be to synchronize instead of cross synchronization
-        //WaitForEvent(event, mem_stream, iris_event_wait_default);
-        Device *src_dev = Platform::GetPlatform()->device(write_dev);
-        //_event_prof_debug(" H2D    dev[%d][%s] -> dev[%d][%s] mem_stream:%d written_stream:%d", src_dev->devno(), src_dev->name(), devno(), name(), mem_stream, written_stream);
-        _event_debug(" H2D    dev[%d][%s] -> dev[%d][%s] mem:%lu task:%lu:%s mem_stream:%d written_stream:%d event:%p", src_dev->devno(), src_dev->name(), devno(), name(), mem->uid(), task->uid(), task->name(), mem_stream, written_stream, event);
-        src_dev->EventSynchronize(event);
-        _event_debug("*********** Event sync done H2D    dev[%d][%s] -> dev[%d][%s] mem:%lu task:%lu:%s mem_stream:%d written_stream:%d event:%p", src_dev->devno(), src_dev->name(), devno(), name(), mem->uid(), task->uid(), task->name(), mem_stream, written_stream, event);
-    }
-#endif
+    ResetContext();
     if (async && platform_obj_->is_event_profile_enabled()) {
         ProfileEvent & prof_event = task->CreateProfileEvent(mem, -1, PROFILE_H2D, this, mem_stream);
         prof_event.RecordStartEvent(); 
@@ -1066,21 +1054,9 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         double start = timer_->Now();
         //Create a mem stream on other device
         int src_mem_stream = src_dev->GetStream(task, mem, true);
-#if 1
+
         src_dev->ResolveInputWriteDependency<ASYNC_DEV_INPUT_RESOLVE>(task, mem, async, src_dev);
-#else
-        int written_stream  = mem->GetWriteStream(src_dev->devno());
-        if (written_stream != -1) { // Source generated data using asynchronous device
-            if (written_stream != src_mem_stream) { 
-                // Wait for event if src_mem_stream is different from previous written stream
-                void *event = mem->GetWriteDeviceEvent(src_dev->devno());
-                //The upcoming D2H depends on previous complete event
-                _event_debug(" WaitForEvent D2O after dmem:%lu mem_stream:%d, event:%p dev[%d][%s] src_dev:[%d][%s]",
-                       mem->uid(), mem_stream, event, devno(), name(), src_dev->devno(), src_dev->name()); 
-                src_dev->WaitForEvent(event, src_mem_stream, iris_event_wait_default);
-            }
-        }
-#endif
+
         if (async && platform_obj_->is_event_profile_enabled()) {
             ProfileEvent & prof_event = task->CreateProfileEvent(mem, devno(), PROFILE_D2O, src_dev, src_mem_stream);
             prof_event.RecordStartEvent(); 
@@ -1088,39 +1064,9 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         void* src_arch = mem->arch(this);
         src_dev->MemD2H(task, mem, off, host_sizes, dev_sizes, 1, 1, mem->size(), src_arch, "DEV2OpenMP ");
         double end = timer_->Now();
-#if 1
+
         ResolveOutputWriteDependency<ASYNC_D2H_SYNC>(task, mem, async, src_dev);
-#else
-        if (written_stream != -1 && async) { // Source generated data using asynchronous device
-#ifdef ENABLE_PROF_EVENT
-            if (platform_obj_->is_event_profile_enabled()) {
-                ProfileEvent & prof_event = task->LastProfileEvent();
-                prof_event.RecordEndEvent(); 
-            }
-#endif
-            _event_debug("Writing exchange\n");
-            BaseEventExchange *exchange = mem->GetEventExchange(devno());
-            _event_debug("   ==========********MemD2H -> MemH2D registered callbacks dev:(%d,%d) exchange:%p\n\n", src_dev->devno(), devno(), exchange);
-            mem_stream = GetStream(task, mem, true);
-            ResetContext();
-            RegisterCallback(mem_stream, 
-                    BaseEventExchange::Wait, 
-                    exchange,
-                    iris_stream_default);
-            mem->RecordEvent(devno(), mem_stream);
-            mem->SetWriteStream(devno(), mem_stream);
-            mem->SetWriteDeviceEvent(devno(), mem->GetCompletionEvent(devno()));
-        }
-        else if (async) {
-            // written_stream == -1) 
-            void *event = NULL;
-            //TODO: Is there a better way without disturbing the GetCompletionEvent DS of device
-            src_dev->CreateEvent(&event, iris_event_disable_timing);
-            src_dev->RecordEvent(&event, src_mem_stream);
-            src_dev->EventSynchronize(event);
-            src_dev->DestroyEvent(event);
-        }
-#endif 
+
         if (context_shift) ResetContext();
         if (kernel->is_profile_data_transfers()) {
             kernel->AddInDataObjectProfile({(uint32_t) cmd->task()->uid(), (uint32_t) mem->uid(), (uint32_t) iris_dt_d2o, (uint32_t) non_cpu_dev, (uint32_t) devno_, start, end});
@@ -1192,24 +1138,11 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         src_mem_stream = 1; mem->set_recommended_stream(src_dev->devno(), src_mem_stream);
 #endif
         bool src_async = src_dev->is_async(false);
-#if 1
         //TODO: Think here
         ResolveInputWriteDependency<ASYNC_SAME_DEVICE_DEPENDENCY>(task, mem, src_async, src_dev);
-#else
-        int written_stream  = mem->GetWriteStream(src_dev->devno());
-        if (written_stream != -1) { // Source generated data using asynchronous device
-            if (written_stream != src_mem_stream) { 
-                // Wait for event if src_mem_stream is different from previous written stream
-                void *event = mem->GetWriteDeviceEvent(src_dev->devno());
-                //The upcoming D2H depends on previous complete event
-                src_dev->WaitForEvent(event, src_mem_stream, iris_event_wait_default);
-                _debug3("Adding completion mem:%lu event:%p src_mem_stream:%d written_stream:%d\n", mem->uid(), event, src_mem_stream, written_stream);
-            }
-        }
-#endif
         double d2h_start = 0;
-        //if ((mem->GetHostWriteDevice() != src_dev->devno()) ||
-        //        (mem->GetHostWriteStream() != src_mem_stream)) {
+        if ((mem->GetHostWriteDevice() != src_dev->devno()) ||
+                (mem->GetHostWriteStream() != src_mem_stream)) {
             d2h_start = timer_->Now();
             src_dev->ResetContext();
 #ifdef ENABLE_PROF_EVENT
@@ -1236,62 +1169,16 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
                 //mem->SetHostWriteDevice(src_dev->devno());
                 //mem->SetHostWriteStream(src_mem_stream);
             }
-        //}
-        //else {
-        //    _event_debug("Reuse of mem:[%lu] src_mem_stream:%d src_dev:%d dev:%d\n", mem->uid(), src_mem_stream, src_dev->devno(), devno());
-        //}
-#if 1
-        if (context_shift) ResetContext();
-        ResolveInputWriteDependency<ASYNC_KNOWN_H2D_RESOLVE>(task, mem, async, src_dev);
-#else
-        if (written_stream != -1 && async) { // Source generated data using asynchronous device
-#ifdef ENABLE_SAME_TYPE_GPU_OPTIMIZATION
-            if (src_dev->model() == model() && 
-                    (model() == iris_cuda || model() == iris_hip)) {
-                _debug3("------------ Inter GPU eventing ------------\n");
-                void *event = mem->GetHostCompletionEvent();
-                assert(event != NULL);
-                WaitForEvent(event, mem_stream, iris_event_wait_default);
-            }
-            else 
-#endif
-            {
-                void *src_event = mem->GetHostCompletionEvent();
-                assert(src_event != NULL);
-                void *dest_event = NULL;
-                //CreateEvent(&dest_event, iris_event_disable_timing);
-                BaseEventExchange *exchange = mem->GetEventExchange(devno());
-                exchange->set_mem(mem->uid(), src_mem_stream, src_dev->devno(), mem_stream, devno(), src_dev, this, src_event, dest_event);
-                _debug3("Writing exchange\n");
-                _debug2("   ******** mem:%lu MemD2H -> MemH2D registered callbacks dev:(%d,%d) exchange:%p\n\n", mem->uid(), src_dev->devno(), devno(), exchange);
-#ifdef IN_HALT_UNTIL
-                src_dev->EventSynchronize(src_event);
-#else // HALT_UNTIL
-                RegisterCallback(mem_stream, 
-                        BaseEventExchange::Wait, 
-                        exchange,
-                        iris_stream_default);
-#endif // HALT_UNTIL
-                _trace("Proceeding further exchange:%p\n", exchange);
-            }
         }
         else {
-            //_info("-------------");
-            _debug3("   MemD2H -> MemH2D registered callbacks 1");
-            if (written_stream != -1) {
-                _debug3("   MemD2H -> MemH2D registered callbacks 2");
-                void *event = NULL;
-                //TODO: Is there a better way without disturbing the GetCompletionEvent DS of device
-                src_dev->CreateEvent(&event, iris_event_disable_timing);
-                src_dev->RecordEvent(&event, src_mem_stream);
-                src_dev->EventSynchronize(event);
-                src_dev->DestroyEvent(event);
-            }
+            _event_debug("Reuse of mem:[%lu] src_mem_stream:%d src_dev:%d dev:%d\n", mem->uid(), src_mem_stream, src_dev->devno(), devno());
         }
-#endif
+
+        ResolveInputWriteDependency<ASYNC_KNOWN_H2D_RESOLVE>(task, mem, async, src_dev);
         _event_debug("   MemD2H -> MemH2D registered callbacks completed callbacks");
+
         // H2D should be issued from this current device
-        if (context_shift) ResetContext();
+        ResetContext();
         if (async && platform_obj_->is_event_profile_enabled()) {
             ProfileEvent & prof_event = task->CreateProfileEvent(mem, -1, PROFILE_D2HH2D_H2D, this, mem_stream);
             prof_event.RecordStartEvent(); 
@@ -1309,9 +1196,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
             mem->RecordEvent(devno(), mem_stream, true);
             //EventSynchronize(event);
             //mem->SetWriteStream(devno(), -1);
-            //mem->SetWriteStream(devno(), mem_stream);
-            //mem->SetWriteDevice(devno());
-            //mem->SetWriteDeviceEvent(devno(), mem->GetCompletionEvent(devno()));
+            //mem->SetWriteDevice(-1);
         }
         h2dtime = end - start;
         if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
@@ -1954,6 +1839,10 @@ void Device::WaitForEvent(void *event, int stream, int flags) {
     Utils::PrintStackTrace();
     //CPUEvent *levent = (CPUEvent *)event;
     //levent->Wait();
+}
+void Device::DestroyEvent(BaseMem *mem, void *event) {
+    _event_debug(" Mem:%ld event:%p destroy now", mem->uid(), event);
+    DestroyEvent(event);
 }
 void Device::DestroyEvent(void *event) {
     _error("Device:%d:%s Invalid function call!", devno_, name()); 

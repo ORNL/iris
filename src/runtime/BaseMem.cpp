@@ -34,6 +34,16 @@ void *BaseMem::RecordEvent(int devno, int stream, bool new_entry) {
     SetWriteDeviceEvent(devno, *event_ptr);
     return *event_ptr;
 }
+void BaseMem::HardHostWriteSynchronize(Device *dev, void *event) {
+    dev->EventSynchronize(event);
+    SetHostWriteStream(-1);
+    SetHostWriteDevice(-1);
+}
+void BaseMem::HardDeviceWriteSynchronize(Device *dev, void *event) {
+    dev->EventSynchronize(event);
+    SetWriteStream(dev->devno(), -1);
+    SetWriteDevice(-1);
+}
 void BaseMem::WaitForEvent(int devno, int stream, int dep_devno) {
     assert(GetCompletionEvent(devno) != NULL);
     Device *dev = archs_dev_[devno];
