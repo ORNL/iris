@@ -13,10 +13,9 @@ using namespace std;
 
 //TODO:
 //#define MALLOC_ASYNC
-//#define ENABLE_SAME_TYPE_GPU_OPTIMIZATION
+#define ENABLE_SAME_TYPE_GPU_OPTIMIZATION
 //#define DIRECT_H2D_SYNC
-#define DISABLE_D2D
-#define IN_HALT_UNTIL
+//#define DISABLE_D2D
 
 #define DEFAULT_STREAM_INDEX -2
 

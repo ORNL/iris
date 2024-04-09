@@ -347,17 +347,10 @@ void Device::ResolveInputWriteDependency(Task *task, BaseMem *mem, bool async, D
             else //if (input_devno != -1) 
 #endif 
             {
-#ifdef DIRECT_H2D_SYNC
                 ASSERT(input_dev != NULL);
                 ASSERT(input_event != NULL);
-                //It belongs to input_dev to synchronize its own event
-                mem->HardHostWriteEventSynchronize(input_dev, input_event);
-                ResetContext();
-                _event_debug(" HardHostWriteEventSynchronize ASYNC_UNKNOWN_H2D_RESOLVE H2D mem:%lu dev:[%d][%s] src_dev:[%d][%s] Wait for event:%p mem_stream:%d input_stream:%d", mem->uid(), devno(), name(), input_devno, input_dev->name(), input_event, mem_stream, input_stream); 
-#else
                 _event_debug(" EventSynchronize ASYNC_UNKNOWN_H2D_RESOLVE H2D mem:%lu dev:[%d][%s] src_dev:[%d][%s] Wait for event:%p mem_stream:%d input_stream:%d", mem->uid(), devno(), name(), input_devno, input_dev->name(), input_event, mem_stream, input_stream); 
                 DeviceEventExchange(task, mem, input_event, input_stream, input_dev);
-#endif
             }
         }
     }
@@ -380,17 +373,10 @@ void Device::ResolveInputWriteDependency(Task *task, BaseMem *mem, bool async, D
             else //if (input_devno != -1) 
 #endif 
             {
-#ifdef DIRECT_H2D_SYNC
                 ASSERT(input_dev != NULL);
                 ASSERT(input_event != NULL);
-                //It belongs to input_dev to synchronize its own event
-                mem->HardHostWriteEventSynchronize(input_dev, input_event);
-                ResetContext();
-                _event_debug(" HardHostWriteEventSynchronize ASYNC_KNOWN_H2D_RESOLVE H2D mem:%lu dev:[%d][%s] src_dev:[%d][%s] Wait for event:%p mem_stream:%d input_stream:%d", mem->uid(), devno(), name(), input_devno, input_dev->name(), input_event, mem_stream, input_stream); 
-#else
                 _event_debug(" EventSynchronize ASYNC_KNOWN_H2D_RESOLVE H2D mem:%lu dev:[%d][%s] src_dev:[%d][%s] Wait for event:%p mem_stream:%d input_stream:%d", mem->uid(), devno(), name(), input_devno, input_dev->name(), input_event, mem_stream, input_stream); 
                 DeviceEventExchange(task, mem, input_event, input_stream, input_dev);
-#endif
             }
         }
     }
@@ -407,7 +393,7 @@ void Device::DeviceEventExchange(Task *task, BaseMem *mem, void *input_event, in
             exchange, 
             iris_stream_non_blocking);
 #endif
-#ifdef IN_HALT_UNTIL
+#ifdef DIRECT_H2D_SYNC
     _event_debug("Device synchronizing for mem:%lu task:%lu:%s dev:%d:%s event:%p", mem->uid(), task->uid(), task->name(), input_dev->devno(), input_dev->name(), input_event);
     //TODO: Is it always D2H -> H2D or can it be D2D -> D2H / H2D -> D2D / H2D -> D2H ?
     mem->HardHostWriteEventSynchronize(input_dev, input_event);
@@ -421,6 +407,7 @@ void Device::DeviceEventExchange(Task *task, BaseMem *mem, void *input_event, in
             BaseEventExchange::Wait, 
             exchange,
             iris_stream_default);
+    ResetContext();
     _event_debug("Creating callback exchange for synchronizing between mem:%lu task:%lu:%s srcdev:%d:%s event:%p, dev:%d:%s dest_event:%p", mem->uid(), task->uid(), task->name(), input_dev->devno(), input_dev->name(), input_event, devno(), name(), exchange->dest_event());
 #endif
 
@@ -1101,9 +1088,9 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         bool context_shift = src_dev->IsContextChangeRequired();
         _event_debug("explore D2H->H2D dev[%d][%s] -> dev[%d][%s] task[%ld:%s] mem[%lu] cs:%d", src_dev->devno(), src_dev->name(), devno(), name(), task->uid(), task->name(), mem->uid(), context_shift);
         int src_mem_stream = src_dev->GetStream(task, mem, true); 
-#ifndef IN_HALT_UNTIL
-        src_mem_stream = 1; mem->set_recommended_stream(src_dev->devno(), src_mem_stream);
-#endif
+//#ifndef DIRECT_H2D_SYNC
+//        src_mem_stream = 1; mem->set_recommended_stream(src_dev->devno(), src_mem_stream);
+//#endif
         bool src_async = src_dev->is_async(false);
         //TODO: Think here
         ResolveInputWriteDependency<ASYNC_SAME_DEVICE_DEPENDENCY>(task, mem, src_async, src_dev);

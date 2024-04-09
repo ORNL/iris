@@ -106,7 +106,7 @@ extern char iris_log_prefix_[];
 #endif
 
 
-#define _DEBUG_EVENT
+//#define _DEBUG_EVENT
 #ifdef _DEBUG_EVENT
 #define EVENT_DEBUG(X)   X
 #define  _event_debug(fmt, ...) do { printf( "[T] %s [%s:%d:%s] " fmt RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, ##__VA_ARGS__); FFLUSH(stdout); } while (0)
