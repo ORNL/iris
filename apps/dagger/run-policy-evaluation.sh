@@ -52,25 +52,6 @@ export GRAPHS_DIR=`pwd`/dagger-graphs
 mkdir -p $RESULTS_DIR $GRAPHS_DIR
 echo "Running DAGGER evaluation.... (graph figures can be found in $GRAPHS_DIR)"
 
-#BEGIN DELETE
-echo "Running memory-shuffle test..."
-echo "Running IRIS (explicit memory-shuffle) on Linear 10 with Policy: roundrobin"
-./dagger_generator.py --kernels="ijk" --buffers-per-kernel="ijk:w r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=3 --num-tasks=3 --min-width=1 --max-width=1 --num-memory-shuffles=3 --concurrent-kernels="ijk:2" --handover-in-memory-shuffle
-[ $? -ne 0 ] &&  exit 1
-#cat graph.json
-cp graph.json dagger-payloads/linear10-graph-memshuf.json
-cp dag.pdf $GRAPHS_DIR/linear10-graph-memshuf.pdf
-./dagger_runner --graph="dagger-payloads/linear10-graph-memshuf.json" --logfile="time.csv" --repeats=1 --scheduling-policy="roundrobin" --size=$PAYLOAD_SIZE  --kernels="ijk" --buffers-per-kernel="ijk:w r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=3 --num-tasks=3 --min-width=1 --max-width=1 --concurrent-kernels="ijk:2"
-[ $? -ne 0 ] && echo "Linear 10 (explicit memory-shuffle) Failed with Policy: roundrobin" &&  exit 1
-#archive result
-mv dagger_runner-$SYSTEM*.csv $RESULTS_DIR/memshuflinear10-roundrobin-$SYSTEM-0.csv
-#plot timeline with gantt
-python ./gantt/gantt.py --dag=./dagger-payloads/linear10-graph-memshuf.json --timeline=$RESULTS_DIR/memshuflinear10-roundrobin-$SYSTEM-0.csv --timeline-out=$GRAPHS_DIR/memshuflinear10-roundrobin-$SYSTEM-timeline.pdf --dag-out=$GRAPHS_DIR/memshuflinear10-roundrobin-$SYSTEM-dag.pdf  --combined-out=$GRAPHS_DIR/memshuflinear10-roundrobin-$SYSTEM.pdf --no-show-kernel-legend
-[ $? -ne 0 ] && echo "Failed Combined Plotting of Linear 10 (explicit memory-shuffle) with Policy: roundrobin" &&  exit 1
-echo "Passed."
-exit 
-#END DELETE
-
 #ensure libiris.so is in the shared library path
 #  echo "ADDING $HOME/.local/lib64 to LD_LIBRARY_PATH"
 #export LD_LIBRARY_PATH=$HOME/.local/lib64:$HOME/.local/lib:$LD_LIBRARY_PATH
@@ -267,7 +248,6 @@ python ./gantt/gantt.py --dag=./dagger-payloads/linear10-graph-memshuf.json --ti
 [ $? -ne 0 ] && echo "Failed Combined Plotting of Linear 10 (explicit memory-shuffle) with Policy: roundrobin" &&  exit 1
 echo "Passed."
 
-
 echo "Running IRIS (memory-shuffle with DMEM) on Linear 10 with Policy: roundrobin"
 ./dagger_generator.py --kernels="ijk" --buffers-per-kernel="ijk:w r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=10 --num-tasks=10 --min-width=1 --max-width=1 --use-data-memory --num-memory-shuffles=5 --concurrent-kernels="ijk:3"
 [ $? -ne 0 ] &&  exit 1
@@ -282,6 +262,39 @@ mv dagger_runner-$SYSTEM*.csv $RESULTS_DIR/dmemshuflinear10-roundrobin-$SYSTEM-0
 python ./gantt/gantt.py --dag=./dagger-payloads/linear10-graph-dmemshuf.json --timeline=$RESULTS_DIR/dmemshuflinear10-roundrobin-$SYSTEM-0.csv --timeline-out=$GRAPHS_DIR/dmemshuflinear10-roundrobin-$SYSTEM-timeline.pdf --dag-out=$GRAPHS_DIR/dmemshuflinear10-roundrobin-$SYSTEM-dag.pdf  --combined-out=$GRAPHS_DIR/dmemshuflinear10-roundrobin-$SYSTEM.pdf --no-show-kernel-legend
 [ $? -ne 0 ] && echo "Failed Combined Plotting of Linear 10 (memory-shuffle with DMEM) with Policy: roundrobin" &&  exit 1
 echo "Passed."
+
+
+echo "Running memory-shuffle (handover) test..."
+echo "Running IRIS (explicit memory-shuffle with handover) on Linear 10 with Policy: roundrobin"
+./dagger_generator.py --kernels="ijk" --buffers-per-kernel="ijk:w r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=10 --num-tasks=10 --min-width=1 --max-width=1 --num-memory-shuffles=5 --concurrent-kernels="ijk:3"  --handover-in-memory-shuffle
+[ $? -ne 0 ] &&  exit 1
+cat graph.json
+cp graph.json dagger-payloads/linear10-graph-memshuf-handover.json
+cp dag.pdf $GRAPHS_DIR/linear10-graph-memshuf-handover.pdf
+./dagger_runner --graph="dagger-payloads/linear10-graph-memshuf-handover.json" --logfile="time.csv" --repeats=1 --scheduling-policy="roundrobin" --size=$PAYLOAD_SIZE  --kernels="ijk" --buffers-per-kernel="ijk:w r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=10 --num-tasks=10 --min-width=1 --max-width=1 --concurrent-kernels="ijk:3"
+[ $? -ne 0 ] && echo "Linear 10 (explicit memory-shuffle with handover) Failed with Policy: roundrobin" &&  exit 1
+#archive result
+mv dagger_runner-$SYSTEM*.csv $RESULTS_DIR/memshufhandlinear10-roundrobin-$SYSTEM-0.csv
+#plot timeline with gantt
+python ./gantt/gantt.py --dag=./dagger-payloads/linear10-graph-memshuf-handover.json --timeline=$RESULTS_DIR/memshufhandlinear10-roundrobin-$SYSTEM-0.csv --timeline-out=$GRAPHS_DIR/memshufhandlinear10-roundrobin-$SYSTEM-timeline.pdf --dag-out=$GRAPHS_DIR/memshufhandlinear10-roundrobin-$SYSTEM-dag.pdf  --combined-out=$GRAPHS_DIR/memshufhandlinear10-roundrobin-$SYSTEM.pdf --no-show-kernel-legend
+[ $? -ne 0 ] && echo "Failed Combined Plotting of Linear 10 (explicit memory-shuffle with handover) with Policy: roundrobin" &&  exit 1
+echo "Passed."
+
+echo "Running IRIS (memory-shuffle with DMEM and handover) on Linear 10 with Policy: roundrobin"
+./dagger_generator.py --kernels="ijk" --buffers-per-kernel="ijk:w r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=10 --num-tasks=10 --min-width=1 --max-width=1 --use-data-memory --num-memory-shuffles=5 --concurrent-kernels="ijk:3" --handover-in-memory-shuffle
+[ $? -ne 0 ] &&  exit 1
+cat graph.json
+cp graph.json dagger-payloads/linear10-graph-dmemshuf-handover.json
+cp dag.pdf $GRAPHS_DIR/linear10-graph-dmemshuf-handover.pdf
+./dagger_runner --graph="dagger-payloads/linear10-graph-dmemshuf-handover.json" --logfile="time.csv" --repeats=1 --scheduling-policy="roundrobin" --size=$PAYLOAD_SIZE  --kernels="ijk" --buffers-per-kernel="ijk:w r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=10 --num-tasks=10 --min-width=1 --max-width=1 --use-data-memory --concurrent-kernels="ijk:3"
+[ $? -ne 0 ] && echo "Linear 10 (memory-shuffle with DMEM and handover) Failed with Policy: roundrobin" &&  exit 1
+#archive result
+mv dagger_runner-$SYSTEM*.csv $RESULTS_DIR/dmemshufhandlinear10-roundrobin-$SYSTEM-0.csv
+#plot timeline with gantt
+python ./gantt/gantt.py --dag=./dagger-payloads/linear10-graph-dmemshuf-handover.json --timeline=$RESULTS_DIR/dmemshufhandlinear10-roundrobin-$SYSTEM-0.csv --timeline-out=$GRAPHS_DIR/dmemshufhandlinear10-roundrobin-$SYSTEM-timeline.pdf --dag-out=$GRAPHS_DIR/dmemshufhandlinear10-roundrobin-$SYSTEM-dag.pdf  --combined-out=$GRAPHS_DIR/dmemshufhandlinear10-roundrobin-$SYSTEM.pdf --no-show-kernel-legend
+[ $? -ne 0 ] && echo "Failed Combined Plotting of Linear 10 (memory-shuffle with DMEM and handover) with Policy: roundrobin" &&  exit 1
+echo "Passed."
+
 
 echo "Running DAGGER on payloads..."
 for SIZE in ${SIZES[@]}
