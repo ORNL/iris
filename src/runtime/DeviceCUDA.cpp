@@ -289,7 +289,7 @@ int DeviceCUDA::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset)
   //double mtime = timer_->Now();
   CUresult err;
 #ifdef MALLOC_ASYNC
-  if (async && mem->uid() == 13)
+  if (async && stream >= 0)
       err = ld_->cuMemAllocAsync(cumem, size, streams_[stream]);
   else
 #endif
@@ -409,7 +409,10 @@ int DeviceCUDA::MemD2D(Task *task, BaseMem *mem, void *dst, void *src, size_t si
       if (err != CUDA_SUCCESS) error_occured = true;
   }
   _trace("dev[%d][%s] task[%ld:%s] mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] size[%lu] q[%d]", devno_, name_, task->uid(), task->name(), mem->uid(), dst, src, size, stream_index);
-  ASSERT(!error_occured && "CUDA Error occured");
+  if (error_occured) {
+  _event_debug("Error dev[%d][%s] task[%ld:%s] mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] size[%lu] q[%d]", devno_, name_, task->uid(), task->name(), mem->uid(), dst, src, size, stream_index);
+  }
+  //ASSERT(!error_occured && "CUDA Error occured");
   if (error_occured) {
       worker_->platform()->IncrementErrorCount();
       return IRIS_ERROR;
@@ -924,6 +927,8 @@ void DeviceCUDA::RecordEvent(void **event, int stream, int event_creation_flag)
     else
         err = ld_->cuEventRecord(*((CUevent *)event), streams_[stream]);
     _cuerror(err);
+    if (err != CUDA_SUCCESS)
+        worker_->platform()->IncrementErrorCount();
     _event_debug("Recorded dev:[%d]:[%s] event:%p stream:%d err:%d", devno(), name(), *event, stream, err);
     if (err != CUDA_SUCCESS)
         worker_->platform()->IncrementErrorCount();

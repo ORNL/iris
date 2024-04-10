@@ -226,7 +226,7 @@ int DeviceHIP::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset) 
   bool async = (is_async(false) && stream != DEFAULT_STREAM_INDEX && stream >=0);
   hipError_t err;
 #ifdef MALLOC_ASYNC
-  if (async)
+  if (async && stream >= 0)
      err = ld_->hipMallocAsync(hipmem, size, streams_[stream]);
   else
 #endif
