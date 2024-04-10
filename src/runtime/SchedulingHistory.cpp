@@ -42,7 +42,7 @@ void SchedulingHistory::AddKernel(Command* cmd) {
   if (cmd->type_init()){
     printf("not logging initialization -- but performed init on device id %d\n",cmd->task()->dev()->devno());
   }
-  //Add(cmd);
+  Add(cmd);
 }
 
 void SchedulingHistory::AddH2D(Command* cmd) {
