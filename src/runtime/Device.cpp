@@ -1342,24 +1342,14 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
             // D2H should be issued from target src (remote) device
             int src_mem_stream = src_dev->GetStream(task, mem, true);
             bool src_async = src_dev->is_async(false);
-#if 1
+
             ResolveInputWriteDependency<ASYNC_DEV_INPUT_RESOLVE>(task, mem, async, src_dev);
-#else
-            int written_stream  = mem->GetWriteStream(src_dev->devno());
-            //printf("Flush1:%d\n", mem_stream);
-            if (written_stream != -1) {
-                if (written_stream != src_mem_stream) { 
-                    // Wait for event if src_mem_stream is different from previous written stream
-                    void *event = mem->GetWriteDeviceEvent(src_dev->devno());
-                    //The upcoming D2H depends on previous complete event
-                    src_dev->WaitForEvent(event, src_mem_stream, iris_event_wait_default);
-                }
-            }
-#endif
+
             if (async && src_dev->is_async(false) && platform_obj_->is_event_profile_enabled()) {
                 ProfileEvent & prof_event = task->CreateProfileEvent(mem, -1, PROFILE_D2H, src_dev, src_mem_stream);
                 prof_event.RecordStartEvent(); 
             }
+            src_dev->ResetContext();
             errid_ = src_dev->MemD2H(task, mem, ptr_off, 
                     gws, lws, elem_size, dim, size, host, "MemFlushOut ");
             if (async && src_dev->is_async(false) && platform_obj_->is_event_profile_enabled()) {
@@ -1386,20 +1376,9 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
             // This should be same device and has valid copy
             int mem_stream = GetStream(task, mem, true);
             _event_debug(" Flushing out mem:%lu dev:[%d][%s]\n", mem->uid(), devno(), name());
-#if 1
+
             ResolveInputWriteDependency<ASYNC_DEV_INPUT_RESOLVE>(task, mem, async, this);
-#else
-            int written_stream  = mem->GetWriteStream(devno());
-            if (written_stream != -1) {
-                if (written_stream != mem_stream) { 
-                    // Wait for event if src_mem_stream is different from previous written stream
-                    void *event = mem->GetWriteDeviceEvent(devno());
-                    //The upcoming D2H depends on previous complete event
-                    _event_prof_debug("Flush dev:%d task:%lu:%s wait for event:%p written_stream:%d mem_stream:%d\n", devno(), task->uid(), task->name(), event, written_stream, mem_stream);
-                    WaitForEvent(event, mem_stream, iris_event_wait_default);
-                }
-            }
-#endif
+            ResetContext();
             if (async && platform_obj_->is_event_profile_enabled()) {
                 ProfileEvent & prof_event = task->CreateProfileEvent(mem, -1, PROFILE_D2H, this, mem_stream);
                 prof_event.RecordStartEvent(); 
