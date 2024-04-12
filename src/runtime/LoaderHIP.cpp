@@ -18,6 +18,7 @@ int LoaderHIP::LoadFunctions() {
   LOADFUNC(hipSetDevice);
   LOADFUNC(hipGetDevice);
   LOADFUNC(hipGetDeviceCount);
+  LOADFUNC(hipPointerGetAttribute);
   LOADFUNC(hipDeviceGetAttribute);
   LOADFUNC(hipDeviceGet);
   LOADFUNC(hipDeviceGetName);

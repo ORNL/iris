@@ -22,6 +22,7 @@ public:
   hipError_t (*hipSetDevice)(int deviceId);
   hipError_t (*hipGetDevice)(int* deviceId);
   hipError_t (*hipGetDeviceCount)(int* count);
+  hipError_t (*hipPointerGetAttribute)(void* data, hipPointer_attribute attribute, hipDeviceptr_t ptr);
   hipError_t (*hipDeviceGetAttribute)(int* pi, hipDeviceAttribute_t attr, int deviceId);
   hipError_t (*hipDeviceGet)(hipDevice_t* device, int ordinal);
   hipError_t (*hipDeviceGetName)(char* name, int len, hipDevice_t device);

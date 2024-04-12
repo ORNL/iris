@@ -12,7 +12,6 @@
 using namespace std;
 
 //TODO:
-//#define MALLOC_ASYNC
 #define ENABLE_SAME_TYPE_GPU_OPTIMIZATION
 //#define DIRECT_H2D_SYNC
 //#define DISABLE_D2D
@@ -133,8 +132,8 @@ public:
   inline void ResolveOutputWriteDependency(Task *task, BaseMem *mem, bool async, Device *select_src_dev);
   inline void DeviceEventExchange(Task *task, BaseMem *mem, void *input_event, int input_stream, Device *input_dev);
   void SynchronizeInputToMemory(Task *task, BaseMem *mem);
-  void GetPossibleDevices(int devno, int *nddevs, 
-          int &d2d_dev, int &cpu_dev, int &non_cpu_dev);
+  void GetPossibleDevices(BaseMem *mem, int devno, int *nddevs, 
+          int &d2d_dev, int &cpu_dev, int &non_cpu_dev, bool async);
   virtual int RegisterCallback(int stream, CallBackType callback_fn, void *data, int flags=0);
   int RegisterCommand(int tag, command_handler handler);
   int RegisterHooks();
@@ -166,6 +165,7 @@ public:
   virtual int RecreateContext() { return IRIS_ERROR; }
   virtual bool SupportJIT() { return true; }
   virtual void SetPeerDevices(int *peers, int count) { }
+  virtual bool IsAddrValidForD2D(BaseMem *mem, void *ptr) { return true; }
   virtual const char* kernel_src() { return " "; }
   virtual const char* kernel_bin() { return " "; }
 
@@ -286,6 +286,8 @@ private:
   double first_event_cpu_mid_point_time_;
   std::atomic<int> active_tasks_;
 protected:
+  int *peer_access_;
+  int local_devno_;
   Device *root_device() { return root_dev_; }
 };
 

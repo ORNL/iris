@@ -28,6 +28,7 @@ public:
   CUresult (*cuCtxEnablePeerAccess)(CUcontext ctx, unsigned int flags);
   CUresult (*cudaSetDevice)(int device);
   CUresult (*cudaDeviceCanAccessPeer)(int *canaccess, int device, int peerDevice);
+  CUresult (*cuDeviceEnablePeerAccess)(int peerDevice, unsigned int flags);
   CUresult (*cudaDeviceEnablePeerAccess)(int peerDevice, unsigned int flags);
   CUresult (*cuCtxCreate)(CUcontext* pctx, unsigned int flags,CUdevice dev);
   CUresult (*cuCtxSynchronize)(void);
@@ -56,7 +57,11 @@ public:
   CUresult (*cudaMemsetAsync)(void *devPtr, int value, size_t count, CUstream hStream);
   CUresult (*cudaMemcpy)( void* dst, const void* src, size_t count, cudaMemcpyKind kind );
   CUresult (*cudaMemcpyAsync)( void* dst, const void* src, size_t count, cudaMemcpyKind kind, CUstream stream);
-  CUresult (*cuMemcpyAsync)( void* dst, const void* src, size_t count, CUstream stream);
+  CUresult (*cuMemcpy)(CUdeviceptr dst, CUdeviceptr src, size_t ByteCount);
+  CUresult (*cuDeviceCanAccessPeer)(int *canAccessPeer, CUdevice dev, CUdevice peerDev);
+  CUresult (*cuPointerGetAttributes)(unsigned int numAttributes, CUpointer_attribute *attributes, void **data, CUdeviceptr ptr);
+  CUresult (*cuPointerGetAttribute)(void *data, CUpointer_attribute attribute, CUdeviceptr ptr);
+  CUresult (*cuMemcpyAsync)(CUdeviceptr dst, CUdeviceptr src, size_t ByteCount, CUstream hStream);
   CUresult (*cudaMemcpy2D)( void* dst, size_t dpitch, const void* src, size_t spitch, size_t width, size_t height, cudaMemcpyKind kind );
   CUresult (*cudaHostGetDevicePointer)(void **pDevice, void *pHost, unsigned int flags);  
   CUresult (*cudaSetDeviceFlags)(unsigned int flags);

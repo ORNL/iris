@@ -77,6 +77,7 @@ DeviceOpenCL::DeviceOpenCL(LoaderOpenCL* ld, LoaderHost2OpenCL *host2opencl_ld, 
   }
   else type_ = iris_cpu;
   model_ = iris_opencl;
+  clcmdq_ = new cl_command_queue[nqueues_];
   for (int i = 0; i < nqueues_; i++) {
     clcmdq_[i] = NULL;
   }
@@ -95,6 +96,7 @@ DeviceOpenCL::~DeviceOpenCL() {
           _clerror(err);
       }
     }
+    delete [] clcmdq_;
     if (default_queue_) {
         cl_int err = ld_->clReleaseCommandQueue(default_queue_);
         _clerror(err);

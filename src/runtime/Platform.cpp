@@ -86,6 +86,8 @@ Platform::Platform() {
   arch_available_ = 0UL;
   present_table_ = NULL;
   stream_policy_ = STREAM_POLICY_DEFAULT;
+  nstreams_ = IRIS_MAX_DEVICE_NQUEUES;
+  is_malloc_async_ = false;
   recording_ = false;
   enable_profiler_ = false;
   enable_scheduling_history_ = false; 
@@ -214,6 +216,14 @@ int Platform::Init(int* argc, char*** argv, int sync) {
   EnvironmentGet("EVENT_PROFILE", &event_profile, NULL);
   if (event_profile != NULL && atoi(event_profile) == 1)
       event_profile_enabled_ = true;
+  char *malloc_async = NULL;
+  EnvironmentGet("MALLOC_ASYNC", &malloc_async, NULL);
+  if (malloc_async != NULL && atoi(malloc_async) > 0)
+      set_malloc_async_flag(atoi(malloc_async));
+  char *nstreams = NULL;
+  EnvironmentGet("NSTREAMS", &nstreams, NULL);
+  if (nstreams != NULL && atoi(nstreams) > 0)
+      set_nstreams(atoi(nstreams));
   char *stream_policy = NULL;
   EnvironmentGet("STREAM_POLICY", &stream_policy, NULL);
   if (stream_policy != NULL && atoi(stream_policy) > 0)
@@ -463,12 +473,13 @@ int Platform::InitCUDA() {
 
   _trace("CUDA platform[%d] ndevs[%d]", nplatforms_, ndevs);
   int mdevs =0;
-  int cudevs[IRIS_MAX_NDEVS];
+  int *cudevs = new int[ndevs*device_factor_];
   for (int i = 0; i < ndevs*device_factor_; i++) {
     CUdevice dev;
     err = loaderCUDA_->cuDeviceGet(&dev, i%ndevs);
     _cuerror(err);
-    devs_[ndevs_] = new DeviceCUDA(loaderCUDA_, loaderHost2CUDA_, dev, ndevs_, nplatforms_);
+    devs_[ndevs_] = new DeviceCUDA(loaderCUDA_, loaderHost2CUDA_, dev,
+            i%ndevs, ndevs_, nplatforms_, i);
     devs_[ndevs_]->set_root_device(devs_[ndevs_-i]);
     arch_available_ |= devs_[ndevs_]->type();
     cudevs[mdevs] = dev;
@@ -480,7 +491,7 @@ int Platform::InitCUDA() {
   }
   for(int i=0; i<mdevs; i++) {
       DeviceCUDA *idev = (DeviceCUDA *)devs_[ndevs_-mdevs+i];
-      idev->SetPeerDevices(cudevs, ndevs);
+      idev->SetPeerDevices(cudevs, mdevs);
       /*
       for(int j=0; j<mdevs; j++) {
           if (i != j) {
@@ -490,6 +501,7 @@ int Platform::InitCUDA() {
           }
       }*/
   }
+  delete [] cudevs;
   if (ndevs) {
     strcpy(platform_names_[nplatforms_], "CUDA");
     first_dev_of_type_[nplatforms_] = devs_[ndevs_-mdevs];
@@ -526,15 +538,16 @@ int Platform::InitHIP() {
 
   _trace("HIP platform[%d] ndevs[%d]", nplatforms_, ndevs);
   int mdevs =0;
-  int hipdevs[IRIS_MAX_NDEVS];
+  int *hipdevs= new int[ndevs*device_factor_];
   for (int i = 0; i < ndevs*device_factor_; i++) {
     hipDevice_t dev;
     err = loaderHIP_->hipDeviceGet(&dev, i%ndevs);
     _hiperror(err);
-    hipdevs[mdevs] = dev;
-    devs_[ndevs_] = new DeviceHIP(loaderHIP_, loaderHost2HIP_, dev, i%ndevs, ndevs_, nplatforms_);
+    devs_[ndevs_] = new DeviceHIP(loaderHIP_, loaderHost2HIP_, dev,
+            i%ndevs, ndevs_, nplatforms_, i);
     devs_[ndevs_]->set_root_device(devs_[ndevs_-i]);
     arch_available_ |= devs_[ndevs_]->type();
+    hipdevs[mdevs] = dev;
     ndevs_++;
     mdevs++;
 #ifdef ENABLE_SINGLE_DEVICE_PER_CU
@@ -543,7 +556,7 @@ int Platform::InitHIP() {
   }
   for(int i=0; i<mdevs; i++) {
       DeviceHIP *idev = (DeviceHIP *)devs_[ndevs_-mdevs+i];
-      idev->SetPeerDevices(hipdevs, ndevs);
+      idev->SetPeerDevices(hipdevs, mdevs);
       /*
       for(int j=0; j<mdevs; j++) {
           if (i != j) {
@@ -554,6 +567,7 @@ int Platform::InitHIP() {
       }
       */
   }
+  delete [] hipdevs;
   if (ndevs) {
     strcpy(platform_names_[nplatforms_], "HIP");
     first_dev_of_type_[nplatforms_] = devs_[ndevs_-mdevs];

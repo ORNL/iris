@@ -119,32 +119,87 @@ namespace rt {
                 device_map_[ndevs_].ClearDevice();
                 write_dev_ = -1;
             }
-            void ClearAndAddWaitEvent(int devno, void *event) { device_map_[devno].ClearAndAddWaitEvent(event); }
-            void AddWaitEvent(int devno, void *event) { device_map_[devno].AddWaitEvent(event); }
-            void ClearWaitEvents(int devno) { device_map_[devno].ClearWaitEvents(); }
-            vector<void *> & GetWaitEvents(int devno) { return device_map_[devno].GetWaitEvents(); }
+            void ClearAndAddWaitEvent(int devno, void *event) { 
+                ASSERT(devno >=0 && devno < ndevs_+1);
+                device_map_[devno].ClearAndAddWaitEvent(event); 
+            }
+            void AddWaitEvent(int devno, void *event) { 
+                ASSERT(devno >=0 && devno < ndevs_+1);
+                device_map_[devno].AddWaitEvent(event); 
+            }
+            void ClearWaitEvents(int devno) { 
+                ASSERT(devno >=0 && devno < ndevs_+1);
+                device_map_[devno].ClearWaitEvents(); 
+            }
+            vector<void *> & GetWaitEvents(int devno) { 
+                ASSERT(devno >=0 && devno < ndevs_+1);
+                return device_map_[devno].GetWaitEvents(); 
+            }
             void SetWriteDevice(int devno) { write_dev_ = devno; }
             int GetWriteDevice() { return write_dev_; }
-            void SetWriteDeviceEvent(int devno, void *event) { write_event_[devno] = event; }
-            void *GetWriteDeviceEvent(int devno) { return write_event_[devno]; }
-            int GetWriteStream(int devno) { return device_map_[devno].GetWriteStream(); }
-            void SetWriteStream(int devno, int stream) { device_map_[devno].SetWriteStream(stream); }
+            void SetWriteDeviceEvent(int devno, void *event) { 
+                ASSERT(devno >=0 && devno < ndevs_+1);
+                write_event_[devno] = event; 
+            }
+            void *GetWriteDeviceEvent(int devno) { 
+                ASSERT(devno >=0 && devno < ndevs_+1);
+                return write_event_[devno]; 
+            }
+            int GetWriteStream(int devno) { 
+                ASSERT(devno >=0 && devno < ndevs_+1);
+                return device_map_[devno].GetWriteStream(); 
+            }
+            void SetWriteStream(int devno, int stream) { 
+                ASSERT(devno >=0 && devno < ndevs_+1);
+                device_map_[devno].SetWriteStream(stream); 
+            }
             void HardDeviceWriteEventSynchronize(Device *dev, void *event);
             void HardHostWriteEventSynchronize(Device *dev, void *event);
-            bool IsProactive(int devno) { return device_map_[devno].IsProactive(); }
-            void EnableProactive(int devno) { device_map_[devno].EnableProactive(); }
-            void DisableProactive(int devno) { device_map_[devno].DisableProactive(); }
-            EventExchange *GetEventExchange(int devno) { return device_map_[devno].exchange(); }
-            void *GetCompletionEvent(int devno) { return device_map_[devno].GetCompletionEvent(); }
-            void **GetCompletionEventPtr(int devno, bool new_entry=false) { return device_map_[devno].GetCompletionEventPtr(new_entry); }
-            int GetHostWriteStream() { return device_map_[ndevs_].GetWriteStream(); }
-            void SetHostWriteStream(int stream) { device_map_[ndevs_].SetWriteStream(stream); }
-            int GetHostWriteDevice() { return device_map_[ndevs_].devno(); }
-            void SetHostWriteDevice(int dev) { device_map_[ndevs_].set_devno(dev); }
+            bool IsProactive(int devno) { 
+                ASSERT(devno >=0 && devno < ndevs_+1);
+                return device_map_[devno].IsProactive(); 
+            }
+            void EnableProactive(int devno) { 
+                ASSERT(devno >=0 && devno < ndevs_+1);
+                device_map_[devno].EnableProactive(); 
+            }
+            void DisableProactive(int devno) { 
+                ASSERT(devno >=0 && devno < ndevs_+1);
+                device_map_[devno].DisableProactive(); 
+            }
+            EventExchange *GetEventExchange(int devno) { 
+                ASSERT(devno >=0 && devno < ndevs_+1);
+                return device_map_[devno].exchange(); 
+            }
+            void *GetCompletionEvent(int devno) { 
+                ASSERT(devno >=0 && devno < ndevs_+1);
+                return device_map_[devno].GetCompletionEvent(); 
+            }
+            void **GetCompletionEventPtr(int devno, bool new_entry=false) { 
+                ASSERT(devno >=0 && devno < ndevs_+1);
+                return device_map_[devno].GetCompletionEventPtr(new_entry); 
+            }
+            int GetHostWriteStream() { 
+                return device_map_[ndevs_].GetWriteStream(); 
+            }
+            void SetHostWriteStream(int stream) { 
+                device_map_[ndevs_].SetWriteStream(stream); 
+            }
+            int GetHostWriteDevice() { 
+                return device_map_[ndevs_].devno(); 
+            }
+            void SetHostWriteDevice(int dev) { 
+                device_map_[ndevs_].set_devno(dev); 
+            }
             void HostRecordEvent(int devno, int stream);
-            void *GetHostCompletionEvent() { return device_map_[ndevs_].GetCompletionEvent(); }
-            void **GetHostCompletionEventPtr(bool new_entry=false) { return device_map_[ndevs_].GetCompletionEventPtr(new_entry); }
+            void *GetHostCompletionEvent() { 
+                return device_map_[ndevs_].GetCompletionEvent(); 
+            }
+            void **GetHostCompletionEventPtr(bool new_entry=false) { 
+                return device_map_[ndevs_].GetCompletionEventPtr(new_entry); 
+            }
             void *GetDeviceSpecificHostCompletionEvent(int devno) {
+                ASSERT(devno >=0 && devno < ndevs_);
                 return d2h_events_[devno];
             }
             void clear_d2h_events() { 

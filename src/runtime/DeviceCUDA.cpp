@@ -72,8 +72,10 @@ void testMemcpy(LoaderCUDA *ld)
   free(xy);
   free(y);
 }
-DeviceCUDA::DeviceCUDA(LoaderCUDA* ld, LoaderHost2CUDA *host2cuda_ld, CUdevice cudev, int devno, int platform) : Device(devno, platform) {
+DeviceCUDA::DeviceCUDA(LoaderCUDA* ld, LoaderHost2CUDA *host2cuda_ld, CUdevice cudev, int ordinal, int devno, int platform, int local_devno) : Device(devno, platform) {
   ld_ = ld;
+  local_devno = local_devno;
+  ordinal_ = ordinal;
   set_async(true && Platform::GetPlatform()->is_async()); 
   host2cuda_ld_ = host2cuda_ld;
   peers_count_ = 0;
@@ -116,7 +118,8 @@ DeviceCUDA::DeviceCUDA(LoaderCUDA* ld, LoaderHost2CUDA *host2cuda_ld, CUdevice c
   max_work_item_sizes_[0] = (size_t) bx * (size_t) dx;
   max_work_item_sizes_[1] = (size_t) by * (size_t) dy;
   max_work_item_sizes_[2] = (size_t) bz * (size_t) dz;
-  memset(streams_, 0, sizeof(CUstream)*IRIS_MAX_DEVICE_NQUEUES);
+  streams_ = new CUstream[nqueues_];
+  memset(streams_, 0, sizeof(CUstream)*nqueues_);
   //memset(start_time_event_, 0, sizeof(CUevent)*IRIS_MAX_DEVICE_NQUEUES);
   single_start_time_event_ = NULL;
   _info("device[%d] platform[%d] vendor[%s] device[%s] type[%d] version[%s] max_compute_units[%zu] max_work_group_size_[%zu] max_work_item_sizes[%zu,%zu,%zu] max_block_dims[%d,%d,%d] concurrent_kernels[%d] async_engines[%d] ncopy_engines[%d]", devno_, platform_, vendor_, name_, type_, version_, max_compute_units_, max_work_group_size_, max_work_item_sizes_[0], max_work_item_sizes_[1], max_work_item_sizes_[2], max_block_dims_[0], max_block_dims_[1], max_block_dims_[2], ck, ae, n_copy_engines_);
@@ -135,6 +138,7 @@ DeviceCUDA::~DeviceCUDA() {
       _cuerror(err);
       //DestroyEvent(start_time_event_[i]);
     }
+    delete [] streams_;
     if (is_async(false) && platform_obj_->is_event_profile_enabled()) 
         DestroyEvent(single_start_time_event_);
 }
@@ -151,10 +155,19 @@ int DeviceCUDA::Compile(char* src) {
   }
   return IRIS_SUCCESS;
 }
+bool DeviceCUDA::IsAddrValidForD2D(BaseMem *mem, void *ptr)
+{
+    int data;
+    CUresult err = ld_->cuPointerGetAttribute(&data, CU_POINTER_ATTRIBUTE_DEVICE_POINTER, (CUdeviceptr) ptr);
+    if (err == CUDA_SUCCESS) return true;
+    return false;
+}
 void DeviceCUDA::SetPeerDevices(int *peers, int count)
 {
     std::copy(peers, peers+count, peers_);
     peers_count_ = count;
+    peer_access_ = new int[peers_count_];
+    memset(peer_access_, 0, peers_count_);
 }
 void DeviceCUDA::EnablePeerAccess()
 {
@@ -162,14 +175,21 @@ void DeviceCUDA::EnablePeerAccess()
     // It has some performance issues
     for(int i=0; i<peers_count_; i++) {
         CUdevice target_dev = peers_[i];
-        if (target_dev == dev_) continue;
-        int can_access=0;
-        CUresult err = ld_->cudaDeviceCanAccessPeer(&can_access, dev_, target_dev);
+        if (target_dev == dev_) {
+            peer_access_[i] = 1;
+            continue;
+        }
+        CUresult err = ld_->cuDeviceCanAccessPeer(&peer_access_[i], dev_, target_dev);
         _cuerror(err);
+        int can_access = peer_access_[i];
         if (can_access) {
-            //printf("Can access dev:%d -> %d = %d\n", dev_, target_dev, can_access);
-            err = ld_->cudaDeviceEnablePeerAccess(target_dev, 0);
-            _cuerror(err);
+            printf("Can access dev:%d -> %d = %d\n", dev_, target_dev, can_access);
+            //err = ld_->cuDeviceEnablePeerAccess(target_dev, 0);
+            //_cuerror(err);
+        }
+        else {
+            printf("Can not access dev:%d -> %d = %d\n", dev_, target_dev, can_access);
+
         }
     }
 #endif
@@ -181,6 +201,8 @@ int DeviceCUDA::Init() {
   _cuerror(err);
   err = ld_->cuCtxCreate(&ctx_, CU_CTX_SCHED_AUTO, dev_);
   _cuerror(err);
+  //err = ld_->cuCtxEnablePeerAccess(ctx_, 0);
+  //_cuerror(err);
   EnablePeerAccess();
   _cuerror(err);
 #ifndef TRACE_DISABLE
@@ -288,21 +310,17 @@ int DeviceCUDA::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset)
   bool async = (is_async(false) && stream != DEFAULT_STREAM_INDEX && stream >=0);
   //double mtime = timer_->Now();
   CUresult err;
-#ifdef MALLOC_ASYNC
-  if (async && stream >= 0)
+  if (platform_obj_->is_malloc_async() && async && stream >= 0)
       err = ld_->cuMemAllocAsync(cumem, size, streams_[stream]);
   else
-#endif
       err = ld_->cuMemAlloc(cumem, size);
   //mtime = timer_->Now() - mtime;
   _cuerror(err);
   _event_debug("CUDA MemAlloc dev:%d:%s mem:%lu size:%zu ptr:%p async:%d stream:%d\n", devno_, name_, mem->uid(), size, (void *)*cumem, async, stream);
   if (reset)  {
-#ifdef MALLOC_ASYNC
-      if (async) 
+      if (platform_obj_->is_malloc_async() && async && stream >=0) 
           ld_->cudaMemsetAsync((void *)(*cumem), 0, size, streams_[stream]);
       else
-#endif
           ld_->cudaMemset((void *)(*cumem), 0, size);
   }
   //printf("CUDA Malloc: %p size:%d reset:%d\n", *mem, size, reset);
@@ -394,17 +412,44 @@ int DeviceCUDA::MemD2D(Task *task, BaseMem *mem, void *dst, void *src, size_t si
   }
   _event_debug("D2D dev[%d][%s] task[%ld:%s] mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] size[%lu] q[%d] async:%d", devno_, name_, task->uid(), task->name(), mem->uid(), dst, src, size, stream_index, async);
   if (async) {
+      ASSERT(stream_index >= 0);
       //ld_->cuCtxSetCurrent(ctx_);
       //err = ld_->cuMemcpyDtoDAsync(dst_cumem, src_cumem, size, streams_[stream_index]);
-      //err = ld_->cuMemcpyAsync((void *)dst_cumem, (void *)src_cumem, size, streams_[stream_index]);
+#if 0
+      CUmemorytype memType;
+      err = ld_->cuPointerGetAttribute(&memType, CU_POINTER_ATTRIBUTE_MEMORY_TYPE, dst_cumem);
+      _cuerror(err);
+      if (memType == CU_MEMORYTYPE_DEVICE) {
+          _event_debug("Dev:[%d][%s] This is valid device pointer:%p mem:%lu", devno_, name_, (void *)dst_cumem, mem->uid());
+      }
+      else {
+          _event_debug("Dev:[%d][%s] This is not valid device pointer:%p mem:%lu", devno_, name_, (void *)dst_cumem, mem->uid());
+      }
+      int data;
+      err = ld_->cuPointerGetAttribute(&data, CU_POINTER_ATTRIBUTE_DEVICE_POINTER, dst_cumem);
+      _cuerror(err);
+      err = ld_->cuPointerGetAttribute(&data, CU_POINTER_ATTRIBUTE_DEVICE_POINTER, src_cumem);
+      _cuerror(err);
+      err = ld_->cuPointerGetAttribute(&memType, CU_POINTER_ATTRIBUTE_MEMORY_TYPE, src_cumem);
+      _cuerror(err);
+      if (memType == CU_MEMORYTYPE_DEVICE) {
+          _event_debug("Dev:[%d][%s] This is valid device pointer:%p mem:%lu", devno_, name_, (void *)src_cumem, mem->uid());
+      }
+      else {
+          _event_debug("Dev:[%d][%s] This is not valid device pointer:%p mem:%lu", devno_, name_, (void *)src_cumem, mem->uid());
+      }
+#endif
+      err = ld_->cuMemcpyAsync(dst_cumem, src_cumem, size, streams_[stream_index]);
       //printf("cuMemcpyAsync:%p\n", ld_->cuMemcpyAsync);
       //printf("cuMemcpyDtoDAsync:%p\n", ld_->cuMemcpyDtoDAsync);
-      err = ld_->cudaMemcpyAsync((void *)dst_cumem, (void *)src_cumem, size, cudaMemcpyDeviceToDevice, streams_[stream_index]);
+      //err = ld_->cudaMemcpyAsync((void *)dst_cumem, (void *)src_cumem, size, cudaMemcpyDeviceToDevice, streams_[stream_index]);
       _cuerror(err);
       if (err != CUDA_SUCCESS) error_occured = true;
   }
   else {
-      err = ld_->cudaMemcpy((void *)dst_cumem, (void *)src_cumem, size, cudaMemcpyDeviceToDevice);
+      //err = ld_->cuMemcpyDtoD(dst_cumem, src_cumem, size);
+      err = ld_->cuMemcpy(dst_cumem, src_cumem, size);
+      //err = ld_->cudaMemcpy((void *)dst_cumem, (void *)src_cumem, size, cudaMemcpyDeviceToDevice);
       _cuerror(err);
       if (err != CUDA_SUCCESS) error_occured = true;
   }
@@ -894,7 +939,7 @@ void DeviceCUDA::CreateEvent(void **event, int flags)
     _cuerror(err);
     if (err != CUDA_SUCCESS)
         worker_->platform()->IncrementErrorCount();
-    _event_debug("Create dev:%d event_ptr:%p event:%p err:%d", devno(), event, *event, err);
+    _event_debug("Create dev:%d event_ptr:%p event:%p err_id:%d", devno(), event, *event, err);
 }
 float DeviceCUDA::GetEventTime(void *event, int stream) 
 { 
@@ -929,7 +974,7 @@ void DeviceCUDA::RecordEvent(void **event, int stream, int event_creation_flag)
     _cuerror(err);
     if (err != CUDA_SUCCESS)
         worker_->platform()->IncrementErrorCount();
-    _event_debug("Recorded dev:[%d]:[%s] event:%p stream:%d err:%d", devno(), name(), *event, stream, err);
+    _event_debug("Recorded dev:[%d]:[%s] event:%p stream:%d err_id:%d", devno(), name(), *event, stream, err);
     if (err != CUDA_SUCCESS)
         worker_->platform()->IncrementErrorCount();
 }

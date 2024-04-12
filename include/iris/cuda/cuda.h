@@ -14080,6 +14080,7 @@ CUresult CUDAAPI cuDeviceCanAccessPeer(int *canAccessPeer, CUdevice dev, CUdevic
  * ::cudaDeviceEnablePeerAccess
  */
 CUresult CUDAAPI cuCtxEnablePeerAccess(CUcontext peerContext, unsigned int Flags);
+CUresult CUDAAPI cuDeviceEnablePeerAccess(int peerDevice, unsigned int flags);
 
 /**
  * \brief Disables direct access to memory allocations in a peer context and

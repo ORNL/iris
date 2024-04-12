@@ -54,7 +54,7 @@ private:
   cl_device_id cldev_;
   cl_context clctx_;
   cl_event single_start_time_event_;
-  cl_command_queue clcmdq_[IRIS_MAX_DEVICE_NQUEUES];
+  cl_command_queue *clcmdq_; //[IRIS_MAX_DEVICE_NQUEUES];
   cl_command_queue default_queue_;
   cl_program clprog_;
   cl_device_type cltype_;

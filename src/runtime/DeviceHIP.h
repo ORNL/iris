@@ -12,7 +12,7 @@ class Mem;
 class BaseMem;
 class DeviceHIP : public Device {
 public:
-  DeviceHIP(LoaderHIP* ld, LoaderHost2HIP *host2hip_ld, hipDevice_t cudev, int ordinal, int devno, int platform);
+  DeviceHIP(LoaderHIP* ld, LoaderHost2HIP *host2hip_ld, hipDevice_t cudev, int ordinal, int devno, int platform, int local_devno);
   ~DeviceHIP();
 
   int Compile(char* src);
@@ -42,6 +42,7 @@ public:
   void ResetContext();
   bool IsContextChangeRequired();
   void SetContextToCurrentThread();
+  bool IsAddrValidForD2D(BaseMem *mem, void *ptr);
   float GetEventTime(void *event, int stream);
   void CreateEvent(void **event, int flags);
   void RecordEvent(void **event, int stream, int event_creation_flag=iris_event_disable_timing);
@@ -55,7 +56,7 @@ private:
   hipCtx_t ctx_;
   hipDevice_t dev_;
   hipDevice_t peers_[IRIS_MAX_NDEVS];
-  hipStream_t streams_[IRIS_MAX_DEVICE_NQUEUES];
+  hipStream_t *streams_;//[IRIS_MAX_DEVICE_NQUEUES];
   hipEvent_t single_start_time_event_;
   //hipEvent_t start_time_event_[IRIS_MAX_DEVICE_NQUEUES];
   int peers_count_;

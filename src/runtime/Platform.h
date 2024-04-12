@@ -235,6 +235,8 @@ public:
   Kernel *get_kernel_object(unsigned long uid) { return (Kernel *)kernel_track_.GetObject(uid); }
   Kernel *get_kernel_object(iris_kernel brs_kernel) { return (Kernel *)kernel_track_.GetObject(brs_kernel.uid); }
   int nprofilers() { return nprofilers_; }
+  int is_malloc_async() { return is_malloc_async_; }
+  void set_malloc_async_flag(int flag) { is_malloc_async_ = flag; }
   bool is_scheduling_history_enabled() { return enable_scheduling_history_; }
   bool is_event_profile_enabled() { return event_profile_enabled_; }
   bool is_async() { return async_; }
@@ -244,6 +246,8 @@ public:
   double time_init() { return time_init_; }
   bool enable_profiler() { return enable_profiler_; }
   void set_enable_profiler(bool profiler) { enable_profiler_ = profiler; }
+  int nstreams() { return nstreams_; }
+  void set_nstreams(int nstreams) { nstreams_ = nstreams; }
   void disable_d2d() { disable_d2d_ = true; }
   void enable_d2d() { disable_d2d_ = false; }
   bool is_d2d_disabled() { return disable_d2d_; }
@@ -293,6 +297,7 @@ private:
   Device* devs_[IRIS_MAX_NDEVS];
   Device *first_dev_of_type_[IRIS_MAX_NDEVS];
   int ndevs_;
+  int nstreams_;
   int dev_default_;
   int devs_enabled_[IRIS_MAX_NDEVS];
   int ndevs_enabled_;
@@ -340,6 +345,7 @@ private:
   Profiler* profilers_[8];
   int nprofilers_;
   int device_factor_;
+  int is_malloc_async_;
 
   bool enable_scheduling_history_;
   bool disable_d2d_;

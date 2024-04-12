@@ -206,6 +206,40 @@ typedef struct ihipModule_t* hipModule_t;
 typedef struct ihipModuleSymbol_t* hipFunction_t;
 typedef struct ihipStream_t* hipStream_t;
 
+typedef enum hipPointer_attribute {
+    HIP_POINTER_ATTRIBUTE_CONTEXT = 1,   ///< The context on which a pointer was allocated
+                                         ///< @warning - not supported in HIP
+    HIP_POINTER_ATTRIBUTE_MEMORY_TYPE,   ///< memory type describing location of a pointer
+    HIP_POINTER_ATTRIBUTE_DEVICE_POINTER,///< address at which the pointer is allocated on device
+    HIP_POINTER_ATTRIBUTE_HOST_POINTER,  ///< address at which the pointer is allocated on host
+    HIP_POINTER_ATTRIBUTE_P2P_TOKENS,    ///< A pair of tokens for use with linux kernel interface
+                                         ///< @warning - not supported in HIP
+    HIP_POINTER_ATTRIBUTE_SYNC_MEMOPS,   ///< Synchronize every synchronous memory operation
+                                         ///< initiated on this region
+    HIP_POINTER_ATTRIBUTE_BUFFER_ID,     ///< Unique ID for an allocated memory region
+    HIP_POINTER_ATTRIBUTE_IS_MANAGED,    ///< Indicates if the pointer points to managed memory
+    HIP_POINTER_ATTRIBUTE_DEVICE_ORDINAL,///< device ordinal of a device on which a pointer
+                                         ///< was allocated or registered
+    HIP_POINTER_ATTRIBUTE_IS_LEGACY_HIP_IPC_CAPABLE, ///< if this pointer maps to an allocation
+                                                     ///< that is suitable for hipIpcGetMemHandle
+                                                     ///< @warning - not supported in HIP
+    HIP_POINTER_ATTRIBUTE_RANGE_START_ADDR,///< Starting address for this requested pointer
+    HIP_POINTER_ATTRIBUTE_RANGE_SIZE,      ///< Size of the address range for this requested pointer
+    HIP_POINTER_ATTRIBUTE_MAPPED,          ///< tells if this pointer is in a valid address range
+                                           ///< that is mapped to a backing allocation
+    HIP_POINTER_ATTRIBUTE_ALLOWED_HANDLE_TYPES,///< Bitmask of allowed hipmemAllocationHandleType
+                                           ///< for this allocation @warning - not supported in HIP
+    HIP_POINTER_ATTRIBUTE_IS_GPU_DIRECT_RDMA_CAPABLE, ///< returns if the memory referenced by
+                                           ///< this pointer can be used with the GPUDirect RDMA API
+                                           ///< @warning - not supported in HIP
+    HIP_POINTER_ATTRIBUTE_ACCESS_FLAGS,    ///< Returns the access flags the device associated with
+                                           ///< for the corresponding memory referenced by the ptr
+    HIP_POINTER_ATTRIBUTE_MEMPOOL_HANDLE   ///< Returns the mempool handle for the allocation if
+                                           ///< it was allocated from a mempool
+                                           ///< @warning - not supported in HIP
+} hipPointer_attribute;
+
+hipError_t hipPointerGetAttribute(void* data, hipPointer_attribute attribute, hipDeviceptr_t ptr);
 hipError_t hipHostGetDevicePointer(void** devPtr, void* hstPtr, unsigned int flags);
 #define hipDeviceMapHost 0x8
 hipError_t hipSetDeviceFlags(unsigned flags);

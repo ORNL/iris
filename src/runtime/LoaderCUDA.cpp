@@ -20,6 +20,8 @@ int LoaderCUDA::LoadFunctions() {
   LOADFUNC(cuCtxGetCurrent);
   LOADFUNC(cuCtxSetCurrent);
   LOADFUNC(cuCtxEnablePeerAccess);
+  LOADFUNC(cuDeviceCanAccessPeer);
+  //LOADFUNC(cuDeviceEnablePeerAccess);
   LOADFUNCEXT(cudaSetDevice);
   LOADFUNCEXT(cudaDeviceCanAccessPeer);
   LOADFUNCEXT(cudaDeviceEnablePeerAccess);
@@ -39,12 +41,15 @@ int LoaderCUDA::LoadFunctions() {
   LOADFUNC(cuTexRefSetFlags);
   LOADFUNC(cuTexRefSetFormat);
   LOADFUNC(cuGetErrorString);
+  LOADFUNC(cuPointerGetAttributes);
+  LOADFUNC(cuPointerGetAttribute);
   LOADFUNC(cuMemcpy2D);
   //LOADFUNC(cuMemset);
   LOADFUNC(cuMemcpyDtoD);
   LOADFUNC(cuMemcpyDtoDAsync);
   LOADFUNCEXT(cudaMalloc);
   LOADFUNCEXT(cudaMemcpy);
+  LOADFUNC(cuMemcpy);
   LOADFUNC(cuMemcpyAsync);
   LOADFUNCEXT(cudaMemcpyAsync);
   LOADFUNCEXT(cudaMemcpy2D);

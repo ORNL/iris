@@ -18,8 +18,9 @@
 namespace iris {
 namespace rt {
 
-DeviceHIP::DeviceHIP(LoaderHIP* ld, LoaderHost2HIP *host2hip_ld, hipDevice_t dev, int ordinal, int devno, int platform) : Device(devno, platform) {
+DeviceHIP::DeviceHIP(LoaderHIP* ld, LoaderHost2HIP *host2hip_ld, hipDevice_t dev, int ordinal, int devno, int platform, int local_devno) : Device(devno, platform) {
   ld_ = ld;
+  local_devno_ = local_devno;
   set_async(true && Platform::GetPlatform()->is_async()); 
   atleast_one_command_ = false;
   host2hip_ld_ = host2hip_ld;
@@ -49,7 +50,8 @@ DeviceHIP::DeviceHIP(LoaderHIP* ld, LoaderHost2HIP *host2hip_ld, hipDevice_t dev
   strcpy(name_, name_str.c_str());
   type_ = iris_amd;
   model_ = iris_hip;
-  memset(streams_, 0, sizeof(hipStream_t)*IRIS_MAX_DEVICE_NQUEUES);
+  streams_ = new hipStream_t[nqueues_];
+  memset(streams_, 0, sizeof(hipStream_t)*nqueues_);
   //memset(start_time_event_, 0, sizeof(hipEvent_t)*IRIS_MAX_DEVICE_NQUEUES);
   single_start_time_event_ = NULL;
   err = ld_->hipDriverGetVersion(&driver_version_);
@@ -65,8 +67,23 @@ DeviceHIP::~DeviceHIP() {
       _hiperror(err);
       //DestroyEvent(start_time_event_[i]);
     }
+    delete [] streams_;
     if (is_async(false)) 
         DestroyEvent(single_start_time_event_);
+}
+bool DeviceHIP::IsAddrValidForD2D(BaseMem *mem, void *ptr)
+{
+    int data;
+    hipError_t err = ld_->hipPointerGetAttribute(&data, HIP_POINTER_ATTRIBUTE_DEVICE_POINTER, ptr);
+    if (err == hipSuccess) return true;
+    return false;
+}
+void DeviceHIP::SetPeerDevices(int *peers, int count)
+{
+    std::copy(peers, peers+count, peers_);
+    peers_count_ = count;
+    peer_access_ = new int[peers_count_];
+    memset(peer_access_, 0, peers_count_);
 }
 void DeviceHIP::EnablePeerAccess()
 {
@@ -74,9 +91,9 @@ void DeviceHIP::EnablePeerAccess()
     for(int i=0; i<peers_count_; i++) {
         hipDevice_t target_dev = peers_[i];
         if (target_dev == dev_) continue;
-        int can_access=0;
-        err = ld_->hipDeviceCanAccessPeer(&can_access, dev_, target_dev);
+        err = ld_->hipDeviceCanAccessPeer(&peer_access_[i], dev_, target_dev);
         _hiperror(err);
+        int can_access=peer_access_[i];
         if (can_access) {
             //printf("Can access dev:%d -> %d = %d\n", dev_, target_dev, can_access);
             err = ld_->hipDeviceEnablePeerAccess(target_dev, 0);
@@ -96,11 +113,6 @@ int DeviceHIP::Compile(char* src) {
   return IRIS_SUCCESS;
 }
 
-void DeviceHIP::SetPeerDevices(int *peers, int count)
-{
-    std::copy(peers, peers+count, peers_);
-    peers_count_ = count;
-}
 int DeviceHIP::Init() {
   int tb=0, mc=0, bx=0, by=0, bz=0, dx=0, dy=0, dz=0, ck=0; //, ae;
   hipError_t err = ld_->hipSetDevice(ordinal_);
@@ -225,11 +237,9 @@ int DeviceHIP::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset) 
   int stream = mem->recommended_stream(devno());
   bool async = (is_async(false) && stream != DEFAULT_STREAM_INDEX && stream >=0);
   hipError_t err;
-#ifdef MALLOC_ASYNC
-  if (async && stream >= 0)
+  if (platform_obj_->is_malloc_async() && async && stream >= 0)
      err = ld_->hipMallocAsync(hipmem, size, streams_[stream]);
   else
-#endif
      err = ld_->hipMalloc(hipmem, size);
   _hiperror(err);
   if (err != hipSuccess) {
@@ -237,11 +247,9 @@ int DeviceHIP::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset) 
      return IRIS_ERROR;
   }
   if (reset)  {
-#ifdef MALLOC_ASYNC
-      if (async)
+      if (platform_obj_->is_malloc_async() && async)
           err = ld_->hipMemsetAsync(*hipmem, 0, size, streams_[stream]);
       else
-#endif
           err = ld_->hipMemset(*hipmem, 0, size);
   }
   _hiperror(err);
