@@ -90,6 +90,18 @@ int iris_mem_disable_usm(iris_mem mem, DeviceModel type)
     return Platform::GetPlatform()->SetSharedMemoryModel(mem, type, false);
 }
 
+int iris_ndevices() {
+  return Platform::GetPlatform()->ndevs();
+}
+
+int iris_nstreams() {
+  return Platform::GetPlatform()->nstreams();
+}
+
+int iris_ncopy_streams() {
+  return Platform::GetPlatform()->ncopy_streams();
+}
+
 int iris_device_count(int* ndevs) {
   return Platform::GetPlatform()->DeviceCount(ndevs);
 }

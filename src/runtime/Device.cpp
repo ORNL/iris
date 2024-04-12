@@ -50,7 +50,7 @@ Device::Device(int devno, int platform) {
   stream_policy_ = STREAM_POLICY_DEFAULT;
   //stream_policy_ = STREAM_POLICY_SAME_FOR_TASK;
   //stream_policy_ = STREAM_POLICY_GIVE_ALL_STREAMS_TO_KERNEL;
-  n_copy_engines_ = 3;
+  n_copy_engines_ = platform_obj_->ncopy_streams();
 }
 
 Device::~Device() {

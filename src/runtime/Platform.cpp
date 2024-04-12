@@ -86,7 +86,8 @@ Platform::Platform() {
   arch_available_ = 0UL;
   present_table_ = NULL;
   stream_policy_ = STREAM_POLICY_DEFAULT;
-  nstreams_ = IRIS_MAX_DEVICE_NQUEUES;
+  nstreams_ = IRIS_MAX_DEVICE_NSTREAMS;
+  ncopy_streams_ = IRIS_MAX_DEVICE_NCOPY_STREAMS;
   is_malloc_async_ = false;
   recording_ = false;
   enable_profiler_ = false;
@@ -224,6 +225,10 @@ int Platform::Init(int* argc, char*** argv, int sync) {
   EnvironmentGet("NSTREAMS", &nstreams, NULL);
   if (nstreams != NULL && atoi(nstreams) > 0)
       set_nstreams(atoi(nstreams));
+  char *ncopy_streams = NULL;
+  EnvironmentGet("NCOPY_STREAMS", &ncopy_streams, NULL);
+  if (ncopy_streams != NULL && atoi(ncopy_streams) > 0)
+      set_ncopy_streams(atoi(ncopy_streams));
   char *stream_policy = NULL;
   EnvironmentGet("STREAM_POLICY", &stream_policy, NULL);
   if (stream_policy != NULL && atoi(stream_policy) > 0)

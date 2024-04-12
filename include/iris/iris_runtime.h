@@ -79,7 +79,8 @@ typedef enum StreamPolicy StreamPolicy;
 #define IRIS_MAX_NPLATFORMS     32
 #define IRIS_MAX_NDEVS          (1 << 5) - 1
 #define IRIS_MAX_KERNEL_NARGS     64
-#define IRIS_MAX_DEVICE_NQUEUES   9
+#define IRIS_MAX_DEVICE_NSTREAMS   9
+#define IRIS_MAX_DEVICE_NCOPY_STREAMS   3
 
 #define iris_default            (1 << 5)
 #define iris_cpu                (1 << 6)
@@ -353,6 +354,24 @@ extern void iris_set_enable_profiler(int flag);
  */
 extern int iris_device_count(int* ndevs);
 
+/**@brief Returns the number of devices
+ *
+ * @return This function returns an integer indicating number of devices
+ */
+extern int iris_ndevices();
+
+/**@brief Returns the number of streams
+ *
+ * @return This function returns an integer indicating number of streams
+ */
+extern int iris_nstreams();
+
+/**@brief Returns the number of copy streams.
+ *
+ * @param ndevs pointer to the number of copy streams 
+ * @return This function returns an integer indicating number of copy streams
+ */
+extern int iris_ncopy_streams();
 
 /**@brief Returns the device information.
  *

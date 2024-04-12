@@ -248,6 +248,8 @@ public:
   void set_enable_profiler(bool profiler) { enable_profiler_ = profiler; }
   int nstreams() { return nstreams_; }
   void set_nstreams(int nstreams) { nstreams_ = nstreams; }
+  int ncopy_streams() { return ncopy_streams_; }
+  void set_ncopy_streams(int ncopy_streams) { ncopy_streams_ = ncopy_streams; }
   void disable_d2d() { disable_d2d_ = true; }
   void enable_d2d() { disable_d2d_ = false; }
   bool is_d2d_disabled() { return disable_d2d_; }
@@ -298,6 +300,7 @@ private:
   Device *first_dev_of_type_[IRIS_MAX_NDEVS];
   int ndevs_;
   int nstreams_;
+  int ncopy_streams_;
   int dev_default_;
   int devs_enabled_[IRIS_MAX_NDEVS];
   int ndevs_enabled_;
