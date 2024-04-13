@@ -313,6 +313,20 @@ def finalize():
 def synchronize():
     return dll.iris_synchronize()
 
+def set_nstreams(n):
+    dll.call(dll.iris_set_nstreams, np.int32(n))
+
+def set_ncopy_streams(n):
+    dll.call(dll.iris_set_ncopy_streams, np.int32(n))
+
+def nstreams():
+    n_streams = dll.call_ret(dll.iris_nstreams, np.int32)
+    return n_streams
+
+def ncopy_streams():
+    n_streams = dll.call_ret(dll.iris_ncopy_streams, np.int32)
+    return n_streams
+
 def platform_count():
     i = c_int()
     dll.iris_platform_count(byref(i))

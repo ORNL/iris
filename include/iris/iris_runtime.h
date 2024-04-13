@@ -360,9 +360,23 @@ extern int iris_device_count(int* ndevs);
  */
 extern int iris_ndevices();
 
+/**@brief Set the number of streams
+ *
+ * @return This function set an integer indicating number of streams
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_set_nstreams(int n);
+
+/**@brief Set the number of copy streams
+ *
+ * @param This function takes an integer indicating number of copy streams
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_set_ncopy_streams(int n);
+
 /**@brief Returns the number of streams
  *
- * @return This function returns an integer indicating number of streams
+ * @param This function takes an integer indicating number of streams
  */
 extern int iris_nstreams();
 

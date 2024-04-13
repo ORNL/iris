@@ -102,6 +102,16 @@ int iris_ncopy_streams() {
   return Platform::GetPlatform()->ncopy_streams();
 }
 
+int iris_set_nstreams(int n) {
+  Platform::GetPlatform()->set_nstreams(n);
+  return IRIS_SUCCESS;
+}
+
+int iris_set_ncopy_streams(int n) {
+  Platform::GetPlatform()->set_ncopy_streams(n);
+  return IRIS_SUCCESS;
+}
+
 int iris_device_count(int* ndevs) {
   return Platform::GetPlatform()->DeviceCount(ndevs);
 }

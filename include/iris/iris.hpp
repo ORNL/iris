@@ -73,6 +73,41 @@ namespace iris {
                 return iris_error_count();
             }
 
+            /**@brief Return number of devices
+             * @return This function returns the number of devices
+             */
+            int ndevs() {
+                return iris_ndevices();
+            }
+
+            /**@brief Return number of streams
+             * @return This function returns the number of streams
+             */
+            int nstreams() {
+                return iris_nstreams();
+            }
+
+            /**@brief Return number of streams
+             * @param This function sets the number of streams
+             */
+            void set_nstreams(int n) {
+                iris_set_nstreams(n);
+            }
+
+            /**@brief Return number of copy streams
+             * @param This function sets the number of copy streams
+             */
+            void set_ncopy_streams(int n) {
+                iris_set_ncopy_streams(n);
+            }
+
+            /**@brief Return number of copy streams
+             * @return This function returns the number of copy streams
+             */
+            int ncopy_streams() {
+                return iris_ncopy_streams();
+            }
+
             /**@brief Prints an overview of the system available to IRIS; specifically
              * platforms, devices and their corresponding backends.
              * It is logged to standard output.
