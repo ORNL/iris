@@ -1,28 +1,15 @@
 extern crate libc;
-mod iris;
-use iris::*;
-use libc::{c_int, c_void, size_t, malloc, free};
+include!(concat!(env!("IRIS"), "/include/iris/iris.rs"));
+//use libc::{c_int, c_void, size_t, malloc, free};
 use std::ptr::{null_mut, null};
 use std::ffi::CString;
-
-#[link(name = "iris")]
-extern "C" {
-    fn iris_init(argc: *mut c_int, argv: *mut *mut *mut c_char, sync: c_int) -> c_int;
-    fn iris_finalize() -> c_int;
-    fn iris_data_mem_create(mem: *mut iris_mem, host_ptr: *const c_void, size: size_t) -> c_int;
-    fn iris_mem_release(mem: iris_mem) -> c_int;
-    fn iris_task_create(task: *mut iris_task) -> c_int;
-    fn iris_task_kernel(task: iris_task, kernel: *const c_char, dim: c_int, off: *const size_t, gws: *const size_t, lws: *const size_t, nparams: c_int, params: *const *const c_void, params_info: *const c_int) -> c_int;
-    fn iris_task_submit(task: iris_task, device: c_int, opt: *const c_char, sync: c_int) -> c_int;
-    fn iris_task_dmem_flush_out(task: iris_task, mem: iris_mem) -> c_int;
-}
 
 struct IrisStruct {
     mem: iris_mem,
 }
 
 impl IrisStruct {
-    fn new(size: usize, host_ptr: *const c_void) -> Result<Self, String> {
+    fn new(size: usize, host_ptr: *mut c_void) -> Result<Self, String> {
         let mut mem = null_mut();
         let res = unsafe { iris_data_mem_create(&mut mem, host_ptr, size) };
         if res != 0 {
@@ -40,11 +27,13 @@ impl IrisStruct {
 }
 
 fn main() {
+
     let mut argc = std::env::args().len() as c_int;
     let argv: Vec<CString> = std::env::args().map(|arg| CString::new(arg).unwrap()).collect();
     let argv_ptrs: Vec<*mut c_char> = argv.iter().map(|arg| arg.as_ptr() as *mut c_char).collect();
     let mut argv_ptr = argv_ptrs.as_ptr() as *mut *mut c_char;
-
+    let A: f32 = 10.0; // Explicitly specifying the type as f32
+    let ERROR: i32 = 0;
     unsafe {
         iris_init(&mut argc, &mut argv_ptr, 1);
     }
