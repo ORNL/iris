@@ -70,10 +70,17 @@ namespace rt {
             void HostLock() {
                 pthread_mutex_lock(&host_mutex_);
             }
+            void HostWriteLock(int devno) {
+                pthread_mutex_lock(&host_write_lock_[devno]);
+            }
+            void HostWriteUnLock(int devno) {
+                pthread_mutex_unlock(&host_write_lock_[devno]);
+            }
             virtual ~BaseMem() { 
                 pthread_mutex_destroy(&host_mutex_);
                 _trace("Memory object is deleted:%lu:%p", uid(), this);
                 for(int i=0; i<ndevs_; i++) {
+                    pthread_mutex_destroy(&host_write_lock_[i]);
                     stack<void *> & stk = device_map_[i].GetCompletionStack();
                     int n = stk.size();
                     for(int j=0; j<n; j++) { 
@@ -244,6 +251,7 @@ namespace rt {
             void **write_event_;
             void **d2h_events_;
             pthread_mutex_t host_mutex_;
+            pthread_mutex_t host_write_lock_[IRIS_MAX_NDEVS];
 #ifdef AUTO_PAR
   	    Task* current_writing_task_;
   	    std::vector<Task*> read_task_list_;
