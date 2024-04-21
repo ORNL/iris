@@ -727,7 +727,7 @@ void Device::GetPossibleDevices(BaseMem *mem, int devno, int *nddevs, int &d2d_d
         Device *target_dev = Platform::GetPlatform()->device(nddevs[i]);
         if (d2d_dev == -1 && type() == target_dev->type() &&
                 isD2DEnabled() && target_dev->isD2DEnabled()) {
-            if (async && platform_obj_->is_malloc_async() && IsAddrValidForD2D(mem, mem->arch(target_dev)))
+            if (async && platform_obj_->is_malloc_async() && IsAddrValidForD2D(mem, mem->get_arch(target_dev->devno())))
                 d2d_dev = nddevs[i];
             else if (!async || !platform_obj_->is_malloc_async())
                 d2d_dev = nddevs[i];
