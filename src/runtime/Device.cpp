@@ -727,7 +727,7 @@ void Device::GetPossibleDevices(BaseMem *mem, int devno, int *nddevs, int &d2d_d
         Device *target_dev = Platform::GetPlatform()->device(nddevs[i]);
         if (d2d_dev == -1 && type() == target_dev->type() &&
                 isD2DEnabled() && target_dev->isD2DEnabled()) {
-            if (async && platform_obj_->is_malloc_async() && IsAddrValidForD2D(mem, mem->arch(target_dev)))
+            if (async && platform_obj_->is_malloc_async() && IsAddrValidForD2D(mem, mem->get_arch(target_dev->devno())))
                 d2d_dev = nddevs[i];
             else if (!async || !platform_obj_->is_malloc_async())
                 d2d_dev = nddevs[i];
@@ -1109,24 +1109,27 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         Device *src_dev = Platform::GetPlatform()->device(select_src_dev);
         // D2H should be issued from target src (remote) device
         _event_debug("explore D2H->H2D dev[%d][%s] -> dev[%d][%s] task[%ld:%s] mem[%lu]", src_dev->devno(), src_dev->name(), devno(), name(), task->uid(), task->name(), mem->uid());
-        int src_mem_stream = src_dev->GetStream(task, mem, true); 
+        int src_mem_stream = -1;
 //#ifndef DIRECT_H2D_SYNC
 //        src_mem_stream = 1; mem->set_recommended_stream(src_dev->devno(), src_mem_stream);
 //#endif
         bool src_async = src_dev->is_async(false);
         //TODO: Think here
-        ResolveInputWriteDependency<ASYNC_SAME_DEVICE_DEPENDENCY>(task, mem, src_async, src_dev);
 
         double d2h_start = 0;
-        if ((mem->GetHostWriteDevice() != src_dev->devno()) ||
-                (mem->GetHostWriteStream() != src_mem_stream)) {
+        mem->HostWriteLock(src_dev->devno());
+        int host_write_dev = mem->GetHostWriteDevice();
+        if ((host_write_dev != src_dev->devno())) {
+                //((mem->GetHostWriteStream() != src_mem_stream)) 
+            src_mem_stream = src_dev->GetStream(task, mem, true); 
+            ResolveInputWriteDependency<ASYNC_SAME_DEVICE_DEPENDENCY>(task, mem, src_async, src_dev);
             d2h_start = timer_->Now();
             src_dev->ResetContext();
             if (async && platform_obj_->is_event_profile_enabled()) {
                 ProfileEvent & prof_event = task->CreateProfileEvent(mem, -1, PROFILE_D2HH2D_D2H, src_dev, src_mem_stream);
                 prof_event.RecordStartEvent(); 
             }
-            _event_debug("In mem:[%lu] src_mem_stream:%d src_dev:%d dev:%d\n", mem->uid(), src_mem_stream, src_dev->devno(), devno());
+            _event_debug("In mem:[%lu] src_mem_stream:%d src_dev:%d dev:%d host_write_dev:%d", mem->uid(), src_mem_stream, src_dev->devno(), devno(), host_write_dev);
 
             // Do Device to Host Transfer
             errid_ = src_dev->MemD2H(task, mem, ptr_off, 
@@ -1141,11 +1144,14 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
             if (async) { 
                 // Source generated data using asynchronous device
                 mem->HostRecordEvent(src_dev->devno(), src_mem_stream);
+                _event_debug("After host write_event:%d stream:%d", mem->GetHostWriteDevice(), mem->GetHostWriteStream());
             }
         }
         else {
             _event_debug("Reuse of mem:[%lu] src_mem_stream:%d src_dev:%d dev:%d\n", mem->uid(), src_mem_stream, src_dev->devno(), devno());
+            src_mem_stream = mem->GetHostWriteStream();
         }
+        mem->HostWriteUnLock(src_dev->devno());
 
         ResetContext();
         ResolveInputWriteDependency<ASYNC_KNOWN_H2D_RESOLVE>(task, mem, async, src_dev);
@@ -1343,22 +1349,29 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
             int src_mem_stream = src_dev->GetStream(task, mem, true);
             bool src_async = src_dev->is_async(false);
 
-            ResolveInputWriteDependency<ASYNC_DEV_INPUT_RESOLVE>(task, mem, async, src_dev);
+            mem->HostWriteLock(src_dev->devno());
+            if ((mem->GetHostWriteDevice() != src_dev->devno())) {
+                ResolveInputWriteDependency<ASYNC_DEV_INPUT_RESOLVE>(task, mem, async, src_dev);
 
-            if (async && src_dev->is_async(false) && platform_obj_->is_event_profile_enabled()) {
-                ProfileEvent & prof_event = task->CreateProfileEvent(mem, -1, PROFILE_D2H, src_dev, src_mem_stream);
-                prof_event.RecordStartEvent(); 
+                if (async && src_dev->is_async(false) && platform_obj_->is_event_profile_enabled()) {
+                    ProfileEvent & prof_event = task->CreateProfileEvent(mem, -1, PROFILE_D2H, src_dev, src_mem_stream);
+                    prof_event.RecordStartEvent(); 
+                }
+                src_dev->ResetContext();
+                errid_ = src_dev->MemD2H(task, mem, ptr_off, 
+                        gws, lws, elem_size, dim, size, host, "MemFlushOut ");
+                if (async && src_dev->is_async(false) && platform_obj_->is_event_profile_enabled()) {
+                    ProfileEvent & prof_event = task->LastProfileEvent();
+                    prof_event.RecordEndEvent(); 
+                }
+                if (async) mem->HostRecordEvent(src_dev->devno(), src_mem_stream);
             }
-            src_dev->ResetContext();
-            errid_ = src_dev->MemD2H(task, mem, ptr_off, 
-                    gws, lws, elem_size, dim, size, host, "MemFlushOut ");
-            if (async && src_dev->is_async(false) && platform_obj_->is_event_profile_enabled()) {
-                ProfileEvent & prof_event = task->LastProfileEvent();
-                prof_event.RecordEndEvent(); 
+            else {
+                src_mem_stream = mem->GetHostWriteStream();
             }
+            mem->HostWriteUnLock(src_dev->devno());
             //TODO: Shouldn't task call back from the source device
             if (async && src_dev->is_async(false)) {
-                mem->HostRecordEvent(src_dev->devno(), src_mem_stream);
                 _event_debug("Flush mem:%lu dev:[%d][%s] host recorded src_dev:%d:%s task:%lu:%s and can wait for event:%p mem_stream:%d\n", mem->uid(), devno(), name(), src_dev->devno(), src_dev->name(), task->uid(), task->name(), mem->GetHostCompletionEvent(), src_mem_stream);
 #if 0
                 void *event = NULL;
@@ -1373,24 +1386,38 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
             ResetContext();
         }
         else {
-            // This should be same device and has valid copy
-            int mem_stream = GetStream(task, mem, true);
-            _event_debug(" Flushing out mem:%lu dev:[%d][%s]\n", mem->uid(), devno(), name());
+            int mem_stream = -1;
+            mem->HostWriteLock(devno());
+            int host_write_dev = mem->GetHostWriteDevice();
+            if ((host_write_dev != devno())) {
+                //((mem->GetHostWriteStream() != src_mem_stream)) 
+                // This should be same device and has valid copy
+                mem_stream = GetStream(task, mem, true);
+                _event_debug(" Flushing out mem:%lu dev:[%d][%s] HostWrite:%d", mem->uid(), devno(), name(), host_write_dev);
 
-            ResolveInputWriteDependency<ASYNC_DEV_INPUT_RESOLVE>(task, mem, async, this);
-            ResetContext();
-            if (async && platform_obj_->is_event_profile_enabled()) {
-                ProfileEvent & prof_event = task->CreateProfileEvent(mem, -1, PROFILE_D2H, this, mem_stream);
-                prof_event.RecordStartEvent(); 
+                ResolveInputWriteDependency<ASYNC_DEV_INPUT_RESOLVE>(task, mem, async, this);
+                ResetContext();
+                if (async && platform_obj_->is_event_profile_enabled()) {
+                    ProfileEvent & prof_event = task->CreateProfileEvent(mem, -1, PROFILE_D2H, this, mem_stream);
+                    prof_event.RecordStartEvent(); 
+                }
+                errid_ = MemD2H(task, mem, ptr_off, 
+                        gws, lws, elem_size, dim, size, host, "MemFlushOut ");
+                if (async && platform_obj_->is_event_profile_enabled()) {
+                    ProfileEvent & prof_event = task->LastProfileEvent();
+                    prof_event.RecordEndEvent(); 
+                }
+                if (async) {
+                    mem->HostRecordEvent(devno(), mem_stream);
+                }
+                _event_debug("After flush host write_event:%d stream:%d", mem->GetHostWriteDevice(), mem->GetHostWriteStream());
             }
-            errid_ = MemD2H(task, mem, ptr_off, 
-                    gws, lws, elem_size, dim, size, host, "MemFlushOut ");
-            if (async && platform_obj_->is_event_profile_enabled()) {
-                ProfileEvent & prof_event = task->LastProfileEvent();
-                prof_event.RecordEndEvent(); 
+            else {
+                mem_stream = mem->GetHostWriteStream();
             }
+            mem->HostWriteUnLock(devno());
             if (async) {
-                mem->HostRecordEvent(devno(), mem_stream);
+                //mem->HostRecordEvent(devno(), mem_stream);
                 //mem->SetHostWriteDevice(devno());
                 //mem->SetHostWriteStream(mem_stream);
                 task->set_last_cmd_stream(mem_stream);

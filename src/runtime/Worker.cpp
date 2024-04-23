@@ -108,20 +108,20 @@ void Worker::Run() {
     _debug2("Device:%d:%s Worker thread invoked now running:%d", dev_->devno(), dev_->name(), running_);
     //printf("2Device:%d:%s Queue size:%lu\n", dev_->devno(), dev_->name(), queue_->Size());
     if (!running_) break;
-    pair<unsigned long, Task*> task;
+    Task* task;
     _debug2("Device:%d:%s Queue size:%lu", dev_->devno(), dev_->name(), queue_->Size());
     while (running_ && queue_->Dequeue(&task, dev_)){
       //printf("Device:%d:%s Qsize:%lu dequeued task:%lu:%s:%p\n", dev_->devno(), dev_->name(), queue_->Size(), task->uid(), task->name(), task);
-      _debug2("Device:%d:%s Qsize:%lu dequeued task:%lu:%s:%p", dev_->devno(), dev_->name(), queue_->Size(), task.first, task.second->name(), task.second);
+      _debug2("Device:%d:%s Qsize:%lu dequeued task:%lu:%s:%p", dev_->devno(), dev_->name(), queue_->Size(), task.first, task->name(), task);
       //FIX: This check is not needed. For the policies like ALL, when the task is in some worker queue, it couldn't be deleted unless all worker queues release them
       //if (!Platform::GetPlatform()->is_task_exist(task.first)) continue;
 #ifdef _DEBUG2_ENABLE
-      task.second->Retain();
+      task->Retain();
 #endif
-      Execute(task.second);
-      _debug2("Completed task Device:%d:%s Qsize:%lu dequeued, task:%p", dev_->devno(), dev_->name(), queue_->Size(), task.second);
+      Execute(task);
+      _debug2("Completed task Device:%d:%s Qsize:%lu dequeued, task:%p", dev_->devno(), dev_->name(), queue_->Size(), task);
 #ifdef _DEBUG2_ENABLE
-      task.second->Release(); // For Worker::Run Retain call
+      task->Release(); // For Worker::Run Retain call
 #endif
     }
   }

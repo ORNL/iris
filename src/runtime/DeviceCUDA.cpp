@@ -158,6 +158,7 @@ int DeviceCUDA::Compile(char* src) {
 bool DeviceCUDA::IsAddrValidForD2D(BaseMem *mem, void *ptr)
 {
     int data;
+    if (ptr == NULL) return true;
     CUresult err = ld_->cuPointerGetAttribute(&data, CU_POINTER_ATTRIBUTE_DEVICE_POINTER, (CUdeviceptr) ptr);
     if (err == CUDA_SUCCESS) return true;
     return false;
