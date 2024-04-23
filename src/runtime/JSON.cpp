@@ -33,11 +33,9 @@ rapidjson::Document iris_output_document_;
 
 JSON::JSON(Platform* platform){
   platform_ = platform;
-  timer_ = new Timer();
 }
 
 JSON::~JSON() {
-  delete timer_;
 }
 
 int JSON::Load(Graph* graph, const char* path, void** params) {
