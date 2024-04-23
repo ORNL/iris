@@ -3,6 +3,7 @@
 #include "Device.h"
 #include <utility>
 
+#define FLUSH_INDEPENDENT_QUEUE
 using namespace std;
 namespace iris {
 namespace rt {
@@ -42,10 +43,12 @@ bool QueueReady::Enqueue(Task* task) {
     mqueue_.push_back(task);
     _trace("Pushed marker task:%lu:%s to queue pq:%lu q:%lu", task->uid(), task->name(), pqueue_.size(), mqueue_.size());
   }
+#ifdef FLUSH_INDEPENDENT_QUEUE
   else if (task->ncmds_memcpy() == task->ncmds()) {
     pqueue_.push_back(task);
     _trace("Pushed task:%lu:%s to pqueue pq:%lu q:%lu", task->uid(), task->name(), pqueue_.size(), queue_.size());
   }
+#endif
   else{
     queue_.push_back(task);
     _trace("Pushed task:%lu:%s to queue pq:%lu q:%lu", task->uid(), task->name(), pqueue_.size(), queue_.size());
@@ -55,6 +58,7 @@ bool QueueReady::Enqueue(Task* task) {
 
 bool QueueReady::Dequeue(Task **task) {
   std::lock_guard<std::mutex> lock(mutex_);
+#ifdef FLUSH_INDEPENDENT_QUEUE
   if (!pqueue_.empty()){
     auto &data = pqueue_.front();
     *task = data;
@@ -62,6 +66,7 @@ bool QueueReady::Dequeue(Task **task) {
     pqueue_.pop_front();
     return true;
   }
+#endif
   if (!queue_.empty()){
     auto &data = queue_.front();
     *task = data;
@@ -80,6 +85,7 @@ bool QueueReady::Dequeue(Task **task) {
 }
 bool QueueReady::Dequeue(Task **task, Device *device) {
   std::lock_guard<std::mutex> lock(mutex_);
+#ifdef FLUSH_INDEPENDENT_QUEUE
   if (!pqueue_.empty()){
     auto &data = pqueue_.front();
     *task = data; //(Task*) data.second;
@@ -87,6 +93,7 @@ bool QueueReady::Dequeue(Task **task, Device *device) {
     pqueue_.pop_front();
     return true;
   }
+#endif
   if (!queue_.empty()){
     auto &data = queue_.front();
     *task = data; //(Task*) data.second;
