@@ -1487,11 +1487,12 @@ int {func_name}("""
             with open(filename, 'w') as fh:
                 fh.write("\n".join(all_lines))
                 fh.close()
-    write_kernel_to_file(['cpp_task_template'], 'codegen_task_template.h')
-    write_kernel_to_file(['tiled'], 'codegen_tiled.h')
-    write_kernel_to_file(['iris_cpu'], 'codegen_openmp_kernels.h')
-    write_kernel_to_file(['iris_cuda', 'iris_cuda_host'], 'codegen_cuda_kernels.cu')
-    write_kernel_to_file(['iris_hip', 'iris_hip_host'], 'codegen_hip_kernels.hip.cpp')
+    if not args.no_codegen:
+        write_kernel_to_file(['cpp_task_template'], 'codegen_task_template.h')
+        write_kernel_to_file(['tiled'], 'codegen_tiled.h')
+        write_kernel_to_file(['iris_cpu'], 'codegen_openmp_kernels.h')
+        write_kernel_to_file(['iris_cuda', 'iris_cuda_host'], 'codegen_cuda_kernels.cu')
+        write_kernel_to_file(['iris_hip', 'iris_hip_host'], 'codegen_hip_kernels.hip.cpp')
 
 def extract_header_data_details_hash(args, v):
     global valid_params, global_res
@@ -2017,6 +2018,7 @@ def InitParser(parser):
     parser.add_argument("-input", dest="input", nargs='+', default=[])
     parser.add_argument("-output", dest="output", default="iris_app_cpu_dsp_interface.h")
     parser.add_argument("-extract", dest="extract", action="store_true")
+    parser.add_argument("-no_codegen", dest="no_codegen", action="store_true")
     parser.add_argument("-generate", dest="generate", action="store_true")
     parser.add_argument("-verbose", dest="verbose", action="store_true")
     parser.add_argument("-thread_safe", dest="thread_safe", type=int, default=1)
@@ -2058,20 +2060,20 @@ def ExtractIRISTaskAPIs(args=None, arg_string='', arg_dict={}, in_code_buffer=''
             args.__dict__['input'] = args.__dict__['input'] + [f.name+'.c']
         iris_calls = extractTaskCalls(args)
         output_lines = generateIrisInterfaceCode(args, iris_calls)
-        if write_output:
+        if write_output and not args.no_codegen:
             WriteFile(args.output, output_lines, tag="Consolidated CPU/DSP interface code for all kernels in header")
         if in_code_buffer != '':
             #os.unlink(f.name)
             None
     elif args.extract:
         iris_calls = extractTaskCalls(args)
-        if write_output:
+        if write_output and not args.no_codegen:
             WriteFile(args.output, iris_calls, tag='Generating metadata')
         output_lines = iris_calls
     elif args.generate:
         codes = read_metadata_file(args, args.input)
         output_lines = generateIrisInterfaceCode(args, codes)
-        if write_output:
+        if write_output and not args.no_codegen:
             WriteFile(args.output, output_lines, tag="Consolidated CPU/DSP interface code for all kernels in header")
     return output_lines
 

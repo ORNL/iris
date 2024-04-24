@@ -467,7 +467,7 @@ function(extractIRISAPIs)
         list(APPEND src_iris_files "${CMAKE_BINARY_DIR}/${rule_name}.iris")
    endwhile()
    add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/iris_app_cpu_dsp_interface.h
-           COMMAND python3 $ENV{IRIS}/utils/extract_iris_task_calls.py -input ${src_iris_files} -output ${CMAKE_BINARY_DIR}/iris_app_cpu_dsp_interface.h -generate 
+           COMMAND python3 $ENV{IRIS}/utils/extract_iris_task_calls.py -input ${src_iris_files} -output ${CMAKE_BINARY_DIR}/iris_app_cpu_dsp_interface.h -generate $ENV{IRIS_NO_CODEGEN}
            DEPENDS ${src_rules}
            )
     add_custom_target(iris_app_cpu_dsp_interface.h DEPENDS ${CMAKE_BINARY_DIR}/iris_app_cpu_dsp_interface.h)

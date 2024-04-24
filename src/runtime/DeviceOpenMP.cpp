@@ -112,6 +112,7 @@ int DeviceOpenMP::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool rese
     worker_->platform()->IncrementErrorCount();
     return IRIS_ERROR;
   }
+  _trace("Allocated mem:%lu addr:%p, size:%lu reset:%d", mem->uid(), *mem_addr, size, reset);
   if (reset) memset(*mpmem, 0, size);
   return IRIS_SUCCESS;
 }
