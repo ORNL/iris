@@ -1117,7 +1117,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         //TODO: Think here
 
         double d2h_start = 0;
-        mem->HostWriteLock(src_dev->devno());
+        if (src_async) mem->HostWriteLock(src_dev->devno());
         int host_write_dev = mem->GetHostWriteDevice();
         if ((host_write_dev != src_dev->devno())) {
                 //((mem->GetHostWriteStream() != src_mem_stream)) 
@@ -1151,7 +1151,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
             _event_debug("Reuse of mem:[%lu] src_mem_stream:%d src_dev:%d dev:%d\n", mem->uid(), src_mem_stream, src_dev->devno(), devno());
             src_mem_stream = mem->GetHostWriteStream();
         }
-        mem->HostWriteUnLock(src_dev->devno());
+        if (src_async) mem->HostWriteUnLock(src_dev->devno());
 
         ResetContext();
         ResolveInputWriteDependency<ASYNC_KNOWN_H2D_RESOLVE>(task, mem, async, src_dev);
@@ -1349,7 +1349,7 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
             int src_mem_stream = src_dev->GetStream(task, mem, true);
             bool src_async = src_dev->is_async(false);
 
-            mem->HostWriteLock(src_dev->devno());
+            if (src_async) mem->HostWriteLock(src_dev->devno());
             if ((mem->GetHostWriteDevice() != src_dev->devno())) {
                 ResolveInputWriteDependency<ASYNC_DEV_INPUT_RESOLVE>(task, mem, async, src_dev);
 
@@ -1369,7 +1369,7 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
             else {
                 src_mem_stream = mem->GetHostWriteStream();
             }
-            mem->HostWriteUnLock(src_dev->devno());
+            if (src_async) mem->HostWriteUnLock(src_dev->devno());
             //TODO: Shouldn't task call back from the source device
             if (async && src_dev->is_async(false)) {
                 _event_debug("Flush mem:%lu dev:[%d][%s] host recorded src_dev:%d:%s task:%lu:%s and can wait for event:%p mem_stream:%d\n", mem->uid(), devno(), name(), src_dev->devno(), src_dev->name(), task->uid(), task->name(), mem->GetHostCompletionEvent(), src_mem_stream);
@@ -1387,7 +1387,7 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
         }
         else {
             int mem_stream = -1;
-            mem->HostWriteLock(devno());
+            if (async) mem->HostWriteLock(devno());
             int host_write_dev = mem->GetHostWriteDevice();
             if ((host_write_dev != devno())) {
                 //((mem->GetHostWriteStream() != src_mem_stream)) 
@@ -1415,7 +1415,7 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
             else {
                 mem_stream = mem->GetHostWriteStream();
             }
-            mem->HostWriteUnLock(devno());
+            if (async) mem->HostWriteUnLock(devno());
             if (async) {
                 //mem->HostRecordEvent(devno(), mem_stream);
                 //mem->SetHostWriteDevice(devno());

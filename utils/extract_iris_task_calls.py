@@ -1133,19 +1133,19 @@ extern \"C\" int {func_name}(
 {include_headers_str}
 #ifndef IRIS_API_DEFINITION
 #ifdef __cplusplus
-void {g_func_name}({cpp_params_decl_str});
-void {g_func_name}({params_decl_str});
+int {g_func_name}({cpp_params_decl_str});
+int {g_func_name}({params_decl_str});
 #endif // __cplusplus
 #ifdef __cplusplus
 extern \"C\"  {{
 #endif
-void {c_func_name}({params_decl_str});
+int {c_func_name}({params_decl_str});
 #ifdef __cplusplus
 }}
 #endif
 #else //IRIS_API_DEFINITION
 #ifdef __cplusplus
-void {g_func_name}({cpp_params_decl_str})
+int {g_func_name}({cpp_params_decl_str})
 {{
     {pre_loop_stmt}
     {loop_stmt} {{
@@ -1159,20 +1159,23 @@ void {g_func_name}({cpp_params_decl_str})
         iris_graph_task(graph, task, target_dev, NULL);
     }}
     {post_loop_stmt}
+    return IRIS_SUCCESS;
 }}
-void {g_func_name}({params_decl_str})
+int {g_func_name}({params_decl_str})
 {{
     {zip_ds_decl_str}
     {g_func_name}({cpp_params_vars_str});
+    return IRIS_SUCCESS;
 }}
 #endif // __cplusplus
 #ifdef __cplusplus
 extern \"C\"  {{
 #endif
-void {c_func_name}({params_decl_str})
+int {c_func_name}({params_decl_str})
 {{
     {zip_ds_decl_str}
     {g_func_name}({cpp_params_vars_str});
+    return IRIS_SUCCESS;
 }}
 #ifdef __cplusplus
 }}
@@ -1312,42 +1315,46 @@ void {c_func_name}({params_decl_str})
 #ifndef {unique_macro_str}
 #define {unique_macro_str}
 template <typename {param_map_dtype}>
-void {func_name}({params_templ_decl_irismem_str})
+int {func_name}({params_templ_decl_irismem_str})
 {{
+    return IRIS_SUCCESS;
 }}
 template <typename {param_map_dtype}>
-void {func_name}({params_templ_decl_template_str})
+int {func_name}({params_templ_decl_template_str})
 {{
+    return IRIS_SUCCESS;
 }}
 #endif // {unique_macro_str}
 #ifndef IRIS_API_DEFINITION
 #ifdef __cplusplus
 extern "C" {{
 #endif //__cplusplus
-void {c_task_api_name}({params_decl_irismem_str});
-void {c_core_api_name}({params_decl_str});
+int {c_task_api_name}({params_decl_irismem_str});
+int {c_core_api_name}({params_decl_str});
 #ifdef __cplusplus
 }}
 #endif //__cplusplus
 #ifdef __cplusplus
-void {cpp_api_name}({params_decl_irismem_str});
-void {cpp_api_name}({params_decl_str});
+int {cpp_api_name}({params_decl_irismem_str});
+int {cpp_api_name}({params_decl_str});
 template <>
-void {func_name}<{param_map_src_dtype}>({params_decl_irismem_str})
+int {func_name}<{param_map_src_dtype}>({params_decl_irismem_str})
 {{
     {cpp_api_name}({c_task_args_str});
+    return IRIS_SUCCESS;
 }}
 template <>
-void {func_name}<{param_map_src_dtype}>({params_decl_str})
+int {func_name}<{param_map_src_dtype}>({params_decl_str})
 {{
     {cpp_api_name}({c_core_args_str});
+    return IRIS_SUCCESS;
 }}
 #endif
 #else //IRIS_API_DEFINITION               
 #ifdef __cplusplus
 extern "C" {{
 #endif //__cplusplus
-void {c_task_api_name}({params_decl_irismem_str})
+int {c_task_api_name}({params_decl_irismem_str})
 {{
     void* __task_params[] = {{ {task_params_str} }};
     int __task_params_info[] = {{ {task_params_info_str} }};
@@ -1357,6 +1364,7 @@ void {c_task_api_name}({params_decl_irismem_str})
     size_t *__st_lws = {lws};
     iris_task_kernel(task, "{kernel_name}", {dim}, __st_offset, __st_gws, __st_lws, sizeof(__task_params_info)/sizeof(int), __task_params, __task_params_info);
     iris_params_map(task, __task_params_device_map);
+    return IRIS_SUCCESS;
 }}
 #ifdef __cplusplus
 }}
@@ -1364,7 +1372,7 @@ void {c_task_api_name}({params_decl_irismem_str})
 #ifdef __cplusplus
 extern "C" {{
 #endif //__cplusplus
-void {c_core_api_name}({params_decl_str})
+int {c_core_api_name}({params_decl_str})
 {{
     iris_task task;
     iris_task_create(&task);
@@ -1373,27 +1381,32 @@ void {c_core_api_name}({params_decl_str})
     {iris_mem_flush_stmts}
     iris_task_submit(task, target_dev, NULL, 1);
     {iris_mem_release_stmts}
+    return IRIS_SUCCESS;
 }}
 #ifdef __cplusplus
 }}
 #endif //__cplusplus
-void {cpp_api_name}({params_decl_irismem_str})
+int {cpp_api_name}({params_decl_irismem_str})
 {{
     {c_task_api_name}({c_task_args_str});
+    return IRIS_SUCCESS;
 }}
-void {cpp_api_name}({params_decl_str})
+int {cpp_api_name}({params_decl_str})
 {{
     {c_core_api_name}({c_core_args_str});
+    return IRIS_SUCCESS;
 }}
 template <>
-void {func_name}<{param_map_src_dtype}>({params_decl_irismem_str})
+int {func_name}<{param_map_src_dtype}>({params_decl_irismem_str})
 {{
     {cpp_api_name}({c_task_args_str});
+    return IRIS_SUCCESS;
 }}
 template <>
-void {func_name}<{param_map_src_dtype}>({params_decl_str})
+int {func_name}<{param_map_src_dtype}>({params_decl_str})
 {{
     {cpp_api_name}({c_core_args_str});
+    return IRIS_SUCCESS;
 }}
 #endif // __cplusplus
 #endif // IRIS_API_DEFINITION
