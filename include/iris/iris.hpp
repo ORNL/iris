@@ -6,10 +6,12 @@
 #endif
 #include <assert.h>
 #include <vector>
+#include <iostream>
+#include <iomanip>
+using namespace std;
 #ifdef ENABLE_SMART_PTR
 #include <iris/RetainableBase.hpp>
 #include <memory>
-using namespace std;
 #define ENABLE_SMART_PTR_MEM
 #define ENABLE_SMART_PTR_TASK
 typedef iris::rt::RetainableBase RetainableBase;
@@ -267,6 +269,115 @@ namespace iris {
             bool is_released_;
             iris_graph graph_;
     };
+    template<typename DType>
+    static DType *AllocateArray(size_t SIZE, DType init=0)
+    {
+        DType *A = (DType *)malloc ( SIZE *  sizeof(DType));
+        for (size_t i = 0; i < SIZE; i++ )
+            A[i] = init;
+        return A;
+    }
+    template<typename DType>
+    static DType *AllocateRandomArray(size_t SIZE)
+    {
+        DType *A = (DType *)malloc ( SIZE *  sizeof(DType));
+        for (size_t i = 0; i < SIZE; i++ )
+        {
+            int a = rand() % 5+1;
+            A[i] = (DType)a;
+        }
+        return A;
+    }
+    template<class DType>
+    static void PrintVectorLimited(vector<DType> & A, const char *description, size_t limit=8)
+        {
+            printf("%s (%d)\n", description, A.size());
+            size_t print_cols = A.size()>limit?limit:A.size();
+            for (size_t j = 0; j < print_cols; j++) {
+                cout << setw(6) << A[j] << " ";
+            }
+            cout << endl;
+        }
+    template<class DType>
+    static void PrintVectorFull(vector<DType> &A, const char *description)
+        {
+            printf("%s (%d)\n", description, A.size());
+            for (size_t j = 0; j < A.size(); j++) {
+                cout << setw(6) << A[j] << " ";
+            }
+            cout << endl;
+        }
+
+    template<class DType>
+    static void PrintArrayLimited(DType *A, size_t N, const char *description, size_t limit=8)
+        {
+            printf("%s data:%p (%ld)\n", description, A, N);
+            size_t print_cols = N>limit?limit:N;
+            for (size_t j = 0; j < print_cols; j++) {
+                cout << setw(6) << A[j] << " ";
+            }
+            cout << endl;
+        }
+    template<class DType>
+    static void PrintAarrayFull(DType *A, size_t N, const char *description)
+        {
+            printf("%s data:%p (%ld)\n", description, A, N);
+            for (size_t j = 0; j < N; j++) {
+                cout << setw(6) << A[j] << " ";
+            }
+            cout << endl;
+        }
+
+    template<class DType>
+    static void PrintMatrixLimited(DType *A, size_t M, size_t N, const char *description, size_t limit=8)
+        {
+            printf("%s data:%p (%ld, %ld)\n", description, A, M, N);
+            size_t print_rows = M>limit?limit:M;
+            size_t print_cols = N>limit?limit:N;
+            for(size_t i=0; i<print_rows; i++) {
+                for (size_t j = 0; j < print_cols; j++) {
+                    cout << setw(6) << A[i*N+j] << " ";
+                }
+                cout << endl;
+            }
+        }
+    template<class DType>
+    static void PrintMatrixFull(DType *A, size_t M, size_t N, const char *description)
+        {
+            printf("%s data:%p (%ld, %ld)\n", description, A, M, N);
+            for(size_t i=0; i<M; i++) {
+                for (size_t j = 0; j < N; j++) {
+                    cout << setw(6) << A[i*N+j] << " ";
+                }
+                cout << endl;
+            }
+        }
+    template<class DType>
+        static void MemSet(DType *A, size_t M, size_t N, DType value)
+        {
+            for(size_t i=0; i<M*N; i++) {
+                A[i] = value;
+            }
+        }
+    template<class DType>
+        static size_t CompareMatrix(DType *A, DType *ref, size_t M, size_t N, DType & error_data)
+        {
+            size_t ERROR = 0;
+            error_data = (DType) 0;
+            printf("Checking errors\n");
+            for(size_t i=0; i < M*N; i++) {
+                if (A[i] != ref[i]) {
+                    ERROR++;
+                    DType diff = A[i] - ref[i];
+                    error_data += (diff < (DType)0) ? -diff : diff;
+                }
+            }
+            printf("Total errors:%ld\n", ERROR);
+            if (ERROR>0)
+                printf("Mean error:%f\n", error_data/ERROR);
+            return ERROR;
+        }
+
 } // namespace iris
 
 #endif /* IRIS_INCLUDE_IRIS_IRIS_HPP */

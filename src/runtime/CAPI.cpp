@@ -736,105 +736,105 @@ void iris_free_array(void *ptr)
 }
 int8_t *iris_allocate_array_int8_t(int SIZE, int8_t init)
 {
-    return Utils::AllocateArray<int8_t>(SIZE, init);
+    return iris::AllocateArray<int8_t>(SIZE, init);
 }
 int16_t *iris_allocate_array_int16_t(int SIZE, int16_t init)
 {
-    return Utils::AllocateArray<int16_t>(SIZE, init);
+    return iris::AllocateArray<int16_t>(SIZE, init);
 }
 int32_t *iris_allocate_array_int32_t(int SIZE, int32_t init)
 {
-    return Utils::AllocateArray<int32_t>(SIZE, init);
+    return iris::AllocateArray<int32_t>(SIZE, init);
 }
 int64_t *iris_allocate_array_int64_t(int SIZE, int64_t init)
 {
-    return Utils::AllocateArray<int64_t>(SIZE, init);
+    return iris::AllocateArray<int64_t>(SIZE, init);
 }
 size_t *iris_allocate_array_size_t(int SIZE, size_t init)
 {
-    return Utils::AllocateArray<size_t>(SIZE, init);
+    return iris::AllocateArray<size_t>(SIZE, init);
 }
 float *iris_allocate_array_float(int SIZE, float init)
 {
-    return Utils::AllocateArray<float>(SIZE, init);
+    return iris::AllocateArray<float>(SIZE, init);
 }
 double *iris_allocate_array_double(int SIZE, double init)
 {
-    return Utils::AllocateArray<double>(SIZE, init);
+    return iris::AllocateArray<double>(SIZE, init);
 }
 int8_t *iris_allocate_random_array_int8_t(int SIZE)
 {
-    return Utils::AllocateRandomArray<int8_t>(SIZE);
+    return iris::AllocateRandomArray<int8_t>(SIZE);
 }
 int16_t *iris_allocate_random_array_int16_t(int SIZE)
 {
-    return Utils::AllocateRandomArray<int16_t>(SIZE);
+    return iris::AllocateRandomArray<int16_t>(SIZE);
 }
 int32_t *iris_allocate_random_array_int32_t(int SIZE)
 {
-    return Utils::AllocateRandomArray<int32_t>(SIZE);
+    return iris::AllocateRandomArray<int32_t>(SIZE);
 }
 int64_t *iris_allocate_random_array_int64_t(int SIZE)
 {
-    return Utils::AllocateRandomArray<int64_t>(SIZE);
+    return iris::AllocateRandomArray<int64_t>(SIZE);
 }
 size_t *iris_allocate_random_array_size_t(int SIZE)
 {
-    return Utils::AllocateRandomArray<size_t>(SIZE);
+    return iris::AllocateRandomArray<size_t>(SIZE);
 }
 float *iris_allocate_random_array_float(int SIZE)
 {
-    return Utils::AllocateRandomArray<float>(SIZE);
+    return iris::AllocateRandomArray<float>(SIZE);
 }
 double *iris_allocate_random_array_double(int SIZE)
 {
-    return Utils::AllocateRandomArray<double>(SIZE);
+    return iris::AllocateRandomArray<double>(SIZE);
 }
 void iris_print_matrix_limited_double(double *data, int M, int N, const char *description, int limit) 
 {
-    return Utils::PrintMatrixLimited<double>(data, M, N, description, limit);
+    return iris::PrintMatrixLimited<double>(data, M, N, description, limit);
 }
 void iris_print_matrix_full_double(double *data, int M, int N, const char *description) 
 {
-    Utils::PrintMatrixFull<double>(data, M, N, description);
+    iris::PrintMatrixFull<double>(data, M, N, description);
 }
 void iris_print_matrix_limited_float(float *data, int M, int N, const char *description, int limit) 
 {
-    return Utils::PrintMatrixLimited<float>(data, M, N, description, limit);
+    return iris::PrintMatrixLimited<float>(data, M, N, description, limit);
 }
 void iris_print_matrix_full_float(float *data, int M, int N, const char *description) 
 {
-    Utils::PrintMatrixFull<float>(data, M, N, description);
+    iris::PrintMatrixFull<float>(data, M, N, description);
 }
 void iris_print_matrix_limited_int64_t(int64_t *data, int M, int N, const char *description, int limit) 
 {
-    return Utils::PrintMatrixLimited<int64_t>(data, M, N, description, limit);
+    return iris::PrintMatrixLimited<int64_t>(data, M, N, description, limit);
 }
 void iris_print_matrix_full_int64_t(int64_t *data, int M, int N, const char *description) 
 {
-    Utils::PrintMatrixFull<int64_t>(data, M, N, description);
+    iris::PrintMatrixFull<int64_t>(data, M, N, description);
 }
 void iris_print_matrix_limited_int32_t(int32_t *data, int M, int N, const char *description, int limit) 
 {
-    return Utils::PrintMatrixLimited<int32_t>(data, M, N, description, limit);
+    return iris::PrintMatrixLimited<int32_t>(data, M, N, description, limit);
 }
 void iris_print_matrix_full_int32_t(int32_t *data, int M, int N, const char *description) 
 {
-    Utils::PrintMatrixFull<int32_t>(data, M, N, description);
+    iris::PrintMatrixFull<int32_t>(data, M, N, description);
 }
 void iris_print_matrix_limited_int16_t(int16_t *data, int M, int N, const char *description, int limit) 
 {
-    return Utils::PrintMatrixLimited<int16_t>(data, M, N, description, limit);
+    return iris::PrintMatrixLimited<int16_t>(data, M, N, description, limit);
 }
 void iris_print_matrix_full_int16_t(int16_t *data, int M, int N, const char *description) 
 {
-    Utils::PrintMatrixFull<int16_t>(data, M, N, description);
+    iris::PrintMatrixFull<int16_t>(data, M, N, description);
 }
 void iris_print_matrix_limited_int8_t(int8_t *data, int M, int N, const char *description, int limit) 
 {
-    return Utils::PrintMatrixLimited<int8_t>(data, M, N, description, limit);
+    return iris::PrintMatrixLimited<int8_t>(data, M, N, description, limit);
 }
 void iris_print_matrix_full_int8_t(int8_t *data, int M, int N, const char *description) 
 {
-    Utils::PrintMatrixFull<int8_t>(data, M, N, description);
+    iris::PrintMatrixFull<int8_t>(data, M, N, description);
 }

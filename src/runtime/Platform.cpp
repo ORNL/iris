@@ -966,8 +966,8 @@ int Platform::PolicyRegister(const char* lib, const char* name, void* params) {
 
 int Platform::CalibrateCommunicationMatrix(double *comm_time, size_t data_size, int iterations, bool pin_memory_flag)
 {
-    uint8_t *A = Utils::AllocateRandomArray<uint8_t>(data_size);
-    uint8_t *nopin_A = Utils::AllocateRandomArray<uint8_t>(data_size);
+    uint8_t *A = iris::AllocateRandomArray<uint8_t>(data_size);
+    uint8_t *nopin_A = iris::AllocateRandomArray<uint8_t>(data_size);
     if (pin_memory_flag) 
         iris_register_pin_memory(A, data_size);
     Mem* mem = new Mem(data_size, this);
