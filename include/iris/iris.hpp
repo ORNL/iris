@@ -353,9 +353,9 @@ namespace iris {
             }
         }
     template<class DType>
-        static void MemSet(DType *A, size_t M, size_t N, DType value)
+        static void MemSet(DType *A, size_t M, DType value)
         {
-            for(size_t i=0; i<M*N; i++) {
+            for(size_t i=0; i<M; i++) {
                 A[i] = value;
             }
         }
