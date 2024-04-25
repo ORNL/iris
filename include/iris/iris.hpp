@@ -377,6 +377,24 @@ namespace iris {
                 printf("Mean error:%f\n", error_data/ERROR);
             return ERROR;
         }
+    template<class DType>
+        static size_t CompareArray(DType *A, DType *ref, size_t M, DType & error_data)
+        {
+            size_t ERROR = 0;
+            error_data = (DType) 0;
+            printf("Checking errors\n");
+            for(size_t i=0; i < M; i++) {
+                if (A[i] != ref[i]) {
+                    ERROR++;
+                    DType diff = A[i] - ref[i];
+                    error_data += (diff < (DType)0) ? -diff : diff;
+                }
+            }
+            printf("Total errors:%ld\n", ERROR);
+            if (ERROR>0)
+                printf("Mean error:%f\n", error_data/ERROR);
+            return ERROR;
+        }
 
 } // namespace iris
 
