@@ -47,6 +47,7 @@ namespace rt {
                   is_usm_[i] = false;
                   d2h_events_[i] = NULL;
                   recommended_stream_[i] = -1;
+                  pthread_mutex_init(&host_write_lock_[i], NULL);
                 }
                 pthread_mutex_init(&host_mutex_, NULL);
                 // Special device map for host
