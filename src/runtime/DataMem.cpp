@@ -19,6 +19,15 @@ DataMem::DataMem(Platform *platform, void *host_ptr, size_t *off, size_t *host_s
     for(int i=0; i<dim; i++) {
         size = size * dev_size[i];
     }
+    if (dim == 1) {
+        _trace("DataMem host_ptr:%p off:%ld host_size:%ld dev_size:%ld elem_size:%ld dim:%d size:%ld", host_ptr, off[0], host_size[0], dev_size[0], elem_size, dim, size);
+    }
+    else if (dim == 2) {
+        _trace("DataMem host_ptr:%p off:[%ld,%ld] host_size:[%ld,%ld] dev_size:[%ld,%ld] elem_size:%ld dim:%d size:%ld", host_ptr, off[0], off[1], host_size[0], host_size[1], dev_size[0], dev_size[1], elem_size, dim, size);
+    }
+    else if (dim == 3) {
+        _trace("DataMem host_ptr:%p off:[%ld,%ld,%ld] host_size:[%ld,%ld,%ld] dev_size:[%ld,%ld,%ld] elem_size:%ld dim:%d size:%ld", host_ptr, off[0], off[1], off[2], host_size[0], host_size[1], host_size[2], dev_size[0], dev_size[1], dev_size[2], elem_size, dim, size);
+    }
     Init(platform, host_ptr, size);
     dim_ = dim;
     memcpy(off_, off, sizeof(size_t)*dim_);
