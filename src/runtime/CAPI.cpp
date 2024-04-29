@@ -838,3 +838,79 @@ void iris_print_matrix_full_int8_t(int8_t *data, int M, int N, const char *descr
 {
     iris::PrintMatrixFull<int8_t>(data, M, N, description);
 }
+void iris_run_hpl_mapping(iris_graph graph)
+{
+    int ndevices = 0;
+    iris_device_count(&ndevices);
+    int dev_map[16][16];
+    for(int i=0; i<16; i++) {
+        for(int j=0; j<16; j++) {
+            if (j>=i) dev_map[i][j] = j*j+i;
+            else dev_map[i][j] = (i*(i+2))-j;
+            dev_map[i][j] = dev_map[i][j]%ndevices;
+        }
+    }
+    int nrows = ndevices;
+    int ncols = ndevices;
+    if (ndevices == 1) return;
+    else if (ndevices == 9) {
+        nrows = 3; ncols = 3;
+    }
+    else if (ndevices == 4) {
+        nrows = 2; ncols = 2;
+    }
+    else if (ndevices == 6) {
+        dev_map[0][0] = 0;
+        dev_map[0][1] = 1;
+        dev_map[1][0] = 2;
+        dev_map[1][1] = 3;
+        dev_map[2][0] = 4;
+        dev_map[2][1] = 5;
+        nrows = 3; ncols = 2;
+    }
+    else if (ndevices == 8) {
+        dev_map[0][0] = 0;
+        dev_map[0][1] = 1;
+        dev_map[1][0] = 2;
+        dev_map[1][1] = 3;
+        dev_map[2][0] = 4;
+        dev_map[2][1] = 5;
+        dev_map[3][0] = 6;
+        dev_map[3][1] = 7;
+        nrows = 4; ncols = 2;
+    }
+    else if (ndevices % 2 == 1) {
+        int incrementer = (ndevices+1) / 2;
+        int i_pos = 0;
+        for(int i=0; i<ndevices; i++) {
+            int j_pos = (ndevices - i_pos)%ndevices;
+            for(int j=0; j<ndevices; j++) {
+                dev_map[i][j] = (j_pos + j)%ndevices;
+            }
+            i_pos = (i_pos+incrementer)%ndevices;
+        }
+    }
+    /*printf("Dev Map:\n");
+    for(int i=0; i<nrows; i++) {
+        for(int j=0; j<ncols; j++) {
+            printf("%2d ", dev_map[i][j]);
+        }
+        printf("\n");
+    }*/
+    int ntasks = iris_graph_tasks_count(graph);
+    iris_task *tasks = NULL;
+    if (ntasks > 0)
+        tasks = (iris_task *)malloc(sizeof(iris_task)*ntasks);
+    iris_graph_get_tasks(graph, tasks);
+    for(int i=0; i<ntasks; i++) {
+        iris_task task = tasks[i];
+        int r = iris_task_get_metadata(task, 0);
+        int c = iris_task_get_metadata(task, 1);
+        if (r >= 0 && c >= 0) {
+            int id = dev_map[r%nrows][c%ncols];
+            iris_task_set_policy(task, id);
+            //char *name = iris_task_get_name(task);
+            //printf("Task %s r:%d c:%d dev:%d\n", name, r, c, id);
+        }
+    }
+}

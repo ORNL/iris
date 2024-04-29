@@ -118,7 +118,7 @@ int DeviceLevelZero::MemFree(BaseMem *mem, void* mem_addr) {
 }
 
 int DeviceLevelZero::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *tile_sizes,  size_t *full_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag) {
-  void* dptr = (void*) ((char*) mem->arch(this) + off[0]);
+  void* dptr = (void*) ((char*) mem->arch(this));
   _trace("%sdptr[%p] offset[%lu] size[%lu] host[%p]", tag,  dptr, off[0], size, host);
 
   ze_event_handle_t zeevt;
@@ -127,7 +127,7 @@ int DeviceLevelZero::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *tile_
   err_ = ld_->zeEventCreate(zeevtpool_, &zeevt_desc, &zeevt);
   _zeerror(err_);
 
-  err_ = ld_->zeCommandListAppendMemoryCopy(zecml_, dptr, (const void*) host, size, zeevt, 0, nullptr);
+  err_ = ld_->zeCommandListAppendMemoryCopy(zecml_, dptr, (const char*) host + off[0]*elem_size, size, zeevt, 0, nullptr);
   _zeerror(err_);
 
   err_ = ld_->zeCommandListAppendSignalEvent(zecml_, zeevt);
@@ -151,7 +151,7 @@ int DeviceLevelZero::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *tile_
 }
 
 int DeviceLevelZero::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *tile_sizes,  size_t *full_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag) {
-  void* dptr = (void*) ((char*) mem->arch(this) + off[0]);
+  void* dptr = (void*) ((char*) mem->arch(this));
   _trace("%sdptr[%p] offset[%lu] size[%lu] host[%p]", tag, dptr, off[0], size, host);
 
   ze_event_handle_t zeevt;
@@ -160,7 +160,7 @@ int DeviceLevelZero::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *tile_
   err_ = ld_->zeEventCreate(zeevtpool_, &zeevt_desc, &zeevt);
   _zeerror(err_);
 
-  err_ = ld_->zeCommandListAppendMemoryCopy(zecml_, host, (const void*) dptr, size, zeevt, 0, nullptr);
+  err_ = ld_->zeCommandListAppendMemoryCopy(zecml_, host + off[0]*elem_size, (const void*) dptr, size, zeevt, 0, nullptr);
   _zeerror(err_);
 
   err_ = ld_->zeCommandListAppendSignalEvent(zecml_, zeevt);

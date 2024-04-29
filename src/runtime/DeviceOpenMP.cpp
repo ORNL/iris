@@ -143,8 +143,8 @@ int DeviceOpenMP::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_siz
 #endif
       }
       else {
-          _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), mpmem, off[0], size, host);
-          memcpy((char*) mpmem + off[0], host, size);
+          _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] elem_size:%ld", tag, devno_, name_, task->uid(), task->name(), mem->uid(), mpmem, off[0], size, host, elem_size);
+          memcpy((char*) mpmem, host+off[0]*elem_size, size);
 #if 0
           printf("H2D: ");
           float *A = (float *) host;
@@ -177,8 +177,8 @@ int DeviceOpenMP::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_siz
 #endif
       }
       else {
-          _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), mpmem, off[0], size, host);
-          memcpy(host, (char*) mpmem + off[0], size);
+          _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] elem_size:%ld", tag, devno_, name_, task->uid(), task->name(), mem->uid(), mpmem, off[0], size, host, elem_size);
+          memcpy(host + off[0]*elem_size, (char*) mpmem, size);
 #if 0
           printf("D2H: ");
           float *A = (float *) host;

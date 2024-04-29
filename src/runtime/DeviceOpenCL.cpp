@@ -294,7 +294,7 @@ int DeviceOpenCL::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_siz
   }
   else {
       _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), clmem, off[0], size, host, stream_index);
-      err = ld_->clEnqueueWriteBuffer(queue, clmem, CL_TRUE, off[0], size, host, 0, NULL, NULL);
+      err = ld_->clEnqueueWriteBuffer(queue, clmem, CL_TRUE, 0, size, host+off[0]*elem_size, 0, NULL, NULL);
 #if 0
       printf("H2D: Dev%d: ", devno_);
       float *A = (float *) host;
@@ -338,7 +338,7 @@ int DeviceOpenCL::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_siz
   }
   else {
       _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d] ref_cnt[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), clmem, off[0], size, host, stream_index, task->ref_cnt());
-      err = ld_->clEnqueueReadBuffer(queue, clmem, CL_TRUE, off[0], size, host, 0, NULL, NULL);
+      err = ld_->clEnqueueReadBuffer(queue, clmem, CL_TRUE, 0, size, host+off[0]*elem_size, 0, NULL, NULL);
 #if 0
       printf("D2H: Dev:%d: ", devno_);
       float *A = (float *) host;

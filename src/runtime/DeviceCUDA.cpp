@@ -530,7 +530,7 @@ int DeviceCUDA::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
   else {
       _debug2("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, off[0], size, host, stream_index);
       if (!async) {
-          err = ld_->cuMemcpyHtoD(cumem + off[0], host, size);
+          err = ld_->cuMemcpyHtoD(cumem, host + off[0] * elem_size, size);
           _cuerror(err);
           if (err != CUDA_SUCCESS) error_occured = true;
 #if 0
@@ -543,7 +543,7 @@ int DeviceCUDA::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
 #endif
       }
       else {
-          err = ld_->cuMemcpyHtoDAsync(cumem + off[0], host, size, streams_[stream_index]);
+          err = ld_->cuMemcpyHtoDAsync(cumem, host + off[0]*elem_size, size, streams_[stream_index]);
           _cuerror(err);
           if (err != CUDA_SUCCESS) error_occured = true;
       }
@@ -647,7 +647,7 @@ int DeviceCUDA::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
   else {
       _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, off[0], size, host, stream_index);
       if (!async) {
-          err = ld_->cuMemcpyDtoH(host, cumem + off[0], size);
+          err = ld_->cuMemcpyDtoH(host + off[0]*elem_size, cumem, size);
           _cuerror(err);
           if (err != CUDA_SUCCESS) error_occured = true;
 #if 0
@@ -660,7 +660,7 @@ int DeviceCUDA::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
 #endif
       } 
       else {
-          err = ld_->cuMemcpyDtoHAsync(host, cumem + off[0], size, streams_[stream_index]);
+          err = ld_->cuMemcpyDtoHAsync(host + off[0]*elem_size, cumem, size, streams_[stream_index]);
           _cuerror(err);
           if (err != CUDA_SUCCESS) error_occured = true;
       }

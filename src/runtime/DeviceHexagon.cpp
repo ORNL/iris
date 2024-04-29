@@ -62,7 +62,7 @@ int DeviceHexagon::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_si
       Utils::MemCpy3D((uint8_t *)hxgmem, (uint8_t *)host, off, dev_sizes, host_sizes, elem_size, true);
   }
   else {
-      memcpy((char*) hxgmem + off[0], host, size);
+      memcpy((char*) hxgmem, host + off[0]*elem_size, size);
   }
   return IRIS_SUCCESS;
 }
@@ -73,7 +73,7 @@ int DeviceHexagon::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_si
       Utils::MemCpy3D((uint8_t *)hxgmem, (uint8_t *)host, off, dev_sizes, host_sizes, elem_size, true);
   }
   else {
-      memcpy(host, (char*) hxgmem + off[0], size);
+      memcpy(host + off[0]*elem_size, (char*) hxgmem, size);
   }
   return IRIS_SUCCESS;
 }

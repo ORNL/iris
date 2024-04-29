@@ -7,7 +7,7 @@
 
 #define _PRINTF_ENABLE
 #define FFLUSH(X)    //fflush(X)
-#ifndef NDEBUG
+#if 1//ndef NDEBUG
 #ifndef TRACE_DISABLE
 #define _TRACE_ENABLE
 #endif //TRACE_DISABLE

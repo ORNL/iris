@@ -1780,6 +1780,9 @@ extern void iris_print_matrix_full_int8_t(int8_t *data, int M, int N, const char
  * @param limit printing limit for rows and columns
  */
 extern void iris_print_matrix_limited_int8_t(int8_t *data, int M, int N, const char *description, int limit);
+
+/* Run HPL Mapping algorithm*/
+extern void iris_run_hpl_mapping(iris_graph graph);
 #ifdef __cplusplus
 } /* end of extern "C" */
 #endif
