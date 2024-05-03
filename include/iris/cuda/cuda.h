@@ -60,6 +60,8 @@ typedef uint32_t cuuint32_t;
 typedef uint64_t cuuint64_t;
 #endif
 
+#ifndef NATIVE_CUDA 
+#define cudaDeviceMapHost   8
 enum cudaMemcpyKind
 {
     cudaMemcpyHostToHost          =   0,      /**< Host   -> Host */
@@ -70,6 +72,7 @@ enum cudaMemcpyKind
 };
 #ifndef __cplusplus
 typedef enum cudaMemcpyKind cudaMemcpyKind;
+#endif
 #endif
 #define cudaHostRegisterDefault             0x00  /**< Default host memory registration flag */
 #define cudaHostRegisterPortable            0x01  /**< Pinned memory accessible by all CUDA contexts */
@@ -6129,10 +6132,11 @@ CUresult CUDAAPI cuMemcpyAtoA(CUarray dstArray, size_t dstOffset, CUarray srcArr
  * ::cudaMemcpy2DFromArray
  */
 CUresult CUDAAPI cuMemcpy2D(const CUDA_MEMCPY2D *pCopy);
+#ifndef NATIVE_CUDA
 CUresult cudaMemcpy2D ( void* dst, size_t dpitch, const void* src, size_t spitch, size_t width, size_t height, cudaMemcpyKind kind );
 CUresult cudaHostGetDevicePointer(void **pDevice, void *pHost, unsigned int flags);  
-#define cudaDeviceMapHost   8
 CUresult cudaSetDeviceFlags(unsigned int flags);
+#endif
 /**
  * \brief Copies memory for 2D arrays
  *

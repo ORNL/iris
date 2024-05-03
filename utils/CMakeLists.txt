@@ -816,7 +816,7 @@ function(addKernelCUDARule kernel_target
             set(output "${rule_name}.o")
             add_custom_command(
                     OUTPUT ${output}
-                    COMMAND ${HOST2CUDA_COMP_COMPILER} -O2 ${OPENMP_GPU_FLAGS} -c ${SRC_FILE_PATH} ${flags_X} -I$ENV{IRIS}/include -I${SRC_DIR_PATH} -o ${output}
+                    COMMAND ${HOST2CUDA_COMP_COMPILER} -O2 -c ${SRC_FILE_PATH} ${flags_X} -I$ENV{IRIS}/include -I${SRC_DIR_PATH} -o ${output}
                     DEPENDS ${SRC_FILE_PATH} iris_app_cpu_dsp_interface.h
                     VERBATIM
             )
@@ -883,7 +883,7 @@ if (HOST2CUDA_KERNEL_SOURCES AND USE_CUDA)
 if (ENABLE_HOST2CUDA_NATIVE)
 set(output_obj_files "")
 set(output_rules "")
-set(HOST2CUDA_FLAGS "${HOST2CUDA_FLAGS} -x cu")
+set(HOST2CUDA_FLAGS "${HOST2CUDA_FLAGS} -x cu -DNATIVE_CUDA")
 addKernelSpecificCompiler(kernel.host2cuda nvc++ "${HOST2CUDA_KERNEL_SOURCES}" ${HOST2CUDA_FLAGS} ${HOST2CUDA_LDFLAGS} "${HOST2CUDA_LIBRARIES}" "${output_obj_files}" "${output_rules}")
 set(HOST2CUDA_LDFLAGS "${HOST2CUDA_LDFLAGS} -stdpar ${OPENMP_GPU_LDFLAGS} ${output_obj_files} -L${CMAKE_CURRENT_BINARY_DIR}")
 set(HOST2CUDA_LIBRARIES  ${HOST2CUDA_LIBRARIES} )
