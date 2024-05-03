@@ -10,8 +10,9 @@ void BaseMem::HostRecordEvent(int devno, int stream)
     void **host_event = GetHostCompletionEventPtr(true);
     dev->ResetContext();
     dev->CreateEvent(host_event, iris_event_disable_timing);
-    d2h_events_[devno] = *host_event; 
     dev->RecordEvent(host_event, stream);
+    d2h_events_[devno] = *host_event; 
+    ASSERT(*host_event != NULL);
     //printf("host_event:%p host_event_ptr:%p d2h:%p\n", host_event, *host_event, d2h_events_[devno]);
     _event_debug("dev:[%d][%s] mem:%lu host_event:%p host_event_ptr:%p d2h:%p stream:%d", dev->devno(), dev->name(), uid(), *host_event, host_event, d2h_events_[devno], stream);
     SetHostWriteDevice(devno);
