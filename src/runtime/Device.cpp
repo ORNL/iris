@@ -1630,9 +1630,11 @@ void Device::ExecuteH2D(Command* cmd, Device *dev) {
   //ResolveH2DStartEvents(task, mem, async);
   int mem_stream = -1;
   if (async) {
-      mem_stream = GetStream(task, mem, true);
+      mem_stream = dev->GetStream(task, mem, true);
+      //_event_debug(" before dev:[%d][%s] mem:%ld task:%lu:%s stream:%d", devno(), name(), mem->uid(), task->uid(), task->name(), mem_stream);
       SynchronizeInputToMemory(task, mem);
   }
+  //_event_debug(" second dev:[%d][%s] mem:%ld task:%lu:%s stream:%d", devno(), name(), mem->uid(), task->uid(), task->name(), mem_stream);
   cmd->set_time_start(timer_);
   errid_ = dev->MemH2D(cmd->task(), mem, ptr_off, gws, lws, elem_size, dim, size, host);
   if (errid_ != IRIS_SUCCESS) _error("iret[%d] dev[%d][%s]", errid_, dev->devno(), dev->name());
@@ -1640,10 +1642,11 @@ void Device::ExecuteH2D(Command* cmd, Device *dev) {
   //ResolveH2DEndEvents(task, mem, async);
   if (async) {
     void *event = NULL;
-    CreateEvent(&event, iris_event_disable_timing);
-    RecordEvent(&event, mem_stream);
-    EventSynchronize(event);
-    DestroyEvent(event);
+    //_event_debug(" dev:[%d][%s] mem:%ld task:%lu:%s stream:%d", devno(), name(), mem->uid(), task->uid(), task->name(), mem_stream);
+    dev->CreateEvent(&event, iris_event_disable_timing);
+    dev->RecordEvent(&event, mem_stream);
+    dev->EventSynchronize(event);
+    dev->DestroyEvent(event);
   }
   double time = timer_->Stop(IRIS_TIMER_H2D);
   cmd->SetTime(time);
