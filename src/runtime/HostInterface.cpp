@@ -158,7 +158,7 @@ namespace iris {
         int BoilerPlateHostInterfaceLoader::host_launch(void **stream, int stream_index, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *off, size_t *bws) 
         {
             if(iris_host_launch_with_obj) {
-                uint32_t dev_info = get_encoded_stream_device(nstreams, stream_index, devno);
+                uint32_t dev_info = get_encoded_stream_device(stream_index, nstreams, devno);
                 SetKernelPtr(param_mem, kname);
                 int status = iris_host_launch_with_obj(
                         stream, 

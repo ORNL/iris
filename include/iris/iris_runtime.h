@@ -79,7 +79,7 @@ typedef enum StreamPolicy StreamPolicy;
 #define IRIS_MAX_NPLATFORMS     32
 #define IRIS_MAX_NDEVS          (1 << 5) - 1
 #define IRIS_MAX_KERNEL_NARGS     64
-#define IRIS_MAX_DEVICE_NSTREAMS   9
+#define IRIS_MAX_DEVICE_NSTREAMS   11
 #define IRIS_MAX_DEVICE_NCOPY_STREAMS   3
 
 #define iris_default            (1 << 5)

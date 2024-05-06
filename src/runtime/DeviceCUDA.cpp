@@ -226,6 +226,9 @@ int DeviceCUDA::Init() {
           streams_[i+nqueues_-n_copy_engines_] = streams_[i];
           //RecordEvent((void **)(start_time_event_+i), i, iris_event_default);
       }
+      _event_debug("Number of total streams: %d", nqueues_);
+      _event_debug("Number of copy streams: %d", n_copy_engines_);
+      _event_debug("Number of kernel streams: %d", nqueues_-n_copy_engines_);
       if (platform_obj_->is_event_profile_enabled()) {
           double start_time = timer_->Now();
           RecordEvent((void **)(&single_start_time_event_), -1, iris_event_default);
