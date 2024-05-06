@@ -118,8 +118,8 @@ DeviceCUDA::DeviceCUDA(LoaderCUDA* ld, LoaderHost2CUDA *host2cuda_ld, CUdevice c
   max_work_item_sizes_[0] = (size_t) bx * (size_t) dx;
   max_work_item_sizes_[1] = (size_t) by * (size_t) dy;
   max_work_item_sizes_[2] = (size_t) bz * (size_t) dz;
-  streams_ = new CUstream[nqueues_];
-  memset(streams_, 0, sizeof(CUstream)*nqueues_);
+  streams_ = new CUstream[nqueues_*2];
+  memset(streams_, 0, sizeof(CUstream)*nqueues_*2);
   //memset(start_time_event_, 0, sizeof(CUevent)*IRIS_MAX_DEVICE_NQUEUES);
   single_start_time_event_ = NULL;
   _info("device[%d] platform[%d] vendor[%s] device[%s] type[%d] version[%s] max_compute_units[%zu] max_work_group_size_[%zu] max_work_item_sizes[%zu,%zu,%zu] max_block_dims[%d,%d,%d] concurrent_kernels[%d] async_engines[%d] ncopy_engines[%d]", devno_, platform_, vendor_, name_, type_, version_, max_compute_units_, max_work_group_size_, max_work_item_sizes_[0], max_work_item_sizes_[1], max_work_item_sizes_[2], max_block_dims_[0], max_block_dims_[1], max_block_dims_[2], ck, ae, n_copy_engines_);
@@ -222,6 +222,8 @@ int DeviceCUDA::Init() {
       for (int i = 0; i < nqueues_; i++) {
           err = ld_->cuStreamCreate(streams_ + i, CU_STREAM_NON_BLOCKING);
           _cuerror(err);
+          if (i < n_copy_engines_) continue;
+          streams_[i+nqueues_-n_copy_engines_] = streams_[i];
           //RecordEvent((void **)(start_time_event_+i), i, iris_event_default);
       }
       if (platform_obj_->is_event_profile_enabled()) {
@@ -772,7 +774,8 @@ int DeviceCUDA::KernelLaunchInit(Command *cmd, Kernel* kernel) {
         stream_index = GetStream(kernel->task()); //task->uid() % nqueues_; 
         if (stream_index == DEFAULT_STREAM_INDEX) { stream_index = 0; }
         kstream = &streams_[stream_index];
-        nstreams = nqueues_ - stream_index;
+        //nstreams = nqueues_ - stream_index;
+        nstreams = nqueues_-n_copy_engines_;
     }
     host2cuda_ld_->launch_init(model(), devno_, stream_index, nstreams, (void **)kstream, kernel->GetParamWrapperMemory(), cmd);
     return IRIS_SUCCESS;
@@ -802,7 +805,8 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
       if (stream_index == DEFAULT_STREAM_INDEX) { async = false; stream_index = 0; }
       // Though async is set to false, we still pass all streams to kernel to use it
       kstream = &streams_[stream_index];
-      nstreams = nqueues_ - stream_index;
+      //nstreams = nqueues_ - stream_index;
+      nstreams = nqueues_-n_copy_engines_;
   }
   //_debug2("dev[%d][%s] task[%ld:%s] kernel launch::%ld:%s q[%d]", devno_, name_, kernel->task()->uid(), kernel->task()->name(), kernel->uid(), kernel->name(), stream_index);
   _event_prof_debug("kernel start dev[%d][%s] kernel[%s:%s] dim[%d] q[%d]\n", devno_, name_, kernel->name(), kernel->get_task_name(), dim, stream_index);

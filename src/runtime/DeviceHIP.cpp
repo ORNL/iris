@@ -50,8 +50,8 @@ DeviceHIP::DeviceHIP(LoaderHIP* ld, LoaderHost2HIP *host2hip_ld, hipDevice_t dev
   strcpy(name_, name_str.c_str());
   type_ = iris_amd;
   model_ = iris_hip;
-  streams_ = new hipStream_t[nqueues_];
-  memset(streams_, 0, sizeof(hipStream_t)*nqueues_);
+  streams_ = new hipStream_t[nqueues_*2];
+  memset(streams_, 0, sizeof(hipStream_t)*nqueues_*2);
   //memset(start_time_event_, 0, sizeof(hipEvent_t)*IRIS_MAX_DEVICE_NQUEUES);
   single_start_time_event_ = NULL;
   err = ld_->hipDriverGetVersion(&driver_version_);
@@ -126,6 +126,8 @@ int DeviceHIP::Init() {
       for (int i = 0; i < nqueues_; i++) {
           err = ld_->hipStreamCreate(streams_ + i);
           _hiperror(err);
+          if (i < n_copy_engines_) continue;
+          streams_[i+nqueues_-n_copy_engines_] = streams_[i];
           //RecordEvent((void **)(start_time_event_+i), i, iris_event_default);
       }
       if (platform_obj_->is_event_profile_enabled()) {
@@ -590,7 +592,8 @@ int DeviceHIP::KernelLaunchInit(Command *cmd, Kernel* kernel) {
         stream_index = GetStream(kernel->task()); //task->uid() % nqueues_; 
         if (stream_index == DEFAULT_STREAM_INDEX) { stream_index = 0; }
         kstream = &streams_[stream_index];
-        nstreams = nqueues_ - stream_index;
+        //nstreams = nqueues_ - stream_index;
+        nstreams = nqueues_-n_copy_engines_;
     }
     host2hip_ld_->launch_init(model(), devno_, stream_index, nstreams, (void **)kstream, kernel->GetParamWrapperMemory(), cmd);
     return IRIS_SUCCESS;
@@ -619,7 +622,8 @@ int DeviceHIP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, s
       if (stream_index == DEFAULT_STREAM_INDEX) { async = false; stream_index = 0; }
       // Though async is set to false, we still pass all streams to kernel to use it
       kstream = &streams_[stream_index];
-      nstreams = nqueues_ - stream_index;
+      //nstreams = nqueues_ - stream_index;
+      nstreams = nqueues_-n_copy_engines_;
   }
   if (IsContextChangeRequired()) {
       ld_->hipCtxSetCurrent(ctx_);
