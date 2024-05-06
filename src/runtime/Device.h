@@ -220,11 +220,13 @@ public:
   double Now() { return timer_->Now(); }
 private:
   int get_new_stream_queue(int offset=0) {
+    int nqs = ((nqueues_-1)-offset);
+    if (nqs <= 0) return current_queue_ + offset+1;
     unsigned long new_current_queue;
     do {
         new_current_queue = current_queue_ + 1;
     } while (!__sync_bool_compare_and_swap(&current_queue_, current_queue_, new_current_queue));
-    int stream = new_current_queue%((nqueues_-1)-offset)+offset+1;
+    int stream = new_current_queue%nqs+offset+1;
     //printf("New queue:%d\n", stream);
     return stream;
   }
