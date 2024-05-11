@@ -58,6 +58,7 @@ Platform::Platform() {
   init_ = false;
   tmp_dir_[0] = '\0';
   disable_d2d_ = false;
+  disable_data_transfers_ = false;
   finalize_ = false;
   release_task_flag_ = true;
   async_ = false;
@@ -72,6 +73,8 @@ Platform::Platform() {
   scheduler_ = NULL;
   polyhedral_ = NULL;
   sig_handler_ = NULL;
+  device_factor_ = 1;
+  event_profile_enabled_ = false;
   filter_task_split_ = NULL;
   timer_ = NULL;
   null_kernel_ = NULL;
@@ -195,48 +198,20 @@ int Platform::Init(int* argc, char*** argv, int sync) {
 
   SetDevsAvailable();
 
-  char *disable_kernel_launch = NULL;
-  EnvironmentGet("DISABLE_KERNEL_LAUNCH", &disable_kernel_launch, NULL);
-  if (disable_kernel_launch != NULL && atoi(disable_kernel_launch) == 1)
-      set_kernel_launch_disabled(true);
-  char *device_factor = NULL;
-  device_factor_ = 1;
-  EnvironmentGet("DEVICE_FACTOR", &device_factor, NULL);
-  if (device_factor != NULL && atoi(device_factor) != 0)
-      device_factor_ = atoi(device_factor);
-  event_profile_enabled_ = false;
-  char *profile = NULL;
-  EnvironmentGet("PROFILE", &profile, NULL);
-  if (profile != NULL && atoi(profile) == 1)
-      enable_profiler_ = true;
-  char *history = NULL;
-  EnvironmentGet("HISTORY", &history, NULL);
-  if (history != NULL && atoi(history) == 1)
-      enable_scheduling_history_ = true;
-  char *event_profile = NULL;
-  EnvironmentGet("EVENT_PROFILE", &event_profile, NULL);
-  if (event_profile != NULL && atoi(event_profile) == 1)
-      event_profile_enabled_ = true;
-  char *malloc_async = NULL;
-  EnvironmentGet("MALLOC_ASYNC", &malloc_async, NULL);
-  if (malloc_async != NULL && atoi(malloc_async) > 0)
-      set_malloc_async_flag(atoi(malloc_async));
-  char *nstreams = NULL;
-  EnvironmentGet("NSTREAMS", &nstreams, NULL);
-  if (nstreams != NULL && atoi(nstreams) > 0)
-      set_nstreams(atoi(nstreams));
-  char *ncopy_streams = NULL;
-  EnvironmentGet("NCOPY_STREAMS", &ncopy_streams, NULL);
-  if (ncopy_streams != NULL && atoi(ncopy_streams) > 0)
-      set_ncopy_streams(atoi(ncopy_streams));
-  char *stream_policy = NULL;
-  EnvironmentGet("STREAM_POLICY", &stream_policy, NULL);
-  if (stream_policy != NULL && atoi(stream_policy) > 0)
-      set_stream_policy((StreamPolicy) atoi(stream_policy));
-  char *async= NULL;
-  EnvironmentGet("ASYNC", &async, NULL);
-  if (async != NULL && atoi(async) == 1)
-      set_async(true);
+  EnvironmentBoolRead("DISABLE_KERNEL_LAUNCH", disable_kernel_launch_);
+  EnvironmentBoolRead("PROFILE", enable_profiler_);
+  EnvironmentBoolRead("HISTORY", enable_scheduling_history_);
+  EnvironmentBoolRead("EVENT_PROFILE", event_profile_enabled_);
+  EnvironmentBoolRead("MALLOC_ASYNC", is_malloc_async_);
+  EnvironmentBoolRead("DISABLE_D2D", disable_d2d_);
+  EnvironmentBoolRead("DISABLE_DATA_TRANSFERS", disable_data_transfers_);
+  EnvironmentIntRead("DEVICE_FACTOR", device_factor_);
+  EnvironmentIntRead("NSTREAMS", nstreams_);
+  EnvironmentIntRead("NCOPY_STREAMS", ncopy_streams_);
+  int stream_policy = (int) stream_policy_;
+  EnvironmentIntRead("STREAM_POLICY", stream_policy);
+  stream_policy_ = (StreamPolicy) stream_policy;
+  bool async = async_; EnvironmentBoolRead("ASYNC", async); set_async(async);
 #ifdef IRIS_ASYNC_STREAMING
   set_async(true);
 #endif
@@ -320,7 +295,20 @@ int Platform::Synchronize() {
   task_track().Clear();
   return ret;
 }
-
+void Platform::EnvironmentIntRead(const char *env_name, int & env_var) {
+    char *env_val_char = NULL;
+    EnvironmentGet(env_name, &env_val_char, NULL);
+    if (env_val_char != NULL && atoi(env_val_char) >=0 )
+        env_var = atoi(env_val_char);
+}
+void Platform::EnvironmentBoolRead(const char *env_name, bool & flag) {
+    char *env_val_char = NULL;
+    EnvironmentGet(env_name, &env_val_char, NULL);
+    if (env_val_char != NULL && atoi(env_val_char) == 1)
+        flag = true;
+    else if (env_val_char != NULL && atoi(env_val_char) == 0)
+        flag = false;
+}
 int Platform::EnvironmentInit() {
   char tmp_dir_str[] = "/tmp/iris-XXXXXX";
   char *tmp_dir = mkdtemp(tmp_dir_str);

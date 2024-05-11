@@ -64,6 +64,8 @@ public:
 
   int EnvironmentInit();
   int EnvironmentSet(const char* key, const char* value, bool overwrite);
+  void EnvironmentIntRead(const char *env_name, int & env_var);
+  void EnvironmentBoolRead(const char *env_name, bool & flag);
   int EnvironmentGet(const char* key, char** value, size_t* vallen);
   int GetFilePath(const char *key, char** value, size_t* vallen);
 
@@ -235,8 +237,8 @@ public:
   Kernel *get_kernel_object(unsigned long uid) { return (Kernel *)kernel_track_.GetObject(uid); }
   Kernel *get_kernel_object(iris_kernel brs_kernel) { return (Kernel *)kernel_track_.GetObject(brs_kernel.uid); }
   int nprofilers() { return nprofilers_; }
-  int is_malloc_async() { return is_malloc_async_; }
-  void set_malloc_async_flag(int flag) { is_malloc_async_ = flag; }
+  bool is_malloc_async() { return is_malloc_async_; }
+  void set_malloc_async_flag(int flag) { is_malloc_async_ = (bool) flag; }
   bool is_scheduling_history_enabled() { return enable_scheduling_history_; }
   bool is_event_profile_enabled() { return event_profile_enabled_; }
   bool is_async() { return async_; }
@@ -250,6 +252,9 @@ public:
   void set_nstreams(int nstreams) { nstreams_ = nstreams; }
   int ncopy_streams() { return ncopy_streams_; }
   void set_ncopy_streams(int ncopy_streams) { ncopy_streams_ = ncopy_streams; }
+  void disable_data_transfers() { disable_data_transfers_ = true; }
+  void enable_data_transfers() { disable_data_transfers_ = false; }
+  bool is_data_transfers_disabled() { return disable_data_transfers_; }
   void disable_d2d() { disable_d2d_ = true; }
   void enable_d2d() { disable_d2d_ = false; }
   bool is_d2d_disabled() { return disable_d2d_; }
@@ -348,10 +353,11 @@ private:
   Profiler* profilers_[8];
   int nprofilers_;
   int device_factor_;
-  int is_malloc_async_;
+  bool is_malloc_async_;
 
   bool enable_scheduling_history_;
   bool disable_d2d_;
+  bool disable_data_transfers_;
   bool disable_kernel_launch_;
   bool release_task_flag_;
   bool event_profile_enabled_;
