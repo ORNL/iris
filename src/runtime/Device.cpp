@@ -922,7 +922,8 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
 
         _event_debug("D2D: src:%d dest:%d src_arch:%p dst_arch:%p mem_stream:%d\n\n", src_dev->devno(), this->devno(), src_arch, dst_arch, mem_stream);
         // Now do D2D
-        MemD2D(task, mem, dst_arch, src_arch, mem->size());
+        if (!platform_obj_->is_data_transfers_disabled())
+            MemD2D(task, mem, dst_arch, src_arch, mem->size());
         double end = timer_->Now();
         // If device is not asynchronous, you don't need to record event in CUDA/HIP device
         if (async && platform_obj_->is_event_profile_enabled()) {
@@ -973,7 +974,8 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
 
         void* src_arch = mem->arch(src_dev);
         double start = timer_->Now();
-        MemH2D(task, mem, off, host_sizes, dev_sizes, 1, 1, mem->size(), src_arch, "OpenMP2DEV ");
+        if (!platform_obj_->is_data_transfers_disabled())
+            MemH2D(task, mem, off, host_sizes, dev_sizes, 1, 1, mem->size(), src_arch, "OpenMP2DEV ");
         double end = timer_->Now();
         if (async && platform_obj_->is_event_profile_enabled()) {
             ProfileEvent & prof_event = task->LastProfileEvent();
@@ -1025,7 +1027,8 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
             prof_event.RecordStartEvent(); 
         }
         void* src_arch = mem->arch(this);
-        src_dev->MemD2H(task, mem, off, host_sizes, dev_sizes, 1, 1, mem->size(), src_arch, "DEV2OpenMP ");
+        if (!platform_obj_->is_data_transfers_disabled())
+            src_dev->MemD2H(task, mem, off, host_sizes, dev_sizes, 1, 1, mem->size(), src_arch, "DEV2OpenMP ");
         double end = timer_->Now();
 
         if (async && platform_obj_->is_event_profile_enabled()) {
@@ -1062,8 +1065,8 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         ResolveH2DStartEvents(task, mem, async);
         mem->arch(this);
         double start = timer_->Now();
-        errid_ = MemH2D(task, mem, ptr_off, 
-                gws, lws, elem_size, dim, size, host);
+        if (!platform_obj_->is_data_transfers_disabled())
+            errid_ = MemH2D(task, mem, ptr_off, gws, lws, elem_size, dim, size, host);
         double end = timer_->Now();
 
         _event_debug("explore Host2Device (H2D) dev[%d][%s] task[%ld:%s] mem[%lu] q[%d]", devno_, name_, task->uid(), task->name(), mem->uid(), mem_stream);
@@ -1132,8 +1135,9 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
             _event_debug("In mem:[%lu] src_mem_stream:%d src_dev:%d dev:%d host_write_dev:%d", mem->uid(), src_mem_stream, src_dev->devno(), devno(), host_write_dev);
 
             // Do Device to Host Transfer
-            errid_ = src_dev->MemD2H(task, mem, ptr_off, 
-                    gws, lws, elem_size, dim, size, host, "D2H->H2D(1) ");
+            if (!platform_obj_->is_data_transfers_disabled())
+                errid_ = src_dev->MemD2H(task, mem, ptr_off, 
+                        gws, lws, elem_size, dim, size, host, "D2H->H2D(1) ");
 
             if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
             d2htime = timer_->Now() - d2h_start;
@@ -1164,8 +1168,9 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         }
         double start = timer_->Now();
         mem->arch(this);
-        errid_ = MemH2D(task, mem, ptr_off, 
-                gws, lws, elem_size, dim, size, host, "D2H->H2D(2) ");
+        if (!platform_obj_->is_data_transfers_disabled())
+            errid_ = MemH2D(task, mem, ptr_off, 
+                    gws, lws, elem_size, dim, size, host, "D2H->H2D(2) ");
         double end = timer_->Now();
         _event_debug("   MemD2H -> MemH2D done");
         if (async && platform_obj_->is_event_profile_enabled()) {
@@ -1358,8 +1363,9 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
                     prof_event.RecordStartEvent(); 
                 }
                 src_dev->ResetContext();
-                errid_ = src_dev->MemD2H(task, mem, ptr_off, 
-                        gws, lws, elem_size, dim, size, host, "MemFlushOut ");
+                if (!platform_obj_->is_data_transfers_disabled())
+                    errid_ = src_dev->MemD2H(task, mem, ptr_off, 
+                            gws, lws, elem_size, dim, size, host, "MemFlushOut ");
                 if (async && src_dev->is_async(false) && platform_obj_->is_event_profile_enabled()) {
                     ProfileEvent & prof_event = task->LastProfileEvent();
                     prof_event.RecordEndEvent(); 
@@ -1401,8 +1407,9 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
                     ProfileEvent & prof_event = task->CreateProfileEvent(mem, -1, PROFILE_D2H, this, mem_stream);
                     prof_event.RecordStartEvent(); 
                 }
-                errid_ = MemD2H(task, mem, ptr_off, 
-                        gws, lws, elem_size, dim, size, host, "MemFlushOut ");
+                if (!platform_obj_->is_data_transfers_disabled())
+                    errid_ = MemD2H(task, mem, ptr_off, 
+                            gws, lws, elem_size, dim, size, host, "MemFlushOut ");
                 if (async && platform_obj_->is_event_profile_enabled()) {
                     ProfileEvent & prof_event = task->LastProfileEvent();
                     prof_event.RecordEndEvent(); 
@@ -1505,14 +1512,16 @@ void Device::ExecuteMemFlushOutToShadow(Command* cmd) {
                     d2d_dev, cpu_dev, non_cpu_dev, async);
         src_dev = Platform::GetPlatform()->device(nddevs[0]);
         // D2H should be issued from target src (remote) device
-        errid_ = src_dev->MemD2H(task, mem, 
-                ptr_off, gws, lws, elem_size, dim, size, host, "MemShadowFlushOut ");
+        if (!platform_obj_->is_data_transfers_disabled())
+            errid_ = src_dev->MemD2H(task, mem, 
+                    ptr_off, gws, lws, elem_size, dim, size, host, "MemShadowFlushOut ");
                 //ptr_off, gws, lws, elem_size, dim, size, host, "MemShadowFlushOut ");
         ResetContext();
     }
     else {
-        errid_ = MemD2H(task, mem, 
-                ptr_off, gws, lws, elem_size, dim, size, host, "MemShadowFlushOut ");
+        if (!platform_obj_->is_data_transfers_disabled())
+            errid_ = MemD2H(task, mem, 
+                    ptr_off, gws, lws, elem_size, dim, size, host, "MemShadowFlushOut ");
                 //ptr_off, gws, lws, elem_size, dim, size, host, "MemShadowFlushOut ");
     }
     if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
