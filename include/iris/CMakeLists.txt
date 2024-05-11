@@ -15,6 +15,9 @@ install(FILES
   gettime.h
   verify.h
   iris_macros.h
+  Tiling1D.h
+  Tiling2D.h
+  Tiling3D.h
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/iris)
 
 install(FILES
