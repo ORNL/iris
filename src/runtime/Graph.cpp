@@ -57,6 +57,7 @@ void Graph::enable_retainable()
     retain_tasks_ = true; 
     DisableRelease();
     Retain();
+    //printf("Retained graph:%lu flag:%d\n", uid(), is_retainable());
 }
 
 void Graph::disable_retainable() 
@@ -64,6 +65,7 @@ void Graph::disable_retainable()
     retain_tasks_ = false; 
     EnableRelease();
     Release();
+    //printf("Disabled Retained graph:%lu flag:%d\n", uid(), is_retainable());
 }
 
 shared_ptr<GraphMetadata> Graph::get_metadata(int iterations)
@@ -96,6 +98,7 @@ void Graph::GraphRelease(void *data) {
     std::vector<Task*>* tasks = graph->tasks();
     for (std::vector<Task*>::iterator I = tasks->begin(), E = tasks->end(); I != E; ++I) {
       Task* task = *I;
+      //printf("Graph task:%lu:%s retained ref_cnt:%d\n", task->uid(), task->name(), task->ref_cnt()-1);
       if (!task->IsRelease()) {
           task->EnableRelease();
           _debug2("Graph task:%lu:%s retained ref_cnt:%d", task->uid(), task->name(), task->ref_cnt()-1);
@@ -113,9 +116,11 @@ void Graph::GraphRelease(void *data) {
     }
 }
 void Graph::AddTask(Task* task, unsigned long uid) {
-  if (is_retainable() && !task->IsRelease()) { 
+  //printf("Graph:%lu Task:%lu:%s Is retainable:%d task->release:%d\n", this->uid(), task->uid(), task->name(), is_retainable(), task->IsRelease());
+  if (is_retainable() && task->IsRelease()) { 
       task->Retain(); 
       task->DisableRelease(); 
+      //printf("Graph:%lu Retaining Task:%lu:%s Is retainable:%d task->release:%d ref_cnt:%d\n", this->uid(), task->uid(), task->name(), is_retainable(), task->IsRelease(), task->ref_cnt());
   }
   tasks_.push_back(task);
 
@@ -281,7 +286,7 @@ void GraphMetadata::calibrate_compute_cost_adj_matrix(double *comp_task_adj_matr
                     string kname = task->cmd_kernel()->kernel()->name();
                     //Utils::PrintVectorFull<uint64_t>(dknobs, "Exploring new set of Knobs:");
                     for(int i=0; i<iterations_; i++) {
-                        printf("Running for iteration:%d kname:%s devno:%d\n", i, kname.c_str(), dev_no);
+                        //printf("Running for iteration:%d kname:%s devno:%d\n", i, kname.c_str(), dev_no);
                         int ndepends = task->ndepends();
                         string tname = task->name();
                         string prev_tname = tname;
