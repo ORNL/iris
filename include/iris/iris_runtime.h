@@ -1066,6 +1066,7 @@ extern int iris_data_mem_enable_outer_dim_regions(iris_mem mem);
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_data_mem_create_tile(iris_mem* mem, void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim);
+extern int iris_data_mem_update_bc(iris_mem mem, bool bc, int row, int col);
 
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 extern int iris_data_mem_n_regions(iris_mem brs_mem);

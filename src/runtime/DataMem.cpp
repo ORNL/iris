@@ -72,6 +72,9 @@ void DataMem::Init(Platform *platform, void *host_ptr, size_t size)
   has_shadow_ = false; // 0: does not have a shadow, 1: has a shadow
 #endif
 #endif
+  bc_ = false;
+  row_ = -1;
+  col_ = -1;
 }
 DataMem::~DataMem() {
     if (host_ptr_owner_) free(host_ptr_);

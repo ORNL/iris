@@ -91,7 +91,10 @@ public:
   void set_has_shadow(bool has_shadow){ has_shadow_ = has_shadow;}
 #endif
 #endif
-
+  void update_bc_row_col(bool bc, int row, int col){ bc_ = bc; row_ = row; col_ = col;}
+  bool get_bc(){ return bc_;}
+  bool get_row(){ return row_;}
+  bool get_col(){ return col_;}
   void *host_root_memory() { return host_memory(); }
   void *host_memory();
   void lock_host_region(int region);
@@ -129,6 +132,8 @@ protected:
   bool has_shadow_;
 #endif
 #endif
+  int row_, col_; // index for BC distribution
+  bool bc_; // for BC distribution
 };
 
 } /* namespace rt */

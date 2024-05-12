@@ -448,6 +448,11 @@ int iris_data_mem_n_regions(iris_mem brs_mem) {
   DataMem *mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
   return mem->get_n_regions();
 }
+int iris_data_mem_update_bc(iris_mem brs_mem, bool bc, int row, int col) {
+  DataMem *mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  mem->update_bc_row_col(bc, row, col);
+  return IRIS_SUCCESS;
+}
 unsigned long iris_data_mem_get_region_uid(iris_mem brs_mem, int region) {
   DataMem *mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
   return mem->get_region(region)->uid();
