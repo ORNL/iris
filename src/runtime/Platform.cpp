@@ -1730,6 +1730,7 @@ int Platform::GraphRelease(iris_graph brs_graph) {
 
 int Platform::GraphRetain(iris_graph brs_graph, bool flag) {
   Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
+  if (graph == NULL) return IRIS_SUCCESS;
   if (flag && graph->IsRelease()) {
       graph->enable_retainable();
   }
