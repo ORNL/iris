@@ -102,7 +102,8 @@ typedef enum StreamPolicy StreamPolicy;
 #define iris_ftf                (1 << 25)
 #define iris_all                (1 << 25)
 #define iris_ocl                (1 << 26)
-#define iris_custom             (1 << 27)
+#define iris_block_cycle        (1 << 27)
+#define iris_custom             (1 << 28)
 
 enum DeviceModel {
 iris_cuda = 1,

@@ -109,6 +109,7 @@ set(IRIS_RUNTIME_SOURCES
   Policies.cpp
   Policy.cpp
   HostInterface.cpp
+  PolicyBlockCycle.cpp
   PolicyFirstToFinish.cpp
   PolicyData.cpp
   PolicyDefault.cpp
@@ -183,6 +184,7 @@ set(IRIS_RUNTIME_HEADERS
   ObjectTrack.h
   Policies.h
   Policy.h
+  PolicyBlockCycle.h
   PolicyFirstToFinish.h
   PolicyShortestDeviceQueue.h
   PolicyData.h

@@ -23,6 +23,7 @@ public:
 private:
   Scheduler* scheduler_;
 
+  Policy* policy_block_cycle_;
   Policy* policy_ftf_;
   Policy* policy_data_;
   Policy* policy_default_;
