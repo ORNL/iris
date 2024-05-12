@@ -516,6 +516,11 @@ int iris_graph_create_null(iris_graph* graph) {
   return IRIS_SUCCESS;
 }
 
+bool iris_is_graph_null(iris_graph graph) {
+  if (graph.uid == (unsigned long) -1) return true;
+  return false;
+}
+
 int iris_graph_create_json(const char* json, void** params, iris_graph* graph) {
   return Platform::GetPlatform()->GraphCreateJSON(json, params, graph);
 }

@@ -377,12 +377,12 @@ int DeviceHIP::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,
   else {
       _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d] ref_cn5:%lu", tag, devno_, name_, task->uid(), task->name(), mem->uid(), hipmem, off[0], size, host, stream_index, task->ref_cnt());
       if (!async) {
-          err = ld_->hipMemcpyHtoD((char*) hipmem, host + off[0]*elem_size, size);
+          err = ld_->hipMemcpyHtoD((char*) hipmem, (uint8_t *)host + off[0]*elem_size, size);
           _hiperror(err);
           if (err != hipSuccess) error_occured = true;
       }
       else {
-          err = ld_->hipMemcpyHtoDAsync((char*) hipmem, host + off[0]*elem_size, size, streams_[stream_index]);
+          err = ld_->hipMemcpyHtoDAsync((char*) hipmem, (uint8_t *)host + off[0]*elem_size, size, streams_[stream_index]);
           _hiperror(err);
           if (err != hipSuccess) error_occured = true;
       }
@@ -458,12 +458,12 @@ int DeviceHIP::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,
   else {
       _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), hipmem, off[0], size, host, stream_index);
       if (!async)  {
-          err = ld_->hipMemcpyDtoH(host + off[0]*elem_size, (char*) hipmem, size);
+          err = ld_->hipMemcpyDtoH((uint8_t *)host + off[0]*elem_size, (char*) hipmem, size);
           _hiperror(err);
           if (err != hipSuccess) error_occured = true;
       }
       else {
-          err = ld_->hipMemcpyDtoHAsync(host + off[0]*elem_size, (char*) hipmem, size, streams_[stream_index]);
+          err = ld_->hipMemcpyDtoHAsync((uint8_t *)host + off[0]*elem_size, (char*) hipmem, size, streams_[stream_index]);
           _hiperror(err);
           if (err != hipSuccess) error_occured = true;
       }

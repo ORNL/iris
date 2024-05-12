@@ -1107,6 +1107,13 @@ extern int iris_graph_create(iris_graph* graph);
  */
 extern int iris_graph_create_null(iris_graph* graph);
 
+/**@brief Is it a null graph
+ *
+ * @param graph data structure
+ * @return This function returns a boolean flag indicating whether graph is null or not 
+ */
+extern bool iris_is_graph_null(iris_graph graph);
+
 /**@brief Frees a graph
  *
  * @param graph graph object

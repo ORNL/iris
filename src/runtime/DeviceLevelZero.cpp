@@ -160,7 +160,7 @@ int DeviceLevelZero::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *tile_
   err_ = ld_->zeEventCreate(zeevtpool_, &zeevt_desc, &zeevt);
   _zeerror(err_);
 
-  err_ = ld_->zeCommandListAppendMemoryCopy(zecml_, host + off[0]*elem_size, (const void*) dptr, size, zeevt, 0, nullptr);
+  err_ = ld_->zeCommandListAppendMemoryCopy(zecml_, (uint8_t *)host + off[0]*elem_size, (const void*) dptr, size, zeevt, 0, nullptr);
   _zeerror(err_);
 
   err_ = ld_->zeCommandListAppendSignalEvent(zecml_, zeevt);
