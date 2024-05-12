@@ -215,17 +215,21 @@ namespace iris {
                 Tiling2D(DType *data, size_t row_size, size_t col_size, 
                         size_t row_tile_size, size_t col_tile_size, 
                         size_t row_stride, size_t col_stride, 
-                        bool flattened_data_flag=DEFAULT_FLATTENED_DATA_FLAG, bool reset_flag=false, bool usm_flag=false) 
+                        bool flattened_data_flag=DEFAULT_FLATTENED_DATA_FLAG, 
+                        bool enable_bc = false,
+                        bool reset_flag=false, bool usm_flag=false)
                 {
                     Init(data, row_size, col_size, row_tile_size, col_tile_size,
-                            row_stride, col_stride, flattened_data_flag, reset_flag, usm_flag);
+                            row_stride, col_stride, flattened_data_flag, enable_bc, reset_flag, usm_flag);
                 }
                 void Init(DType *data, size_t row_size, size_t col_size, 
                         size_t row_tile_size, size_t col_tile_size, 
-                        bool flattened_data_flag=DEFAULT_FLATTENED_DATA_FLAG, bool reset_flag=false, bool usm_flag=false)
+                        bool flattened_data_flag=DEFAULT_FLATTENED_DATA_FLAG, 
+                        bool enable_bc = false,
+                        bool reset_flag=false, bool usm_flag=false)
                 {
                     InitCore(data, row_size, col_size, 
-                            row_tile_size, col_tile_size, flattened_data_flag, reset_flag, usm_flag);
+                            row_tile_size, col_tile_size, flattened_data_flag, enable_bc, reset_flag, usm_flag);
                     row_stride_ = row_tile_size;
                     col_stride_ = col_tile_size;
                     row_tiles_count_ = GET_TILE_COUNT(row_size, row_tile_size_);
@@ -401,7 +405,10 @@ namespace iris {
                 }
                 void InitCore(DType *data, size_t row_size, size_t col_size, 
                         size_t row_tile_size, size_t col_tile_size, 
-                        bool flattened_data_flag=DEFAULT_FLATTENED_DATA_FLAG, bool reset_flag=false, bool usm_flag=false)
+                        bool flattened_data_flag=DEFAULT_FLATTENED_DATA_FLAG, 
+                        bool enable_bc = false, 
+                        bool reset_flag=false, 
+                        bool usm_flag=false)
                 {
                     if (usm_flag) flattened_data_flag = true;
                     data_ = data;
@@ -420,7 +427,7 @@ namespace iris {
                     iterator_type_ = TILE2D_COL_FIRST;
                     tiles_ = NULL;
                     iris_mem_tiles_ = NULL;
-                    enable_bc_ = true;
+                    enable_bc_ = enable_bc;
                 }
                 ~Tiling2D() {
                     if (tiles_ != NULL) free(tiles_);
@@ -441,6 +448,7 @@ namespace iris {
                 size_t GetSize() const {
                     return row_tiles_count_ * col_tiles_count_;
                 }
+                void Set_enable_bc(){ enable_bc_ = true;}
                 void SetIteratorType(Tile2DIteratorType iterator_type)
                 {
                     iterator_type_ = iterator_type;
