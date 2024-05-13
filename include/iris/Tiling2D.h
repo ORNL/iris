@@ -206,10 +206,10 @@ namespace iris {
                 }
                 Tiling2D(DType *data, size_t row_size, size_t col_size, 
                         size_t row_tile_size, size_t col_tile_size, 
-                        bool flattened_data_flag=DEFAULT_FLATTENED_DATA_FLAG, bool reset_flag=false, bool usm_flag=false)
+                        bool flattened_data_flag=DEFAULT_FLATTENED_DATA_FLAG, bool enable_bc=false, bool reset_flag=false, bool usm_flag=false)
                 {
                     Init(data, row_size, col_size, row_tile_size, col_tile_size,
-                            flattened_data_flag, reset_flag, usm_flag);
+                            flattened_data_flag, enable_bc, reset_flag, usm_flag);
                     //printf("RowSize:%ld ColSize:%ld RowTile:%ld ColTile:%ld RowTileCount:%ld ColTileCount:%d\n", row_size_, col_size_, row_tile_size_, col_tile_size_, row_tiles_count_, col_tiles_count_); 
                 }
                 Tiling2D(DType *data, size_t row_size, size_t col_size, 
@@ -242,10 +242,10 @@ namespace iris {
                 void Init(DType *data, size_t row_size, size_t col_size, 
                         size_t row_tile_size, size_t col_tile_size, 
                         size_t row_stride, size_t col_stride, 
-                        bool flattened_data_flag=DEFAULT_FLATTENED_DATA_FLAG, bool reset_flag=false, bool usm_flag=false) 
+                        bool flattened_data_flag=DEFAULT_FLATTENED_DATA_FLAG, bool enable_bc=false, bool reset_flag=false, bool usm_flag=false) 
                 {
                     InitCore(data, row_size, col_size, row_tile_size, col_tile_size, 
-                            flattened_data_flag, reset_flag, usm_flag);
+                            flattened_data_flag, enable_bc, reset_flag, usm_flag);
                     row_stride_ = row_stride;
                     col_stride_ = col_stride;
                     row_tiles_count_ = GET_TILE_COUNT(row_size, row_tile_size_); //TODO: Update
