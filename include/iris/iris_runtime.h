@@ -885,6 +885,16 @@ extern int iris_task_submit(iris_task task, int device, const char* opt, int syn
  */
 extern int iris_task_set_policy(iris_task task, int device);
 
+/**@brief Gets a scheduling policy for a task
+ *
+ * This function gets scheduling policy for a task
+ *
+ * @param task iris task object
+ * @return This function returns the policy.
+ */
+extern int iris_task_get_policy(iris_task task);
+
+
 
 /**@brief  Waits for the task to complete.
  *
@@ -1067,6 +1077,7 @@ extern int iris_data_mem_enable_outer_dim_regions(iris_mem mem);
  */
 extern int iris_data_mem_create_tile(iris_mem* mem, void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim);
 extern int iris_data_mem_update_bc(iris_mem mem, bool bc, int row, int col);
+extern int iris_data_mem_get_rr_bc_dev(iris_mem mem);
 
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 extern int iris_data_mem_n_regions(iris_mem brs_mem);

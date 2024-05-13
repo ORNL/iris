@@ -163,6 +163,7 @@ public:
   double time_end() { return time_end_; }
   void set_parent(Task* task);
   void set_brs_policy(int brs_policy);
+  int get_brs_policy(){ return brs_policy_;};
   void set_profile_data_transfers(bool flag=true) { profile_data_transfers_ = flag; }
   bool is_profile_data_transfers() { return profile_data_transfers_; }
   void AddOutDataObjectProfile(DataObjectProfile hist) { out_dataobject_profiles.push_back(hist); }
@@ -235,6 +236,8 @@ public:
   bool get_shadow_dep_added(){ return shadow_dep_added_;}
 #endif
 #endif
+  void set_df_scheduling(){df_scheduling_ = true;}
+  void unset_df_scheduling(){df_scheduling_ = false;}
   void set_last_cmd_stream(int stream) { last_cmd_stream_ = stream; }
   int last_cmd_stream() { return last_cmd_stream_; }
   void set_last_cmd_device(Device *dev) { last_cmd_device_ = dev; }
@@ -269,6 +272,7 @@ private:
   bool shadow_dep_added_;
 #endif
 #endif
+  bool df_scheduling_; // flag for data flow scheduling
   size_t subtasks_complete_;
   void* arch_;
 

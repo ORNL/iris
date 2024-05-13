@@ -263,6 +263,21 @@ namespace iris {
                         }
                     }
                 }
+                void Print_Bc_Dev() {
+                    printf ("Block cyclic distribution\n");
+                    printf (" \t");
+                    for(size_t j=0; j<col_tiles_count_; j++) {
+                        printf ("%d\t", j);
+                    }
+                    printf ("\n");
+                    for(size_t i=0; i<row_tiles_count_; i++) {
+                        printf ("%d\t", i);
+                        for(size_t j=0; j<col_tiles_count_; j++) {
+                            printf ("%d\t", iris_data_mem_get_rr_bc_dev(IRISMem(i, j)));
+                        }
+                        printf ("\n");
+                    }
+                }
                 void Transpose()
                 {
                     assert(row_size_ == col_size_);
@@ -385,7 +400,7 @@ namespace iris {
 #ifdef IRIS_MEM_HANDLER
                                 iris_mem_create(row_tile_size_ * col_tile_size_ * sizeof(DType), &iris_mem_tiles_[i*col_tiles_count_+j]);
 #else
-                                printf(" i:%d j:%d data:%p\n", i, j, data_);
+                                //printf(" i:%d j:%d data:%p\n", i, j, data_);
                                 iris_data_mem_create_tile(&iris_mem_tiles_[i*col_tiles_count_+j], data_, l_offset, l_host_size, dev_size, sizeof(DType), 2);
                                 if (enable_bc_) iris_data_mem_update_bc(iris_mem_tiles_[i*col_tiles_count_+j], enable_bc_, i, j); 
                                 if (reset_flag_) 

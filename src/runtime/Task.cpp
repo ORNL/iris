@@ -110,6 +110,7 @@ Task::Task(Platform* platform, int type, const char* name, int max_cmds) {
   shadow_dep_added_ = false;
 #endif
 #endif
+  df_scheduling_ = false;
   set_object_track(Platform::GetPlatform()->task_track_ptr());
   platform_->task_track().TrackObject(this, uid());
   async_execution_ = platform_->is_async(); // Same as platform by default
@@ -167,6 +168,8 @@ void Task::set_parent(Task* task) {
 }
 
 void Task::set_brs_policy(int brs_policy) {
+  if(df_scheduling_) return;
+  //printf("task %s old dev %d, new dev %d\n", name(), brs_policy_, brs_policy);
   brs_policy_ = brs_policy;// == iris_default ? platform_->device_default() : brs_policy;
   if(ncmds_ <= 1){//iris_pending policy only works on single command tasks
     if (brs_policy == iris_pending) status_ = IRIS_PENDING;

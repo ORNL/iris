@@ -75,6 +75,7 @@ void DataMem::Init(Platform *platform, void *host_ptr, size_t size)
   bc_ = false;
   row_ = -1;
   col_ = -1;
+  rr_bc_dev_ = -1;
 }
 DataMem::~DataMem() {
     if (host_ptr_owner_) free(host_ptr_);

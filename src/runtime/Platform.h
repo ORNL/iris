@@ -121,6 +121,7 @@ public:
   int TaskMapFrom(iris_task brs_task, void* host, size_t size);
   int TaskMapFromFull(iris_task brs_task, void* host);
   int SetTaskPolicy(iris_task brs_task, int brs_policy);
+  int GetTaskPolicy(iris_task brs_task);
   int TaskSubmit(iris_task brs_task, int brs_policy, const char* opt, int wait);
   int TaskSubmit(Task *task, int brs_policy, const char* opt, int wait);
   void TaskSafeRetain(iris_task brs_task);

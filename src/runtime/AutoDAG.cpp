@@ -20,9 +20,9 @@ AutoDAG::AutoDAG(Platform* platform){
   number_of_shadow_ = 0;
 #endif
   auto_dep_ = false;
-  platform_->DeviceCount(&num_dev_);
+  num_dev_ = platform_->ndevs();
   cur_dev_ = 0;
-  enable_rr_bc_ = true;
+  enable_df_sched_ = true;
 }
 
 //AutoDAG::platform_ = NULL;
@@ -74,8 +74,8 @@ void AutoDAG::create_dependency(Command* cmd, Task* task,
             }
 #endif 
         }
-    if (enable_rr_bc_)
-        rr_bc_scheduling(task, ((DataMem*)mem));
+    if (enable_df_sched_)
+        df_bc_scheduling(task, ((DataMem*)mem));
  
     //printf("Seting current task info %d\n", param_info);
 #ifndef AUTO_SHADOW
@@ -273,8 +273,10 @@ void AutoDAG::create_auto_flush(Command* cmd, Task* task,
     }
 #endif
 
-	task_flush->set_opt(task->get_opt());
-	task_flush->set_brs_policy(task->brs_policy());
+	//task_flush->set_opt(task->get_opt());
+	//task_flush->set_brs_policy(task->brs_policy());
+    //task_flush->set_df_scheduling();
+
 	//task_flush->set_brs_policy(task->get_brs_policy());
 }
 #endif
@@ -306,10 +308,98 @@ void AutoDAG::missing_dependencies() {
 }
 #endif
 
-void AutoDAG::rr_bc_scheduling(Task *task, DataMem* mem)
+
+
+int iris_bc_mapping(int row, int col)
 {
-    printf("Task %s, uid %d Row %d, Col %d, bc %d\n", task->name(), mem->uid(), mem->get_row(), mem->get_col(), mem->get_bc());
+    int ndevices = 4;
+    int dev_map[16][16];
+    for(int i=0; i<16; i++) {
+        for(int j=0; j<16; j++) {
+            if (j>=i) dev_map[i][j] = j*j+i;
+            else dev_map[i][j] = (i*(i+2))-j;
+            dev_map[i][j] = dev_map[i][j]%ndevices;
+        }
+    }
+    int nrows = ndevices;
+    int ncols = ndevices;
+    if (ndevices == 1) return 0;
+    else if (ndevices == 9) {
+        nrows = 3; ncols = 3;
+    }
+    else if (ndevices == 4) {
+        nrows = 2; ncols = 2;
+    }
+    else if (ndevices == 6) {
+        dev_map[0][0] = 0;
+        dev_map[0][1] = 1;
+        dev_map[1][0] = 2;
+        dev_map[1][1] = 3;
+        dev_map[2][0] = 4;
+        dev_map[2][1] = 5;
+        nrows = 3; ncols = 2;
+    }
+    else if (ndevices == 8) {
+        dev_map[0][0] = 0;
+        dev_map[0][1] = 1;
+        dev_map[1][0] = 2;
+        dev_map[1][1] = 3;
+        dev_map[2][0] = 4;
+        dev_map[2][1] = 5;
+        dev_map[3][0] = 6;
+        dev_map[3][1] = 7;
+        nrows = 4; ncols = 2;
+    }
+    else if (ndevices % 2 == 1) {
+        int incrementer = (ndevices+1) / 2;
+        int i_pos = 0;
+        for(int i=0; i<ndevices; i++) {
+            int j_pos = (ndevices - i_pos)%ndevices;
+            for(int j=0; j<ndevices; j++) {
+                dev_map[i][j] = (j_pos + j)%ndevices;
+            }
+            i_pos = (i_pos+incrementer)%ndevices;
+        }
+    }
+    /*printf("Dev Map:\n");
+    for(int i=0; i<nrows; i++) {
+        for(int j=0; j<ncols; j++) {
+            printf("%2d ", dev_map[i][j]);
+        }
+        printf("\n");
+    }*/
+    return dev_map[row%nrows][col%ncols];
 }
+
+void AutoDAG::df_bc_scheduling(Task *task, DataMem* mem)
+{
+    /*printf("Task %s, uid %d Row %d, Col %d, bc %d, num device %d\n", task->name(), 
+        mem->uid(), mem->get_row(), 
+        mem->get_col(), mem->get_bc(), num_dev_);*/
+    int dmem_dev = -1;
+
+
+    if(mem->get_rr_bc_dev() == -1) {
+        
+        dmem_dev = cur_dev_++;
+        mem->set_rr_bc_dev(dmem_dev);
+        if (cur_dev_ == num_dev_) cur_dev_ = 0;
+        
+       
+       /*dmem_dev = (mem->get_col() + mem->get_row())% num_dev_;
+       mem->set_rr_bc_dev(dmem_dev); */
+       
+       //dmem_dev = iris_bc_mapping(mem->get_row(), mem->get_col());
+       //mem->set_rr_bc_dev(dmem_dev);
+
+    } else {
+        dmem_dev = mem->get_rr_bc_dev();
+    }
+    task->set_brs_policy(dmem_dev);
+    task->set_df_scheduling();
+}
+
+
 
 } /* namespace rt */
 } /* namespace iris */

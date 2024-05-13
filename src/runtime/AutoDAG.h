@@ -28,7 +28,7 @@ public:
   bool get_auto_dep(){ return auto_dep_;}
   void set_auto_dep(){ auto_dep_ = true;}
   void unset_auto_dep(){ auto_dep_ = false;}
-  void rr_bc_scheduling(Task* task, DataMem* mem);
+  void df_bc_scheduling(Task* task, DataMem* mem);
 
 #ifdef SANITY_CHECK
   void add_auto_dep_list(std::string new_item){ auto_dep_list_.push_back(new_item);}
@@ -64,7 +64,7 @@ private:
   char tn[256];
   int num_dev_; // total device 
   int cur_dev_; // current device
-  bool enable_rr_bc_; // enabling round robing bc
+  bool enable_df_sched_; // enabling df scheduling
 
 #ifdef SANITY_CHECK
   std::vector<std::string> manual_dep_list_;

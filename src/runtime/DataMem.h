@@ -96,7 +96,7 @@ public:
   int get_row(){ return row_;}
   int get_col(){ return col_;}
   int get_rr_bc_dev(){ return rr_bc_dev_;}
-  int set_rr_bc_dev(int rr_bc_dev){ rr_bc_dev_ = rr_bc_dev;}
+  void set_rr_bc_dev(int rr_bc_dev){ rr_bc_dev_ = rr_bc_dev;}
   void *host_root_memory() { return host_memory(); }
   void *host_memory();
   void lock_host_region(int region);
