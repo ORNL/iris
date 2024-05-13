@@ -20,6 +20,9 @@ AutoDAG::AutoDAG(Platform* platform){
   number_of_shadow_ = 0;
 #endif
   auto_dep_ = false;
+  platform_->DeviceCount(&num_dev_);
+  cur_dev_ = 0;
+  enable_rr_bc_ = true;
 }
 
 //AutoDAG::platform_ = NULL;
@@ -71,6 +74,8 @@ void AutoDAG::create_dependency(Command* cmd, Task* task,
             }
 #endif 
         }
+    if (enable_rr_bc_)
+        rr_bc_scheduling(task, ((DataMem*)mem));
  
     //printf("Seting current task info %d\n", param_info);
 #ifndef AUTO_SHADOW
@@ -92,6 +97,7 @@ void AutoDAG::create_dependency(Command* cmd, Task* task,
     if( mem->GetMemHandlerType() == IRIS_DMEM)
  	    create_auto_flush(cmd, task, mem);
 #endif
+
     }
     else if (param_info == iris_r) {
     	if(mem->get_current_writing_task() != NULL) {
@@ -300,7 +306,10 @@ void AutoDAG::missing_dependencies() {
 }
 #endif
 
-
+void AutoDAG::rr_bc_scheduling(Task *task, DataMem* mem)
+{
+    printf("Task %s, uid %d Row %d, Col %d, bc %d\n", task->name(), mem->uid(), mem->get_row(), mem->get_col(), mem->get_bc());
+}
 
 } /* namespace rt */
 } /* namespace iris */
