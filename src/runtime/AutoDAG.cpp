@@ -11,20 +11,35 @@
 namespace iris {
 namespace rt {
 
-AutoDAG::AutoDAG(Platform* platform){ 
+AutoDAG::AutoDAG(Platform* platform, bool enable_df_sched){ 
     platform_ = platform;
-#ifdef AUTO_FLUSH
     current_graph_ = NULL;
+#ifdef AUTO_FLUSH
+    enable_auto_flush_ = true;
 #endif
+
 #ifdef AUTO_SHADOW
   number_of_shadow_ = 0;
 #endif
-  auto_dep_ = false;
-  num_dev_ = platform_->ndevs();
-  cur_dev_ = 0;
-  enable_df_sched_ = true;
+    auto_dep_ = false;
+    num_dev_ = platform_->ndevs();
+    cur_dev_ = 0;
+    enable_df_sched_ = false;
+    if (enable_df_sched) {
+        enable_df_sched_ = true;
+        initalize_h2d_task();
+    }
 }
 
+void AutoDAG:: initalize_h2d_task(){
+    for (int i = 0; i < num_dev_; i++){
+        sprintf(tn, "Task-H2D-Dev-%d", num_dev_);
+	    Task* task = Task::Create(platform_, IRIS_TASK, tn);
+	    task->set_brs_policy(num_dev_);
+	    //task_flush = Task::Create(cmd->platform_, IRIS_TASK, tn);
+        h2d_task_list_.push_back(task);
+    }
+}
 //AutoDAG::platform_ = NULL;
 
 void AutoDAG::create_dependency(Command* cmd, Task* task, 
@@ -33,6 +48,13 @@ void AutoDAG::create_dependency(Command* cmd, Task* task,
     current_kernel_ = kernel;
     current_idx_ = idx;
     current_param_info_ = param_info;
+    if(enable_auto_flush_ == true && current_graph_ != NULL && enable_df_sched_ == true){
+        if(h2d_task_list_.size()>0){
+            for (int i = 0; i < h2d_task_list_.size(); i++){
+                current_graph_->AddTask(h2d_task_list_.at(i), h2d_task_list_.at(i)->uid());
+            }
+        }
+    }
 
 #ifdef IGNORE_MANUAL
     set_auto_dep();
@@ -74,8 +96,10 @@ void AutoDAG::create_dependency(Command* cmd, Task* task,
             }
 #endif 
         }
-    if (enable_df_sched_)
+    if (enable_df_sched_){
         df_bc_scheduling(task, ((DataMem*)mem));
+        //add_h2d_df_task(((DataMem*)mem);
+    }
  
     //printf("Seting current task info %d\n", param_info);
 #ifndef AUTO_SHADOW

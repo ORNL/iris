@@ -16,7 +16,7 @@ class Graph;
 class Kernel; 
 class AutoDAG {
 public:
-  AutoDAG(Platform* platform);
+  AutoDAG(Platform* platform, bool enable_df_sched);
   ~AutoDAG(){};
 
   void create_dependency(Command* cmd, Task* task, 
@@ -29,7 +29,8 @@ public:
   void set_auto_dep(){ auto_dep_ = true;}
   void unset_auto_dep(){ auto_dep_ = false;}
   void df_bc_scheduling(Task* task, DataMem* mem);
-
+  void initalize_h2d_task();
+  void add_h2d_df_task(Task* task, DataMem* mem);
 #ifdef SANITY_CHECK
   void add_auto_dep_list(std::string new_item){ auto_dep_list_.push_back(new_item);}
   void add_manual_dep_list(std::string new_item){ manual_dep_list_.push_back(new_item);}
@@ -65,15 +66,15 @@ private:
   int num_dev_; // total device 
   int cur_dev_; // current device
   bool enable_df_sched_; // enabling df scheduling
+  std::vector<Task *> h2d_task_list_;
+  Graph* current_graph_;
+  bool enable_auto_flush_;
 
 #ifdef SANITY_CHECK
   std::vector<std::string> manual_dep_list_;
   std::vector<std::string> auto_dep_list_;
 #endif
 
-#ifdef AUTO_FLUSH
-  Graph* current_graph_;
-#endif
 #ifdef AUTO_SHADOW
    //Map<Dmem>  current_graph_;
   int number_of_shadow_;

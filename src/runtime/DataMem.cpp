@@ -76,6 +76,10 @@ void DataMem::Init(Platform *platform, void *host_ptr, size_t size)
   row_ = -1;
   col_ = -1;
   rr_bc_dev_ = -1;
+  // for keeping track whether any device initiated h2d at the beginning
+  for (size_t i = 0; i < platform_->ndevs(); i++){
+    h2d_df_flag_[i] = false;
+  }
 }
 DataMem::~DataMem() {
     if (host_ptr_owner_) free(host_ptr_);

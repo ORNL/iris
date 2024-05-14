@@ -235,6 +235,11 @@ Command* Command::CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off,
     arg->mem_off = memranges ? memranges[i * 2] : 0;
     arg->mem_size = memranges ? memranges[i * 2 + 1] : mem->size();
   }
+
+#ifdef AUTO_PAR
+
+#endif
+
   return cmd;
 }
 
