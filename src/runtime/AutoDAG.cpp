@@ -424,6 +424,26 @@ void AutoDAG::df_bc_scheduling(Task *task, DataMem* mem)
 }
 
 
+void AutoDAG::add_h2d_df_task(Task* task, Kernel* kernel){
+    /*
+    DataMem* dmem;
+    if(task->get_df_scheduling() != true) {
+        printf("no target is set for task %s\n", task->name());
+        return;
+    }
+    int task_dev = task->get_brs_policy(); 
+    Task* df_task = h2d_task_list_.at(task_dev);
+    for (size_t i = 0; i < kernel->all_data_mems_in().size(); i++){
+        dmem = (DataMem*) kernel->all_data_mems_in().at(i);
+        if (dmem->get_h2d_df_flag(task_dev) == false){
+            Command* cmd_h2d = Command* Command::CreateH2D(task, mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host) {
+            df_task->AddCommand(cmd_h2d);
+
+            dmem->set_h2d_df_flag(task_dev) 
+        }
+
+    } */
+}
 
 } /* namespace rt */
 } /* namespace iris */

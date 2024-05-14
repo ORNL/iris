@@ -30,7 +30,7 @@ public:
   void unset_auto_dep(){ auto_dep_ = false;}
   void df_bc_scheduling(Task* task, DataMem* mem);
   void initalize_h2d_task();
-  void add_h2d_df_task(Task* task, DataMem* mem);
+  void add_h2d_df_task(Task* task, Kernel* kernel);
 #ifdef SANITY_CHECK
   void add_auto_dep_list(std::string new_item){ auto_dep_list_.push_back(new_item);}
   void add_manual_dep_list(std::string new_item){ manual_dep_list_.push_back(new_item);}

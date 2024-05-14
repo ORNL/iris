@@ -238,6 +238,7 @@ public:
 #endif
   void set_df_scheduling(){df_scheduling_ = true;}
   void unset_df_scheduling(){df_scheduling_ = false;}
+  bool get_df_scheduling(){ return df_scheduling_;}
   void set_last_cmd_stream(int stream) { last_cmd_stream_ = stream; }
   int last_cmd_stream() { return last_cmd_stream_; }
   void set_last_cmd_device(Device *dev) { last_cmd_device_ = dev; }

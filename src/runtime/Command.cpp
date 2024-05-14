@@ -237,7 +237,7 @@ Command* Command::CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off,
   }
 
 #ifdef AUTO_PAR
-
+  cmd->platform_->get_auto_dag()->add_h2d_df_task(task, kernel);
 #endif
 
   return cmd;
