@@ -264,6 +264,7 @@ namespace iris {
                     }
                 }
                 void Print_Bc_Dev() {
+                    /*
                     printf ("Block cyclic distribution\n");
                     printf (" \t");
                     for(size_t j=0; j<col_tiles_count_; j++) {
@@ -276,7 +277,7 @@ namespace iris {
                             printf ("%d\t", iris_data_mem_get_rr_bc_dev(IRISMem(i, j)));
                         }
                         printf ("\n");
-                    }
+                    } */
                 }
                 void Transpose()
                 {
