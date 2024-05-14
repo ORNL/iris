@@ -269,7 +269,7 @@ int Platform::Init(int* argc, char*** argv, int sync) {
   InitDevices(sync);
 
 #ifdef AUTO_PAR
-  auto_dag_ = new AutoDAG(this, true);
+  auto_dag_ = new AutoDAG(this, false);
 #endif
 
 
