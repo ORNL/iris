@@ -206,26 +206,30 @@ namespace iris {
                 }
                 Tiling2D(DType *data, size_t row_size, size_t col_size, 
                         size_t row_tile_size, size_t col_tile_size, 
-                        bool flattened_data_flag=DEFAULT_FLATTENED_DATA_FLAG, bool reset_flag=false, bool usm_flag=false)
+                        bool flattened_data_flag=DEFAULT_FLATTENED_DATA_FLAG, bool enable_bc=false, bool reset_flag=false, bool usm_flag=false)
                 {
                     Init(data, row_size, col_size, row_tile_size, col_tile_size,
-                            flattened_data_flag, reset_flag, usm_flag);
+                            flattened_data_flag, enable_bc, reset_flag, usm_flag);
                     //printf("RowSize:%ld ColSize:%ld RowTile:%ld ColTile:%ld RowTileCount:%ld ColTileCount:%d\n", row_size_, col_size_, row_tile_size_, col_tile_size_, row_tiles_count_, col_tiles_count_); 
                 }
                 Tiling2D(DType *data, size_t row_size, size_t col_size, 
                         size_t row_tile_size, size_t col_tile_size, 
                         size_t row_stride, size_t col_stride, 
-                        bool flattened_data_flag=DEFAULT_FLATTENED_DATA_FLAG, bool reset_flag=false, bool usm_flag=false) 
+                        bool flattened_data_flag=DEFAULT_FLATTENED_DATA_FLAG, 
+                        bool enable_bc = false,
+                        bool reset_flag=false, bool usm_flag=false)
                 {
                     Init(data, row_size, col_size, row_tile_size, col_tile_size,
-                            row_stride, col_stride, flattened_data_flag, reset_flag, usm_flag);
+                            row_stride, col_stride, flattened_data_flag, enable_bc, reset_flag, usm_flag);
                 }
                 void Init(DType *data, size_t row_size, size_t col_size, 
                         size_t row_tile_size, size_t col_tile_size, 
-                        bool flattened_data_flag=DEFAULT_FLATTENED_DATA_FLAG, bool reset_flag=false, bool usm_flag=false)
+                        bool flattened_data_flag=DEFAULT_FLATTENED_DATA_FLAG, 
+                        bool enable_bc = false,
+                        bool reset_flag=false, bool usm_flag=false)
                 {
                     InitCore(data, row_size, col_size, 
-                            row_tile_size, col_tile_size, flattened_data_flag, reset_flag, usm_flag);
+                            row_tile_size, col_tile_size, flattened_data_flag, enable_bc, reset_flag, usm_flag);
                     row_stride_ = row_tile_size;
                     col_stride_ = col_tile_size;
                     row_tiles_count_ = GET_TILE_COUNT(row_size, row_tile_size_);
@@ -238,10 +242,10 @@ namespace iris {
                 void Init(DType *data, size_t row_size, size_t col_size, 
                         size_t row_tile_size, size_t col_tile_size, 
                         size_t row_stride, size_t col_stride, 
-                        bool flattened_data_flag=DEFAULT_FLATTENED_DATA_FLAG, bool reset_flag=false, bool usm_flag=false) 
+                        bool flattened_data_flag=DEFAULT_FLATTENED_DATA_FLAG, bool enable_bc=false, bool reset_flag=false, bool usm_flag=false) 
                 {
                     InitCore(data, row_size, col_size, row_tile_size, col_tile_size, 
-                            flattened_data_flag, reset_flag, usm_flag);
+                            flattened_data_flag, enable_bc, reset_flag, usm_flag);
                     row_stride_ = row_stride;
                     col_stride_ = col_stride;
                     row_tiles_count_ = GET_TILE_COUNT(row_size, row_tile_size_); //TODO: Update
@@ -258,6 +262,22 @@ namespace iris {
                             tiles_[i*col_tiles_count_+j].Init(i, j, this);
                         }
                     }
+                }
+                void Print_Bc_Dev() {
+                    /*
+                    printf ("Block cyclic distribution\n");
+                    printf (" \t");
+                    for(size_t j=0; j<col_tiles_count_; j++) {
+                        printf ("%d\t", j);
+                    }
+                    printf ("\n");
+                    for(size_t i=0; i<row_tiles_count_; i++) {
+                        printf ("%d\t", i);
+                        for(size_t j=0; j<col_tiles_count_; j++) {
+                            printf ("%d\t", iris_data_mem_get_rr_bc_dev(IRISMem(i, j)));
+                        }
+                        printf ("\n");
+                    } */
                 }
                 void Transpose()
                 {
@@ -385,6 +405,7 @@ namespace iris {
 #else
                                 //printf(" i:%d j:%d data:%p\n", i, j, data_);
                                 iris_data_mem_create_tile(&iris_mem_tiles_[i*col_tiles_count_+j], data_, l_offset, l_host_size, dev_size, sizeof(DType), 2);
+                                if (enable_bc_) iris_data_mem_update_bc(iris_mem_tiles_[i*col_tiles_count_+j], enable_bc_, i, j); 
                                 if (reset_flag_) 
                                     iris_data_mem_init_reset(iris_mem_tiles_[i*col_tiles_count_+j], 1);
 #endif
@@ -402,7 +423,10 @@ namespace iris {
                 }
                 void InitCore(DType *data, size_t row_size, size_t col_size, 
                         size_t row_tile_size, size_t col_tile_size, 
-                        bool flattened_data_flag=DEFAULT_FLATTENED_DATA_FLAG, bool reset_flag=false, bool usm_flag=false)
+                        bool flattened_data_flag=DEFAULT_FLATTENED_DATA_FLAG, 
+                        bool enable_bc = false, 
+                        bool reset_flag=false, 
+                        bool usm_flag=false)
                 {
                     if (usm_flag) flattened_data_flag = true;
                     data_ = data;
@@ -421,6 +445,7 @@ namespace iris {
                     iterator_type_ = TILE2D_COL_FIRST;
                     tiles_ = NULL;
                     iris_mem_tiles_ = NULL;
+                    enable_bc_ = enable_bc;
                 }
                 ~Tiling2D() {
                     if (tiles_ != NULL) free(tiles_);
@@ -442,6 +467,7 @@ namespace iris {
                 size_t GetSize() const {
                     return row_tiles_count_ * col_tiles_count_;
                 }
+                void Set_enable_bc(){ enable_bc_ = true;}
                 void SetIteratorType(Tile2DIteratorType iterator_type)
                 {
                     iterator_type_ = iterator_type;
@@ -551,6 +577,7 @@ namespace iris {
                 size_t col_offset_;
                 size_t row_tiles_count_;
                 size_t col_tiles_count_;
+                bool enable_bc_;
         };
 }
 #endif

@@ -179,11 +179,6 @@ int Platform::Init(int* argc, char*** argv, int sync) {
   sig_handler_ = new SigHandler();
 
   json_ = new JSON(this);
-
-#ifdef AUTO_PAR
-  auto_dag_ = new AutoDAG(this);
-#endif
-
   EnvironmentInit();
 
   char* logo = NULL;
@@ -272,6 +267,11 @@ int Platform::Init(int* argc, char*** argv, int sync) {
   InitScheduler();
   InitWorkers();
   InitDevices(sync);
+
+#ifdef AUTO_PAR
+  auto_dag_ = new AutoDAG(this, false);
+#endif
+
 
   _info("nplatforms[%d] ndevs[%d] ndevs_enabled[%d] scheduler[%d] hub[%d] polyhedral[%d] profile[%d]",
       nplatforms_, ndevs_, ndevs_enabled_, scheduler_ != NULL, scheduler_ ? scheduler_->hub_available() : 0,
@@ -1707,6 +1707,14 @@ int Platform::SetTaskPolicy(iris_task brs_task, int brs_policy)
     task->set_brs_policy(brs_policy);
     return IRIS_SUCCESS;
 }
+
+int Platform::GetTaskPolicy(iris_task brs_task)
+{
+    Task *task = get_task_object(brs_task);
+    assert(task != NULL);
+    return task->get_brs_policy();
+}
+
 
 void Platform::set_release_task_flag(bool flag, iris_task brs_task)
 {

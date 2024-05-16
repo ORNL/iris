@@ -277,6 +277,9 @@ int iris_task_set_policy(iris_task task, int device) {
   return Platform::GetPlatform()->SetTaskPolicy(task, device);
 }
 
+int iris_task_get_policy(iris_task task) {
+  return Platform::GetPlatform()->GetTaskPolicy(task);
+}
 int iris_task_wait(iris_task task) {
   return Platform::GetPlatform()->TaskWait(task);
 }
@@ -447,6 +450,15 @@ int iris_data_mem_create_region(iris_mem *mem, iris_mem root_mem, int region) {
 int iris_data_mem_n_regions(iris_mem brs_mem) {
   DataMem *mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
   return mem->get_n_regions();
+}
+int iris_data_mem_update_bc(iris_mem brs_mem, bool bc, int row, int col) {
+  DataMem *mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  mem->update_bc_row_col(bc, row, col);
+  return IRIS_SUCCESS;
+}
+int iris_data_mem_get_rr_bc_dev(iris_mem brs_mem){
+  DataMem *mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  return mem->get_rr_bc_dev();
 }
 unsigned long iris_data_mem_get_region_uid(iris_mem brs_mem, int region) {
   DataMem *mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
@@ -843,6 +855,7 @@ void iris_print_matrix_full_int8_t(int8_t *data, int M, int N, const char *descr
 {
     iris::PrintMatrixFull<int8_t>(data, M, N, description);
 }
+
 void iris_run_hpl_mapping(iris_graph graph)
 {
     int ndevices = 0;

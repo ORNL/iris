@@ -91,6 +91,15 @@ public:
   void set_has_shadow(bool has_shadow){ has_shadow_ = has_shadow;}
 #endif
 #endif
+  void update_bc_row_col(bool bc, int row, int col){  bc_ = bc; row_ = row; col_ = col;}
+  bool get_bc(){ return bc_;}
+  int get_row(){ return row_;}
+  int get_col(){ return col_;}
+  int get_rr_bc_dev(){ return rr_bc_dev_;}
+  void set_rr_bc_dev(int rr_bc_dev){ rr_bc_dev_ = rr_bc_dev;}
+  void set_h2d_df_flag(int dev) { h2d_df_flag_[dev] = true;}
+  void unset_h2d_df_flag(int dev) { h2d_df_flag_[dev] = false;}
+  bool get_h2d_df_flag(int dev) { return h2d_df_flag_[dev];}
 
   void *host_root_memory() { return host_memory(); }
   void *host_memory();
@@ -129,6 +138,9 @@ protected:
   bool has_shadow_;
 #endif
 #endif
+  int row_, col_, rr_bc_dev_; // index for BC distribution
+  bool bc_; // for BC distribution
+  bool h2d_df_flag_[16];
 };
 
 } /* namespace rt */

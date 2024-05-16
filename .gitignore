@@ -6,3 +6,4 @@ envs/
 slurm-test-out.txt
 slurm-test-err.txt
 *.so
+*.swp

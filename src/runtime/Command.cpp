@@ -235,6 +235,11 @@ Command* Command::CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off,
     arg->mem_off = memranges ? memranges[i * 2] : 0;
     arg->mem_size = memranges ? memranges[i * 2 + 1] : mem->size();
   }
+
+#ifdef AUTO_PAR
+  cmd->platform_->get_auto_dag()->add_h2d_df_task(task, kernel);
+#endif
+
   return cmd;
 }
 
