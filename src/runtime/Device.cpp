@@ -1619,7 +1619,14 @@ void Device::ExecuteH2D(Command* cmd, Device *dev) {
   if (dev == NULL) dev = this;
   BaseMem* dmem = (BaseMem *)cmd->mem();
   //we're using datamem so there is no need to execute this memory transfer
-  if (dmem->GetMemHandlerType() == IRIS_DMEM) return;
+  if (dmem->GetMemHandlerType() == IRIS_DMEM) {
+    ExecuteMemInDMemIn(cmd->task(), cmd, (DataMem *)dmem);
+    return;
+  }
+  if (dmem->GetMemHandlerType() == IRIS_DMEM_REGION) {
+    ExecuteMemInDMemRegionIn(cmd->task(), cmd, (DataMemRegion *)dmem);
+    return;
+  }
   Mem* mem = cmd->mem();
   size_t off = cmd->off(0);
   size_t *ptr_off = cmd->off();
@@ -1682,7 +1689,8 @@ void Device::ExecuteH2DNP(Command* cmd) {
 
 void Device::ExecuteD2H(Command* cmd) {
   BaseMem* dmem = (BaseMem *)cmd->mem();
-  if (dmem && dmem->GetMemHandlerType() == IRIS_DMEM) {
+  if (dmem && (dmem->GetMemHandlerType() == IRIS_DMEM ||
+              dmem->GetMemHandlerType() == IRIS_DMEM_REGION)) {
     //we're using datamem so there is no need to execute this memory transfer -- just flush
     ExecuteMemFlushOut(cmd);
     return;
