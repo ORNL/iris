@@ -336,7 +336,7 @@ namespace iris {
                         for(size_t j=0; j<col_tiles_count_; j++) {
                             iris_mem mem = iris_mem_tiles_[i*col_tiles_count_+j];
                             DType *data = data_;
-                            if (flattened_data_flag_) {
+                            if (data_ != NULL && flattened_data_flag_) {
                                 data = GET4D_DATA(data_, i, j, 0, 0, col_tiles_count_, row_tile_size_, col_tile_size_);
                             }
                             iris_data_mem_update(mem, data);
@@ -347,23 +347,25 @@ namespace iris {
                 {
                     iris_mem_tiles_ = (iris_mem *)malloc(sizeof(iris_mem)*row_tiles_count_*col_tiles_count_);
                     if (flattened_data_flag_) {
-                        for(size_t i=0; i<row_tiles_count_; i++) {
-                            for(size_t j=0; j<col_tiles_count_; j++) {
-                                DType *flattened_data = GET4D_DATA(data_, i, j, 0, 0, col_tiles_count_, row_tile_size_, col_tile_size_);
+                        if (data_ != NULL) {
+                            for(size_t i=0; i<row_tiles_count_; i++) {
+                                for(size_t j=0; j<col_tiles_count_; j++) {
+                                    DType *flattened_data = GET4D_DATA(data_, i, j, 0, 0, col_tiles_count_, row_tile_size_, col_tile_size_);
 #ifdef IRIS_MEM_HANDLER
-                                iris_mem_create(row_tile_size_ * col_tile_size_ * sizeof(DType), &iris_mem_tiles_[i*col_tiles_count_+j]);
+                                    iris_mem_create(row_tile_size_ * col_tile_size_ * sizeof(DType), &iris_mem_tiles_[i*col_tiles_count_+j]);
 #else
 #ifdef ENABLE_PIN_MEMORY
-                                if (flattened_data)
-                                    iris_register_pin_memory(flattened_data, row_tile_size_*col_tile_size_*sizeof(DType));
+                                    if (flattened_data)
+                                        iris_register_pin_memory(flattened_data, row_tile_size_*col_tile_size_*sizeof(DType));
 #endif
-                                iris_data_mem_create(&iris_mem_tiles_[i*col_tiles_count_+j], flattened_data, row_tile_size_*col_tile_size_*sizeof(DType));
-                                if (reset_flag_) 
-                                    iris_data_mem_init_reset(iris_mem_tiles_[i*col_tiles_count_+j], 1);
+                                    iris_data_mem_create(&iris_mem_tiles_[i*col_tiles_count_+j], flattened_data, row_tile_size_*col_tile_size_*sizeof(DType));
+                                    if (reset_flag_) 
+                                        iris_data_mem_init_reset(iris_mem_tiles_[i*col_tiles_count_+j], 1);
 #endif
-                                // To be enabled only when flattend flag is enabled
-                                if (usm_flag_)
-                                    iris_mem_enable_usm(iris_mem_tiles_[i*col_tiles_count_+j], iris_model_all);
+                                    // To be enabled only when flattend flag is enabled
+                                    if (usm_flag_)
+                                        iris_mem_enable_usm(iris_mem_tiles_[i*col_tiles_count_+j], iris_model_all);
+                                }
                             }
                         }
                     }
@@ -428,6 +430,7 @@ namespace iris {
                     return tiles_[row_tile_index * col_tiles_count_ + col_tile_index];
                 }
                 DType *Host(size_t row_tile_index, size_t col_tile_index) {
+                    if (data_ == NULL) return NULL;
                     if (flattened_data_flag_) 
                         return GET4D_DATA(data_, row_tile_index, col_tile_index, 0, 0, col_tiles_count_, row_tile_size_, col_tile_size_);
                     else 

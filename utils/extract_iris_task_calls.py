@@ -1154,7 +1154,9 @@ int {g_func_name}({cpp_params_decl_str})
         iris_task task;
         iris_task_create_name(NULL, &task);
         {cpp_call};
+#ifdef IRIS_MANUAL_FLUSH
         {flush_cmds_str};
+#endif
         {task_set_metadata_str};
         iris_graph_task(graph, task, target_dev, NULL);
     }}
