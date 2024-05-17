@@ -20,11 +20,11 @@ if ! [ -f memory-performance-iris ] || ! [ -f kernel.ptx ] ; then
   exit
 fi
 
-export RUNTIME=cuda
-export REPEATS=25
+export RUNTIME=cuda,hip
+export REPEATS=10
 
 # Final experiment: Lock the number of transfers and increase the buffer-size---starting from 1KiB onwards
-for SIZE in {1..26}
+for SIZE in {1..25}
 do
   ((ELEMENTS=2**${SIZE}))
   echo ${ELEMENTS}

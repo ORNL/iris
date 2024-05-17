@@ -22,13 +22,21 @@ fi
 
 #<application name> <memory size> <verbose?> <number of devices to use> <number of statistical samples> <log file to store samples>
 #run opencl baseline to see FLOP scaling over increasing device count
-REPEATS=1
-#for num_devices in {6..6}
-#REPEATS=100
+#export HOST=Zenith
+SIZE=2048
+REPEATS=10
+VERIFY=0
+#for num_devices in {1..13}
+#do
+#    IRIS_ARCHS=opencl ./compute-performance-iris ${SIZE} ${VERIFY} ${num_devices} ${REPEATS} dgemm-iris-opencl-${HOST}-${num_devices}.csv
+#done
 for num_devices in {1..13}
 do
-    IRIS_ARCHS=opencl ./compute-performance-iris 4096 0 ${num_devices} ${REPEATS} dgemm-iris-opencl-${HOST}-${num_devices}.csv
+  for (( num_run=0; num_run<=$REPEATS; num_run++ ))
+  do
+    IRIS_ARCHS=opencl ./compute-performance-iris ${SIZE} ${VERIFY} ${num_devices} ${REPEATS} dgemm-iris-opencl-${HOST}-${num_devices}.csv
+  done
 done
 
-source ./setup.sh
 
+source ./setup.sh

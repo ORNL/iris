@@ -3,11 +3,13 @@
 #include <stdlib.h>
 #include <malloc.h>
 #include <cassert>
+#include <limits.h>
 
+bool DEBUG=false;
 size_t SIZE, SIZECB;
-int VERBOSE;
+int VERIFY;
 int REPEATS;
-int DEVICES; //the number of devices to repeat the experiment over
+int DEVICES; //the number of concurrent tasks to repeat the experiment over
 char* LOGFILE = NULL;
 FILE* LF_HANDLE;
 char LOG_BUFFER[32];
@@ -44,11 +46,12 @@ int main(int argc, char** argv) {
   int ERROR = 0;
 
   iris_init(&argc, &argv, true);
+  iris_overview();
 
   iris_timer_now(&t0);
 
   SIZE = argc > 1 ? atol(argv[1]) : 16;
-  VERBOSE = argc > 2 ? atol(argv[2]) : 0;
+  VERIFY = argc > 2 ? atol(argv[2]) : 0;
 
   SIZECB = SIZE * SIZE * sizeof(double);
 
@@ -59,7 +62,7 @@ int main(int argc, char** argv) {
     LOGFILE = argv[5];
   }
 
-  printf("SIZE[%d] MATRIX_SIZE[%lu]MB VERBOSE[%d]\n", SIZE, SIZECB / 1024 / 1024, VERBOSE);
+  printf("SIZE[%lu] MATRIX_SIZE[%lu]MB VERIFY[%d]\n", SIZE, SIZECB / 1024 / 1024, VERIFY);
 
   //set the repeats argument for a good statistical sample
   for (int z = 0; z < REPEATS; ++ z) {
@@ -87,6 +90,7 @@ int main(int argc, char** argv) {
       iris_mem_create(SIZE * SIZE * sizeof(double), &mem_C[y]);
 
       iris_task_create(&task[y]);
+      iris_task_retain(task[y],true);
       //iris_task_create_name("stub",&task[y]);
       iris_task_h2d_full(task[y], mem_A[y], A);
       iris_task_h2d_full(task[y], mem_B[y], B);
@@ -101,6 +105,12 @@ int main(int argc, char** argv) {
     
     int num_devs;
     iris_device_count(&num_devs);
+    for(int y = 0; y < num_devs; y++) {
+      size_t _type, size;
+      iris_device_info(y, iris_type, &_type, &size);
+      assert(_type != iris_cpu);
+      //printf("type = %i cpu = %i\n",_type,iris_cpu);
+    }
     iris_timer_now(&tkern);
     for(int y = 0; y < DEVICES; y++) {
       iris_task_submit(task[y], y%num_devs, NULL, false);
@@ -108,14 +118,32 @@ int main(int argc, char** argv) {
     }
     
     int ret_code = iris_synchronize();
-    //printf("retcode = %i\n",ret_code);
     if (ret_code == IRIS_ERROR) return 1;
     iris_timer_now(&t2);
 
-    if (VERBOSE) {
+    size_t submission_start_time;
+    size_t kernel_start_time;
+    size_t kernel_end_time;
+    size_t rolling_time = 0;
+    size_t earliest_kernel_time = UINT_MAX;
+    size_t last_kernel_completion_time = 0;
 
-    ijk();
+    for(int y = 0; y < DEVICES; y++){
+      iris_task_info(task[y],iris_task_time_submit, &submission_start_time, nullptr);
+      iris_task_info(task[y],iris_task_time_start,  &kernel_start_time, nullptr);
+      iris_task_info(task[y],iris_task_time_end,    &kernel_end_time, nullptr);
+      iris_task_release(task[y]);
+      earliest_kernel_time = std::min(earliest_kernel_time,kernel_start_time);
+      last_kernel_completion_time = std::max(last_kernel_completion_time,kernel_end_time);
+      rolling_time += (kernel_end_time - kernel_start_time);
+    }
+    float event_elapsed_time = (last_kernel_completion_time-earliest_kernel_time)*1.e-9;
+    printf("rolling_time (s) = %f, event kernel time (s) = %f, iris timers (s) = %f, kernel time (s) = %f\n",rolling_time*1.e-9, event_elapsed_time, t2-t1, t2-tkern);
+    if (DEBUG | VERIFY){
+      ijk();
+    }
 
+    if (DEBUG) {
     printf("[[ A ]]\n");
     for (int i = 0; i < SIZE; i++) {
       for (int j = 0; j < SIZE; j++) {
@@ -139,7 +167,8 @@ int main(int argc, char** argv) {
       }
       printf("\n");
     }
-
+    }
+    if(VERIFY){
     printf("Checking errors\n");
     for (int i = 0; i < SIZE; i++) {
       for (int j = 0; j < SIZE; j++) {
@@ -151,7 +180,6 @@ int main(int argc, char** argv) {
       }
     }
     }
-
     iris_timer_now(&t3);
     printf("ERROR[%d] TIME[%lf,%lf]\n", ERROR, t3 - t0, t2 - t1);
 
@@ -171,22 +199,27 @@ int main(int argc, char** argv) {
     op_count = i*j*k*6*DEVICES;
     iop_count= i*j*k*4*DEVICES;
     fop_count= i*j*k*2*DEVICES;
-    double gops, giops, gflops;
+    printf("Total FLOP count = %llu, GFLOPS based on event kernel time (s) = %f, GFLOPS Based on host kernel time (s) = %f\n",fop_count,(double)(fop_count/event_elapsed_time)*1.e-9, fop_count/(t2-tkern)*1.e-9);
+
+    double gops, giops, gflops, tflops;
     gops   = 1.e-9 * ((double)op_count /(t2 - tkern));
     giops  = 1.e-9 * ((double)iop_count/(t2 - tkern));
     gflops = 1.e-9 * ((double)fop_count/(t2 - tkern));
+    //gflops = (double)(fop_count/event_elapsed_time)*1.e-9;
+    tflops = (double)(fop_count/event_elapsed_time)*1.e-12;
+
     if (LOGFILE != NULL) {
       LF_HANDLE = fopen(LOGFILE, "a");
       assert(LF_HANDLE != NULL);
       if(i == 0){
-        sprintf(LOG_BUFFER, "gops,giops,gflops\n");
+        sprintf(LOG_BUFFER, "gops,giops,gflops,tflops\n");
       }
-      sprintf(LOG_BUFFER, "%f,%f,%f\n", gops,giops,gflops);
+      sprintf(LOG_BUFFER, "%f,%f,%f,%f\n", gops,giops,gflops,tflops);
       fputs(LOG_BUFFER,LF_HANDLE);
       fclose(LF_HANDLE);
     }
     else{
-      printf("GOPs = %f, GIOPs = %f, GFLOPs = %f\n",gops,giops,gflops);
+      printf("GOPs = %f, GIOPs = %f, GFLOPs = %f, TFLOPS= %f\n",gops,giops,gflops,tflops);
     }
   }
 

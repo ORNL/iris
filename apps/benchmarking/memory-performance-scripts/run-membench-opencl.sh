@@ -21,13 +21,14 @@ if ! [ -f memory-performance-iris ] ; then
 fi
 
 export RUNTIME=opencl
+export REPEATS=10
 # Final experiment: Lock the number of transfers and increase the buffer-size---starting from 1KiB onwards
 for SIZE in {1..25}
 do
   ((ELEMENTS=2**${SIZE}))
   echo ${ELEMENTS}
   echo ${KIB}
-  IRIS_ARCHS=opencl ./memory-performance-iris ${ELEMENTS} 1000 1000 membench-${RUNTIME}-${HOST}-${ELEMENTS}.csv
+  IRIS_ARCHS=opencl ./memory-performance-iris ${ELEMENTS} ${REPEATS} 1000 membench-${RUNTIME}-${HOST}-${ELEMENTS}.csv
 done
 
 source ./setup.sh
