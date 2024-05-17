@@ -933,7 +933,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         if (async) {
             mem->RecordEvent(devno(), mem_stream, true);
         }
-        if (kernel->is_profile_data_transfers()) {
+        if (kernel != NULL && kernel->is_profile_data_transfers()) {
             kernel->AddInDataObjectProfile({(uint32_t) cmd->task()->uid(), (uint32_t) mem->uid(), (uint32_t) iris_dt_d2d, (uint32_t) d2d_dev, (uint32_t) devno_, start, end});
         }
         d2dtime = end - start;
@@ -985,7 +985,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
             mem->RecordEvent(devno(), mem_stream, true);
         }
         o2dtime = end - start;
-        if (kernel->is_profile_data_transfers()) {
+        if (kernel != NULL && kernel->is_profile_data_transfers()) {
             kernel->AddInDataObjectProfile({(uint32_t) cmd->task()->uid(), (uint32_t) mem->uid(), (uint32_t) iris_dt_o2d, (uint32_t) cpu_dev, (uint32_t) devno_, start, end});
         }
         o2d_enabled = true;
@@ -1037,7 +1037,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         }
         ResetContext(); //This is must. Otherwise, it may still point to src_dev context
         ResolveOutputWriteDependency<ASYNC_D2H_SYNC>(task, mem, async, src_dev);
-        if (kernel->is_profile_data_transfers()) {
+        if (kernel != NULL && kernel->is_profile_data_transfers()) {
             kernel->AddInDataObjectProfile({(uint32_t) cmd->task()->uid(), (uint32_t) mem->uid(), (uint32_t) iris_dt_d2o, (uint32_t) non_cpu_dev, (uint32_t) devno_, start, end});
         }
         d2otime = end - start;
@@ -1074,7 +1074,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
 
         ResolveH2DEndEvents(task, mem, async);
 
-        if (kernel->is_profile_data_transfers()) {
+        if (kernel != NULL && kernel->is_profile_data_transfers()) {
             kernel->AddInDataObjectProfile({(uint32_t) cmd->task()->uid(), (uint32_t) mem->uid(), (uint32_t) iris_dt_h2d, (uint32_t) -1, (uint32_t) devno_, start, end});
         }
         h2dtime = end - start;
@@ -1185,7 +1185,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
         mem->clear_host_dirty();
         d2h_h2d_enabled = true;
-        if (kernel->is_profile_data_transfers()) {
+        if (kernel != NULL && kernel->is_profile_data_transfers()) {
             kernel->AddInDataObjectProfile({(uint32_t) cmd->task()->uid(), (uint32_t) mem->uid(), (uint32_t) iris_dt_d2h_h2d, (uint32_t) select_src_dev, (uint32_t) devno_, d2h_start, end});
         }
         if (Platform::GetPlatform()->is_scheduling_history_enabled()){
