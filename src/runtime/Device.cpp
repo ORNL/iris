@@ -1202,12 +1202,12 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
     }
     mem->clear_dev_dirty(devno_ );
     mem->dev_unlock(devno_);
-    if (h2d_enabled) cmd->kernel()->history()->AddH2D(cmd, this, h2dtime, size);
-    if (d2d_enabled) cmd->kernel()->history()->AddD2D(cmd, this, d2dtime, size);
-    if (d2o_enabled) cmd->kernel()->history()->AddD2O(cmd, this, d2otime, size);
-    if (o2d_enabled) cmd->kernel()->history()->AddO2D(cmd, this, o2dtime, size);
-    if (d2h_h2d_enabled) {
-        cmd->kernel()->history()->AddD2H_H2D(cmd, this, d2htime+h2dtime, size);
+    if (h2d_enabled && kernel) kernel->history()->AddH2D(cmd, this, h2dtime, size);
+    if (d2d_enabled && kernel) kernel->history()->AddD2D(cmd, this, d2dtime, size);
+    if (d2o_enabled && kernel) kernel->history()->AddD2O(cmd, this, d2otime, size);
+    if (o2d_enabled && kernel) kernel->history()->AddO2D(cmd, this, o2dtime, size);
+    if (d2h_h2d_enabled && kernel) {
+        kernel->history()->AddD2H_H2D(cmd, this, d2htime+h2dtime, size);
         //cmd->kernel()->history()->AddD2H(cmd, this, d2htime);
         //cmd->kernel()->history()->AddH2D(cmd, this, h2dtime);
     //if (Platform::GetPlatform()->is_scheduling_history_enabled()) Platform::GetPlatform()->scheduling_history()->AddD2H_H2D(cmd);
