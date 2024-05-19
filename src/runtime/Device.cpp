@@ -426,6 +426,17 @@ void Device::ResolveOutputWriteDependency(Task *task, BaseMem *mem, bool async, 
             _event_debug(" HardHostWriteEventSynchronize ASYNC_D2H_SYNC dev:[%d][%s] src_dev:[%d][%s] Wait for event:%p mem_stream:%d input_stream:%d", devno(), name(), input_dev->devno(), input_dev->name(), input_event, mem_stream, input_stream); 
         }
     }
+    else if (resolve_type == ASYNC_D2O_SYNC) {
+        Device *input_dev = select_src_dev;
+        int input_devno = input_dev->devno();
+        int input_stream = input_dev->GetStream(task, mem);
+        void *input_event = mem->GetWriteDeviceEvent(input_devno);
+        if (input_stream != -1) {
+            mem->HardDeviceWriteEventSynchronize(input_dev, input_event);
+            ResetContext();
+            _event_debug(" HardDeviceWriteEventSynchronize ASYNC_D2O_SYNC dev:[%d][%s] src_dev:[%d][%s] Wait for event:%p mem_stream:%d input_stream:%d", devno(), name(), input_dev->devno(), input_dev->name(), input_event, mem_stream, input_stream); 
+        }
+    }
 }
 void Device::SynchronizeInputToMemory(Task *task, BaseMem *mem)
 {
@@ -1036,7 +1047,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
             prof_event.RecordEndEvent(); 
         }
         ResetContext(); //This is must. Otherwise, it may still point to src_dev context
-        ResolveOutputWriteDependency<ASYNC_D2H_SYNC>(task, mem, async, src_dev);
+        ResolveOutputWriteDependency<ASYNC_D2O_SYNC>(task, mem, async, src_dev);
         if (kernel != NULL && kernel->is_profile_data_transfers()) {
             kernel->AddInDataObjectProfile({(uint32_t) cmd->task()->uid(), (uint32_t) mem->uid(), (uint32_t) iris_dt_d2o, (uint32_t) non_cpu_dev, (uint32_t) devno_, start, end});
         }
