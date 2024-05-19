@@ -390,31 +390,6 @@ def mem_create(size):
     dll.iris_mem_create(c_size_t(size), byref(m))
     return m
 
-def dmem_create(*args):
-    if len(args) == 1:
-        host = args[0][0]
-        m = iris_mem()
-        size = host.nbytes
-        c_host = host.ctypes.data_as(c_void_p)
-        dll.iris_data_mem_create(byref(m), c_host, c_size_t(size))
-        return m
-    elif len(args) == 2:
-        (root_mem, host) = args
-        m = iris_mem()
-        dll.iris_data_mem_enable_outer_dim_regions(m)
-        dll.iris_data_mem_create_region(byref(m), root_mem, c_int(region))
-        return m
-    else:
-        (host, off, host_size, dev_size, elem_size, dim) = args
-        m = iris_mem()
-        c_host = host.ctypes.data_as(c_void_p)
-        coff = (c_size_t * dim)(*off)
-        chost_size = (c_size_t * dim)(*host_size)
-        cdev_size = (c_size_t * dim)(*dev_size)
-        size = host.nbytes
-        dll.iris_data_mem_create_tile(byref(m), c_host, coff, chost_size, cdev_size, c_size_t(elem_size), c_int(dim))
-        return m
-
 def mem_reduce(mem, mode, type):
     return dll.iris_mem_reduce(mem, c_int(mode), c_int(type))
 
@@ -600,7 +575,9 @@ class dmem_null:
     c_host = c_void_p(0)
     dll.iris_data_mem_create(byref(m), c_host, c_size_t(size))
     self.handle = m
-    mem_handle_2_pobj[self.handle.uid] = self
+    if self.handle.uid not in mem_handle_2_pobj:
+        mem_handle_2_pobj[self.handle.uid] = []
+    mem_handle_2_pobj[self.handle.uid].append(self)
   def size(self):
     dll.iris_mem_get_size.restype = c_size_t
     return dll.iris_mem_get_size(self.handle)
@@ -608,50 +585,42 @@ class dmem_null:
     c_host = host.ctypes.data_as(c_void_p)
     dll.iris_data_mem_update(self.handle, c_host)
 
-class dmem:
-  def __init__(self, *args):
-    self.handle = dmem_create(args)
-    self.type = IRIS_DMEM
-    mem_handle_2_pobj[self.handle.uid] = self
-  def is_reset(self):
-    dll.iris_mem_is_reset.restype = c_int
-    return dll.iris_mem_is_reset(self.handle)
-  def uid(self):
-    dll.iris_mem_get_uid.restype = c_ulong
-    return dll.iris_mem_get_uid(self.handle)
-  def size(self):
-    dll.iris_mem_get_size.restype = c_size_t
-    return dll.iris_mem_get_size(self.handle)
-  def update(self, host):
-    c_host = host.ctypes.data_as(c_void_p)
-    dll.iris_data_mem_update(self.handle, c_host)
-  def get_region_uids(self):
-    n_regions = dll.call_ret(dll.iris_data_mem_n_regions(self.handle), np.int32)
-    output = []
-    for i in range(n_regions):
-      output.append(dll.call_ret(dll.iris_data_mem_get_region_uid, np.uint32, self.handle, np.int32(i)))
-    return output
-  def release(self):
-    mem_release(self.handle)
-class dmem_region:
-  def __init__(self, *args):
-    self.handle = dmem_create(args)
-    self.type = IRIS_DMEM_REGION
-    self.fetch_dmem()
-  def fetch_dmem(self, handle=None):
-    if handle == None:
-        handle = self.handle
-    mem_handle_2_pobj[handle.uid] = self
-    dll.iris_get_dmem_for_region.restype = iris_mem
-    mem_obj = dll.iris_get_dmem_for_region(handle)
-    if mem_obj.uid not in mem_handle_2_pobj:
-        pmem = dmem.__new__(dmem)
-        pmem.type = IRIS_DMEM
-        pmem.handle = mem_obj
-        mem_handle_2_pobj[mem_obj.uid] = pmem
-    pmem = mem_handle_2_pobj[mem_obj.uid]
-    uid = pmem.uid()
-    self.mem = pmem
+class dmem_base:
+  track_host2dmems = {}
+  def __init__(self, reuse, *args):
+    self.handle, self.type = self.dmem_create(reuse, args)
+    if self.handle.uid not in mem_handle_2_pobj:
+        mem_handle_2_pobj[self.handle.uid] = []
+    mem_handle_2_pobj[self.handle.uid].append(self)
+
+  def dmem_create(self, reuse, *args):
+    if len(args) == 1:
+      host = args[0][0]
+      c_host = host.ctypes.data_as(c_void_p)
+      if reuse and c_host.value in dmem_base.track_host2dmems:
+        return dmem_base.track_host2dmems[c_host.value], IRIS_DMEM
+      m = iris_mem()
+      size = host.nbytes
+      dll.iris_data_mem_create(byref(m), c_host, c_size_t(size))
+      dmem_base.track_host2dmems[c_host.value] = m
+      return m, IRIS_DMEM
+    elif len(args) == 2:
+      (root_mem, host) = args
+      m = iris_mem()
+      dll.iris_data_mem_enable_outer_dim_regions(m)
+      dll.iris_data_mem_create_region(byref(m), root_mem, c_int(region))
+      return m, IRIS_DMEM_REGION
+    else:
+      (host, off, host_size, dev_size, elem_size, dim) = args
+      m = iris_mem()
+      c_host = host.ctypes.data_as(c_void_p)
+      coff = (c_size_t * dim)(*off)
+      chost_size = (c_size_t * dim)(*host_size)
+      cdev_size = (c_size_t * dim)(*dev_size)
+      size = host.nbytes
+      dll.iris_data_mem_create_tile(byref(m), c_host, coff, chost_size, cdev_size, c_size_t(elem_size), c_int(dim))
+      return m, IRIS_DMEM
+
   def is_reset(self):
     dll.iris_mem_is_reset.restype = c_int
     return dll.iris_mem_is_reset(self.handle)
@@ -666,11 +635,53 @@ class dmem_region:
     dll.iris_data_mem_update(self.handle, c_host)
   def mem(self):
     return self.mem
+  def release(self):
+    mem_release(self.handle)
+  
+
+class dmem(dmem_base):
+  def __init__(self, *args):
+    super().__init__(True, *args)
+  def get_region_uids(self):
+    n_regions = dll.call_ret(dll.iris_data_mem_n_regions(self.handle), np.int32)
+    output = []
+    for i in range(n_regions):
+      output.append(dll.call_ret(dll.iris_data_mem_get_region_uid, np.uint32, self.handle, np.int32(i)))
+    return output
+
+class dmem_new(dmem_base):
+  def __init__(self, *args):
+    super().__init__(False, *args)
+  def get_region_uids(self):
+    n_regions = dll.call_ret(dll.iris_data_mem_n_regions(self.handle), np.int32)
+    output = []
+    for i in range(n_regions):
+      output.append(dll.call_ret(dll.iris_data_mem_get_region_uid, np.uint32, self.handle, np.int32(i)))
+    return output
+
+class dmem_region(dmem_base):
+  def __init__(self, *args):
+    super().__init__(True, args)
+    self.fetch_dmem()
+  def fetch_dmem(self, handle=None):
+    if handle == None:
+        handle = self.handle
+    dll.iris_get_dmem_for_region.restype = iris_mem
+    mem_obj = dll.iris_get_dmem_for_region(handle)
+    if mem_obj.uid not in mem_handle_2_pobj:
+        pmem = dmem.__new__(dmem)
+        pmem.type = IRIS_DMEM
+        pmem.handle = mem_obj
+        mem_handle_2_pobj[mem_obj.uid] = [pmem]
+    pmem = mem_handle_2_pobj[mem_obj.uid][0]
+    uid = pmem.uid()
+    self.mem = pmem
+  
 class mem:
   def __init__(self, size):
     self.handle = mem_create(size)
     self.type = IRIS_MEM
-    mem_handle_2_pobj[self.handle.uid] = self
+    mem_handle_2_pobj[self.handle.uid] = [self]
   def is_reset(self):
     dll.iris_mem_is_reset.restype = c_int
     return dll.iris_mem_is_reset(self.handle)
@@ -803,12 +814,12 @@ class kernel_arg:
                 pmem = mem.__new__(mem)
                 pmem.type = IRIS_MEM
             pmem.handle = mem_obj
-            mem_handle_2_pobj[mem_obj.uid] = pmem
+            mem_handle_2_pobj[mem_obj.uid] = [pmem]
             if pmem.type == IRIS_DMEM_REGION:
                 pmem.fetch_dmem()
         self.mem = None
         if is_mem:
-            self.mem = mem_handle_2_pobj[mem_obj.uid]
+            self.mem = mem_handle_2_pobj[mem_obj.uid][0]
         self.mem_off = mem_off
         self.mem_size = mem_size
         self.off = off
