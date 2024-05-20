@@ -13,7 +13,9 @@
 #include <string.h>
 #include <unistd.h>
 #include <ctype.h>
+#ifndef ANDROID
 #include <bits/stdc++.h>
+#endif
 #include "rapidjson/rapidjson.h"
 #include "rapidjson/document.h"
 #include "rapidjson/filewritestream.h"

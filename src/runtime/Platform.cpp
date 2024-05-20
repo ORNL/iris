@@ -43,6 +43,8 @@
 #ifdef AUTO_PAR
 #include "AutoDAG.h"
 #endif
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <algorithm>
 #include <fstream>
@@ -310,7 +312,16 @@ void Platform::EnvironmentBoolRead(const char *env_name, bool & flag) {
         flag = false;
 }
 int Platform::EnvironmentInit() {
+#ifdef ANDROID
+  char tmp_dir_str[256];
+  char current_dir[256];
+  getcwd(current_dir, 256);
+  sprintf(tmp_dir_str, "%s/tmp", current_dir);
+  mkdir(tmp_dir_str, 0700);
+  sprintf(tmp_dir_str, "%s/iris-XXXXXX", tmp_dir_str);
+#else
   char tmp_dir_str[] = "/tmp/iris-XXXXXX";
+#endif
   char *tmp_dir = mkdtemp(tmp_dir_str);
   strcpy(tmp_dir_, tmp_dir);
   //printf("Temp directory:%s\n", tmp_dir_);

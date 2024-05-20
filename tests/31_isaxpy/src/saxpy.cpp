@@ -81,7 +81,7 @@ int main(int argc, char** argv) {
   int32_t *cuCycPtr = (int32_t*)&cuCyc;
   for (i = 0; i < MIN(8, SIZE); i++) printf(" %2d", Y[i]);
   printf("]\n");
-#ifdef SNAPDRAGON
+#ifdef ENABLE_HEXAGON
   if (target_dev == iris_dsp) {
       irishxg_init_stub(UNSIGNED_PD, FASTRPC_QOS, LATENCY, DCVS_ENABLE, hap_power_level, use_power_level);
   }
