@@ -89,6 +89,9 @@ DeviceCUDA::DeviceCUDA(LoaderCUDA* ld, LoaderHost2CUDA *host2cuda_ld, CUdevice c
 #endif
   CUresult err = ld_->cuDeviceGetName(name_, sizeof(name_), dev_);
   _cuerror(err);
+  bool usm_flag = iris_read_bool_env("CUDA_USM");
+  can_share_host_memory_ = usm_flag;
+  shared_memory_buffers_ = usm_flag;
   type_ = iris_nvidia;
   model_ = iris_cuda;
   err = ld_->cuDriverGetVersion(&driver_version_);

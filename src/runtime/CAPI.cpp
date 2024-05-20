@@ -856,6 +856,18 @@ void iris_print_matrix_full_int8_t(int8_t *data, int M, int N, const char *descr
     iris::PrintMatrixFull<int8_t>(data, M, N, description);
 }
 
+int iris_read_bool_env(const char *env_name) {
+    bool flag=false;
+    Platform::GetPlatform()->EnvironmentBoolRead(env_name, flag);
+    return (int) flag;
+}
+
+int iris_read_int_env(const char *env_name) {
+    int val=0;
+    Platform::GetPlatform()->EnvironmentIntRead(env_name, val);
+    return val;
+}
+
 void iris_run_hpl_mapping(iris_graph graph)
 {
     int ndevices = 0;

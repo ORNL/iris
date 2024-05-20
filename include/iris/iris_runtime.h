@@ -1803,6 +1803,19 @@ extern void iris_print_matrix_limited_int8_t(int8_t *data, int M, int N, const c
 
 /* Run HPL Mapping algorithm*/
 extern void iris_run_hpl_mapping(iris_graph graph);
+
+/* Read IRIS_* bool environment variable
+ * @param env_name Environment variable
+ * @return This function returns boolean flag
+ */
+extern int iris_read_bool_env(const char *env_name);
+
+/* Read IRIS_* int environment variable
+ * @param env_name Environment variable
+ * @return This function returns int flag
+ */
+extern int iris_read_int_env(const char *env_name);
+
 #ifdef __cplusplus
 } /* end of extern "C" */
 #endif

@@ -1039,6 +1039,10 @@ class task:
         dll.iris_task_get_kernel_name(self.handle)
     def kernel_params(self):
         dll.iris_task_get_kernel_params(self.handle)
+    def release(self):
+        dll.iris_task_release(self.handle)
+    def retain(self):
+        dll.iris_task_retain(self.handle, c_int(True))
     def inputs(self):
         dll.iris_task_get_inputs(self.handle)
     def outputs(self):
@@ -1066,7 +1070,7 @@ class graph:
         d = dll.iris_graph_create_json(c_json_file, cparams, byref(self.handle))
         return d
     def retain(self):
-        dll.iris_graph_retain(self.handle)
+        dll.iris_graph_retain(self.handle, c_int(True))
     def release(self):
         dll.iris_graph_release(self.handle)
     def free(self):
