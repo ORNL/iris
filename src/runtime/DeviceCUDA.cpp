@@ -983,11 +983,11 @@ void DeviceCUDA::RecordEvent(void **event, int stream, int event_creation_flag)
     else
         err = ld_->cuEventRecord(*((CUevent *)event), streams_[stream]);
     _cuerror(err);
-    if (err != CUDA_SUCCESS)
+    if (err != CUDA_SUCCESS) {
         worker_->platform()->IncrementErrorCount();
+        Utils::PrintStackTrace();
+    }
     _event_debug("Recorded dev:[%d]:[%s] event:%p stream:%d err_id:%d", devno(), name(), *event, stream, err);
-    if (err != CUDA_SUCCESS)
-        worker_->platform()->IncrementErrorCount();
 }
 void DeviceCUDA::WaitForEvent(void *event, int stream, int flags)
 {
@@ -996,8 +996,10 @@ void DeviceCUDA::WaitForEvent(void *event, int stream, int flags)
     }
     CUresult err = ld_->cuStreamWaitEvent(streams_[stream], (CUevent)event, flags);
     _cuerror(err);
-    if (err != CUDA_SUCCESS)
+    if (err != CUDA_SUCCESS) {
         worker_->platform()->IncrementErrorCount();
+        Utils::PrintStackTrace();
+    }
 }
 void DeviceCUDA::DestroyEvent(void *event)
 {
@@ -1021,8 +1023,10 @@ void DeviceCUDA::EventSynchronize(void *event)
     }
     CUresult err = ld_->cuEventSynchronize((CUevent) event);
     _cuerror(err);
-    if (err != CUDA_SUCCESS)
+    if (err != CUDA_SUCCESS) {
         worker_->platform()->IncrementErrorCount();
+        Utils::PrintStackTrace();
+    }
 }
 } /* namespace rt */
 } /* namespace iris */
