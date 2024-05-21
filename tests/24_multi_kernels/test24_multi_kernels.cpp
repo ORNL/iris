@@ -14,7 +14,7 @@ int my_kernel_selector(iris_task task, void* params, char* kernel_name) {
   iris::rt::Command* c = t->cmd_kernel();
   iris::rt::Kernel* k = c->kernel();
   size_t ws = c->ws();
-  char* name = k->name();
+  const char* name = k->name();
   printf("[%s:%d] kernel[%s] ws[%lu] threshold[%lu]\n", __FILE__, __LINE__, name, ws, threshold);
   if (d->model() == iris_opencl && ws > threshold) {
     sprintf(kernel_name, "%s_v2", name);
