@@ -104,7 +104,7 @@ void DeviceHIP::EnablePeerAccess()
 int DeviceHIP::Compile(char* src) {
   char cmd[1024];
   memset(cmd, 0, 256);
-  sprintf(cmd, "hipcc --genco %s -o %s", src, kernel_path_);
+  sprintf(cmd, "hipcc --genco %s -o %s", src, kernel_path());
   if (system(cmd) != EXIT_SUCCESS) {
     _error("cmd[%s]", cmd);
     worker_->platform()->IncrementErrorCount();
@@ -163,7 +163,7 @@ int DeviceHIP::Init() {
 
   _info("devid[%d] max_compute_units[%zu] max_work_group_size_[%zu] max_work_item_sizes[%zu,%zu,%zu] max_block_dims[%d,%d,%d] concurrent_kernels[%d]", devid_, max_compute_units_, max_work_group_size_, max_work_item_sizes_[0], max_work_item_sizes_[1], max_work_item_sizes_[2], max_block_dims_[0], max_block_dims_[1], max_block_dims_[2], ck);
 
-  char* path = kernel_path_;
+  char* path = (char *)kernel_path();
   char* src = NULL;
   size_t srclen = 0;
   if (Utils::ReadFile(path, &src, &srclen) == IRIS_ERROR) {

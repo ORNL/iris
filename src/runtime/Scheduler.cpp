@@ -141,7 +141,7 @@ void Scheduler::Submit(Task* task) {
 
 void Scheduler::SubmitTask(Task* task) {
   int brs_policy = task->brs_policy();
-  char* opt = task->opt();
+  const char* opt = task->opt();
   int ndevs = 0;
   int task_affinity = task->get_device_affinity();
   Device* devs[IRIS_MAX_NDEVS];

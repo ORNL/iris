@@ -149,7 +149,7 @@ DeviceCUDA::~DeviceCUDA() {
 int DeviceCUDA::Compile(char* src) {
   char cmd[1024];
   memset(cmd, 0, 256);
-  sprintf(cmd, "nvcc -ptx %s -o %s", src, kernel_path_);
+  sprintf(cmd, "nvcc -ptx %s -o %s", src, kernel_path());
   //printf("Cmd: %s\n", cmd);
   if (system(cmd) != EXIT_SUCCESS) {
     _error("cmd[%s]", cmd);
@@ -243,7 +243,7 @@ int DeviceCUDA::Init() {
   }
   host2cuda_ld_->init(devno());
 
-  char* path = kernel_path_;
+  char* path = (char *)kernel_path();
   char* src = NULL;
   size_t srclen = 0;
   if (Utils::ReadFile(path, &src, &srclen) == IRIS_ERROR) {

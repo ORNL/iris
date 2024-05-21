@@ -47,7 +47,7 @@ Policies::~Policies() {
     delete I->second;
 }
 
-Policy* Policies::GetPolicy(int brs_policy, char* opt) {
+Policy* Policies::GetPolicy(int brs_policy, const char* opt) {
   if (brs_policy &  iris_roundrobin) return policy_roundrobin_;
   if (brs_policy &  iris_cpu    ||
       brs_policy &  iris_nvidia ||

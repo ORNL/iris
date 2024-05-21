@@ -170,8 +170,8 @@ public:
   void ClearMemOutProfile() { out_dataobject_profiles.clear(); }
   vector<DataObjectProfile> & out_mem_profiles() { return out_dataobject_profiles; }
   void set_opt(const char* opt);
-  const char* get_opt(){return opt_;}
-  char* opt() { return opt_; }
+  const char* get_opt(){return opt_.c_str();}
+  const char* opt() { return opt_.c_str(); }
   int brs_policy() { return brs_policy_; }
   int recommended_stream() { return recommended_stream_; }
   void stream_lock() {
@@ -292,7 +292,8 @@ private:
   int recommended_stream_;
   int recommended_dev_;
   int brs_policy_;
-  char opt_[128];
+  //char opt_[128];
+  std::string opt_;
 
   int type_;
   int status_;

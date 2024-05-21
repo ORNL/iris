@@ -218,10 +218,13 @@ int Platform::Init(int* argc, char*** argv, int sync) {
   EnvironmentGet("ARCHS", &archs, NULL);
   _info("IRIS architectures[%s]", archs);
   const char* delim = " :;.,";
+  std::string arch_str = std::string(archs);
+#if 0
   char arch_str[128];
   memset(arch_str, 0, 128);
   strncpy(arch_str, archs, strlen(archs)+1);
-  char* rest = arch_str;
+#endif
+  char* rest = (char *)arch_str.c_str();
   char* a = NULL;
   while ((a = strtok_r(rest, delim, &rest))) {
     if (strcasecmp(a, "cuda") == 0) {
@@ -428,10 +431,13 @@ int Platform::SetDevsAvailable() {
   }
   _info("IRIS ENABLED DEVICES[%s]", enabled);
   const char* delim = " :;.,";
+  std::string str = enabled;
+#if 0
   char str[128];
   memset(str, 0, 128);
   strncpy(str, enabled, strlen(enabled)+1);
-  char* rest = str;
+#endif
+  char* rest = (char *)str.c_str();
   char* a = NULL;
   while ((a = strtok_r(rest, delim, &rest))) {
     devs_enabled_[ndevs_enabled_++] = atoi(a);

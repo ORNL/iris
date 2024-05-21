@@ -36,13 +36,13 @@ DeviceLevelZero::~DeviceLevelZero() {
 int DeviceLevelZero::Compile(char* src) {
   char cmd[1024];
   memset(cmd, 0, 256);
-  sprintf(cmd, "clang -cc1 -finclude-default-header -triple spir %s -flto -emit-llvm-bc -o %s.bc", src, kernel_path_);
+  sprintf(cmd, "clang -cc1 -finclude-default-header -triple spir %s -flto -emit-llvm-bc -o %s.bc", src, kernel_path());
   if (system(cmd) != EXIT_SUCCESS) {
     _error("cmd[%s]", cmd);
     worker_->platform()->IncrementErrorCount();
     return IRIS_ERROR;
   }
-  sprintf(cmd, "llvm-spirv %s.bc -o %s", kernel_path_, kernel_path_);
+  sprintf(cmd, "llvm-spirv %s.bc -o %s", kernel_path(), kernel_path());
   if (system(cmd) != EXIT_SUCCESS) {
     _error("cmd[%s]", cmd);
     worker_->platform()->IncrementErrorCount();
@@ -68,7 +68,7 @@ int DeviceLevelZero::Init() {
   err_ = ld_->zeEventPoolCreate(zectx_, &evtpool_desc, 1, &zedev_, &zeevtpool_);
   _zeerror(err_);
 
-  char* path = kernel_path_;
+  char* path = (char *)kernel_path();
 //  Platform::GetPlatform()->EnvironmentGet("KERNEL_BIN_SPV", &path, NULL);
   uint8_t* src = nullptr;
   size_t srclen = 0;

@@ -219,6 +219,7 @@ public:
   StreamPolicy stream_policy(Task *task);
   StreamPolicy stream_policy() { return stream_policy_; }
   double Now() { return timer_->Now(); }
+  const char *kernel_path() { return kernel_path_.c_str(); }
 private:
   int get_new_stream_queue(int offset=0) {
     int nqs = ((nqueues_-1)-offset);
@@ -260,7 +261,7 @@ protected:
   int current_copy_queue_;
   int n_copy_engines_;
 
-  char kernel_path_[256];
+  std::string kernel_path_;
 
   bool busy_;
   bool enable_;

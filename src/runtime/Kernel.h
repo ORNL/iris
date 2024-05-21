@@ -10,6 +10,7 @@
 #include <map>
 #include <vector>
 #include <memory>
+#include <string>
 
 using namespace std;
 namespace iris {
@@ -47,7 +48,7 @@ public:
   void CreateFFIdata(size_t size) { ffi_data_ = malloc(size); }
   void* GetParamWrapperMemory() { return (void *)param_wrapper_mem_; }
 
-  char* name() { return name_; }
+  const char* name() { return name_.c_str(); }
   void set_profile_data_transfers(bool flag=true) { profile_data_transfers_ = flag; }
   bool is_profile_data_transfers() { return profile_data_transfers_; }
   void AddInDataObjectProfile(DataObjectProfile hist) { in_dataobject_profiles.push_back(hist); }
@@ -105,7 +106,7 @@ public:
 
 private:
   int n_mems_;
-  char name_[256];
+  std::string name_;
   char task_name_[256];
   Task *task_;
   std::map<int, KernelArg*> args_;

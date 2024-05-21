@@ -1279,7 +1279,7 @@ extern void iris_enable_consistency_check();
  * @param brs_kernel kernel object
  * @return This function returns name of the kernel.
  */
-extern char *iris_kernel_get_name(iris_kernel brs_kernel);
+extern const char *iris_kernel_get_name(iris_kernel brs_kernel);
 
 
 
@@ -1290,7 +1290,7 @@ extern char *iris_kernel_get_name(iris_kernel brs_kernel);
  * @param brs_task task object
  * @return This function returns name of the task.
  */
-extern char *iris_task_get_name(iris_task brs_task);
+extern const char *iris_task_get_name(iris_task brs_task);
 
 
 

@@ -309,7 +309,7 @@ void iris_task_set_name(iris_task brs_task, const char *name) {
    task->set_name(name);
 }
 
-char *iris_kernel_get_name(iris_kernel brs_kernel) {
+const char *iris_kernel_get_name(iris_kernel brs_kernel) {
     Kernel *k= Platform::GetPlatform()->get_kernel_object(brs_kernel);
     return k->name();
 }
@@ -320,7 +320,7 @@ int iris_task_disable_consistency(iris_task brs_task) {
     return IRIS_SUCCESS;
 }
 
-char *iris_task_get_name(iris_task brs_task) {
+const char *iris_task_get_name(iris_task brs_task) {
     Task *task = Platform::GetPlatform()->get_task_object(brs_task);
     return const_cast<char*>(task->name());
 }

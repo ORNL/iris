@@ -16,7 +16,7 @@ public:
   Policies(Scheduler* scheduler);
   ~Policies();
 
-  Policy* GetPolicy(int brs_policy, char* opt);
+  Policy* GetPolicy(int brs_policy, const char* opt);
 
   int Register(const char* lib, const char* name, void* params);
 

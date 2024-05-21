@@ -12,12 +12,13 @@ namespace iris {
 namespace rt {
 
 Kernel::Kernel(const char* name, Platform* platform) {
-  size_t len = strlen(name);
-  strncpy(name_, name, len);
+  name_ = string(name);
+  //size_t len = strlen(name);
+  //strncpy(name_, name, len);
   strcpy(task_name_, name);
   task_ = NULL;
   n_mems_ = 0;
-  name_[len] = 0;
+  //name_[len] = 0;
   profile_data_transfers_ = false;
   platform_ = platform;
   Retain();
@@ -43,7 +44,7 @@ Kernel::~Kernel() {
   if (ffi_data_ != NULL) free(ffi_data_); 
   for (std::map<int, KernelArg*>::iterator I = args_.begin(), E = args_.end(); I != E; ++I)
     delete I->second;
-  _trace(" kernel:%lu:%s is destroyed", uid(), name_);
+  _trace(" kernel:%lu:%s is destroyed", uid(), name());
 }
 
 int Kernel::set_order(int *order) {
@@ -186,13 +187,13 @@ KernelArg* Kernel::ExportArgs() {
 int Kernel::isSupported(Device* dev) {
   int devno = dev->devno();
   if (archs_[devno] != NULL) return true;
-  int result = dev->KernelGet(this, archs_ + devno, (const char*) name_, false);
+  int result = dev->KernelGet(this, archs_ + devno, name(), false);
   return (result == IRIS_SUCCESS);
 }
 
 void* Kernel::arch(Device* dev, bool report_error) {
   int devno = dev->devno();
-  if (archs_[devno] == NULL) dev->KernelGet(this, archs_ + devno, (const char*) name_, report_error);
+  if (archs_[devno] == NULL) dev->KernelGet(this, archs_ + devno, name(), report_error);
   return archs_[devno];
 }
 

@@ -40,7 +40,7 @@ Device::Device(int devno, int platform) {
   memset(vendor_, 0, sizeof(vendor_));
   memset(name_, 0, sizeof(name_));
   memset(version_, 0, sizeof(version_));
-  memset(kernel_path_, 0, sizeof(kernel_path_));
+  kernel_path_ = "";
   timer_ = new Timer();
   hook_task_pre_ = NULL;
   hook_task_post_ = NULL;
@@ -544,19 +544,24 @@ void Device::ExecuteInit(Command* cmd) {
       _error("NO KERNEL SRC[%s] NO KERNEL BIN[%s]", src, bin);
       native_kernel_not_exists_ = true;
     } else if (!stat_src && stat_bin) {
-      strncpy(kernel_path_, bin, strlen(bin)+1);
+      kernel_path_ = std::string(bin);
+      //strncpy(kernel_path_, bin, strlen(bin)+1);
     } else if (stat_src && !stat_bin) {
       Platform::GetPlatform()->EnvironmentGet(kernel_bin(), &bin, NULL);
-      sprintf(kernel_path_, "%s/%s-%d", tmpdir, bin, devno_);
+      //sprintf(kernel_path_, "%s/%s-%d", tmpdir, bin, devno_);
+      kernel_path_ = string(tmpdir) + "/" + string(bin) + "-" + std::to_string(devno_);
       errid_ = Compile(src);
     } else {
       long mtime_src = Utils::Mtime(src);
       long mtime_bin = Utils::Mtime(bin);
       if (mtime_src > mtime_bin) {
         Platform::GetPlatform()->EnvironmentGet(kernel_bin(), &bin, NULL);
-        sprintf(kernel_path_, "%s/%s-%d", tmpdir, bin, devno_);
+        kernel_path_ = string(tmpdir) + "/" + string(bin) + "-" + std::to_string(devno_);
+        //sprintf(kernel_path_, "%s/%s-%d", tmpdir, bin, devno_);
         errid_ = Compile(src);
-      } else strncpy(kernel_path_, bin, strlen(bin)+1);
+      } else
+         kernel_path_ = string(bin); 
+          //strncpy(kernel_path_, bin, strlen(bin)+1);
     }
     if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
   }

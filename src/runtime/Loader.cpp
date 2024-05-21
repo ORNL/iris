@@ -97,7 +97,7 @@ bool Loader::IsFunctionExists(const char *kernel_name) {
     return true;
 }
 
-int Loader::SetKernelPtr(void *obj, char *kernel_name)
+int Loader::SetKernelPtr(void *obj, const char *kernel_name)
 {
     if (iris_set_kernel_ptr_with_obj) {
         if (strict_handle_check_ && handle_ == NULL) return IRIS_ERROR;

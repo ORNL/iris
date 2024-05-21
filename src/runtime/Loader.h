@@ -40,7 +40,7 @@ public:
   c_string_array (*iris_get_kernel_names)();
   bool IsFunctionExists(const char *name);
   void *GetFunctionPtr(const char *name);
-  int SetKernelPtr(void *obj, char *kernel_name);
+  int SetKernelPtr(void *obj, const char *kernel_name);
   int LoadExtHandle(const char *libname);
   void *handle() { return handle_; }
   void enable_strict_handle_check() { strict_handle_check_ = true; }
