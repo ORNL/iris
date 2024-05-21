@@ -137,6 +137,7 @@ Task::~Task() {
   pthread_mutex_destroy(&mutex_subtasks_);
   //pthread_cond_destroy(&complete_cond_);
   subtasks_.clear();
+  if (childs_uids_ != NULL) delete [] childs_uids_;
   _trace("released task:%lu:%s released ref_cnt:%d", uid(), name(), ref_cnt());
 }
 bool Task::IsKernelSupported(Device *dev)

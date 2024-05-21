@@ -37,7 +37,10 @@ namespace rt {
                 d2h_events_ = new void *[ndevs_];
                 write_event_ = new void *[ndevs+1];
                 for (int i = 0; i < ndevs_+1; i++) {
-                    device_map_[i].Init(this, i);
+                    if (i == ndevs_)
+                        device_map_[i].Init(this, -1);
+                    else
+                        device_map_[i].Init(this, i);
                     write_event_[i] = NULL;
                 }
                 for (int i = 0; i < ndevs_; i++) {
@@ -51,7 +54,6 @@ namespace rt {
                 }
                 pthread_mutex_init(&host_mutex_, NULL);
                 // Special device map for host
-                device_map_[ndevs_].Init(this, -1);
                 Retain();
                 set_object_track(Platform::GetPlatform()->mem_track_ptr());
                 track()->TrackObject(this, uid());

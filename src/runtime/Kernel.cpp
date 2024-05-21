@@ -40,6 +40,13 @@ Kernel::~Kernel() {
   data_mems_in_.clear();
   data_mems_in_order_.clear();
   data_mem_regions_in_.clear();
+  mem_track_.clear();
+  out_mem_track_.clear();
+  in_mem_track_.clear();
+  data_mems_in_.clear();
+  data_mems_out_.clear();
+  data_mem_regions_in_.clear();
+  data_mem_regions_out_.clear();
   history_ = nullptr;
   if (ffi_data_ != NULL) free(ffi_data_); 
   for (std::map<int, KernelArg*>::iterator I = args_.begin(), E = args_.end(); I != E; ++I)
