@@ -1374,7 +1374,7 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
             if ((mem->GetHostWriteDevice() != src_dev->devno())) {
                 ResolveInputWriteDependency<ASYNC_DEV_INPUT_RESOLVE>(task, mem, async, src_dev);
 
-                if (async && src_dev->is_async(false) && platform_obj_->is_event_profile_enabled()) {
+                if (async && src_async && platform_obj_->is_event_profile_enabled()) {
                     ProfileEvent & prof_event = task->CreateProfileEvent(mem, -1, PROFILE_D2H, src_dev, src_mem_stream);
                     prof_event.RecordStartEvent(); 
                 }
@@ -1382,18 +1382,18 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
                 if (!platform_obj_->is_data_transfers_disabled())
                     errid_ = src_dev->MemD2H(task, mem, ptr_off, 
                             gws, lws, elem_size, dim, size, host, "MemFlushOut ");
-                if (async && src_dev->is_async(false) && platform_obj_->is_event_profile_enabled()) {
+                if (async && src_async && platform_obj_->is_event_profile_enabled()) {
                     ProfileEvent & prof_event = task->LastProfileEvent();
                     prof_event.RecordEndEvent(); 
                 }
-                if (async) mem->HostRecordEvent(src_dev->devno(), src_mem_stream);
+                if (async && src_async) mem->HostRecordEvent(src_dev->devno(), src_mem_stream);
             }
             else {
                 src_mem_stream = mem->GetHostWriteStream();
             }
             if (src_async) mem->HostWriteUnLock(src_dev->devno());
             //TODO: Shouldn't task call back from the source device
-            if (async && src_dev->is_async(false)) {
+            if (async && src_async) {
                 _event_debug("Flush mem:%lu dev:[%d][%s] host recorded src_dev:%d:%s task:%lu:%s and can wait for event:%p mem_stream:%d\n", mem->uid(), devno(), name(), src_dev->devno(), src_dev->name(), task->uid(), task->name(), mem->GetHostCompletionEvent(), src_mem_stream);
 #if 0
                 void *event = NULL;
