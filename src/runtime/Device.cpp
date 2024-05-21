@@ -1144,7 +1144,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
             ResolveInputWriteDependency<ASYNC_SAME_DEVICE_DEPENDENCY>(task, mem, src_async, src_dev);
             d2h_start = timer_->Now();
             src_dev->ResetContext();
-            if (async && platform_obj_->is_event_profile_enabled()) {
+            if (async && src_async && platform_obj_->is_event_profile_enabled()) {
                 ProfileEvent & prof_event = task->CreateProfileEvent(mem, -1, PROFILE_D2HH2D_D2H, src_dev, src_mem_stream);
                 prof_event.RecordStartEvent(); 
             }
@@ -1157,11 +1157,11 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
 
             if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
             d2htime = timer_->Now() - d2h_start;
-            if (async && platform_obj_->is_event_profile_enabled()) {
+            if (async && src_async && platform_obj_->is_event_profile_enabled()) {
                 ProfileEvent & prof_event = task->LastProfileEvent();
                 prof_event.RecordEndEvent(); 
             }
-            if (async) { 
+            if (async && src_async) { 
                 // Source generated data using asynchronous device
                 mem->HostRecordEvent(src_dev->devno(), src_mem_stream);
                 _event_debug("After host write_event:%d stream:%d", mem->GetHostWriteDevice(), mem->GetHostWriteStream());
