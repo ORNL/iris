@@ -21,7 +21,7 @@ namespace rt {
 
 SchedulingHistory::SchedulingHistory(Platform* platform) {
   char* provided_filepath = getenv("IRIS_HISTORY_FILE");
-  std::string provided_filepath_str = string(provided_filepath);
+  std::string provided_filepath_str;
   if (!provided_filepath){
     time_t t = time(NULL);
     char s[64];
@@ -30,6 +30,8 @@ SchedulingHistory::SchedulingHistory(Platform* platform) {
     //sprintf(provided_filepath, "%s-%s-%s.%s", platform->app(), platform->host(), s, ".csv");
     provided_filepath_str = string(platform->app()) + "-" + string(platform->host()) + "-" + string(s) + string(".csv");
   }
+  else 
+    provided_filepath_str = string(provided_filepath);
 
   myfile.open(provided_filepath_str.c_str(), std::ios::out);
   myfile << SCHEDULING_HISTORY_HEADER << std::endl;
