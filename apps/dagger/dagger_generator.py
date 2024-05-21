@@ -61,6 +61,8 @@ def init_parser(parser):
     parser.add_argument("--use-data-memory",required=False,help="Enables the graph to use memory instead of the default explicit memory buffers. This results in final explicit flush events of buffers that are written.",default=False,action='store_true')
     parser.add_argument("--num-memory-shuffles",required=False,type=int,help="Memory shuffles is the number of swaps (positive integer) between memory buffers based on a random task selection and random memory buffer selection.",default=0)
     parser.add_argument("--handover-in-memory-shuffle",required=False,help="Setting this argument to True yields a stricter form of Memory shuffle where each swap ensures the selected memory buffer is of different permissions, this results in the same memory being written to in one kernel then later read from.",default=False,action='store_true')
+    parser.add_argument("--no-deps",required=False,help="Disable explicit task dependencies -> rely on IRIS's data-flow dependency tracking.",default=False,action='store_true')
+    parser.add_argument("--no-flush",required=False,help="Disable explicit data flushing -> rely on IRIS's data-flow dependency tracking.",default=False,action='store_true')
 
 
 def parse_args(pargs=None,additional_arguments=[]):
@@ -77,7 +79,7 @@ def parse_args(pargs=None,additional_arguments=[]):
     else:
         args = parser.parse_args(shlex.split(pargs))
 
-    global _kernels, _k_probs, _depth, _num_tasks, _min_width, _max_width, _mean, _std_dev, _skips, _seed, _sandwich, _concurrent_kernels, _duplicates, _dimensionality, _graph, _memory_object_pool, _use_data_memory, _total_num_concurrent_kernels, _local_sizes, _memory_shuffle_count, _handover
+    global _kernels, _k_probs, _depth, _num_tasks, _min_width, _max_width, _mean, _std_dev, _skips, _seed, _sandwich, _concurrent_kernels, _duplicates, _dimensionality, _graph, _memory_object_pool, _use_data_memory, _total_num_concurrent_kernels, _local_sizes, _memory_shuffle_count, _handover, _no_deps, _no_flush
 
     _graph = args.graph
     _depth = args.depth
@@ -90,6 +92,8 @@ def parse_args(pargs=None,additional_arguments=[]):
     _duplicates = args.duplicates
     _memory_shuffle_count = args.num_memory_shuffles
     _handover = args.handover_in_memory_shuffle
+    _no_deps = args.no_deps
+    _no_flush = args.no_flush
 
     if _duplicates <= 1: _duplicates = 1
     #if _duplicates > 1: print("currently duplicates flag unsupported!\n")
@@ -323,6 +327,7 @@ def create_d2h_task_from_kernel_bag(_kernel_bag,dag):
             commands.append({ "d2h":{ "name":memory_name.replace("devicemem","dmemflush"), "device_memory":memory_name, "data-memory-flush":1 } })
         else:
             commands.append({ "d2h":{ "name":memory_name.replace("devicemem","transferfrom"), "device_memory":memory_name, "host_memory":memory_name.replace("devicemem","hostmem"), "offset":"0", "size":size_bytes_lookup[memory_name] } })
+        if _no_flush: commands.pop()
     #remove the initial_h2d as a dependency
     while('initial_h2d' in depends):
         depends.remove('initial_h2d')
@@ -384,6 +389,7 @@ def generate_attributes(task_dependencies,tasks_per_level):
             selected_tasks_this_level = random.sample(pool, k=len(tasks_this_level))
             for selected_task in selected_tasks_this_level:
                 deps = ["task"+str(d) for d in task_dependencies[current_task_number]]
+                if _no_deps: deps = []
                 task = {"name":"task"+str(current_task_number), "commands":[selected_task], "depends":deps, "target":"user-target-data"}
                 dag.append(task)
                 current_task_number += 1
@@ -396,6 +402,7 @@ def generate_attributes(task_dependencies,tasks_per_level):
                 selected_tasks_this_level = random.sample(_kernel_bag[unique_kernel],k = num_memory_instances)
             for selected_task in selected_tasks_this_level:
                 deps = ["task"+str(d) for d in task_dependencies[current_task_number]]
+                if _no_deps: deps = []
                 task = {"name":"task"+str(current_task_number), "commands":[selected_task], "depends":deps, "target":"user-target-data"}
                 dag.append(task)
                 current_task_number += 1
@@ -761,6 +768,7 @@ def determine_and_append_iris_d2h_transfers(dag):
 
             #add a data-memory flush for each used memory object
             for buffer_name in _memory_object_pool:
+                if _no_flush: continue
                 commands = {}
                 commands["d2h"] = {"name":"dmemflush-{}".format(buffer_name),"device_memory":buffer_name,"data-memory-flush":1}
                 transfer = {}
@@ -776,6 +784,8 @@ def determine_and_append_iris_d2h_transfers(dag):
                     for j,l in enumerate(_kernel_buffs[k]):
                             if l == 'r':
                                 continue
+                            if _no_flush: continue
+
                             buffer_name = "devicemem-{}-buffer{}-instance{}".format(k,j,ck)
                             commands = {}
                             commands["d2h"] = {"name":"d2h-buffer{}-instance{}".format(j,ck),"device_memory":buffer_name,"data-memory-flush":1}
