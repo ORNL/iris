@@ -1019,6 +1019,17 @@ extern int iris_data_mem_init_reset(iris_mem mem, int reset);
  */
 extern int iris_data_mem_create(iris_mem* mem, void *host, size_t size);
 
+/**@brief Cretes IRIS data memory object
+ *
+ * This function creates IRIS data memory object for a given size
+ *
+ * @param mem pointer to the memory object
+ * @param host host pointer of the data structure
+ * @param size size of the memory
+ * @return This function returns a pointer to the IRIS memory object
+ */
+extern iris_mem *iris_data_mem_create_ptr(void *host, size_t size);
+
 
 /**@brief Frees memory for a DMEM object for all the devices
  *
@@ -1057,6 +1068,14 @@ extern int iris_data_mem_update(iris_mem mem, void *host);
  */
 extern int iris_data_mem_create_region(iris_mem* mem, iris_mem root_mem, int region);
 
+/**@brief creates data memory region
+ *
+ * @param root_mem root memory object
+ * @param region index for the region
+ * @return This function returns a pointer to the IRIS memory object
+ */
+extern iris_mem *iris_data_mem_create_region_ptr(iris_mem root_mem, int region);
+
 /**@brief enable decomposition along the outer dimension
  *
  * @param mem memory object
@@ -1076,6 +1095,18 @@ extern int iris_data_mem_enable_outer_dim_regions(iris_mem mem);
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_data_mem_create_tile(iris_mem* mem, void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim);
+
+/**@brief Creates a memory tile from host memory
+ *
+ * @param host host memory pointer
+ * @param off host memory pointer
+ * @param host_size indexes to specify sizes from host memory
+ * @param dev_size indexes to specify sizes from device memory
+ * @param elem_size element size
+ * @param dim dimension
+ * @return This function returns a pointer to the IRIS memory object
+ */
+extern iris_mem *iris_data_mem_create_tile_ptr(void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim);
 extern int iris_data_mem_update_bc(iris_mem mem, bool bc, int row, int col);
 extern int iris_data_mem_get_rr_bc_dev(iris_mem mem);
 

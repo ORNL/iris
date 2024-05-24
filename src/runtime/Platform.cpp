@@ -1632,6 +1632,25 @@ int Platform::DataMemCreate(iris_mem* brs_mem, iris_mem root_mem, int region) {
   return IRIS_SUCCESS;
 }
 
+iris_mem *Platform::DataMemCreate(void *host, size_t size) {
+  DataMem* mem = new DataMem(this, host, size);
+  if (mem->size()==0) return NULL;
+  return mem->struct_obj();
+}
+
+iris_mem *Platform::DataMemCreate(void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim) {
+  DataMem* mem = new DataMem(this, host, off, host_size, dev_size, elem_size, dim);
+  if (mem->size()==0) return NULL;
+  return mem->struct_obj();
+}
+
+iris_mem *Platform::DataMemCreate(iris_mem root_mem, int region) {
+  DataMem *root = (DataMem *) get_mem_object(root_mem);
+  DataMemRegion *mem= root->get_region(region);
+  if (mem->size()==0) return NULL;
+  return mem->struct_obj();
+}
+
 int Platform::DataMemEnableOuterDimRegions(iris_mem brs_mem) {
   DataMem *mem= (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
   mem->EnableOuterDimensionRegions();

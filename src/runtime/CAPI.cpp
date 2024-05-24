@@ -430,6 +430,12 @@ int iris_data_mem_create_tile(iris_mem* mem, void *host, size_t *off, size_t *ho
 int iris_data_mem_create(iris_mem *mem, void *host, size_t size) {
   return Platform::GetPlatform()->DataMemCreate(mem, host, size);
 }
+iris_mem *iris_data_mem_create_ptr(void *host, size_t size) {
+  return Platform::GetPlatform()->DataMemCreate(host, size);
+}
+iris_mem *iris_data_mem_create_tile_ptr(void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim) {
+  return Platform::GetPlatform()->DataMemCreate(host, off, host_size, dev_size, elem_size, dim);
+}
 int iris_data_mem_clear(iris_mem brs_mem) {
   DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
   mem->clear();
@@ -446,6 +452,9 @@ int iris_data_mem_pin(iris_mem mem) {
 }
 int iris_data_mem_create_region(iris_mem *mem, iris_mem root_mem, int region) {
   return Platform::GetPlatform()->DataMemCreate(mem, root_mem, region);
+}
+iris_mem *iris_data_mem_create_region_ptr(iris_mem root_mem, int region) {
+  return Platform::GetPlatform()->DataMemCreate(root_mem, region);
 }
 int iris_data_mem_n_regions(iris_mem brs_mem) {
   DataMem *mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
