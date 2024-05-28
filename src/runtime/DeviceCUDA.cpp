@@ -457,8 +457,8 @@ int DeviceCUDA::MemD2D(Task *task, BaseMem *mem, void *dst, void *src, size_t si
   }
   else {
       //err = ld_->cuMemcpyDtoD(dst_cumem, src_cumem, size);
-      err = ld_->cuMemcpy(dst_cumem, src_cumem, size);
-      //err = ld_->cudaMemcpy((void *)dst_cumem, (void *)src_cumem, size, cudaMemcpyDeviceToDevice);
+      //err = ld_->cuMemcpy(dst_cumem, src_cumem, size);
+      err = ld_->cudaMemcpy((void *)dst_cumem, (void *)src_cumem, size, cudaMemcpyDeviceToDevice);
       _cuerror(err);
       if (err != CUDA_SUCCESS) error_occured = true;
   }
