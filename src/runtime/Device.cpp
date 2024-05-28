@@ -956,7 +956,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         d2d_enabled = true;
         if (Platform::GetPlatform()->is_scheduling_history_enabled()){
             string cmd_name = "Internal-D2D(" + string(cmd->task()->name()) + ")-from-" + to_string(src_dev->devno()) + "-to-" + to_string(this->devno());
-            Platform::GetPlatform()->scheduling_history()->Add(cmd, cmd_name, "MemFlushOut", start,end);
+            Platform::GetPlatform()->scheduling_history()->Add(cmd, cmd_name, "MemD2D", start,end);
         }
         if (parent != NULL && async) {
             void *event = mem->GetCompletionEvent(devno());
@@ -1007,7 +1007,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         o2d_enabled = true;
         if (Platform::GetPlatform()->is_scheduling_history_enabled()){
             string cmd_name = "Internal-O2D(" + string(cmd->task()->name()) + ")-from-" + to_string(src_dev->devno()) + "-to-" + to_string(this->devno());
-            Platform::GetPlatform()->scheduling_history()->Add(cmd, cmd_name, "MemFlushOut", start,end);
+            Platform::GetPlatform()->scheduling_history()->Add(cmd, cmd_name, "MemO2D", start,end);
         }
         if (parent != NULL && async) {
             void *event = mem->GetCompletionEvent(devno());
@@ -1060,7 +1060,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         d2o_enabled = true;
         if (Platform::GetPlatform()->is_scheduling_history_enabled()){
             string cmd_name = "Internal-D2O(" + string(cmd->task()->name()) + ")-from-" + to_string(src_dev->devno()) + "-to-" + to_string(this->devno());
-            Platform::GetPlatform()->scheduling_history()->Add(cmd, cmd_name, "MemFlushOut", start,end);
+            Platform::GetPlatform()->scheduling_history()->Add(cmd, cmd_name, "MemD2O", start,end);
         }
         if (parent != NULL && async) {
             void *event = mem->GetCompletionEvent(devno());
@@ -1097,7 +1097,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         h2d_enabled = true;
         if (Platform::GetPlatform()->is_scheduling_history_enabled()){
             string cmd_name = "Internal-H2D(" + string(cmd->task()->name()) + ")-to-" + to_string(this->devno());
-            Platform::GetPlatform()->scheduling_history()->Add(cmd, cmd_name, "MemFlushOut", start,end);
+            Platform::GetPlatform()->scheduling_history()->Add(cmd, cmd_name, "MemH2D", start,end);
         }
         if (parent != NULL && async) {
             void *event = mem->GetCompletionEvent(devno());
@@ -1206,7 +1206,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         }
         if (Platform::GetPlatform()->is_scheduling_history_enabled()){
             string cmd_name = "Internal-D2H-H2D(" + string(cmd->task()->name()) + ")-from-" + to_string(src_dev->devno()) + "-to-" + to_string(this->devno());
-            Platform::GetPlatform()->scheduling_history()->Add(cmd, cmd_name, "MemFlushOut", d2h_start,end);
+            Platform::GetPlatform()->scheduling_history()->Add(cmd, cmd_name, "MemD2H_H2D", d2h_start,end);
         }
         if (parent != NULL && async) {
             void *event = mem->GetCompletionEvent(devno());
