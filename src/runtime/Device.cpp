@@ -722,15 +722,16 @@ void Device::ExecuteKernel(Command* cmd) {
   }
   //printf("Task:%s time:%f ktime:%f init:%f atime:%f setmemtime:%f\n", task->name(), time, ktime, ltime, atime, set_mem_time);
   cmd->kernel()->history()->AddKernel(cmd, this, time);
-  if (Platform::GetPlatform()->is_scheduling_history_enabled()) Platform::GetPlatform()->scheduling_history()->AddKernel(cmd);
+  if (!async_launch && Platform::GetPlatform()->is_scheduling_history_enabled()) Platform::GetPlatform()->scheduling_history()->AddKernel(cmd);
 }
 
 void Device::ExecuteMalloc(Command* cmd) {
+  bool async_launch = is_async(cmd->task());
   cmd->set_time_start(timer_);
   Mem* mem = cmd->mem();
   void* arch = mem->arch(this);
   cmd->set_time_end(timer_);
-  if (Platform::GetPlatform()->is_scheduling_history_enabled()) Platform::GetPlatform()->scheduling_history()->AddH2D(cmd);
+  if (!async_launch && Platform::GetPlatform()->is_scheduling_history_enabled()) Platform::GetPlatform()->scheduling_history()->AddH2D(cmd);
   _trace("dev[%d] malloc[%p]", devno_, arch);
 }
 
@@ -949,12 +950,12 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         if (async) {
             mem->RecordEvent(devno(), mem_stream, true);
         }
-        if (kernel != NULL && kernel->is_profile_data_transfers()) {
+        if (!async && kernel != NULL && kernel->is_profile_data_transfers()) {
             kernel->AddInDataObjectProfile({(uint32_t) cmd->task()->uid(), (uint32_t) mem->uid(), (uint32_t) iris_dt_d2d, (uint32_t) d2d_dev, (uint32_t) devno_, start, end});
         }
         d2dtime = end - start;
         d2d_enabled = true;
-        if (Platform::GetPlatform()->is_scheduling_history_enabled()){
+        if (!async && Platform::GetPlatform()->is_scheduling_history_enabled()){
             string cmd_name = "Internal-D2D(" + string(cmd->task()->name()) + ")-from-" + to_string(src_dev->devno()) + "-to-" + to_string(this->devno());
             Platform::GetPlatform()->scheduling_history()->Add(cmd, cmd_name, "MemD2D", start,end);
         }
@@ -1001,11 +1002,11 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
             mem->RecordEvent(devno(), mem_stream, true);
         }
         o2dtime = end - start;
-        if (kernel != NULL && kernel->is_profile_data_transfers()) {
+        if (!async && kernel != NULL && kernel->is_profile_data_transfers()) {
             kernel->AddInDataObjectProfile({(uint32_t) cmd->task()->uid(), (uint32_t) mem->uid(), (uint32_t) iris_dt_o2d, (uint32_t) cpu_dev, (uint32_t) devno_, start, end});
         }
         o2d_enabled = true;
-        if (Platform::GetPlatform()->is_scheduling_history_enabled()){
+        if (!async && Platform::GetPlatform()->is_scheduling_history_enabled()){
             string cmd_name = "Internal-O2D(" + string(cmd->task()->name()) + ")-from-" + to_string(src_dev->devno()) + "-to-" + to_string(this->devno());
             Platform::GetPlatform()->scheduling_history()->Add(cmd, cmd_name, "MemO2D", start,end);
         }
@@ -1053,12 +1054,12 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         }
         ResetContext(); //This is must. Otherwise, it may still point to src_dev context
         ResolveOutputWriteDependency<ASYNC_D2O_SYNC>(task, mem, async, src_dev);
-        if (kernel != NULL && kernel->is_profile_data_transfers()) {
+        if (!async && kernel != NULL && kernel->is_profile_data_transfers()) {
             kernel->AddInDataObjectProfile({(uint32_t) cmd->task()->uid(), (uint32_t) mem->uid(), (uint32_t) iris_dt_d2o, (uint32_t) non_cpu_dev, (uint32_t) devno_, start, end});
         }
         d2otime = end - start;
         d2o_enabled = true;
-        if (Platform::GetPlatform()->is_scheduling_history_enabled()){
+        if (!async && Platform::GetPlatform()->is_scheduling_history_enabled()){
             string cmd_name = "Internal-D2O(" + string(cmd->task()->name()) + ")-from-" + to_string(src_dev->devno()) + "-to-" + to_string(this->devno());
             Platform::GetPlatform()->scheduling_history()->Add(cmd, cmd_name, "MemD2O", start,end);
         }
@@ -1090,12 +1091,12 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
 
         ResolveH2DEndEvents(task, mem, async);
 
-        if (kernel != NULL && kernel->is_profile_data_transfers()) {
+        if (!async && kernel != NULL && kernel->is_profile_data_transfers()) {
             kernel->AddInDataObjectProfile({(uint32_t) cmd->task()->uid(), (uint32_t) mem->uid(), (uint32_t) iris_dt_h2d, (uint32_t) -1, (uint32_t) devno_, start, end});
         }
         h2dtime = end - start;
         h2d_enabled = true;
-        if (Platform::GetPlatform()->is_scheduling_history_enabled()){
+        if (!async && Platform::GetPlatform()->is_scheduling_history_enabled()){
             string cmd_name = "Internal-H2D(" + string(cmd->task()->name()) + ")-to-" + to_string(this->devno());
             Platform::GetPlatform()->scheduling_history()->Add(cmd, cmd_name, "MemH2D", start,end);
         }
@@ -1201,10 +1202,10 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
         mem->clear_host_dirty();
         d2h_h2d_enabled = true;
-        if (kernel != NULL && kernel->is_profile_data_transfers()) {
+        if (!async && kernel != NULL && kernel->is_profile_data_transfers()) {
             kernel->AddInDataObjectProfile({(uint32_t) cmd->task()->uid(), (uint32_t) mem->uid(), (uint32_t) iris_dt_d2h_h2d, (uint32_t) select_src_dev, (uint32_t) devno_, d2h_start, end});
         }
-        if (Platform::GetPlatform()->is_scheduling_history_enabled()){
+        if (!async && Platform::GetPlatform()->is_scheduling_history_enabled()){
             string cmd_name = "Internal-D2H-H2D(" + string(cmd->task()->name()) + ")-from-" + to_string(src_dev->devno()) + "-to-" + to_string(this->devno());
             Platform::GetPlatform()->scheduling_history()->Add(cmd, cmd_name, "MemD2H_H2D", d2h_start,end);
         }
@@ -1458,7 +1459,7 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
         if (task->is_profile_data_transfers()) {
             task->AddOutDataObjectProfile({(uint32_t) task->uid(), (uint32_t) mem->uid(), (uint32_t) iris_dt_d2h_h2d, (uint32_t) devno_, (uint32_t) -1, start, end});
         }
-        if (Platform::GetPlatform()->is_scheduling_history_enabled()){
+        if (!async && Platform::GetPlatform()->is_scheduling_history_enabled()){
           //TODO: clean up
           string cmd_name = "Internal-D2H(" + string(cmd->task()->name()) + ")-from-" + to_string(src_dev->devno());// + "-to-" + string(this->name());
           cmd->task()->set_dev(src_dev);
