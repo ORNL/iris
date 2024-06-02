@@ -16,26 +16,25 @@ function saxpy_iris(A::Float32, X::Vector{Float32}, Y::Vector{Float32}, Z::Vecto
     println("Number of devices: ", ndevs[])
 
     # Create IRIS memory objects
-    mem_X = IrisHRT.iris_data_mem_create_struct(reinterpret(Ptr{Cvoid}, pointer(X)), Csize_t(SIZE * sizeof(Float32)))
-    mem_Y = IrisHRT.iris_data_mem_create_struct(reinterpret(Ptr{Cvoid}, pointer(Y)), Csize_t(SIZE * sizeof(Float32)))
-    mem_Z = IrisHRT.iris_data_mem_create_struct(reinterpret(Ptr{Cvoid}, pointer(Z)), Csize_t(SIZE * sizeof(Float32)))
+    mem_X = IrisHRT.iris_data_mem(X)
+    mem_Y = IrisHRT.iris_data_mem(Y)
+    mem_Z = IrisHRT.iris_data_mem(Z)
 
-    # Create IRIS task
-    task0 = IrisHRT.iris_task_create_struct()
-    # Set up the parameters for the kernel
-    saxpy_params = [Ref(mem_Z), A, Ref(mem_X), Ref(mem_Y)]
+    # Set up the task parameters for the kernel
+    saxpy_params      =      [Ref(mem_Z),     A,               Ref(mem_X),     Ref(mem_Y)]
     saxpy_params_info = Int32[IrisHRT.iris_w, sizeof(Float32), IrisHRT.iris_r, IrisHRT.iris_r]
 
-    # Launch the kernel
-    SIZE_ARRAY = UInt64[SIZE]
-    IrisHRT.iris_task_kernel(task0, "saxpy", Int32(1), Ptr{UInt64}(C_NULL), pointer(SIZE_ARRAY), Ptr{UInt64}(C_NULL), Int32(4), reinterpret(Ptr{Ptr{Cvoid}}, pointer(saxpy_params)), pointer(saxpy_params_info))
-
+    # Create IRIS task
+    task0 = IrisHRT.iris_task_spec("saxpy", 1, Int64[], 
+            [SIZE], Int64[], 4, 
+            saxpy_params, 
+            saxpy_params_info)
     # Flush the output
     IrisHRT.iris_task_dmem_flush_out(task0, mem_Z)
 
     # Submit the task
-    TARGET = 0  # Assuming TARGET is defined somewhere
-    IrisHRT.iris_task_submit(task0, Int32(TARGET), Ptr{Int8}(C_NULL), Int32(1))
+    TARGET = IrisHRT.iris_roundrobin # Assuming TARGET is defined somewhere
+    IrisHRT.iris_task_submit(task0, TARGET, Ptr{Int8}(C_NULL), 1)
 
     print(Z)
     # Release memory objects
@@ -81,5 +80,5 @@ saxpy(A, X, Y, Ref_Z)
 saxpy_iris(A, X, Y, Z)
 output = compare_arrays(Z, Ref_Z)
 println("Matchine: ", output)
-println("Z", Z)
-println("Ref_Z", Ref_Z)
+println("Z     :", Z)
+println("Ref_Z :", Ref_Z)

@@ -473,6 +473,13 @@ extern int iris_register_hooks_command(hook_command pre, hook_command post);
  */
 extern int iris_kernel_create(const char* name, iris_kernel* kernel);
 
+/**@brief Creates a kernel with a given name
+ *
+ * @param name kernel name string
+ * @return This function returns an iris_kernel object
+ */
+extern iris_kernel iris_kernel_create_struct(const char* name);
+
 
 /**@brief Creates a kernel with a given name
  *
@@ -524,6 +531,12 @@ extern int iris_kernel_setmem_off(iris_kernel kernel, int idx, iris_mem mem, siz
  */
 extern int iris_kernel_release(iris_kernel kernel);
 
+
+/**@brief Creates a new task.
+ *
+ * @return This function returns an iris_task struct object 
+ */
+extern iris_task iris_task_create_struct();
 
 /**@brief Creates a new task.
  *
@@ -921,7 +934,7 @@ extern int iris_task_wait_all(int ntasks, iris_task* tasks);
  * @param subtask the subtask that is going to be added
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
-extern int iris_task_add_subtask(iris_task task, iris_task subtask);
+//extern int iris_task_add_subtask(iris_task task, iris_task subtask);
 
 
 /**@brief Retruns whether a task only has kernel command
@@ -1007,6 +1020,16 @@ extern int iris_mem_create(size_t size, iris_mem* mem);
  */
 extern int iris_data_mem_init_reset(iris_mem mem, int reset);
 
+
+/**@brief Cretes IRIS data memory object
+ *
+ * This function creates IRIS data memory object for a given size
+ *
+ * @param host host pointer of the data structure
+ * @param size size of the memory
+ * @return This function returns an iris_mem dmem object
+ */
+extern iris_mem iris_data_mem_create_struct(void *host, size_t size);
 
 /**@brief Cretes IRIS data memory object
  *
@@ -1104,6 +1127,18 @@ extern int iris_data_mem_create_tile(iris_mem* mem, void *host, size_t *off, siz
  * @param dev_size indexes to specify sizes from device memory
  * @param elem_size element size
  * @param dim dimension
+ * @return This function returns a iris_mem object
+ */
+extern iris_mem iris_data_mem_create_tile_struct(void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim);
+
+/**@brief Creates a memory tile from host memory
+ *
+ * @param host host memory pointer
+ * @param off host memory pointer
+ * @param host_size indexes to specify sizes from host memory
+ * @param dev_size indexes to specify sizes from device memory
+ * @param elem_size element size
+ * @param dim dimension
  * @return This function returns a pointer to the IRIS memory object
  */
 extern iris_mem *iris_data_mem_create_tile_ptr(void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim);
@@ -1126,7 +1161,7 @@ extern unsigned long iris_data_mem_get_region_uid(iris_mem brs_mem, int region);
 extern int iris_mem_arch(iris_mem mem, int device, void** arch);
 
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
-extern int iris_mem_reduce(iris_mem mem, int mode, int type);
+//extern int iris_mem_reduce(iris_mem mem, int mode, int type);
 #endif
 
 /**@brief releases memory object
