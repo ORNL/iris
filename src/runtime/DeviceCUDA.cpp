@@ -451,17 +451,17 @@ int DeviceCUDA::MemD2D(Task *task, BaseMem *mem, void *dst, void *src, size_t si
       //err = ld_->cuMemcpyAsync((void *)dst_cumem, (void *)src_cumem, size, cudaMemcpyDeviceToDevice, streams_[stream_index]);
       err = ld_->cuMemcpyDtoDAsync(dst_cumem, src_cumem, size, streams_[stream_index]);
       //err = ld_->cudaMemcpyAsync((void *)dst_cumem, (void *)src_cumem, size, cudaMemcpyDeviceToDevice, streams_[stream_index]);
-      printf("cuMemcpyAsync:%p\n", ld_->cuMemcpyAsync);
-      printf("cuMemcpyDtoDAsync:%p\n", ld_->cuMemcpyDtoDAsync);
+      //printf("cuMemcpyAsync:%p\n", ld_->cuMemcpyAsync);
+      //printf("cuMemcpyDtoDAsync:%p\n", ld_->cuMemcpyDtoDAsync);
       //err = ld_->cudaMemcpyAsync((void *)dst_cumem, (void *)src_cumem, size, cudaMemcpyDeviceToDevice, streams_[stream_index]);
       _cuerror(err);
       if (err != CUDA_SUCCESS) error_occured = true;
   }
   else {
-      printf("cuMemcpyAsync:%p\n", ld_->cuMemcpyAsync);
-      printf("cuMemcpyDtoDAsync:%p\n", ld_->cuMemcpyDtoDAsync);
-      printf("cuMemcpy:%p\n", ld_->cuMemcpy);
-      printf("cuMemcpyDtoD:%p\n", ld_->cuMemcpyDtoD);
+      //printf("cuMemcpyAsync:%p\n", ld_->cuMemcpyAsync);
+      //printf("cuMemcpyDtoDAsync:%p\n", ld_->cuMemcpyDtoDAsync);
+      //printf("cuMemcpy:%p\n", ld_->cuMemcpy);
+      //printf("cuMemcpyDtoD:%p\n", ld_->cuMemcpyDtoD);
       //err = ld_->cuMemcpyDtoD(dst_cumem, src_cumem, size);
       //err = ld_->cuMemcpy(dst_cumem, src_cumem, size);
       err = ld_->cuMemcpyDtoD(dst_cumem, src_cumem, size);
