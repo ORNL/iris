@@ -33,8 +33,7 @@ function saxpy_iris(A::Float32, X::Vector{Float32}, Y::Vector{Float32}, Z::Vecto
     IrisHRT.iris_task_dmem_flush_out(task0, mem_Z)
 
     # Submit the task
-    TARGET = IrisHRT.iris_roundrobin # Assuming TARGET is defined somewhere
-    IrisHRT.iris_task_submit(task0, TARGET, Ptr{Int8}(C_NULL), 1)
+    IrisHRT.iris_task_submit(task0, IrisHRT.iris_roundrobin, Ptr{Int8}(C_NULL), 1)
 
     print(Z)
     # Release memory objects
