@@ -35,7 +35,6 @@ function saxpy_iris(A::Float32, X::Vector{Float32}, Y::Vector{Float32}, Z::Vecto
     # Submit the task
     IrisHRT.iris_task_submit(task0, IrisHRT.iris_roundrobin, Ptr{Int8}(C_NULL), 1)
 
-    print(Z)
     # Release memory objects
     IrisHRT.iris_mem_release(mem_X)
     IrisHRT.iris_mem_release(mem_Y)
