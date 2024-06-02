@@ -136,6 +136,12 @@ int iris_register_policy(const char* lib, const char* name, void* params) {
   return Platform::GetPlatform()->PolicyRegister(lib, name, params);
 }
 
+iris_task iris_task_create_struct() {
+  iris_task task;
+  Platform::GetPlatform()->TaskCreate(NULL, false, &task);
+  return task;
+}
+
 int iris_task_create(iris_task* task) {
   return Platform::GetPlatform()->TaskCreate(NULL, false, task);
 }
@@ -433,8 +439,18 @@ int iris_data_mem_create(iris_mem *mem, void *host, size_t size) {
 iris_mem *iris_data_mem_create_ptr(void *host, size_t size) {
   return Platform::GetPlatform()->DataMemCreate(host, size);
 }
+iris_mem iris_data_mem_create_struct(void *host, size_t size) {
+  iris_mem mem;
+  Platform::GetPlatform()->DataMemCreate(&mem, host, size);
+  return mem;
+}
 iris_mem *iris_data_mem_create_tile_ptr(void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim) {
   return Platform::GetPlatform()->DataMemCreate(host, off, host_size, dev_size, elem_size, dim);
+}
+iris_mem iris_data_mem_create_tile_struct(void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim) {
+  iris_mem mem;
+  Platform::GetPlatform()->DataMemCreate(&mem, host, off, host_size, dev_size, elem_size, dim);
+  return mem;
 }
 int iris_data_mem_clear(iris_mem brs_mem) {
   DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
@@ -503,6 +519,12 @@ int iris_register_hooks_command(hook_command pre, hook_command post) {
 
 int iris_kernel_create(const char* name, iris_kernel* kernel) {
   return Platform::GetPlatform()->KernelCreate(name, kernel);
+}
+
+iris_kernel iris_kernel_create_struct(const char* name) {
+  iris_kernel kernel;
+  Platform::GetPlatform()->KernelCreate(name, &kernel);
+  return kernel;
 }
 
 int iris_kernel_get(const char* name, iris_kernel* kernel) {

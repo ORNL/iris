@@ -175,7 +175,7 @@ void DeviceCUDA::SetPeerDevices(int *peers, int count)
 }
 void DeviceCUDA::EnablePeerAccess()
 {
-#if 0
+#if 1
     // It has some performance issues
     for(int i=0; i<peers_count_; i++) {
         CUdevice target_dev = peers_[i];
@@ -188,7 +188,7 @@ void DeviceCUDA::EnablePeerAccess()
         int can_access = peer_access_[i];
         if (can_access) {
             printf("Can access dev:%d -> %d = %d\n", dev_, target_dev, can_access);
-            //err = ld_->cuDeviceEnablePeerAccess(target_dev, 0);
+            //err = ld_->cudaDeviceEnablePeerAccess(target_dev, 0);
             //_cuerror(err);
         }
         else {
@@ -448,17 +448,24 @@ int DeviceCUDA::MemD2D(Task *task, BaseMem *mem, void *dst, void *src, size_t si
           _event_debug("Dev:[%d][%s] This is not valid device pointer:%p mem:%lu", devno_, name_, (void *)src_cumem, mem->uid());
       }
 #endif
-      err = ld_->cuMemcpyAsync(dst_cumem, src_cumem, size, streams_[stream_index]);
-      //printf("cuMemcpyAsync:%p\n", ld_->cuMemcpyAsync);
-      //printf("cuMemcpyDtoDAsync:%p\n", ld_->cuMemcpyDtoDAsync);
+      //err = ld_->cuMemcpyAsync((void *)dst_cumem, (void *)src_cumem, size, cudaMemcpyDeviceToDevice, streams_[stream_index]);
+      err = ld_->cuMemcpyDtoDAsync(dst_cumem, src_cumem, size, streams_[stream_index]);
+      //err = ld_->cudaMemcpyAsync((void *)dst_cumem, (void *)src_cumem, size, cudaMemcpyDeviceToDevice, streams_[stream_index]);
+      printf("cuMemcpyAsync:%p\n", ld_->cuMemcpyAsync);
+      printf("cuMemcpyDtoDAsync:%p\n", ld_->cuMemcpyDtoDAsync);
       //err = ld_->cudaMemcpyAsync((void *)dst_cumem, (void *)src_cumem, size, cudaMemcpyDeviceToDevice, streams_[stream_index]);
       _cuerror(err);
       if (err != CUDA_SUCCESS) error_occured = true;
   }
   else {
+      printf("cuMemcpyAsync:%p\n", ld_->cuMemcpyAsync);
+      printf("cuMemcpyDtoDAsync:%p\n", ld_->cuMemcpyDtoDAsync);
+      printf("cuMemcpy:%p\n", ld_->cuMemcpy);
+      printf("cuMemcpyDtoD:%p\n", ld_->cuMemcpyDtoD);
       //err = ld_->cuMemcpyDtoD(dst_cumem, src_cumem, size);
       //err = ld_->cuMemcpy(dst_cumem, src_cumem, size);
-      err = ld_->cudaMemcpy((void *)dst_cumem, (void *)src_cumem, size, cudaMemcpyDeviceToDevice);
+      err = ld_->cuMemcpyDtoD(dst_cumem, src_cumem, size);
+      //err = ld_->cudaMemcpy((void *)dst_cumem, (void *)src_cumem, size, cudaMemcpyDeviceToDevice);
       _cuerror(err);
       if (err != CUDA_SUCCESS) error_occured = true;
   }

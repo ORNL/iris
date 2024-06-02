@@ -32,6 +32,7 @@ SchedulingHistory::SchedulingHistory(Platform* platform) {
   }
   else 
     provided_filepath_str = string(provided_filepath);
+  printf("Schedule history path:%s\n", provided_filepath_str.c_str());
 
   myfile.open(provided_filepath_str.c_str(), std::ios::out);
   myfile << SCHEDULING_HISTORY_HEADER << std::endl;
