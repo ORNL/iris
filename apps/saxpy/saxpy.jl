@@ -1,60 +1,85 @@
 
-iris_jl_path=ENV["IRIS"] * "/include/iris/Iris.jl"
-include(iris_jl_path)
-using .Iris
+const iris_path = ENV["IRIS"]
+const iris_jl = iris_path * "/include/iris/IrisHRT.jl"
+include(iris_jl)
+using .IrisHRT
 
-function saxpy_iris(X::Vector{Float32}, Y::Vector{Float32}, Z::Vector{Float32})
+function saxpy_iris(A::Float32, X::Vector{Float32}, Y::Vector{Float32}, Z::Vector{Float32})
     SIZE = length(X)
 
+    IrisHRT.iris_init(Int32(1))
+
     # Initialize IRIS
-    iris_init(1, Ref(Ptr{Ptr{Cchar}}(C_NULL)), 1)
+    ndevs = IrisHRT.iris_ndevices()
 
     # Retrieve the number of devices
-    ndevs = Ref{Cint}()
-    iris_device_count(ndevs)
     println("Number of devices: ", ndevs[])
 
     # Create IRIS memory objects
-    mem_X = Ref{iris_mem}()
-    mem_Y = Ref{iris_mem}()
-    mem_Z = Ref{iris_mem}()
-
-    iris_data_mem_create(mem_X, pointer(X), SIZE * sizeof(Float32))
-    iris_data_mem_create(mem_Y, pointer(Y), SIZE * sizeof(Float32))
-    iris_data_mem_create(mem_Z, pointer(Z), SIZE * sizeof(Float32))
+    mem_X = IrisHRT.iris_data_mem_create_struct(reinterpret(Ptr{Cvoid}, pointer(X)), Csize_t(SIZE * sizeof(Float32)))
+    mem_Y = IrisHRT.iris_data_mem_create_struct(reinterpret(Ptr{Cvoid}, pointer(Y)), Csize_t(SIZE * sizeof(Float32)))
+    mem_Z = IrisHRT.iris_data_mem_create_struct(reinterpret(Ptr{Cvoid}, pointer(Z)), Csize_t(SIZE * sizeof(Float32)))
 
     # Create IRIS task
-    task0 = Ref{iris_task}()
-    iris_task_create(task0)
-
+    task0 = IrisHRT.iris_task_create_struct()
     # Set up the parameters for the kernel
-    A = 2.0f0  # Assuming A is a constant defined somewhere
-    saxpy_params = [mem_Z[], A, mem_X[], mem_Y[]]
-    saxpy_params_info = [iris_w, sizeof(Float32), iris_r, iris_r]
+    saxpy_params = [Ref(mem_Z), A, Ref(mem_X), Ref(mem_Y)]
+    saxpy_params_info = Int32[IrisHRT.iris_w, sizeof(Float32), IrisHRT.iris_r, IrisHRT.iris_r]
 
     # Launch the kernel
-    iris_task_kernel(task0[], "saxpy", 1, C_NULL, Ref(SIZE), C_NULL, 4, saxpy_params, saxpy_params_info)
+    SIZE_ARRAY = UInt64[SIZE]
+    IrisHRT.iris_task_kernel(task0, "saxpy", Int32(1), Ptr{UInt64}(C_NULL), pointer(SIZE_ARRAY), Ptr{UInt64}(C_NULL), Int32(4), reinterpret(Ptr{Ptr{Cvoid}}, pointer(saxpy_params)), pointer(saxpy_params_info))
 
     # Flush the output
-    iris_task_dmem_flush_out(task0[], mem_Z[])
+    IrisHRT.iris_task_dmem_flush_out(task0, mem_Z)
 
     # Submit the task
     TARGET = 0  # Assuming TARGET is defined somewhere
-    iris_task_submit(task0[], TARGET, C_NULL, 1)
+    IrisHRT.iris_task_submit(task0, Int32(TARGET), Ptr{Int8}(C_NULL), Int32(1))
 
+    print(Z)
     # Release memory objects
-    iris_mem_release(mem_X[])
-    iris_mem_release(mem_Y[])
-    iris_mem_release(mem_Z[])
+    IrisHRT.iris_mem_release(mem_X)
+    IrisHRT.iris_mem_release(mem_Y)
+    IrisHRT.iris_mem_release(mem_Z)
 
     # Finalize IRIS
-    iris_finalize()
+    IrisHRT.iris_finalize()
+end
+
+function saxpy(A::Float32, X::Vector{Float32}, Y::Vector{Float32}, Z::Vector{Float32})
+    # Check that X and Y have the same length
+    @assert length(X) == length(Y) "Vectors X and Y must have the same length"
+
+    # Perform the SAXPY operation
+    for i in 1:length(X)
+        Z[i] += A * X[i] + Y[i]
+    end
+end
+
+function compare_arrays(X::Vector{Float32}, Y::Vector{Float32})::Bool
+    SIZE = length(X)
+    # Check that SIZE does not exceed the length of X and Y
+    @assert SIZE <= length(X) && SIZE <= length(Y) "SIZE must not exceed the length of vectors X and Y"
+
+    for i in 1:SIZE
+        if X[i] != Y[i]
+            return false
+        end
+    end
+    return true
 end
 
 # Example usage
-SIZE = 1000
+SIZE = 10
+A = Float32(2.0f0)  # Assuming A is a constant defined somewhere
 X = rand(Float32, SIZE)
 Y = rand(Float32, SIZE)
 Z = zeros(Float32, SIZE)
-
-saxpy_iris(X, Y, Z)
+Ref_Z = zeros(Float32, SIZE)
+saxpy(A, X, Y, Ref_Z)
+saxpy_iris(A, X, Y, Z)
+output = compare_arrays(Z, Ref_Z)
+println("Matchine: ", output)
+println("Z", Z)
+println("Ref_Z", Ref_Z)
