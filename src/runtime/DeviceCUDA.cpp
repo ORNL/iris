@@ -176,6 +176,8 @@ void DeviceCUDA::SetPeerDevices(int *peers, int count)
 void DeviceCUDA::EnablePeerAccess()
 {
 #if 1
+    CUresult err;
+    int offset_dev = devno_ - dev_;
     // It has some performance issues
     for(int i=0; i<peers_count_; i++) {
         CUdevice target_dev = peers_[i];
@@ -183,13 +185,18 @@ void DeviceCUDA::EnablePeerAccess()
             peer_access_[i] = 1;
             continue;
         }
-        CUresult err = ld_->cuDeviceCanAccessPeer(&peer_access_[i], dev_, target_dev);
+        err = ld_->cuDeviceCanAccessPeer(&peer_access_[i], dev_, target_dev);
         _cuerror(err);
         int can_access = peer_access_[i];
         if (can_access) {
-            printf("Can access dev:%d -> %d = %d\n", dev_, target_dev, can_access);
+            DeviceCUDA *target = (DeviceCUDA *)platform_obj_->device(offset_dev + target_dev);
+            CUcontext target_ctx = target->ctx_;
+            //printf("Can access dev:%d(%d) -> %d(%d) = %d api:%p api1:%p\n", dev_, dev_+offset_dev, target_dev, target_dev+offset_dev, can_access, ld_->cudaDeviceEnablePeerAccess, ld_->cuCtxEnablePeerAccess);
+            err = ld_->cuCtxSetCurrent(ctx_);
+            _cuerror(err);
+            err = ld_->cuCtxEnablePeerAccess(target_ctx, 0);
             //err = ld_->cudaDeviceEnablePeerAccess(target_dev, 0);
-            //_cuerror(err);
+            _cuerror(err);
         }
         else {
             printf("Can not access dev:%d -> %d = %d\n", dev_, target_dev, can_access);
@@ -199,7 +206,8 @@ void DeviceCUDA::EnablePeerAccess()
 #endif
 }
 int DeviceCUDA::Init() {
-  CUresult err = ld_->cudaSetDevice(dev_);
+  CUresult err;
+  err = ld_->cudaSetDevice(dev_);
   _cuerror(err);
   err = ld_->cuInit(0);
   _cuerror(err);
@@ -207,7 +215,7 @@ int DeviceCUDA::Init() {
   _cuerror(err);
   //err = ld_->cuCtxEnablePeerAccess(ctx_, 0);
   //_cuerror(err);
-  EnablePeerAccess();
+  //EnablePeerAccess();
   _cuerror(err);
 #ifndef TRACE_DISABLE
   CUcontext ctx;
@@ -412,6 +420,8 @@ int DeviceCUDA::MemD2D(Task *task, BaseMem *mem, void *dst, void *src, size_t si
   }
   bool error_occured = false;
   CUresult err = CUDA_SUCCESS;
+  _cuerror(err);
+  err = ld_->cuCtxSetCurrent(ctx_);
   int stream_index = 0;
   bool async = false;
   if (is_async(task)) {
@@ -449,11 +459,10 @@ int DeviceCUDA::MemD2D(Task *task, BaseMem *mem, void *dst, void *src, size_t si
       }
 #endif
       //err = ld_->cuMemcpyAsync((void *)dst_cumem, (void *)src_cumem, size, cudaMemcpyDeviceToDevice, streams_[stream_index]);
-      err = ld_->cuMemcpyDtoDAsync(dst_cumem, src_cumem, size, streams_[stream_index]);
-      //err = ld_->cudaMemcpyAsync((void *)dst_cumem, (void *)src_cumem, size, cudaMemcpyDeviceToDevice, streams_[stream_index]);
+      //err = ld_->cuMemcpyDtoDAsync(dst_cumem, src_cumem, size, streams_[stream_index]);
+      err = ld_->cudaMemcpyAsync((void *)dst_cumem, (void *)src_cumem, size, cudaMemcpyDeviceToDevice, streams_[stream_index]);
       //printf("cuMemcpyAsync:%p\n", ld_->cuMemcpyAsync);
       //printf("cuMemcpyDtoDAsync:%p\n", ld_->cuMemcpyDtoDAsync);
-      //err = ld_->cudaMemcpyAsync((void *)dst_cumem, (void *)src_cumem, size, cudaMemcpyDeviceToDevice, streams_[stream_index]);
       _cuerror(err);
       if (err != CUDA_SUCCESS) error_occured = true;
   }
@@ -461,11 +470,10 @@ int DeviceCUDA::MemD2D(Task *task, BaseMem *mem, void *dst, void *src, size_t si
       //printf("cuMemcpyAsync:%p\n", ld_->cuMemcpyAsync);
       //printf("cuMemcpyDtoDAsync:%p\n", ld_->cuMemcpyDtoDAsync);
       //printf("cuMemcpy:%p\n", ld_->cuMemcpy);
-      //printf("cuMemcpyDtoD:%p\n", ld_->cuMemcpyDtoD);
+      //err = ld_->cuCtxSetCurrent(ctx_);
+      //_cuerror(err);
       //err = ld_->cuMemcpyDtoD(dst_cumem, src_cumem, size);
-      //err = ld_->cuMemcpy(dst_cumem, src_cumem, size);
-      err = ld_->cuMemcpyDtoD(dst_cumem, src_cumem, size);
-      //err = ld_->cudaMemcpy((void *)dst_cumem, (void *)src_cumem, size, cudaMemcpyDeviceToDevice);
+      err = ld_->cudaMemcpy((void *)dst_cumem, (void *)src_cumem, size, cudaMemcpyDeviceToDevice);
       _cuerror(err);
       if (err != CUDA_SUCCESS) error_occured = true;
   }

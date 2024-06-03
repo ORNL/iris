@@ -502,15 +502,18 @@ int Platform::InitCUDA() {
   for(int i=0; i<mdevs; i++) {
       DeviceCUDA *idev = (DeviceCUDA *)devs_[ndevs_-mdevs+i];
       idev->SetPeerDevices(cudevs, mdevs);
-      /*
+  }
+#if 0
+  for(int i=0; i<mdevs; i++) {
       for(int j=0; j<mdevs; j++) {
           if (i != j) {
               //printf("i:%d j:%d ii:%d jj:%d\n",i,j,ndevs_-mdevs+i,ndevs_-mdevs+j);
               DeviceCUDA *jdev = (DeviceCUDA *)devs_[ndevs_-mdevs+j];
               idev->EnablePeerAccess(jdev->cudev());
           }
-      }*/
+      }
   }
+#endif
   delete [] cudevs;
   if (ndevs) {
     strcpy(platform_names_[nplatforms_], "CUDA");
@@ -816,6 +819,9 @@ int Platform::InitDevices(bool sync) {
   //}
   delete[] tasks;
   Synchronize();
+  for(int i=0; i<ndevs_; i++) {
+    devs_[i]->EnablePeerAccess();
+  }
   return IRIS_SUCCESS;
 }
 

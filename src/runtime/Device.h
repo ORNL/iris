@@ -94,6 +94,7 @@ public:
   virtual void DestroyEvent(void *event);
   virtual void DestroyEvent(BaseMem *mem, void *event);
   virtual void EventSynchronize(void *event);
+  virtual void EnablePeerAccess() { }
   void ProactiveTransfers(Task *task, Command *cmd);
   void WaitForTaskInputAvailability(int devno, Task *task, Command *cmd);
   template <typename DMemType>

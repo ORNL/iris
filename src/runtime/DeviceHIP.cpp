@@ -88,15 +88,23 @@ void DeviceHIP::SetPeerDevices(int *peers, int count)
 void DeviceHIP::EnablePeerAccess()
 {
     hipError_t err;
+    int offset_dev = devno_ - dev_;
     for(int i=0; i<peers_count_; i++) {
         hipDevice_t target_dev = peers_[i];
         if (target_dev == dev_) continue;
+        err = ld_->hipCtxSetCurrent(ctx_);
+        _hiperror(err);
         err = ld_->hipDeviceCanAccessPeer(&peer_access_[i], dev_, target_dev);
         _hiperror(err);
         int can_access=peer_access_[i];
         if (can_access) {
+            DeviceHIP *target = (DeviceHIP *)platform_obj_->device(offset_dev + target_dev);
+            hipCtx_t target_ctx = target->ctx_;
             //printf("Can access dev:%d -> %d = %d\n", dev_, target_dev, can_access);
-            err = ld_->hipDeviceEnablePeerAccess(target_dev, 0);
+            err = ld_->hipCtxSetCurrent(ctx_);
+            _hiperror(err);
+            //err = ld_->hipDeviceEnablePeerAccess(target_dev, 0);
+            err = ld_->hipCtxEnablePeerAccess(target_ctx, 0);
             _hiperror(err);
         }
     }
@@ -120,7 +128,7 @@ int DeviceHIP::Init() {
   err = ld_->hipInit(0);
   _hiperror(err);
   err = ld_->hipCtxCreate(&ctx_, hipDeviceScheduleAuto, ordinal_);
-  EnablePeerAccess();
+  //EnablePeerAccess();
   _hiperror(err);
   if (is_async(false)) {
       for (int i = 0; i < nqueues_; i++) {
