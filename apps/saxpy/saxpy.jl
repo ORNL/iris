@@ -7,13 +7,8 @@ using .IrisHRT
 function saxpy_iris(A::Float32, X::Vector{Float32}, Y::Vector{Float32}, Z::Vector{Float32})
     SIZE = length(X)
 
-    IrisHRT.iris_init(Int32(1))
-
     # Initialize IRIS
-    ndevs = IrisHRT.iris_ndevices()
-
-    # Retrieve the number of devices
-    println("Number of devices: ", ndevs[])
+    IrisHRT.iris_init(Int32(1))
 
     # Create IRIS memory objects
     mem_X = IrisHRT.iris_data_mem(X)
@@ -26,12 +21,9 @@ function saxpy_iris(A::Float32, X::Vector{Float32}, Y::Vector{Float32}, Z::Vecto
 
     # Create IRIS task
     task0 = IrisHRT.iris_task_spec("saxpy", 1, Int64[], 
-            [SIZE], Int64[], 4, 
-            saxpy_params, 
-            saxpy_params_info)
+            [SIZE], Int64[], 4, saxpy_params, saxpy_params_info)
     # Flush the output
     IrisHRT.iris_task_dmem_flush_out(task0, mem_Z)
-
     # Submit the task
     IrisHRT.iris_task_submit(task0, IrisHRT.iris_roundrobin, Ptr{Int8}(C_NULL), 1)
 
@@ -77,6 +69,6 @@ Ref_Z = zeros(Float32, SIZE)
 saxpy(A, X, Y, Ref_Z)
 saxpy_iris(A, X, Y, Z)
 output = compare_arrays(Z, Ref_Z)
-println("Matchine: ", output)
+println("Output Matching: ", output)
 println("Z     :", Z)
 println("Ref_Z :", Ref_Z)
