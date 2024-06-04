@@ -503,7 +503,7 @@ static int iris_kernel_idx = -1;
  * Author : Narasinga Rao Miniskar
  * Date   : Jun 16 2022
  * Contact for bug : miniskarnr@ornl.gov
- *
+ * File: app.h
  */
     """]
     k_sig_lines += [ "#pragma once"]
@@ -1312,10 +1312,11 @@ int {c_func_name}({params_decl_str})
         iris_mem_flush_stmts = flush_cmds_str
         task_api_call_args_str = ",\n       ".join(task_api_call_args)
         lines.append(f"""
-#pragma once
 #ifdef __cplusplus
+// Only C++ template APIs
 #ifndef {unique_macro_str}
 #define {unique_macro_str}
+#ifndef IRIS_API_DEFINITION
 template <typename {param_map_dtype}>
 int {func_name}({params_templ_decl_irismem_str})
 {{
@@ -1326,8 +1327,24 @@ int {func_name}({params_templ_decl_template_str})
 {{
     return IRIS_SUCCESS;
 }}
+#else // IRIS_API_DEFINITION
+template <typename {param_map_dtype}>
+int {func_name}({params_templ_decl_irismem_str})
+{{
+    return IRIS_SUCCESS;
+}}
+template <typename {param_map_dtype}>
+int {func_name}({params_templ_decl_template_str})
+{{
+    return IRIS_SUCCESS;
+}}
+#endif // IRIS_API_DEFINITION
 #endif // {unique_macro_str}
+#endif // __cplusplus
+
 #ifndef IRIS_API_DEFINITION
+
+// C / C++ APIs
 #ifdef __cplusplus
 extern "C" {{
 #endif //__cplusplus
@@ -1336,23 +1353,18 @@ int {c_core_api_name}({params_decl_str});
 #ifdef __cplusplus
 }}
 #endif //__cplusplus
+
+// C++ only APIs (function overloading)
 #ifdef __cplusplus
 int {cpp_api_name}({params_decl_irismem_str});
 int {cpp_api_name}({params_decl_str});
-template <>
-int {func_name}<{param_map_src_dtype}>({params_decl_irismem_str})
-{{
-    {cpp_api_name}({c_task_args_str});
-    return IRIS_SUCCESS;
-}}
-template <>
-int {func_name}<{param_map_src_dtype}>({params_decl_str})
-{{
-    {cpp_api_name}({c_core_args_str});
-    return IRIS_SUCCESS;
-}}
-#endif
+extern template int {func_name}<{param_map_src_dtype}>({params_decl_irismem_str});
+extern template int {func_name}<{param_map_src_dtype}>({params_decl_str});
+#endif // __cplusplus
+
 #else //IRIS_API_DEFINITION               
+
+// C / C++ APIs definition
 #ifdef __cplusplus
 extern "C" {{
 #endif //__cplusplus
@@ -1368,12 +1380,6 @@ int {c_task_api_name}({params_decl_irismem_str})
     iris_params_map(task, __task_params_device_map);
     return IRIS_SUCCESS;
 }}
-#ifdef __cplusplus
-}}
-#endif //__cplusplus
-#ifdef __cplusplus
-extern "C" {{
-#endif //__cplusplus
 int {c_core_api_name}({params_decl_str})
 {{
     iris_task task;
@@ -1388,6 +1394,9 @@ int {c_core_api_name}({params_decl_str})
 #ifdef __cplusplus
 }}
 #endif //__cplusplus
+
+// C++ only APIs (function overloading) definition
+#ifdef __cplusplus
 int {cpp_api_name}({params_decl_irismem_str})
 {{
     {c_task_api_name}({c_task_args_str});
@@ -1410,7 +1419,7 @@ int {func_name}<{param_map_src_dtype}>({params_decl_str})
     {cpp_api_name}({c_core_args_str});
     return IRIS_SUCCESS;
 }}
-#endif // __cplusplus
+#endif //__cplusplus
 #endif // IRIS_API_DEFINITION
                 """)
     def insert_code(data_hash, key, lines):
@@ -1462,7 +1471,6 @@ int {func_name}("""
                 insert_code(cu_type_lines, f_details[0], lines)
             elif f_param == 'TILED_CODE_GEN':
                 lines = []
-                lines.append("#pragma once")
                 generate_tiled_code(cpp_api_name, lines, v, data_details_hash, f_details, cpp_task_template)
                 insert_code(cu_type_lines, "tiled", lines)
             elif f_param == 'CPP_TASK_TEMPLATE':
@@ -1471,15 +1479,17 @@ int {func_name}("""
                 insert_code(cu_type_lines, "cpp_task_template", lines)
     def write_kernel_to_file(cu_types, filename):
         all_lines = []
-        lines = [ """
+        lines = [ f"""
 /**
 * Author : Narasinga Rao Miniskar
 * Date   : Jun 16 2022
 * Contact for bug : miniskarnr@ornl.gov
-*
+* File: {filename}
 */
         """]
         all_lines += lines
+        if re.search(r'\.h$', filename):
+            all_lines.append("#pragma once")
         for cu_type in cu_types:
             if cu_type in cu_type_lines and len(cu_type_lines[cu_type])>0:
                 print(f"Writing {cu_type} kernels to file: {filename}")
