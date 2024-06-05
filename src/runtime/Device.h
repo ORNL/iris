@@ -95,6 +95,7 @@ public:
   virtual void DestroyEvent(BaseMem *mem, void *event);
   virtual void EventSynchronize(void *event);
   virtual void EnablePeerAccess() { }
+  virtual bool IsD2DPossible(Device *target) { return true; }
   void ProactiveTransfers(Task *task, Command *cmd);
   void WaitForTaskInputAvailability(int devno, Task *task, Command *cmd);
   template <typename DMemType>

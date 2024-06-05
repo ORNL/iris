@@ -13,10 +13,97 @@
 #include "Timer.h"
 #include "Worker.h"
 #include "Utils.h"
+#include <array>
+#include <vector>
+#include <stdexcept>
+#include <regex>
+#include <sstream>
+#include <unordered_map>
 
 namespace iris {
 namespace rt {
 
+class NvidiaTopology {
+    public:
+        struct NVLinkConnection {
+            int gpu1;
+            int gpu2;
+            std::string linkType;
+        };
+    private:
+        std::vector<NVLinkConnection> connections_;
+    public:
+        std::vector<NVLinkConnection> connections() { return connections_; }
+        NvidiaTopology() {
+            std::string topoOutput;
+            try {
+                topoOutput = exec("nvidia-smi topo -m");
+            } catch (const std::exception& e) {
+                std::cerr << "Error executing nvidia-smi command: " << e.what() << std::endl;
+            }
+            parseNVLinkConnections(topoOutput);
+        }
+        std::string exec(const char* cmd) {
+            std::array<char, 128> buffer;
+            std::string result;
+            std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd, "r"), pclose);
+            if (!pipe) {
+                throw std::runtime_error("popen() failed!");
+            }
+            while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+                result += buffer.data();
+            }
+            return result;
+        }
+        void parseNVLinkConnections(std::string topoOutput) {
+            std::istringstream stream(topoOutput);
+            std::string line;
+            std::vector<std::string> headers;
+            std::unordered_map<int, std::unordered_map<int, std::string>> topology;
+            bool first  = true;
+            while (std::getline(stream, line)) {
+                line = std::regex_replace(line, std::regex("^.*GPU0"), "GPU0");
+                std::istringstream linestream(line);
+                std::string token;
+                std::vector<std::string> tokens;
+                while (linestream >> token) {
+                    tokens.push_back(token);
+                }
+
+                if (tokens.empty()) {
+                    continue;
+                }
+                std::string first_token = tokens[0].c_str();
+                //std::cout << " Line: "<<line<<std::endl;
+                if (first && (first_token.compare("GPU0")==0)) {
+                    for(std::string tok : tokens) 
+                        headers.push_back(tok);
+                    first = false;
+                } else if (tokens[0].rfind("GPU", 0) == 0) {
+                    int gpu1 = std::stoi(tokens[0].substr(3));
+                    for (size_t i = 1; i < tokens.size(); ++i) {
+                        if (tokens[i].rfind("NV", 0) == 0) {
+                            //std::cout <<"GPU"<< i-1 <<" " << tokens[i] << std::endl;
+                            int gpu2 = std::stoi(headers[i-1].substr(3));
+                            topology[gpu1][gpu2] = tokens[i];
+                        }
+                    }
+                }
+            }
+
+            for (const auto& entry1 : topology) {
+                for (const auto& entry2 : entry1.second) {
+                    connections_.push_back({entry1.first, entry2.first, entry2.second});
+                }
+            }
+#if 0
+            std::cout << "NVLink Connections:" << std::endl;
+            for (const auto& conn : connections_) {
+                std::cout << "GPU " << conn.gpu1 << " <--> GPU " << conn.gpu2 << ": " << conn.linkType << std::endl;
+            }
+#endif
+        }
+};
 void testMemcpy(LoaderCUDA *ld)
 {
   int M = 60;
@@ -171,7 +258,7 @@ void DeviceCUDA::SetPeerDevices(int *peers, int count)
     std::copy(peers, peers+count, peers_);
     peers_count_ = count;
     peer_access_ = new int[peers_count_];
-    memset(peer_access_, 0, peers_count_);
+    memset(peer_access_, 0, sizeof(int)*peers_count_);
 }
 void DeviceCUDA::EnablePeerAccess()
 {
@@ -179,12 +266,21 @@ void DeviceCUDA::EnablePeerAccess()
     CUresult err;
     int offset_dev = devno_ - dev_;
     // It has some performance issues
+    static NvidiaTopology topo;
+    for (const auto& conn : topo.connections()) {
+        if (conn.gpu1 == dev_) 
+            peer_access_[conn.gpu2] = 1;
+        if (conn.gpu2 == dev_) 
+            peer_access_[conn.gpu1] = 1;
+    }
     for(int i=0; i<peers_count_; i++) {
         CUdevice target_dev = peers_[i];
         if (target_dev == dev_) {
             peer_access_[i] = 1;
             continue;
         }
+        // TODO: NVLink based D2D check is not enabled
+        //if (peer_access_[i] != 1) continue;
         err = ld_->cuDeviceCanAccessPeer(&peer_access_[i], dev_, target_dev);
         _cuerror(err);
         int can_access = peer_access_[i];
@@ -199,11 +295,16 @@ void DeviceCUDA::EnablePeerAccess()
             _cuerror(err);
         }
         else {
-            printf("Can not access dev:%d -> %d = %d\n", dev_, target_dev, can_access);
-
+            //printf("Can not access dev:%d -> %d = %d\n", dev_, target_dev, can_access);
         }
     }
 #endif
+}
+bool DeviceCUDA::IsD2DPossible(Device *target)
+{
+  if (peer_access_ == NULL) return true;
+  if (peer_access_[((DeviceCUDA *)target)->dev_]) return true;
+  return false;
 }
 int DeviceCUDA::Init() {
   CUresult err;

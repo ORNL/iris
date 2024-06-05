@@ -78,12 +78,18 @@ bool DeviceHIP::IsAddrValidForD2D(BaseMem *mem, void *ptr)
     if (err == hipSuccess) return true;
     return false;
 }
+bool DeviceHIP::IsD2DPossible(Device *target)
+{
+  if (peer_access_ == NULL) return true;
+  if (peer_access_[((DeviceHIP *)target)->dev_]) return true;
+  return false;
+}
 void DeviceHIP::SetPeerDevices(int *peers, int count)
 {
     std::copy(peers, peers+count, peers_);
     peers_count_ = count;
     peer_access_ = new int[peers_count_];
-    memset(peer_access_, 0, peers_count_);
+    memset(peer_access_, 0, sizeof(int)*peers_count_);
 }
 void DeviceHIP::EnablePeerAccess()
 {

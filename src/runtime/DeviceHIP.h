@@ -21,6 +21,7 @@ public:
   void RegisterPin(void *host, size_t size);
   void set_can_share_host_memory_flag(bool flag);
   void *GetSharedMemPtr(void* mem, size_t size);
+  bool IsD2DPossible(Device *target);
   int MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset);
   int MemFree(BaseMem *mem, void* mem_addr);
   int MemD2D(Task *task, BaseMem *mem, void *dst, void *src, size_t size);
