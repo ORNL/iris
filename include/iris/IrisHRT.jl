@@ -1,4 +1,10 @@
-# iris.jl
+#####################################################
+#   Author: Narasinga Rao Miniskar
+#   Date: 06/06/2024
+#   File: IrisHRT.jl
+#   Contact: miniskarnr@ornl.gov
+#   Comment: IRIS Julia interface
+#####################################################
 module IrisHRT
     using Libdl
     const libiris = "libiris.so"

@@ -1,3 +1,10 @@
+#####################################################
+#   Author: Narasinga Rao Miniskar
+#   Date: 06/06/2024
+#   File: setup.py
+#   Contact: miniskarnr@ornl.gov
+#   Comment: Files for python pip package
+#####################################################
 import os
 import sys
 import subprocess
