@@ -533,32 +533,6 @@ int DeviceCUDA::MemD2D(Task *task, BaseMem *mem, void *dst, void *src, size_t si
   _event_debug("D2D dev[%d][%s] task[%ld:%s] mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] size[%lu] q[%d] async:%d", devno_, name_, task->uid(), task->name(), mem->uid(), dst, src, size, stream_index, async);
   if (async) {
       ASSERT(stream_index >= 0);
-      //ld_->cuCtxSetCurrent(ctx_);
-      //err = ld_->cuMemcpyDtoDAsync(dst_cumem, src_cumem, size, streams_[stream_index]);
-#if 0
-      CUmemorytype memType;
-      err = ld_->cuPointerGetAttribute(&memType, CU_POINTER_ATTRIBUTE_MEMORY_TYPE, dst_cumem);
-      _cuerror(err);
-      if (memType == CU_MEMORYTYPE_DEVICE) {
-          _event_debug("Dev:[%d][%s] This is valid device pointer:%p mem:%lu", devno_, name_, (void *)dst_cumem, mem->uid());
-      }
-      else {
-          _event_debug("Dev:[%d][%s] This is not valid device pointer:%p mem:%lu", devno_, name_, (void *)dst_cumem, mem->uid());
-      }
-      int data;
-      err = ld_->cuPointerGetAttribute(&data, CU_POINTER_ATTRIBUTE_DEVICE_POINTER, dst_cumem);
-      _cuerror(err);
-      err = ld_->cuPointerGetAttribute(&data, CU_POINTER_ATTRIBUTE_DEVICE_POINTER, src_cumem);
-      _cuerror(err);
-      err = ld_->cuPointerGetAttribute(&memType, CU_POINTER_ATTRIBUTE_MEMORY_TYPE, src_cumem);
-      _cuerror(err);
-      if (memType == CU_MEMORYTYPE_DEVICE) {
-          _event_debug("Dev:[%d][%s] This is valid device pointer:%p mem:%lu", devno_, name_, (void *)src_cumem, mem->uid());
-      }
-      else {
-          _event_debug("Dev:[%d][%s] This is not valid device pointer:%p mem:%lu", devno_, name_, (void *)src_cumem, mem->uid());
-      }
-#endif
       //err = ld_->cuMemcpyAsync((void *)dst_cumem, (void *)src_cumem, size, cudaMemcpyDeviceToDevice, streams_[stream_index]);
       //err = ld_->cuMemcpyDtoDAsync(dst_cumem, src_cumem, size, streams_[stream_index]);
       err = ld_->cudaMemcpyAsync((void *)dst_cumem, (void *)src_cumem, size, cudaMemcpyDeviceToDevice, streams_[stream_index]);
