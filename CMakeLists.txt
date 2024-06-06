@@ -34,6 +34,8 @@ endif() # USE_RISCV
 
 add_subdirectory(include)
 add_subdirectory(src)
+#set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/utils DESTINATION ${CMAKE_INSTALL_PREFIX}/.)
 
 add_custom_command(
