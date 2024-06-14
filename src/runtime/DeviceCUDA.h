@@ -32,7 +32,7 @@ public:
           size_t *dev_sizes, size_t *host_sizes, 
           size_t elem_size, bool host_2_dev);
   bool IsAddrValidForD2D(BaseMem *mem, void *ptr);
-  int MemD2D(Task *task, BaseMem *mem, void *dst, void *src, size_t size);
+  int MemD2D(Task *task, Device *src_dev, BaseMem *mem, void *dst, void *src, size_t size);
   int MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag="");
   int MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag="");
   int KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bool report_error=true);

@@ -745,6 +745,7 @@ void Device::GetPossibleDevices(BaseMem *mem, int devno, int *nddevs, int &d2d_d
         if (d2d_dev == -1 && type() == target_dev->type() &&
                 isD2DEnabled() && target_dev->isD2DEnabled() && IsD2DPossible(target_dev)) {
             if (async && platform_obj_->is_malloc_async() && IsAddrValidForD2D(mem, mem->get_arch(target_dev->devno())))
+            //if (async && platform_obj_->is_malloc_async())
                 d2d_dev = nddevs[i];
             else if (!async || !platform_obj_->is_malloc_async())
                 d2d_dev = nddevs[i];
@@ -865,7 +866,6 @@ void Device::WaitForTaskInputAvailability(int devno, Task *task, Command *cmd)
             WaitForEvent(event, task_stream, iris_event_wait_default);
             _event_prof_debug(" WaitForEvent task:%s:%lu mem:%lu Waiting for event:%p to be fired devno:%d task_stream:%d waiting for dmem_stream:%d\n", task->name(), task->uid(), dmem->uid(), event, devno, task_stream, dmem_stream);
         }
-
     }
 }
 template <typename DMemType>
@@ -940,7 +940,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         _event_debug("D2D: src:%d dest:%d src_arch:%p dst_arch:%p mem_stream:%d\n\n", src_dev->devno(), this->devno(), src_arch, dst_arch, mem_stream);
         // Now do D2D
         if (!platform_obj_->is_data_transfers_disabled())
-            MemD2D(task, mem, dst_arch, src_arch, mem->size());
+            MemD2D(task, src_dev, mem, dst_arch, src_arch, mem->size());
         double end = timer_->Now();
         // If device is not asynchronous, you don't need to record event in CUDA/HIP device
         if (async && platform_obj_->is_event_profile_enabled()) {
@@ -1604,7 +1604,7 @@ void Device::ExecuteD2D(Command* cmd, Device *dev) {
         // Invoke D2D
         void* dst_arch = mem->arch(this);
         void* src_arch = mem->arch(src_dev);
-        MemD2D(cmd->task(), mem, dst_arch, src_arch, mem->size());
+        MemD2D(cmd->task(), src_dev, mem, dst_arch, src_arch, mem->size());
     }
     else {
         void* host = mem->host_inter(); // It should work even if host_ptr is null

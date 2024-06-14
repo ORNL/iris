@@ -307,7 +307,7 @@ void DeviceHIP::ResetContext()
     //_trace("Resetting Context Switch: %p %p", ctx, ctx_);
     ld_->hipCtxSetCurrent(ctx_);
 }
-int DeviceHIP::MemD2D(Task *task, BaseMem *mem, void *dst, void *src, size_t size) {
+int DeviceHIP::MemD2D(Task *task, Device *src_dev, BaseMem *mem, void *dst, void *src, size_t size) {
   if (mem->is_usm(devno()) || (dst == src) ) return IRIS_SUCCESS;
   atleast_one_command_ = true;
   if (IsContextChangeRequired()) {

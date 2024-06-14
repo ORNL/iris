@@ -249,7 +249,10 @@ bool DeviceCUDA::IsAddrValidForD2D(BaseMem *mem, void *ptr)
 {
     int data;
     if (ptr == NULL) return true;
-    CUresult err = ld_->cuPointerGetAttribute(&data, CU_POINTER_ATTRIBUTE_DEVICE_POINTER, (CUdeviceptr) ptr);
+    CUresult err;
+    err = ld_->cuCtxSetCurrent(ctx_);
+    _cuerror(err);
+    err = ld_->cuPointerGetAttribute(&data, CU_POINTER_ATTRIBUTE_DEVICE_POINTER, (CUdeviceptr) ptr);
     if (err == CUDA_SUCCESS) return true;
     return false;
 }
@@ -436,6 +439,7 @@ int DeviceCUDA::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset)
   _cuerror(err);
   _event_debug("CUDA MemAlloc dev:%d:%s mem:%lu size:%zu ptr:%p async:%d stream:%d\n", devno_, name_, mem->uid(), size, (void *)*cumem, async, stream);
   if (reset)  {
+      //printf("Resetting memory\n");
       if (platform_obj_->is_malloc_async() && async && stream >=0) 
           ld_->cudaMemsetAsync((void *)(*cumem), 0, size, streams_[stream]);
       else
@@ -510,7 +514,7 @@ void DeviceCUDA::MemCpy3D(CUdeviceptr dev, uint8_t *host, size_t *off,
         }
     }
 }
-int DeviceCUDA::MemD2D(Task *task, BaseMem *mem, void *dst, void *src, size_t size) {
+int DeviceCUDA::MemD2D(Task *task, Device *src_dev, BaseMem *mem, void *dst, void *src, size_t size) {
   if (mem->is_usm(devno()) || (dst == src) ) return IRIS_SUCCESS;
   CUdeviceptr src_cumem = (CUdeviceptr) src;
   CUdeviceptr dst_cumem = (CUdeviceptr) dst;
@@ -535,7 +539,11 @@ int DeviceCUDA::MemD2D(Task *task, BaseMem *mem, void *dst, void *src, size_t si
       ASSERT(stream_index >= 0);
       //err = ld_->cuMemcpyAsync((void *)dst_cumem, (void *)src_cumem, size, cudaMemcpyDeviceToDevice, streams_[stream_index]);
       //err = ld_->cuMemcpyDtoDAsync(dst_cumem, src_cumem, size, streams_[stream_index]);
+#if 1
       err = ld_->cudaMemcpyAsync((void *)dst_cumem, (void *)src_cumem, size, cudaMemcpyDeviceToDevice, streams_[stream_index]);
+#else
+      err = ld_->cuMemcpyPeerAsync(dst_cumem, ctx_, src_cumem, ((DeviceCUDA *)src_dev)->ctx_, size, streams_[stream_index]);
+#endif
       //printf("cuMemcpyAsync:%p\n", ld_->cuMemcpyAsync);
       //printf("cuMemcpyDtoDAsync:%p\n", ld_->cuMemcpyDtoDAsync);
       _cuerror(err);
@@ -549,6 +557,7 @@ int DeviceCUDA::MemD2D(Task *task, BaseMem *mem, void *dst, void *src, size_t si
       //_cuerror(err);
       //err = ld_->cuMemcpyDtoD(dst_cumem, src_cumem, size);
       err = ld_->cudaMemcpy((void *)dst_cumem, (void *)src_cumem, size, cudaMemcpyDeviceToDevice);
+      //err = ld_->cuMemcpyPeer(dst_cumem, ctx_, src_cumem, ((DeviceCUDA *)src_dev)->ctx_, size);
       _cuerror(err);
       if (err != CUDA_SUCCESS) error_occured = true;
   }
@@ -604,11 +613,26 @@ int DeviceCUDA::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
            if (err != CUDA_SUCCESS) error_occured = true;
        }
        else {
+#if 0
+           // Set up the 2D copy parameters
+           CUDA_MEMCPY2D copyParams = {0};
+           copyParams.srcMemoryType = CU_MEMORYTYPE_HOST;
+           copyParams.srcHost = host_start;
+           copyParams.srcPitch = host_row_pitch; 
+           copyParams.dstMemoryType = CU_MEMORYTYPE_DEVICE;
+           copyParams.dstDevice = cumem;
+           copyParams.dstPitch = dev_sizes[0]*elem_size;
+           copyParams.WidthInBytes = dev_sizes[0]*elem_size; 
+           copyParams.Height = dev_sizes[1];
+           err = ld_->cuCtxSetCurrent(ctx_);
            //err = ld_->cuMemFreeAsync(0, streams_[stream_index]);
            //_cuerror(err);
+           err = cuMemcpy2DAsync(&copyParams, streams_[stream_index]);
+#else
            err = ld_->cudaMemcpy2DAsync((void *)cumem, dev_sizes[0]*elem_size, host_start, 
                    host_row_pitch, dev_sizes[0]*elem_size, dev_sizes[1], 
                    cudaMemcpyHostToDevice, streams_[stream_index]);
+#endif
            _cuerror(err);
            if (err != CUDA_SUCCESS) error_occured = true;
        }
@@ -711,9 +735,26 @@ int DeviceCUDA::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
     size_t host_row_pitch = elem_size * host_sizes[0];
     void *host_start = (uint8_t *)host + off[0]*elem_size + off[1] * host_row_pitch;
     if (!async) {
+#if 0
+        // Set up the 2D copy parameters
+        CUDA_MEMCPY2D copyParams = {0};
+        copyParams.srcMemoryType = CU_MEMORYTYPE_DEVICE;
+        copyParams.srcDevice = cumem;
+        copyParams.srcPitch = dev_sizes[0]*elem_size;
+        copyParams.dstMemoryType = CU_MEMORYTYPE_HOST;
+        copyParams.dstHost = host_start;
+        copyParams.dstPitch = host_row_pitch;
+        copyParams.WidthInBytes = dev_sizes[0]*elem_size; 
+        copyParams.Height = dev_sizes[1];
+        err = ld_->cuCtxSetCurrent(ctx_);
+        //err = ld_->cuMemFreeAsync(0, streams_[stream_index]);
+        //_cuerror(err);
+        err = cuMemcpy2DAsync(&copyParams, streams_[stream_index]);
+#else
         err = ld_->cudaMemcpy2D((void *)host_start, host_sizes[0]*elem_size, (void*)cumem, 
                 dev_sizes[0]*elem_size, dev_sizes[0]*elem_size, dev_sizes[1], 
                 cudaMemcpyDeviceToHost);
+#endif
         _cuerror(err);
         if (err != CUDA_SUCCESS) error_occured = true;
     }
