@@ -146,6 +146,12 @@ int iris_task_create(iris_task* task) {
   return Platform::GetPlatform()->TaskCreate(NULL, false, task);
 }
 
+int iris_task_enable_julia_interface(iris_task brs_task) {
+  Task *task = Platform::GetPlatform()->get_task_object(brs_task);
+  task->set_enable_julia_if();
+  return IRIS_SUCCESS;
+}
+
 int iris_task_create_perm(iris_task* task) {
   return Platform::GetPlatform()->TaskCreate(NULL, true, task);
 }
@@ -469,6 +475,11 @@ int iris_data_mem_pin(iris_mem mem) {
 int iris_data_mem_create_region(iris_mem *mem, iris_mem root_mem, int region) {
   return Platform::GetPlatform()->DataMemCreate(mem, root_mem, region);
 }
+iris_mem iris_data_mem_create_region_struct(iris_mem root_mem, int region) {
+  iris_mem mem;
+  Platform::GetPlatform()->DataMemCreate(&mem, root_mem, region);
+  return mem;
+}
 iris_mem *iris_data_mem_create_region_ptr(iris_mem root_mem, int region) {
   return Platform::GetPlatform()->DataMemCreate(root_mem, region);
 }
@@ -499,6 +510,12 @@ iris_mem iris_get_dmem_for_region(iris_mem brs_mem) {
 
 int iris_mem_arch(iris_mem mem, int device, void** arch) {
   return Platform::GetPlatform()->MemArch(mem, device, arch);
+}
+
+void *iris_mem_arch_ptr(iris_mem mem, int device) {
+  void* arch;
+  Platform::GetPlatform()->MemArch(mem, device, &arch);
+  return arch;
 }
 
 int iris_mem_release(iris_mem mem) {
@@ -974,4 +991,18 @@ void iris_run_hpl_mapping(iris_graph graph)
             //printf("Task %s r:%d c:%d dev:%d\n", name, r, c, id);
         }
     }
+}
+julia_kernel_t julia_kernel__ = NULL;
+int iris_julia_init(void *julia_launch_func)
+{
+    julia_kernel__ = (julia_kernel_t) julia_launch_func;
+    int32_t target = 12; 
+    int32_t devno=0;
+    int32_t result = julia_kernel__(target, devno);
+    printf("Result %d\n", result);
+    return IRIS_SUCCESS;
+}
+julia_kernel_t iris_get_julia_launch_func() 
+{
+    return julia_kernel__;
 }

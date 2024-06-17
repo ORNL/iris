@@ -5,10 +5,32 @@
 #   Contact: miniskarnr@ornl.gov
 #   Comment: IRIS Julia interface
 #####################################################
+#import Pkg
+#import Pkg.add("CUDA")
+#import Pkg.add("AMDGPU")
 module IrisHRT
+    using Requires
+    const cuda_available = try
+        using CUDA
+        true
+    catch 
+        false
+    end
+    const hip_available = try
+        using AMDGPU
+        AMDGPU.has_rocm_gpu()
+    catch
+        false
+    end
     using Libdl
-    const libiris = "libiris.so"
+    libiris = ENV["IRIS"] * "/lib/" * "libiris.so"
+    if !isfile(libiris)
+        libiris = "libiris.so"
+    end
     # Load the shared library
+    if !haskey(ENV, "IRIS_ARCHS")
+        ENV["IRIS_ARCHS"] = "cuda:hip:openmp"
+    end
     lib = Libdl.dlopen(libiris)
 
     # Define enums
@@ -97,9 +119,80 @@ module IrisHRT
     const HookCommand = Ptr{Cvoid}
     const IrisSelectorKernel = Ptr{Cvoid}
 
+    export kernel_julia_wrapper, iris_init
+    export kernel_julia_wrapper1
+
+    function kernel_julia_wrapper1(target::Cint, devno::Cint)::Cint
+        println("Reached julia wrapper1111")
+        println("Reached julia wrapper target", target)
+        println("Reached julia wrapper target", devno)
+        return 0
+    end
+
+    function kernel_julia_wrapper(target::Cint, devno::Cint, stream_index::Cint, stream::Ptr{Ptr{Cvoid}}, nstreams::Cint, args::Ptr{Cint}, values::Ptr{Ptr{Cvoid}}, nparams::Cint, threads::Ptr{Csize_t}, blocks::Ptr{Csize_t}, dim::Cint, kernel_name::Ptr{Cchar})::Cint
+        println("Reached julia wrapper")
+        if target == iris_cuda
+            println("Reached julia wrapper target")
+            call_cuda_kernel(kernel_name, threads, blocks, args)
+        end
+    end
+
     # Bind functions from the IRIS library using ccall
     function iris_init(sync::Int32)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_init), Int32, (Ref{Int32}, Ref{Ptr{Ptr{Cchar}}}, Int32), Int32(1), C_NULL, sync)
+        #func_ptr1 = @cfunction(kernel_julia_wrapper, Cint, 
+        #        (Cint, Cint, Cint, Ptr{Ptr{Cvoid}}, Cint, 
+        #         Ptr{Cint}, Ptr{Ptr{Cvoid}}, Cint, 
+        #         Ptr{Csize_t}, Ptr{Csize_t}, Cint, Ptr{Cchar}))
+        func_ptr = @cfunction(kernel_julia_wrapper1, Cint, (Cint, Cint))
+        global stored_func_ptr = func_ptr
+        flag = ccall(Libdl.dlsym(lib, :iris_julia_init), Int32, (Ptr{Cvoid},), func_ptr)
+        flag = flag & ccall(Libdl.dlsym(lib, :iris_init), Int32, (Ref{Int32}, Ref{Ptr{Ptr{Cchar}}}, Int32), Int32(1), C_NULL, sync)
+        return flag
+    end
+
+    # Call Julia kernel 
+    function call_julia_kernel(target::DeviceModel, func_name::String, threads::Any, blocks::Any, args::Any)
+        if target == iris_cuda
+            call_cuda_kernel(func_name, threads, blocks, args)
+        end
+        if target == iris_hip
+            call_hip_kernel(func_name, threads, blocks, args)
+        end
+    end
+
+    # CUDA kernel wrapper
+    function call_cuda_kernel(func_name::String, threads::Any, blocks::Any, args::Any)
+        if !cuda_available
+            error("CUDA device not available.")
+        end
+
+        func_name_target = func_name * "_cuda"
+        # Initialize CUDA
+        CUDA.allowscalar(false)  # Disable scalar operations on the GPU
+        func = getfield(Main, Symbol(func_name_target))
+        # Convert the array of arguments to a tuple
+        args_tuple = Tuple(args)
+        # Call the function with arguments
+        #@cuda threads=threads blocks=blocks add_kernel(a,b,c,N)
+        @cuda threads=threads blocks=blocks func(args_tuple...)
+    end
+
+    # HIP kernel wrapper
+    function call_hip_kernel(func_name::String, threads::Any, blocks::Any, args::Any)
+        if !hip_available
+            error("HIP device not available.")
+        end
+
+        func_name_target = func_name * "_hip"
+        # Initialize CUDA
+        #AMDGPU.allowscalar(false)  # Disable scalar operations on the GPU
+        func = getfield(Main, Symbol(func_name_target))
+        # Convert the array of arguments to a tuple
+        args_tuple = Tuple(args)
+        # Call the function with arguments
+        #@hip threads=threads blocks=blocks add_kernel(a,b,c,N)
+        @roc groupsize=threads gridsize=blocks func(args_tuple...)
+        AMDGPU.synchronize()
     end
 
     function iris_error_count()::Int32
@@ -338,7 +431,27 @@ module IrisHRT
         return ccall(Libdl.dlsym(lib, :iris_task_kernel_object), Int32, (IrisTask, IrisKernel, Int32, Ptr{Csize_t}, Ptr{Csize_t}, Ptr{Csize_t}), task, kernel, dim, off, gws, lws)
     end
 
-    function iris_task_spec(kernel::String, dim::Int64, off::Vector{Int64}, gws::Vector{Int64}, lws::Vector{Int64}, nparams::Int64, params::Vector{Any}, params_info::Vector{Int32})::IrisTask
+    function iris_task_julia(kernel::String, dim::Int64, off::Vector{Int64}, gws::Vector{Int64}, lws::Vector{Int64}, nparams::Int64, params::Vector{Any}, params_info::Vector{Int32})::IrisTask
+        task = iris_task_create_struct()
+        ccall(Libdl.dlsym(lib, :iris_task_enable_julia_interface), Int32, (IrisTask,), task)
+        off_c = Ptr{UInt64}(C_NULL)
+        if length(off) != 0
+            off_c = reinterpret(Ptr{UInt64}, pointer(off))
+        end
+        gws_c = Ptr{UInt64}(C_NULL)
+        if length(gws) != 0
+            gws_c = reinterpret(Ptr{UInt64}, pointer(gws))
+        end
+        lws_c = Ptr{UInt64}(C_NULL)
+        if length(lws) != 0
+            lws_c = reinterpret(Ptr{UInt64}, pointer(lws))
+        end
+        c_params = reinterpret(Ptr{Ptr{Cvoid}}, pointer(params))
+        ccall(Libdl.dlsym(lib, :iris_task_kernel), Int32, (IrisTask, Ptr{Cchar}, Int32, Ptr{Csize_t}, Ptr{Csize_t}, Ptr{Csize_t}, Int32, Ptr{Ptr{Cvoid}}, Ptr{Int32}), task, pointer(kernel), Int32(dim), off_c, gws_c, lws_c, Int32(nparams), c_params, pointer(params_info))
+        return task
+    end
+
+    function iris_task_native(kernel::String, dim::Int64, off::Vector{Int64}, gws::Vector{Int64}, lws::Vector{Int64}, nparams::Int64, params::Vector{Any}, params_info::Vector{Int32})::IrisTask
         task = iris_task_create_struct()
         off_c = Ptr{UInt64}(C_NULL)
         if length(off) != 0
@@ -479,6 +592,10 @@ module IrisHRT
         return ccall(Libdl.dlsym(lib, :iris_data_mem_create_region), Int32, (Ptr{IrisMem}, IrisMem, Int32), mem, root_mem, region)
     end
 
+    function iris_data_mem_create_region_struct(root_mem::IrisMem, region::Int32)::IrisMem
+        return ccall(Libdl.dlsym(lib, :iris_data_mem_create_region_struct), IrisMem, (IrisMem, Int32), root_mem, region)
+    end
+
     function iris_data_mem_create_region_ptr(root_mem::IrisMem, region::Int32)::Ptr{IrisMem}
         return ccall(Libdl.dlsym(lib, :iris_data_mem_create_region_ptr), Ptr{IrisMem}, (IrisMem, Int32), root_mem, region)
     end
@@ -517,6 +634,10 @@ module IrisHRT
 
     function iris_mem_arch(mem::IrisMem, device::Int32, arch::Ref{Ptr{Cvoid}})::Int32
         return ccall(Libdl.dlsym(lib, :iris_mem_arch), Int32, (IrisMem, Int32, Ref{Ptr{Cvoid}}), mem, device, arch)
+    end
+
+    function iris_mem_arch_ptr(mem::IrisMem, device::Int32)::Ptr{Cvoid}
+        return ccall(Libdl.dlsym(lib, :iris_mem_arch), Ptr{Cvoid}, (IrisMem, Int32), mem, device)
     end
 
     #function iris_mem_reduce(mem::IrisMem, mode::Int32, type::Int32)::Int32

@@ -216,6 +216,8 @@ int Platform::Init(int* argc, char*** argv, int sync) {
       _info("Asynchronous is enabled");
   char* archs = NULL;
   EnvironmentGet("ARCHS", &archs, NULL);
+  if (archs == NULL) 
+      EnvironmentGet("ARCH", &archs, NULL);
   _info("IRIS architectures[%s]", archs);
   const char* delim = " :;.,";
   std::string arch_str = std::string(archs);
@@ -349,6 +351,7 @@ int Platform::EnvironmentInit() {
   EnvironmentSet("KERNEL_BIN_OPENMP",   "kernel.openmp.so",   false);
   EnvironmentSet("KERNEL_SRC_SPV",      "kernel.cl",          false);
   EnvironmentSet("KERNEL_BIN_SPV",      "kernel.spv",         false);
+  EnvironmentSet("KERNEL_JULIA",        "libjulia.so",        false);
   EnvironmentSet("KERNEL_HOST2CUDA","kernel.host2cuda.so",false);
   EnvironmentSet("KERNEL_HOST2HIP", "kernel.host2hip.so", false);
   EnvironmentSet("KERNEL_HOST2OPENCL","kernel.host2opencl.so",false);
@@ -490,6 +493,8 @@ int Platform::InitCUDA() {
     _cuerror(err);
     devs_[ndevs_] = new DeviceCUDA(loaderCUDA_, loaderHost2CUDA_, dev,
             i%ndevs, ndevs_, nplatforms_, i);
+    if (is_julia_enabled()) 
+        devs_[ndevs_]->EnableJuliaInterface();
     devs_[ndevs_]->set_root_device(devs_[ndevs_-i]);
     arch_available_ |= devs_[ndevs_]->type();
     cudevs[mdevs] = dev;

@@ -151,6 +151,7 @@ typedef enum DeviceModel DeviceModel;
 #define iris_uint64             ((1 << 7) << 16)
 #define iris_long               ((1 << 8 << 16))
 #define iris_unsigned_long      ((1 << 8 << 16))
+#define iris_pointer            ((1 << 9 << 16))
 
 #define iris_normal             (1 << 10)
 #define iris_reduction          (1 << 11)
@@ -735,6 +736,13 @@ extern int iris_task_d2h(iris_task task, iris_mem mem, size_t off, size_t size, 
 extern int iris_task_d2h_offsets(iris_task task, iris_mem mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, void* host);
 
 
+/**@brief Enable Julia Interface for task kernels inside
+ *
+ * @param task iris task object
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_task_enable_julia_interface(iris_task task);
+
 /**@brief Adds a flush command to a task
  *
  * This function flushes the given memory object to host
@@ -1093,6 +1101,15 @@ extern int iris_data_mem_create_region(iris_mem* mem, iris_mem root_mem, int reg
 
 /**@brief creates data memory region
  *
+ * @param mem pointer to a memory object
+ * @param root_mem root memory object
+ * @param region index for the region
+ * @return This function returns an IRIS dmem regions structure
+ */
+extern iris_mem iris_data_mem_create_region_struct(iris_mem root_mem, int region);
+
+/**@brief creates data memory region
+ *
  * @param root_mem root memory object
  * @param region index for the region
  * @return This function returns a pointer to the IRIS memory object
@@ -1159,6 +1176,14 @@ extern unsigned long iris_data_mem_get_region_uid(iris_mem brs_mem, int region);
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_mem_arch(iris_mem mem, int device, void** arch);
+
+/**@brief returns the device pointer for a memory object
+*
+ * @param mem iris memory object
+ * @param device device id
+ * @return This function arch device pointer
+ */
+extern void *iris_mem_arch_ptr(iris_mem mem, int device);
 
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 //extern int iris_mem_reduce(iris_mem mem, int mode, int type);
@@ -1881,6 +1906,21 @@ extern int iris_read_bool_env(const char *env_name);
  * @return This function returns int flag
  */
 extern int iris_read_int_env(const char *env_name);
+
+// Define a type for the Julia kernel launch function call pointer
+typedef int32_t (*julia_kernel_t)(int32_t target, int32_t devno);
+//typedef int (*julia_kernel_t)(int32_t target, int32_t devno, int32_t stream_index, void **stream, int32_t nstreams, int32_t *args, void **values, int32_t nparams, size_t *threads, size_t *blocks, int dim, const char *kernel_name);
+
+/* API to initialize Julia interfacea
+ * @param kernel_launch_func Kernel launch Julia function 
+ * @return This function returns int flag
+ */
+extern int iris_julia_init(void *julia_launch_func);
+
+/* API to return the Julia kernel launch function
+ * @return This function returns Julia kernel launch function pointer
+ */
+extern julia_kernel_t iris_get_julia_launch_func();
 
 #ifdef __cplusplus
 } /* end of extern "C" */

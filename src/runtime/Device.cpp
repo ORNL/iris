@@ -6,6 +6,7 @@
 #include "Mem.h"
 #include "DataMem.h"
 #include "DataMemRegion.h"
+#include "HostInterface.h"
 #include "Platform.h"
 #include "Reduction.h"
 #include "Task.h"
@@ -46,6 +47,7 @@ Device::Device(int devno, int platform) {
   hook_task_post_ = NULL;
   hook_command_pre_ = NULL;
   hook_command_post_ = NULL;
+  julia_if_ = NULL;
   worker_ = NULL;
   stream_policy_ = STREAM_POLICY_DEFAULT;
   //stream_policy_ = STREAM_POLICY_SAME_FOR_TASK;
@@ -57,9 +59,13 @@ Device::~Device() {
   _event_prof_debug("Device:%d deleted\n", devno());
   FreeDestroyEvents();
   if (peer_access_ != NULL) delete [] peer_access_;
+  if (julia_if_ != NULL) delete julia_if_;
   delete timer_;
 }
 
+void Device::EnableJuliaInterface() {
+  julia_if_ = new JuliaHostInterfaceLoader(model());
+}
 StreamPolicy Device::stream_policy(Task *task) 
 {
     StreamPolicy platform_policy = Platform::GetPlatform()->stream_policy();

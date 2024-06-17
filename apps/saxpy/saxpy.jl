@@ -1,8 +1,19 @@
 
+ENV["IRIS_ARCHS"] = "cuda"
+ENV["IRIS"] = "/noback/nqx/Ranger/tmp/iris.dev.prof/install.zenith"
+
 const iris_path = ENV["IRIS"]
 const iris_jl = iris_path * "/include/iris/IrisHRT.jl"
 include(iris_jl)
 using .IrisHRT
+
+# Define a CUDA kernel function
+function saxpy_cuda(Z, A, X, Y)
+    i = threadIdx().x + blockIdx().x * blockDim().x
+    Z[i] = A * X[i] + Y[i]
+    return
+end
+
 
 function saxpy_iris(A::Float32, X::Vector{Float32}, Y::Vector{Float32}, Z::Vector{Float32})
     SIZE = length(X)
@@ -20,7 +31,7 @@ function saxpy_iris(A::Float32, X::Vector{Float32}, Y::Vector{Float32}, Z::Vecto
     saxpy_params_info = Int32[IrisHRT.iris_w, sizeof(Float32), IrisHRT.iris_r, IrisHRT.iris_r]
 
     # Create IRIS task
-    task0 = IrisHRT.iris_task_spec("saxpy", 1, Int64[], 
+    task0 = IrisHRT.iris_task_julia("saxpy", 1, Int64[], 
             [SIZE], Int64[], 4, saxpy_params, saxpy_params_info)
     # Flush the output
     IrisHRT.iris_task_dmem_flush_out(task0, mem_Z)
@@ -36,7 +47,7 @@ function saxpy_iris(A::Float32, X::Vector{Float32}, Y::Vector{Float32}, Z::Vecto
     IrisHRT.iris_finalize()
 end
 
-function saxpy(A::Float32, X::Vector{Float32}, Y::Vector{Float32}, Z::Vector{Float32})
+function saxpy_julia(A::Float32, X::Vector{Float32}, Y::Vector{Float32}, Z::Vector{Float32})
     # Check that X and Y have the same length
     @assert length(X) == length(Y) "Vectors X and Y must have the same length"
 
@@ -59,6 +70,8 @@ function compare_arrays(X::Vector{Float32}, Y::Vector{Float32})::Bool
     return true
 end
 
+
+
 # Example usage
 SIZE = 10
 A = Float32(2.0f0)  # Assuming A is a constant defined somewhere
@@ -66,9 +79,10 @@ X = rand(Float32, SIZE)
 Y = rand(Float32, SIZE)
 Z = zeros(Float32, SIZE)
 Ref_Z = zeros(Float32, SIZE)
-saxpy(A, X, Y, Ref_Z)
+saxpy_julia(A, X, Y, Ref_Z)
 saxpy_iris(A, X, Y, Z)
 output = compare_arrays(Z, Ref_Z)
 println("Output Matching: ", output)
 println("Z     :", Z)
 println("Ref_Z :", Ref_Z)
+

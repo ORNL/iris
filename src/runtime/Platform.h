@@ -269,6 +269,7 @@ public:
   hook_task hook_task_post() { return hook_task_post_; }
   hook_command hook_command_pre() { return hook_command_pre_; }
   hook_command hook_command_post() { return hook_command_post_; }
+  bool is_julia_enabled() { return iris_get_julia_launch_func() != NULL; }
   Kernel* GetKernel(const char* name);
   BaseMem* GetMem(iris_mem brs_mem);
   BaseMem* GetMem(void* host, size_t* off);

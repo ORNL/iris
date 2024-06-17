@@ -44,8 +44,10 @@ public:
   int SetArg(int idx, size_t size, void* value);
   int SetMem(int idx, BaseMem* mem, size_t off, int mode);
   KernelArg* ExportArgs();
-  void* GetFFIdata() { return ffi_data_; }
-  void CreateFFIdata(size_t size) { ffi_data_ = malloc(size); }
+  void* GetJuliadata() { return host_if_data_; }
+  void CreateJuliadata(size_t size) { host_if_data_ = malloc(size); }
+  void* GetFFIdata() { return host_if_data_; }
+  void CreateFFIdata(size_t size) { host_if_data_ = malloc(size); }
   void* GetParamWrapperMemory() { return (void *)param_wrapper_mem_; }
 
   const char* name() { return name_.c_str(); }
@@ -112,7 +114,7 @@ private:
   std::map<int, KernelArg*> args_;
   void* archs_[IRIS_MAX_NDEVS];
   Device* archs_devs_[IRIS_MAX_NDEVS];
-  void *ffi_data_;
+  void *host_if_data_;
   uint8_t param_wrapper_mem_[8*128];
   Platform* platform_;
   shared_ptr<History> history_;
