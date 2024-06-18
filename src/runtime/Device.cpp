@@ -1361,6 +1361,11 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
         //printf("Pointer offset %d, gws %d lws %d elem_size %d dim %d size %d\n", 
             //*ptr_off, *gws, *lws, elem_size, dim, size);
         void* host = mem->host_memory(); // It should work even if host_ptr is null
+        bool update_host_flag = true;
+        if (cmd->host() != NULL) {
+            update_host_flag = false;
+            host = cmd->host();
+        }
         double start = timer_->Now();
         Task *task = cmd->task();
         bool async = is_async(task);
@@ -1456,7 +1461,8 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
             }
         }
         if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
-        mem->clear_host_dirty();
+        if (update_host_flag)
+            mem->clear_host_dirty();
         double end = timer_->Now();
         double d2htime = end - start;
         Command* cmd_kernel = cmd->task()->cmd_kernel();
