@@ -23,13 +23,26 @@ CHECKPOINT_PATH = "./saved_models"
 pl.seed_everything(42)
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
-#TODO: change back to the default (but figure out if its the model on the GPU but not the tokenizer?
-device = torch.device("cpu")
-#device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
-num_workers = 127
+use_cpu = False
+if use_cpu:
+    num_devices = 1
+    device = torch.device("cpu")
+    #num_workers = os.cpu_count()
+    num_workers = 0
+else:
+    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    #num_devices = torch.cuda.device_count()
+    #num_workers = torch.cuda.device_count()
+    num_devices = 1
+    num_workers = 10
+    #num_workers = 127
+
 
 # Global variables:
 _dataset_directory = 'graphs'
+_model_name = "GraphConv"
+root_dir = os.path.join(CHECKPOINT_PATH, "GraphLevel", _model_name)
+pretrained_filename = os.path.join(CHECKPOINT_PATH, f"GraphLevel{_model_name}.ckpt")
 _train_dataset = None
 _test_dataset = None
 _model = None
@@ -99,7 +112,11 @@ class GNNModel(nn.Module):
             # All PyTorch Geometric graph layer inherit the class "MessagePassing", hence
             # we can simply check the class type.
             if isinstance(l, geom_nn.MessagePassing):
-                x = l(x, edge_index)
+                try:
+                    x = l(x, edge_index)
+                except:
+                    import ipdb
+                    ipdb.set_trace()
             else:
                 x = l(x)
         return x
@@ -209,12 +226,19 @@ class GraphDataset(torch.utils.data.Dataset):
         self.max_feature_matrix_shape = max(shapes)
         self.num_node_features = self.max_feature_matrix_shape[1]
 
+        #now do all the file IO and process it in one shot
+        self.gnn_form_of_json = []
+        for i,val in enumerate(self.data_list):
+            x = self.__convert_from_json_to_gnn(i) #if the edge_index isn't empty add it!
+            if x['edge_index'].numel() != 0: self.gnn_form_of_json.append(x)
+
     def __len__(self):
-        return len(self.data_list)
+        return len(self.gnn_form_of_json)
 
     def shuffle(self):
         import random
-        random.shuffle(self.data_list)
+        random.shuffle(self.gnn_form_of_json)
+
 
     def num_node_features(self):
         return self.max_feature_matrix_shape[1]
@@ -239,21 +263,6 @@ class GraphDataset(torch.utils.data.Dataset):
                 # and increment at the corresponding id
                 edges.append([int(ref_node_name.replace('task','')),int(d.replace('task',''))])
         return np.array(edges,dtype=int).transpose()
-
-
-    def __old_construct_edges(self,data):
-        nodes = self.__construct_nodes(data)
-        number_of_nodes = len(nodes)
-        edges = []
-        for n in nodes:
-            ref_node_name = n['name']
-            row = np.zeros(number_of_nodes)
-            for d in n['depends']:
-                # remove the leading task from the string, get its numerical value
-                # and increment at the corresponding id
-                row[int(d.replace('task',''))] += 1
-            edges.append(row)
-        return np.array(edges,dtype=int)
 
     def __construct_node_feature_matrix_for_graph(self,nodes):
         # generate the full list of node attributes (memory buffer names used)
@@ -281,8 +290,11 @@ class GraphDataset(torch.utils.data.Dataset):
         one_hot = pd.DataFrame(node_uses_memory).transpose()
         node_feature_matrix = pd.get_dummies(one_hot).astype(np.float64)
         return node_feature_matrix.to_numpy()
+    
+    def __getitem__(self,idx):
+        return self.gnn_form_of_json[idx]
 
-    def __getitem__(self, idx):
+    def __convert_from_json_to_gnn(self, idx):
         # Nodes = Task #
         # Edges = List of Dependencies
         # Node Attributes = Memory objects
@@ -302,7 +314,7 @@ class GraphDataset(torch.utils.data.Dataset):
         #transform and return
         node_feature_matrix = torch.Tensor(node_feature_matrix)
         #batch_id = torch.LongTensor([1,4097,256]) #can be 1 since this is a per graph classification
-        batch_id = np.array(1)
+        batch_id = np.array(idx)
         #TODO: expect y to return a list of probabilities but is this correct?
         return {'x':node_feature_matrix,
                 'edge_index':torch.from_numpy(edges),
@@ -310,23 +322,24 @@ class GraphDataset(torch.utils.data.Dataset):
                 'batch':torch.from_numpy(batch_id)}
 
 
-def train_graph_classifier(model_name, **model_kwargs):
+def train_graph_classifier(**model_kwargs):
     global _graph_train_loader, _graph_val_loader, _graph_test_loader
 
 
     # Create a PyTorch Lightning trainer with the generation callback
-    root_dir = os.path.join(CHECKPOINT_PATH, "GraphLevel" + model_name)
     os.makedirs(root_dir, exist_ok=True)
     trainer = pl.Trainer(default_root_dir=root_dir,
                          callbacks=[ModelCheckpoint(save_weights_only=True, mode="max", monitor="val_acc")],
                          accelerator="gpu" if str(device).startswith("cuda") else "cpu",
-                         devices=1,
-                         max_epochs=500,
-                         enable_progress_bar=False)
+                         devices=num_devices,
+                         max_epochs=1,
+                         #TODO: bring back good training size of epochs
+                         #max_epochs=30,
+                         log_every_n_steps=1,
+                         enable_progress_bar=True)
     trainer.logger._default_hp_metric = None # Optional logging argument that we don't need
 
     # Check whether pretrained model exists. If yes, load it and skip training
-    pretrained_filename = os.path.join(CHECKPOINT_PATH, f"GraphLevel{model_name}.ckpt")
     if os.path.isfile(pretrained_filename):
         print("Found pretrained model, loading...")
         model = GraphLevelGNN.load_from_checkpoint(pretrained_filename)
@@ -347,8 +360,7 @@ def train_graph_classifier(model_name, **model_kwargs):
 def train():
     global _model
 
-    _model, result = train_graph_classifier(model_name="GraphConv",
-                                           c_hidden=256,
+    _model, result = train_graph_classifier(c_hidden=256,
                                            layer_name="GraphConv",
                                            num_layers=3,
                                            dp_rate_linear=0.5,
@@ -356,8 +368,11 @@ def train():
     print(f"Train performance: {100.0*result['train']:4.2f}%")
     print(f"Test performance:  {100.0*result['test']:4.2f}%")
 
-def predict():
-    # take the pre-trained model and new DAG to make the prediction
+def save():
+    import ipdb
+    ipdb.set_trace()
+    os.makedirs(root_dir, exist_ok=True)
+    GraphLevelGNN.save_from_checkpoint(pretrained_filename)
     return
 
 def generate_demonstration_dataset():
@@ -419,20 +434,76 @@ def generate_dataset():
     tu_dataset = GraphDataset(raw_dataset)
     return tu_dataset
 
+def predict():
+    new_dataset = []
+    num_tasks = 32
+    #new linear test
+    filename = '{}/linear-{}.json'.format(_dataset_directory,num_tasks)
+    new_dataset.append({
+            'args':'--graph={} --kernels="ijk" --duplicates="0" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split="100" --depth={} --num-tasks={} --min-width=1 --max-width=1 --use-data-memory'.format(filename,num_tasks,num_tasks),
+            'file' : filename,
+            'schedule-for' : 'locality'
+            })
+    #new concurrency test
+    filename = '{}/diamond-{}.json'.format(_dataset_directory,num_tasks)
+    new_dataset.append({
+            'args':'--graph={} --concurrent-kernels="ijk:{}" --kernels="ijk" --duplicates="0" --buffers-per-kernel="ijk:w r r" --kernel-dimensions="ijk:2" --kernel-split="100" --depth=1 --num-tasks={} --min-width={} --max-width={} --sandwich --use-data-memory'.format(filename,num_tasks,num_tasks,num_tasks,num_tasks),
+            'file' : filename,
+            'schedule-for' : 'concurrency'
+            })
+    #new mixed test
+    filename = '{}/mashload-{}.json'.format(_dataset_directory,num_tasks)
+    new_dataset.append({
+            'args':'--graph={} --kernels="ijk" --kernel-split="100" --depth=10 --num-tasks={} --min-width=7 --max-width=7 --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --concurrent-kernels="ijk:14" --skips=3 --cdf-mean=2 --cdf-std-dev=0 --use-data-memory --handover-in-memory-shuffle --num-memory-shuffles=32'.format(filename,num_tasks),
+            'file' : filename,
+            'schedule-for' : 'mixed'
+            })
+
+    from pathlib import Path
+    if (Path(_dataset_directory).is_dir() == False):
+        Path(_dataset_directory).mkdir(parents=True, exist_ok=True)
+
+        from dagger.dagger_generator import parse_args as gen_dagger_parse_args
+        from dagger.dagger_generator import run as generate_graph_as_json
+        for d in new_dataset:
+            print("generating graph:{}".format(d['file']))
+            rargs = gen_dagger_parse_args(d['args'])
+            generate_graph_as_json()
+
+    # fill in content of each payload from the json
+    from dagger.dagger_generator import get_task_graph_from_json
+    for d in new_dataset:
+        d['content'] = get_task_graph_from_json(d['file'])
+
+    # Create a dataset and data loader
+    tu_dataset = GraphDataset(new_dataset)
+
+    # Convert to feature matrix and predict
+    _graph_val_loader = geom_loader.DataLoader(tu_dataset, num_workers=num_workers,batch_size=batch_size) # Additional loader if you want to change to a larger dataset
+
+
+    test_result = trainer.test(model, _graph_val_loader, verbose=False)
+    import ipdb
+    ipdb.set_trace()
+    # take the pre-trained model and new DAG to make the prediction
+    return
+
+
+
 def load_dataset():
     global _graph_train_loader, _graph_val_loader, _graph_test_loader, _tu_dataset
 
-    torch.manual_seed(42)
     #_tu_dataset = generate_demonstration_dataset()
     _tu_dataset = generate_dataset()
     _tu_dataset.shuffle()
+    batch_size = 1
     #use 70% of the dataset for training
     train_size = int(0.8 * len(_tu_dataset))
     test_size = len(_tu_dataset) - train_size
     train_dataset, test_dataset = torch.utils.data.random_split(_tu_dataset, [train_size, test_size])
-    _graph_train_loader = geom_loader.DataLoader(train_dataset, shuffle=True, num_workers=num_workers)
-    _graph_val_loader = geom_loader.DataLoader(test_dataset, num_workers=num_workers) # Additional loader if you want to change to a larger dataset
-    _graph_test_loader = geom_loader.DataLoader(test_dataset, num_workers=num_workers)
+    _graph_train_loader = geom_loader.DataLoader(train_dataset, shuffle=True, num_workers=num_workers, batch_size=batch_size)
+    _graph_val_loader = geom_loader.DataLoader(test_dataset, num_workers=num_workers,batch_size=batch_size) # Additional loader if you want to change to a larger dataset
+    _graph_test_loader = geom_loader.DataLoader(test_dataset, num_workers=num_workers,batch_size=batch_size)
 
     batch = next(iter(_graph_test_loader))
     print("Batch:", batch)
@@ -440,10 +511,10 @@ def load_dataset():
     print("Batch indices:", batch['edge_index'][:40])
 
 if __name__ == '__main__':
-    #TODO plugin actual dataset
     load_dataset()
     #TODO use Softmax for multi-class classification rather than the Binary Cross Entropy loss function.
     #load_demonstration_dataset()
     train()
+    save()
     predict()
 
