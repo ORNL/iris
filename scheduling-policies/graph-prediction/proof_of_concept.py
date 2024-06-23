@@ -3,6 +3,7 @@
 # may need to run `./build.sh` from `../..`
 # or `source ~/.iris/setup.zsh`
 
+from termcolor import colored
 import os
 import numpy as np
 import pandas as pd
@@ -15,6 +16,7 @@ import torch_geometric
 import torch_geometric.nn as geom_nn
 import torch_geometric.loader as geom_loader
 import pytorch_lightning as pl
+import pickle
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 
 # Initialize PyTorch environment
@@ -23,7 +25,7 @@ CHECKPOINT_PATH = "./saved_models"
 pl.seed_everything(42)
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
-use_cpu = False
+use_cpu = True
 if use_cpu:
     num_devices = 1
     device = torch.device("cpu")
@@ -40,9 +42,12 @@ else:
 
 # Global variables:
 _dataset_directory = 'graphs'
-_model_name = "GraphConv"
-root_dir = os.path.join(CHECKPOINT_PATH, "GraphLevel", _model_name)
-pretrained_filename = os.path.join(CHECKPOINT_PATH, f"GraphLevel{_model_name}.ckpt")
+_model_name = "iris_scheduler_gnn_graph_level_classifier"
+_batch_size = 1
+_root_dir = os.path.join(CHECKPOINT_PATH, "GraphLevel", _model_name)
+_model_filename = os.path.join(CHECKPOINT_PATH, f"{_model_name}.pth")
+_pretrained_filename = os.path.join(CHECKPOINT_PATH, f"GraphLevel{_model_name}.ckpt")
+_pretrained_shape_file = os.path.join(CHECKPOINT_PATH, f"GraphLevel{_model_name}-shape.pkl")
 _train_dataset = None
 _test_dataset = None
 _model = None
@@ -117,6 +122,7 @@ class GNNModel(nn.Module):
                 except:
                     import ipdb
                     ipdb.set_trace()
+                    print("not a big enough matrix")
             else:
                 x = l(x)
         return x
@@ -162,18 +168,31 @@ class GraphLevelGNN(pl.LightningModule):
         print(model_kwargs)
         self.model = GraphGNNModel(**model_kwargs)
         self.model.to(device)
-        self.loss_module = nn.BCEWithLogitsLoss() if self.hparams.c_out == 1 else nn.CrossEntropyLoss()
+
+        #TODO use Softmax for multi-class classification rather than the Binary Cross Entropy loss function.
+        #self.loss_module = nn.BCEWithLogitsLoss() if self.hparams.c_out == 1 else nn.CrossEntropyLoss()
+        #self.loss_module = nn.Softmax()
+        self.loss_module = nn.CrossEntropyLoss()
 
     def forward(self, data, mode="train"):
         x, edge_index, batch_idx = data['x'], data['edge_index'], data['batch']
-        x = self.model(x, edge_index, batch_idx)
-        x = x.squeeze(dim=-1)
+        import ipdb
+        ipdb.set_trace()
+        nx = self.model(x, edge_index, batch_idx)
+        nx = nx.squeeze(dim=-1)
         if self.hparams.c_out == 1:
-            preds = (x > 0).float()
+            preds = (nx > 0).float()
             data['y'] = data['y'].float()
         else:
-            preds = x.argmax(dim=1)#was dim=-1
-        loss = self.loss_module(x, data['y'])
+            preds = nx.argmax(dim=1)#was dim=-1
+        #TODO check main difference in x, edge_index and batch_idx --- are some values in a different range?
+        if nx.shape[1] == 1:
+            import ipdb
+            ipdb.set_trace()
+        #x.shape = torch.Size([1, 35, 3])
+        #preds = tensor([[0, 0, 0]])
+        #data['y'] = tensor([[0, 1, 0]])
+        loss = self.loss_module(nx, data['y'])
         acc = (preds == data['y']).sum().float() / preds.shape[0]
         return loss, acc
 
@@ -211,7 +230,7 @@ class GraphDataset(torch.utils.data.Dataset):
     # Edges = dependencies
     # Node Features = # of tasks x memory buffers used per task
     # Labels = Graph-level (in this instance target_for
-    def __init__(self, data_list):
+    def __init__(self, data_list, shape=None):
         self.data_list = data_list
         # get max number of node features
         # feature_matrix is of the shape [ # nodes x # feature per node]
@@ -219,10 +238,13 @@ class GraphDataset(torch.utils.data.Dataset):
         # thus we need to collect the largest shape, which means we need
         # to call these functions twice (once per initialization and once per indexing)
         shapes = []
-        for data in data_list:
-            nodes = self.__construct_nodes(data)
-            feature_matrix = self.__construct_node_feature_matrix_for_graph(nodes)
-            shapes.append(feature_matrix.shape)
+        if shape is None: #this is the first training and so we need to determine the largest size matrix to pad
+            for data in data_list:
+                nodes = self.__construct_nodes(data)
+                feature_matrix = self.__construct_node_feature_matrix_for_graph(nodes)
+                shapes.append(feature_matrix.shape)
+        else: shapes.append(shape)
+
         self.max_feature_matrix_shape = max(shapes)
         self.num_node_features = self.max_feature_matrix_shape[1]
 
@@ -232,6 +254,17 @@ class GraphDataset(torch.utils.data.Dataset):
             x = self.__convert_from_json_to_gnn(i) #if the edge_index isn't empty add it!
             if x['edge_index'].numel() != 0: self.gnn_form_of_json.append(x)
 
+    def to(self,device):
+        for item in self.gnn_form_of_json:
+            item['x'].to(device)
+            item['edge_index'].to(device)
+            item['batch'].to(device)
+            item['y'].to(device)
+
+    def get_item_at_index(self,idx):
+        #TODO: what features do we need?
+        return self.gnn_form_of_json[idx]
+
     def __len__(self):
         return len(self.gnn_form_of_json)
 
@@ -239,6 +272,8 @@ class GraphDataset(torch.utils.data.Dataset):
         import random
         random.shuffle(self.gnn_form_of_json)
 
+    def shape(self):
+        return self.max_feature_matrix_shape
 
     def num_node_features(self):
         return self.max_feature_matrix_shape[1]
@@ -314,7 +349,7 @@ class GraphDataset(torch.utils.data.Dataset):
         #transform and return
         node_feature_matrix = torch.Tensor(node_feature_matrix)
         #batch_id = torch.LongTensor([1,4097,256]) #can be 1 since this is a per graph classification
-        batch_id = np.array(idx)
+        batch_id = np.array(idx)#TODO: stopgap measure---remove idx+1 when I figure our why resuming the checkpoint fails to index appropriately
         #TODO: expect y to return a list of probabilities but is this correct?
         return {'x':node_feature_matrix,
                 'edge_index':torch.from_numpy(edges),
@@ -327,8 +362,8 @@ def train_graph_classifier(**model_kwargs):
 
 
     # Create a PyTorch Lightning trainer with the generation callback
-    os.makedirs(root_dir, exist_ok=True)
-    trainer = pl.Trainer(default_root_dir=root_dir,
+    os.makedirs(_root_dir, exist_ok=True)
+    trainer = pl.Trainer(default_root_dir=_root_dir,
                          callbacks=[ModelCheckpoint(save_weights_only=True, mode="max", monitor="val_acc")],
                          accelerator="gpu" if str(device).startswith("cuda") else "cpu",
                          devices=num_devices,
@@ -340,9 +375,9 @@ def train_graph_classifier(**model_kwargs):
     trainer.logger._default_hp_metric = None # Optional logging argument that we don't need
 
     # Check whether pretrained model exists. If yes, load it and skip training
-    if os.path.isfile(pretrained_filename):
+    if os.path.isfile(_pretrained_filename):
         print("Found pretrained model, loading...")
-        model = GraphLevelGNN.load_from_checkpoint(pretrained_filename)
+        model = GraphLevelGNN.load_from_checkpoint(_pretrained_filename)
     else:
         pl.seed_everything(42)
         model = GraphLevelGNN(c_in=_tu_dataset.num_node_features,
@@ -355,6 +390,12 @@ def train_graph_classifier(**model_kwargs):
     train_result = trainer.test(model, _graph_train_loader, verbose=False)
     test_result = trainer.test(model, _graph_test_loader, verbose=False)
     result = {"test": test_result[0]['test_acc'], "train": train_result[0]['test_acc']}
+
+    # save the model
+    trainer.save_checkpoint(_pretrained_filename)
+    # and write out the training size
+    with open(_pretrained_shape_file,"wb") as shape_file:
+        pickle.dump(_tu_dataset.shape(),shape_file)
     return model, result
 
 def train():
@@ -367,13 +408,9 @@ def train():
                                            dp_rate=0.0)
     print(f"Train performance: {100.0*result['train']:4.2f}%")
     print(f"Test performance:  {100.0*result['test']:4.2f}%")
-
-def save():
-    import ipdb
-    ipdb.set_trace()
-    os.makedirs(root_dir, exist_ok=True)
-    GraphLevelGNN.save_from_checkpoint(pretrained_filename)
-    return
+    print(result)
+    torch.save(_model,_model_filename)
+    print(colored("Saved trained model to {}".format(_model_filename),"green"))
 
 def generate_demonstration_dataset():
     tu_dataset = torch_geometric.datasets.TUDataset(root=DATASET_PATH, name="MUTAG")
@@ -475,16 +512,50 @@ def predict():
     for d in new_dataset:
         d['content'] = get_task_graph_from_json(d['file'])
 
-    # Create a dataset and data loader
-    tu_dataset = GraphDataset(new_dataset)
+    # load the max shape that the model was trained with
+    with open(_pretrained_shape_file ,"rb") as shape_file:
+        model_trained_on_shape = pickle.load(shape_file)
+
+    # Create a dataset and data loader with this new max shape
+    tu_dataset = GraphDataset(new_dataset,shape=model_trained_on_shape)
 
     # Convert to feature matrix and predict
-    _graph_val_loader = geom_loader.DataLoader(tu_dataset, num_workers=num_workers,batch_size=batch_size) # Additional loader if you want to change to a larger dataset
+    #_graph_test_loader = geom_loader.DataLoader(tu_dataset, num_workers=num_workers, batch_size=_batch_size)
+    #batch = next(iter(_graph_test_loader))
+    #from termcolor import colored
+    #print(colored("Begin bad output","red"))
+    #print("Batch:", batch)
+    #print("Labels:", batch['y'][:10])
+    #print("Batch indices:", batch['edge_index'][:40])
+    #print(colored("End bad output","light_red"))
 
+    ##trainer = pl.Trainer(resume_from_checkpoint=_pretrained_filename)
+    #trainer = pl.Trainer(default_root_dir=_root_dir,
+    #                    callbacks=[ModelCheckpoint(save_weights_only=True, mode="max", monitor="val_acc")],
+    #                    accelerator="gpu" if str(device).startswith("cuda") else "cpu",
+    #                    devices=num_devices,
+    #                    max_epochs=30,
+    #                    log_every_n_steps=1,
+    #                 enable_progress_bar=True)
+    #trainer.logger._default_hp_metric = None # Optional logging argument that we don't need
+    #test_result = trainer.test(_model, _graph_test_loader, verbose=True, ckpt_path=_pretrained_filename )
 
-    test_result = trainer.test(model, _graph_val_loader, verbose=False)
+    #TODO: interpret predicted to result to a scheduler decision
+    model = torch.load(_model_filename)
+    model.to(device)
+    model.eval()
+    tu_dataset.to(device)
+    #for each item to predict
+    inputs = tu_dataset.get_item_at_index(0)
+    x, edge_index = inputs['x'], inputs['edge_index']
+    x.to(device)
+    edge_index.to(device)
+    inputs['batch'] = torch.Tensor(1)
+    prediction = model(inputs,mode="predict")
+    print(colored("Prediction completed!","cyan"))
     import ipdb
     ipdb.set_trace()
+    #prediction = model(x, edge_index)
     # take the pre-trained model and new DAG to make the prediction
     return
 
@@ -496,14 +567,13 @@ def load_dataset():
     #_tu_dataset = generate_demonstration_dataset()
     _tu_dataset = generate_dataset()
     _tu_dataset.shuffle()
-    batch_size = 1
     #use 70% of the dataset for training
     train_size = int(0.8 * len(_tu_dataset))
     test_size = len(_tu_dataset) - train_size
     train_dataset, test_dataset = torch.utils.data.random_split(_tu_dataset, [train_size, test_size])
-    _graph_train_loader = geom_loader.DataLoader(train_dataset, shuffle=True, num_workers=num_workers, batch_size=batch_size)
-    _graph_val_loader = geom_loader.DataLoader(test_dataset, num_workers=num_workers,batch_size=batch_size) # Additional loader if you want to change to a larger dataset
-    _graph_test_loader = geom_loader.DataLoader(test_dataset, num_workers=num_workers,batch_size=batch_size)
+    _graph_train_loader = geom_loader.DataLoader(train_dataset, shuffle=True, num_workers=num_workers, batch_size=_batch_size)
+    _graph_val_loader = geom_loader.DataLoader(test_dataset, num_workers=num_workers,batch_size=_batch_size) # Additional loader if you want to change to a larger dataset
+    _graph_test_loader = geom_loader.DataLoader(test_dataset, num_workers=num_workers,batch_size=_batch_size)
 
     batch = next(iter(_graph_test_loader))
     print("Batch:", batch)
@@ -511,10 +581,14 @@ def load_dataset():
     print("Batch indices:", batch['edge_index'][:40])
 
 if __name__ == '__main__':
-    load_dataset()
-    #TODO use Softmax for multi-class classification rather than the Binary Cross Entropy loss function.
-    #load_demonstration_dataset()
-    train()
-    save()
+    if os.path.isfile(_pretrained_filename):
+        print("Found pretrained model, loading...")
+        _model = GraphLevelGNN.load_from_checkpoint(_pretrained_filename)
+    else:
+        print("Building a new model...")
+        load_dataset()
+        #load_demonstration_dataset()
+        train()
+
     predict()
 
