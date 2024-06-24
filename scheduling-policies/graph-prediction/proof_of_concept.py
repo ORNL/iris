@@ -67,7 +67,8 @@ def tensor_to_target(target_id):
     if target_id == [1,0,0]: return "locality"
     if target_id == [0,1,0]: return "concurrency"
     if target_id == [0,0,1]: return "mixed"
-    assert False, "Unknown target id"
+    return "unknown (broken prediction)"
+    #assert False, "Unknown target id"
 
 class GNNModel(nn.Module):
 
@@ -175,9 +176,7 @@ class GraphLevelGNN(pl.LightningModule):
 
     def forward(self, data, mode="train"):
         x, edge_index, batch_idx = data['x'], data['edge_index'], data['batch']
-        if mode != "predict":
-            #using a data loader adds a constraint on unwrapping the data
-            edge_index = edge_index[0]
+        edge_index = edge_index[0]
         nx = self.model(x, edge_index, batch_idx)
         nx = nx.squeeze(dim=-1)
         if self.hparams.c_out == 1:
@@ -187,10 +186,6 @@ class GraphLevelGNN(pl.LightningModule):
             preds = nx.argmax(dim=1)#was dim=-1
         if mode == "predict":
             return preds
-        #TODO check main difference in x, edge_index and batch_idx --- are some values in a different range?
-        if nx.shape[1] == 1:
-            import ipdb
-            ipdb.set_trace()
         loss = self.loss_module(nx, data['y'])
         acc = (preds == data['y']).sum().float() / preds.shape[0]
         return loss, acc
@@ -352,7 +347,9 @@ class GraphDataset(torch.utils.data.Dataset):
         #transform and return
         node_feature_matrix = torch.Tensor(node_feature_matrix)
         #batch_id = torch.LongTensor([1,4097,256]) #can be 1 since this is a per graph classification
-        if wrap_batch: batch_id = np.array([idx])
+        if wrap_batch:
+            batch_id = np.array([idx])
+            edges = np.array([edges])
         else: batch_id = np.array(idx)#TODO: stopgap measure---remove idx+1 when I figure our why resuming the checkpoint fails to index appropriately
         #TODO: expect y to return a list of probabilities but is this correct?
         return {'x':node_feature_matrix,
@@ -558,6 +555,10 @@ def predict():
         prediction = model(inputs,mode="predict")
         prediction = prediction.detach().cpu().numpy()
         print(colored("Prediction completed! Set # {} predicted: {}".format(i, prediction),"cyan"))
+        #TODO: favour the latter when we figure out why the output from the model is malformed...
+        print(colored("Prediction completed! Set # {} predicted: {} was {}".format(i, tensor_to_target(prediction), tensor_to_target(inputs['y'])),"cyan"))
+
+        prediction = []
         import ipdb
         ipdb.set_trace()
     #prediction = model(x, edge_index)
