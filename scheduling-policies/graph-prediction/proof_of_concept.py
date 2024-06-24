@@ -111,7 +111,6 @@ class GNNModel(nn.Module):
             x - Input features per node
             edge_index - List of vertex index pairs representing the edges in the graph (PyTorch geometric notation)
         """
-        edge_index = edge_index[0]#unpack from batch since the graph level classifier doesn't need it
         for l in self.layers:
             # For graph layers, we need to add the "edge_index" tensor as additional input
             # All PyTorch Geometric graph layer inherit the class "MessagePassing", hence
@@ -176,8 +175,9 @@ class GraphLevelGNN(pl.LightningModule):
 
     def forward(self, data, mode="train"):
         x, edge_index, batch_idx = data['x'], data['edge_index'], data['batch']
-        import ipdb
-        ipdb.set_trace()
+        if mode != "predict":
+            #using a data loader adds a constraint on unwrapping the data
+            edge_index = edge_index[0]
         nx = self.model(x, edge_index, batch_idx)
         nx = nx.squeeze(dim=-1)
         if self.hparams.c_out == 1:
@@ -185,13 +185,12 @@ class GraphLevelGNN(pl.LightningModule):
             data['y'] = data['y'].float()
         else:
             preds = nx.argmax(dim=1)#was dim=-1
+        if mode == "predict":
+            return preds
         #TODO check main difference in x, edge_index and batch_idx --- are some values in a different range?
         if nx.shape[1] == 1:
             import ipdb
             ipdb.set_trace()
-        #x.shape = torch.Size([1, 35, 3])
-        #preds = tensor([[0, 0, 0]])
-        #data['y'] = tensor([[0, 1, 0]])
         loss = self.loss_module(nx, data['y'])
         acc = (preds == data['y']).sum().float() / preds.shape[0]
         return loss, acc
@@ -232,6 +231,10 @@ class GraphDataset(torch.utils.data.Dataset):
     # Labels = Graph-level (in this instance target_for
     def __init__(self, data_list, shape=None):
         self.data_list = data_list
+
+        # the shape and batches need to be processed differently if we are using the model directly for predictions, the data loaders do more fancy things (like wrapping batches and edge_index's in lists)
+        for_prediction_mode = True if shape is not None else False
+
         # get max number of node features
         # feature_matrix is of the shape [ # nodes x # feature per node]
         # unfortunately this varies per graph and so needs to be padded
@@ -251,7 +254,7 @@ class GraphDataset(torch.utils.data.Dataset):
         #now do all the file IO and process it in one shot
         self.gnn_form_of_json = []
         for i,val in enumerate(self.data_list):
-            x = self.__convert_from_json_to_gnn(i) #if the edge_index isn't empty add it!
+            x = self.__convert_from_json_to_gnn(i,wrap_batch=for_prediction_mode) #if the edge_index isn't empty add it!
             if x['edge_index'].numel() != 0: self.gnn_form_of_json.append(x)
 
     def to(self,device):
@@ -329,7 +332,7 @@ class GraphDataset(torch.utils.data.Dataset):
     def __getitem__(self,idx):
         return self.gnn_form_of_json[idx]
 
-    def __convert_from_json_to_gnn(self, idx):
+    def __convert_from_json_to_gnn(self, idx, wrap_batch=False):
         # Nodes = Task #
         # Edges = List of Dependencies
         # Node Attributes = Memory objects
@@ -349,7 +352,8 @@ class GraphDataset(torch.utils.data.Dataset):
         #transform and return
         node_feature_matrix = torch.Tensor(node_feature_matrix)
         #batch_id = torch.LongTensor([1,4097,256]) #can be 1 since this is a per graph classification
-        batch_id = np.array(idx)#TODO: stopgap measure---remove idx+1 when I figure our why resuming the checkpoint fails to index appropriately
+        if wrap_batch: batch_id = np.array([idx])
+        else: batch_id = np.array(idx)#TODO: stopgap measure---remove idx+1 when I figure our why resuming the checkpoint fails to index appropriately
         #TODO: expect y to return a list of probabilities but is this correct?
         return {'x':node_feature_matrix,
                 'edge_index':torch.from_numpy(edges),
@@ -546,15 +550,16 @@ def predict():
     model.eval()
     tu_dataset.to(device)
     #for each item to predict
-    inputs = tu_dataset.get_item_at_index(0)
-    x, edge_index = inputs['x'], inputs['edge_index']
-    x.to(device)
-    edge_index.to(device)
-    inputs['batch'] = torch.Tensor(1)
-    prediction = model(inputs,mode="predict")
-    print(colored("Prediction completed!","cyan"))
-    import ipdb
-    ipdb.set_trace()
+    for i, val in enumerate(tu_dataset):
+        inputs = tu_dataset.get_item_at_index(i)
+        x, edge_index = inputs['x'], inputs['edge_index']
+        x.to(device)
+        edge_index.to(device)
+        prediction = model(inputs,mode="predict")
+        prediction = prediction.detach().cpu().numpy()
+        print(colored("Prediction completed! Set # {} predicted: {}".format(i, prediction),"cyan"))
+        import ipdb
+        ipdb.set_trace()
     #prediction = model(x, edge_index)
     # take the pre-trained model and new DAG to make the prediction
     return
