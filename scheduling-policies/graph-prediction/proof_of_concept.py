@@ -179,6 +179,7 @@ class GraphLevelGNN(pl.LightningModule):
         edge_index = edge_index[0]
         nx = self.model(x, edge_index, batch_idx)
         nx = nx.squeeze(dim=-1)
+
         if self.hparams.c_out == 1:
             preds = (nx > 0).float()
             data['y'] = data['y'].float()
@@ -519,27 +520,6 @@ def predict():
 
     # Create a dataset and data loader with this new max shape
     tu_dataset = GraphDataset(new_dataset,shape=model_trained_on_shape)
-
-    # Convert to feature matrix and predict
-    #_graph_test_loader = geom_loader.DataLoader(tu_dataset, num_workers=num_workers, batch_size=_batch_size)
-    #batch = next(iter(_graph_test_loader))
-    #from termcolor import colored
-    #print(colored("Begin bad output","red"))
-    #print("Batch:", batch)
-    #print("Labels:", batch['y'][:10])
-    #print("Batch indices:", batch['edge_index'][:40])
-    #print(colored("End bad output","light_red"))
-
-    ##trainer = pl.Trainer(resume_from_checkpoint=_pretrained_filename)
-    #trainer = pl.Trainer(default_root_dir=_root_dir,
-    #                    callbacks=[ModelCheckpoint(save_weights_only=True, mode="max", monitor="val_acc")],
-    #                    accelerator="gpu" if str(device).startswith("cuda") else "cpu",
-    #                    devices=num_devices,
-    #                    max_epochs=30,
-    #                    log_every_n_steps=1,
-    #                 enable_progress_bar=True)
-    #trainer.logger._default_hp_metric = None # Optional logging argument that we don't need
-    #test_result = trainer.test(_model, _graph_test_loader, verbose=True, ckpt_path=_pretrained_filename )
 
     #TODO: interpret predicted to result to a scheduler decision
     model = torch.load(_model_filename)
