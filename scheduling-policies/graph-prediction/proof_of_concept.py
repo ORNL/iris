@@ -56,19 +56,29 @@ _graph_val_loader = None
 _graph_test_loader = None
 _tu_dataset = None
 
+def summarize(prediction,actual):
+    print(colored("predicted:{} actual:{}".format(number_to_target(len(prediction)-1),number_to_target(int(actual[0]))),"cyan"))
+
 def target_to_tensor(target_str):
-    if target_str == "locality":    return [1,0,0]
-    if target_str == "concurrency": return [0,1,0]
-    if target_str == "mixed":       return [0,0,1]
+    if target_str == "locality":    return[0]#return [1, 0, 0]
+    if target_str == "concurrency": return[1]#return [0, 1, 0]
+    if target_str == "mixed":       return[2]#return [0, 0, 1]
     assert False, "Unknown target string"
 
 #TODO: used tensor to target to actually spit out the predicted graph-level classification
 def tensor_to_target(target_id):
-    if target_id == [1,0,0]: return "locality"
-    if target_id == [0,1,0]: return "concurrency"
-    if target_id == [0,0,1]: return "mixed"
+    if target_id == [1, 0, 0]: return "locality"
+    if target_id == [0, 1, 0]: return "concurrency"
+    if target_id == [0, 0, 1]: return "mixed"
     return "unknown (broken prediction)"
     #assert False, "Unknown target id"
+
+def number_to_target(target_id):
+    if target_id == 0: return "locality"
+    if target_id == 1: return "concurrency"
+    if target_id == 2: return "mixed"
+    assert False, "Unknown target id"
+
 
 class GNNModel(nn.Module):
 
@@ -171,23 +181,30 @@ class GraphLevelGNN(pl.LightningModule):
 
         #TODO use Softmax for multi-class classification rather than the Binary Cross Entropy loss function.
         #self.loss_module = nn.BCEWithLogitsLoss() if self.hparams.c_out == 1 else nn.CrossEntropyLoss()
+        #self.loss_module = nn.CrossEntropyLoss()
         #self.loss_module = nn.Softmax()
-        self.loss_module = nn.CrossEntropyLoss()
+        #self.loss_module = nn.LogSoftmax()
+        self.loss_module = nn.LogSoftmax(dim=1)
+        self.loss_fn = nn.NLLLoss()
 
     def forward(self, data, mode="train"):
         x, edge_index, batch_idx = data['x'], data['edge_index'], data['batch']
         edge_index = edge_index[0]
         nx = self.model(x, edge_index, batch_idx)
-        nx = nx.squeeze(dim=-1)
+        #nx = nx.squeeze(dim=-1)
 
         if self.hparams.c_out == 1:
             preds = (nx > 0).float()
-            data['y'] = data['y'].float()
+            data['y'] = data['y']
         else:
             preds = nx.argmax(dim=1)#was dim=-1
         if mode == "predict":
             return preds
-        loss = self.loss_module(nx, data['y'])
+        #loss = self.loss_module(nx, data['y'])
+        loss = self.loss_fn(self.loss_module(nx),data['y'])
+        #TODO: need .requires_grad_()?
+        #TODO: figure out why output is so broken?
+        loss = torch.autograd.Variable(loss, requires_grad = True)
         acc = (preds == data['y']).sum().float() / preds.shape[0]
         return loss, acc
 
@@ -278,7 +295,8 @@ class GraphDataset(torch.utils.data.Dataset):
         return self.max_feature_matrix_shape[1]
 
     def num_classes(self):
-        return 3 #the range of labels in the target_to_tensor(target_str) function
+        #TODO should this be 3 or 1?
+        return 1#3 #the range of labels in the target_to_tensor(target_str) function
 
     def __construct_nodes(self,data):
         return data['content']['iris-graph']['graph']['tasks']
@@ -369,10 +387,10 @@ def train_graph_classifier(**model_kwargs):
                          callbacks=[ModelCheckpoint(save_weights_only=True, mode="max", monitor="val_acc")],
                          accelerator="gpu" if str(device).startswith("cuda") else "cpu",
                          devices=num_devices,
-                         max_epochs=1,
+                         max_epochs=10,
                          #TODO: bring back good training size of epochs
                          #max_epochs=30,
-                         log_every_n_steps=1,
+                         log_every_n_steps=5,
                          enable_progress_bar=True)
     trainer.logger._default_hp_metric = None # Optional logging argument that we don't need
 
@@ -383,7 +401,7 @@ def train_graph_classifier(**model_kwargs):
     else:
         pl.seed_everything(42)
         model = GraphLevelGNN(c_in=_tu_dataset.num_node_features,
-                              c_out=3,
+                              c_out=1,
                               **model_kwargs)
         trainer.fit(model, _graph_train_loader, _graph_val_loader)
         model = GraphLevelGNN.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
@@ -403,7 +421,7 @@ def train_graph_classifier(**model_kwargs):
 def train():
     global _model
 
-    _model, result = train_graph_classifier(c_hidden=256,
+    _model, result = train_graph_classifier(c_hidden=1,
                                            layer_name="GraphConv",
                                            num_layers=3,
                                            dp_rate_linear=0.5,
@@ -520,7 +538,7 @@ def predict():
 
     # Create a dataset and data loader with this new max shape
     tu_dataset = GraphDataset(new_dataset,shape=model_trained_on_shape)
-
+    tu_dataset.shuffle()
     #TODO: interpret predicted to result to a scheduler decision
     model = torch.load(_model_filename)
     model.to(device)
@@ -534,18 +552,11 @@ def predict():
         edge_index.to(device)
         prediction = model(inputs,mode="predict")
         prediction = prediction.detach().cpu().numpy()
-        print(colored("Prediction completed! Set # {} predicted: {}".format(i, prediction),"cyan"))
-        #TODO: favour the latter when we figure out why the output from the model is malformed...
-        print(colored("Prediction completed! Set # {} predicted: {} was {}".format(i, tensor_to_target(prediction), tensor_to_target(inputs['y'])),"cyan"))
+        print(colored("Prediction completed! Set # {}".format(i),"cyan"))
+        summarize(prediction,actual=inputs['y'])
 
-        prediction = []
-        import ipdb
-        ipdb.set_trace()
-    #prediction = model(x, edge_index)
-    # take the pre-trained model and new DAG to make the prediction
+    # TODO take the pre-trained model and new DAG to make the prediction
     return
-
-
 
 def load_dataset():
     global _graph_train_loader, _graph_val_loader, _graph_test_loader, _tu_dataset
@@ -572,8 +583,8 @@ if __name__ == '__main__':
         _model = GraphLevelGNN.load_from_checkpoint(_pretrained_filename)
     else:
         print("Building a new model...")
-        load_dataset()
         #load_demonstration_dataset()
+        load_dataset()
         train()
 
     predict()
