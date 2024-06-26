@@ -3,8 +3,8 @@
 # may need to run `./build.sh` from `../..`
 # or `source ~/.iris/setup.zsh`
 
-from termcolor import colored
 import os
+import sys
 import numpy as np
 import pandas as pd
 import torchvision
@@ -18,6 +18,8 @@ import torch_geometric.loader as geom_loader
 import pytorch_lightning as pl
 import pickle
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
+from termcolor import colored
+from functools import reduce
 
 # Initialize PyTorch environment
 DATASET_PATH = "./data"
@@ -491,7 +493,7 @@ def generate_dataset():
     tu_dataset = GraphDataset(raw_dataset)
     return tu_dataset
 
-def predict():
+def generate_fresh_prediction_payload_for_testing():
     new_dataset = []
     num_tasks = 32
     #new linear test
@@ -527,11 +529,15 @@ def predict():
             rargs = gen_dagger_parse_args(d['args'])
             generate_graph_as_json()
 
-    # fill in content of each payload from the json
+    return new_dataset
+
+def load_content_from_files(new_dataset):
     from dagger.dagger_generator import get_task_graph_from_json
     for d in new_dataset:
         d['content'] = get_task_graph_from_json(d['file'])
+    return new_dataset
 
+def predict(new_dataset):
     # load the max shape that the model was trained with
     with open(_pretrained_shape_file ,"rb") as shape_file:
         model_trained_on_shape = pickle.load(shape_file)
@@ -539,7 +545,12 @@ def predict():
     # Create a dataset and data loader with this new max shape
     tu_dataset = GraphDataset(new_dataset,shape=model_trained_on_shape)
     tu_dataset.shuffle()
-    #TODO: interpret predicted to result to a scheduler decision
+    #the following environments are needed to load the pickled model from __main__
+    import __main__
+    setattr(__main__, "GraphLevelGNN", GraphLevelGNN)
+    setattr(__main__, "GraphGNNModel", GraphGNNModel)
+    setattr(__main__, "GNNModel", GNNModel)
+
     model = torch.load(_model_filename)
     model.to(device)
     model.eval()
@@ -587,5 +598,38 @@ if __name__ == '__main__':
         load_dataset()
         train()
 
-    predict()
+    #if no arguments are given do the standard inference
+    if len(sys.argv) == 1:
+        new_dataset = generate_fresh_prediction_payload_for_testing()
+        # fill in content of each payload from the json
+        new_dataset = load_content_from_files(new_dataset)
+        predict(new_dataset)
+        sys.exit()
+
+    #else load in each IRIS json file and update it with the inference predictions
+    #this was test was generated from the dynamic evaluation paper and copied in here with:
+    #   cp -r ../../../iris/apps/dagger/dagger-payloads/ ./prototype-payloads
+
+    # 1) generate the file listing
+    json_files = np.array([])
+    for argument in sys.argv[1:]:
+        if os.path.isdir(argument):
+            for each_file in os.listdir(argument):
+                json_files = np.append(json_files,{'file':os.path.join(argument,each_file)})
+        elif os.path.isfile(argument):
+            json_files = np.append(json_files,{'file':argument})
+    json_files = json_files.flatten()
+
+    # 2) convert each into a compliant data-frame
+    new_dataset = self.load_content_from_files(json_files)
+    # 3) run the same prediction function on it.
+    prediction = self.predict(json_file)
+    import ipdb
+    ipdb.set_trace()
+    #TODO:
+    # 4) update each json file with hard-coded prediction
+    # 5) compare by running back into IRIS
+    # 6) verify why 500-800% accuracy
+
+
 
