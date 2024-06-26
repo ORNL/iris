@@ -65,6 +65,7 @@ def target_to_tensor(target_str):
     if target_str == "locality":    return[0]#return [1, 0, 0]
     if target_str == "concurrency": return[1]#return [0, 1, 0]
     if target_str == "mixed":       return[2]#return [0, 0, 1]
+    if target_str == "?":           return[-1]
     assert False, "Unknown target string"
 
 #TODO: used tensor to target to actually spit out the predicted graph-level classification
@@ -79,6 +80,9 @@ def number_to_target(target_id):
     if target_id == 0: return "locality"
     if target_id == 1: return "concurrency"
     if target_id == 2: return "mixed"
+    if target_id == -1: return "?"
+    import ipdb
+    ipdb.set_trace()
     assert False, "Unknown target id"
 
 
@@ -309,10 +313,17 @@ class GraphDataset(torch.utils.data.Dataset):
         edges = []
         for n in nodes:
             #TODO: determine how to add the d2h and h2d memory buffers to node_feature_matrix
+            if 'initial' in n['name']: continue
             if 'final' in n['name']: continue
             if 'dmemflush' in n['name']: continue
+            if 'transferto' in n['name']: continue
+            if 'transferfrom' in n['name']: continue
+
             ref_node_name = n['name']
             for d in n['depends']:
+                if 'initial' in d: continue
+                if 'transferto' in d: continue
+                if 'transferfrom' in d: continue
                 # remove the leading task from the string, get its numerical value
                 # and increment at the corresponding id
                 edges.append([int(ref_node_name.replace('task','')),int(d.replace('task',''))])
@@ -535,6 +546,7 @@ def load_content_from_files(new_dataset):
     from dagger.dagger_generator import get_task_graph_from_json
     for d in new_dataset:
         d['content'] = get_task_graph_from_json(d['file'])
+        if 'schedule-for' not in d.keys(): d['schedule-for']='?'
     return new_dataset
 
 def predict(new_dataset):
@@ -621,9 +633,9 @@ if __name__ == '__main__':
     json_files = json_files.flatten()
 
     # 2) convert each into a compliant data-frame
-    new_dataset = self.load_content_from_files(json_files)
+    new_dataset = load_content_from_files(json_files)
     # 3) run the same prediction function on it.
-    prediction = self.predict(json_file)
+    prediction = predict(new_dataset)
     import ipdb
     ipdb.set_trace()
     #TODO:
