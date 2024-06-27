@@ -18,8 +18,12 @@
 #else
 #define HostInterfaceClass BoilerPlateHostInterfaceLoader
 #endif 
-
+typedef struct _jl_value_t jl_value_t;
+typedef jl_value_t jl_function_t;
+void *jl_unbox_voidpointer(jl_value_t *v);
+void jl_gc_add_finalizer(jl_value_t *v, jl_function_t *f);
 void jl_init(void);
+void jl_atexit_hook(int);
 int jl_is_initialized(void);
 
 using namespace std;
@@ -100,18 +104,15 @@ namespace iris {
                     index_ = 0;
                     args_ = NULL;
                     values_ = NULL;
-                    values_ptr_ = NULL;
                     args_capacity_ = 0;
                 }
                 ~KernelJulia( ) {
                     if (args_ != NULL) free(args_);
                     if (values_ != NULL) free(values_);
-                    if (values_ptr_ != NULL) free(values_ptr_);
                 }
                 void init(int nargs) {
                     args_ = NULL;
                     values_ = NULL;
-                    values_ptr_ = NULL;
                     args_capacity_ = nargs+6;
                     if (args_ == NULL) 
                         args_ = (int32_t *) malloc(
@@ -119,15 +120,13 @@ namespace iris {
                     if (values_ == NULL)
                         values_ = (void **) malloc(
                                 sizeof(void *)*args_capacity_);
-                    if (values_ptr_ == NULL)
-                        values_ptr_ = (void **) malloc(
-                                sizeof(void *)*args_capacity_);
                     index_  = 0;
                 }
                 void set_kernel(Kernel *kernel) { kernel_ = kernel; }
                 void set_arg_type(int32_t arg_type) {
                     assert(index_ < args_capacity_);
                     args_[index_] = arg_type;
+                    //printf("Args:%p %d %d\n", args_, index_, arg_type);
                 }
                 void set_value(void *value) { 
                     assert(index_ < args_capacity_);
@@ -135,8 +134,7 @@ namespace iris {
                     //printf("         Values ptr:%p\n", values_+index_); 
                 }
                 void set_value_ptr(void *value) { 
-                    values_ptr_[index_] = value; 
-                    values_[index_] = &values_ptr_[index_]; 
+                    values_[index_] = value;
                     //printf("         Values mem:%p mem_ptr:%p\n", values_ptr_[index_], values_[index_]); 
                 }
                 void set_fn_ptr(__iris_kernel_ptr ptr) { fn_ptr_ = ptr; }
@@ -148,7 +146,7 @@ namespace iris {
                 void add_stream(void **stream) {
                     set_arg_type(iris_pointer);
                     streams_ = stream;
-                    set_value(&streams_);
+                    set_value(streams_);
                     increment();
                 }
                 void add_dev_info() {
@@ -172,7 +170,6 @@ namespace iris {
                 KernelArg *iris_args_;
                 int32_t *args_;
                 void **values_;
-                void **values_ptr_;
                 size_t *param_size_;
                 size_t *param_idx_;
                 void **streams_;
@@ -197,20 +194,24 @@ namespace iris {
                 int setmem(void *param_mem, int kindex, void *mem, size_t size);
                 void launch_julia_kernel(int target, int32_t devno, int32_t stream_index, void **stream, int32_t nstreams, int32_t *args, void **values, int32_t nparams, size_t *threads, size_t *blocks, int dim, const char *name)
                 {
-                    printf("jl_is_initialized: %p jl_init:%p\n", jl_is_initialized, jl_init);
-                    julia_kernel_t kernel_julia_wrapper = iris_get_julia_launch_func();
-                    printf("Kernel ptr: %p\n", kernel_julia_wrapper);
-                    if (kernel_julia_wrapper != NULL) {
-                        int32_t target = 12; 
-                        int32_t devno=0;
-                        (*jl_init)();
-                        int32_t result = kernel_julia_wrapper(target, devno);
-                        printf("Result: %d\n", result);
+                    //printf("jl_is_initialized: %p jl_init:%p\n", jl_is_initialized, jl_init);
+                    if (iris_get_julia_launch_func()!= NULL) {
+                        //(*jl_init)();
+                        julia_kernel_t kernel_julia_wrapper = iris_get_julia_launch_func();
+                        //printf("Kernel ptr: %p %s args:%p values:%p\n", kernel_julia_wrapper, name, args, values);
+                        //for(int i=0; i<nparams; i++) {
+                        //    printf("Values:i:%d arg:%d:%d values:%p\n", i, args[i], args[i]>>16, values[i]);
+                        //}
+                        kernel_julia_wrapper(target, devno, stream_index, stream, nstreams, args, values, nparams, threads, blocks, dim, name);
+                        //printf("Result: %d\n", result);
+                        //(*jl_atexit_hook)(0);
                     }
-                        //kernel_julia_wrapper(target, devno, stream_index, stream, nstreams, args, values, nparams, threads, blocks, dim, name);
                 }
 
+                void *(*jl_unbox_voidpointer)(jl_value_t *v);
+                void (*jl_gc_add_finalizer)(jl_value_t *v, jl_function_t *f);
                 void (*jl_init)(void);
+                void (*jl_atexit_hook)(int);
                 int (*jl_is_initialized)(void);
             private:
                 int target_;

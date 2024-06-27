@@ -196,13 +196,19 @@ namespace iris {
             HostInterfaceLoader("KERNEL_JULIA") {
                 target_ = target;
                 jl_init = NULL;
+                jl_atexit_hook = NULL;
                 jl_is_initialized = NULL;
+                jl_gc_add_finalizer = NULL;
+                jl_unbox_voidpointer = NULL;
             }
         int JuliaHostInterfaceLoader::LoadFunctions() {
             HostInterfaceLoader::LoadFunctions();
             printf("Loading Julia functions\n");
             LOADFUNC(jl_init);
+            LOADFUNC(jl_atexit_hook);
             LOADFUNC(jl_is_initialized);
+            LOADFUNC(jl_gc_add_finalizer);
+            LOADFUNC(jl_unbox_voidpointer);
             return IRIS_SUCCESS;
         }
         KernelJulia *JuliaHostInterfaceLoader::get_kernel_julia(void *param_mem) {
@@ -238,6 +244,8 @@ namespace iris {
             if (Load() != IRIS_SUCCESS) {
               _trace("%s", "skipping Julia wrapper calls");
             }
+            //jl_value_t *jfn = (jl_value_t *)iris_get_julia_launch_func();
+           // jl_gc_add_finalizer(jfn, NULL);
             (*jl_init)();
         }
         int JuliaHostInterfaceLoader::host_kernel(void *param_mem, const char *kname) 

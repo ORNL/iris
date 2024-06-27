@@ -903,6 +903,10 @@ void iris_print_matrix_full_int8_t(int8_t *data, int M, int N, const char *descr
 {
     iris::PrintMatrixFull<int8_t>(data, M, N, description);
 }
+void iris_println(const char *s)
+{
+    printf("%s\n", s);
+}
 
 int iris_read_bool_env(const char *env_name) {
     bool flag=false;
@@ -996,10 +1000,10 @@ julia_kernel_t julia_kernel__ = NULL;
 int iris_julia_init(void *julia_launch_func)
 {
     julia_kernel__ = (julia_kernel_t) julia_launch_func;
-    int32_t target = 12; 
-    int32_t devno=0;
-    int32_t result = julia_kernel__(target, devno);
-    printf("Result %d\n", result);
+    //int32_t target = 12; 
+    //int32_t devno=0;
+    //int32_t result = julia_kernel__(target, devno);
+    //printf("Result %d\n", result);
     return IRIS_SUCCESS;
 }
 julia_kernel_t iris_get_julia_launch_func() 
