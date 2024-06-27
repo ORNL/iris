@@ -27,9 +27,36 @@ function saxpy_iris(A::Float32, X::Vector{Float32}, Y::Vector{Float32}, Z::Vecto
     mem_X = IrisHRT.iris_data_mem(X)
     mem_Y = IrisHRT.iris_data_mem(Y)
     mem_Z = IrisHRT.iris_data_mem(Z)
-
+    
     # Set up the task parameters for the kernel
-    saxpy_params      =      [Ref(mem_Z),     A,               Ref(mem_X),     Ref(mem_Y)]
+    saxpy_params      =      [(mem_Z, IrisHRT.iris_w), A, (mem_X, IrisHRT.iris_r), (mem_Y, IrisHRT.iris_r)]
+
+    # Create IRIS task
+    task0 = IrisHRT.iris_task_julia("saxpy", 1, Int64[], 
+            [SIZE], Int64[], saxpy_params)
+    # Flush the output
+    IrisHRT.iris_task_dmem_flush_out(task0, mem_Z)
+    # Submit the task
+    IrisHRT.iris_task_submit(task0, IrisHRT.iris_roundrobin, Ptr{Int8}(C_NULL), 1)
+
+    # Release memory objects
+    IrisHRT.iris_mem_release(mem_X)
+    IrisHRT.iris_mem_release(mem_Y)
+    IrisHRT.iris_mem_release(mem_Z)
+
+end
+
+function saxpy_iris_old(A::Float32, X::Vector{Float32}, Y::Vector{Float32}, Z::Vector{Float32})
+    SIZE = length(X)
+
+    println("Initialized IRIS")
+    # Create IRIS memory objects
+    mem_X = IrisHRT.iris_data_mem(X)
+    mem_Y = IrisHRT.iris_data_mem(Y)
+    mem_Z = IrisHRT.iris_data_mem(Z)
+    
+    # Set up the task parameters for the kernel
+    saxpy_params      =      [Ref(mem_Z),     Ref(A),               Ref(mem_X),     Ref(mem_Y)]
     saxpy_params_info = Int32[IrisHRT.iris_w, sizeof(Float32), IrisHRT.iris_r, IrisHRT.iris_r]
 
     # Create IRIS task
@@ -89,6 +116,8 @@ saxpy_iris(A, X, Y, Z)
 julia_time = time() - julia_start
 println("Julia time: ", julia_time)
 julia_iris_start = time()
+output = compare_arrays(Z, Ref_Z)
+println("Output Matching: ", output)
 saxpy_iris(A, X, Y, Z)
 julia_iris_time = time() - julia_iris_start
 println("Julia IRIS time: ", julia_iris_time)

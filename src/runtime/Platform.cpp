@@ -1611,8 +1611,8 @@ int Platform::DataMemRegisterPin(iris_mem brs_mem) {
   return IRIS_SUCCESS;
 }
 
-int Platform::DataMemCreate(iris_mem* brs_mem, void *host, size_t size) {
-  DataMem* mem = new DataMem(this, host, size);
+int Platform::DataMemCreate(iris_mem* brs_mem, void *host, size_t size, int element_type) {
+  DataMem* mem = new DataMem(this, host, size, element_type);
   if (brs_mem) mem->SetStructObject(brs_mem);
   //if (brs_mem) *brs_mem = mem->struct_obj();
   if (mem->size()==0) return IRIS_ERROR;
@@ -1621,8 +1621,8 @@ int Platform::DataMemCreate(iris_mem* brs_mem, void *host, size_t size) {
   return IRIS_SUCCESS;
 }
 
-int Platform::DataMemCreate(iris_mem* brs_mem, void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim) {
-  DataMem* mem = new DataMem(this, host, off, host_size, dev_size, elem_size, dim);
+int Platform::DataMemCreate(iris_mem* brs_mem, void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim, int element_type) {
+  DataMem* mem = new DataMem(this, host, off, host_size, dev_size, elem_size, dim, element_type);
   if (brs_mem) mem->SetStructObject(brs_mem);
   //if (brs_mem) *brs_mem = mem->struct_obj();
   if (mem->size()==0) return IRIS_ERROR;

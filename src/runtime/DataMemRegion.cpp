@@ -12,6 +12,7 @@ namespace rt {
 
 DataMemRegion::DataMemRegion(DataMem *mem, int region, size_t *off, size_t *loff, size_t *host_size, size_t *dev_size, size_t elem_size, int dim, size_t dev_offset_from_root) : DataMem(mem->platform(), NULL, off, host_size, dev_size, elem_size, dim) 
 {
+    set_element_type(mem->element_type());
     SetMemHandlerType(IRIS_DMEM_REGION);
     mem_ = mem;
     region_ = region;

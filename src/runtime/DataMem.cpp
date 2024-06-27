@@ -10,12 +10,14 @@
 namespace iris {
 namespace rt {
 
-DataMem::DataMem(Platform* platform, void *host_ptr, size_t size) : BaseMem(IRIS_DMEM, platform->ndevs()) {
+DataMem::DataMem(Platform* platform, void *host_ptr, size_t size, int element_type) : BaseMem(IRIS_DMEM, platform->ndevs()) {
     Init(platform, host_ptr, size);
+    set_element_type(element_type);
 }
-DataMem::DataMem(Platform *platform, void *host_ptr, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim) : BaseMem(IRIS_DMEM, platform->ndevs()) 
+DataMem::DataMem(Platform *platform, void *host_ptr, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim, int element_type) : BaseMem(IRIS_DMEM, platform->ndevs()) 
 {
     size_t size = elem_size;
+    set_element_type(element_type);
     for(int i=0; i<dim; i++) {
         size = size * dev_size[i];
     }

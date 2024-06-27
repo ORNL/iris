@@ -148,8 +148,8 @@ public:
   iris_mem *DataMemCreate(void *host, size_t size);
   iris_mem *DataMemCreate(void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim);
   iris_mem *DataMemCreate(iris_mem root_mem, int region);
-  int DataMemCreate(iris_mem* brs_mem, void *host, size_t size);
-  int DataMemCreate(iris_mem* brs_mem, void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim);
+  int DataMemCreate(iris_mem* brs_mem, void *host, size_t size, int element_type=iris_unknown);
+  int DataMemCreate(iris_mem* brs_mem, void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim, int element_type=iris_unknown);
   int DataMemCreate(iris_mem* brs_mem, iris_mem root_mem, int region);
   int DataMemEnableOuterDimRegions(iris_mem mem);
   int MemArch(iris_mem brs_mem, int device, void** arch);

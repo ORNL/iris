@@ -31,6 +31,7 @@ namespace rt {
                 handler_type_ = type;
                 reset_ = false;
                 size_ = 0;
+                element_type_ = iris_unknown;
                 ndevs_ = ndevs;
                 write_dev_ = -1;
                 device_map_ = new BaseMemDevice[ndevs_+1];
@@ -239,7 +240,10 @@ namespace rt {
         void DestroyEvent(int devno, void *event);
         bool is_usm(int devno) { return is_usm_[devno]; }
         void set_usm_flag(int devno, bool flag=true) { is_usm_[devno] = flag; }
+        int element_type() { return element_type_; }
+        void set_element_type(int t) { element_type_ = t; }
         protected:
+            int element_type_;
             int recommended_stream_[IRIS_MAX_NDEVS];
             MemHandlerType handler_type_;
             void* archs_[IRIS_MAX_NDEVS];

@@ -152,6 +152,7 @@ typedef enum DeviceModel DeviceModel;
 #define iris_long               (14 << 16)
 #define iris_unsigned_long      (15 << 16)
 #define iris_pointer            (16 << 16)
+#define iris_unknown            (17 << 16)
 
 #define iris_normal             (1 << 10)
 #define iris_reduction          (1 << 11)
@@ -1043,6 +1044,17 @@ extern iris_mem iris_data_mem_create_struct(void *host, size_t size);
  *
  * This function creates IRIS data memory object for a given size
  *
+ * @param host host pointer of the data structure
+ * @param size size of the memory
+ * @param type type of the memory element
+ * @return This function returns an iris_mem dmem object
+ */
+extern iris_mem iris_data_mem_create_struct_with_type(void *host, size_t size, int element_type);
+
+/**@brief Cretes IRIS data memory object
+ *
+ * This function creates IRIS data memory object for a given size
+ *
  * @param mem pointer to the memory object
  * @param host host pointer of the data structure
  * @param size size of the memory
@@ -1147,6 +1159,19 @@ extern int iris_data_mem_create_tile(iris_mem* mem, void *host, size_t *off, siz
  * @return This function returns a iris_mem object
  */
 extern iris_mem iris_data_mem_create_tile_struct(void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim);
+
+/**@brief Creates a memory tile from host memory
+ *
+ * @param host host memory pointer
+ * @param off host memory pointer
+ * @param host_size indexes to specify sizes from host memory
+ * @param dev_size indexes to specify sizes from device memory
+ * @param elem_size element size
+ * @param dim dimension
+ * @param type type of memory element
+ * @return This function returns a iris_mem object
+ */
+extern iris_mem iris_data_mem_create_tile_struct_with_type(void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim, int element_type);
 
 /**@brief Creates a memory tile from host memory
  *

@@ -20,8 +20,8 @@ class DataMem;
 
 class DataMem: public BaseMem {
 public:
-  DataMem(Platform* platform, void *host, size_t size);
-  DataMem(Platform *platform, void *host_ptr, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim);
+  DataMem(Platform* platform, void *host, size_t size, int element_type=iris_unknown);
+  DataMem(Platform *platform, void *host_ptr, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim, int element_type=iris_unknown);
   void Init(Platform *platform, void *host_ptr, size_t size);
   virtual ~DataMem();
   void UpdateHost(void *host);

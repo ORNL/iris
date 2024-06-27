@@ -84,6 +84,7 @@ module IrisHRT
     const iris_long          = 14 << 16
     const iris_unsigned_long = 15 << 16
     const iris_pointer       = 16 << 16
+    const iris_unknown       = 17 << 16
 
     const iris_normal = 1 << 10
     const iris_reduction = 1 << 11
@@ -144,7 +145,7 @@ module IrisHRT
             current_type = Int(unsafe_load(args_type + i*sizeof(Cint)))
             # Load the pointer to the actual argument
             arg_ptr = unsafe_load(Ptr{Ptr{Cvoid}}(args + i*sizeof(Ptr{Cvoid})))
-            i#ris_println("I:$i type:$current_type ptr:$arg_ptr")
+            iris_println("I:$i type:$current_type ptr:$arg_ptr")
             # Convert based on the type
             if current_type == Int(iris_int64)  # Assuming 1 is for Int
                 push!(julia_args, Int64(unsafe_load(Ptr{Clonglong}(arg_ptr))))
@@ -173,7 +174,7 @@ module IrisHRT
             elseif current_type == Int(iris_pointer) # Assuming 3 is for Char
                 farg_ptr = Ptr{Float32}(arg_ptr)
                 iris_println("Before Pointer $farg_ptr")
-                jptr = unsafe_wrap(CuDeviceArray{Float32, 1}, farg_ptr, (10,), true)
+                jptr = unsafe_wrap(CUDA.CuDeviceArray, farg_ptr, (10,), own=false)
                 iris_println("After Pointer $arg_ptr $jptr")
                 push!(julia_args, jptr)
             else
@@ -182,7 +183,7 @@ module IrisHRT
         end
         j_threads = []
         j_blocks = []
-# Iterate through each argument
+        # Iterate through each argument
         for i in 0:(dim - 1)
             # Load the type of the current argument
             push!(j_threads, UInt64(unsafe_load(c_threads, i)))
@@ -521,7 +522,55 @@ module IrisHRT
         return ccall(Libdl.dlsym(lib, :iris_task_kernel_object), Int32, (IrisTask, IrisKernel, Int32, Ptr{Csize_t}, Ptr{Csize_t}, Ptr{Csize_t}), task, kernel, dim, off, gws, lws)
     end
 
-    function iris_task_julia(kernel::String, dim::Int64, off::Vector{Int64}, gws::Vector{Int64}, lws::Vector{Int64}, nparams::Int64, params::Vector{Any}, params_info::Vector{Int32})::IrisTask
+    function print_element_info(vec::Vector{Any})
+        for element in vec
+            println("Type: ", typeof(element), " Value:", element)
+            if !isa(element, Base.RefValue{IrisHRT.IrisMem})
+                println("Size1: ", sizeof(element))
+            else
+                println("Size2: ", sizeof(element))
+            end
+        end
+    end
+
+    function iris_task_julia(kernel::String, dim::Int64, off::Vector{Int64}, gws::Vector{Int64}, lws::Vector{Int64}, jparams::Any)::IrisTask
+        params_info = Int32[]
+        params = []
+        for (index,element) in enumerate(jparams)
+            #println("Type: ", typeof(element), " Value:", element)
+            if isa(element, Tuple)
+                push!(params_info, element[2])
+                if isa(element[1], Base.RefValue{IrisHRT.IrisMem})
+                    push!(params, element[1])
+                elseif isa(element[1], IrisHRT.IrisMem)
+                    push!(params, Ref(element[1]))
+                elseif isa(element[1], Vector{Any})
+                    mem_X = IrisHRT.iris_data_mem(element[1])
+                    push!(params, Ref(mem_X))
+                    jparams[index] = (mem_X, element[2])
+                    # TODO: Release this memory object 
+                end
+            elseif isa(element, Base.RefValue{IrisHRT.IrisMem})
+                push!(params_info, Int32(IrisHRT.iris_rw))
+                push!(params, element)
+            elseif isa(element, IrisHRT.IrisMem)
+                push!(params_info, Int32(IrisHRT.iris_rw))
+                push!(params, Ref(element))
+            elseif isa(element[1], Vector{Any})
+                push!(params_info, Int32(IrisHRT.iris_rw))
+                mem_X = IrisHRT.iris_data_mem(element[1])
+                push!(params, Ref(mem_X))
+                jparams[index] = (element[0], mem_X)
+                # TODO: Release this memory object 
+            else
+                push!(params_info, sizeof(element))
+                push!(params, Ref(element))
+            end
+        end
+        nparams = Int64(length(params))
+        println("Info: ", params_info)
+        println("Params: ", params)
+        println("NParams : $nparams")
         task = iris_task_create_struct()
         ccall(Libdl.dlsym(lib, :iris_task_enable_julia_interface), Int32, (IrisTask,), task)
         off_c = Ptr{UInt64}(C_NULL)
@@ -541,7 +590,7 @@ module IrisHRT
         return task
     end
 
-    function iris_task_native(kernel::String, dim::Int64, off::Vector{Int64}, gws::Vector{Int64}, lws::Vector{Int64}, nparams::Int64, params::Vector{Any}, params_info::Vector{Int32})::IrisTask
+    function iris_task_native(kernel::String, dim::Int64, off::Vector{Int64}, gws::Vector{Int64}, lws::Vector{Int64}, nparams::Int64, params::Any, params_info::Vector{Int32})::IrisTask
         task = iris_task_create_struct()
         off_c = Ptr{UInt64}(C_NULL)
         if length(off) != 0
@@ -659,6 +708,31 @@ module IrisHRT
     function iris_data_mem(host::Array{T}) where T 
         size = Csize_t(length(host) * sizeof(T))
         host_cptr = reinterpret(Ptr{Cvoid}, pointer(host))
+        println("Type of element: ", T, " Size:", sizeof(T))
+        element_type = iris_pointer
+        if T == Float32
+            element_type = iris_float 
+        elseif T == Float64
+            element_type = iris_double
+        elseif T == Int64
+            element_type = iris_int64
+        elseif T == Int32
+            element_type = iris_int32
+        elseif T == Int16
+            element_type = iris_int16
+        elseif T == Int8
+            element_type = iris_int8
+        elseif T == UInt64
+            element_type = iris_uint64
+        elseif T == UInt32
+            element_type = iris_uint32
+        elseif T == UInt16
+            element_type = iris_uint16
+        elseif T == UInt8
+            element_type = iris_uint8
+        elseif T == Char
+            element_type = iris_char
+        end
         return ccall(Libdl.dlsym(lib, :iris_data_mem_create_struct), IrisMem, (Ptr{Cvoid}, Csize_t), host_cptr, size)
     end
 
