@@ -1,5 +1,16 @@
 #!python3
 
+# all dependencies for this demo should be installed by running the following:
+# conda env create --name gnn-prediction --file gnn-prediction.yaml
+# conda activate env gnn-prediction
+
+# to train the model:
+# ./proof_of_concept.py
+# and to use it on actual IRIS json dags:
+# ./proof_of_concept.py <file.json>
+# or
+# ./proof_of_concept.py <directory of json files>
+
 # may need to run `./build.sh` from `../..`
 # or `source ~/.iris/setup.zsh`
 
@@ -27,6 +38,7 @@ CHECKPOINT_PATH = "./saved_models"
 pl.seed_everything(42)
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
+_max_epochs = 10
 use_cpu = True
 if use_cpu:
     num_devices = 1
@@ -38,7 +50,7 @@ else:
     #num_devices = torch.cuda.device_count()
     #num_workers = torch.cuda.device_count()
     num_devices = 1
-    num_workers = 10
+    num_workers = 0
     #num_workers = 127
 
 
@@ -59,30 +71,21 @@ _graph_test_loader = None
 _tu_dataset = None
 
 def summarize(prediction,actual):
-    print(colored("predicted:{} actual:{}".format(number_to_target(len(prediction)-1),number_to_target(int(actual[0]))),"cyan"))
+    print(colored("predicted:{} actual:{}".format(number_to_target(prediction[0]),number_to_target(int(actual))),"cyan"))
+    if actual == "?": print(colored("\'?\' indicates we performed prediction on unknown data.","green"))
 
 def target_to_tensor(target_str):
-    if target_str == "locality":    return[0]#return [1, 0, 0]
-    if target_str == "concurrency": return[1]#return [0, 1, 0]
-    if target_str == "mixed":       return[2]#return [0, 0, 1]
-    if target_str == "?":           return[-1]
+    if target_str == "locality":    return[0.]#return [1, 0, 0]
+    if target_str == "concurrency": return[1.]#return [0, 1, 0]
+    if target_str == "mixed":       return[2.]#return [0, 0, 1]
+    if target_str == "?":           return[-1.]
     assert False, "Unknown target string"
 
-#TODO: used tensor to target to actually spit out the predicted graph-level classification
-def tensor_to_target(target_id):
-    if target_id == [1, 0, 0]: return "locality"
-    if target_id == [0, 1, 0]: return "concurrency"
-    if target_id == [0, 0, 1]: return "mixed"
-    return "unknown (broken prediction)"
-    #assert False, "Unknown target id"
-
 def number_to_target(target_id):
-    if target_id == 0: return "locality"
-    if target_id == 1: return "concurrency"
-    if target_id == 2: return "mixed"
-    if target_id == -1: return "?"
-    import ipdb
-    ipdb.set_trace()
+    if target_id == 0.: return "locality"
+    if target_id == 1.: return "concurrency"
+    if target_id == 2.: return "mixed"
+    if target_id == -1.: return "?"
     assert False, "Unknown target id"
 
 
@@ -121,6 +124,7 @@ class GNNModel(nn.Module):
                              out_channels=c_out,
                              **kwargs)]
         self.layers = nn.ModuleList(layers)
+        self.to(device)
 
     def forward(self, x, edge_index):
         """
@@ -138,7 +142,7 @@ class GNNModel(nn.Module):
                 except:
                     import ipdb
                     ipdb.set_trace()
-                    print("not a big enough matrix")
+                    print("not a big enough matrix or edge_index has wrong dimensionality")
             else:
                 x = l(x)
         return x
@@ -162,6 +166,8 @@ class GraphGNNModel(nn.Module):
             nn.Dropout(dp_rate_linear),
             nn.Linear(c_hidden, c_out)
         )
+        self.num_classes = 3 #3 possible values in out c_out dimension
+        self.to(device)
 
     def forward(self, x, edge_index, batch_idx):
         """
@@ -171,7 +177,9 @@ class GraphGNNModel(nn.Module):
             batch_idx - Index of batch element for each node
         """
         x = self.GNN(x, edge_index)
-        x = geom_nn.global_mean_pool(x, batch_idx) # Average pooling
+        #b = torch.tensor([0]).to(device)#should be batch_idx
+        b = torch.tensor(batch_idx)#should be batch_idx
+        x = geom_nn.global_mean_pool(x, b) # Average pooling
         x = self.head(x)
         return x
 
@@ -183,6 +191,8 @@ class GraphLevelGNN(pl.LightningModule):
         self.save_hyperparameters()
         print(model_kwargs)
         self.model = GraphGNNModel(**model_kwargs)
+        self.loss_module = nn.LogSoftmax(dim=1)
+        self.to(device)
         self.model.to(device)
 
         #TODO use Softmax for multi-class classification rather than the Binary Cross Entropy loss function.
@@ -190,26 +200,28 @@ class GraphLevelGNN(pl.LightningModule):
         #self.loss_module = nn.CrossEntropyLoss()
         #self.loss_module = nn.Softmax()
         #self.loss_module = nn.LogSoftmax()
-        self.loss_module = nn.LogSoftmax(dim=1)
-        self.loss_fn = nn.NLLLoss()
+        #self.loss_fn = nn.NLLLoss()
 
     def forward(self, data, mode="train"):
-        x, edge_index, batch_idx = data['x'], data['edge_index'], data['batch']
-        edge_index = edge_index[0]
+        x, edge_index, batch_idx = data['x'], data['edge_index'][0], data['batch']
+        x.to(device)
+        edge_index.to(device)
+        batch_idx.to(device)
         nx = self.model(x, edge_index, batch_idx)
         #nx = nx.squeeze(dim=-1)
-
+        #TODO do we squeeze or need to determine how to process this last layer?
         if self.hparams.c_out == 1:
             preds = (nx > 0).float()
-            data['y'] = data['y']
+            data['y'] = data['y'][0].float()
         else:
             preds = nx.argmax(dim=1)#was dim=-1
         if mode == "predict":
             return preds
-        #loss = self.loss_module(nx, data['y'])
-        loss = self.loss_fn(self.loss_module(nx),data['y'])
-        #TODO: need .requires_grad_()?
         #TODO: figure out why output is so broken?
+        #import ipdb
+        #ipdb.set_trace()
+        loss = self.loss_module(x).mean()#, data['y'])
+        #loss = self.loss_fn(self.loss_module(nx),data['y'])
         loss = torch.autograd.Variable(loss, requires_grad = True)
         acc = (preds == data['y']).sum().float() / preds.shape[0]
         return loss, acc
@@ -275,6 +287,7 @@ class GraphDataset(torch.utils.data.Dataset):
         for i,val in enumerate(self.data_list):
             x = self.__convert_from_json_to_gnn(i,wrap_batch=for_prediction_mode) #if the edge_index isn't empty add it!
             if x['edge_index'].numel() != 0: self.gnn_form_of_json.append(x)
+        self.to(device)
 
     def to(self,device):
         for item in self.gnn_form_of_json:
@@ -302,7 +315,7 @@ class GraphDataset(torch.utils.data.Dataset):
 
     def num_classes(self):
         #TODO should this be 3 or 1?
-        return 1#3 #the range of labels in the target_to_tensor(target_str) function
+        return 3 #the range of labels in the target_to_tensor(target_str) function
 
     def __construct_nodes(self,data):
         return data['content']['iris-graph']['graph']['tasks']
@@ -311,48 +324,56 @@ class GraphDataset(torch.utils.data.Dataset):
         nodes = self.__construct_nodes(data)
         number_of_nodes = len(nodes)
         edges = []
-        for n in nodes:
+        for i,n in enumerate(nodes):
             #TODO: determine how to add the d2h and h2d memory buffers to node_feature_matrix
-            if 'initial' in n['name']: continue
-            if 'final' in n['name']: continue
-            if 'dmemflush' in n['name']: continue
-            if 'transferto' in n['name']: continue
-            if 'transferfrom' in n['name']: continue
+            if 'initial' in n['name']: n['name'] = 'task0'
+            if 'final' in n['name']: n['name'] = 'task{}'.format(len(nodes))
+            if 'dmemflush' in n['name']: n['name'] = "task{}".format(i)
+            if 'transferto' in n['name']: n['name'] = "task{}".format(i)
+            if 'transferfrom' in n['name']: n['name'] = "task{}".format(i)
 
             ref_node_name = n['name']
             for d in n['depends']:
-                if 'initial' in d: continue
-                if 'transferto' in d: continue
-                if 'transferfrom' in d: continue
                 # remove the leading task from the string, get its numerical value
                 # and increment at the corresponding id
                 edges.append([int(ref_node_name.replace('task','')),int(d.replace('task',''))])
         return np.array(edges,dtype=int).transpose()
 
     def __construct_node_feature_matrix_for_graph(self,nodes):
+        #if we encounter any memory movement we need to sake the entry to use all encountered memory objects
+        #TODO: check that this doesn't break under all interesting payloads (say with a large number of memory objects)
+        unique_memory_buffers = []
         # generate the full list of node attributes (memory buffer names used)
         node_uses_memory = {}
-        for node in nodes:
+        for i, node in enumerate(nodes):
             param_names = []
-            #ignore commands (currently only 1 command per task)
-            parameters = None
+            #ignore tasks which don't contain only 1 command (per task)
             if "kernel" in node['commands'][0].keys():
                 parameters = node['commands'][0]['kernel']['parameters']
                 for param in parameters:
                     param_names.append(param['value'])
             elif "d2h" in node['commands'][0].keys():
-                #TODO: determine how to add the d2h and h2d memory buffers to node_feature_matrix
                 #parameters = node['commands'][0]['d2h']['device_memory']
                 #param_names.append(parameters)
-                continue
+                for mobj in unique_memory_buffers:
+                    param_names.append(mobj)
+                node['name'] = "task{}".format(i)
             elif "h2d" in node['commands'][0].keys():
                 #parameters = node['commands'][0]['h2d']['device_memory']
                 #param_names.append(parameters)
-                continue
-            assert parameters is not None
+                for mobj in unique_memory_buffers:
+                    param_names.append(mobj)
+                node['name'] = "task{}".format(i)
+            assert param_names is not []
             node_uses_memory[node['name'].replace('task','')] = param_names
+            unique_memory_buffers = list(set(unique_memory_buffers+param_names))
         # apply 1-hot encodings for non-numerical features (memory buffer names)
-        one_hot = pd.DataFrame(node_uses_memory).transpose()
+        try:
+            one_hot = pd.DataFrame(node_uses_memory).transpose()
+        except:
+            import ipdb
+            ipdb.set_trace()
+        #TODO: is it not being int/long a problem?
         node_feature_matrix = pd.get_dummies(one_hot).astype(np.float64)
         return node_feature_matrix.to_numpy()
     
@@ -384,14 +405,14 @@ class GraphDataset(torch.utils.data.Dataset):
             edges = np.array([edges])
         else: batch_id = np.array(idx)#TODO: stopgap measure---remove idx+1 when I figure our why resuming the checkpoint fails to index appropriately
         #TODO: expect y to return a list of probabilities but is this correct?
-        return {'x':node_feature_matrix,
-                'edge_index':torch.from_numpy(edges),
-                'y':torch.LongTensor(target_to_tensor(label)),
-                'batch':torch.from_numpy(batch_id)}
+        return {'x':node_feature_matrix.to(device),
+                'edge_index':torch.from_numpy(edges).to(device),
+                'y':torch.FloatTensor(target_to_tensor(label)).to(device),
+                'batch':torch.from_numpy(batch_id).to(device)}
 
 
 def train_graph_classifier(**model_kwargs):
-    global _graph_train_loader, _graph_val_loader, _graph_test_loader
+    global _graph_train_loader, _graph_val_loader, _graph_test_loader, _max_epochs
 
 
     # Create a PyTorch Lightning trainer with the generation callback
@@ -400,7 +421,7 @@ def train_graph_classifier(**model_kwargs):
                          callbacks=[ModelCheckpoint(save_weights_only=True, mode="max", monitor="val_acc")],
                          accelerator="gpu" if str(device).startswith("cuda") else "cpu",
                          devices=num_devices,
-                         max_epochs=10,
+                         max_epochs=_max_epochs,
                          #TODO: bring back good training size of epochs
                          #max_epochs=30,
                          log_every_n_steps=5,
@@ -414,11 +435,10 @@ def train_graph_classifier(**model_kwargs):
     else:
         pl.seed_everything(42)
         model = GraphLevelGNN(c_in=_tu_dataset.num_node_features,
-                              c_out=1,
+                              c_out=3,
                               **model_kwargs)
         trainer.fit(model, _graph_train_loader, _graph_val_loader)
         model = GraphLevelGNN.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
-
     # Test best model on validation and test set
     train_result = trainer.test(model, _graph_train_loader, verbose=False)
     test_result = trainer.test(model, _graph_test_loader, verbose=False)
@@ -456,14 +476,14 @@ def generate_dataset():
     raw_dataset = []
     #build the list of graph names, the payloads used to generate them, and the proper scheduling target
     #locality data
-    for i in range(0,13):
-        num_tasks = 2**i
-        filename = '{}/linear-{}.json'.format(_dataset_directory,num_tasks)
-        raw_dataset.append({
-                'args':'--graph={} --kernels="ijk" --duplicates="0" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split="100" --depth={} --num-tasks={} --min-width=1 --max-width=1 --use-data-memory'.format(filename,num_tasks,num_tasks),
-                'file' : filename,
-                'schedule-for' : 'locality'
-                })
+    #for i in range(0,13):
+    #    num_tasks = 2**i
+    #    filename = '{}/linear-{}.json'.format(_dataset_directory,num_tasks)
+    #    raw_dataset.append({
+    #            'args':'--graph={} --kernels="ijk" --duplicates="0" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split="100" --depth={} --num-tasks={} --min-width=1 --max-width=1 --use-data-memory'.format(filename,num_tasks,num_tasks),
+    #            'file' : filename,
+    #            'schedule-for' : 'locality'
+    #            })
     #concurrency data
     for i in range(0,13):
         num_tasks = 2**i
@@ -502,18 +522,20 @@ def generate_dataset():
 
     # Create a dataset and data loader
     tu_dataset = GraphDataset(raw_dataset)
+    tu_dataset.to(device)
     return tu_dataset
 
 def generate_fresh_prediction_payload_for_testing():
     new_dataset = []
     num_tasks = 32
+    #TODO re-enable linear payloads when we get the gnn to predict any other outcome
     #new linear test
-    filename = '{}/linear-{}.json'.format(_dataset_directory,num_tasks)
-    new_dataset.append({
-            'args':'--graph={} --kernels="ijk" --duplicates="0" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split="100" --depth={} --num-tasks={} --min-width=1 --max-width=1 --use-data-memory'.format(filename,num_tasks,num_tasks),
-            'file' : filename,
-            'schedule-for' : 'locality'
-            })
+    #filename = '{}/linear-{}.json'.format(_dataset_directory,num_tasks)
+    #new_dataset.append({
+    #        'args':'--graph={} --kernels="ijk" --duplicates="0" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split="100" --depth={} --num-tasks={} --min-width=1 --max-width=1 --use-data-memory'.format(filename,num_tasks,num_tasks),
+    #        'file' : filename,
+    #        'schedule-for' : 'locality'
+    #        })
     #new concurrency test
     filename = '{}/diamond-{}.json'.format(_dataset_directory,num_tasks)
     new_dataset.append({
@@ -566,12 +588,10 @@ def predict(new_dataset):
     model = torch.load(_model_filename)
     model.to(device)
     model.eval()
-    tu_dataset.to(device)
     #for each item to predict
     for i, val in enumerate(tu_dataset):
         inputs = tu_dataset.get_item_at_index(i)
         x, edge_index = inputs['x'], inputs['edge_index']
-        x.to(device)
         edge_index.to(device)
         prediction = model(inputs,mode="predict")
         prediction = prediction.detach().cpu().numpy()
