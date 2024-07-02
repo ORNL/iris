@@ -13,11 +13,14 @@ println("Size of Cint in bits: ", sizeof(Cint) * 8, " bits")
 
 # Define a CUDA kernel function
 function saxpy_cuda(Z, A, X, Y)
+    # Calculate global index
     i = threadIdx().x + blockIdx().x * blockDim().x
-    Z[i] = A * X[i] + Y[i]
+    # Check bounds
+    if i <= length(Z)
+        Z[i] = A * X[i] + Y[i]
+    end
     return
 end
-
 
 function saxpy_iris(A::Float32, X::Vector{Float32}, Y::Vector{Float32}, Z::Vector{Float32})
     SIZE = length(X)
@@ -118,11 +121,11 @@ println("Julia time: ", julia_time)
 julia_iris_start = time()
 output = compare_arrays(Z, Ref_Z)
 println("Output Matching: ", output)
-saxpy_iris(A, X, Y, Z)
-julia_iris_time = time() - julia_iris_start
-println("Julia IRIS time: ", julia_iris_time)
-output = compare_arrays(Z, Ref_Z)
-println("Output Matching: ", output)
+#saxpy_iris(A, X, Y, Z)
+#julia_iris_time = time() - julia_iris_start
+#println("Julia IRIS time: ", julia_iris_time)
+#output = compare_arrays(Z, Ref_Z)
+#println("Output Matching: ", output)
 println("Z     :", Z)
 println("Ref_Z :", Ref_Z)
 # Finalize IRIS

@@ -904,7 +904,7 @@ int DeviceCUDA::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, 
   }
   else if (julia_if_ != NULL && kernel->task()->enable_julia_if()) {
       julia_if_->setmem(
-              kernel->GetParamWrapperMemory(), kindex, dev_ptr, size);
+              kernel->GetParamWrapperMemory(), mem, kindex, dev_ptr, size);
   }
   return IRIS_SUCCESS;
 }

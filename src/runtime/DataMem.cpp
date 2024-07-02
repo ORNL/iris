@@ -14,6 +14,20 @@ DataMem::DataMem(Platform* platform, void *host_ptr, size_t size, int element_ty
     Init(platform, host_ptr, size);
     set_element_type(element_type);
 }
+DataMem::DataMem(Platform* platform, void *host_ptr, size_t *host_size, int dim, size_t elem_size, int element_type) : BaseMem(IRIS_DMEM, platform->ndevs()) {
+    size_t size = elem_size;
+    set_element_type(element_type);
+    ASSERT(dim < DMEM_MAX_DIM);
+    for(int i=0; i<dim; i++) {
+        size = size * host_size[i];
+    }
+    Init(platform, host_ptr, size);
+    dim_ = dim;
+    memcpy(dev_size_, host_size, sizeof(size_t)*dim_);
+    memcpy(host_size_, host_size, sizeof(size_t)*dim_);
+    elem_size_ = elem_size;
+    set_element_type(element_type);
+}
 DataMem::DataMem(Platform *platform, void *host_ptr, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim, int element_type) : BaseMem(IRIS_DMEM, platform->ndevs()) 
 {
     size_t size = elem_size;
@@ -21,6 +35,7 @@ DataMem::DataMem(Platform *platform, void *host_ptr, size_t *off, size_t *host_s
     for(int i=0; i<dim; i++) {
         size = size * dev_size[i];
     }
+    ASSERT(dim < DMEM_MAX_DIM);
     if (dim == 1) {
         _trace("DataMem host_ptr:%p off:%ld host_size:%ld dev_size:%ld elem_size:%ld dim:%d size:%ld", host_ptr, off[0], host_size[0], dev_size[0], elem_size, dim, size);
     }
@@ -53,7 +68,7 @@ void DataMem::Init(Platform *platform, void *host_ptr, size_t size)
         //dev_ranges_[i] = NULL;
     }
     elem_size_ = size_;
-    for(int i=0; i<3; i++) {
+    for(int i=0; i<DMEM_MAX_DIM; i++) {
         host_size_[i] = 1;
         dev_size_[i] = 1;
         off_[i] = 0;
@@ -137,10 +152,10 @@ void DataMem::EnableOuterDimensionRegions()
     int outer_dim = dev_size_[dim_-1];
     n_regions_ = outer_dim;
     regions_ = new DataMemRegion*[n_regions_];
-    size_t dev_size[3], off[3], loff[3];
-    memcpy(dev_size, dev_size_, sizeof(size_t)*3);
-    memcpy(off, off_, sizeof(size_t)*3);
-    memcpy(loff, off_, sizeof(size_t)*3);
+    size_t dev_size[DMEM_MAX_DIM], off[DMEM_MAX_DIM], loff[DMEM_MAX_DIM];
+    memcpy(dev_size, dev_size_, sizeof(size_t)*DMEM_MAX_DIM);
+    memcpy(off, off_, sizeof(size_t)*DMEM_MAX_DIM);
+    memcpy(loff, off_, sizeof(size_t)*DMEM_MAX_DIM);
     dev_size[dim_-1] = 1;
     size_t dev_offset = 1;
     for(int i=0; i<dim_-1; i++) 

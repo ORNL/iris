@@ -68,6 +68,7 @@ module IrisHRT
     const iris_block_cycle = 1 << 27
     const iris_custom = 1 << 28
 
+    const iris_unknown       = 0 << 16
     const iris_int           = 1 << 16
     const iris_uint          = 2 << 16
     const iris_float         = 3 << 16
@@ -83,8 +84,7 @@ module IrisHRT
     const iris_uint64        = 13 << 16
     const iris_long          = 14 << 16
     const iris_unsigned_long = 15 << 16
-    const iris_pointer       = 16 << 16
-    const iris_unknown       = 17 << 16
+    const iris_pointer       = 16384 << 16
 
     const iris_normal = 1 << 10
     const iris_reduction = 1 << 11
@@ -121,75 +121,156 @@ module IrisHRT
     const HookCommand = Ptr{Cvoid}
     const IrisSelectorKernel = Ptr{Cvoid}
 
-    export kernel_julia_wrapper, iris_init
-    export kernel_julia_wrapper1
+    export iris_init
+    export kernel_julia_wrapper
     export convert_args
 
     function convert_args(args_type::Ptr{Cint}, args::Ptr{Ptr{Cvoid}}, nparams::Cint, start_index::Cint)
         julia_args = []
         return julia_args
     end 
-    function print_arr(data::Ptr{Cint}, index::Int)::Cvoid
+    function iris_print_array_size_t(data::Ptr{Csize_t}, index::Int)::Cvoid
+        ldata = UInt64(unsafe_load(data + index*sizeof(Cint)))
+        iris_println("Array:$index Data:$ldata")
+    end
+    function iris_print_array_int(data::Ptr{Cint}, index::Int)::Cvoid
         ldata = Int(unsafe_load(data + index*sizeof(Cint)))
         iris_println("Array:$index Data:$ldata")
     end
-    function kernel_julia_wrapper1(target::Cint, devno::Cint, stream_index::Cint, stream::Ptr{Ptr{Cvoid}}, nstreams::Cint, args_type::Ptr{Cint}, args::Ptr{Ptr{Cvoid}}, nparams::Cint, c_threads::Ptr{Csize_t}, c_blocks::Ptr{Csize_t}, dim::Cint, kernel_name::Ptr{Cchar})::Cint
+    function kernel_julia_wrapper1(target::Cint, devno::Cint, stream_index::Cint, stream::Ptr{Ptr{Cvoid}}, nstreams::Cint, args_type::Ptr{Cint}, args::Ptr{Ptr{Cvoid}}, param_size::Ptr{Csize_t}, param_dim_size::Ptr{Csize_t}, nparams::Cint, c_threads::Ptr{Csize_t}, c_blocks::Ptr{Csize_t}, dim::Cint, kernel_name::Ptr{Cchar})::Cint
+        iris_println("Inside Julia wrapper")
+        return Int32(0)
+    end
+    function kernel_julia_wrapper(target::Cint, devno::Cint, stream_index::Cint, stream::Ptr{Ptr{Cvoid}}, nstreams::Cint, args_type::Ptr{Cint}, args::Ptr{Ptr{Cvoid}}, param_size::Ptr{Csize_t}, param_dim_size::Ptr{Csize_t}, nparams::Cint, c_threads::Ptr{Csize_t}, c_blocks::Ptr{Csize_t}, dim::Cint, kernel_name::Ptr{Cchar})::Cint
         # Array to hold the converted Julia values
         #julia_args = convert_args(args_type, args, nparams, 2)
         julia_args = []
+        julia_sizes = []
+        julia_dims = []
         start_index = 2
+        DMEM_MAX_DIM = 6
         #iris_println("args_type:$args_type args:$args nparams:$nparams")
+        #iris_print_array(param_size, Int(nparams))
         # Iterate through each argument
+        dev_ptr_index = []
         for i in start_index:(nparams - 1)
+            single_arg_type = unsafe_load(args_type + i*sizeof(Cint))
             # Load the type of the current argument
-            current_type = Int(unsafe_load(args_type + i*sizeof(Cint)))
+            current_type = Int(single_arg_type & 0x3FFF0000)
+            is_pointer = Int(single_arg_type & 0x40000000)
+            element_size = Int((single_arg_type >> 8) & 0xFF)
+            dim = Int(single_arg_type & 0xFF)
+            full_size = UInt64(unsafe_load(param_size + i*sizeof(Csize_t)))
+            size_dims = [] 
+            for d in 0:(dim - 1)
+                value = unsafe_load(param_dim_size + i*sizeof(Csize_t)*DMEM_MAX_DIM + d * sizeof(Csize_t)) + 0
+                push!(size_dims, Int64(value))
+            end
+            size_dims = Tuple(size_dims)
             # Load the pointer to the actual argument
             arg_ptr = unsafe_load(Ptr{Ptr{Cvoid}}(args + i*sizeof(Ptr{Cvoid})))
-            iris_println("I:$i type:$current_type ptr:$arg_ptr")
+            #iris_println("I:$i type:$current_type ptr:$arg_ptr is_pointer:$is_pointer element_size:$element_size dim:$dim Size:$full_size SizeDim:$size_dims")
             # Convert based on the type
-            if current_type == Int(iris_int64)  # Assuming 1 is for Int
-                push!(julia_args, Int64(unsafe_load(Ptr{Clonglong}(arg_ptr))))
-            elseif current_type == Int(iris_int32)  # Assuming 1 is for Int
-                #iris_println("int32")
-                push!(julia_args, Int32(unsafe_load(Ptr{Cint}(arg_ptr))))
-            elseif current_type == Int(iris_int16)  # Assuming 1 is for Int
-                push!(julia_args, Int16(unsafe_load(Ptr{Cshort}(arg_ptr))))
-            elseif current_type == Int(iris_int8)  # Assuming 1 is for Int
-                push!(julia_args, Int8(unsafe_load(Ptr{Cchar}(arg_ptr))))
-            elseif current_type == Int(iris_uint64)  # Assuming 1 is for Int
-                push!(julia_args, UInt64(unsafe_load(Ptr{Culonglong}(arg_ptr))))
-            elseif current_type == Int(iris_uint32)  # Assuming 1 is for Int
-                #iris_println("uint32")
-                push!(julia_args, UInt32(unsafe_load(Ptr{Cuint}(arg_ptr))))
-            elseif current_type == Int(iris_uint16)  # Assuming 1 is for Int
-                push!(julia_args, UInt16(unsafe_load(Ptr{Cushort}(arg_ptr))))
-            elseif current_type == Int(iris_uint8)  # Assuming 1 is for Int
-                push!(julia_args, UInt8(unsafe_load(Ptr{Cuchar}(arg_ptr))))
-            elseif current_type == Int(iris_float)  # Assuming 2 is for Float
-                push!(julia_args, Float32(unsafe_load(Ptr{Cfloat}(arg_ptr))))
-            elseif current_type == Int(iris_double) # Assuming 2 is for Float
-                push!(julia_args, Float64(unsafe_load(Ptr{Cdouble}(arg_ptr))))
-            elseif current_type == Int(iris_char)  # Assuming 3 is for Char
-                push!(julia_args, Char(unsafe_load(Ptr{Cchar}(arg_ptr))))
-            elseif current_type == Int(iris_pointer) # Assuming 3 is for Char
-                farg_ptr = Ptr{Float32}(arg_ptr)
-                iris_println("Before Pointer $farg_ptr")
-                jptr = unsafe_wrap(CUDA.CuDeviceArray, farg_ptr, (10,), own=false)
-                iris_println("After Pointer $arg_ptr $jptr")
-                push!(julia_args, jptr)
-            else
-                error("Unsupported type")
+            if is_pointer != Int(iris_pointer)
+                #iris_println("I is not pointer")
+                if current_type == Int(iris_int64)  # Assuming 1 is for Int
+                    push!(julia_args, Int64(unsafe_load(Ptr{Clonglong}(arg_ptr))))
+                elseif current_type == Int(iris_int32)  # Assuming 1 is for Int
+                    push!(julia_args, Int32(unsafe_load(Ptr{Cint}(arg_ptr))))
+                elseif current_type == Int(iris_int16)  # Assuming 1 is for Int
+                    push!(julia_args, Int16(unsafe_load(Ptr{Cshort}(arg_ptr))))
+                elseif current_type == Int(iris_int8)  # Assuming 1 is for Int
+                    push!(julia_args, Int8(unsafe_load(Ptr{Cchar}(arg_ptr))))
+                elseif current_type == Int(iris_uint64)  # Assuming 1 is for Int
+                    push!(julia_args, UInt64(unsafe_load(Ptr{Culonglong}(arg_ptr))))
+                elseif current_type == Int(iris_uint32)  # Assuming 1 is for Int
+                    push!(julia_args, UInt32(unsafe_load(Ptr{Cuint}(arg_ptr))))
+                elseif current_type == Int(iris_uint16)  # Assuming 1 is for Int
+                    push!(julia_args, UInt16(unsafe_load(Ptr{Cushort}(arg_ptr))))
+                elseif current_type == Int(iris_uint8)  # Assuming 1 is for Int
+                    push!(julia_args, UInt8(unsafe_load(Ptr{Cuchar}(arg_ptr))))
+                elseif current_type == Int(iris_float)  # Assuming 2 is for Float
+                    push!(julia_args, Float32(unsafe_load(Ptr{Cfloat}(arg_ptr))))
+                elseif current_type == Int(iris_double) # Assuming 2 is for Float
+                    push!(julia_args, Float64(unsafe_load(Ptr{Cdouble}(arg_ptr))))
+                elseif current_type == Int(iris_char)  # Assuming 3 is for Char
+                    push!(julia_args, Char(unsafe_load(Ptr{Cchar}(arg_ptr))))
+                else
+                    error("Unsupported type")
+                end
+            else # Assuming 3 is for Char
+                push!(dev_ptr_index, i+1-start_index)
+                if current_type == Int(iris_float)
+                    arg_ptr = Ptr{Cfloat}(arg_ptr)
+                elseif current_type == Int(iris_double)
+                    arg_ptr = Ptr{Cdouble}(arg_ptr)
+                elseif current_type == Int(iris_int64)
+                    arg_ptr = Ptr{Clonglong}(arg_ptr)
+                elseif current_type == Int(iris_int32)
+                    arg_ptr = Ptr{Cint}(arg_ptr)
+                elseif current_type == Int(iris_int16)
+                    arg_ptr = Ptr{Cshort}(arg_ptr)
+                elseif current_type == Int(iris_int8)
+                    arg_ptr = Ptr{Cchar}(arg_ptr)
+                elseif current_type == Int(iris_char)
+                    arg_ptr = Ptr{Cchar}(arg_ptr)
+                elseif current_type == Int(iris_uint64)
+                    arg_ptr = Ptr{Culonglong}(arg_ptr)
+                elseif current_type == Int(iris_uint32)
+                    arg_ptr = Ptr{Cuint}(arg_ptr)
+                elseif current_type == Int(iris_uint16)
+                    arg_ptr = Ptr{Cushort}(arg_ptr)
+                elseif current_type == Int(iris_uint8)
+                    arg_ptr = Ptr{Cuchar}(arg_ptr)
+                else
+                    iris_println("No type")
+                end
+                try 
+                    #jptr = unsafe_wrap(CUDA.Array, arg_ptr, size_dims, own=false)
+                    #jptr = unsafe_wrap(CuDeviceArray{Float32, 1}, arg_ptr, size_dims, own=false)
+                    #iris_println("After Pointer $arg_ptr $jptr")
+                    #push!(julia_args, jptr)
+                    push!(julia_args, (arg_ptr, size_dims, current_type, full_size, element_size))
+                catch e 
+                    iris_println("foo threw an error")
+                    rethrow(e)
+                end
             end
         end
+        #iris_println("-----Hello:$target Devno:$devno nparams:$nparams" * vec_string(julia_args))
+        for i in dev_ptr_index
+            (arg_ptr, size_dims, current_type, full_size, element_size)  = julia_args[i]
+            #iris_println("Index: $i arg:$arg_ptr ---")
+            try 
+                type_name = CuPtr{Float32}
+                #cu_arg_ptr = reinterpret(type_name, arg_ptr)
+                if Int(target) == Int(iris_cuda)
+                    arg_ptr = cuda_reinterpret(arg_ptr, current_type)
+                    #iris_println("Index: $i target arg:$arg_ptr size:$size_dims")
+                    arg_ptr = unsafe_wrap(CuArray, arg_ptr, size_dims, own=false)
+                    #iris_println("After Pointer $arg_ptr")
+                else
+                    iris_println("Unknown target to handle arguments")
+                end
+                julia_args[i] = arg_ptr
+                #push!(julia_args, arg_ptr)
+            catch e 
+                iris_println("foo threw an error")
+                rethrow(e)
+            end
+        end
+        #iris_println("Hello:$target Devno:$devno nparams:$nparams" * vec_string(julia_args))
+        #iris_println("Now calling CUDA")
         j_threads = []
         j_blocks = []
         # Iterate through each argument
         for i in 0:(dim - 1)
             # Load the type of the current argument
-            push!(j_threads, UInt64(unsafe_load(c_threads, i)))
-            push!(j_blocks, UInt64(unsafe_load(c_blocks, i)))
+            push!(j_threads, UInt64(unsafe_load(c_threads+i*sizeof(Csize_t)))+0)
+            push!(j_blocks, UInt64(unsafe_load(c_blocks+i*sizeof(Csize_t)))+0)
         end
-        iris_println("Hello:$target Devno:$devno nparams:$nparams" * vec_string(julia_args))
+        j_threads = Tuple(j_threads)
+        j_blocks = Tuple(j_blocks)
         if Int(target) == Int(iris_cuda)
             #call_cuda_kernel(String(kernel_name), j_threads, j_blocks, julia_args)
             ##############################################################
@@ -200,37 +281,70 @@ module IrisHRT
 
             func_name_target = func_name * "_cuda"
             # Initialize CUDA
-            CUDA.allowscalar(false)  # Disable scalar operations on the GPU
+            #CUDA.allowscalar(false)  # Disable scalar operations on the GPU
             func = getfield(Main, Symbol(func_name_target))
             # Convert the array of arguments to a tuple
             args_tuple = Tuple(julia_args)
+            iris_println("Func: $func j_threads:$j_threads blocks:$j_blocks args_tuple:$args_tuple")
             # Call the function with arguments
             #@cuda threads=threads blocks=blocks add_kernel(a,b,c,N)
-            @cuda threads=j_threads blocks=j_blocks func(args_tuple...)
+            #@cuda threads=j_threads blocks=j_blocks func(args_tuple...)
+            @cuda threads=j_threads blocks=j_blocks Main.saxpy_cuda(args_tuple...)
             ##############################################################
+            iris_println("Completed CUDA")
             return target*11
         else
             return target*10
         end
     end
 
-    function kernel_julia_wrapper(target::Cint, devno::Cint, stream_index::Cint, stream::Ptr{Ptr{Cvoid}}, nstreams::Cint, args::Ptr{Cint}, values::Ptr{Ptr{Cvoid}}, nparams::Cint, threads::Ptr{Csize_t}, blocks::Ptr{Csize_t}, dim::Cint, kernel_name::Ptr{Cchar})::Cint
-        #println("Reached julia wrapper")
-        if target == iris_cuda
-            #println("Reached julia wrapper target")
-            call_cuda_kernel(String(kernel_name), threads, blocks, args)
+    function cuda_reinterpret(arg_ptr::Any, current_type::Any)
+        if current_type == Int(iris_float)
+            arg_ptr = reinterpret(CuPtr{Float32}, arg_ptr)
+        elseif current_type == Int(iris_double)
+            arg_ptr = reinterpret(CuPtr{Float64}, arg_ptr)
+        elseif current_type == Int(iris_int64)
+            arg_ptr = reinterpret(CuPtr{Int64}, arg_ptr)
+        elseif current_type == Int(iris_int32)
+            arg_ptr = reinterpret(CuPtr{Int32}, arg_ptr)
+        elseif current_type == Int(iris_int16)
+            arg_ptr = reinterpret(CuPtr{Int16}, arg_ptr)
+        elseif current_type == Int(iris_int8)
+            arg_ptr = reinterpret(CuPtr{Int8}, arg_ptr)
+        elseif current_type == Int(iris_char)
+            arg_ptr = reinterpret(CuPtr{Char}, arg_ptr)
+        elseif current_type == Int(iris_uint64)
+            arg_ptr = reinterpret(CuPtr{UInt64}, arg_ptr)
+        elseif current_type == Int(iris_uint32)
+            arg_ptr = reinterpret(CuPtr{UInt32}, arg_ptr)
+        elseif current_type == Int(iris_uint16)
+            arg_ptr = reinterpret(CuPtr{UInt16}, arg_ptr)
+        elseif current_type == Int(iris_uint8)
+            arg_ptr = reinterpret(CuPtr{UInt8}, arg_ptr)
+        else
+            iris_println("No type")
         end
+        return arg_ptr
     end
 
+    function iris_print_array(data::Ptr{T}, N::Int) where T
+        str = []
+        arr = unsafe_wrap(Array, data, N)
+        for i in 1:N
+            value = string.(arr[i])
+            #iris_println("Data Value: $value")
+            push!(str, value)
+        end
+        str_data = "[" * join(str, ",") * "]"
+        iris_println("Data: $str_data")
+    end
     function vec_string(arr::AbstractArray, sep::String = ", ")
         return "[" * join(string.(arr), sep) * "]"
     end
 
     # Bind functions from the IRIS library using ccall
     function iris_init(sync::Int32)::Int32
-                                #                         target::Cint, devno::Cint, stream_index::Cint, stream::Ptr{Ptr{Cvoid}}, nstreams::Cint, args::Ptr{Cint}, values::Ptr{Ptr{Cvoid}}, nparams::Cint, threads::Ptr{Csize_t}, blocks::Ptr{Csize_t}, dim::Cint, kernel_name::Ptr{Cchar})::Cint
-        #func_ptr = @cfunction(kernel_julia_wrapper, Cint, (Cint,        Cint,        Cint,               Ptr{Ptr{Cvoid}},         Cint,           Ptr{Cint},       Ptr{Ptr{Cvoid}},         Cint,          Ptr{Csize_t},          Ptr{Csize_t},         Cint,      Ptr{Cchar}))
-        func_ptr = @cfunction(kernel_julia_wrapper1, Cint, (Cint,        Cint,        Cint,               Ptr{Ptr{Cvoid}},         Cint,           Ptr{Cint},       Ptr{Ptr{Cvoid}},         Cint,          Ptr{Csize_t},          Ptr{Csize_t},         Cint,      Ptr{Cchar}))
+        func_ptr = @cfunction(kernel_julia_wrapper, Cint, (Cint,        Cint,        Cint,               Ptr{Ptr{Cvoid}},         Cint,           Ptr{Cint},       Ptr{Ptr{Cvoid}},         Ptr{Csize_t},  Ptr{Csize_t}, Cint,          Ptr{Csize_t},          Ptr{Csize_t},         Cint,      Ptr{Cchar}))
         global stored_func_ptr = func_ptr
         flag = ccall(Libdl.dlsym(lib, :iris_julia_init), Int32, (Ptr{Cvoid},), func_ptr)
         flag = flag & ccall(Libdl.dlsym(lib, :iris_init), Int32, (Ref{Int32}, Ref{Ptr{Ptr{Cchar}}}, Int32), Int32(1), C_NULL, sync)
@@ -563,14 +677,37 @@ module IrisHRT
                 jparams[index] = (element[0], mem_X)
                 # TODO: Release this memory object 
             else
-                push!(params_info, sizeof(element))
+                type_data = iris_unknown
+                if typeof(element) == Float32
+                    type_data = iris_float
+                elseif typeof(element) == Float64
+                    type_data = iris_double
+                elseif typeof(element) == Int64
+                    type_data = iris_int64
+                elseif typeof(element) == Int32
+                    type_data = iris_int32
+                elseif typeof(element) == Int16
+                    type_data = iris_int16
+                elseif typeof(element) == Int8
+                    type_data = iris_int8
+                elseif typeof(element) == UInt64
+                    type_data = iris_uint64
+                elseif typeof(element) == UInt32
+                    type_data = iris_uint32
+                elseif typeof(element) == UInt16
+                    type_data = iris_uint16
+                elseif typeof(element) == UInt8
+                    type_data = iris_uint8
+                elseif typeof(element) == Char
+                    type_data = iris_char
+                end
+                push!(params_info, type_data | sizeof(element))
                 push!(params, Ref(element))
             end
         end
         nparams = Int64(length(params))
-        println("Info: ", params_info)
-        println("Params: ", params)
-        println("NParams : $nparams")
+        #println("Params: ", params)
+        #println("NParams : $nparams")
         task = iris_task_create_struct()
         ccall(Libdl.dlsym(lib, :iris_task_enable_julia_interface), Int32, (IrisTask,), task)
         off_c = Ptr{UInt64}(C_NULL)
@@ -706,9 +843,12 @@ module IrisHRT
     end
 
     function iris_data_mem(host::Array{T}) where T 
-        size = Csize_t(length(host) * sizeof(T))
+        #size = Csize_t(length(host) * sizeof(T))
+        host_size = collect(size(host))
+        dim = length(host_size)
+        element_size = Int32(sizeof(T))
         host_cptr = reinterpret(Ptr{Cvoid}, pointer(host))
-        println("Type of element: ", T, " Size:", sizeof(T))
+        #println("Type of element: ", T, " Size:", size(host), " Element size:", element_size)
         element_type = iris_pointer
         if T == Float32
             element_type = iris_float 
@@ -735,11 +875,15 @@ module IrisHRT
         else
             element_type = iris_unknown
         end
-        return ccall(Libdl.dlsym(lib, :iris_data_mem_create_struct_with_type), IrisMem, (Ptr{Cvoid}, Csize_t, Int32), host_cptr, size, Int32(element_type))
+        return ccall(Libdl.dlsym(lib, :iris_data_mem_create_struct_nd), IrisMem, (Ptr{Cvoid}, Ptr{Cvoid}, Int32, Csize_t, Int32), host_cptr, host_size, dim, element_size, Int32(element_type))
     end
 
     function iris_data_mem_create_struct(host::Ptr{Cvoid}, size::Csize_t)::IrisMem
         return ccall(Libdl.dlsym(lib, :iris_data_mem_create_struct), IrisMem, (Ptr{Cvoid}, Csize_t), host, size)
+    end
+
+    function iris_data_mem_create_struct_nd(host::Ptr{Cvoid}, host_size::Ptr{Csize_t}, dim::Int32, elem_size::Csize_t, element_type::Int32)::IrisMem
+        return ccall(Libdl.dlsym(lib, :iris_data_mem_create_struct_nd), IrisMem, (Ptr{Cvoid}, Ptr{Csize_t}, Int32, Csize_t, Int32), host, host_size, dim, elem_size, element_type)
     end
 
     function iris_data_mem_create_struct_with_type(host::Ptr{Cvoid}, size::Csize_t, element_type::Int32)::IrisMem
@@ -806,8 +950,8 @@ module IrisHRT
         return ccall(Libdl.dlsym(lib, :iris_mem_arch), Int32, (IrisMem, Int32, Ref{Ptr{Cvoid}}), mem, device, arch)
     end
 
-    function iris_mem_arch_ptr(mem::IrisMem, device::Int32)::Ptr{Cvoid}
-        return ccall(Libdl.dlsym(lib, :iris_mem_arch), Ptr{Cvoid}, (IrisMem, Int32), mem, device)
+    function iris_mem_arch_ptr(mem::IrisMem, device::Int)::Ptr{Cvoid}
+        return ccall(Libdl.dlsym(lib, :iris_mem_arch_ptr), Ptr{Cvoid}, (IrisMem, Int32), mem, Int32(device))
     end
 
     #function iris_mem_reduce(mem::IrisMem, mode::Int32, type::Int32)::Int32

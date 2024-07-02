@@ -4,6 +4,7 @@
 #include "Kernel.h"
 #include "Platform.h"
 #include "signal.h"
+#include "DataMem.h"
 
 #define INIT_SYM_FN(FN)  \
     sym_map_fn_.insert(make_pair(string(#FN), (void **)&FN)); \
@@ -212,11 +213,13 @@ namespace iris {
             return IRIS_SUCCESS;
         }
         KernelJulia *JuliaHostInterfaceLoader::get_kernel_julia(void *param_mem) {
+            ASSERT(sizeof(KernelJulia) < KERNEL_ARGS_MEM_SIZE);
             KernelJulia **julia_ptr = (KernelJulia **)(((uint8_t *)param_mem)+ sizeof(int));
             return *julia_ptr;
         }
         void JuliaHostInterfaceLoader::set_kernel_julia(void *param_mem, KernelJulia *julia_data)
         {
+            ASSERT(sizeof(KernelJulia) < KERNEL_ARGS_MEM_SIZE);
             KernelJulia **julia_ptr = (KernelJulia **)(((uint8_t *)param_mem)+ sizeof(int));
             *julia_ptr = julia_data;
         }
@@ -262,7 +265,7 @@ namespace iris {
         {
             KernelJulia *julia_data = get_kernel_julia(param_mem);
             SetKernelPtr(param_mem, kname);
-            launch_julia_kernel(target_, devno, stream_index, stream, nstreams, julia_data->args(), julia_data->values(), julia_data->top(), grid, block, dim, kname);
+            launch_julia_kernel(target_, devno, stream_index, stream, nstreams, julia_data->args(), julia_data->values(), julia_data->param_size(), julia_data->param_dim_size(), julia_data->top(), grid, block, dim, kname);
             return IRIS_SUCCESS;
         }
         int JuliaHostInterfaceLoader::setarg(void *param_mem, int kindex, size_t size, void *value)
@@ -289,12 +292,24 @@ namespace iris {
             julia_data->increment();
             return IRIS_SUCCESS;
         }
-        int JuliaHostInterfaceLoader::setmem(void *param_mem, int kindex, void *mem, size_t size)
+        int JuliaHostInterfaceLoader::setmem(void *param_mem, BaseMem *mem, int kindex, void *mem_ptr, size_t size)
         {
             KernelJulia *julia_data = get_kernel_julia(param_mem);
+            int element_type = mem->element_type();
+            MemHandlerType h_type = mem->GetMemHandlerType();
+            int element_size = 0;
+            int dim = 1;
+            if (h_type == IRIS_DMEM_REGION || h_type == IRIS_DMEM) {
+                DataMem *dmem = (DataMem *)mem;
+                element_size = (int) dmem->elem_size();
+                dim = dmem->dim();
+                //printf("Size DIM : %lu\n", dmem->dev_size()[0]);
+                julia_data->set_dim_sizes(dmem->dev_size(), dmem->dim());
+            }
             //printf("setmem julia_data:%p kindex:%d arg_index:%d mem:%p\n", julia_data, kindex, julia_data->top(), mem);
-            julia_data->set_arg_type(iris_pointer);
-            julia_data->set_value_ptr(mem);
+            julia_data->set_arg_type(iris_pointer | element_type | (element_size << 8) | dim);
+            julia_data->set_value_ptr(mem_ptr);
+            julia_data->set_size(size/element_size);
             julia_data->increment();
             //raise(SIGABRT);
             return IRIS_SUCCESS;

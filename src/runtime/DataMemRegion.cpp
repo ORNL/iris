@@ -16,7 +16,7 @@ DataMemRegion::DataMemRegion(DataMem *mem, int region, size_t *off, size_t *loff
     SetMemHandlerType(IRIS_DMEM_REGION);
     mem_ = mem;
     region_ = region;
-    memcpy(loff_, loff, sizeof(size_t)*3);
+    memcpy(loff_, loff, sizeof(size_t)*DMEM_MAX_DIM);
     dev_offset_from_root_ = dev_offset_from_root;
     if (mem_->is_reset()) init_reset(true);
 }

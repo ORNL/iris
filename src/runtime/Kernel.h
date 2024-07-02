@@ -12,6 +12,7 @@
 #include <memory>
 #include <string>
 
+#define KERNEL_ARGS_MEM_SIZE 8*128
 using namespace std;
 namespace iris {
 namespace rt {
@@ -115,7 +116,7 @@ private:
   void* archs_[IRIS_MAX_NDEVS];
   Device* archs_devs_[IRIS_MAX_NDEVS];
   void *host_if_data_;
-  uint8_t param_wrapper_mem_[8*128];
+  uint8_t param_wrapper_mem_[KERNEL_ARGS_MEM_SIZE];
   Platform* platform_;
   shared_ptr<History> history_;
   bool is_vendor_specific_kernel_[IRIS_MAX_NDEVS];

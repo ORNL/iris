@@ -5,6 +5,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#define DMEM_MAX_DIM 6
+
 #ifdef __cplusplus
 namespace iris {
 namespace rt {
@@ -136,6 +138,7 @@ typedef enum DeviceModel DeviceModel;
 #define iris_dt_d2h_h2d         6
 #define iris_dt_error           0
 
+#define iris_unknown            (0 << 16)
 #define iris_int                (1 << 16)
 #define iris_uint               (2 << 16)
 #define iris_float              (3 << 16)
@@ -151,8 +154,7 @@ typedef enum DeviceModel DeviceModel;
 #define iris_uint64             (13 << 16)
 #define iris_long               (14 << 16)
 #define iris_unsigned_long      (15 << 16)
-#define iris_pointer            (16 << 16)
-#define iris_unknown            (17 << 16)
+#define iris_pointer            (0x4000 << 16)
 
 #define iris_normal             (1 << 10)
 #define iris_reduction          (1 << 11)
@@ -1045,11 +1047,38 @@ extern iris_mem iris_data_mem_create_struct(void *host, size_t size);
  * This function creates IRIS data memory object for a given size
  *
  * @param host host pointer of the data structure
+ * @param size ND-size array of the memory
+ * @param dim  total dimensions
+ * @param element_size Size of the element
+ * @param element_type IRIS element type
+ * @return This function returns an iris_mem dmem object
+ */
+extern iris_mem iris_data_mem_create_struct_nd(void *host, size_t *size, int dim, size_t element_size, int element_type);
+
+/**@brief Cretes IRIS data memory object
+ *
+ * This function creates IRIS data memory object for a given size
+ *
+ * @param host host pointer of the data structure
  * @param size size of the memory
  * @param type type of the memory element
  * @return This function returns an iris_mem dmem object
  */
 extern iris_mem iris_data_mem_create_struct_with_type(void *host, size_t size, int element_type);
+
+/**@brief Cretes IRIS data memory object
+ *
+ * This function creates IRIS data memory object for a given size
+ *
+ * @param mem pointer to the memory object
+ * @param host host pointer of the data structure
+ * @param size ND-size array of the memory
+ * @param dim  total dimensions
+ * @param element_size Size of the element
+ * @param element_type IRIS element type
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_data_mem_create_nd(iris_mem* mem, void *host, size_t *size, int dim, size_t element_size, int element_type);
 
 /**@brief Cretes IRIS data memory object
  *
@@ -1940,7 +1969,7 @@ extern int iris_read_bool_env(const char *env_name);
 extern int iris_read_int_env(const char *env_name);
 
 // Define a type for the Julia kernel launch function call pointer
-typedef int32_t (*julia_kernel_t)(int32_t target, int32_t devno, int32_t stream_index, void **stream, int32_t nstreams, int32_t *args, void **values, int32_t nparams, size_t *threads, size_t *blocks, int dim, const char *kernel_name);
+typedef int32_t (*julia_kernel_t)(int32_t target, int32_t devno, int32_t stream_index, void **stream, int32_t nstreams, int32_t *args, void **values, size_t *param_size, size_t *param_dim_size, int32_t nparams, size_t *threads, size_t *blocks, int dim, const char *kernel_name);
 
 /* API to initialize Julia interfacea
  * @param kernel_launch_func Kernel launch Julia function 

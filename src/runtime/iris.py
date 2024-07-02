@@ -247,6 +247,7 @@ iris_w          =   -2
 iris_rw         =   -3
 iris_flush      =   -4
 
+iris_unknown          =  (0 << 16)
 iris_int              =  (1 << 16)
 iris_uint             =  (2 << 16)
 iris_float            =  (3 << 16)
@@ -262,8 +263,7 @@ iris_int64            =  (12 << 16)
 iris_uint64           =  (13 << 16)
 iris_long             =  (14 << 16)
 iris_unsigned_long    =  (15 << 16)
-iris_pointer          =  (16 << 16)
-iris_unknown          =  (17 << 16)
+iris_pointer          =  (0x4000 << 16)
 
 iris_normal     =   (1 << 10)
 iris_reduction  =   (1 << 11)
@@ -284,6 +284,7 @@ iris_dt_d2d     =        5
 iris_dt_d2h_h2d =        6
 iris_dt_error   =        0
 
+DMEM_MAX_DIM = 6
 IRIS_MEM = 0x1
 IRIS_DMEM = 0x2
 IRIS_DMEM_REGION = 0x4

@@ -439,6 +439,9 @@ int iris_data_mem_init_reset(iris_mem mem, int reset) {
 int iris_data_mem_create_tile(iris_mem* mem, void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim) {
   return Platform::GetPlatform()->DataMemCreate(mem, host, off, host_size, dev_size, elem_size, dim);
 }
+int iris_data_mem_create_nd(iris_mem *mem, void *host, size_t *size, int dim, size_t elem_size, int element_type) {
+  return Platform::GetPlatform()->DataMemCreate(mem, host, size, dim, elem_size, element_type);
+}
 int iris_data_mem_create(iris_mem *mem, void *host, size_t size) {
   return Platform::GetPlatform()->DataMemCreate(mem, host, size);
 }
@@ -448,6 +451,11 @@ iris_mem *iris_data_mem_create_ptr(void *host, size_t size) {
 iris_mem iris_data_mem_create_struct(void *host, size_t size) {
   iris_mem mem;
   Platform::GetPlatform()->DataMemCreate(&mem, host, size);
+  return mem;
+}
+iris_mem iris_data_mem_create_struct_nd(void *host, size_t *size, int dim, size_t element_size, int element_type) {
+  iris_mem mem;
+  Platform::GetPlatform()->DataMemCreate(&mem, host, size, dim, element_size, element_type);
   return mem;
 }
 iris_mem iris_data_mem_create_struct_with_type(void *host, size_t size, int element_type) {

@@ -1614,6 +1614,22 @@ int Platform::DataMemRegisterPin(iris_mem brs_mem) {
 int Platform::DataMemCreate(iris_mem* brs_mem, void *host, size_t size, int element_type) {
   DataMem* mem = new DataMem(this, host, size, element_type);
   if (brs_mem) mem->SetStructObject(brs_mem);
+#ifndef DISABLE_PIN_BY_DEFAULT
+  DataMemRegisterPin(*brs_mem);
+#endif
+  //if (brs_mem) *brs_mem = mem->struct_obj();
+  if (mem->size()==0) return IRIS_ERROR;
+
+  //mems_.insert(mem);
+  return IRIS_SUCCESS;
+}
+
+int Platform::DataMemCreate(iris_mem* brs_mem, void *host, size_t *size, int dim, size_t element_size,  int element_type) {
+  DataMem* mem = new DataMem(this, host, size, dim, element_size, element_type);
+  if (brs_mem) mem->SetStructObject(brs_mem);
+#ifndef DISABLE_PIN_BY_DEFAULT
+  DataMemRegisterPin(*brs_mem);
+#endif
   //if (brs_mem) *brs_mem = mem->struct_obj();
   if (mem->size()==0) return IRIS_ERROR;
 
@@ -1643,10 +1659,25 @@ int Platform::DataMemCreate(iris_mem* brs_mem, iris_mem root_mem, int region) {
   return IRIS_SUCCESS;
 }
 
-iris_mem *Platform::DataMemCreate(void *host, size_t size) {
-  DataMem* mem = new DataMem(this, host, size);
+iris_mem *Platform::DataMemCreate(void *host, size_t size, int element_type) {
+  DataMem* mem = new DataMem(this, host, size, element_type);
   if (mem->size()==0) return NULL;
-  return mem->struct_obj();
+  iris_mem *brs_mem = mem->struct_obj();
+#ifndef DISABLE_PIN_BY_DEFAULT
+  DataMemRegisterPin(*brs_mem);
+#endif
+  return brs_mem;
+}
+
+
+iris_mem *Platform::DataMemCreate(void *host, size_t *size, int dim, size_t element_size, int element_type) {
+  DataMem* mem = new DataMem(this, host, size, dim, element_size, element_type);
+  if (mem->size()==0) return NULL;
+  iris_mem *brs_mem = mem->struct_obj();
+#ifndef DISABLE_PIN_BY_DEFAULT
+  DataMemRegisterPin(*brs_mem);
+#endif
+  return brs_mem;
 }
 
 iris_mem *Platform::DataMemCreate(void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim) {

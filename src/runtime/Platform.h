@@ -145,10 +145,12 @@ public:
   int DataMemUpdate(iris_mem brs_mem, void *host);
   int RegisterPin(void *host, size_t size);
   int DataMemRegisterPin(iris_mem brs_mem);
-  iris_mem *DataMemCreate(void *host, size_t size);
+  iris_mem *DataMemCreate(void *host, size_t size, int element_type=iris_unknown);
+  iris_mem *DataMemCreate(void *host, size_t *size, int dim, size_t element_size, int element_type=iris_unknown);
   iris_mem *DataMemCreate(void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim);
   iris_mem *DataMemCreate(iris_mem root_mem, int region);
   int DataMemCreate(iris_mem* brs_mem, void *host, size_t size, int element_type=iris_unknown);
+  int DataMemCreate(iris_mem *brs_mem, void *host, size_t *size, int dim, size_t element_size, int element_type=iris_unknown);
   int DataMemCreate(iris_mem* brs_mem, void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim, int element_type=iris_unknown);
   int DataMemCreate(iris_mem* brs_mem, iris_mem root_mem, int region);
   int DataMemEnableOuterDimRegions(iris_mem mem);
