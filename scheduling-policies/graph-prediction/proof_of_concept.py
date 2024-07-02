@@ -17,7 +17,6 @@
 import os
 import sys
 import numpy as np
-import pandas as pd
 import torchvision
 import torch
 import torch.nn as nn
@@ -39,19 +38,19 @@ pl.seed_everything(42)
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 _max_epochs = 10
-use_cpu = True
-if use_cpu:
+use_gpu = torch.cuda.is_available()
+if use_gpu:
+    device = torch.device("cuda")
+    #num_devices = torch.cuda.device_count()
+    num_devices = 1
+    num_workers = 0
+    #num_workers = 127
+else:
     num_devices = 1
     device = torch.device("cpu")
     #num_workers = os.cpu_count()
     num_workers = 0
-else:
-    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-    #num_devices = torch.cuda.device_count()
-    #num_workers = torch.cuda.device_count()
-    num_devices = 1
-    num_workers = 0
-    #num_workers = 127
+
 
 
 # Global variables:
@@ -271,16 +270,14 @@ class GraphDataset(torch.utils.data.Dataset):
         # unfortunately this varies per graph and so needs to be padded
         # thus we need to collect the largest shape, which means we need
         # to call these functions twice (once per initialization and once per indexing)
-        shapes = []
+        shapes = None
         if shape is None: #this is the first training and so we need to determine the largest size matrix to pad
-            for data in data_list:
-                nodes = self.__construct_nodes(data)
-                feature_matrix = self.__construct_node_feature_matrix_for_graph(nodes)
-                shapes.append(feature_matrix.shape)
-        else: shapes.append(shape)
+            shapes = self.__compute_max_dimensions(data_list)
+        else: shapes = shape
 
-        self.max_feature_matrix_shape = max(shapes)
-        self.num_node_features = self.max_feature_matrix_shape[1]
+        #initialize the values to pad up to
+        self._num_nodes = shapes[0]
+        self._num_node_features = shapes[1]
 
         #now do all the file IO and process it in one shot
         self.gnn_form_of_json = []
@@ -300,6 +297,14 @@ class GraphDataset(torch.utils.data.Dataset):
         #TODO: what features do we need?
         return self.gnn_form_of_json[idx]
 
+    def __compute_max_dimensions(self,data_list):
+        dimensions = []
+        for data in data_list:
+            nodes = self.__construct_nodes(data)
+            memory_set = self.__get_set_of_unique_memory(nodes)
+            dimensions.append((len(nodes),len(memory_set)))
+        return max(dimensions)
+
     def __len__(self):
         return len(self.gnn_form_of_json)
 
@@ -308,10 +313,13 @@ class GraphDataset(torch.utils.data.Dataset):
         random.shuffle(self.gnn_form_of_json)
 
     def shape(self):
-        return self.max_feature_matrix_shape
+        return (self._num_nodes,self._num_node_features)
+
+    def num_nodes(self):
+        return self._num_nodes
 
     def num_node_features(self):
-        return self.max_feature_matrix_shape[1]
+        return self._num_node_features
 
     def num_classes(self):
         #TODO should this be 3 or 1?
@@ -320,14 +328,45 @@ class GraphDataset(torch.utils.data.Dataset):
     def __construct_nodes(self,data):
         return data['content']['iris-graph']['graph']['tasks']
 
-    def __construct_edges(self,data):
-        nodes = self.__construct_nodes(data)
+    def __get_memory_objects(self,node):
+        if "kernel" in node.keys():
+            node_memory_object_names = [p['value'] for p in node['kernel']['parameters']]
+        elif "d2h" in node.keys():
+            node_memory_object_names = [node['d2h']['device_memory']]
+        elif "h2d" in node.keys():
+            node_memory_object_names = [node['h2d']['device_memory']]
+        else:
+            assert False, "unknown command in task {}".format(nodes[i]['name'])
+        return node_memory_object_names
+
+    def __get_set_of_unique_memory(self,nodes):
+        memory_set = {}
+        for i, node in enumerate(nodes):
+            node = node['commands'][0] #we currently support only one command per task-node
+            node_memory_object_names = self.__get_memory_objects(node)
+            memory_set = set(node_memory_object_names + list(memory_set))
+        return memory_set
+
+    def __construct_node_feature_matrix_for_graph(self,nodes):
+        #TODO: do we need a global memory set---with names? This would probably make the solution less flexible... Currently we use a local set rather than global positions of feature vectors
+        #[num_nodes, num_node_features]
+        feature_matrix = np.empty(shape=(self.num_nodes(),self.num_node_features()))#create a full size feature matrix
+        memory_set = self.__get_set_of_unique_memory(nodes)
+        for n, node in enumerate(nodes):
+            node = node['commands'][0] #we currently support only one command per task-node
+            memory_this_node = self.__get_memory_objects(node)
+            feature_vector = [int(f in memory_this_node) for f in memory_set]
+            for i,f in enumerate(feature_vector):
+                feature_matrix[n][i] = f
+        return feature_matrix
+
+    def __construct_edges(self,data,nodes):
         number_of_nodes = len(nodes)
         edges = []
         for i,n in enumerate(nodes):
             #TODO: determine how to add the d2h and h2d memory buffers to node_feature_matrix
             if 'initial' in n['name']: n['name'] = 'task0'
-            if 'final' in n['name']: n['name'] = 'task{}'.format(len(nodes))
+            if 'final' in n['name']: n['name'] = 'task{}'.format(i)
             if 'dmemflush' in n['name']: n['name'] = "task{}".format(i)
             if 'transferto' in n['name']: n['name'] = "task{}".format(i)
             if 'transferfrom' in n['name']: n['name'] = "task{}".format(i)
@@ -339,44 +378,6 @@ class GraphDataset(torch.utils.data.Dataset):
                 edges.append([int(ref_node_name.replace('task','')),int(d.replace('task',''))])
         return np.array(edges,dtype=int).transpose()
 
-    def __construct_node_feature_matrix_for_graph(self,nodes):
-        #if we encounter any memory movement we need to sake the entry to use all encountered memory objects
-        #TODO: check that this doesn't break under all interesting payloads (say with a large number of memory objects)
-        unique_memory_buffers = []
-        # generate the full list of node attributes (memory buffer names used)
-        node_uses_memory = {}
-        for i, node in enumerate(nodes):
-            param_names = []
-            #ignore tasks which don't contain only 1 command (per task)
-            if "kernel" in node['commands'][0].keys():
-                parameters = node['commands'][0]['kernel']['parameters']
-                for param in parameters:
-                    param_names.append(param['value'])
-            elif "d2h" in node['commands'][0].keys():
-                #parameters = node['commands'][0]['d2h']['device_memory']
-                #param_names.append(parameters)
-                for mobj in unique_memory_buffers:
-                    param_names.append(mobj)
-                node['name'] = "task{}".format(i)
-            elif "h2d" in node['commands'][0].keys():
-                #parameters = node['commands'][0]['h2d']['device_memory']
-                #param_names.append(parameters)
-                for mobj in unique_memory_buffers:
-                    param_names.append(mobj)
-                node['name'] = "task{}".format(i)
-            assert param_names is not []
-            node_uses_memory[node['name'].replace('task','')] = param_names
-            unique_memory_buffers = list(set(unique_memory_buffers+param_names))
-        # apply 1-hot encodings for non-numerical features (memory buffer names)
-        try:
-            one_hot = pd.DataFrame(node_uses_memory).transpose()
-        except:
-            import ipdb
-            ipdb.set_trace()
-        #TODO: is it not being int/long a problem?
-        node_feature_matrix = pd.get_dummies(one_hot).astype(np.float64)
-        return node_feature_matrix.to_numpy()
-    
     def __getitem__(self,idx):
         return self.gnn_form_of_json[idx]
 
@@ -389,14 +390,10 @@ class GraphDataset(torch.utils.data.Dataset):
         # Homogeneous Graph: No difference between tasks, and no different edge-types are needed (they are all dependencies)
         data = self.data_list[idx]
         nodes = self.__construct_nodes(data)
-        edges = self.__construct_edges(data)
+        edges = self.__construct_edges(data,nodes)
         label = data['schedule-for']
         node_feature_matrix = self.__construct_node_feature_matrix_for_graph(nodes)
 
-        # pad node_feature_matrix for the maximum sized matrix (based on the num_node_features)
-        padding_to_add = tuple(map(lambda i, j: i - j, self.max_feature_matrix_shape, node_feature_matrix.shape))
-        node_feature_matrix = np.pad(node_feature_matrix,[(0,padding_to_add[0]), (0,padding_to_add[1])],mode="constant")
-        assert node_feature_matrix.shape == self.max_feature_matrix_shape
         #transform and return
         node_feature_matrix = torch.Tensor(node_feature_matrix)
         #batch_id = torch.LongTensor([1,4097,256]) #can be 1 since this is a per graph classification
@@ -404,11 +401,18 @@ class GraphDataset(torch.utils.data.Dataset):
             batch_id = np.array([idx])
             edges = np.array([edges])
         else: batch_id = np.array(idx)#TODO: stopgap measure---remove idx+1 when I figure our why resuming the checkpoint fails to index appropriately
+
+        #move the data to the (globally specified) device
+        node_feature_matrix = node_feature_matrix.to(device)
+        edges = torch.from_numpy(edges).to(device)
+        label = torch.FloatTensor(target_to_tensor(label)).to(device)
+        batch_id = torch.from_numpy(batch_id).to(device)
+
         #TODO: expect y to return a list of probabilities but is this correct?
-        return {'x':node_feature_matrix.to(device),
-                'edge_index':torch.from_numpy(edges).to(device),
-                'y':torch.FloatTensor(target_to_tensor(label)).to(device),
-                'batch':torch.from_numpy(batch_id).to(device)}
+        return {'x': node_feature_matrix,
+                'edge_index':edges,
+                'y':label,
+                'batch':batch_id}
 
 
 def train_graph_classifier(**model_kwargs):
@@ -434,7 +438,7 @@ def train_graph_classifier(**model_kwargs):
         model = GraphLevelGNN.load_from_checkpoint(_pretrained_filename)
     else:
         pl.seed_everything(42)
-        model = GraphLevelGNN(c_in=_tu_dataset.num_node_features,
+        model = GraphLevelGNN(c_in=_tu_dataset.num_node_features(),
                               c_out=3,
                               **model_kwargs)
         trainer.fit(model, _graph_train_loader, _graph_val_loader)
@@ -476,14 +480,14 @@ def generate_dataset():
     raw_dataset = []
     #build the list of graph names, the payloads used to generate them, and the proper scheduling target
     #locality data
-    #for i in range(0,13):
-    #    num_tasks = 2**i
-    #    filename = '{}/linear-{}.json'.format(_dataset_directory,num_tasks)
-    #    raw_dataset.append({
-    #            'args':'--graph={} --kernels="ijk" --duplicates="0" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split="100" --depth={} --num-tasks={} --min-width=1 --max-width=1 --use-data-memory'.format(filename,num_tasks,num_tasks),
-    #            'file' : filename,
-    #            'schedule-for' : 'locality'
-    #            })
+    for i in range(0,13):
+        num_tasks = 2**i
+        filename = '{}/linear-{}.json'.format(_dataset_directory,num_tasks)
+        raw_dataset.append({
+                'args':'--graph={} --kernels="ijk" --duplicates="0" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split="100" --depth={} --num-tasks={} --min-width=1 --max-width=1 --use-data-memory'.format(filename,num_tasks,num_tasks),
+                'file' : filename,
+                'schedule-for' : 'locality'
+                })
     #concurrency data
     for i in range(0,13):
         num_tasks = 2**i
@@ -530,12 +534,12 @@ def generate_fresh_prediction_payload_for_testing():
     num_tasks = 32
     #TODO re-enable linear payloads when we get the gnn to predict any other outcome
     #new linear test
-    #filename = '{}/linear-{}.json'.format(_dataset_directory,num_tasks)
-    #new_dataset.append({
-    #        'args':'--graph={} --kernels="ijk" --duplicates="0" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split="100" --depth={} --num-tasks={} --min-width=1 --max-width=1 --use-data-memory'.format(filename,num_tasks,num_tasks),
-    #        'file' : filename,
-    #        'schedule-for' : 'locality'
-    #        })
+    filename = '{}/linear-{}.json'.format(_dataset_directory,num_tasks)
+    new_dataset.append({
+            'args':'--graph={} --kernels="ijk" --duplicates="0" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split="100" --depth={} --num-tasks={} --min-width=1 --max-width=1 --use-data-memory'.format(filename,num_tasks,num_tasks),
+            'file' : filename,
+            'schedule-for' : 'locality'
+            })
     #new concurrency test
     filename = '{}/diamond-{}.json'.format(_dataset_directory,num_tasks)
     new_dataset.append({
