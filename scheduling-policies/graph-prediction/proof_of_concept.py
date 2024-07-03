@@ -37,7 +37,7 @@ CHECKPOINT_PATH = "./saved_models"
 pl.seed_everything(42)
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
-_max_epochs = 10
+_max_epochs = 200
 use_gpu = torch.cuda.is_available()
 if use_gpu:
     device = torch.device("cuda")
@@ -426,9 +426,7 @@ def train_graph_classifier(**model_kwargs):
                          accelerator="gpu" if str(device).startswith("cuda") else "cpu",
                          devices=num_devices,
                          max_epochs=_max_epochs,
-                         #TODO: bring back good training size of epochs
-                         #max_epochs=30,
-                         log_every_n_steps=5,
+                         #log_every_n_steps=5,
                          enable_progress_bar=True)
     trainer.logger._default_hp_metric = None # Optional logging argument that we don't need
 
@@ -446,6 +444,7 @@ def train_graph_classifier(**model_kwargs):
     # Test best model on validation and test set
     train_result = trainer.test(model, _graph_train_loader, verbose=False)
     test_result = trainer.test(model, _graph_test_loader, verbose=False)
+
     result = {"test": test_result[0]['test_acc'], "train": train_result[0]['test_acc']}
 
     # save the model
@@ -461,7 +460,7 @@ def train():
     _model, result = train_graph_classifier(c_hidden=1,
                                            layer_name="GraphConv",
                                            num_layers=3,
-                                           dp_rate_linear=0.5,
+                                           dp_rate_linear=0.01,
                                            dp_rate=0.0)
     print(f"Train performance: {100.0*result['train']:4.2f}%")
     print(f"Test performance:  {100.0*result['test']:4.2f}%")
@@ -498,6 +497,22 @@ def generate_dataset():
                 'schedule-for' : 'concurrency'
                 })
     #mixed data
+    for i in range(0,13):
+        num_tasks = 2**i
+        filename = '{}/chainlink-{}.json'.format(_dataset_directory,num_tasks)
+        raw_dataset.append({
+                'args':'--graph={} --concurrent-kernels="ijk:2" --kernels="ijk" --duplicates="0" --buffers-per-kernel="ijk:w r r" --kernel-dimensions="ijk:2" --kernel-split="100" --depth={} --num-tasks={} --min-width=1 --max-width=2 --cdf-mean=1.5 --cdf-std-dev=0 --sandwich --use-data-memory'.format(filename,round(num_tasks/2),num_tasks),
+                'file' : filename,
+                'schedule-for' : 'mixed'
+                })
+    for i in range(0,13):
+        num_tasks = 2**i
+        filename = '{}/tangled-{}.json'.format(_dataset_directory,num_tasks)
+        raw_dataset.append({
+                'args':'--graph={} --concurrent-kernels="ijk:12" --kernels="ijk" --duplicates="0" --buffers-per-kernel="ijk:w r r" --kernel-dimensions="ijk:2" --kernel-split="100" --depth={} --num-tasks={} --min-width=1 --max-width=12 --cdf-mean=2 --cdf-std-dev=0 --skips=3 --sandwich --use-data-memory'.format(filename,num_tasks,num_tasks),
+                'file' : filename,
+                'schedule-for' : 'mixed'
+                })
     for i in range(3,13):
         num_tasks = 2**i
         filename = '{}/mashload-{}.json'.format(_dataset_directory,num_tasks)
@@ -548,6 +563,18 @@ def generate_fresh_prediction_payload_for_testing():
             'schedule-for' : 'concurrency'
             })
     #new mixed test
+    filename = '{}/chainlink-{}.json'.format(_dataset_directory,num_tasks)
+    new_dataset.append({
+            'args':'--graph={} --concurrent-kernels="ijk:2" --kernels="ijk" --duplicates="0" --buffers-per-kernel="ijk:w r r" --kernel-dimensions="ijk:2" --kernel-split="100" --depth={} --num-tasks={} --min-width=1 --max-width=2 --cdf-mean=1.5 --cdf-std-dev=0 --sandwich --use-data-memory'.format(filename,round(num_tasks/2),num_tasks),
+            'file' : filename,
+            'schedule-for' : 'mixed'
+            })
+    filename = '{}/tangled-{}.json'.format(_dataset_directory,num_tasks)
+    new_dataset.append({
+            'args':'--graph={} --concurrent-kernels="ijk:12" --kernels="ijk" --duplicates="0" --buffers-per-kernel="ijk:w r r" --kernel-dimensions="ijk:2" --kernel-split="100" --depth={} --num-tasks={} --min-width=1 --max-width=12 --cdf-mean=2 --cdf-std-dev=0 --skips=3 --sandwich --use-data-memory'.format(filename,num_tasks,num_tasks),
+            'file' : filename,
+            'schedule-for' : 'mixed'
+            })
     filename = '{}/mashload-{}.json'.format(_dataset_directory,num_tasks)
     new_dataset.append({
             'args':'--graph={} --kernels="ijk" --kernel-split="100" --depth=10 --num-tasks={} --min-width=7 --max-width=7 --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --concurrent-kernels="ijk:14" --skips=3 --cdf-mean=2 --cdf-std-dev=0 --use-data-memory --handover-in-memory-shuffle --num-memory-shuffles=32'.format(filename,num_tasks),
