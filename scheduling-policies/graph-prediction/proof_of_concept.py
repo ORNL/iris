@@ -38,7 +38,7 @@ pl.seed_everything(42)
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 _max_epochs = 200
-#_max_epochs = 30
+#_max_epochs = 10
 _num_classes = 3
 use_gpu = torch.cuda.is_available()
 if use_gpu:
@@ -76,32 +76,47 @@ def summarize(prediction,actual):
     if actual == "?": print(colored("\'?\' indicates we performed prediction on unknown data.","green"))
 
 def target_to_tensor(target_str):
-    if target_str == "locality":    return [1., 0., 0.]
-    if target_str == "concurrency": return [0., 1., 0.]
-    if target_str == "mixed":       return [0., 0., 1.]
-    if target_str == "?":           return [0., 0., 0.]
+    if target_str == "locality":    return [1, 0, 0]
+    if target_str == "concurrency": return [0, 1, 0]
+    if target_str == "mixed":       return [0, 0, 1]
+    if target_str == "?":           return [0, 0, 0]
     assert False, "Unknown target string"
 
 def target_to_value(target_str):
-    if target_str == "locality":    return[ 0.]
-    if target_str == "concurrency": return[ 1.]
-    if target_str == "mixed":       return[ 2.]
-    if target_str == "?":           return[-1.]
+    if target_str == "locality":    return[ 0]
+    if target_str == "concurrency": return[ 1]
+    if target_str == "mixed":       return[ 2]
+    if target_str == "?":           return[-1]
     assert False, "Unknown target string"
 
 def tensor_to_target(target_id):
     target_id = target_id.tolist()
-    if target_id == [1., 0., 0.]: return "locality"   
-    if target_id == [0., 1., 0.]: return "concurrency"
-    if target_id == [0., 0., 1.]: return "mixed"      
-    if target_id == [0., 0., 0.]: return "?"          
+    if target_id == [1, 0, 0]: return "locality"
+    if target_id == [0, 1, 0]: return "concurrency"
+    if target_id == [0, 0, 1]: return "mixed"
+    if target_id == [0, 0, 0]: return "?"
     assert False, "Unknown target id"
 
 def value_to_target(target_id):
-    if target_id ==  0.:  return "locality"
-    if target_id ==  1.:  return "concurrency"
-    if target_id ==  2.:  return "mixed"
-    if target_id == -1.: return "?"
+    if target_id ==  0:  return "locality"
+    if target_id ==  1:  return "concurrency"
+    if target_id ==  2:  return "mixed"
+    if target_id == -1: return "?"
+    assert False, "Unknown target id"
+
+def tensor_to_value(target_id):
+    target_id = target_id.tolist()
+    if target_id == [1, 0, 0]: return [ 0]
+    if target_id == [0, 1, 0]: return [ 1]
+    if target_id == [0, 0, 1]: return [ 2]
+    if target_id == [0, 0, 0]: return [-1]
+    assert False, "Unknown target id"
+
+def value_to_tensor(target):
+    if target_id == [ 0]: return torch.LongTensor([1, 0, 0])
+    if target_id == [ 1]: return torch.LongTensor([0, 1, 0])
+    if target_id == [ 2]: return torch.LongTensor([0, 0, 1])
+    if target_id == [-1]: return torch.LongTensor([0, 0, 0])
     assert False, "Unknown target id"
 
 
@@ -212,11 +227,10 @@ class GraphLevelGNN(pl.LightningModule):
         self.model.to(device)
 
         #TODO use Softmax for multi-class classification rather than the Binary Cross Entropy loss function.
-        #self.loss_module = nn.BCEWithLogitsLoss() if self.hparams.c_out == 1 else nn.CrossEntropyLoss()
-        #self.loss_module = nn.CrossEntropyLoss()
+        self.loss_fn = nn.L1Loss()
+        self.loss_module = nn.CrossEntropyLoss()
         #self.loss_module = nn.Softmax()
         #self.loss_module = nn.LogSoftmax()
-        self.loss_fn = nn.L1Loss()
 
     def forward(self, data, mode="train"):
         x, edge_index, batch_idx = data['x'], data['edge_index'][0], data['batch']
@@ -229,22 +243,22 @@ class GraphLevelGNN(pl.LightningModule):
         #TODO do we squeeze or need to determine how to process this last layer?
         #import ipdb
         #ipdb.set_trace()
-        preds = nx.argmax().float()
-        assert preds < float(_num_classes), "whops... are we taking the index? should be within a slice instead"
+        preds = nx.argmax()
+        assert preds < _num_classes, "whops... are we taking the index? should be within a slice instead"
         if mode == "predict":
             return preds
         #TODO: figure out why output is so broken?
         #import ipdb
         #ipdb.set_trace()
-        #loss = self.loss_module(x).mean()#, data['y'])
-        #loss = self.loss_module(nx.max(),data['y'])
-        loss = self.loss_fn(preds, data['y'].argmax().float())
+        #loss = self.loss_module()
+        loss = self.loss_fn(preds.float(), torch.FloatTensor(tensor_to_value(data['y'][0])).to(device))
         loss = torch.autograd.Variable(loss, requires_grad = True)
         acc = (preds == data['y']).sum().float() / _num_classes
         return loss, acc
 
     def configure_optimizers(self):
-        optimizer = optim.AdamW(self.parameters(), lr=1e-2, weight_decay=0.0) # High lr because of small dataset and small model
+        optimizer = optim.SGD(self.parameters(), lr=0.001, momentum=0.9)
+        #optimizer = optim.AdamW(self.parameters(), lr=1e-2, weight_decay=0.0) # High lr because of small dataset and small model
         return optimizer
 
     def training_step(self, batch, batch_idx):
@@ -423,7 +437,7 @@ class GraphDataset(torch.utils.data.Dataset):
         #move the data to the (globally specified) device
         node_feature_matrix = node_feature_matrix.to(device)
         edges = torch.from_numpy(edges).to(device)
-        label = torch.FloatTensor(target_to_tensor(label)).to(device)
+        label = torch.LongTensor(target_to_tensor(label)).to(device)
         batch_id = torch.from_numpy(batch_id).to(device)
 
         #TODO: expect y to return a list of probabilities but is this correct?
@@ -459,6 +473,8 @@ def train_graph_classifier(**model_kwargs):
                               **model_kwargs)
         trainer.fit(model, _graph_train_loader, _graph_val_loader)
         model = GraphLevelGNN.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
+    import ipdb
+    ipdb.set_trace()
     # Test best model on validation and test set
     train_result = trainer.test(model, _graph_train_loader, verbose=False)
     test_result = trainer.test(model, _graph_test_loader, verbose=False)
@@ -485,14 +501,21 @@ def train_graph_classifier(**model_kwargs):
 def train():
     global _model
 
-    _model, result = train_graph_classifier(c_hidden=1,
+    _model, result = train_graph_classifier(c_hidden=0,
                                            layer_name="GraphConv",
                                            num_layers=3,
-                                           dp_rate_linear=0.01,
+                                           dp_rate_linear=0.5,
                                            dp_rate=0.0)
     print(f"Train performance: {100.0*result['train']:4.2f}%")
     print(f"Test performance:  {100.0*result['test']:4.2f}%")
     print(result)
+    import ipdb
+    ipdb.set_trace()
+    import __main__
+    setattr(__main__, "GraphLevelGNN", GraphLevelGNN)
+    setattr(__main__, "GraphGNNModel", GraphGNNModel)
+    setattr(__main__, "GNNModel", GNNModel)
+
     torch.save(_model,_model_filename)
     print(colored("Saved trained model to {}".format(_model_filename),"green"))
 
