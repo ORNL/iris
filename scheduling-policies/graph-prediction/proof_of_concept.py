@@ -38,6 +38,8 @@ pl.seed_everything(42)
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 _max_epochs = 200
+#_max_epochs = 30
+_num_classes = 3
 use_gpu = torch.cuda.is_available()
 if use_gpu:
     device = torch.device("cuda")
@@ -70,20 +72,35 @@ _graph_test_loader = None
 _tu_dataset = None
 
 def summarize(prediction,actual):
-    print(colored("predicted:{} actual:{}".format(number_to_target(prediction[0]),number_to_target(int(actual))),"cyan"))
+    print(colored("predicted:{} actual:{}".format(value_to_target(prediction),tensor_to_target(actual)),"cyan"))
     if actual == "?": print(colored("\'?\' indicates we performed prediction on unknown data.","green"))
 
 def target_to_tensor(target_str):
-    if target_str == "locality":    return[0.]#return [1, 0, 0]
-    if target_str == "concurrency": return[1.]#return [0, 1, 0]
-    if target_str == "mixed":       return[2.]#return [0, 0, 1]
+    if target_str == "locality":    return [1., 0., 0.]
+    if target_str == "concurrency": return [0., 1., 0.]
+    if target_str == "mixed":       return [0., 0., 1.]
+    if target_str == "?":           return [0., 0., 0.]
+    assert False, "Unknown target string"
+
+def target_to_value(target_str):
+    if target_str == "locality":    return[ 0.]
+    if target_str == "concurrency": return[ 1.]
+    if target_str == "mixed":       return[ 2.]
     if target_str == "?":           return[-1.]
     assert False, "Unknown target string"
 
-def number_to_target(target_id):
-    if target_id == 0.: return "locality"
-    if target_id == 1.: return "concurrency"
-    if target_id == 2.: return "mixed"
+def tensor_to_target(target_id):
+    target_id = target_id.tolist()
+    if target_id == [1., 0., 0.]: return "locality"   
+    if target_id == [0., 1., 0.]: return "concurrency"
+    if target_id == [0., 0., 1.]: return "mixed"      
+    if target_id == [0., 0., 0.]: return "?"          
+    assert False, "Unknown target id"
+
+def value_to_target(target_id):
+    if target_id ==  0.:  return "locality"
+    if target_id ==  1.:  return "concurrency"
+    if target_id ==  2.:  return "mixed"
     if target_id == -1.: return "?"
     assert False, "Unknown target id"
 
@@ -123,7 +140,6 @@ class GNNModel(nn.Module):
                              out_channels=c_out,
                              **kwargs)]
         self.layers = nn.ModuleList(layers)
-        self.to(device)
 
     def forward(self, x, edge_index):
         """
@@ -144,6 +160,7 @@ class GNNModel(nn.Module):
                     print("not a big enough matrix or edge_index has wrong dimensionality")
             else:
                 x = l(x)
+        x = x.log_softmax(dim=-1)
         return x
 
 class GraphGNNModel(nn.Module):
@@ -165,7 +182,7 @@ class GraphGNNModel(nn.Module):
             nn.Dropout(dp_rate_linear),
             nn.Linear(c_hidden, c_out)
         )
-        self.num_classes = 3 #3 possible values in out c_out dimension
+        self.num_classes = _num_classes #3 possible values in out c_out dimension
         self.to(device)
 
     def forward(self, x, edge_index, batch_idx):
@@ -176,10 +193,10 @@ class GraphGNNModel(nn.Module):
             batch_idx - Index of batch element for each node
         """
         x = self.GNN(x, edge_index)
-        #b = torch.tensor([0]).to(device)#should be batch_idx
-        b = torch.tensor(batch_idx)#should be batch_idx
+        b = torch.tensor(batch_idx)
         x = geom_nn.global_mean_pool(x, b) # Average pooling
         x = self.head(x)
+        x = x.log_softmax(dim=-1)
         return x
 
 class GraphLevelGNN(pl.LightningModule):
@@ -190,7 +207,7 @@ class GraphLevelGNN(pl.LightningModule):
         self.save_hyperparameters()
         print(model_kwargs)
         self.model = GraphGNNModel(**model_kwargs)
-        self.loss_module = nn.LogSoftmax(dim=1)
+        self.loss_module = nn.CrossEntropyLoss()
         self.to(device)
         self.model.to(device)
 
@@ -199,7 +216,7 @@ class GraphLevelGNN(pl.LightningModule):
         #self.loss_module = nn.CrossEntropyLoss()
         #self.loss_module = nn.Softmax()
         #self.loss_module = nn.LogSoftmax()
-        #self.loss_fn = nn.NLLLoss()
+        self.loss_fn = nn.L1Loss()
 
     def forward(self, data, mode="train"):
         x, edge_index, batch_idx = data['x'], data['edge_index'][0], data['batch']
@@ -207,22 +224,23 @@ class GraphLevelGNN(pl.LightningModule):
         edge_index.to(device)
         batch_idx.to(device)
         nx = self.model(x, edge_index, batch_idx)
+        nx = nx.softmax(dim=-1)
         #nx = nx.squeeze(dim=-1)
         #TODO do we squeeze or need to determine how to process this last layer?
-        if self.hparams.c_out == 1:
-            preds = (nx > 0).float()
-            data['y'] = data['y'][0].float()
-        else:
-            preds = nx.argmax(dim=1)#was dim=-1
+        #import ipdb
+        #ipdb.set_trace()
+        preds = nx.argmax().float()
+        assert preds < float(_num_classes), "whops... are we taking the index? should be within a slice instead"
         if mode == "predict":
             return preds
         #TODO: figure out why output is so broken?
         #import ipdb
         #ipdb.set_trace()
-        loss = self.loss_module(x).mean()#, data['y'])
-        #loss = self.loss_fn(self.loss_module(nx),data['y'])
+        #loss = self.loss_module(x).mean()#, data['y'])
+        #loss = self.loss_module(nx.max(),data['y'])
+        loss = self.loss_fn(preds, data['y'].argmax().float())
         loss = torch.autograd.Variable(loss, requires_grad = True)
-        acc = (preds == data['y']).sum().float() / preds.shape[0]
+        acc = (preds == data['y']).sum().float() / _num_classes
         return loss, acc
 
     def configure_optimizers(self):
@@ -323,7 +341,7 @@ class GraphDataset(torch.utils.data.Dataset):
 
     def num_classes(self):
         #TODO should this be 3 or 1?
-        return 3 #the range of labels in the target_to_tensor(target_str) function
+        return _num_classes #the range of labels in the target_to_tensor(target_str) function
 
     def __construct_nodes(self,data):
         return data['content']['iris-graph']['graph']['tasks']
@@ -437,7 +455,7 @@ def train_graph_classifier(**model_kwargs):
     else:
         pl.seed_everything(42)
         model = GraphLevelGNN(c_in=_tu_dataset.num_node_features(),
-                              c_out=3,
+                              c_out=_num_classes,
                               **model_kwargs)
         trainer.fit(model, _graph_train_loader, _graph_val_loader)
         model = GraphLevelGNN.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
@@ -452,6 +470,16 @@ def train_graph_classifier(**model_kwargs):
     # and write out the training size
     with open(_pretrained_shape_file,"wb") as shape_file:
         pickle.dump(_tu_dataset.shape(),shape_file)
+
+    # plot the training accuracy
+    #import matplotlib.pyplot as plt
+    #plt.plot(test_result,label='Validation')
+    #plt.plot(train_result,label='Training')
+    #plt.legend()
+    #plt.xlabel('Epoch')
+    #plt.ylabel('Accuracy')
+    #plt.save('training_report.pdf')
+
     return model, result
 
 def train():
@@ -627,7 +655,7 @@ def predict(new_dataset):
         prediction = model(inputs,mode="predict")
         prediction = prediction.detach().cpu().numpy()
         print(colored("Prediction completed! Set # {}".format(i),"cyan"))
-        summarize(prediction,actual=inputs['y'])
+        summarize(prediction.tolist(),actual=inputs['y'])
 
     # TODO take the pre-trained model and new DAG to make the prediction
     return
