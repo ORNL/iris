@@ -864,7 +864,12 @@ def get_task_to_json(dag,deps):
     f.write(json.dumps(final_json,indent = 2))
     f.close()
 
-def main():
+def get_task_graph_from_json(file_url):
+    with open(file_url, 'r') as json_file:
+        content = json.load(json_file)
+    return content
+
+def run():
     random.seed(_seed)
     task_per_level, level_per_task = gen_task_nodes(_depth,_num_tasks,_min_width,_max_width)
     edges,neighs_top_down,neighs_down_top = gen_task_links(_mean,_std_dev,task_per_level,level_per_task,delta_lvl=_skips)
@@ -875,6 +880,9 @@ def main():
     edges = prune_edges_from_dependencies(task_dag,edges)
     plot_dag(task_dag,edges,'./dag.pdf')
     get_task_to_json(task_dag,edges)
+
+def main():
+    run()
 
 
 if __name__ == '__main__':
