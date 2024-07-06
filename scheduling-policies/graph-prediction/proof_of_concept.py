@@ -175,7 +175,6 @@ class GNNModel(nn.Module):
                     print("not a big enough matrix or edge_index has wrong dimensionality")
             else:
                 x = l(x)
-        x = x.log_softmax(dim=-1)
         return x
 
 class GraphGNNModel(nn.Module):
@@ -211,7 +210,6 @@ class GraphGNNModel(nn.Module):
         b = torch.tensor(batch_idx)
         x = geom_nn.global_mean_pool(x, b) # Average pooling
         x = self.head(x)
-        x = x.log_softmax(dim=-1)
         return x
 
 class GraphLevelGNN(pl.LightningModule):
@@ -227,8 +225,6 @@ class GraphLevelGNN(pl.LightningModule):
         self.model.to(device)
 
         #TODO use Softmax for multi-class classification rather than the Binary Cross Entropy loss function.
-        self.loss_fn = nn.L1Loss()
-        self.loss_module = nn.CrossEntropyLoss()
         #self.loss_module = nn.Softmax()
         #self.loss_module = nn.LogSoftmax()
 
@@ -238,20 +234,21 @@ class GraphLevelGNN(pl.LightningModule):
         edge_index.to(device)
         batch_idx.to(device)
         nx = self.model(x, edge_index, batch_idx)
+        nx = nx[0]
         nx = nx.softmax(dim=-1)
         #nx = nx.squeeze(dim=-1)
         #TODO do we squeeze or need to determine how to process this last layer?
         #import ipdb
         #ipdb.set_trace()
+        #TODO can we squash this last layer?
         preds = nx.argmax()
         assert preds < _num_classes, "whops... are we taking the index? should be within a slice instead"
         if mode == "predict":
             return preds
         #TODO: figure out why output is so broken?
-        #import ipdb
-        #ipdb.set_trace()
-        #loss = self.loss_module()
-        loss = self.loss_fn(preds.float(), torch.FloatTensor(tensor_to_value(data['y'][0])).to(device))
+        loss = self.loss_module(nx[0].float(),data['y'][0].float())
+        #loss = self.loss_module(nx.float(),data['y'].float())
+        #loss = self.loss_fn(preds.float(), torch.FloatTensor(tensor_to_value(data['y'][0])).to(device))
         loss = torch.autograd.Variable(loss, requires_grad = True)
         acc = (preds == data['y']).sum().float() / _num_classes
         return loss, acc
@@ -504,7 +501,7 @@ def train():
     _model, result = train_graph_classifier(c_hidden=0,
                                            layer_name="GraphConv",
                                            num_layers=3,
-                                           dp_rate_linear=0.5,
+                                           dp_rate_linear=0.01,
                                            dp_rate=0.0)
     print(f"Train performance: {100.0*result['train']:4.2f}%")
     print(f"Test performance:  {100.0*result['test']:4.2f}%")
