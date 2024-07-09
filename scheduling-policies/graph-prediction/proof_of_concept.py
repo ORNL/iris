@@ -70,6 +70,8 @@ _graph_train_loader = None
 _graph_val_loader = None
 _graph_test_loader = None
 _tu_dataset = None
+_training_log = { "accuracy" : [], "loss" : []}
+_validation_log = { "accuracy" : [], "loss" : []}
 
 def summarize(prediction,actual):
     print(colored("predicted:{} actual:{}".format(value_to_target(prediction),tensor_to_target(actual)),"cyan"))
@@ -123,13 +125,9 @@ def value_to_tensor(target):
 class GNN(torch.nn.Module):
     def __init__(self, c_in, c_hidden, c_out, **kwargs):
         super(GNN, self).__init__()
-        #self.conv1 = GCNConv(dataset.num_node_features, hidden_channels)
-        #self.conv2 = GCNConv(hidden_channels, hidden_channels)
-        #self.conv3 = GCNConv(hidden_channels, hidden_channels)
         self.conv1 = geom_nn.GraphConv(c_in,c_hidden)
         self.conv2 = geom_nn.GraphConv(c_hidden,c_hidden)
         self.conv3 = geom_nn.GraphConv(c_hidden,c_hidden)
-        #self.lin = geom_nn.Linear(c_hidden, dataset.num_classes)
         self.lin = geom_nn.Linear(c_hidden, c_out)
 
     def forward(self, x, edge_index, batch):
@@ -144,7 +142,7 @@ class GNN(torch.nn.Module):
         return x
 
 class GraphLevelGNN(pl.LightningModule):
-
+    global _training_log, _validation_log
     def __init__(self, **model_kwargs):
         super().__init__()
         # Saving hyperparameters
@@ -152,7 +150,7 @@ class GraphLevelGNN(pl.LightningModule):
         print(model_kwargs)
         self.model = GNN(**model_kwargs)
         print(self.model)
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=0.01)
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=0.001)
         self.criterion = torch.nn.CrossEntropyLoss()
         self.to(device)
         self.model.to(device)
@@ -188,21 +186,28 @@ class GraphLevelGNN(pl.LightningModule):
         return loss, acc
 
     def configure_optimizers(self):
-        #optimizer = optim.SGD(self.parameters(), lr=0.001, momentum=0.9)
-        optimizer = optim.AdamW(self.parameters(), lr=0.01)
+        optimizer = optim.AdamW(self.parameters(), lr=0.0011)
         return optimizer
 
     def training_step(self, batch, batch_idx):
-        #TODO: need to assert batch is only ever 1
+        #if batch_idx != 0:
+        #    import ipdb
+        #    ipdb.set_trace()
+        #assert batch_idx == 0, "We currently cannot handle larger batches"
         loss, acc = self.forward(batch, mode="train")
-
-        self.log('train_loss', loss)
-        self.log('train_acc', acc)
+        _training_log['accuracy'].append(acc.tolist())
+        _training_log['loss'].append(loss.tolist())
         return loss
 
     def validation_step(self, batch, batch_idx):
-        #TODO: need to assert batch is only ever 1
-        _, acc = self.forward(batch, mode="val")
+        #TODO: reenable and debug
+        #if batch_idx != 0:
+        #    import ipdb
+        #    ipdb.set_trace()
+        #assert batch_idx == 0, "We currently cannot handle larger batches"
+        loss, acc = self.forward(batch, mode="val")
+        _validation_log['accuracy'].append(acc.tolist())
+        _validation_log['loss'].append(loss.tolist())
         self.log('val_acc', acc)
 
     def test_step(self, batch, batch_idx):
@@ -260,7 +265,6 @@ class GraphDataset(torch.utils.data.Dataset):
             item['y'].to(device)
 
     def get_item_at_index(self,idx):
-        #TODO: what features do we need?
         return self.gnn_form_of_json[idx]
 
     def __compute_max_dimensions(self,data_list):
@@ -288,7 +292,6 @@ class GraphDataset(torch.utils.data.Dataset):
         return self._num_node_features
 
     def num_classes(self):
-        #TODO should this be 3 or 1?
         return _num_classes #the range of labels in the target_to_tensor(target_str) function
 
     def __construct_nodes(self,data):
@@ -314,7 +317,6 @@ class GraphDataset(torch.utils.data.Dataset):
         return memory_set
 
     def __construct_node_feature_matrix_for_graph(self,nodes):
-        #TODO: do we need a global memory set---with names? This would probably make the solution less flexible... Currently we use a local set rather than global positions of feature vectors
         #[num_nodes, num_node_features]
         feature_matrix = np.empty(shape=(self.num_nodes(),self.num_node_features()))#create a full size feature matrix
         memory_set = self.__get_set_of_unique_memory(nodes)
@@ -393,7 +395,6 @@ def train_graph_classifier(**model_kwargs):
                          max_epochs=_max_epochs,
                          #log_every_n_steps=5,
                          enable_progress_bar=True)
-    trainer.logger._default_hp_metric = None # Optional logging argument that we don't need
 
     # Check whether pretrained model exists. If yes, load it and skip training
     if os.path.isfile(_pretrained_filename):
@@ -419,13 +420,13 @@ def train_graph_classifier(**model_kwargs):
         pickle.dump(_tu_dataset.shape(),shape_file)
 
     # plot the training accuracy
-    #import matplotlib.pyplot as plt
-    #plt.plot(test_result,label='Validation')
-    #plt.plot(train_result,label='Training')
-    #plt.legend()
-    #plt.xlabel('Epoch')
-    #plt.ylabel('Accuracy')
-    #plt.save('training_report.pdf')
+    import matplotlib.pyplot as plt
+    plt.plot(_validation_log['accuracy'],label='Validation')
+    plt.plot(_training_log['accuracy'],label='Training')
+    plt.legend()
+    plt.xlabel('Epoch')
+    plt.ylabel('Accuracy')
+    plt.savefig('training_report.pdf')
 
     return model, result
 
@@ -460,7 +461,7 @@ def generate_dataset():
     raw_dataset = []
     #build the list of graph names, the payloads used to generate them, and the proper scheduling target
     #locality data
-    for i in range(0,13):
+    for i in range(3,13):
         num_tasks = 2**i
         filename = '{}/linear-{}.json'.format(_dataset_directory,num_tasks)
         raw_dataset.append({
@@ -469,7 +470,7 @@ def generate_dataset():
                 'schedule-for' : 'locality'
                 })
     #concurrency data
-    for i in range(0,13):
+    for i in range(3,13):
         num_tasks = 2**i
         filename = '{}/diamond-{}.json'.format(_dataset_directory,num_tasks)
         raw_dataset.append({
@@ -478,7 +479,7 @@ def generate_dataset():
                 'schedule-for' : 'concurrency'
                 })
     #mixed data
-    #for i in range(0,13):
+    #for i in range(3,13):
     #    num_tasks = 2**i
     #    filename = '{}/chainlink-{}.json'.format(_dataset_directory,num_tasks)
     #    raw_dataset.append({
@@ -486,7 +487,7 @@ def generate_dataset():
     #            'file' : filename,
     #            'schedule-for' : 'mixed'
     #            })
-    #for i in range(0,13):
+    #for i in range(3,13):
     #    num_tasks = 2**i
     #    filename = '{}/tangled-{}.json'.format(_dataset_directory,num_tasks)
     #    raw_dataset.append({
@@ -528,7 +529,6 @@ def generate_dataset():
 def generate_fresh_prediction_payload_for_testing():
     new_dataset = []
     num_tasks = 32
-    #TODO re-enable linear payloads when we get the gnn to predict any other outcome
     #new linear test
     filename = '{}/linear-{}.json'.format(_dataset_directory,num_tasks)
     new_dataset.append({
