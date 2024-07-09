@@ -173,38 +173,25 @@ class GraphLevelGNN(pl.LightningModule):
         if mode == "predict":
             return out.argmax()
         pred = value_to_tensor(out.argmax()).float().to(device)
-        loss = self.criterion(out[0], y.float())
-
-        #loss = self.loss_module(nx[0].float(),data['y'][0].float())
-        #loss = self.loss_module(nx.float(),data['y'].float())
-        #loss = self.loss_fn(preds.float(), torch.FloatTensor(tensor_to_value(data['y'][0])).to(device))
-        loss = torch.autograd.Variable(loss, requires_grad = True)
-        loss.backward()
-        self.optimizer.step()  # Update parameters based on gradients.
-        self.optimizer.zero_grad()
+        loss = self.criterion(out[0], y.float()).sum()
+        #loss = torch.autograd.Variable(loss, requires_grad = True)
+        #loss.backward()
+        #self.optimizer.step()  # Update parameters based on gradients.
+        #self.optimizer.zero_grad()
         acc = (pred == y).sum().float() / _num_classes
         return loss, acc
 
     def configure_optimizers(self):
-        optimizer = optim.AdamW(self.parameters(), lr=0.0011)
+        optimizer = optim.AdamW(self.parameters(), lr=0.01)
         return optimizer
 
     def training_step(self, batch, batch_idx):
-        #if batch_idx != 0:
-        #    import ipdb
-        #    ipdb.set_trace()
-        #assert batch_idx == 0, "We currently cannot handle larger batches"
         loss, acc = self.forward(batch, mode="train")
         _training_log['accuracy'].append(acc.tolist())
         _training_log['loss'].append(loss.tolist())
         return loss
 
     def validation_step(self, batch, batch_idx):
-        #TODO: reenable and debug
-        #if batch_idx != 0:
-        #    import ipdb
-        #    ipdb.set_trace()
-        #assert batch_idx == 0, "We currently cannot handle larger batches"
         loss, acc = self.forward(batch, mode="val")
         _validation_log['accuracy'].append(acc.tolist())
         _validation_log['loss'].append(loss.tolist())
@@ -469,6 +456,23 @@ def generate_dataset():
                 'file' : filename,
                 'schedule-for' : 'locality'
                 })
+    #TODO: bring back DAGGER support for duplicates!
+    for i in range(3,13):
+        num_tasks = 2**i
+        filename = '{}/lineartwo-{}.json'.format(_dataset_directory,num_tasks)
+        raw_dataset.append({
+                'args':'--graph={} --kernels="ijk" --duplicates="2" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split="100" --depth={} --num-tasks={} --min-width=1 --max-width=1 --use-data-memory'.format(filename,num_tasks,num_tasks),
+                'file' : filename,
+                'schedule-for' : 'locality'
+                })
+    for i in range(3,13):
+        num_tasks = 2**i
+        filename = '{}/linearthree-{}.json'.format(_dataset_directory,num_tasks)
+        raw_dataset.append({
+                'args':'--graph={} --kernels="ijk" --duplicates="3" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split="100" --depth={} --num-tasks={} --min-width=1 --max-width=1 --use-data-memory'.format(filename,num_tasks,num_tasks),
+                'file' : filename,
+                'schedule-for' : 'locality'
+                })
     #concurrency data
     for i in range(3,13):
         num_tasks = 2**i
@@ -479,22 +483,22 @@ def generate_dataset():
                 'schedule-for' : 'concurrency'
                 })
     #mixed data
-    #for i in range(3,13):
-    #    num_tasks = 2**i
-    #    filename = '{}/chainlink-{}.json'.format(_dataset_directory,num_tasks)
-    #    raw_dataset.append({
-    #            'args':'--graph={} --concurrent-kernels="ijk:2" --kernels="ijk" --duplicates="0" --buffers-per-kernel="ijk:w r r" --kernel-dimensions="ijk:2" --kernel-split="100" --depth={} --num-tasks={} --min-width=1 --max-width=2 --cdf-mean=1.5 --cdf-std-dev=0 --sandwich --use-data-memory'.format(filename,round(num_tasks/2),num_tasks),
-    #            'file' : filename,
-    #            'schedule-for' : 'mixed'
-    #            })
-    #for i in range(3,13):
-    #    num_tasks = 2**i
-    #    filename = '{}/tangled-{}.json'.format(_dataset_directory,num_tasks)
-    #    raw_dataset.append({
-    #            'args':'--graph={} --concurrent-kernels="ijk:12" --kernels="ijk" --duplicates="0" --buffers-per-kernel="ijk:w r r" --kernel-dimensions="ijk:2" --kernel-split="100" --depth={} --num-tasks={} --min-width=1 --max-width=12 --cdf-mean=2 --cdf-std-dev=0 --skips=3 --sandwich --use-data-memory'.format(filename,num_tasks,num_tasks),
-    #            'file' : filename,
-    #            'schedule-for' : 'mixed'
-    #            })
+    for i in range(3,13):
+        num_tasks = 2**i
+        filename = '{}/chainlink-{}.json'.format(_dataset_directory,num_tasks)
+        raw_dataset.append({
+                'args':'--graph={} --concurrent-kernels="ijk:2" --kernels="ijk" --duplicates="0" --buffers-per-kernel="ijk:w r r" --kernel-dimensions="ijk:2" --kernel-split="100" --depth={} --num-tasks={} --min-width=1 --max-width=2 --cdf-mean=1.5 --cdf-std-dev=0 --sandwich --use-data-memory'.format(filename,round(num_tasks/2),num_tasks),
+                'file' : filename,
+                'schedule-for' : 'mixed'
+                })
+    for i in range(3,13):
+        num_tasks = 2**i
+        filename = '{}/tangled-{}.json'.format(_dataset_directory,num_tasks)
+        raw_dataset.append({
+                'args':'--graph={} --concurrent-kernels="ijk:12" --kernels="ijk" --duplicates="0" --buffers-per-kernel="ijk:w r r" --kernel-dimensions="ijk:2" --kernel-split="100" --depth={} --num-tasks={} --min-width=1 --max-width=12 --cdf-mean=2 --cdf-std-dev=0 --skips=3 --sandwich --use-data-memory'.format(filename,num_tasks,num_tasks),
+                'file' : filename,
+                'schedule-for' : 'mixed'
+                })
     for i in range(3,13):
         num_tasks = 2**i
         filename = '{}/mashload-{}.json'.format(_dataset_directory,num_tasks)
@@ -667,8 +671,6 @@ if __name__ == '__main__':
     new_dataset = load_content_from_files(json_files)
     # 3) run the same prediction function on it.
     prediction = predict(new_dataset)
-    import ipdb
-    ipdb.set_trace()
     #TODO:
     # 4) update each json file with hard-coded prediction
     # 5) compare by running back into IRIS
