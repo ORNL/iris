@@ -175,12 +175,15 @@ class GraphLevelGNN(pl.LightningModule):
         if mode == "predict":
             return out.argmax()
         pred = value_to_tensor(out.argmax()).float().to(device)
-        loss = self.criterion(pred, y.float())
+        loss = self.criterion(out[0], y.float())
 
         #loss = self.loss_module(nx[0].float(),data['y'][0].float())
         #loss = self.loss_module(nx.float(),data['y'].float())
         #loss = self.loss_fn(preds.float(), torch.FloatTensor(tensor_to_value(data['y'][0])).to(device))
         loss = torch.autograd.Variable(loss, requires_grad = True)
+        loss.backward()
+        self.optimizer.step()  # Update parameters based on gradients.
+        self.optimizer.zero_grad()
         acc = (pred == y).sum().float() / _num_classes
         return loss, acc
 
@@ -370,7 +373,6 @@ class GraphDataset(torch.utils.data.Dataset):
         edges = torch.from_numpy(edges).to(device)
         label = torch.LongTensor(target_to_tensor(label)).to(device)
         batch_id = torch.from_numpy(batch_id).to(device)
-
         #TODO: expect y to return a list of probabilities but is this correct?
         return {'x': node_feature_matrix,
                 'edge_index':edges,
@@ -476,22 +478,22 @@ def generate_dataset():
                 'schedule-for' : 'concurrency'
                 })
     #mixed data
-    for i in range(0,13):
-        num_tasks = 2**i
-        filename = '{}/chainlink-{}.json'.format(_dataset_directory,num_tasks)
-        raw_dataset.append({
-                'args':'--graph={} --concurrent-kernels="ijk:2" --kernels="ijk" --duplicates="0" --buffers-per-kernel="ijk:w r r" --kernel-dimensions="ijk:2" --kernel-split="100" --depth={} --num-tasks={} --min-width=1 --max-width=2 --cdf-mean=1.5 --cdf-std-dev=0 --sandwich --use-data-memory'.format(filename,round(num_tasks/2),num_tasks),
-                'file' : filename,
-                'schedule-for' : 'mixed'
-                })
-    for i in range(0,13):
-        num_tasks = 2**i
-        filename = '{}/tangled-{}.json'.format(_dataset_directory,num_tasks)
-        raw_dataset.append({
-                'args':'--graph={} --concurrent-kernels="ijk:12" --kernels="ijk" --duplicates="0" --buffers-per-kernel="ijk:w r r" --kernel-dimensions="ijk:2" --kernel-split="100" --depth={} --num-tasks={} --min-width=1 --max-width=12 --cdf-mean=2 --cdf-std-dev=0 --skips=3 --sandwich --use-data-memory'.format(filename,num_tasks,num_tasks),
-                'file' : filename,
-                'schedule-for' : 'mixed'
-                })
+    #for i in range(0,13):
+    #    num_tasks = 2**i
+    #    filename = '{}/chainlink-{}.json'.format(_dataset_directory,num_tasks)
+    #    raw_dataset.append({
+    #            'args':'--graph={} --concurrent-kernels="ijk:2" --kernels="ijk" --duplicates="0" --buffers-per-kernel="ijk:w r r" --kernel-dimensions="ijk:2" --kernel-split="100" --depth={} --num-tasks={} --min-width=1 --max-width=2 --cdf-mean=1.5 --cdf-std-dev=0 --sandwich --use-data-memory'.format(filename,round(num_tasks/2),num_tasks),
+    #            'file' : filename,
+    #            'schedule-for' : 'mixed'
+    #            })
+    #for i in range(0,13):
+    #    num_tasks = 2**i
+    #    filename = '{}/tangled-{}.json'.format(_dataset_directory,num_tasks)
+    #    raw_dataset.append({
+    #            'args':'--graph={} --concurrent-kernels="ijk:12" --kernels="ijk" --duplicates="0" --buffers-per-kernel="ijk:w r r" --kernel-dimensions="ijk:2" --kernel-split="100" --depth={} --num-tasks={} --min-width=1 --max-width=12 --cdf-mean=2 --cdf-std-dev=0 --skips=3 --sandwich --use-data-memory'.format(filename,num_tasks,num_tasks),
+    #            'file' : filename,
+    #            'schedule-for' : 'mixed'
+    #            })
     for i in range(3,13):
         num_tasks = 2**i
         filename = '{}/mashload-{}.json'.format(_dataset_directory,num_tasks)
