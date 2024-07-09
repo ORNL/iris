@@ -113,103 +113,34 @@ def tensor_to_value(target_id):
     assert False, "Unknown target id"
 
 def value_to_tensor(target):
-    if target_id == [ 0]: return torch.LongTensor([1, 0, 0])
-    if target_id == [ 1]: return torch.LongTensor([0, 1, 0])
-    if target_id == [ 2]: return torch.LongTensor([0, 0, 1])
-    if target_id == [-1]: return torch.LongTensor([0, 0, 0])
+    target = target.tolist()
+    if target ==  0: return torch.LongTensor([1, 0, 0])
+    if target ==  1: return torch.LongTensor([0, 1, 0])
+    if target ==  2: return torch.LongTensor([0, 0, 1])
+    if target == -1: return torch.LongTensor([0, 0, 0])
     assert False, "Unknown target id"
 
+class GNN(torch.nn.Module):
+    def __init__(self, c_in, c_hidden, c_out, **kwargs):
+        super(GNN, self).__init__()
+        #self.conv1 = GCNConv(dataset.num_node_features, hidden_channels)
+        #self.conv2 = GCNConv(hidden_channels, hidden_channels)
+        #self.conv3 = GCNConv(hidden_channels, hidden_channels)
+        self.conv1 = geom_nn.GraphConv(c_in,c_hidden)
+        self.conv2 = geom_nn.GraphConv(c_hidden,c_hidden)
+        self.conv3 = geom_nn.GraphConv(c_hidden,c_hidden)
+        #self.lin = geom_nn.Linear(c_hidden, dataset.num_classes)
+        self.lin = geom_nn.Linear(c_hidden, c_out)
 
-class GNNModel(nn.Module):
-
-    def __init__(self, c_in, c_hidden, c_out, num_layers=2, layer_name="GCN", dp_rate=0.1, **kwargs):
-        """
-        Inputs:
-            c_in - Dimension of input features
-            c_hidden - Dimension of hidden features
-            c_out - Dimension of the output features. Usually number of classes in classification
-            num_layers - Number of "hidden" graph layers
-            layer_name - String of the graph layer to use
-            dp_rate - Dropout rate to apply throughout the network
-            kwargs - Additional arguments for the graph layer (e.g. number of heads for GAT)
-        """
-        super().__init__()
-        gnn_layer_by_name = {
-                "GCN": geom_nn.GCNConv,
-                "GAT": geom_nn.GATConv,
-                "GraphConv": geom_nn.GraphConv
-                }
-        gnn_layer = gnn_layer_by_name[layer_name]
-        layers = []
-        in_channels, out_channels = c_in, c_hidden
-        for l_idx in range(num_layers-1):
-            layers += [
-                gnn_layer(in_channels=in_channels,
-                          out_channels=out_channels,
-                          **kwargs),
-                nn.ReLU(inplace=True),
-                nn.Dropout(dp_rate)
-            ]
-            in_channels = c_hidden
-        layers += [gnn_layer(in_channels=in_channels,
-                             out_channels=c_out,
-                             **kwargs)]
-        self.layers = nn.ModuleList(layers)
-
-    def forward(self, x, edge_index):
-        """
-        Inputs:
-            x - Input features per node
-            edge_index - List of vertex index pairs representing the edges in the graph (PyTorch geometric notation)
-        """
-        for l in self.layers:
-            # For graph layers, we need to add the "edge_index" tensor as additional input
-            # All PyTorch Geometric graph layer inherit the class "MessagePassing", hence
-            # we can simply check the class type.
-            if isinstance(l, geom_nn.MessagePassing):
-                try:
-                    x = l(x, edge_index)
-                except:
-                    import ipdb
-                    ipdb.set_trace()
-                    print("not a big enough matrix or edge_index has wrong dimensionality")
-            else:
-                x = l(x)
-        return x
-
-class GraphGNNModel(nn.Module):
-    def __init__(self, c_in, c_hidden, c_out, dp_rate_linear=0.5, **kwargs):
-        """
-        Inputs:
-            c_in - Dimension of input features
-            c_hidden - Dimension of hidden features
-            c_out - Dimension of output features (usually number of classes)
-            dp_rate_linear - Dropout rate before the linear layer (usually much higher than inside the GNN)
-            kwargs - Additional arguments for the GNNModel object
-        """
-        super().__init__()
-        self.GNN = GNNModel(c_in=c_in,
-                            c_hidden=c_hidden,
-                            c_out=c_hidden, # Not our prediction output yet!
-                            **kwargs)
-        self.head = nn.Sequential(
-            nn.Dropout(dp_rate_linear),
-            nn.Linear(c_hidden, c_out)
-        )
-        self.num_classes = _num_classes #3 possible values in out c_out dimension
-        self.to(device)
-
-    def forward(self, x, edge_index, batch_idx):
-        """
-        Inputs:
-            x - Input features per node
-            edge_index - List of vertex index pairs representing the edges in the graph (PyTorch geometric notation)
-            batch_idx - Index of batch element for each node
-        """
-        x = self.GNN(x, edge_index)
-        b = torch.tensor(batch_idx)
-        x = geom_nn.global_mean_pool(x, b) # Average pooling
-        x = self.head(x)
+    def forward(self, x, edge_index, batch):
+        x = self.conv1(x, edge_index)
+        x = x.relu()
+        x = self.conv2(x, edge_index)
+        x = x.relu()
+        x = self.conv3(x, edge_index)
+        x = geom_nn.global_mean_pool(x, batch)
+        x = F.dropout(x, p=0.5, training=self.training)
+        x = self.lin(x)
         return x
 
 class GraphLevelGNN(pl.LightningModule):
@@ -219,52 +150,55 @@ class GraphLevelGNN(pl.LightningModule):
         # Saving hyperparameters
         self.save_hyperparameters()
         print(model_kwargs)
-        self.model = GraphGNNModel(**model_kwargs)
-        self.loss_module = nn.CrossEntropyLoss()
+        self.model = GNN(**model_kwargs)
+        print(self.model)
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=0.01)
+        self.criterion = torch.nn.CrossEntropyLoss()
         self.to(device)
         self.model.to(device)
-
-        #TODO use Softmax for multi-class classification rather than the Binary Cross Entropy loss function.
-        #self.loss_module = nn.Softmax()
-        #self.loss_module = nn.LogSoftmax()
+        self.model.train()
 
     def forward(self, data, mode="train"):
-        x, edge_index, batch_idx = data['x'], data['edge_index'][0], data['batch']
+        #TODO: Deal with this annoying wrapping in the data-loader
+        if mode == "predict":
+            x, edge_index, batch_idx, y = data['x'], data['edge_index'][0], data['batch'], data['y']
+        else:
+            x, edge_index, batch_idx, y = data['x'][0], data['edge_index'][0], data['batch'], data['y'][0]
         x.to(device)
         edge_index.to(device)
         batch_idx.to(device)
-        nx = self.model(x, edge_index, batch_idx)
-        nx = nx[0]
-        nx = nx.softmax(dim=-1)
-        #nx = nx.squeeze(dim=-1)
-        #TODO do we squeeze or need to determine how to process this last layer?
-        #import ipdb
-        #ipdb.set_trace()
-        #TODO can we squash this last layer?
-        preds = nx.argmax()
-        assert preds < _num_classes, "whops... are we taking the index? should be within a slice instead"
+        y.to(device)
+
+        out = self.model(x, edge_index, batch_idx)
+        #only for 1 value at a time in a batch---we always use a batch size of 1 and so need to just take the last value (which is always the batch_idx)
+        out = out[batch_idx]
         if mode == "predict":
-            return preds
-        #TODO: figure out why output is so broken?
-        loss = self.loss_module(nx[0].float(),data['y'][0].float())
+            return out.argmax()
+        pred = value_to_tensor(out.argmax()).float().to(device)
+        loss = self.criterion(pred, y.float())
+
+        #loss = self.loss_module(nx[0].float(),data['y'][0].float())
         #loss = self.loss_module(nx.float(),data['y'].float())
         #loss = self.loss_fn(preds.float(), torch.FloatTensor(tensor_to_value(data['y'][0])).to(device))
         loss = torch.autograd.Variable(loss, requires_grad = True)
-        acc = (preds == data['y']).sum().float() / _num_classes
+        acc = (pred == y).sum().float() / _num_classes
         return loss, acc
 
     def configure_optimizers(self):
-        optimizer = optim.SGD(self.parameters(), lr=0.001, momentum=0.9)
-        #optimizer = optim.AdamW(self.parameters(), lr=1e-2, weight_decay=0.0) # High lr because of small dataset and small model
+        #optimizer = optim.SGD(self.parameters(), lr=0.001, momentum=0.9)
+        optimizer = optim.AdamW(self.parameters(), lr=0.01)
         return optimizer
 
     def training_step(self, batch, batch_idx):
+        #TODO: need to assert batch is only ever 1
         loss, acc = self.forward(batch, mode="train")
+
         self.log('train_loss', loss)
         self.log('train_acc', acc)
         return loss
 
     def validation_step(self, batch, batch_idx):
+        #TODO: need to assert batch is only ever 1
         _, acc = self.forward(batch, mode="val")
         self.log('val_acc', acc)
 
@@ -470,8 +404,6 @@ def train_graph_classifier(**model_kwargs):
                               **model_kwargs)
         trainer.fit(model, _graph_train_loader, _graph_val_loader)
         model = GraphLevelGNN.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
-    import ipdb
-    ipdb.set_trace()
     # Test best model on validation and test set
     train_result = trainer.test(model, _graph_train_loader, verbose=False)
     test_result = trainer.test(model, _graph_test_loader, verbose=False)
@@ -498,7 +430,7 @@ def train_graph_classifier(**model_kwargs):
 def train():
     global _model
 
-    _model, result = train_graph_classifier(c_hidden=0,
+    _model, result = train_graph_classifier(c_hidden=64,
                                            layer_name="GraphConv",
                                            num_layers=3,
                                            dp_rate_linear=0.01,
@@ -506,12 +438,11 @@ def train():
     print(f"Train performance: {100.0*result['train']:4.2f}%")
     print(f"Test performance:  {100.0*result['test']:4.2f}%")
     print(result)
-    import ipdb
-    ipdb.set_trace()
     import __main__
     setattr(__main__, "GraphLevelGNN", GraphLevelGNN)
-    setattr(__main__, "GraphGNNModel", GraphGNNModel)
-    setattr(__main__, "GNNModel", GNNModel)
+    setattr(__main__, "GNN", GNN)
+    #setattr(__main__, "GraphGNNModel", GraphGNNModel)
+    #setattr(__main__, "GNNModel", GNNModel)
 
     torch.save(_model,_model_filename)
     print(colored("Saved trained model to {}".format(_model_filename),"green"))
@@ -661,8 +592,9 @@ def predict(new_dataset):
     #the following environments are needed to load the pickled model from __main__
     import __main__
     setattr(__main__, "GraphLevelGNN", GraphLevelGNN)
-    setattr(__main__, "GraphGNNModel", GraphGNNModel)
-    setattr(__main__, "GNNModel", GNNModel)
+    setattr(__main__, "GNN", GNN)
+    #setattr(__main__, "GraphGNNModel", GraphGNNModel)
+    #setattr(__main__, "GNNModel", GNNModel)
 
     model = torch.load(_model_filename)
     model.to(device)
@@ -670,10 +602,8 @@ def predict(new_dataset):
     #for each item to predict
     for i, val in enumerate(tu_dataset):
         inputs = tu_dataset.get_item_at_index(i)
-        x, edge_index = inputs['x'], inputs['edge_index']
-        edge_index.to(device)
         prediction = model(inputs,mode="predict")
-        prediction = prediction.detach().cpu().numpy()
+        #prediction = prediction.detach().cpu().numpy()
         print(colored("Prediction completed! Set # {}".format(i),"cyan"))
         summarize(prediction.tolist(),actual=inputs['y'])
 
