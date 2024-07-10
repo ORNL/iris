@@ -55,7 +55,6 @@ int main(int argc, char** argv) {
     {"buffers-per-kernel", false},
     {"size", false},
     {"repeats", false},
-    {"logfile", false},
     {"kernel-dimensions", false},
     {"scheduling-policy", false}
   };
@@ -262,9 +261,8 @@ int main(int argc, char** argv) {
 
       case (int)'l':{//logfile
           LOGFILE = optarg;
-          if (LOGFILE != NULL){
-            required_arguments_set["logfile"] = true;
-          }
+          setenv("IRIS_HISTORY","1",true);
+          setenv("IRIS_HISTORY_FILE",LOGFILE,true);
         } break;
 
       case (int)'t':{//scheduling-policy

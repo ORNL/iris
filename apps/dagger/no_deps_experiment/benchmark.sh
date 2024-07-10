@@ -10,7 +10,7 @@ cp ../kernel.ptx .
 ../dagger_generator.py --kernels="ijk" --kernel-split='100' --depth=10 --num-tasks=64 --min-width=7 --max-width=7 --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --use-data-memory --concurrent-kernels="ijk:14" --skips=3 --cdf-mean=2 --cdf-std-dev=0 --graph="mashloaddemo.json" --use-data-memory --handover-in-memory-shuffle --num-memory-shuffles=32 --no-deps --no-flush
 export IRIS_ARCHS=cuda
 #asynchronous
-IRIS_PROFILE=1 IRIS_ASYNC=1 IRIS_MALLOC_ASYNC=0 IRIS_NSTREAMS=9 IRIS_NCOPY_STREAMS=3 IRIS_HISTORY=1 IRIS_HISTORY_FILE=mashloaddemo.csv ../dagger_runner --graph="mashloaddemo.json" --logfile="time.csv" --repeats=1 --scheduling-policy="roundrobin" --kernels="ijk" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2"  --size=2048 --concurrent-kernels="ijk:14" --use-data-memory
+IRIS_PROFILE=1 IRIS_ASYNC=1 IRIS_MALLOC_ASYNC=0 IRIS_NSTREAMS=9 IRIS_NCOPY_STREAMS=3 IRIS_HISTORY=1 IRIS_HISTORY_FILE=mashloaddemo.csv ../dagger_runner --graph="mashloaddemo.json"  --repeats=1 --scheduling-policy="roundrobin" --kernels="ijk" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2"  --size=2048 --concurrent-kernels="ijk:14" --use-data-memory
 #python ../gantt/gantt.py --dag=mashloaddemo.json --timeline=mashloaddemo.csv --dag-out=64dag.pdf --no-show-kernel-legend --no-show-task-legend --no-show-node-labels
 dot -T pdf dagger_runner-milan2.ftpn.ornl.gov-*.dot -o dag.pdf
 
@@ -50,10 +50,10 @@ export IRIS_ARCHS=cuda
 for SIZE in ${SIZES[@]}
 do
   #asynchronous
-  IRIS_ASYNC=1 IRIS_MALLOC_ASYNC=0 IRIS_NSTREAMS=9 IRIS_NCOPY_STREAMS=3 IRIS_HISTORY=1 IRIS_HISTORY_FILE=mashload-$SIZE-async-timeline.csv ../dagger_runner --graph="mashload-$SIZE-graph.json" --logfile="time.csv" --repeats=1 --scheduling-policy="roundrobin" --kernels="ijk" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2"  --size=2048 --concurrent-kernels="ijk:14" --use-data-memory
+  IRIS_ASYNC=1 IRIS_MALLOC_ASYNC=0 IRIS_NSTREAMS=9 IRIS_NCOPY_STREAMS=3 IRIS_HISTORY=1 IRIS_HISTORY_FILE=mashload-$SIZE-async-timeline.csv ../dagger_runner --graph="mashload-$SIZE-graph.json" --repeats=1 --scheduling-policy="roundrobin" --kernels="ijk" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2"  --size=2048 --concurrent-kernels="ijk:14" --use-data-memory
   python ../gantt/gantt.py --dag=mashload-$SIZE-graph.json --timeline=mashload-$SIZE-async-timeline.csv --combined-out=mashload-$SIZE-async-out.pdf
   #synchronous
-  IRIS_ASYNC=0 IRIS_MALLOC_ASYNC=0 IRIS_NSTREAMS=9 IRIS_NCOPY_STREAMS=3 IRIS_HISTORY=1 IRIS_HISTORY_FILE=mashload-$SIZE-sync-timeline.csv ../dagger_runner --graph="mashload-$SIZE-graph.json" --logfile="time.csv" --repeats=1 --scheduling-policy="roundrobin" --kernels="ijk" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2"  --size=2048 --concurrent-kernels="ijk:14" --use-data-memory
+  IRIS_ASYNC=0 IRIS_MALLOC_ASYNC=0 IRIS_NSTREAMS=9 IRIS_NCOPY_STREAMS=3 IRIS_HISTORY=1 IRIS_HISTORY_FILE=mashload-$SIZE-sync-timeline.csv ../dagger_runner --graph="mashload-$SIZE-graph.json" --repeats=1 --scheduling-policy="roundrobin" --kernels="ijk" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2"  --size=2048 --concurrent-kernels="ijk:14" --use-data-memory
   python ../gantt/gantt.py --dag=mashload-$SIZE-graph.json --timeline=mashload-$SIZE-sync-timeline.csv --combined-out=mashload-$SIZE-sync-out.pdf
 done
 
