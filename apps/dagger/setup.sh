@@ -36,8 +36,10 @@ elif [ "$SYSTEM" = "oswald" ] ; then
 fi
 
 #start with a clean build of iris
+echo "IRIS source directory is: $IRIS_SRC_DIR"
+echo "working directory is: $WORKING_DIR"
 rm -f $IRIS_INSTALL_ROOT/lib64/libiris.so ; rm -f $IRIS_INSTALL_ROOT/lib/libiris.so ;
-cd $IRIS_SRC_DIR ; ./build.sh; [ $? -ne 0 ] && exit ; cd $WORKING_DIR ;
+cd $IRIS_SRC_DIR ; ./build.sh && [ $? -ne 0 ] && exit ; cd $WORKING_DIR ;
 
 source $IRIS_INSTALL_ROOT/setup.source
 make clean
