@@ -715,9 +715,9 @@ def determine_iris_inputs():
     for k in _kernels:
         inputs.append("user-size-cb-{}".format(k))
     for k in _kernels:
-        for d in range(1,_duplicates+1):
+        for d in range(0,_duplicates):
             for ck in range(1,_concurrent_kernels[k]+1):
-                instance = ck*d
+                instance = ck+_total_num_concurrent_kernels*d
                 for i,j in enumerate(_kernel_buffs[k]):
                     if type(j) is dict and j['type'] == 'scalar' and type(j['value']) is str:
                         print("Error: we still need to add kernel argument passing to the runner, currently we only accept numerical values to the dagger_generator.py")
@@ -732,9 +732,9 @@ def determine_iris_inputs():
                     #TODO could facilitate concurrent-kernels with :
                     inputs.append("hostmem-{}-buffer{}-instance{}".format(k,i,instance))
     for k in _kernels:
-        for d in range(1,_duplicates+1):
+        for d in range(0,_duplicates):
             for ck in range(1,_concurrent_kernels[k]+1):
-                instance = ck*d
+                instance = ck+_total_num_concurrent_kernels*d
                 for i,j in enumerate(_kernel_buffs[k]):
                     inputs.append("devicemem-{}-buffer{}-instance{}".format(k,i,instance))
 

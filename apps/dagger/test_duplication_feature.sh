@@ -4,6 +4,9 @@
 source ./build.sh
 [ $? -ne 0 ] &&  exit 1
 #TODO: delete and get dmem disable working
+#export USE_DATA_MEMORY=""
+
+#data policy is unsupported if DMEM is used
 if [ -n "$USE_DATA_MEMORY" ]; then
   export POLICIES=(roundrobin depend profile random ftf sdq);
 else
@@ -44,7 +47,7 @@ do
   done
 done
 
-mkdir -p dagger_figures; mv lineartwo*.pdf dagger_figures
+mkdir -p dagger-graphs; mv lineartwo*.pdf dagger-graphs
 
 echo "Running DAGGER on with concurrency and duplicate payloads..."
 for SIZE in ${SIZES[@]}
@@ -52,7 +55,7 @@ do
   echo "*******************************************************************"
   echo "*                          Linearthree $SIZE                           *"
   echo "*******************************************************************"
-  ./dagger_generator.py --graph="linearthree$SIZE-graph.json" --kernels="ijk" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=$SIZE --num-tasks=$SIZE --min-width=1 --max-width=1 --sandwich $USE_DATA_MEMORY --duplicates="3" --concurrent-kernels="ijk:5"
+  ./dagger_generator.py --graph="linearthree$SIZE-graph.json" --kernels="ijk" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=$SIZE --num-tasks=$SIZE --min-width=1 --max-width=1 --sandwich $USE_DATA_MEMORY --duplicates="3" --concurrent-kernels="ijk:5" 
   [ $? -ne 0 ] && echo "Failed to generate Linearthree $SIZE" &&  exit 1
 
   for POLICY in ${POLICIES[@]}
@@ -71,6 +74,6 @@ do
   done
 done
 
-mkdir -p dagger_figures; mv linearthree*.pdf dagger_figures
+mkdir -p dagger-graphs; mv linearthree*.pdf dagger-graphs
 #TODO test with and without dmem
 
