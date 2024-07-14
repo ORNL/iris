@@ -307,6 +307,21 @@ namespace iris {
                     }
                     iris_graph_task( graph, foAll_task, target_dev, NULL );
                 }
+                void FlushTaskAll(iris_graph graph, int target_dev, char* tag, iris_task last_task)
+                {
+                    char tn1[256];
+                   for(size_t i=0; i<row_tiles_count_; i++) {
+                        for(size_t j=0; j<col_tiles_count_; j++) {
+                            sprintf(tn1, "%s-flush-out-mem-%d-%d", tag, i, j);
+                            iris_task fo_task; iris_task_create_name(tn1, &fo_task);
+                            iris_task_dmem_flush_out(fo_task, IRISMem(i,j));
+                            iris_task_depend(fo_task, 1, &last_task);
+                            iris_graph_task( graph, fo_task, target_dev, NULL );
+                            last_task = fo_task;
+                        }
+                    }
+                }
+
 
 
                 void Flat2Tiled()
