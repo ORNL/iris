@@ -96,8 +96,6 @@ def parse_args(pargs=None,additional_arguments=[]):
     _no_flush = args.no_flush
 
     if _duplicates <= 1: _duplicates = 1
-    #if _duplicates > 1: print("currently duplicates flag unsupported!\n")
-    #_duplicates = 1
 
     _kernels = args.kernels.split(',')
     _use_data_memory = args.use_data_memory
@@ -340,7 +338,7 @@ def generate_attributes(task_dependencies,tasks_per_level):
     _kernel_bag = {}
     for k in _kernels:
         _kernel_bag[k] = []
-        for c in range(0,_concurrent_kernels[k]):
+        for c in range(1,_concurrent_kernels[k]+1):
             x = {}
             x["name"] = k
             if k in _local_sizes.keys():
@@ -482,7 +480,7 @@ def gen_attr(tasks,kernel_names,kernel_probs):
 
         kname = bag_of_kernels.pop()
         selected_memory = random.choices(range(0,_concurrent_kernels[kname]),k=1)
-        #print("selected memory {}\n".format(selected_memory))
+        print("selected memory {}\n".format(selected_memory))
         #selected_memory = [0]
         kinst = int(selected_memory[0])
 
@@ -543,33 +541,76 @@ def duplicate_for_concurrency(task_dag,edges):
     new_edges = copy.deepcopy(edges)
     ckernels  = _concurrent_kernels
 
-    #get the maximally concurrent kernel
-    #max_ckernel = None
-    #for key,value in ckernels.items():
-    #    if value == max(ckernels.values()):
-    #        max_ckernel = key
-    #assert max_ckernel != None
+    #TODO: make more concurrent memory instances based of the duplicates value!
 
     #get the last task name --- this indicates the number of tasks in each chain
     original_chain_length = len(task_dag)
 
     #first sweep and generate the broad structure
-    for c in range(1, _duplicates):#the maximum degree of concurrency indicates how many "parallel" DAGs to paste in
-        y = original_chain_length*c
+    for d in range(1, _duplicates):#the number of duplicates indicates how many "parallel" DAGs to paste in
+        y = original_chain_length*d
         for chain_index in range(0,original_chain_length):
             x = copy.deepcopy(task_dag[chain_index])
-            #this is a concurrent instance!
-            x['name'] = "task"+str(y)
-            #update the instance buffers used in this concurrent instance
-            for zi, z in enumerate(x['commands'][0]['kernel']['parameters']):
-                old_instance_buffer_name = re.findall(r'(.*instance)\d+$',z['value'])
-                old_instance_buffer_name = old_instance_buffer_name[0]
-                nib = (old_instance_buffer_name + str(c))
-                x['commands'][0]['kernel']['parameters'][zi]['name'] = nib
-            #*ASSUMPTION:* all new dependencies should share the same offset as elements in the chain
+            if "d2h" in task_dag[chain_index]['commands'][0].keys():
+                #replace used memory buffers after new ones are added for the new sub-dag series
+                x['name'] = x['name']+"-task-"+str(y)
+                for z in x['commands']:
+                    o,otn = z['d2h']['name'].split('instance')
+                    o = o+"instance"
+                    otn = str(int(otn)+d)
+                    z['d2h']['name'] = "d2h"+str(y)+"-"+o+otn
+                    o,otn = z['d2h']['device_memory'].split('instance')
+                    o = o+"instance"
+                    otn = str(int(otn)+d)
+                    z['d2h']['device_memory'] = o+otn
+                    if 'data-memory-flush' in z['d2h'].keys():
+                        continue
+                    o,otn = z['d2h']['host_memory'].split('instance')
+                    o = o+"instance"
+                    otn = str(int(otn)+d)
+                    z['d2h']['host_memory'] = o+otn
+                #TODO: check it runs without being called dmemflush-
+                import ipdb
+                ipdb.set_trace()
+                print("updating...")
+            elif "h2d" in task_dag[chain_index]['commands'][0].keys():
+                #replace used memory buffers after new ones are added for the new sub-dag series
+                x['name'] = x['name']+"-task"+str(d)
+                for z in x['commands']:
+                    o,otn = z['h2d']['name'].split('instance')
+                    o = o+"instance"
+                    otn = str(int(otn)+d)
+                    z['h2d']['name'] = "h2d"+str(y)+"-"+o+otn
+                    o,otn = z['h2d']['device_memory'].split('instance')
+                    o = o+"instance"
+                    otn = str(int(otn)+d)
+                    z['h2d']['device_memory'] = o+otn
+                    o,otn = z['h2d']['host_memory'].split('instance')
+                    o = o+"instance"
+                    otn = str(int(otn)+d)
+                    z['h2d']['host_memory'] = o+otn
+            else:
+                #kernel
+                x['name'] = "task"+str(y)
+                #update the instance buffers used in this concurrent instance
+                for zi, z in enumerate(x['commands'][0]['kernel']['parameters']):
+                    old_instance_buffer_name = re.findall(r'(.*instance)\d+$',z['value'])
+                    old_instance_buffer_name = old_instance_buffer_name[0]
+                    nib = (old_instance_buffer_name + str(d))
+                    x['commands'][0]['kernel']['parameters'][zi]['value'] = nib
+                    x['commands'][0]['kernel']['parameters'][zi]['name'] = nib
+                #*ASSUMPTION:* all new dependencies should share the same offset as elements in the chain
+
             new_dependencies = []
             for z in x['depends']:
-                dependency_no = original_chain_length*c+int(z.replace('task',''))
+                if "initial_h2d" in z:
+                    z = z+"-task"+str(d)
+                    new_dependencies.append(z)
+                    continue
+                if "d2h" in z or "h2d" in z:
+                    import ipdb
+                    ipdb.set_trace()
+                dependency_no = original_chain_length*d+int(z.replace('task',''))
                 new_dependencies.append("task"+str(dependency_no))
             x['depends'] = new_dependencies
             y += 1 #increment the new task name counter
@@ -578,15 +619,9 @@ def duplicate_for_concurrency(task_dag,edges):
             new_dag.append(x)
 
     #and update edges accordingly
-    for c in range(0, _duplicates):#the maximum degree of concurrency indicates how many "parallel" DAGs to paste in
+    for d in range(0, _duplicates):#the maximum degree of concurrency indicates how many "parallel" DAGs to paste in
         for entry in edges:
-            new_edges.append((str(int(entry[0])+original_chain_length*c),str(int(entry[1])+original_chain_length*c)))
-
-    print("TODO: still need to support concurrent kernels...")
-
-    #update edges
-    # then assigned shared / common tasks (tasks with less concurrency)
-    #TODO: stitch together shared tasks
+            new_edges.append((str(int(entry[0])+original_chain_length*d),str(int(entry[1])+original_chain_length*d)))
 
     return new_dag,new_edges
 
@@ -684,25 +719,30 @@ def determine_iris_inputs():
     for k in _kernels:
         inputs.append("user-size-cb-{}".format(k))
     for k in _kernels:
-        for ck in range(0,_concurrent_kernels[k]):
-            for i,j in enumerate(_kernel_buffs[k]):
-                if type(j) is dict and j['type'] == 'scalar' and type(j['value']) is str:
-                    print("Error: we still need to add kernel argument passing to the runner, currently we only accept numerical values to the dagger_generator.py")
-                    import ipdb
-                    ipdb.set_trace()
-                    import sys
-                    sys.exit("Error: we still need to add kernel argument passing to the runner, currently we only accept numerical values to the dagger_generator.py")
+        for d in range(1,_duplicates+1):
+            for ck in range(1,_concurrent_kernels[k]+1):
+                instance = ck*d
+                for i,j in enumerate(_kernel_buffs[k]):
+                    if type(j) is dict and j['type'] == 'scalar' and type(j['value']) is str:
+                        print("Error: we still need to add kernel argument passing to the runner, currently we only accept numerical values to the dagger_generator.py")
+                        import ipdb
+                        ipdb.set_trace()
+                        import sys
+                        sys.exit("Error: we still need to add kernel argument passing to the runner, currently we only accept numerical values to the dagger_generator.py")
 
-                if type(j) is dict and j['type'] == 'scalar':
-                    continue
-                #inputs.append("hostmem-{}-buffer{}".format(k,i))
-                #TODO could facilitate concurrent-kernels with :
-                inputs.append("hostmem-{}-buffer{}-instance{}".format(k,i,ck))
+                    if type(j) is dict and j['type'] == 'scalar':
+                        continue
+                    #inputs.append("hostmem-{}-buffer{}".format(k,i))
+                    #TODO could facilitate concurrent-kernels with :
+                    inputs.append("hostmem-{}-buffer{}-instance{}".format(k,i,instance))
     for k in _kernels:
-        for ck in range(0,_concurrent_kernels[k]):
-            for i,j in enumerate(_kernel_buffs[k]):
-                inputs.append("devicemem-{}-buffer{}-instance{}".format(k,i,ck))
-    print('TODO: support multiple targets--hint all but the h2d and d2h memory transfers should be transfer target (control-dependency) while all actual kernels should use the data-dependency')
+        for d in range(1,_duplicates+1):
+            for ck in range(1,_concurrent_kernels[k]+1):
+                instance = ck*d
+                for i,j in enumerate(_kernel_buffs[k]):
+                    inputs.append("devicemem-{}-buffer{}-instance{}".format(k,i,instance))
+
+    #TODO: support multiple targets--hint all but the h2d and d2h memory transfers should be transfer target (control-dependency) while all actual kernels should use the data-dependency
     inputs.append("user-target-control")
     inputs.append("user-target-data")
     #was "inputs":[ "user-size", "user-size-cb", "user-A", "user-B", "user-mem", "user-target" ]
@@ -720,7 +760,7 @@ def determine_and_prepend_iris_h2d_transfers(dag):
     transfers = []
     #this should be extended for each instance
     for i,k in enumerate(_kernels):
-        for ck in range(0,_concurrent_kernels[k]):
+        for ck in range(1,_concurrent_kernels[k]+1):
             for j,l in enumerate(_kernel_buffs[k]):
                 if l == 'w': #Only transfer memory that will be read on the device
                     continue
@@ -780,7 +820,7 @@ def determine_and_append_iris_d2h_transfers(dag):
         #or we need to flush just the written buffers
         else:
             for i,k in enumerate(_kernels):
-                for ck in range(0,_concurrent_kernels[k]):
+                for ck in range(1,_concurrent_kernels[k]+1):
                     for j,l in enumerate(_kernel_buffs[k]):
                             if l == 'r':
                                 continue
@@ -814,7 +854,7 @@ def determine_and_append_iris_d2h_transfers(dag):
     #we aren't using data memory --- process the explicit d2h memory transfers
     #this should be extended for each instance
     for i,k in enumerate(_kernels):
-        for ck in range(0,_concurrent_kernels[k]):
+        for ck in range(1,_concurrent_kernels[k]+1):
             for j,l in enumerate(_kernel_buffs[k]):
                 if l == 'r': #Only transfer memory that have been written on the device
                     continue
@@ -878,6 +918,7 @@ def run():
     task_dag = generate_attributes(neighs_down_top,task_per_level)
     task_dag = rename_special_tasks(task_dag)
     edges = prune_edges_from_dependencies(task_dag,edges)
+    task_dag, edges = duplicate_for_concurrency(task_dag,edges)
     plot_dag(task_dag,edges,'./dag.pdf')
     get_task_to_json(task_dag,edges)
 
