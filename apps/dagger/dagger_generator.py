@@ -569,10 +569,6 @@ def duplicate_for_concurrency(task_dag,edges):
                     o = o+"instance"
                     otn = str(int(otn)+d)
                     z['d2h']['host_memory'] = o+otn
-                #TODO: check it runs without being called dmemflush-
-                import ipdb
-                ipdb.set_trace()
-                print("updating...")
             elif "h2d" in task_dag[chain_index]['commands'][0].keys():
                 #replace used memory buffers after new ones are added for the new sub-dag series
                 x['name'] = x['name']+"-task"+str(d)

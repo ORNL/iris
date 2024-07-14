@@ -3,9 +3,7 @@
 
 source ./build.sh
 [ $? -ne 0 ] &&  exit 1
-#TODO: test with and without dmem
-export USE_DATA_MEMORY=""
-#data policy is unsupported if DMEM is used
+#TODO: delete and get dmem disable working
 if [ -n "$USE_DATA_MEMORY" ]; then
   export POLICIES=(roundrobin depend profile random ftf sdq);
 else
@@ -46,4 +44,33 @@ do
   done
 done
 
-#TODO: test concurrency with duplicates!
+mkdir -p dagger_figures; mv lineartwo*.pdf dagger_figures
+
+echo "Running DAGGER on with concurrency and duplicate payloads..."
+for SIZE in ${SIZES[@]}
+do
+  echo "*******************************************************************"
+  echo "*                          Linearthree $SIZE                           *"
+  echo "*******************************************************************"
+  ./dagger_generator.py --graph="linearthree$SIZE-graph.json" --kernels="ijk" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=$SIZE --num-tasks=$SIZE --min-width=1 --max-width=1 --sandwich $USE_DATA_MEMORY --duplicates="3" --concurrent-kernels="ijk:5"
+  [ $? -ne 0 ] && echo "Failed to generate Linearthree $SIZE" &&  exit 1
+
+  for POLICY in ${POLICIES[@]}
+  do
+    for (( num_run=0; num_run<=$REPEATS; num_run++ ))
+    do
+      echo "Running IRIS on Linearthree $SIZE with Policy: $POLICY  run no. $num_run"
+      ./dagger_runner --graph="linearthree$SIZE-graph.json" --logfile="time.csv" --repeats=1 --scheduling-policy="$POLICY" --size=$PAYLOAD_SIZE  --kernels="ijk" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" $USE_DATA_MEMORY --duplicates="3" --concurrent-kernels="ijk:5"
+      [ $? -ne 0 ] && echo "Linearthree $SIZE Failed with Policy: $POLICY" &&  exit 1
+    done
+    #plot timeline with gantt
+    if [ "$SIZE" == "10" ] ; then
+      python ./gantt/gantt.py --dag="./linearthree$SIZE-graph.json" --timeline=time.csv --combined-out="./linearthree$SIZE-$POLICY-$SYSTEM.pdf" --no-show-kernel-legend #--keep-memory-transfer-commands # --drop="Initialize-0,Initialize-1" #--title-string="Linear 10 dataset with RANDOM scheduling policy" --drop="Init"
+    fi
+    [ $? -ne 0 ] && echo "Failed Combined Plotting of Linearthree $SIZE with Policy: $POLICY" &&  exit 1
+  done
+done
+
+mkdir -p dagger_figures; mv linearthree*.pdf dagger_figures
+#TODO test with and without dmem
+
