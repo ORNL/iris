@@ -609,11 +609,11 @@ dagger-zenith-test-duplication:
       - apps/dagger/dagger-results
       - slurm*.txt
 
-dagger-zenith-test-duplication-dmem:
+dagger-zenith-test-duplication-explicit:
   extends: [.dagger-zenith-test-duplication]
   variables:
     REPEATS: 1
-    USE_DATA_MEMORY: ""
+    USE_DATA_MEMORY: " "
 
 coverage-collect:
   tags: [zenith]

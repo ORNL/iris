@@ -3,8 +3,9 @@
 
 source ./build.sh
 [ $? -ne 0 ] &&  exit 1
-#TODO: delete and get dmem disable working
-#export USE_DATA_MEMORY=""
+#uncomment to use explicit (non DMEM) version
+#export USE_DATA_MEMORY=" "
+echo "using data memory?" $USE_DATA_MEMORY
 
 #data policy is unsupported if DMEM is used
 if [ -n "$USE_DATA_MEMORY" ]; then
