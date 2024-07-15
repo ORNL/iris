@@ -76,5 +76,4 @@ do
 done
 
 mkdir -p dagger-graphs; mv linearthree*.pdf dagger-graphs
-#TODO test with and without dmem
 

@@ -52,6 +52,7 @@ def create_graph(args):
     }
 
     for kernel in dg._kernels:
+        #TODO: update this in line to the use of concurrent_kernels and duplicates
         for concurrent_device in range(dg._concurrent_kernels[kernel]):
             argument_index = 0
             for buffer in dg._kernel_buffs[kernel]:

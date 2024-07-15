@@ -611,7 +611,6 @@ def duplicate_for_concurrency(task_dag,edges):
             x['depends'] = new_dependencies
             y += 1 #increment the new task name counter
             #what about other (non-maximal) concurrency kernels?
-            #TODO
             new_dag.append(x)
 
     #and update edges accordingly

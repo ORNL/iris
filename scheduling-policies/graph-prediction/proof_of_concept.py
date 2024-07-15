@@ -40,7 +40,8 @@ torch.backends.cudnn.benchmark = False
 _max_epochs = 200
 #_max_epochs = 10
 _num_classes = 3
-use_gpu = torch.cuda.is_available()
+#TODO: determine how to use GPUs without exhausting all the memory
+use_gpu = False#torch.cuda.is_available()
 if use_gpu:
     device = torch.device("cuda")
     #num_devices = torch.cuda.device_count()
@@ -260,7 +261,10 @@ class GraphDataset(torch.utils.data.Dataset):
             nodes = self.__construct_nodes(data)
             memory_set = self.__get_set_of_unique_memory(nodes)
             dimensions.append((len(nodes),len(memory_set)))
-        return max(dimensions)
+        #looks kind of hacky, but max(dimensions) on returns a tuple based on the first dimension
+        #this solution actually gets the max in each
+        from operator import itemgetter
+        return (max(dimensions, key=itemgetter(0))[0],max(dimensions, key=itemgetter(1))[1])
 
     def __len__(self):
         return len(self.gnn_form_of_json)
@@ -292,15 +296,15 @@ class GraphDataset(torch.utils.data.Dataset):
         elif "h2d" in node.keys():
             node_memory_object_names = [node['h2d']['device_memory']]
         else:
-            assert False, "unknown command in task {}".format(nodes[i]['name'])
+            assert False, "unknown command in task {}".format(node[i]['name'])
         return node_memory_object_names
 
     def __get_set_of_unique_memory(self,nodes):
         memory_set = {}
         for i, node in enumerate(nodes):
-            node = node['commands'][0] #we currently support only one command per task-node
-            node_memory_object_names = self.__get_memory_objects(node)
-            memory_set = set(node_memory_object_names + list(memory_set))
+            for command in node['commands']:
+                node_memory_object_names = self.__get_memory_objects(command)
+                memory_set = set(node_memory_object_names + list(memory_set))
         return memory_set
 
     def __construct_node_feature_matrix_for_graph(self,nodes):
@@ -308,11 +312,16 @@ class GraphDataset(torch.utils.data.Dataset):
         feature_matrix = np.empty(shape=(self.num_nodes(),self.num_node_features()))#create a full size feature matrix
         memory_set = self.__get_set_of_unique_memory(nodes)
         for n, node in enumerate(nodes):
-            node = node['commands'][0] #we currently support only one command per task-node
-            memory_this_node = self.__get_memory_objects(node)
-            feature_vector = [int(f in memory_this_node) for f in memory_set]
-            for i,f in enumerate(feature_vector):
-                feature_matrix[n][i] = f
+            for command in node['commands']:
+                memory_this_node = self.__get_memory_objects(command)
+                feature_vector = [int(f in memory_this_node) for f in memory_set]
+            try:
+                for i,f in enumerate(feature_vector):
+                    feature_matrix[n][i] = f
+            except:
+                import ipdb
+                ipdb.set_trace()
+                print('debug')
         return feature_matrix
 
     def __construct_edges(self,data,nodes):
@@ -456,6 +465,7 @@ def generate_dataset():
                 'file' : filename,
                 'schedule-for' : 'locality'
                 })
+    #locality data (with duplicates)
     #TODO: bring back DAGGER support for duplicates!
     for i in range(3,13):
         num_tasks = 2**i
@@ -469,7 +479,7 @@ def generate_dataset():
         num_tasks = 2**i
         filename = '{}/linearthree-{}.json'.format(_dataset_directory,num_tasks)
         raw_dataset.append({
-                'args':'--graph={} --kernels="ijk" --duplicates="3" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split="100" --depth={} --num-tasks={} --min-width=1 --max-width=1 --use-data-memory'.format(filename,num_tasks,num_tasks),
+            'args':'--graph={} --kernels="ijk" --duplicates="3" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split="100" --depth={} --num-tasks={} --min-width=1 --max-width=1 --use-data-memory --concurrent-kernels="ijk:{}"'.format(filename,num_tasks,num_tasks,i),
                 'file' : filename,
                 'schedule-for' : 'locality'
                 })
@@ -674,7 +684,6 @@ if __name__ == '__main__':
     #TODO:
     # 4) update each json file with hard-coded prediction
     # 5) compare by running back into IRIS
-    # 6) verify why 500-800% accuracy
-
+    #TODO: test on a few real-world application task-graphs
 
 
