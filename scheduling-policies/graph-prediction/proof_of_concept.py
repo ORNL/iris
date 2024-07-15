@@ -41,13 +41,11 @@ _max_epochs = 200
 #_max_epochs = 10
 _num_classes = 3
 #TODO: determine how to use GPUs without exhausting all the memory
-use_gpu = False#torch.cuda.is_available()
+use_gpu = torch.cuda.is_available()
 if use_gpu:
     device = torch.device("cuda")
-    #num_devices = torch.cuda.device_count()
-    num_devices = 1
-    num_workers = 0
-    #num_workers = 127
+    num_devices = torch.cuda.device_count()
+    num_workers = torch.cuda.device_count()
 else:
     num_devices = 1
     device = torch.device("cpu")
@@ -59,7 +57,7 @@ else:
 # Global variables:
 _dataset_directory = 'graphs'
 _model_name = "iris_scheduler_gnn_graph_level_classifier"
-_batch_size = 1
+_batch_size = 1#TODO: determine how to use bigger batches...
 _root_dir = os.path.join(CHECKPOINT_PATH, "GraphLevel", _model_name)
 _model_filename = os.path.join(CHECKPOINT_PATH, f"{_model_name}.pth")
 _pretrained_filename = os.path.join(CHECKPOINT_PATH, f"GraphLevel{_model_name}.ckpt")
@@ -243,17 +241,18 @@ class GraphDataset(torch.utils.data.Dataset):
         for i,val in enumerate(self.data_list):
             x = self.__convert_from_json_to_gnn(i,wrap_batch=for_prediction_mode) #if the edge_index isn't empty add it!
             if x['edge_index'].numel() != 0: self.gnn_form_of_json.append(x)
-        self.to(device)
 
-    def to(self,device):
-        for item in self.gnn_form_of_json:
-            item['x'].to(device)
-            item['edge_index'].to(device)
-            item['batch'].to(device)
-            item['y'].to(device)
+    def to(self, item, device):
+        item['x'].to(device)
+        item['edge_index'].to(device)
+        item['batch'].to(device)
+        item['y'].to(device)
+        return item
 
     def get_item_at_index(self,idx):
-        return self.gnn_form_of_json[idx]
+        x = self.gnn_form_of_json[idx]
+        x = self.to(x,device)
+        return x
 
     def __compute_max_dimensions(self,data_list):
         dimensions = []
@@ -360,18 +359,14 @@ class GraphDataset(torch.utils.data.Dataset):
 
         #transform and return
         node_feature_matrix = torch.Tensor(node_feature_matrix)
-        #batch_id = torch.LongTensor([1,4097,256]) #can be 1 since this is a per graph classification
         if wrap_batch:
             batch_id = np.array([idx])
             edges = np.array([edges])
-        else: batch_id = np.array(idx)#TODO: stopgap measure---remove idx+1 when I figure our why resuming the checkpoint fails to index appropriately
+        else: batch_id = np.array(idx)
+        edges = torch.from_numpy(edges)
+        label = torch.LongTensor(target_to_tensor(label))
+        batch_id = torch.from_numpy(batch_id)
 
-        #move the data to the (globally specified) device
-        node_feature_matrix = node_feature_matrix.to(device)
-        edges = torch.from_numpy(edges).to(device)
-        label = torch.LongTensor(target_to_tensor(label)).to(device)
-        batch_id = torch.from_numpy(batch_id).to(device)
-        #TODO: expect y to return a list of probabilities but is this correct?
         return {'x': node_feature_matrix,
                 'edge_index':edges,
                 'y':label,
@@ -466,7 +461,6 @@ def generate_dataset():
                 'schedule-for' : 'locality'
                 })
     #locality data (with duplicates)
-    #TODO: bring back DAGGER support for duplicates!
     for i in range(3,13):
         num_tasks = 2**i
         filename = '{}/lineartwo-{}.json'.format(_dataset_directory,num_tasks)
@@ -537,7 +531,7 @@ def generate_dataset():
 
     # Create a dataset and data loader
     tu_dataset = GraphDataset(raw_dataset)
-    tu_dataset.to(device)
+    #tu_dataset.to(device)
     return tu_dataset
 
 def generate_fresh_prediction_payload_for_testing():
