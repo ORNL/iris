@@ -25,11 +25,21 @@ import torch.optim as optim
 import torch_geometric
 import torch_geometric.nn as geom_nn
 import torch_geometric.loader as geom_loader
+from torch_geometric.data import DataLoader
+# this data loader actually supports collate_fn
+#from torch.utils.data import DataLoader
+#TODO: determine if we need to resize/pad edge_index to the maximum size 
+#(as we do for the feature matrix) but for batching
 import pytorch_lightning as pl
 import pickle
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 from termcolor import colored
 from functools import reduce
+
+# Variable training parameters
+_max_epochs = 10
+#_max_epochs = 200
+_batch_size = 1#TODO: determine how to use bigger batches...
 
 # Initialize PyTorch environment
 DATASET_PATH = "./data"
@@ -37,27 +47,22 @@ CHECKPOINT_PATH = "./saved_models"
 pl.seed_everything(42)
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
-_max_epochs = 200
-#_max_epochs = 10
-_num_classes = 3
-#TODO: determine how to use GPUs without exhausting all the memory
-use_gpu = torch.cuda.is_available()
+use_gpu = False#torch.cuda.is_available()
 if use_gpu:
     device = torch.device("cuda")
     num_devices = torch.cuda.device_count()
-    num_workers = torch.cuda.device_count()
-else:
-    num_devices = 1
-    device = torch.device("cpu")
-    #num_workers = os.cpu_count()
     num_workers = 0
+    #num_workers = torch.cuda.device_count()
+else:
+    device = torch.device("cpu")
+    num_devices = 1
+    num_workers = 0
+    #num_workers = os.cpu_count()
 
-
-
-# Global variables:
+# Other fixed global variables:
+_num_classes = 3
 _dataset_directory = 'graphs'
 _model_name = "iris_scheduler_gnn_graph_level_classifier"
-_batch_size = 1#TODO: determine how to use bigger batches...
 _root_dir = os.path.join(CHECKPOINT_PATH, "GraphLevel", _model_name)
 _model_filename = os.path.join(CHECKPOINT_PATH, f"{_model_name}.pth")
 _pretrained_filename = os.path.join(CHECKPOINT_PATH, f"GraphLevel{_model_name}.ckpt")
@@ -124,9 +129,14 @@ def value_to_tensor(target):
 class GNN(torch.nn.Module):
     def __init__(self, c_in, c_hidden, c_out, **kwargs):
         super(GNN, self).__init__()
-        self.conv1 = geom_nn.GraphConv(c_in,c_hidden)
-        self.conv2 = geom_nn.GraphConv(c_hidden,c_hidden)
-        self.conv3 = geom_nn.GraphConv(c_hidden,c_hidden)
+        #TODO: decide which to use
+        #self.conv1 = geom_nn.GraphConv(c_in,c_hidden)
+        #self.conv2 = geom_nn.GraphConv(c_hidden,c_hidden)
+        #self.conv3 = geom_nn.GraphConv(c_hidden,c_hidden)
+
+        self.conv1 = geom_nn.GCNConv(c_in,c_hidden)
+        self.conv2 = geom_nn.GCNConv(c_hidden,c_hidden)
+        self.conv3 = geom_nn.GCNConv(c_hidden,c_hidden)
         self.lin = geom_nn.Linear(c_hidden, c_out)
 
     def forward(self, x, edge_index, batch):
@@ -156,16 +166,12 @@ class GraphLevelGNN(pl.LightningModule):
         self.model.train()
 
     def forward(self, data, mode="train"):
+        data
         #TODO: Deal with this annoying wrapping in the data-loader
         if mode == "predict":
             x, edge_index, batch_idx, y = data['x'], data['edge_index'][0], data['batch'], data['y']
         else:
             x, edge_index, batch_idx, y = data['x'][0], data['edge_index'][0], data['batch'], data['y'][0]
-        x.to(device)
-        edge_index.to(device)
-        batch_idx.to(device)
-        y.to(device)
-
         out = self.model(x, edge_index, batch_idx)
         #only for 1 value at a time in a batch---we always use a batch size of 1 and so need to just take the last value (which is always the batch_idx)
         out = out[batch_idx]
@@ -243,10 +249,10 @@ class GraphDataset(torch.utils.data.Dataset):
             if x['edge_index'].numel() != 0: self.gnn_form_of_json.append(x)
 
     def to(self, item, device):
-        item['x'].to(device)
-        item['edge_index'].to(device)
-        item['batch'].to(device)
-        item['y'].to(device)
+        item['x']           = item['x'].to(device)
+        item['edge_index']  = item['edge_index'].to(device)
+        item['batch']       = item['batch'].to(device)
+        item['y']           = item['y'].to(device)
         return item
 
     def get_item_at_index(self,idx):
@@ -255,15 +261,16 @@ class GraphDataset(torch.utils.data.Dataset):
         return x
 
     def __compute_max_dimensions(self,data_list):
-        dimensions = []
+        feat_dimensions = []
+        
         for data in data_list:
             nodes = self.__construct_nodes(data)
             memory_set = self.__get_set_of_unique_memory(nodes)
-            dimensions.append((len(nodes),len(memory_set)))
+            feat_dimensions.append((len(nodes),len(memory_set)))
         #looks kind of hacky, but max(dimensions) on returns a tuple based on the first dimension
         #this solution actually gets the max in each
         from operator import itemgetter
-        return (max(dimensions, key=itemgetter(0))[0],max(dimensions, key=itemgetter(1))[1])
+        return (max(feat_dimensions, key=itemgetter(0))[0],max(feat_dimensions, key=itemgetter(1))[1])
 
     def __len__(self):
         return len(self.gnn_form_of_json)
@@ -371,7 +378,6 @@ class GraphDataset(torch.utils.data.Dataset):
                 'edge_index':edges,
                 'y':label,
                 'batch':batch_id}
-
 
 def train_graph_classifier(**model_kwargs):
     global _graph_train_loader, _graph_val_loader, _graph_test_loader, _max_epochs
@@ -599,6 +605,7 @@ def predict(new_dataset):
     # Create a dataset and data loader with this new max shape
     tu_dataset = GraphDataset(new_dataset,shape=model_trained_on_shape)
     tu_dataset.shuffle()
+
     #the following environments are needed to load the pickled model from __main__
     import __main__
     setattr(__main__, "GraphLevelGNN", GraphLevelGNN)
@@ -620,6 +627,16 @@ def predict(new_dataset):
     # TODO take the pre-trained model and new DAG to make the prediction
     return
 
+def my_collate_fun(data,max_dataset_shape):
+    #set max size based off the _tu_dataset
+    #[2 126] [2 113]
+    #import ipdb
+    #ipdb.set_trace()
+    # TODO: Implement your function
+    #print("fin using own rolled collate")
+    return torch.utils.data.dataloader.default_collate(data)
+    #return tuple(data)
+
 def load_dataset():
     global _graph_train_loader, _graph_val_loader, _graph_test_loader, _tu_dataset
 
@@ -630,9 +647,12 @@ def load_dataset():
     train_size = int(0.8 * len(_tu_dataset))
     test_size = len(_tu_dataset) - train_size
     train_dataset, test_dataset = torch.utils.data.random_split(_tu_dataset, [train_size, test_size])
-    _graph_train_loader = geom_loader.DataLoader(train_dataset, shuffle=True, num_workers=num_workers, batch_size=_batch_size)
-    _graph_val_loader = geom_loader.DataLoader(test_dataset, num_workers=num_workers,batch_size=_batch_size) # Additional loader if you want to change to a larger dataset
-    _graph_test_loader = geom_loader.DataLoader(test_dataset, num_workers=num_workers,batch_size=_batch_size)
+    import functools
+    this_collate_fn = functools.partial(my_collate_fun, max_dataset_shape=_tu_dataset.shape())
+
+    _graph_train_loader = DataLoader(train_dataset, shuffle=True, num_workers=num_workers, batch_size=_batch_size, collate_fn=this_collate_fn)
+    _graph_val_loader = DataLoader(test_dataset, num_workers=num_workers,batch_size=_batch_size, collate_fn=this_collate_fn) # Additional loader if you want to change to a larger dataset
+    _graph_test_loader = DataLoader(test_dataset, num_workers=num_workers, batch_size=_batch_size, collate_fn=this_collate_fn)
 
     batch = next(iter(_graph_test_loader))
     print("Batch:", batch)
