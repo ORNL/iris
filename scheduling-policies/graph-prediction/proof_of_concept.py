@@ -25,16 +25,13 @@ import torch.optim as optim
 import torch_geometric
 import torch_geometric.nn as geom_nn
 import torch_geometric.loader as geom_loader
-from torch_geometric.data import DataLoader
-# this data loader actually supports collate_fn
-#from torch.utils.data import DataLoader
-#TODO: determine if we need to resize/pad edge_index to the maximum size 
-#(as we do for the feature matrix) but for batching
+from torch.utils.data import DataLoader
 import pytorch_lightning as pl
 import pickle
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 from termcolor import colored
 from functools import reduce
+from operator import itemgetter
 
 # Variable training parameters
 _max_epochs = 10
@@ -262,14 +259,12 @@ class GraphDataset(torch.utils.data.Dataset):
 
     def __compute_max_dimensions(self,data_list):
         feat_dimensions = []
-        
         for data in data_list:
             nodes = self.__construct_nodes(data)
             memory_set = self.__get_set_of_unique_memory(nodes)
             feat_dimensions.append((len(nodes),len(memory_set)))
         #looks kind of hacky, but max(dimensions) on returns a tuple based on the first dimension
         #this solution actually gets the max in each
-        from operator import itemgetter
         return (max(feat_dimensions, key=itemgetter(0))[0],max(feat_dimensions, key=itemgetter(1))[1])
 
     def __len__(self):
@@ -315,7 +310,7 @@ class GraphDataset(torch.utils.data.Dataset):
 
     def __construct_node_feature_matrix_for_graph(self,nodes):
         #[num_nodes, num_node_features]
-        feature_matrix = np.empty(shape=(self.num_nodes(),self.num_node_features()))#create a full size feature matrix
+        feature_matrix = np.zeros(shape=(self.num_nodes(),self.num_node_features()))#create a full size feature matrix
         memory_set = self.__get_set_of_unique_memory(nodes)
         for n, node in enumerate(nodes):
             for command in node['commands']:
@@ -627,15 +622,27 @@ def predict(new_dataset):
     # TODO take the pre-trained model and new DAG to make the prediction
     return
 
-def my_collate_fun(data,max_dataset_shape):
-    #set max size based off the _tu_dataset
-    #[2 126] [2 113]
+#TODO: determine if we need to resize/pad edge_index to the maximum size 
+#(as we do for the feature matrix) but for batching
+def my_collate_fun(batch_dataset):
+    # all edge_index vectors need to be the same shape per batch
+    # so in order to be more efficient using batching we have to add extra padding operations
+    edge_index_dims = []
+    for data in batch_dataset:
+        edge_index_dims.append(data['edge_index'].shape)
+    max_shape = (max(edge_index_dims, key=itemgetter(0))[0],max(edge_index_dims, key=itemgetter(1))[1])
+    max_shape = torch.Size(max_shape)
+    for data in batch_dataset:
+        if data['edge_index'].shape < max_shape:
+            new_edge_index = np.zeros(shape=max_shape,dtype=np.int64)
+            for d, dimension in enumerate(data['edge_index'].shape):
+                for i, value in enumerate(data['edge_index'][d]):
+                    new_edge_index[d][i] = value
+            data['edge_index'] = torch.from_numpy(new_edge_index)
+    #TODO: debug from here!
     #import ipdb
     #ipdb.set_trace()
-    # TODO: Implement your function
-    #print("fin using own rolled collate")
-    return torch.utils.data.dataloader.default_collate(data)
-    #return tuple(data)
+    return torch.utils.data.dataloader.default_collate(batch_dataset)
 
 def load_dataset():
     global _graph_train_loader, _graph_val_loader, _graph_test_loader, _tu_dataset
@@ -647,12 +654,10 @@ def load_dataset():
     train_size = int(0.8 * len(_tu_dataset))
     test_size = len(_tu_dataset) - train_size
     train_dataset, test_dataset = torch.utils.data.random_split(_tu_dataset, [train_size, test_size])
-    import functools
-    this_collate_fn = functools.partial(my_collate_fun, max_dataset_shape=_tu_dataset.shape())
 
-    _graph_train_loader = DataLoader(train_dataset, shuffle=True, num_workers=num_workers, batch_size=_batch_size, collate_fn=this_collate_fn)
-    _graph_val_loader = DataLoader(test_dataset, num_workers=num_workers,batch_size=_batch_size, collate_fn=this_collate_fn) # Additional loader if you want to change to a larger dataset
-    _graph_test_loader = DataLoader(test_dataset, num_workers=num_workers, batch_size=_batch_size, collate_fn=this_collate_fn)
+    _graph_train_loader = DataLoader(train_dataset, shuffle=True, num_workers=num_workers, batch_size=_batch_size, collate_fn=my_collate_fun)
+    _graph_val_loader = DataLoader(test_dataset, num_workers=num_workers,batch_size=_batch_size, collate_fn=my_collate_fun) # Additional loader if you want to change to a larger dataset
+    _graph_test_loader = DataLoader(test_dataset, num_workers=num_workers, batch_size=_batch_size, collate_fn=my_collate_fun)
 
     batch = next(iter(_graph_test_loader))
     print("Batch:", batch)
