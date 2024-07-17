@@ -36,7 +36,11 @@ from operator import itemgetter
 # Variable training parameters
 _max_epochs = 10
 #_max_epochs = 200
-_batch_size = 1#TODO: determine how to use bigger batches...
+
+# NOTE: we don't currently support batching which leads to longer training times
+#   TODO    * support batching
+#           * add support for multi-gpu
+_batch_size = 1
 
 # Initialize PyTorch environment
 DATASET_PATH = "./data"
@@ -44,17 +48,15 @@ CHECKPOINT_PATH = "./saved_models"
 pl.seed_everything(42)
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
-use_gpu = False#torch.cuda.is_available()
+use_gpu = torch.cuda.is_available()
 if use_gpu:
     device = torch.device("cuda")
-    num_devices = torch.cuda.device_count()
+    num_devices = 1#torch.cuda.device_count()
     num_workers = 0
-    #num_workers = torch.cuda.device_count()
 else:
     device = torch.device("cpu")
     num_devices = 1
-    num_workers = 0
-    #num_workers = os.cpu_count()
+    num_workers = 0#os.cpu_count()/4
 
 # Other fixed global variables:
 _num_classes = 3
@@ -127,13 +129,13 @@ class GNN(torch.nn.Module):
     def __init__(self, c_in, c_hidden, c_out, **kwargs):
         super(GNN, self).__init__()
         #TODO: decide which to use
-        #self.conv1 = geom_nn.GraphConv(c_in,c_hidden)
-        #self.conv2 = geom_nn.GraphConv(c_hidden,c_hidden)
-        #self.conv3 = geom_nn.GraphConv(c_hidden,c_hidden)
+        self.conv1 = geom_nn.GraphConv(c_in,c_hidden)
+        self.conv2 = geom_nn.GraphConv(c_hidden,c_hidden)
+        self.conv3 = geom_nn.GraphConv(c_hidden,c_hidden)
 
-        self.conv1 = geom_nn.GCNConv(c_in,c_hidden)
-        self.conv2 = geom_nn.GCNConv(c_hidden,c_hidden)
-        self.conv3 = geom_nn.GCNConv(c_hidden,c_hidden)
+        #self.conv1 = geom_nn.GCNConv(c_in,c_hidden)
+        #self.conv2 = geom_nn.GCNConv(c_hidden,c_hidden)
+        #self.conv3 = geom_nn.GCNConv(c_hidden,c_hidden)
         self.lin = geom_nn.Linear(c_hidden, c_out)
 
     def forward(self, x, edge_index, batch):
@@ -163,24 +165,18 @@ class GraphLevelGNN(pl.LightningModule):
         self.model.train()
 
     def forward(self, data, mode="train"):
-        data
-        #TODO: Deal with this annoying wrapping in the data-loader
         if mode == "predict":
             x, edge_index, batch_idx, y = data['x'], data['edge_index'][0], data['batch'], data['y']
         else:
             x, edge_index, batch_idx, y = data['x'][0], data['edge_index'][0], data['batch'], data['y'][0]
+        #TODO: This unpacking of each value is to do with the data-loader, and they are associated with automatic batching (from the pytorch lightning module). This would need to be unpicked to support automatic batching
         out = self.model(x, edge_index, batch_idx)
-        #only for 1 value at a time in a batch---we always use a batch size of 1 and so need to just take the last value (which is always the batch_idx)
-        out = out[batch_idx]
+        out = out[-1]#only the last row holds the result
         if mode == "predict":
             return out.argmax()
         pred = value_to_tensor(out.argmax()).float().to(device)
-        loss = self.criterion(out[0], y.float()).sum()
-        #loss = torch.autograd.Variable(loss, requires_grad = True)
-        #loss.backward()
-        #self.optimizer.step()  # Update parameters based on gradients.
-        #self.optimizer.zero_grad()
-        acc = (pred == y).sum().float() / _num_classes
+        loss = self.criterion(out, y.float()).sum()
+        acc  = (pred == y).sum().float() / _num_classes
         return loss, acc
 
     def configure_optimizers(self):
@@ -611,6 +607,7 @@ def predict(new_dataset):
     model = torch.load(_model_filename)
     model.to(device)
     model.eval()
+
     #for each item to predict
     for i, val in enumerate(tu_dataset):
         inputs = tu_dataset.get_item_at_index(i)
