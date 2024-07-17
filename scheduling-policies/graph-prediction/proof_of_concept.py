@@ -128,14 +128,9 @@ def value_to_tensor(target):
 class GNN(torch.nn.Module):
     def __init__(self, c_in, c_hidden, c_out, **kwargs):
         super(GNN, self).__init__()
-        #TODO: decide which to use
         self.conv1 = geom_nn.GraphConv(c_in,c_hidden)
         self.conv2 = geom_nn.GraphConv(c_hidden,c_hidden)
         self.conv3 = geom_nn.GraphConv(c_hidden,c_hidden)
-
-        #self.conv1 = geom_nn.GCNConv(c_in,c_hidden)
-        #self.conv2 = geom_nn.GCNConv(c_hidden,c_hidden)
-        #self.conv3 = geom_nn.GCNConv(c_hidden,c_hidden)
         self.lin = geom_nn.Linear(c_hidden, c_out)
 
     def forward(self, x, edge_index, batch):
