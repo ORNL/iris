@@ -265,6 +265,7 @@ void Device::ResolveHostWrite(Task *task, BaseMem *mem, bool instant_wait) {
 template <AsyncResolveType resolve_type>
 void Device::ResolveInputWriteDependency(Task *task, BaseMem *mem, bool async, Device *select_src_dev)
 {
+    if(!async) return;
     if (resolve_type == ASYNC_D2D_RESOLVE) {
         if (!async && 
                 select_src_dev != NULL && select_src_dev->is_async(false) && 
@@ -420,6 +421,7 @@ void Device::DeviceEventExchange(Task *task, BaseMem *mem, void *input_event, in
 template <AsyncResolveType resolve_type>
 void Device::ResolveOutputWriteDependency(Task *task, BaseMem *mem, bool async, Device *select_src_dev)
 {
+    if(!async) return;
     int mem_stream = GetStream(task, mem);
     if (resolve_type == ASYNC_D2H_SYNC) {
         Device *input_dev = select_src_dev;
