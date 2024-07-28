@@ -345,6 +345,9 @@ public:
   bool IsKernelSupported(Device *dev);
   int last_cmd_stream_;
   Device *last_cmd_device_;
+  void set_enable_julia_if() { enable_julia_if_ = true; }
+  bool enable_julia_if() { return enable_julia_if_; }
+  bool enable_julia_if_;
 };
 
 } /* namespace rt */

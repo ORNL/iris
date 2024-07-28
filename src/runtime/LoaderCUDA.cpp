@@ -43,6 +43,8 @@ int LoaderCUDA::LoadFunctions() {
   LOADFUNC(cuGetErrorString);
   LOADFUNC(cuPointerGetAttributes);
   LOADFUNC(cuPointerGetAttribute);
+  LOADFUNC(cuMemcpyPeer);
+  LOADFUNC(cuMemcpyPeerAsync);
   LOADFUNC(cuMemcpy2D);
   //LOADFUNC(cuMemset);
   LOADFUNC(cuMemcpyDtoD);

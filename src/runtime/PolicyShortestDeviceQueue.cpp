@@ -1,6 +1,8 @@
 #include "PolicyShortestDeviceQueue.h"
 #include "Debug.h"
+#include "Device.h"
 #include "Scheduler.h"
+#include "Platform.h"
 #include <stdlib.h>
 #include <time.h>
 #include <unistd.h>
@@ -22,7 +24,9 @@ void PolicyShortestDeviceQueue::GetDevices(Task* task, Device** devs, int* ndevs
   scheduler_->RefreshNTasksOnDevs();
   for (int i = 0; i < ndevs_; i++) {
     if (!IsKernelSupported(task, devs_[i])) continue;
-    unsigned long n = scheduler_->NTasksOnDev(i);
+    int active_tasks = 0; 
+    if (scheduler_->platform()->is_async()) active_tasks = devs_[i]->active_tasks();
+    unsigned long n = scheduler_->NTasksOnDev(i) + active_tasks;
     if (n == 0) {
       min_dev = i;
       break;

@@ -4,6 +4,7 @@
 #include "Kernel.h"
 #include "Platform.h"
 #include "signal.h"
+#include "DataMem.h"
 
 #define INIT_SYM_FN(FN)  \
     sym_map_fn_.insert(make_pair(string(#FN), (void **)&FN)); \
@@ -192,6 +193,128 @@ namespace iris {
                 return iris_host_setmem(kindex, mem);
             return IRIS_ERROR;
         }
+        JuliaHostInterfaceLoader::JuliaHostInterfaceLoader(int target) :
+            HostInterfaceLoader("KERNEL_JULIA") {
+                target_ = target;
+                jl_init = NULL;
+                jl_atexit_hook = NULL;
+                jl_is_initialized = NULL;
+                jl_gc_add_finalizer = NULL;
+                jl_unbox_voidpointer = NULL;
+            }
+        int JuliaHostInterfaceLoader::LoadFunctions() {
+            HostInterfaceLoader::LoadFunctions();
+            printf("Loading Julia functions\n");
+            LOADFUNC(jl_init);
+            LOADFUNC(jl_atexit_hook);
+            LOADFUNC(jl_is_initialized);
+            LOADFUNC(jl_gc_add_finalizer);
+            LOADFUNC(jl_unbox_voidpointer);
+            return IRIS_SUCCESS;
+        }
+        KernelJulia *JuliaHostInterfaceLoader::get_kernel_julia(void *param_mem) {
+            ASSERT(sizeof(KernelJulia) < KERNEL_ARGS_MEM_SIZE);
+            KernelJulia **julia_ptr = (KernelJulia **)(((uint8_t *)param_mem)+ sizeof(int));
+            return *julia_ptr;
+        }
+        void JuliaHostInterfaceLoader::set_kernel_julia(void *param_mem, KernelJulia *julia_data)
+        {
+            ASSERT(sizeof(KernelJulia) < KERNEL_ARGS_MEM_SIZE);
+            KernelJulia **julia_ptr = (KernelJulia **)(((uint8_t *)param_mem)+ sizeof(int));
+            *julia_ptr = julia_data;
+        }
+        int JuliaHostInterfaceLoader::launch_init(int model, int devno, int stream_index, int nstreams, void **stream, void *param_mem, Command *cmd) 
+        {
+            Kernel *kernel = cmd->kernel();
+            const char *name = kernel->name();
+            kernel->CreateJuliadata(sizeof(KernelJulia));
+            KernelJulia *julia_data = (KernelJulia *) kernel->GetJuliadata();
+            //printf("Julia Data:%p size:%lu\n", julia_data, sizeof(KernelJulia));
+            set_kernel_julia(param_mem, julia_data);
+            julia_data->init(cmd->kernel_nargs());
+            julia_data->set_kernel(kernel);
+            julia_data->set_iris_args(cmd->kernel_args());
+            julia_data->add_stream(stream); 
+            julia_data->set_dev_info(stream_index, nstreams, devno);
+            julia_data->add_dev_info(); 
+            return IRIS_SUCCESS;
+        }
+        void JuliaHostInterfaceLoader::init(int dev) 
+        {
+            HostInterfaceLoader::init(dev);
+            printf("Initialized Julia init\n");
+            printf("Loading julia library\n");
+            if (Load() != IRIS_SUCCESS) {
+              _trace("%s", "skipping Julia wrapper calls");
+            }
+            //jl_value_t *jfn = (jl_value_t *)iris_get_julia_launch_func();
+           // jl_gc_add_finalizer(jfn, NULL);
+            (*jl_init)();
+        }
+        int JuliaHostInterfaceLoader::host_kernel(void *param_mem, const char *kname) 
+        {
+            return IRIS_SUCCESS;
+        }
+        int JuliaHostInterfaceLoader::SetKernelPtr(void *obj, const char *kernel_name)
+        {
+            KernelJulia *julia_data = get_kernel_julia(obj);
+            //julia_data->set_kernel_name(kernel_name);
+            return IRIS_SUCCESS;
+        }
+        int JuliaHostInterfaceLoader::host_launch(void **stream, int stream_index, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *grid, size_t *block)
+        {
+            KernelJulia *julia_data = get_kernel_julia(param_mem);
+            SetKernelPtr(param_mem, kname);
+            launch_julia_kernel(target_, devno, stream_index, stream, nstreams, julia_data->args(), julia_data->values(), julia_data->param_size(), julia_data->param_dim_size(), julia_data->top(), grid, block, dim, kname);
+            return IRIS_SUCCESS;
+        }
+        int JuliaHostInterfaceLoader::setarg(void *param_mem, int kindex, size_t size, void *value)
+        {
+            KernelJulia *julia_data = get_kernel_julia(param_mem);
+            KernelArg *arg = julia_data->get_iris_arg(kindex);
+            //printf("setarg julia_data:%p kindex:%d arg_index:%d size:%lu value:%p\n", julia_data, kindex, julia_data->top(), size, value);
+            if (size == 1) 
+                julia_data->set_arg_type(iris_uint8);
+            else if (size == 2) 
+                julia_data->set_arg_type(iris_uint16);
+            else if (size == 4 && arg->data_type == iris_float)  // Special case to handle for double
+                julia_data->set_arg_type(iris_float);
+            else if (size == 4) 
+                julia_data->set_arg_type(iris_uint32);
+            else if (size == 8 && arg->data_type == iris_double)  // Special case to handle for double
+                julia_data->set_arg_type(iris_double);
+            else if (size == 8) 
+                julia_data->set_arg_type(iris_uint64);
+            else {
+                _error("Unknown argument size:%lu at index for kernel:%s", size, julia_data->kernel()->name());
+            }
+            julia_data->set_value(value);
+            julia_data->increment();
+            return IRIS_SUCCESS;
+        }
+        int JuliaHostInterfaceLoader::setmem(void *param_mem, BaseMem *mem, int kindex, void *mem_ptr, size_t size)
+        {
+            KernelJulia *julia_data = get_kernel_julia(param_mem);
+            int element_type = mem->element_type();
+            MemHandlerType h_type = mem->GetMemHandlerType();
+            int element_size = 0;
+            int dim = 1;
+            if (h_type == IRIS_DMEM_REGION || h_type == IRIS_DMEM) {
+                DataMem *dmem = (DataMem *)mem;
+                element_size = (int) dmem->elem_size();
+                dim = dmem->dim();
+                //printf("Size DIM : %lu\n", dmem->dev_size()[0]);
+                julia_data->set_dim_sizes(dmem->dev_size(), dmem->dim());
+            }
+            //printf("setmem julia_data:%p kindex:%d arg_index:%d mem:%p\n", julia_data, kindex, julia_data->top(), mem);
+            julia_data->set_arg_type(iris_pointer | element_type | (element_size << 8) | dim);
+            julia_data->set_value_ptr(mem_ptr);
+            julia_data->set_size(size/element_size);
+            julia_data->increment();
+            //raise(SIGABRT);
+            return IRIS_SUCCESS;
+        }
+
 #ifdef ENABLE_FFI
         FFIHostInterfaceLoader::FFIHostInterfaceLoader(string kernel_env) :
             HostInterfaceLoader(kernel_env) {

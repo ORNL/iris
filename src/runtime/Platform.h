@@ -145,8 +145,13 @@ public:
   int DataMemUpdate(iris_mem brs_mem, void *host);
   int RegisterPin(void *host, size_t size);
   int DataMemRegisterPin(iris_mem brs_mem);
-  int DataMemCreate(iris_mem* brs_mem, void *host, size_t size);
-  int DataMemCreate(iris_mem* brs_mem, void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim);
+  iris_mem *DataMemCreate(void *host, size_t size, int element_type=iris_unknown);
+  iris_mem *DataMemCreate(void *host, size_t *size, int dim, size_t element_size, int element_type=iris_unknown);
+  iris_mem *DataMemCreate(void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim);
+  iris_mem *DataMemCreate(iris_mem root_mem, int region);
+  int DataMemCreate(iris_mem* brs_mem, void *host, size_t size, int element_type=iris_unknown);
+  int DataMemCreate(iris_mem *brs_mem, void *host, size_t *size, int dim, size_t element_size, int element_type=iris_unknown);
+  int DataMemCreate(iris_mem* brs_mem, void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim, int element_type=iris_unknown);
   int DataMemCreate(iris_mem* brs_mem, iris_mem root_mem, int region);
   int DataMemEnableOuterDimRegions(iris_mem mem);
   int MemArch(iris_mem brs_mem, int device, void** arch);
@@ -266,6 +271,7 @@ public:
   hook_task hook_task_post() { return hook_task_post_; }
   hook_command hook_command_pre() { return hook_command_pre_; }
   hook_command hook_command_post() { return hook_command_post_; }
+  bool is_julia_enabled() { return iris_get_julia_launch_func() != NULL; }
   Kernel* GetKernel(const char* name);
   BaseMem* GetMem(iris_mem brs_mem);
   BaseMem* GetMem(void* host, size_t* off);

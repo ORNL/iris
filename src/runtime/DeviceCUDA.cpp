@@ -13,10 +13,97 @@
 #include "Timer.h"
 #include "Worker.h"
 #include "Utils.h"
+#include <array>
+#include <vector>
+#include <stdexcept>
+#include <regex>
+#include <sstream>
+#include <unordered_map>
 
 namespace iris {
 namespace rt {
 
+class NvidiaTopology {
+    public:
+        struct NVLinkConnection {
+            int gpu1;
+            int gpu2;
+            std::string linkType;
+        };
+    private:
+        std::vector<NVLinkConnection> connections_;
+    public:
+        std::vector<NVLinkConnection> connections() { return connections_; }
+        NvidiaTopology() {
+            std::string topoOutput;
+            try {
+                topoOutput = exec("nvidia-smi topo -m");
+            } catch (const std::exception& e) {
+                std::cerr << "Error executing nvidia-smi command: " << e.what() << std::endl;
+            }
+            parseNVLinkConnections(topoOutput);
+        }
+        std::string exec(const char* cmd) {
+            std::array<char, 128> buffer;
+            std::string result;
+            std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd, "r"), pclose);
+            if (!pipe) {
+                throw std::runtime_error("popen() failed!");
+            }
+            while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+                result += buffer.data();
+            }
+            return result;
+        }
+        void parseNVLinkConnections(std::string topoOutput) {
+            std::istringstream stream(topoOutput);
+            std::string line;
+            std::vector<std::string> headers;
+            std::unordered_map<int, std::unordered_map<int, std::string>> topology;
+            bool first  = true;
+            while (std::getline(stream, line)) {
+                line = std::regex_replace(line, std::regex("^.*GPU0"), "GPU0");
+                std::istringstream linestream(line);
+                std::string token;
+                std::vector<std::string> tokens;
+                while (linestream >> token) {
+                    tokens.push_back(token);
+                }
+
+                if (tokens.empty()) {
+                    continue;
+                }
+                std::string first_token = tokens[0].c_str();
+                //std::cout << " Line: "<<line<<std::endl;
+                if (first && (first_token.compare("GPU0")==0)) {
+                    for(std::string tok : tokens) 
+                        headers.push_back(tok);
+                    first = false;
+                } else if (tokens[0].rfind("GPU", 0) == 0) {
+                    int gpu1 = std::stoi(tokens[0].substr(3));
+                    for (size_t i = 1; i < tokens.size(); ++i) {
+                        if (tokens[i].rfind("NV", 0) == 0) {
+                            //std::cout <<"GPU"<< i-1 <<" " << tokens[i] << std::endl;
+                            int gpu2 = std::stoi(headers[i-1].substr(3));
+                            topology[gpu1][gpu2] = tokens[i];
+                        }
+                    }
+                }
+            }
+
+            for (const auto& entry1 : topology) {
+                for (const auto& entry2 : entry1.second) {
+                    connections_.push_back({entry1.first, entry2.first, entry2.second});
+                }
+            }
+#if 0
+            std::cout << "NVLink Connections:" << std::endl;
+            for (const auto& conn : connections_) {
+                std::cout << "GPU " << conn.gpu1 << " <--> GPU " << conn.gpu2 << ": " << conn.linkType << std::endl;
+            }
+#endif
+        }
+};
 void testMemcpy(LoaderCUDA *ld)
 {
   int M = 60;
@@ -136,6 +223,7 @@ void DeviceCUDA::RegisterPin(void *host, size_t size)
 
 DeviceCUDA::~DeviceCUDA() {
     host2cuda_ld_->finalize(devno());
+    if (julia_if_ != NULL) julia_if_->finalize(devno());
     for (int i = 0; i < nqueues_; i++) {
       CUresult err = ld_->cuStreamDestroy(streams_[i]);
       _cuerror(err);
@@ -162,7 +250,10 @@ bool DeviceCUDA::IsAddrValidForD2D(BaseMem *mem, void *ptr)
 {
     int data;
     if (ptr == NULL) return true;
-    CUresult err = ld_->cuPointerGetAttribute(&data, CU_POINTER_ATTRIBUTE_DEVICE_POINTER, (CUdeviceptr) ptr);
+    CUresult err;
+    err = ld_->cuCtxSetCurrent(ctx_);
+    _cuerror(err);
+    err = ld_->cuPointerGetAttribute(&data, CU_POINTER_ATTRIBUTE_DEVICE_POINTER, (CUdeviceptr) ptr);
     if (err == CUDA_SUCCESS) return true;
     return false;
 }
@@ -171,35 +262,57 @@ void DeviceCUDA::SetPeerDevices(int *peers, int count)
     std::copy(peers, peers+count, peers_);
     peers_count_ = count;
     peer_access_ = new int[peers_count_];
-    memset(peer_access_, 0, peers_count_);
+    memset(peer_access_, 0, sizeof(int)*peers_count_);
 }
 void DeviceCUDA::EnablePeerAccess()
 {
-#if 0
+#if 1
+    CUresult err;
+    int offset_dev = devno_ - dev_;
     // It has some performance issues
+    static NvidiaTopology topo;
+    for (const auto& conn : topo.connections()) {
+        if (conn.gpu1 == dev_) 
+            peer_access_[conn.gpu2] = 1;
+        if (conn.gpu2 == dev_) 
+            peer_access_[conn.gpu1] = 1;
+    }
     for(int i=0; i<peers_count_; i++) {
         CUdevice target_dev = peers_[i];
         if (target_dev == dev_) {
             peer_access_[i] = 1;
             continue;
         }
-        CUresult err = ld_->cuDeviceCanAccessPeer(&peer_access_[i], dev_, target_dev);
+        // TODO: NVLink based D2D check is not enabled
+        //if (peer_access_[i] != 1) continue;
+        err = ld_->cuDeviceCanAccessPeer(&peer_access_[i], dev_, target_dev);
         _cuerror(err);
         int can_access = peer_access_[i];
         if (can_access) {
-            printf("Can access dev:%d -> %d = %d\n", dev_, target_dev, can_access);
-            //err = ld_->cuDeviceEnablePeerAccess(target_dev, 0);
-            //_cuerror(err);
+            DeviceCUDA *target = (DeviceCUDA *)platform_obj_->device(offset_dev + target_dev);
+            CUcontext target_ctx = target->ctx_;
+            //printf("Can access dev:%d(%d) -> %d(%d) = %d api:%p api1:%p\n", dev_, dev_+offset_dev, target_dev, target_dev+offset_dev, can_access, ld_->cudaDeviceEnablePeerAccess, ld_->cuCtxEnablePeerAccess);
+            err = ld_->cuCtxSetCurrent(ctx_);
+            _cuerror(err);
+            err = ld_->cuCtxEnablePeerAccess(target_ctx, 0);
+            //err = ld_->cudaDeviceEnablePeerAccess(target_dev, 0);
+            _cuerror(err);
         }
         else {
-            printf("Can not access dev:%d -> %d = %d\n", dev_, target_dev, can_access);
-
+            //printf("Can not access dev:%d -> %d = %d\n", dev_, target_dev, can_access);
         }
     }
 #endif
 }
+bool DeviceCUDA::IsD2DPossible(Device *target)
+{
+  if (peer_access_ == NULL) return true;
+  if (peer_access_[((DeviceCUDA *)target)->dev_]) return true;
+  return false;
+}
 int DeviceCUDA::Init() {
-  CUresult err = ld_->cudaSetDevice(dev_);
+  CUresult err;
+  err = ld_->cudaSetDevice(dev_);
   _cuerror(err);
   err = ld_->cuInit(0);
   _cuerror(err);
@@ -207,7 +320,7 @@ int DeviceCUDA::Init() {
   _cuerror(err);
   //err = ld_->cuCtxEnablePeerAccess(ctx_, 0);
   //_cuerror(err);
-  EnablePeerAccess();
+  //EnablePeerAccess();
   _cuerror(err);
 #ifndef TRACE_DISABLE
   CUcontext ctx;
@@ -242,6 +355,7 @@ int DeviceCUDA::Init() {
       }
   }
   host2cuda_ld_->init(devno());
+  if (julia_if_ != NULL) julia_if_->init(devno());
 
   char* path = (char *)kernel_path();
   char* src = NULL;
@@ -327,6 +441,7 @@ int DeviceCUDA::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset)
   _cuerror(err);
   _event_debug("CUDA MemAlloc dev:%d:%s mem:%lu size:%zu ptr:%p async:%d stream:%d\n", devno_, name_, mem->uid(), size, (void *)*cumem, async, stream);
   if (reset)  {
+      //printf("Resetting memory\n");
       if (platform_obj_->is_malloc_async() && async && stream >=0) 
           ld_->cudaMemsetAsync((void *)(*cumem), 0, size, streams_[stream]);
       else
@@ -401,7 +516,7 @@ void DeviceCUDA::MemCpy3D(CUdeviceptr dev, uint8_t *host, size_t *off,
         }
     }
 }
-int DeviceCUDA::MemD2D(Task *task, BaseMem *mem, void *dst, void *src, size_t size) {
+int DeviceCUDA::MemD2D(Task *task, Device *src_dev, BaseMem *mem, void *dst, void *src, size_t size) {
   if (mem->is_usm(devno()) || (dst == src) ) return IRIS_SUCCESS;
   CUdeviceptr src_cumem = (CUdeviceptr) src;
   CUdeviceptr dst_cumem = (CUdeviceptr) dst;
@@ -412,6 +527,8 @@ int DeviceCUDA::MemD2D(Task *task, BaseMem *mem, void *dst, void *src, size_t si
   }
   bool error_occured = false;
   CUresult err = CUDA_SUCCESS;
+  _cuerror(err);
+  err = ld_->cuCtxSetCurrent(ctx_);
   int stream_index = 0;
   bool async = false;
   if (is_async(task)) {
@@ -422,43 +539,27 @@ int DeviceCUDA::MemD2D(Task *task, BaseMem *mem, void *dst, void *src, size_t si
   _event_debug("D2D dev[%d][%s] task[%ld:%s] mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] size[%lu] q[%d] async:%d", devno_, name_, task->uid(), task->name(), mem->uid(), dst, src, size, stream_index, async);
   if (async) {
       ASSERT(stream_index >= 0);
-      //ld_->cuCtxSetCurrent(ctx_);
+      //err = ld_->cuMemcpyAsync((void *)dst_cumem, (void *)src_cumem, size, cudaMemcpyDeviceToDevice, streams_[stream_index]);
       //err = ld_->cuMemcpyDtoDAsync(dst_cumem, src_cumem, size, streams_[stream_index]);
-#if 0
-      CUmemorytype memType;
-      err = ld_->cuPointerGetAttribute(&memType, CU_POINTER_ATTRIBUTE_MEMORY_TYPE, dst_cumem);
-      _cuerror(err);
-      if (memType == CU_MEMORYTYPE_DEVICE) {
-          _event_debug("Dev:[%d][%s] This is valid device pointer:%p mem:%lu", devno_, name_, (void *)dst_cumem, mem->uid());
-      }
-      else {
-          _event_debug("Dev:[%d][%s] This is not valid device pointer:%p mem:%lu", devno_, name_, (void *)dst_cumem, mem->uid());
-      }
-      int data;
-      err = ld_->cuPointerGetAttribute(&data, CU_POINTER_ATTRIBUTE_DEVICE_POINTER, dst_cumem);
-      _cuerror(err);
-      err = ld_->cuPointerGetAttribute(&data, CU_POINTER_ATTRIBUTE_DEVICE_POINTER, src_cumem);
-      _cuerror(err);
-      err = ld_->cuPointerGetAttribute(&memType, CU_POINTER_ATTRIBUTE_MEMORY_TYPE, src_cumem);
-      _cuerror(err);
-      if (memType == CU_MEMORYTYPE_DEVICE) {
-          _event_debug("Dev:[%d][%s] This is valid device pointer:%p mem:%lu", devno_, name_, (void *)src_cumem, mem->uid());
-      }
-      else {
-          _event_debug("Dev:[%d][%s] This is not valid device pointer:%p mem:%lu", devno_, name_, (void *)src_cumem, mem->uid());
-      }
+#if 1
+      err = ld_->cudaMemcpyAsync((void *)dst_cumem, (void *)src_cumem, size, cudaMemcpyDeviceToDevice, streams_[stream_index]);
+#else
+      err = ld_->cuMemcpyPeerAsync(dst_cumem, ctx_, src_cumem, ((DeviceCUDA *)src_dev)->ctx_, size, streams_[stream_index]);
 #endif
-      err = ld_->cuMemcpyAsync(dst_cumem, src_cumem, size, streams_[stream_index]);
       //printf("cuMemcpyAsync:%p\n", ld_->cuMemcpyAsync);
       //printf("cuMemcpyDtoDAsync:%p\n", ld_->cuMemcpyDtoDAsync);
-      //err = ld_->cudaMemcpyAsync((void *)dst_cumem, (void *)src_cumem, size, cudaMemcpyDeviceToDevice, streams_[stream_index]);
       _cuerror(err);
       if (err != CUDA_SUCCESS) error_occured = true;
   }
   else {
+      //printf("cuMemcpyAsync:%p\n", ld_->cuMemcpyAsync);
+      //printf("cuMemcpyDtoDAsync:%p\n", ld_->cuMemcpyDtoDAsync);
+      //printf("cuMemcpy:%p\n", ld_->cuMemcpy);
+      //err = ld_->cuCtxSetCurrent(ctx_);
+      //_cuerror(err);
       //err = ld_->cuMemcpyDtoD(dst_cumem, src_cumem, size);
-      err = ld_->cuMemcpy(dst_cumem, src_cumem, size);
-      //err = ld_->cudaMemcpy((void *)dst_cumem, (void *)src_cumem, size, cudaMemcpyDeviceToDevice);
+      err = ld_->cudaMemcpy((void *)dst_cumem, (void *)src_cumem, size, cudaMemcpyDeviceToDevice);
+      //err = ld_->cuMemcpyPeer(dst_cumem, ctx_, src_cumem, ((DeviceCUDA *)src_dev)->ctx_, size);
       _cuerror(err);
       if (err != CUDA_SUCCESS) error_occured = true;
   }
@@ -514,11 +615,26 @@ int DeviceCUDA::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
            if (err != CUDA_SUCCESS) error_occured = true;
        }
        else {
+#if 0
+           // Set up the 2D copy parameters
+           CUDA_MEMCPY2D copyParams = {0};
+           copyParams.srcMemoryType = CU_MEMORYTYPE_HOST;
+           copyParams.srcHost = host_start;
+           copyParams.srcPitch = host_row_pitch; 
+           copyParams.dstMemoryType = CU_MEMORYTYPE_DEVICE;
+           copyParams.dstDevice = cumem;
+           copyParams.dstPitch = dev_sizes[0]*elem_size;
+           copyParams.WidthInBytes = dev_sizes[0]*elem_size; 
+           copyParams.Height = dev_sizes[1];
+           err = ld_->cuCtxSetCurrent(ctx_);
            //err = ld_->cuMemFreeAsync(0, streams_[stream_index]);
            //_cuerror(err);
+           err = cuMemcpy2DAsync(&copyParams, streams_[stream_index]);
+#else
            err = ld_->cudaMemcpy2DAsync((void *)cumem, dev_sizes[0]*elem_size, host_start, 
                    host_row_pitch, dev_sizes[0]*elem_size, dev_sizes[1], 
                    cudaMemcpyHostToDevice, streams_[stream_index]);
+#endif
            _cuerror(err);
            if (err != CUDA_SUCCESS) error_occured = true;
        }
@@ -621,9 +737,26 @@ int DeviceCUDA::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
     size_t host_row_pitch = elem_size * host_sizes[0];
     void *host_start = (uint8_t *)host + off[0]*elem_size + off[1] * host_row_pitch;
     if (!async) {
+#if 0
+        // Set up the 2D copy parameters
+        CUDA_MEMCPY2D copyParams = {0};
+        copyParams.srcMemoryType = CU_MEMORYTYPE_DEVICE;
+        copyParams.srcDevice = cumem;
+        copyParams.srcPitch = dev_sizes[0]*elem_size;
+        copyParams.dstMemoryType = CU_MEMORYTYPE_HOST;
+        copyParams.dstHost = host_start;
+        copyParams.dstPitch = host_row_pitch;
+        copyParams.WidthInBytes = dev_sizes[0]*elem_size; 
+        copyParams.Height = dev_sizes[1];
+        err = ld_->cuCtxSetCurrent(ctx_);
+        //err = ld_->cuMemFreeAsync(0, streams_[stream_index]);
+        //_cuerror(err);
+        err = cuMemcpy2DAsync(&copyParams, streams_[stream_index]);
+#else
         err = ld_->cudaMemcpy2D((void *)host_start, host_sizes[0]*elem_size, (void*)cumem, 
                 dev_sizes[0]*elem_size, dev_sizes[0]*elem_size, dev_sizes[1], 
                 cudaMemcpyDeviceToHost);
+#endif
         _cuerror(err);
         if (err != CUDA_SUCCESS) error_occured = true;
     }
@@ -694,6 +827,9 @@ int DeviceCUDA::KernelGet(Kernel *kernel, void** kernel_bin, const char* name, b
       *kernel_bin = host2cuda_ld_->GetFunctionPtr(name);
       return IRIS_SUCCESS;
   }
+  if (julia_if_ != NULL && kernel->task()->enable_julia_if()) {
+      return IRIS_SUCCESS;
+  }
   if (IsContextChangeRequired()) {
       _trace("Changed Context for CUDA resetting context switch dev[%d][%s] worker:%d self:%p thread:%p", devno(), name_, worker()->device()->devno(), (void *)worker()->self(), (void *)worker()->thread());
       ld_->cuCtxSetCurrent(ctx_);
@@ -739,6 +875,10 @@ int DeviceCUDA::KernelSetArg(Kernel* kernel, int idx, int kindex, size_t size, v
      host2cuda_ld_->setarg(
             kernel->GetParamWrapperMemory(), kindex, size, value);
   }
+  else if (julia_if_ != NULL && kernel->task()->enable_julia_if()) {
+     julia_if_->setarg(
+            kernel->GetParamWrapperMemory(), kindex, size, value);
+  }
   return IRIS_SUCCESS;
 }
 
@@ -762,6 +902,10 @@ int DeviceCUDA::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, 
       host2cuda_ld_->setmem(
               kernel->GetParamWrapperMemory(), kindex, dev_ptr, size);
   }
+  else if (julia_if_ != NULL && kernel->task()->enable_julia_if()) {
+      julia_if_->setmem(
+              kernel->GetParamWrapperMemory(), mem, kindex, dev_ptr, size);
+  }
   return IRIS_SUCCESS;
 }
 
@@ -784,6 +928,8 @@ int DeviceCUDA::KernelLaunchInit(Command *cmd, Kernel* kernel) {
         nstreams = nqueues_-n_copy_engines_;
     }
     host2cuda_ld_->launch_init(model(), devno_, stream_index, nstreams, (void **)kstream, kernel->GetParamWrapperMemory(), cmd);
+    if (julia_if_ != NULL && kernel->task()->enable_julia_if()) 
+        julia_if_->launch_init(model(), devno_, stream_index, nstreams, (void **)kstream, kernel->GetParamWrapperMemory(), cmd);
     return IRIS_SUCCESS;
 }
 
@@ -817,7 +963,8 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
   //_debug2("dev[%d][%s] task[%ld:%s] kernel launch::%ld:%s q[%d]", devno_, name_, kernel->task()->uid(), kernel->task()->name(), kernel->uid(), kernel->name(), stream_index);
   _event_prof_debug("kernel start dev[%d][%s] kernel[%s:%s] dim[%d] q[%d]\n", devno_, name_, kernel->name(), kernel->get_task_name(), dim, stream_index);
   if (kernel->is_vendor_specific_kernel(devno_)) {
-     if (host2cuda_ld_->host_launch((void **)kstream, stream_index, nstreams, kernel->name(), 
+     if (host2cuda_ld_->host_launch((void **)kstream, stream_index, 
+                 nstreams, kernel->name(), 
                  kernel->GetParamWrapperMemory(), devno(),
                  dim, off, gws) == IRIS_SUCCESS) {
          if (!async) {
@@ -867,6 +1014,15 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
   _debug2("dev[%d][%s] kernel[%s:%s] dim[%d] grid[%d,%d,%d] block[%d,%d,%d] blockoff[%lu,%lu,%lu] max_arg_idx[%d] shared_mem_bytes[%u] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, grid[0], grid[1], grid[2], block[0], block[1], block[2], blockOff_x, blockOff_y, blockOff_z, max_arg_idx_, shared_mem_bytes_, stream_index);
   _event_debug("dev[%d][%s] kernel[%s:%s] dim[%d] grid[%d,%d,%d] off[%ld,%ld,%ld] block[%d,%d,%d] blockoff[%lu,%lu,%lu] max_arg_idx[%d] shared_mem_bytes[%u] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, grid[0], grid[1], grid[2], off[0], off[1], off[2], block[0], block[1], block[2], blockOff_x, blockOff_y, blockOff_z, max_arg_idx_, shared_mem_bytes_, stream_index);
   _trace("dev[%d][%s] kernel[%s:%s] dim[%d] grid[%d,%d,%d] off[%ld,%ld,%ld] block[%d,%d,%d] blockoff[%lu,%lu,%lu] max_arg_idx[%d] shared_mem_bytes[%u] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, grid[0], grid[1], grid[2], off[0], off[1], off[2], block[0], block[1], block[2], blockOff_x, blockOff_y, blockOff_z, max_arg_idx_, shared_mem_bytes_, stream_index);
+  if (julia_if_ != NULL && kernel->task()->enable_julia_if()) {
+      size_t grid_s[3] =  { (size_t)grid[0],  (size_t)grid[1],  (size_t)grid[2] };
+      size_t block_s[3] = { (size_t)block[0], (size_t)block[1], (size_t)block[2] };
+      julia_if_->host_launch((void **)kstream, stream_index, 
+                  nstreams, kernel->name(), 
+                  kernel->GetParamWrapperMemory(), devno(),
+                  dim, grid_s, block_s);
+      return IRIS_SUCCESS;
+  }
   if (!async) {
       err = ld_->cuLaunchKernel(cukernel, grid[0], grid[1], grid[2], block[0], block[1], block[2], shared_mem_bytes_, 0, params_, NULL);
       _cuerror(err);

@@ -5,6 +5,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#define DMEM_MAX_DIM 6
+
 #ifdef __cplusplus
 namespace iris {
 namespace rt {
@@ -136,21 +138,23 @@ typedef enum DeviceModel DeviceModel;
 #define iris_dt_d2h_h2d         6
 #define iris_dt_error           0
 
-#define iris_int                ((1 << 1) << 16)
-#define iris_uint               ((1 << 1) << 16)
-#define iris_float              ((1 << 2) << 16)
-#define iris_double             ((1 << 3) << 16)
-#define iris_char               ((1 << 4) << 16)
-#define iris_int8               ((1 << 4) << 16)
-#define iris_uint8              ((1 << 4) << 16)
-#define iris_int16              ((1 << 5) << 16)
-#define iris_uint16             ((1 << 5) << 16)
-#define iris_int32              ((1 << 6) << 16)
-#define iris_uint32             ((1 << 6) << 16)
-#define iris_int64              ((1 << 7) << 16)
-#define iris_uint64             ((1 << 7) << 16)
-#define iris_long               ((1 << 8 << 16))
-#define iris_unsigned_long      ((1 << 8 << 16))
+#define iris_unknown            (0 << 16)
+#define iris_int                (1 << 16)
+#define iris_uint               (2 << 16)
+#define iris_float              (3 << 16)
+#define iris_double             (4 << 16)
+#define iris_char               (5 << 16)
+#define iris_int8               (6 << 16)
+#define iris_uint8              (7 << 16)
+#define iris_int16              (8 << 16)
+#define iris_uint16             (9 << 16)
+#define iris_int32              (10 << 16)
+#define iris_uint32             (11 << 16)
+#define iris_int64              (12 << 16)
+#define iris_uint64             (13 << 16)
+#define iris_long               (14 << 16)
+#define iris_unsigned_long      (15 << 16)
+#define iris_pointer            (0x4000 << 16)
 
 #define iris_normal             (1 << 10)
 #define iris_reduction          (1 << 11)
@@ -473,6 +477,13 @@ extern int iris_register_hooks_command(hook_command pre, hook_command post);
  */
 extern int iris_kernel_create(const char* name, iris_kernel* kernel);
 
+/**@brief Creates a kernel with a given name
+ *
+ * @param name kernel name string
+ * @return This function returns an iris_kernel object
+ */
+extern iris_kernel iris_kernel_create_struct(const char* name);
+
 
 /**@brief Creates a kernel with a given name
  *
@@ -524,6 +535,12 @@ extern int iris_kernel_setmem_off(iris_kernel kernel, int idx, iris_mem mem, siz
  */
 extern int iris_kernel_release(iris_kernel kernel);
 
+
+/**@brief Creates a new task.
+ *
+ * @return This function returns an iris_task struct object 
+ */
+extern iris_task iris_task_create_struct();
 
 /**@brief Creates a new task.
  *
@@ -721,6 +738,13 @@ extern int iris_task_d2h(iris_task task, iris_mem mem, size_t off, size_t size, 
  */
 extern int iris_task_d2h_offsets(iris_task task, iris_mem mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, void* host);
 
+
+/**@brief Enable Julia Interface for task kernels inside
+ *
+ * @param task iris task object
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_task_enable_julia_interface(iris_task task);
 
 /**@brief Adds a flush command to a task
  *
@@ -921,7 +945,7 @@ extern int iris_task_wait_all(int ntasks, iris_task* tasks);
  * @param subtask the subtask that is going to be added
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
-extern int iris_task_add_subtask(iris_task task, iris_task subtask);
+//extern int iris_task_add_subtask(iris_task task, iris_task subtask);
 
 
 /**@brief Retruns whether a task only has kernel command
@@ -1012,12 +1036,71 @@ extern int iris_data_mem_init_reset(iris_mem mem, int reset);
  *
  * This function creates IRIS data memory object for a given size
  *
+ * @param host host pointer of the data structure
+ * @param size size of the memory
+ * @return This function returns an iris_mem dmem object
+ */
+extern iris_mem iris_data_mem_create_struct(void *host, size_t size);
+
+/**@brief Cretes IRIS data memory object
+ *
+ * This function creates IRIS data memory object for a given size
+ *
+ * @param host host pointer of the data structure
+ * @param size ND-size array of the memory
+ * @param dim  total dimensions
+ * @param element_size Size of the element
+ * @param element_type IRIS element type
+ * @return This function returns an iris_mem dmem object
+ */
+extern iris_mem iris_data_mem_create_struct_nd(void *host, size_t *size, int dim, size_t element_size, int element_type);
+
+/**@brief Cretes IRIS data memory object
+ *
+ * This function creates IRIS data memory object for a given size
+ *
+ * @param host host pointer of the data structure
+ * @param size size of the memory
+ * @param type type of the memory element
+ * @return This function returns an iris_mem dmem object
+ */
+extern iris_mem iris_data_mem_create_struct_with_type(void *host, size_t size, int element_type);
+
+/**@brief Cretes IRIS data memory object
+ *
+ * This function creates IRIS data memory object for a given size
+ *
+ * @param mem pointer to the memory object
+ * @param host host pointer of the data structure
+ * @param size ND-size array of the memory
+ * @param dim  total dimensions
+ * @param element_size Size of the element
+ * @param element_type IRIS element type
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_data_mem_create_nd(iris_mem* mem, void *host, size_t *size, int dim, size_t element_size, int element_type);
+
+/**@brief Cretes IRIS data memory object
+ *
+ * This function creates IRIS data memory object for a given size
+ *
  * @param mem pointer to the memory object
  * @param host host pointer of the data structure
  * @param size size of the memory
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_data_mem_create(iris_mem* mem, void *host, size_t size);
+
+/**@brief Cretes IRIS data memory object
+ *
+ * This function creates IRIS data memory object for a given size
+ *
+ * @param mem pointer to the memory object
+ * @param host host pointer of the data structure
+ * @param size size of the memory
+ * @return This function returns a pointer to the IRIS memory object
+ */
+extern iris_mem *iris_data_mem_create_ptr(void *host, size_t size);
 
 
 /**@brief Frees memory for a DMEM object for all the devices
@@ -1057,6 +1140,23 @@ extern int iris_data_mem_update(iris_mem mem, void *host);
  */
 extern int iris_data_mem_create_region(iris_mem* mem, iris_mem root_mem, int region);
 
+/**@brief creates data memory region
+ *
+ * @param mem pointer to a memory object
+ * @param root_mem root memory object
+ * @param region index for the region
+ * @return This function returns an IRIS dmem regions structure
+ */
+extern iris_mem iris_data_mem_create_region_struct(iris_mem root_mem, int region);
+
+/**@brief creates data memory region
+ *
+ * @param root_mem root memory object
+ * @param region index for the region
+ * @return This function returns a pointer to the IRIS memory object
+ */
+extern iris_mem *iris_data_mem_create_region_ptr(iris_mem root_mem, int region);
+
 /**@brief enable decomposition along the outer dimension
  *
  * @param mem memory object
@@ -1076,6 +1176,43 @@ extern int iris_data_mem_enable_outer_dim_regions(iris_mem mem);
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_data_mem_create_tile(iris_mem* mem, void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim);
+
+/**@brief Creates a memory tile from host memory
+ *
+ * @param host host memory pointer
+ * @param off host memory pointer
+ * @param host_size indexes to specify sizes from host memory
+ * @param dev_size indexes to specify sizes from device memory
+ * @param elem_size element size
+ * @param dim dimension
+ * @return This function returns a iris_mem object
+ */
+extern iris_mem iris_data_mem_create_tile_struct(void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim);
+
+/**@brief Creates a memory tile from host memory
+ *
+ * @param host host memory pointer
+ * @param off host memory pointer
+ * @param host_size indexes to specify sizes from host memory
+ * @param dev_size indexes to specify sizes from device memory
+ * @param elem_size element size
+ * @param dim dimension
+ * @param type type of memory element
+ * @return This function returns a iris_mem object
+ */
+extern iris_mem iris_data_mem_create_tile_struct_with_type(void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim, int element_type);
+
+/**@brief Creates a memory tile from host memory
+ *
+ * @param host host memory pointer
+ * @param off host memory pointer
+ * @param host_size indexes to specify sizes from host memory
+ * @param dev_size indexes to specify sizes from device memory
+ * @param elem_size element size
+ * @param dim dimension
+ * @return This function returns a pointer to the IRIS memory object
+ */
+extern iris_mem *iris_data_mem_create_tile_ptr(void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim);
 extern int iris_data_mem_update_bc(iris_mem mem, bool bc, int row, int col);
 extern int iris_data_mem_get_rr_bc_dev(iris_mem mem);
 
@@ -1094,8 +1231,16 @@ extern unsigned long iris_data_mem_get_region_uid(iris_mem brs_mem, int region);
  */
 extern int iris_mem_arch(iris_mem mem, int device, void** arch);
 
+/**@brief returns the device pointer for a memory object
+*
+ * @param mem iris memory object
+ * @param device device id
+ * @return This function arch device pointer
+ */
+extern void *iris_mem_arch_ptr(iris_mem mem, int device);
+
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
-extern int iris_mem_reduce(iris_mem mem, int mode, int type);
+//extern int iris_mem_reduce(iris_mem mem, int mode, int type);
 #endif
 
 /**@brief releases memory object
@@ -1801,6 +1946,13 @@ extern void iris_print_matrix_full_int8_t(int8_t *data, int M, int N, const char
  */
 extern void iris_print_matrix_limited_int8_t(int8_t *data, int M, int N, const char *description, int limit);
 
+/**
+  * This function prints string on console
+  * @param string pointer
+  * @return Void
+  */
+extern void iris_println(const char *s);
+
 /* Run HPL Mapping algorithm*/
 extern void iris_run_hpl_mapping(iris_graph graph);
 
@@ -1815,6 +1967,20 @@ extern int iris_read_bool_env(const char *env_name);
  * @return This function returns int flag
  */
 extern int iris_read_int_env(const char *env_name);
+
+// Define a type for the Julia kernel launch function call pointer
+typedef int32_t (*julia_kernel_t)(int32_t target, int32_t devno, int32_t stream_index, void **stream, int32_t nstreams, int32_t *args, void **values, size_t *param_size, size_t *param_dim_size, int32_t nparams, size_t *threads, size_t *blocks, int dim, const char *kernel_name);
+
+/* API to initialize Julia interfacea
+ * @param kernel_launch_func Kernel launch Julia function 
+ * @return This function returns int flag
+ */
+extern int iris_julia_init(void *julia_launch_func);
+
+/* API to return the Julia kernel launch function
+ * @return This function returns Julia kernel launch function pointer
+ */
+extern julia_kernel_t iris_get_julia_launch_func();
 
 #ifdef __cplusplus
 } /* end of extern "C" */

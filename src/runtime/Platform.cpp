@@ -216,6 +216,8 @@ int Platform::Init(int* argc, char*** argv, int sync) {
       _info("Asynchronous is enabled");
   char* archs = NULL;
   EnvironmentGet("ARCHS", &archs, NULL);
+  if (archs == NULL) 
+      EnvironmentGet("ARCH", &archs, NULL);
   _info("IRIS architectures[%s]", archs);
   const char* delim = " :;.,";
   std::string arch_str = std::string(archs);
@@ -349,6 +351,7 @@ int Platform::EnvironmentInit() {
   EnvironmentSet("KERNEL_BIN_OPENMP",   "kernel.openmp.so",   false);
   EnvironmentSet("KERNEL_SRC_SPV",      "kernel.cl",          false);
   EnvironmentSet("KERNEL_BIN_SPV",      "kernel.spv",         false);
+  EnvironmentSet("KERNEL_JULIA",        "libjulia.so",        false);
   EnvironmentSet("KERNEL_HOST2CUDA","kernel.host2cuda.so",false);
   EnvironmentSet("KERNEL_HOST2HIP", "kernel.host2hip.so", false);
   EnvironmentSet("KERNEL_HOST2OPENCL","kernel.host2opencl.so",false);
@@ -490,6 +493,8 @@ int Platform::InitCUDA() {
     _cuerror(err);
     devs_[ndevs_] = new DeviceCUDA(loaderCUDA_, loaderHost2CUDA_, dev,
             i%ndevs, ndevs_, nplatforms_, i);
+    if (is_julia_enabled()) 
+        devs_[ndevs_]->EnableJuliaInterface();
     devs_[ndevs_]->set_root_device(devs_[ndevs_-i]);
     arch_available_ |= devs_[ndevs_]->type();
     cudevs[mdevs] = dev;
@@ -502,15 +507,18 @@ int Platform::InitCUDA() {
   for(int i=0; i<mdevs; i++) {
       DeviceCUDA *idev = (DeviceCUDA *)devs_[ndevs_-mdevs+i];
       idev->SetPeerDevices(cudevs, mdevs);
-      /*
+  }
+#if 0
+  for(int i=0; i<mdevs; i++) {
       for(int j=0; j<mdevs; j++) {
           if (i != j) {
               //printf("i:%d j:%d ii:%d jj:%d\n",i,j,ndevs_-mdevs+i,ndevs_-mdevs+j);
               DeviceCUDA *jdev = (DeviceCUDA *)devs_[ndevs_-mdevs+j];
               idev->EnablePeerAccess(jdev->cudev());
           }
-      }*/
+      }
   }
+#endif
   delete [] cudevs;
   if (ndevs) {
     strcpy(platform_names_[nplatforms_], "CUDA");
@@ -816,6 +824,9 @@ int Platform::InitDevices(bool sync) {
   //}
   delete[] tasks;
   Synchronize();
+  for(int i=0; i<ndevs_; i++) {
+    devs_[i]->EnablePeerAccess();
+  }
   return IRIS_SUCCESS;
 }
 
@@ -1600,9 +1611,12 @@ int Platform::DataMemRegisterPin(iris_mem brs_mem) {
   return IRIS_SUCCESS;
 }
 
-int Platform::DataMemCreate(iris_mem* brs_mem, void *host, size_t size) {
-  DataMem* mem = new DataMem(this, host, size);
+int Platform::DataMemCreate(iris_mem* brs_mem, void *host, size_t size, int element_type) {
+  DataMem* mem = new DataMem(this, host, size, element_type);
   if (brs_mem) mem->SetStructObject(brs_mem);
+#ifndef DISABLE_PIN_BY_DEFAULT
+  DataMemRegisterPin(*brs_mem);
+#endif
   //if (brs_mem) *brs_mem = mem->struct_obj();
   if (mem->size()==0) return IRIS_ERROR;
 
@@ -1610,8 +1624,21 @@ int Platform::DataMemCreate(iris_mem* brs_mem, void *host, size_t size) {
   return IRIS_SUCCESS;
 }
 
-int Platform::DataMemCreate(iris_mem* brs_mem, void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim) {
-  DataMem* mem = new DataMem(this, host, off, host_size, dev_size, elem_size, dim);
+int Platform::DataMemCreate(iris_mem* brs_mem, void *host, size_t *size, int dim, size_t element_size,  int element_type) {
+  DataMem* mem = new DataMem(this, host, size, dim, element_size, element_type);
+  if (brs_mem) mem->SetStructObject(brs_mem);
+#ifndef DISABLE_PIN_BY_DEFAULT
+  DataMemRegisterPin(*brs_mem);
+#endif
+  //if (brs_mem) *brs_mem = mem->struct_obj();
+  if (mem->size()==0) return IRIS_ERROR;
+
+  //mems_.insert(mem);
+  return IRIS_SUCCESS;
+}
+
+int Platform::DataMemCreate(iris_mem* brs_mem, void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim, int element_type) {
+  DataMem* mem = new DataMem(this, host, off, host_size, dev_size, elem_size, dim, element_type);
   if (brs_mem) mem->SetStructObject(brs_mem);
   //if (brs_mem) *brs_mem = mem->struct_obj();
   if (mem->size()==0) return IRIS_ERROR;
@@ -1630,6 +1657,40 @@ int Platform::DataMemCreate(iris_mem* brs_mem, iris_mem root_mem, int region) {
       return IRIS_ERROR;
   }
   return IRIS_SUCCESS;
+}
+
+iris_mem *Platform::DataMemCreate(void *host, size_t size, int element_type) {
+  DataMem* mem = new DataMem(this, host, size, element_type);
+  if (mem->size()==0) return NULL;
+  iris_mem *brs_mem = mem->struct_obj();
+#ifndef DISABLE_PIN_BY_DEFAULT
+  DataMemRegisterPin(*brs_mem);
+#endif
+  return brs_mem;
+}
+
+
+iris_mem *Platform::DataMemCreate(void *host, size_t *size, int dim, size_t element_size, int element_type) {
+  DataMem* mem = new DataMem(this, host, size, dim, element_size, element_type);
+  if (mem->size()==0) return NULL;
+  iris_mem *brs_mem = mem->struct_obj();
+#ifndef DISABLE_PIN_BY_DEFAULT
+  DataMemRegisterPin(*brs_mem);
+#endif
+  return brs_mem;
+}
+
+iris_mem *Platform::DataMemCreate(void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim) {
+  DataMem* mem = new DataMem(this, host, off, host_size, dev_size, elem_size, dim);
+  if (mem->size()==0) return NULL;
+  return mem->struct_obj();
+}
+
+iris_mem *Platform::DataMemCreate(iris_mem root_mem, int region) {
+  DataMem *root = (DataMem *) get_mem_object(root_mem);
+  DataMemRegion *mem= root->get_region(region);
+  if (mem->size()==0) return NULL;
+  return mem->struct_obj();
 }
 
 int Platform::DataMemEnableOuterDimRegions(iris_mem brs_mem) {

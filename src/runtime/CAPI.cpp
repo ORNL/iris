@@ -136,8 +136,20 @@ int iris_register_policy(const char* lib, const char* name, void* params) {
   return Platform::GetPlatform()->PolicyRegister(lib, name, params);
 }
 
+iris_task iris_task_create_struct() {
+  iris_task task;
+  Platform::GetPlatform()->TaskCreate(NULL, false, &task);
+  return task;
+}
+
 int iris_task_create(iris_task* task) {
   return Platform::GetPlatform()->TaskCreate(NULL, false, task);
+}
+
+int iris_task_enable_julia_interface(iris_task brs_task) {
+  Task *task = Platform::GetPlatform()->get_task_object(brs_task);
+  task->set_enable_julia_if();
+  return IRIS_SUCCESS;
 }
 
 int iris_task_create_perm(iris_task* task) {
@@ -427,8 +439,42 @@ int iris_data_mem_init_reset(iris_mem mem, int reset) {
 int iris_data_mem_create_tile(iris_mem* mem, void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim) {
   return Platform::GetPlatform()->DataMemCreate(mem, host, off, host_size, dev_size, elem_size, dim);
 }
+int iris_data_mem_create_nd(iris_mem *mem, void *host, size_t *size, int dim, size_t elem_size, int element_type) {
+  return Platform::GetPlatform()->DataMemCreate(mem, host, size, dim, elem_size, element_type);
+}
 int iris_data_mem_create(iris_mem *mem, void *host, size_t size) {
   return Platform::GetPlatform()->DataMemCreate(mem, host, size);
+}
+iris_mem *iris_data_mem_create_ptr(void *host, size_t size) {
+  return Platform::GetPlatform()->DataMemCreate(host, size);
+}
+iris_mem iris_data_mem_create_struct(void *host, size_t size) {
+  iris_mem mem;
+  Platform::GetPlatform()->DataMemCreate(&mem, host, size);
+  return mem;
+}
+iris_mem iris_data_mem_create_struct_nd(void *host, size_t *size, int dim, size_t element_size, int element_type) {
+  iris_mem mem;
+  Platform::GetPlatform()->DataMemCreate(&mem, host, size, dim, element_size, element_type);
+  return mem;
+}
+iris_mem iris_data_mem_create_struct_with_type(void *host, size_t size, int element_type) {
+  iris_mem mem;
+  Platform::GetPlatform()->DataMemCreate(&mem, host, size, element_type);
+  return mem;
+}
+iris_mem *iris_data_mem_create_tile_ptr(void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim) {
+  return Platform::GetPlatform()->DataMemCreate(host, off, host_size, dev_size, elem_size, dim);
+}
+iris_mem iris_data_mem_create_tile_struct(void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim) {
+  iris_mem mem;
+  Platform::GetPlatform()->DataMemCreate(&mem, host, off, host_size, dev_size, elem_size, dim);
+  return mem;
+}
+iris_mem iris_data_mem_create_tile_struct_with_type(void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim, int element_type) {
+  iris_mem mem;
+  Platform::GetPlatform()->DataMemCreate(&mem, host, off, host_size, dev_size, elem_size, dim, element_type);
+  return mem;
 }
 int iris_data_mem_clear(iris_mem brs_mem) {
   DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
@@ -446,6 +492,14 @@ int iris_data_mem_pin(iris_mem mem) {
 }
 int iris_data_mem_create_region(iris_mem *mem, iris_mem root_mem, int region) {
   return Platform::GetPlatform()->DataMemCreate(mem, root_mem, region);
+}
+iris_mem iris_data_mem_create_region_struct(iris_mem root_mem, int region) {
+  iris_mem mem;
+  Platform::GetPlatform()->DataMemCreate(&mem, root_mem, region);
+  return mem;
+}
+iris_mem *iris_data_mem_create_region_ptr(iris_mem root_mem, int region) {
+  return Platform::GetPlatform()->DataMemCreate(root_mem, region);
 }
 int iris_data_mem_n_regions(iris_mem brs_mem) {
   DataMem *mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
@@ -476,6 +530,12 @@ int iris_mem_arch(iris_mem mem, int device, void** arch) {
   return Platform::GetPlatform()->MemArch(mem, device, arch);
 }
 
+void *iris_mem_arch_ptr(iris_mem mem, int device) {
+  void* arch;
+  Platform::GetPlatform()->MemArch(mem, device, &arch);
+  return arch;
+}
+
 int iris_mem_release(iris_mem mem) {
   return Platform::GetPlatform()->MemRelease(mem);
 }
@@ -494,6 +554,12 @@ int iris_register_hooks_command(hook_command pre, hook_command post) {
 
 int iris_kernel_create(const char* name, iris_kernel* kernel) {
   return Platform::GetPlatform()->KernelCreate(name, kernel);
+}
+
+iris_kernel iris_kernel_create_struct(const char* name) {
+  iris_kernel kernel;
+  Platform::GetPlatform()->KernelCreate(name, &kernel);
+  return kernel;
 }
 
 int iris_kernel_get(const char* name, iris_kernel* kernel) {
@@ -855,6 +921,10 @@ void iris_print_matrix_full_int8_t(int8_t *data, int M, int N, const char *descr
 {
     iris::PrintMatrixFull<int8_t>(data, M, N, description);
 }
+void iris_println(const char *s)
+{
+    printf("%s\n", s);
+}
 
 int iris_read_bool_env(const char *env_name) {
     bool flag=false;
@@ -943,4 +1013,18 @@ void iris_run_hpl_mapping(iris_graph graph)
             //printf("Task %s r:%d c:%d dev:%d\n", name, r, c, id);
         }
     }
+}
+julia_kernel_t julia_kernel__ = NULL;
+int iris_julia_init(void *julia_launch_func)
+{
+    julia_kernel__ = (julia_kernel_t) julia_launch_func;
+    //int32_t target = 12; 
+    //int32_t devno=0;
+    //int32_t result = julia_kernel__(target, devno);
+    //printf("Result %d\n", result);
+    return IRIS_SUCCESS;
+}
+julia_kernel_t iris_get_julia_launch_func() 
+{
+    return julia_kernel__;
 }

@@ -37,7 +37,7 @@ class DataMemRegion : public DataMem
       DataMem *mem_;
       int region_;
       size_t dev_offset_from_root_;
-      size_t loff_[3];
+      size_t loff_[DMEM_MAX_DIM];
       //void *host_ptr_;
 };
 

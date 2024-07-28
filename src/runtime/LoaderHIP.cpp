@@ -37,6 +37,7 @@ int LoaderHIP::LoadFunctions() {
   LOADFUNC(hipFreeAsync);
   LOADFUNC(hipGetDeviceProperties);
   LOADFUNC(hipDeviceCanAccessPeer);
+  LOADFUNC(hipCtxEnablePeerAccess);
   LOADFUNC(hipDeviceEnablePeerAccess);
   LOADFUNC(hipStreamCreate);
   LOADFUNC(hipStreamDestroy);

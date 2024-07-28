@@ -15,7 +15,7 @@ Kernel::Kernel(const char* name, Platform* platform) {
   name_ = string(name);
   //size_t len = strlen(name);
   //strncpy(name_, name, len);
-  strcpy(task_name_, name);
+  task_name_ = name_;
   task_ = NULL;
   n_mems_ = 0;
   //name_[len] = 0;
@@ -30,7 +30,7 @@ Kernel::Kernel(const char* name, Platform* platform) {
     set_vendor_specific_kernel(i, false);
     vendor_specific_kernel_check_flag_[i] = false;
   }
-  ffi_data_ = NULL;
+  host_if_data_ = NULL;
   set_object_track(Platform::GetPlatform()->kernel_track_ptr());
   Platform::GetPlatform()->kernel_track().TrackObject(this, uid());
 }
@@ -48,7 +48,7 @@ Kernel::~Kernel() {
   data_mem_regions_in_.clear();
   data_mem_regions_out_.clear();
   history_ = nullptr;
-  if (ffi_data_ != NULL) free(ffi_data_); 
+  if (host_if_data_ != NULL) free(host_if_data_); 
   for (std::map<int, KernelArg*>::iterator I = args_.begin(), E = args_.end(); I != E; ++I)
     delete I->second;
   _trace(" kernel:%lu:%s is destroyed", uid(), name());

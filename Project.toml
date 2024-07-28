@@ -1,0 +1,25 @@
+name = "IrisHRT"
+uuid = "0979c8fe-16a4-4796-9b82-89a9f10403eb"
+authors = ["Narasigna Rao Miniskar <miniskarnr@ornl.gov>"]
+version = "3.0.0"
+
+[deps]
+Atomix = "a9b6321e-bd34-4604-b9c9-b65b8de01458"
+Preferences = "21216c6a-2e73-6563-6e65-726566657250"
+
+[weakdeps]
+AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+oneAPI = "8f75cd03-7ff8-4ecb-9b8f-daf728133b1b"
+
+[extensions]
+JACCAMDGPU = ["AMDGPU"]
+JACCCUDA = ["CUDA"]
+JACCONEAPI = ["oneAPI"]
+
+[compat]
+AMDGPU = "0.8"
+Atomix = "0.1"
+CUDA = "5"
+Preferences = "1.4.0"
+julia = "1.10.3"

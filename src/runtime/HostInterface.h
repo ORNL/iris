@@ -18,6 +18,13 @@
 #else
 #define HostInterfaceClass BoilerPlateHostInterfaceLoader
 #endif 
+typedef struct _jl_value_t jl_value_t;
+typedef jl_value_t jl_function_t;
+void *jl_unbox_voidpointer(jl_value_t *v);
+void jl_gc_add_finalizer(jl_value_t *v, jl_function_t *f);
+void jl_init(void);
+void jl_atexit_hook(int);
+int jl_is_initialized(void);
 
 using namespace std;
 namespace CLinkage {
@@ -48,6 +55,7 @@ namespace iris {
                 virtual int launch_init(int model, int devno, int stream_index, int nstreams, void **stream, void *param_mem, Command *cmd_kernel) { return IRIS_SUCCESS; }
                 virtual int setarg(void *param_mem, int index, size_t size, void *value) { return IRIS_ERROR; }
                 virtual int setmem(void *param_mem, int kindex, void *mem, size_t size) { return IRIS_ERROR; }
+                virtual int setmem(void *param_mem, BaseMem *mem, int kindex, void *mem_ptr, size_t size) { return IRIS_ERROR; }
                 static uint32_t get_encoded_stream_device(int stream_index, int nstreams, int device);
                 static uint32_t update_dev_info_stream_index(int dev_info, int stream_index);
                 static uint32_t update_dev_info_nstreams(int dev_info, int nstreams);
@@ -90,6 +98,144 @@ namespace iris {
                 int (*iris_host_setmem_with_obj)(void *obj, int idx, void* mem, size_t size);
                 void (*iris_set_kernel_ptr_with_obj)(void *obj, __iris_kernel_ptr ptr);
                 c_string_array (*iris_get_kernel_names)();
+        };
+        class KernelJulia {
+            public:
+                KernelJulia( ) {
+                    index_ = 0;
+                    args_ = NULL;
+                    values_ = NULL;
+                    args_capacity_ = 0;
+                    param_size_ = NULL;
+                    param_dim_size_ = NULL;
+                }
+                ~KernelJulia( ) {
+                    if (args_ != NULL) free(args_);
+                    if (values_ != NULL) free(values_);
+                    if (param_size_ != NULL) free(param_size_);
+                    if (param_dim_size_ != NULL) free(param_dim_size_);
+                }
+                void init(int nargs) {
+                    args_ = NULL;
+                    values_ = NULL;
+                    args_capacity_ = nargs+6;
+                    if (args_ == NULL) 
+                        args_ = (int32_t *) malloc(
+                                sizeof(int32_t *)*args_capacity_);
+                    if (values_ == NULL)
+                        values_ = (void **) malloc(
+                                sizeof(void *)*args_capacity_);
+                    if (param_size_ == NULL)
+                        param_size_ = (size_t *) malloc(
+                                sizeof(size_t) * args_capacity_);
+                    if (param_dim_size_ == NULL)
+                        param_dim_size_ = (size_t *)malloc(args_capacity_ * sizeof(size_t) * DMEM_MAX_DIM);
+                    index_  = 0;
+                }
+                void set_kernel(Kernel *kernel) { kernel_ = kernel; }
+                void set_arg_type(int32_t arg_type) {
+                    assert(index_ < args_capacity_);
+                    args_[index_] = arg_type;
+                    //printf("Args:%p %d %d\n", args_, index_, arg_type);
+                }
+                void set_value(void *value) { 
+                    assert(index_ < args_capacity_);
+                    values_[index_] = value; 
+                    //printf("         Values ptr:%p\n", values_+index_); 
+                }
+                void set_value_ptr(void *value) { 
+                    values_[index_] = value;
+                    //printf("         Values mem:%p mem_ptr:%p\n", values_ptr_[index_], values_[index_]); 
+                }
+                void set_dim_sizes(size_t *sizes, int dim) { 
+                    ASSERT(dim < DMEM_MAX_DIM);
+                    //printf("poor_dim_size[%d] %p dim:%d dev_size:%lu\n", index_, param_dim_size_ +index_*DMEM_MAX_DIM, dim, sizes[0]);
+                    memcpy(param_dim_size_ + index_*DMEM_MAX_DIM, sizes, sizeof(size_t)*dim);
+                }
+                void set_size(size_t size) {
+                    param_size_[index_] = size;
+                }
+                void set_fn_ptr(__iris_kernel_ptr ptr) { fn_ptr_ = ptr; }
+                void set_iris_args(KernelArg *iris_args) { iris_args_ = iris_args; }
+                KernelArg *get_iris_arg(int kindex) { return iris_args_ + kindex; }
+                void **values() { return values_; }
+                size_t *param_dim_size() { return param_dim_size_; }
+                size_t *param_size() { return param_size_; }
+                int top() { return index_; }
+                void increment() { index_++; }
+                void add_stream(void **stream) {
+                    set_arg_type(iris_pointer);
+                    streams_ = stream;
+                    set_value(streams_);
+                    increment();
+                }
+                void add_dev_info() {
+                    set_arg_type(iris_int32);
+                    set_value(&dev_info_);
+                    increment();
+                }
+                int32_t *args() { return args_; }
+                __iris_kernel_ptr fn_ptr() { return fn_ptr_; }
+                Kernel *kernel() { return kernel_; }
+                void set_dev_info(int32_t stream_index, int nstreams, int devno) { dev_info_ = HostInterfaceLoader::get_encoded_stream_device(stream_index, nstreams, devno); }
+                void set_nstream(int32_t nstreams) { dev_info_ = HostInterfaceLoader::update_dev_info_nstreams(dev_info_, nstreams); }
+                void set_devno(int32_t devno) { dev_info_ = HostInterfaceLoader::update_dev_info_devno(dev_info_, devno); }
+                void set_stream_index(int32_t stream_index) { dev_info_ = HostInterfaceLoader::update_dev_info_stream_index(dev_info_, stream_index); }
+                //void set_kernel_name(const char *name) { kernel_name_ = name; }
+                //const char *get_kernel_name() { return kernel_name_; }
+            private:
+                int args_capacity_;
+                Kernel *kernel_;
+                __iris_kernel_ptr fn_ptr_;
+                KernelArg *iris_args_;
+                int32_t *args_;
+                void **values_;
+                size_t *param_size_;
+                size_t *param_dim_size_;
+                size_t *param_idx_;
+                void **streams_;
+                uint32_t dev_info_;
+                int index_;
+                //const char *kernel_name_;
+        };
+        class JuliaHostInterfaceLoader : public HostInterfaceLoader {
+            public:
+                JuliaHostInterfaceLoader(int model);
+                ~JuliaHostInterfaceLoader() { }
+                const char* library() { return "libjulia.so"; }
+                void init(int dev);
+                int LoadFunctions();
+                int host_kernel(void *param_mem, const char *kname);
+                void set_kernel_julia(void *param_mem, KernelJulia *julia_data);
+                KernelJulia * get_kernel_julia(void *param_mem);
+                int launch_init(int model, int devno, int stream_index, int nstreams, void **stream, void *param_mem, Command *cmd);
+                int SetKernelPtr(void *obj, const char *kernel_name);
+                int host_launch(void **stream, int stream_index, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *off, size_t *bws);
+                int setarg(void *param_mem, int kindex, size_t size, void *value);
+                int setmem(void *param_mem, BaseMem *mem, int kindex, void *mem_ptr, size_t size);
+                void launch_julia_kernel(int target, int32_t devno, int32_t stream_index, void **stream, int32_t nstreams, int32_t *args, void **values, size_t *param_size, size_t *param_dim_size, int32_t nparams, size_t *threads, size_t *blocks, int dim, const char *name)
+                {
+                    //printf("jl_is_initialized: %p jl_init:%p\n", jl_is_initialized, jl_init);
+                    if (iris_get_julia_launch_func()!= NULL) {
+                        //(*jl_init)();
+                        julia_kernel_t kernel_julia_wrapper = iris_get_julia_launch_func();
+                        //printf("Kernel ptr: %p %s args:%p values:%p\n", kernel_julia_wrapper, name, args, values);
+                        //for(int i=0; i<nparams; i++) {
+                        //    printf("Values:i:%d arg:%d:%d values:%p\n", i, args[i], args[i]>>16, values[i]);
+                        //}
+                        kernel_julia_wrapper(target, devno, stream_index, stream, nstreams, args, values, param_size, param_dim_size, nparams, threads, blocks, dim, name);
+                        //printf("Result: %d\n", result);
+                        //(*jl_atexit_hook)(0);
+                    }
+                }
+
+                void *(*jl_unbox_voidpointer)(jl_value_t *v);
+                void (*jl_gc_add_finalizer)(jl_value_t *v, jl_function_t *f);
+                void (*jl_init)(void);
+                void (*jl_atexit_hook)(int);
+                int (*jl_is_initialized)(void);
+            private:
+                int target_;
         };
 #ifdef ENABLE_FFI
 #include "ffi.h"

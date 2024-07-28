@@ -20,8 +20,9 @@ class DataMem;
 
 class DataMem: public BaseMem {
 public:
-  DataMem(Platform* platform, void *host, size_t size);
-  DataMem(Platform *platform, void *host_ptr, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim);
+  DataMem(Platform* platform, void *host, size_t size, int element_type=iris_unknown);
+  DataMem(Platform* platform, void *host, size_t *host_size, int dim, size_t elem_size, int element_type=iris_unknown);
+  DataMem(Platform *platform, void *host_ptr, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim, int element_type=iris_unknown);
   void Init(Platform *platform, void *host_ptr, size_t size);
   virtual ~DataMem();
   void UpdateHost(void *host);
@@ -120,9 +121,9 @@ protected:
   pthread_mutex_t host_mutex_;
   int n_regions_;
   void *host_ptr_;
-  size_t off_[3];
-  size_t host_size_[3];
-  size_t dev_size_[3];
+  size_t off_[DMEM_MAX_DIM];
+  size_t host_size_[DMEM_MAX_DIM];
+  size_t dev_size_[DMEM_MAX_DIM];
   size_t elem_size_;
   int dim_;
   bool host_ptr_owner_;

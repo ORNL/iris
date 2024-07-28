@@ -78,25 +78,39 @@ bool DeviceHIP::IsAddrValidForD2D(BaseMem *mem, void *ptr)
     if (err == hipSuccess) return true;
     return false;
 }
+bool DeviceHIP::IsD2DPossible(Device *target)
+{
+  if (peer_access_ == NULL) return true;
+  if (peer_access_[((DeviceHIP *)target)->dev_]) return true;
+  return false;
+}
 void DeviceHIP::SetPeerDevices(int *peers, int count)
 {
     std::copy(peers, peers+count, peers_);
     peers_count_ = count;
     peer_access_ = new int[peers_count_];
-    memset(peer_access_, 0, peers_count_);
+    memset(peer_access_, 0, sizeof(int)*peers_count_);
 }
 void DeviceHIP::EnablePeerAccess()
 {
     hipError_t err;
+    int offset_dev = devno_ - dev_;
     for(int i=0; i<peers_count_; i++) {
         hipDevice_t target_dev = peers_[i];
         if (target_dev == dev_) continue;
+        err = ld_->hipCtxSetCurrent(ctx_);
+        _hiperror(err);
         err = ld_->hipDeviceCanAccessPeer(&peer_access_[i], dev_, target_dev);
         _hiperror(err);
         int can_access=peer_access_[i];
         if (can_access) {
+            DeviceHIP *target = (DeviceHIP *)platform_obj_->device(offset_dev + target_dev);
+            hipCtx_t target_ctx = target->ctx_;
             //printf("Can access dev:%d -> %d = %d\n", dev_, target_dev, can_access);
-            err = ld_->hipDeviceEnablePeerAccess(target_dev, 0);
+            err = ld_->hipCtxSetCurrent(ctx_);
+            _hiperror(err);
+            //err = ld_->hipDeviceEnablePeerAccess(target_dev, 0);
+            err = ld_->hipCtxEnablePeerAccess(target_ctx, 0);
             _hiperror(err);
         }
     }
@@ -120,7 +134,7 @@ int DeviceHIP::Init() {
   err = ld_->hipInit(0);
   _hiperror(err);
   err = ld_->hipCtxCreate(&ctx_, hipDeviceScheduleAuto, ordinal_);
-  EnablePeerAccess();
+  //EnablePeerAccess();
   _hiperror(err);
   if (is_async(false)) {
       for (int i = 0; i < nqueues_; i++) {
@@ -293,7 +307,7 @@ void DeviceHIP::ResetContext()
     //_trace("Resetting Context Switch: %p %p", ctx, ctx_);
     ld_->hipCtxSetCurrent(ctx_);
 }
-int DeviceHIP::MemD2D(Task *task, BaseMem *mem, void *dst, void *src, size_t size) {
+int DeviceHIP::MemD2D(Task *task, Device *src_dev, BaseMem *mem, void *dst, void *src, size_t size) {
   if (mem->is_usm(devno()) || (dst == src) ) return IRIS_SUCCESS;
   atleast_one_command_ = true;
   if (IsContextChangeRequired()) {

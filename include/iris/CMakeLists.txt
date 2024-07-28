@@ -1,4 +1,5 @@
 install(FILES
+  IrisHRT.jl
   iris.h
   iris.hpp
   iris_errno.h

@@ -12,6 +12,7 @@
 #include <memory>
 #include <string>
 
+#define KERNEL_ARGS_MEM_SIZE 8*128
 using namespace std;
 namespace iris {
 namespace rt {
@@ -22,7 +23,7 @@ class DataMem;
 class DataMemRegion;
 typedef struct _KernelArg {
   size_t size;
-  char value[256];
+  char value[1024];
   BaseMem* mem;
   size_t mem_off;
   size_t mem_size;
@@ -44,8 +45,10 @@ public:
   int SetArg(int idx, size_t size, void* value);
   int SetMem(int idx, BaseMem* mem, size_t off, int mode);
   KernelArg* ExportArgs();
-  void* GetFFIdata() { return ffi_data_; }
-  void CreateFFIdata(size_t size) { ffi_data_ = malloc(size); }
+  void* GetJuliadata() { return host_if_data_; }
+  void CreateJuliadata(size_t size) { host_if_data_ = malloc(size); }
+  void* GetFFIdata() { return host_if_data_; }
+  void CreateFFIdata(size_t size) { host_if_data_ = malloc(size); }
   void* GetParamWrapperMemory() { return (void *)param_wrapper_mem_; }
 
   const char* name() { return name_.c_str(); }
@@ -58,10 +61,10 @@ public:
   void set_vendor_specific_kernel_check(int devno, bool flag=true) { vendor_specific_kernel_check_flag_[devno] = flag; }
   bool is_vendor_specific_kernel(int devno) { return is_vendor_specific_kernel_[devno]; }
   void set_vendor_specific_kernel(int devno, bool flag=true) { is_vendor_specific_kernel_[devno] = flag; }
-  void set_task_name(const char *name) { strcpy(task_name_, name); }
+  void set_task_name(const char *name) { task_name_= string(name); }
   void set_task(Task *task) { task_ = task; }
   Task *task() { return task_; }
-  char *get_task_name() { return task_name_; }
+  const char *get_task_name() { return task_name_.c_str(); }
   Platform* platform() { return platform_; }
   shared_ptr<History> history() { return history_; }
   map<BaseMem*, int> & in_mems() { return in_mem_track_; }
@@ -107,13 +110,13 @@ public:
 private:
   int n_mems_;
   std::string name_;
-  char task_name_[256];
+  std::string task_name_;
   Task *task_;
   std::map<int, KernelArg*> args_;
   void* archs_[IRIS_MAX_NDEVS];
   Device* archs_devs_[IRIS_MAX_NDEVS];
-  void *ffi_data_;
-  uint8_t param_wrapper_mem_[8*128];
+  void *host_if_data_;
+  uint8_t param_wrapper_mem_[KERNEL_ARGS_MEM_SIZE];
   Platform* platform_;
   shared_ptr<History> history_;
   bool is_vendor_specific_kernel_[IRIS_MAX_NDEVS];
