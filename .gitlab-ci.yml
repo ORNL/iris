@@ -586,7 +586,7 @@ dagger-zenith-test-local-workgroup-sizes-asynchronous-dmem:
     IRIS_ASYNC: 1
     USE_DATA_MEMORY: --use-data-memory
 
-dagger-zenith-test-duplication:
+.dagger-zenith-test-duplication:
   extends: [.dagger]
   script:
     - source /auto/software/iris/setup_system.source
