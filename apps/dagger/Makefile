@@ -30,6 +30,9 @@ kernel.openmp.so: kernel.openmp.c
 #kernel.openmp.so: kernel.openmp.c
 #	$(CC) $(CFLAGS) -O3 -lgomp -fPIC -shared -I. -o $@ $^
 
+libPolicyGNN.so: PolicyGNN.cpp
+	$(CXX) $(CXXFLAGS) -std=c++11 -fPIC -shared -o $@ $^
+
 clean:
 	rm -f dagger_runner dagger_test dagger dagger_dgemm dagger_coarse kernel.ptx kernel.spv kernel.hip kernel.openmp.so
 

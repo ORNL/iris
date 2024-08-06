@@ -48,6 +48,8 @@ int main(int argc, char** argv) {
   int memory_task_target = iris_pending;
   int duplicates = 1;
   bool use_data_memory = false;
+  char* custom_policy_name = NULL;
+  char* custom_policy_liburl = NULL;
 
   std::map<std::string,bool> required_arguments_set = {
     {"kernels", false},
@@ -267,9 +269,26 @@ int main(int argc, char** argv) {
 
       case (int)'t':{//scheduling-policy
           //if the policy requested by the user doesn't exist, fail.
-          if (scheduling_policy_lookup.find(optarg) != scheduling_policy_lookup.end()){
-            task_target = scheduling_policy_lookup[optarg]; //using only device #1 and 2
-            POLICY = optarg;
+          char* policy_name = strtok(optarg,":");
+          if (scheduling_policy_lookup.find(policy_name) != scheduling_policy_lookup.end()){
+            task_target = scheduling_policy_lookup[policy_name]; //using only device #1 and 2
+            POLICY = policy_name;
+            if (task_target == iris_custom){
+              custom_policy_name = new char[128];
+              custom_policy_liburl = new char[128];
+              //This is our only custom policy loader
+              char* cpn = strtok(NULL, ":");
+              char* cpl = strtok(NULL, ":");
+              if (cpn == NULL) task_target = -1; //fail if no policy name provided
+              strcpy(custom_policy_name,cpn);
+              //we need to record the name of the policy and lib.so filename
+              //but can't evaluate it until *after* IRIS has been initialized
+              if (cpl == NULL) task_target = -1;//fail if no libCustomPolicyName.so provided
+              strcpy(custom_policy_liburl,cpl);
+              //give it a shiny printed name
+              strcpy(POLICY,"custom:");
+              strcat(POLICY,custom_policy_name);
+            }
           } else if (isdigit(optarg[0])){//we also support assigning individual device ids.
             task_target = atoi(optarg);
           }
@@ -359,6 +378,11 @@ int main(int argc, char** argv) {
   }
 
   iris_init(&argc, &argv, true);
+
+  if (custom_policy_name != NULL){
+    int errnum = iris_register_policy(custom_policy_liburl, custom_policy_name, (void*) 16);
+  }
+
   iris_overview();
 
   printf("REPEATS:%d LOGFILE:%s POLICY:%s\n",REPEATS,LOGFILE,POLICY);
@@ -428,7 +452,7 @@ int main(int argc, char** argv) {
     }
 
     //variable number of memory buffers can be provided into IRIS
-    void* json_inputs[4+num_buffers_used];
+    void* json_inputs[5+num_buffers_used];
     int indexer = 0;
     json_inputs[indexer] = &SIZE; indexer++;
     for(auto & bytes : sizecb){
@@ -442,6 +466,7 @@ int main(int argc, char** argv) {
     }
     json_inputs[indexer] = &memory_task_target; indexer++;
     json_inputs[indexer] = &task_target; indexer++;
+    if (task_target == iris_custom){json_inputs[indexer] = custom_policy_name; indexer++;}
 
     iris_graph graph;
     retcode = iris_graph_create_json(GRAPHFILE, json_inputs, &graph);
