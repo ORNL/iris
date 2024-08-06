@@ -8,7 +8,7 @@ class Heatmap():
         self.device_colour_palette = device_colour_palette
         self.use_device_background_colour = use_device_background_colour
 
-    def plotHeatmap(self,directory, output, **kargs):
+    def plotHeatmap(self,directory, output, width, height, **kargs):
         import matplotlib.pyplot as plt
         import seaborn as sns
         sns.set_theme()
@@ -32,6 +32,13 @@ class Heatmap():
             end = max(content['end'])
             data.append({"system-and-policy":"{}-{}".format(system,schedule), "duration":end-start, "dag":dag})
 
+        #if only one system ---just present the policy 
+        systems = [d['system-and-policy'].split('-')[0] for d in data]
+        only_one_system = len(set(systems)) == 1
+        if only_one_system:
+            for d in data:
+                d['system-and-policy'] = d['system-and-policy'].split('-')[1]
+
         data = pandas.DataFrame.from_records(data)
 
         # statistical reduction (median and variance):
@@ -47,14 +54,16 @@ class Heatmap():
 
         print(heatmap_data)
 
-        # TODO: ensure rows by cols are sensible---may have to group (by colour) the system, but certainly need to list the dagger-payload
         # generate heatmap
-        fig, ax = plt.subplots(figsize=(20,15))
+        fig, ax = plt.subplots(figsize=(width,height))
         cmap = sns.cm.rocket_r
         heatmap_plot = sns.heatmap(heatmap_data['duration']['median'],annot=round(heatmap_data['duration']['median'],3).astype(str)+'±'+round(heatmap_data['duration']['var'],3).astype(str),fmt="",cmap=cmap)
         heatmap_plot.collections[0].colorbar.set_label("median time to completion (sec)")
         plt.xlabel('DAG', fontsize = 15)
-        plt.ylabel('System and Policy', fontsize = 15)
+        if only_one_system:
+            plt.ylabel('Policy', fontsize = 15)
+        else:
+            plt.ylabel('System and Policy', fontsize = 15)
         fig = heatmap_plot.get_figure()
         fig.tight_layout()
         # save heatmap to disk
@@ -71,10 +80,13 @@ if __name__ == '__main__':
         description='This program takes a directory of dagger runtime results and collates them into a single heatmap.')
     parser.add_argument('--directory',dest="directory",type=str,help="directory path to results (will result in a directory listing of .csv)")
     parser.add_argument('--output-file',dest="outputfile",type=str,help="filepath for where you would like to store the heatmap plot (.pdf/.png)")
+    parser.add_argument("--width",dest="width",type=int, default=20, required=False)
+    parser.add_argument("--height",dest="height",type=int, default=15, required=False)
 
     args = parser.parse_args()
     directory = args.directory
     output_file = args.outputfile
+
     if directory is None:
         directory = "../dagger-results"
         print("No directory provided... using {}".format(directory))
@@ -82,5 +94,5 @@ if __name__ == '__main__':
         print("Incorrect Arguments. Please provide *at least* one output filepath (--output-file)")
         sys.exit(1)
 
-    Heatmap.plotHeatmap(None,directory,output_file)
+    Heatmap.plotHeatmap(None,directory,output_file,args.width,args.height)
 
