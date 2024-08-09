@@ -542,6 +542,7 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
     }
     graph->AddTask(task, task->uid());
   }
+  graph->get_metadata()->set_json_url(path);
   return IRIS_SUCCESS;
 }
 

@@ -2,18 +2,18 @@
 
 export SYSTEM=$(hostname|cut -d . -f 1|sed 's/[0-9]*//g')
 export WORKING_DIRECTORY=`pwd`
-export PAYLOAD_SIZE=4096
-export SIZES=(10)
-#export SIZES=(10 25 100)
-export REPEATS=10
+export PAYLOAD_SIZE=1024
+export SIZES=(10 25 100)
+export REPEATS=2
 
-#TODO remove when working
-cd ../..
-source ./build.sh
-[ $? -ne 0 ] &&  exit 1
+##TODO remove when working
+#cd ../..
+#source ./build.sh
+#[ $? -ne 0 ] &&  exit 1
 
 cd $WORKING_DIRECTORY
 cd dagger
+export DAGGER_DIRECTORY=`pwd`
 export SKIP_SETUP=1
 source ./build.sh
 [ $? -ne 0 ] &&  exit 1
@@ -24,6 +24,7 @@ make libPolicyGNN.so
 #does setting the LD_LIBRARY_PATH allow custom policies to be found?
 export LD_LIBRARY_PATH=`pwd`:$LD_LIBRARY_PATH
 
+#the correct for to specify custom policies is:
 export POLICIES=(custom:gnn:libPolicyGNN.so); #succeed
 #export POLICIES=(custom:gnn); #fail
 #export POLICIES=(custom:libPolicyGNN.so); #fail
@@ -43,14 +44,15 @@ do
   echo "*******************************************************************"
   echo "*                          Linear $SIZE                           *"
   echo "*******************************************************************"
-  cp dagger-payloads/linear$SIZE-graph.json graph.json ; cat graph.json
   for POLICY in ${POLICIES[@]}
   do
     for (( num_run=0; num_run<=$REPEATS; num_run++ ))
     do
       echo "Running IRIS on Linear $SIZE with Policy: $POLICY  run no. $num_run"
-      gdb --args ./dagger_runner --graph="dagger-payloads/linear$SIZE-graph.json" --repeats=1 --scheduling-policy="$POLICY" --size=$PAYLOAD_SIZE  --kernels="ijk" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=$SIZE --num-tasks=$SIZE --min-width=1 --max-width=1 $USE_DATA_MEMORY
-      exit
+      ./dagger_runner --graph="dagger-payloads/linear$SIZE-graph.json" --repeats=1 --scheduling-policy="$POLICY" --size=$PAYLOAD_SIZE  --kernels="ijk" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=$SIZE --num-tasks=$SIZE --min-width=1 --max-width=1 $USE_DATA_MEMORY
+      ## Uncomment just for debugging:
+      #gdb --args ./dagger_runner --graph="dagger-payloads/linear$SIZE-graph.json" --repeats=1 --scheduling-policy="$POLICY" --size=$PAYLOAD_SIZE  --kernels="ijk" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=$SIZE --num-tasks=$SIZE --min-width=1 --max-width=1 $USE_DATA_MEMORY
+      #exit
       [ $? -ne 0 ] && echo "Linear $SIZE Failed with Policy: $POLICY" &&  exit 1
       #archive result
       mv dagger_runner-$SYSTEM*.csv $RESULTS_DIR/linear$SIZE-$POLICY-$SYSTEM-$num_run.csv
@@ -69,7 +71,6 @@ done
 #echo "*******************************************************************"
 ##./dagger_generator.py --kernels="ijk" --duplicates="2" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=10 --num-tasks=10 --min-width=1 --max-width=1
 ##[ $? -ne 0 ] &&  exit 1
-#cp graph.json dagger-payloads/parallel2by10-graph.json
 #for POLICY in ${POLICIES[@]}
 #do
 #  echo "Running IRIS on Parallel 2by10 with Policy: $POLICY"
@@ -84,7 +85,6 @@ done
 #echo "*******************************************************************"
 ##./dagger_generator.py --kernels="ijk" --duplicates="5" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=100 --num-tasks=100 --min-width=1 --max-width=1
 ##[ $? -ne 0 ] &&  exit 1
-##cp graph.json dagger-payloads/parallel5by100-graph.json
 ##cp dag.pdf $RESULTS_DIR/parallel5by100-graph.pdf
 #cp dagger-payloads/parallel5by100-graph.json graph.json ; cat graph.json
 #for POLICY in ${POLICIES[@]}
@@ -101,7 +101,6 @@ do
   echo "*******************************************************************"
   echo "*                          Diamond $SIZE                          *"
   echo "*******************************************************************"
-  cp dagger-payloads/diamond$SIZE-graph.json graph.json ; cat graph.json
   for POLICY in ${POLICIES[@]}
   do
     for (( num_run=0; num_run<=$REPEATS; num_run++ ))
@@ -125,7 +124,6 @@ do
   echo "*******************************************************************"
   echo "*                          Chainlink $SIZE                        *"
   echo "*******************************************************************"
-  cp dagger-payloads/chainlink$SIZE-graph.json graph.json ; cat graph.json
   for POLICY in ${POLICIES[@]}
   do
     for (( num_run=0; num_run<=$REPEATS; num_run++ ))
@@ -149,9 +147,6 @@ done
 #echo "*******************************************************************"
 ##./dagger_generator.py --kernels="ijk" --kernel-split='100' --depth=25 --num-tasks=25 --min-width=1 --max-width=12 --concurrent-kernels="ijk:3" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --sandwich --cdf-mean=2 --cdf-std-dev=0
 ##[ $? -ne 0 ] &&  exit 1
-##cp graph.json dagger-payloads/galaga-25-graph.json
-##cp dag.pdf $RESULTS_DIR/galaga-25-graph.pdf
-#cp dagger-payloads/galaga-25-graph.json graph.json ; cat graph.json
 #for POLICY in ${POLICIES[@]}
 #do
 #  echo "Running IRIS on Galaga 25 with Policy: $POLICY"
@@ -165,7 +160,6 @@ do
   echo "*******************************************************************"
   echo "*                          Tangled $SIZE                             *"
   echo "*******************************************************************"
-  cp dagger-payloads/tangled$SIZE-graph.json graph.json ; cat graph.json
   for POLICY in ${POLICIES[@]}
   do
     for (( num_run=0; num_run<=$REPEATS; num_run++ ))

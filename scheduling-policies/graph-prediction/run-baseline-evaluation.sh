@@ -1,7 +1,7 @@
 #!/bin/bash
 
 export WORKING_DIRECTORY=`pwd`
-export PAYLOAD_SIZE=2048
+export PAYLOAD_SIZE=1024
 export REPEATS=5
 cd dagger
 
