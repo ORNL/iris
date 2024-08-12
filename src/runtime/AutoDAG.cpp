@@ -8,6 +8,9 @@
 
 #include <iostream>
 
+//#define AUTO_FLUSH ON
+//#define INCORRECT_AUTO_FLUSH ON
+
 namespace iris {
 namespace rt {
 
@@ -252,7 +255,12 @@ void AutoDAG::create_auto_flush(Command* cmd, Task* task,
         sprintf(tn, "%s-from-shadow-flushed-out", task->name());
 #endif
 
+
+#ifdef INCORRECT_AUTO_FLUSH
+	if ( task_flush == NULL || task_flush != NULL ){
+#else
 	if ( task_flush == NULL){
+#endif
 	    task_flush = Task::Create(platform_, IRIS_TASK, tn);
 	    //task_flush = Task::Create(cmd->platform_, IRIS_TASK, tn);
         Command* cmd_flush;
@@ -277,6 +285,11 @@ void AutoDAG::create_auto_flush(Command* cmd, Task* task,
 		//printf("-------Graph NULL----------\n");
         	_error("Graph is NULL:%ld:%s\n", task->uid(), task->name());
 	    }
+
+#ifdef INCORRECT_AUTO_FLUSH
+ 	    mem->set_current_writing_task(task_flush);
+#endif
+
 	} else {
 	    //printf("-------Flush task Null----------\n");
     	//printf("Total dependency %d\n", task_flush->ndepends());
