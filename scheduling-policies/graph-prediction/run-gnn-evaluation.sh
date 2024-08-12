@@ -2,9 +2,9 @@
 
 export SYSTEM=$(hostname|cut -d . -f 1|sed 's/[0-9]*//g')
 export WORKING_DIRECTORY=`pwd`
-export PAYLOAD_SIZE=1024
-export SIZES=(10 25 100)
-export REPEATS=2
+export PAYLOAD_SIZE=512
+export SIZES=(10 100 700)
+export REPEATS=10
 
 ##TODO remove when working
 #cd ../..
@@ -25,10 +25,17 @@ make libPolicyGNN.so
 export LD_LIBRARY_PATH=`pwd`:$LD_LIBRARY_PATH
 
 #the correct for to specify custom policies is:
-export POLICIES=(custom:gnn:libPolicyGNN.so); #succeed
+#export POLICIES=(custom:gnn:libPolicyGNN.so); #succeed
 #export POLICIES=(custom:gnn); #fail
 #export POLICIES=(custom:libPolicyGNN.so); #fail
 #export POLICIES=(custom); #fail
+if [ -n "$USE_DATA_MEMORY" ]; then
+  export POLICIES=(custom:gnn:libPolicyGNN.so roundrobin depend profile random ftf sdq);
+else
+  export POLICIES=(custom:gnn:libPolicyGNN.so roundrobin depend profile random ftf sdq data);
+fi
+export IRIS_HISTORY=1
+export IRIS_ARCHS=cuda,hip
 
 echo Using policies: ${POLICIES[@]}
 echo Using sizes: ${SIZES[@]}
@@ -36,6 +43,9 @@ echo Using sizes: ${SIZES[@]}
 export RESULTS_DIR=$WORKING_DIRECTORY/results
 export GRAPHS_DIR=$WORKING_DIRECTORY/graphs
 mkdir -p $RESULTS_DIR $GRAPHS_DIR
+##to generate new payloads:
+#rm -rf ./dagger-payloads
+source $WORKING_DIRECTORY/generate_dagger_graphs.sh
 echo "Running DAGGER evaluation on GNN policy.... (graph figures can be found in $GRAPHS_DIR)"
 
 echo "Running DAGGER on payloads..."
@@ -56,6 +66,9 @@ do
       [ $? -ne 0 ] && echo "Linear $SIZE Failed with Policy: $POLICY" &&  exit 1
       #archive result
       mv dagger_runner-$SYSTEM*.csv $RESULTS_DIR/linear$SIZE-$POLICY-$SYSTEM-$num_run.csv
+      if test -f gnn_overhead.csv; then
+        mv gnn_overhead.csv $RESULTS_DIR/linear$SIZE-$POLICY-$SYSTEM-$num_run.gnnoverhead
+      fi
     done
     #plot timeline with gantt
     if [ "$SIZE" == "10" ] ; then
@@ -64,7 +77,6 @@ do
     [ $? -ne 0 ] && echo "Failed Combined Plotting of Linear $SIZE with Policy: $POLICY" &&  exit 1
   done
 done
-
 # Parallel 2-by-10
 #echo "*******************************************************************"
 #echo "*                          Parallel 2by10                         *"
@@ -110,6 +122,9 @@ do
       [ $? -ne 0 ] && echo "Diamond $SIZE Failed with Policy: $POLICY" &&  exit 1
       mv dagger_runner-$SYSTEM*.csv $RESULTS_DIR/diamond$SIZE-$POLICY-$SYSTEM-$num_run.csv
       [ $? -ne 0 ] &&  exit 1
+      if test -f gnn_overhead.csv; then
+        mv gnn_overhead.csv $RESULTS_DIR/diamond$SIZE-$POLICY-$SYSTEM-$num_run.gnnoverhead
+      fi
     done
     #plot timeline with gantt
     if [ "$SIZE" == "10" ] ; then
@@ -133,6 +148,9 @@ do
       [ $? -ne 0 ] && echo "Chainlink $SIZE Failed with Policy: $POLICY at Run no. $num_run and with Size: $SIZE and with $USE_DATA_MEMORY" &&  exit 1
       mv dagger_runner-$SYSTEM*.csv $RESULTS_DIR/chainlink$SIZE-$POLICY-$SYSTEM-$num_run.csv
       [ $? -ne 0 ] &&  exit 1
+      if test -f gnn_overhead.csv; then
+        mv gnn_overhead.csv $RESULTS_DIR/chainlink$SIZE-$POLICY-$SYSTEM-$num_run.gnnoverhead
+      fi
     done
     #plot timeline with gantt
     if [ "$SIZE" == "10" ] ; then
@@ -169,6 +187,9 @@ do
       [ $? -ne 0 ] && echo "Tangled $SIZE Failed with Policy: $POLICY" &&  exit 1
       mv dagger_runner-$SYSTEM*.csv $RESULTS_DIR/tangled$SIZE-$POLICY-$SYSTEM-$num_run.csv
       [ $? -ne 0 ] &&  exit 1
+      if test -f gnn_overhead.csv; then
+        mv gnn_overhead.csv $RESULTS_DIR/tangled$SIZE-$POLICY-$SYSTEM-$num_run.gnnoverhead
+      fi
     done
     #plot timeline with gantt
     if [ "$SIZE" == "10" ] ; then
@@ -199,4 +220,10 @@ done
 #save
 #rm -rf linear-10-results; mkdir -p linear-10-results; mv linear-10-*.csv linear-10-results
 #echo "All results logged into ./linear-10-results"
+
+#generate heatmap
+cd $WORKING_DIRECTORY
+python3 ./dagger/gantt/heatmap.py --output-file gnn-heatmap.pdf --directory ./results/ --custom-rename="gnn"
+python3 ./dagger/gantt/heatmap.py --output-file gnn-sans-regression-overhead-heatmap.pdf --directory ./results/ --custom-rename="gnn" --subtract-gnn-overhead
+python3 ./dagger/gantt/lineplot-comparison.py --output-file gnn-sans-regression-overhead-vs-dynamic-policies.pdf --directory ./results/ --target="gnn" --custom-rename="gnn" --subtract-gnn-overhead
 exit 0

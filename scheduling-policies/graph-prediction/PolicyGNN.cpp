@@ -8,6 +8,10 @@
 #include <iris/rt/Graph.h>
 #include <mutex>
 
+#ifdef RECORD_GNN_OVERHEAD
+#include "timer.h"
+#endif
+
 namespace iris {
 namespace rt {
 
@@ -29,6 +33,9 @@ public:
   virtual ~PolicyGNN() {}
   virtual void Init(void* params) {
     ideal_dynamic_policy = NULL;
+#ifdef RECORD_GNN_OVERHEAD
+    outfile.open("gnn_overhead.csv", std::ios_base::app); // append instead of overwrite
+#endif
   }
   //this policy assumes only one task-graph per submission, or at least if multiple graphs are submitted in the same IRIS instance then 
   //they have a similar shape and have the same predicted schedule.
@@ -39,6 +46,9 @@ public:
     }
     //all subsequent tasks run through the scheduler should now be able to use the set ideal dynamic policy
     if (ideal_dynamic_policy != NULL) return(ideal_dynamic_policy->GetDevices(task,devs,ndevs));
+#ifdef RECORD_GNN_OVERHEAD
+    t0 = now();
+#endif
 
     //otherwise the ideal dynamic policy for this task graph hasn't been set yet---so go through the GNN to classify it
     const char* json_url = task->get_graph()->get_metadata()->json_url();
@@ -73,8 +83,17 @@ public:
       ideal_dynamic_policy = scheduler_->policies()->GetPolicy(iris_ftf,NULL);
     }
     else { std::cout << "Unknown prediction! " << prediction << " Aborting..." << std::endl, std::abort(); }
+#ifdef RECORD_GNN_OVERHEAD
+    t1 = now();
+    outfile << t1-t0 << std::endl;
+#endif
     return(ideal_dynamic_policy->GetDevices(task,devs,ndevs));
   }
+
+#ifdef RECORD_GNN_OVERHEAD
+    std::ofstream outfile;
+    double t0, t1;
+#endif
 
   Policy* ideal_dynamic_policy;
   std::mutex gnn_predictor_mutex;
