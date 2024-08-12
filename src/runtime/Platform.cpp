@@ -67,6 +67,8 @@ Platform::Platform() {
   nplatforms_ = 0;
   ndevs_ = 0;
   ndevs_enabled_ = 0;
+  disable_init_devices_ = false;
+  disable_init_workers_ = false;
   dev_default_ = 0;
   nfailures_ = 0;
 
@@ -160,6 +162,14 @@ Platform::~Platform() {
   kernel_history_.clear();
   pthread_mutex_destroy(&mutex_);
   _debug2("Platform deleted");
+}
+
+int Platform::JuliaInit() {
+#if 0
+  disable_init_devices_ = true;
+  disable_init_workers_ = true;
+#endif
+  return IRIS_SUCCESS;
 }
 
 int Platform::Init(int* argc, char*** argv, int sync) {
@@ -272,8 +282,12 @@ int Platform::Init(int* argc, char*** argv, int sync) {
   null_kernel_ = get_kernel_object(null_brs_kernel);
 
   InitScheduler();
-  InitWorkers();
-  InitDevices(sync);
+  if (!disable_init_workers_) {
+    InitWorkers();
+  }
+  if (!disable_init_devices_) {
+    InitDevices(sync);
+  }
 
 #ifdef AUTO_PAR
   auto_dag_ = new AutoDAG(this, false);
@@ -290,6 +304,15 @@ int Platform::Init(int* argc, char*** argv, int sync) {
 
   pthread_mutex_unlock(&mutex_);
 
+  return IRIS_SUCCESS;
+}
+
+int Platform::InitWorker(int dev)
+{
+  if (!disable_init_workers_) return IRIS_SUCCESS;
+  ASSERT(dev < ndevs_);
+  workers_[dev] = new Worker(devs_[dev], this);
+  workers_[dev]->Start();
   return IRIS_SUCCESS;
 }
 
@@ -493,9 +516,9 @@ int Platform::InitCUDA() {
     _cuerror(err);
     devs_[ndevs_] = new DeviceCUDA(loaderCUDA_, loaderHost2CUDA_, dev,
             i%ndevs, ndevs_, nplatforms_, i);
+    devs_[ndevs_]->set_root_device(devs_[ndevs_-i]);
     if (is_julia_enabled()) 
         devs_[ndevs_]->EnableJuliaInterface();
-    devs_[ndevs_]->set_root_device(devs_[ndevs_-i]);
     arch_available_ |= devs_[ndevs_]->type();
     cudevs[mdevs] = dev;
     ndevs_++;
@@ -564,6 +587,8 @@ int Platform::InitHIP() {
     devs_[ndevs_] = new DeviceHIP(loaderHIP_, loaderHost2HIP_, dev,
             i%ndevs, ndevs_, nplatforms_, i);
     devs_[ndevs_]->set_root_device(devs_[ndevs_-i]);
+    if (is_julia_enabled()) 
+        devs_[ndevs_]->EnableJuliaInterface();
     arch_available_ |= devs_[ndevs_]->type();
     hipdevs[mdevs] = dev;
     ndevs_++;
@@ -663,6 +688,8 @@ int Platform::InitOpenMP() {
   }
   _trace("OpenMP platform[%d] ndevs[%d]", nplatforms_, 1);
   devs_[ndevs_] = new DeviceOpenMP(loaderOpenMP_, ndevs_, nplatforms_);
+  if (is_julia_enabled()) 
+      devs_[ndevs_]->EnableJuliaInterface();
   arch_available_ |= devs_[ndevs_]->type();
   ndevs_++;
   strcpy(platform_names_[nplatforms_], "OpenMP");
@@ -1709,6 +1736,11 @@ int Platform::MemCreate(size_t size, iris_mem* brs_mem) {
   return IRIS_SUCCESS;
 }
 
+void *Platform::GetDeviceContext(int device)
+{
+    ASSERT(device < ndevs_);
+    return devs_[device]->get_ctx();
+}
 int Platform::MemArch(iris_mem brs_mem, int device, void** arch) {
   if (!arch) return IRIS_ERROR;
   Mem* mem = (Mem *)Platform::GetPlatform()->get_mem_object(brs_mem);

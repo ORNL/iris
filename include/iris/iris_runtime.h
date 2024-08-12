@@ -739,6 +739,19 @@ extern int iris_task_d2h(iris_task task, iris_mem mem, size_t off, size_t size, 
 extern int iris_task_d2h_offsets(iris_task task, iris_mem mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, void* host);
 
 
+/**@brief Initialize Worker for the given device number
+ *
+ * @param dev  iris device number
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_init_worker(int dev);
+
+/**@brief Initialize devices 
+ *
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_init_devices(int sync);
+
 /**@brief Enable Julia Interface for task kernels inside
  *
  * @param task iris task object
@@ -1953,6 +1966,13 @@ extern void iris_print_matrix_limited_int8_t(int8_t *data, int M, int N, const c
   */
 extern void iris_println(const char *s);
 
+/**
+  * This function returns device context
+  * @param Device number
+  * @return Context pointer
+  */
+extern void *iris_dev_get_ctx(int device);
+
 /* Run HPL Mapping algorithm*/
 extern void iris_run_hpl_mapping(iris_graph graph);
 
@@ -1969,7 +1989,7 @@ extern int iris_read_bool_env(const char *env_name);
 extern int iris_read_int_env(const char *env_name);
 
 // Define a type for the Julia kernel launch function call pointer
-typedef int32_t (*julia_kernel_t)(int32_t target, int32_t devno, int32_t stream_index, void **stream, int32_t nstreams, int32_t *args, void **values, size_t *param_size, size_t *param_dim_size, int32_t nparams, size_t *threads, size_t *blocks, int dim, const char *kernel_name);
+typedef int32_t (*julia_kernel_t)(int32_t target, int32_t devno, void *ctx, int32_t stream_index, void **stream, int32_t nstreams, int32_t *args, void **values, size_t *param_size, size_t *param_dim_size, int32_t nparams, size_t *threads, size_t *blocks, int dim, const char *kernel_name);
 
 /* API to initialize Julia interfacea
  * @param kernel_launch_func Kernel launch Julia function 

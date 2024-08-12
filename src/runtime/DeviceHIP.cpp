@@ -62,6 +62,7 @@ DeviceHIP::DeviceHIP(LoaderHIP* ld, LoaderHost2HIP *host2hip_ld, hipDevice_t dev
 
 DeviceHIP::~DeviceHIP() {
     host2hip_ld_->finalize(devno());
+    if (julia_if_ != NULL) julia_if_->finalize(devno());
     for (int i = 0; i < nqueues_; i++) {
       hipError_t err = ld_->hipStreamDestroy(streams_[i]);
       _hiperror(err);
@@ -74,7 +75,9 @@ DeviceHIP::~DeviceHIP() {
 bool DeviceHIP::IsAddrValidForD2D(BaseMem *mem, void *ptr)
 {
     int data;
-    hipError_t err = ld_->hipPointerGetAttribute(&data, HIP_POINTER_ATTRIBUTE_DEVICE_POINTER, ptr);
+    hipError_t err = ld_->hipCtxSetCurrent(ctx_);
+    _hiperror(err);
+    err = ld_->hipPointerGetAttribute(&data, HIP_POINTER_ATTRIBUTE_DEVICE_POINTER, ptr);
     if (err == hipSuccess) return true;
     return false;
 }
@@ -177,6 +180,7 @@ int DeviceHIP::Init() {
 
   _info("devid[%d] max_compute_units[%zu] max_work_group_size_[%zu] max_work_item_sizes[%zu,%zu,%zu] max_block_dims[%d,%d,%d] concurrent_kernels[%d]", devid_, max_compute_units_, max_work_group_size_, max_work_item_sizes_[0], max_work_item_sizes_[1], max_work_item_sizes_[2], max_block_dims_[0], max_block_dims_[1], max_block_dims_[2], ck);
 
+  if (julia_if_ != NULL) julia_if_->init(devno());
   char* path = (char *)kernel_path();
   char* src = NULL;
   size_t srclen = 0;
@@ -249,6 +253,10 @@ void *DeviceHIP::GetSharedMemPtr(void* mem, size_t size)
     return hipmem; 
 }
 int DeviceHIP::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset) {
+  if (IsContextChangeRequired()) {
+      hipError_t err = ld_->hipCtxSetCurrent(ctx_);
+      _hiperror(err);
+  }
   void** hipmem = mem_addr;
   int stream = mem->recommended_stream(devno());
   bool async = (is_async(false) && stream != DEFAULT_STREAM_INDEX && stream >=0);
@@ -263,7 +271,7 @@ int DeviceHIP::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset) 
      return IRIS_ERROR;
   }
   if (reset)  {
-      if (platform_obj_->is_malloc_async() && async)
+      if (platform_obj_->is_malloc_async() && async && stream >=0)
           err = ld_->hipMemsetAsync(*hipmem, 0, size, streams_[stream]);
       else
           err = ld_->hipMemset(*hipmem, 0, size);
@@ -520,6 +528,9 @@ int DeviceHIP::KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bo
       *kernel_bin = host2hip_ld_->GetFunctionPtr(name);
       return IRIS_SUCCESS;
   }
+  if (julia_if_ != NULL && kernel->task()->enable_julia_if()) {
+      return IRIS_SUCCESS;
+  }
   if (IsContextChangeRequired()) {
       _trace("Changed Context for HIP resetting context switch dev[%d][%s] worker:%d self:%p thread:%p", devno(), name_, worker()->device()->devno(), (void *)worker()->self(), (void *)worker()->thread());
       ld_->hipCtxSetCurrent(ctx_);
@@ -564,6 +575,10 @@ int DeviceHIP::KernelSetArg(Kernel* kernel, int idx, int kindex, size_t size, vo
      host2hip_ld_->setarg(
             kernel->GetParamWrapperMemory(), kindex, size, value);
   }
+  else if (julia_if_ != NULL && kernel->task()->enable_julia_if()) {
+     julia_if_->setarg(
+            kernel->GetParamWrapperMemory(), kindex, size, value);
+  }
   return IRIS_SUCCESS;
 }
 
@@ -586,6 +601,10 @@ int DeviceHIP::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, s
     if (kernel->is_vendor_specific_kernel(devno_)) {
         host2hip_ld_->setmem(
                 kernel->GetParamWrapperMemory(), kindex, dev_ptr, size);
+    }
+    else if (julia_if_ != NULL && kernel->task()->enable_julia_if()) {
+        julia_if_->setmem(
+                kernel->GetParamWrapperMemory(), mem, kindex, dev_ptr, size);
     }
     return IRIS_SUCCESS;
 }
@@ -610,6 +629,9 @@ int DeviceHIP::KernelLaunchInit(Command *cmd, Kernel* kernel) {
         nstreams = nqueues_-n_copy_engines_;
     }
     host2hip_ld_->launch_init(model(), devno_, stream_index, nstreams, (void **)kstream, kernel->GetParamWrapperMemory(), cmd);
+    //printf(" Is task julia enabled:%d param:%p\n", kernel->task()->enable_julia_if(), kernel->GetParamWrapperMemory());
+    if (julia_if_ != NULL && kernel->task()->enable_julia_if()) 
+        julia_if_->launch_init(model(), devno_, stream_index, nstreams, (void **)kstream, kernel->GetParamWrapperMemory(), cmd);
     return IRIS_SUCCESS;
 }
 
@@ -688,6 +710,15 @@ int DeviceHIP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, s
   }
 
   _trace("dev[%d][%s] kernel[%s:%s] dim[%d] grid[%d,%d,%d] off[%d,%d,%d] block[%d,%d,%d] blockoff[%lu,%lu,%lu] max_arg_idx[%d] shared_mem_bytes[%u] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, grid[0], grid[1], grid[2], off[0], off[1], off[2], block[0], block[1], block[2], blockOff_x, blockOff_y, blockOff_z, max_arg_idx_, shared_mem_bytes_, stream_index);
+  if (julia_if_ != NULL && kernel->task()->enable_julia_if()) {
+      size_t grid_s[3] =  { (size_t)grid[0],  (size_t)grid[1],  (size_t)grid[2] };
+      size_t block_s[3] = { (size_t)block[0], (size_t)block[1], (size_t)block[2] };
+      julia_if_->host_launch((void **)kstream, stream_index, (void *)&ctx_,
+                  nstreams, kernel->name(), 
+                  kernel->GetParamWrapperMemory(), devno(),
+                  dim, grid_s, block_s);
+      return IRIS_SUCCESS;
+  }
   if (!async) {
       err = ld_->hipModuleLaunchKernel(func, grid[0], grid[1], grid[2], block[0], block[1], block[2], shared_mem_bytes_, 0, params_, NULL);
       _hiperror(err);

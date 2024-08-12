@@ -938,6 +938,10 @@ int iris_read_int_env(const char *env_name) {
     return val;
 }
 
+void *iris_dev_get_ctx(int device) {
+  return Platform::GetPlatform()->GetDeviceContext(device);
+}
+
 void iris_run_hpl_mapping(iris_graph graph)
 {
     int ndevices = 0;
@@ -1022,6 +1026,16 @@ int iris_julia_init(void *julia_launch_func)
     //int32_t devno=0;
     //int32_t result = julia_kernel__(target, devno);
     //printf("Result %d\n", result);
+    return Platform::GetPlatform()->JuliaInit();
+}
+int iris_init_worker(int dev)
+{
+    return Platform::GetPlatform()->InitWorker(dev);
+}
+int iris_init_devices(int sync)
+{
+    if (Platform::GetPlatform()->disable_init_devices())
+        return Platform::GetPlatform()->InitDevices(sync);
     return IRIS_SUCCESS;
 }
 julia_kernel_t iris_get_julia_launch_func() 

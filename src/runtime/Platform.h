@@ -59,6 +59,8 @@ public:
 
 public:
   int Init(int* argc, char*** argv, int sync);
+  int JuliaInit();
+  int InitWorker(int dev);
   int Finalize();
   int Synchronize();
 
@@ -263,6 +265,7 @@ public:
   bool is_data_transfers_disabled() { return disable_data_transfers_; }
   void disable_d2d() { disable_d2d_ = true; }
   void enable_d2d() { disable_d2d_ = false; }
+  void *GetDeviceContext(int device);
   bool is_d2d_disabled() { return disable_d2d_; }
   bool is_kernel_launch_disabled() { return disable_kernel_launch_; }
   void set_kernel_launch_disabled(bool flag) { disable_kernel_launch_ = flag; }
@@ -278,12 +281,16 @@ public:
   shared_ptr<History> CreateHistory(string kname);
   bool get_enable_proactive(){ return enable_proactive_;}
   void set_enable_proactive(bool enable_proactive){ enable_proactive_ = enable_proactive;}
+  bool disable_init_devices() { return disable_init_devices_; }
+  bool disable_init_workers() { return disable_init_workers_; }
 
 #ifdef AUTO_PAR
   AutoDAG* get_auto_dag(){return auto_dag_;}
   void set_auto_dag(AutoDAG* auto_dag){auto_dag_ = auto_dag;}
   //void insert_into_mems(BaseMem* mem){ mems_.insert(mem); }
 #endif
+public:
+  int InitDevices(bool sync);
 
 private:
   int SetDevsAvailable();
@@ -293,7 +300,6 @@ private:
   int InitOpenCL();
   int InitOpenMP();
   int InitHexagon();
-  int InitDevices(bool sync);
   int InitScheduler();
   int InitWorkers();
   int FilterSubmitExecute(Task* task);
@@ -387,6 +393,8 @@ private:
   double time_init_;
   char tmp_dir_[263];
   bool enable_proactive_;
+  bool disable_init_devices_;
+  bool disable_init_workers_;
   StreamPolicy stream_policy_;
 private:
   static shared_ptr<Platform> singleton_;

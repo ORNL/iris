@@ -50,6 +50,7 @@ public:
   void WaitForEvent(void *event, int stream, int flags=0);
   void DestroyEvent(void *event);
   void EventSynchronize(void *event);
+  void *get_ctx() { return (void *)&ctx_; }
 
 private:
   LoaderHIP* ld_;

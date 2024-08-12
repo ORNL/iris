@@ -49,6 +49,7 @@ public:
   void WaitForEvent(void *event, int stream, int flags=0);
   void DestroyEvent(void *event);
   void EventSynchronize(void *event);
+  void *get_ctx() { return (void *)&ctx_; }
 
   const char* kernel_src() { return "KERNEL_SRC_CUDA"; }
   const char* kernel_bin() { return "KERNEL_BIN_CUDA"; }

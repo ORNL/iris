@@ -109,6 +109,14 @@ namespace iris {
                     param_size_ = NULL;
                     param_dim_size_ = NULL;
                 }
+                void reset() {
+                    index_ = 0;
+                    args_ = NULL;
+                    values_ = NULL;
+                    args_capacity_ = 0;
+                    param_size_ = NULL;
+                    param_dim_size_ = NULL;
+                }
                 ~KernelJulia( ) {
                     if (args_ != NULL) free(args_);
                     if (values_ != NULL) free(values_);
@@ -119,6 +127,7 @@ namespace iris {
                     args_ = NULL;
                     values_ = NULL;
                     args_capacity_ = nargs+6;
+                    printf("Setting args: %d param_size_:%p \n", args_capacity_, param_size_);
                     if (args_ == NULL) 
                         args_ = (int32_t *) malloc(
                                 sizeof(int32_t *)*args_capacity_);
@@ -210,10 +219,10 @@ namespace iris {
                 KernelJulia * get_kernel_julia(void *param_mem);
                 int launch_init(int model, int devno, int stream_index, int nstreams, void **stream, void *param_mem, Command *cmd);
                 int SetKernelPtr(void *obj, const char *kernel_name);
-                int host_launch(void **stream, int stream_index, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *off, size_t *bws);
+                int host_launch(void **stream, int stream_index, void *ctx, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *off, size_t *bws);
                 int setarg(void *param_mem, int kindex, size_t size, void *value);
                 int setmem(void *param_mem, BaseMem *mem, int kindex, void *mem_ptr, size_t size);
-                void launch_julia_kernel(int target, int32_t devno, int32_t stream_index, void **stream, int32_t nstreams, int32_t *args, void **values, size_t *param_size, size_t *param_dim_size, int32_t nparams, size_t *threads, size_t *blocks, int dim, const char *name)
+                void launch_julia_kernel(int target, int32_t devno, void *ctx, int32_t stream_index, void **stream, int32_t nstreams, int32_t *args, void **values, size_t *param_size, size_t *param_dim_size, int32_t nparams, size_t *threads, size_t *blocks, int dim, const char *name)
                 {
                     //printf("jl_is_initialized: %p jl_init:%p\n", jl_is_initialized, jl_init);
                     if (iris_get_julia_launch_func()!= NULL) {
@@ -223,7 +232,7 @@ namespace iris {
                         //for(int i=0; i<nparams; i++) {
                         //    printf("Values:i:%d arg:%d:%d values:%p\n", i, args[i], args[i]>>16, values[i]);
                         //}
-                        kernel_julia_wrapper(target, devno, stream_index, stream, nstreams, args, values, param_size, param_dim_size, nparams, threads, blocks, dim, name);
+                        kernel_julia_wrapper(target, devno, ctx, stream_index, stream, nstreams, args, values, param_size, param_dim_size, nparams, threads, blocks, dim, name);
                         //printf("Result: %d\n", result);
                         //(*jl_atexit_hook)(0);
                     }

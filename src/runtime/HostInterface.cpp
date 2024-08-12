@@ -204,7 +204,7 @@ namespace iris {
             }
         int JuliaHostInterfaceLoader::LoadFunctions() {
             HostInterfaceLoader::LoadFunctions();
-            printf("Loading Julia functions\n");
+            //printf("Loading Julia functions\n");
             LOADFUNC(jl_init);
             LOADFUNC(jl_atexit_hook);
             LOADFUNC(jl_is_initialized);
@@ -221,6 +221,7 @@ namespace iris {
         {
             ASSERT(sizeof(KernelJulia) < KERNEL_ARGS_MEM_SIZE);
             KernelJulia **julia_ptr = (KernelJulia **)(((uint8_t *)param_mem)+ sizeof(int));
+            //printf("Julia data: %p %p : %p\n", param_mem, julia_ptr, julia_data);
             *julia_ptr = julia_data;
         }
         int JuliaHostInterfaceLoader::launch_init(int model, int devno, int stream_index, int nstreams, void **stream, void *param_mem, Command *cmd) 
@@ -231,7 +232,9 @@ namespace iris {
             KernelJulia *julia_data = (KernelJulia *) kernel->GetJuliadata();
             //printf("Julia Data:%p size:%lu\n", julia_data, sizeof(KernelJulia));
             set_kernel_julia(param_mem, julia_data);
+            julia_data->reset();
             julia_data->init(cmd->kernel_nargs());
+            //printf("Julia param_size:%p\n", julia_data->param_size());
             julia_data->set_kernel(kernel);
             julia_data->set_iris_args(cmd->kernel_args());
             julia_data->add_stream(stream); 
@@ -243,7 +246,7 @@ namespace iris {
         {
             HostInterfaceLoader::init(dev);
             printf("Initialized Julia init\n");
-            printf("Loading julia library\n");
+            //printf("Loading julia library\n");
             if (Load() != IRIS_SUCCESS) {
               _trace("%s", "skipping Julia wrapper calls");
             }
@@ -261,11 +264,11 @@ namespace iris {
             //julia_data->set_kernel_name(kernel_name);
             return IRIS_SUCCESS;
         }
-        int JuliaHostInterfaceLoader::host_launch(void **stream, int stream_index, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *grid, size_t *block)
+        int JuliaHostInterfaceLoader::host_launch(void **stream, int stream_index, void *ctx, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *grid, size_t *block)
         {
             KernelJulia *julia_data = get_kernel_julia(param_mem);
             SetKernelPtr(param_mem, kname);
-            launch_julia_kernel(target_, devno, stream_index, stream, nstreams, julia_data->args(), julia_data->values(), julia_data->param_size(), julia_data->param_dim_size(), julia_data->top(), grid, block, dim, kname);
+            launch_julia_kernel(target_, devno, ctx, stream_index, stream, nstreams, julia_data->args(), julia_data->values(), julia_data->param_size(), julia_data->param_dim_size(), julia_data->top(), grid, block, dim, kname);
             return IRIS_SUCCESS;
         }
         int JuliaHostInterfaceLoader::setarg(void *param_mem, int kindex, size_t size, void *value)
@@ -306,7 +309,7 @@ namespace iris {
                 //printf("Size DIM : %lu\n", dmem->dev_size()[0]);
                 julia_data->set_dim_sizes(dmem->dev_size(), dmem->dim());
             }
-            //printf("setmem julia_data:%p kindex:%d arg_index:%d mem:%p\n", julia_data, kindex, julia_data->top(), mem);
+            printf("setmem julia_data:%p kindex:%d arg_index:%d mem:%p dev:%p size:%ld element_size:%ld\n", julia_data, kindex, julia_data->top(), mem, mem_ptr, size, element_size);
             julia_data->set_arg_type(iris_pointer | element_type | (element_size << 8) | dim);
             julia_data->set_value_ptr(mem_ptr);
             julia_data->set_size(size/element_size);
