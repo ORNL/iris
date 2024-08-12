@@ -274,7 +274,7 @@ def prune_edges_from_dependencies(task_dag,edges):
     new_edges = []
     for e in edges:
         for t in task_dag:
-            if t['name'] == "initial_h2d" or (t['name'] == 'task'+e[1] and str('task'+e[0]) in t['depends']):
+            if t['name'] == "initial_h2d" or t['name'] == "final_d2h" or (t['name'] == 'task'+e[1] and str('task'+e[0]) in t['depends']):
                 new_edges.append(e)
     return new_edges
 
@@ -623,6 +623,7 @@ def duplicate_for_concurrency(task_dag,edges):
 def plot_dag(task_dag,edges,dag_path_plot):
     #edge_d = [(e[0],e[1],{'data':neighs_down_top[i]}) for i,e in enumerate(edges)]
     edge_d = [(e[0],e[1],{"depends":task_dag[int(e[0])]['name']}) for i, e in enumerate(edges)]
+
     #edge_d = [(e[i][], e['name'],{'data':e['name']}) for i,e in enumerate(task_dag)]
     dag = nx.DiGraph()
     #hash the colours in the dag for each kernel name and memory transfers
