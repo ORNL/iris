@@ -261,7 +261,7 @@ module IrisHRT
                 elseif Int(target) == Int(iris_hip)
                     arg_ptr = ptr_reinterpret(arg_ptr, current_type)
                     #iris_println("Index: $i target arg:$arg_ptr size:$size_dims")
-                    arg_ptr = unsafe_wrap(ROCArray, arg_ptr, size_dims)
+                    arg_ptr = unsafe_wrap(ROCArray, arg_ptr, size_dims, lock=false)
                     #iris_println("After Pointer $arg_ptr")
                 elseif Int(target) == Int(iris_openmp)
                     arg_ptr = ptr_reinterpret(arg_ptr, current_type)
@@ -296,8 +296,8 @@ module IrisHRT
             cu_ctx = unsafe_load(reinterpret(Ptr{CuContext}, ctx))
             iris_println("Ctx: $cu_ctx dev:$devno")
             func_name = unsafe_string(kernel_name)
-            CUDA.context!(cu_ctx)
             CUDA.device!(Int(devno))
+            CUDA.context!(cu_ctx)
             iris_println("Calling CUDA kernel")
             call_cuda_kernel(func_name, j_threads, j_blocks, julia_args)
             #CUDA.@sync @cuda threads=j_threads blocks=j_blocks Main.saxpy_cuda(julia_args[1], julia_args[2], julia_args[3], julia_args[4])
@@ -307,17 +307,17 @@ module IrisHRT
         elseif Int(target) == Int(iris_hip)
             #cu_ctx = unsafe_load(Ref{CuContext}(ctx))
             #GC.gc()
-            cu_ctx = unsafe_load(reinterpret(Ptr{HIPContext}, ctx))
-            iris_println("----Ctx: $cu_ctx dev:$devno")
+            hip_ctx = unsafe_load(reinterpret(Ptr{HIPContext}, ctx))
+            iris_println("----Ctx: $hip_ctx dev:$devno")
             func_name = unsafe_string(kernel_name)
-            #AMDGPU.context!(cu_ctx)
-            #AMDGPU.device!(Int(devno))
+            AMDGPU.device!(AMDGPU.devices()[devno+1])
+            AMDGPU.context!(hip_ctx)
             iris_println("Calling HIP kernel")
             call_hip_kernel(func_name, j_threads, j_blocks, julia_args)
             #CUDA.@sync @cuda threads=j_threads blocks=j_blocks Main.saxpy_cuda(julia_args[1], julia_args[2], julia_args[3], julia_args[4])
             ##############################################################
             iris_println("Completed HIP")
-            return target*11
+            return target*12
         elseif Int(target) == Int(iris_openmp)
             #cu_ctx = unsafe_load(Ref{CuContext}(ctx))
             #GC.gc()
@@ -328,7 +328,7 @@ module IrisHRT
             #CUDA.@sync @cuda threads=j_threads blocks=j_blocks Main.saxpy_cuda(julia_args[1], julia_args[2], julia_args[3], julia_args[4])
             ##############################################################
             #iris_println("Completed OpenMP")
-            return target*11
+            return target*13
         else
             return target*10
         end
@@ -470,6 +470,8 @@ module IrisHRT
         args_tuple = Tuple(args)
         # Call the function with arguments
         #@hip threads=threads blocks=blocks add_kernel(a,b,c,N)
+        println(Core.stdout, "Args_tuple: $args_tuple")
+        println("Threads: $threads blocks:$blocks")
         AMDGPU.@sync @roc groupsize=threads gridsize=blocks func(args_tuple...)
         #AMDGPU.synchronize()
     end
