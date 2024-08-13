@@ -152,7 +152,7 @@ module IrisHRT
     function kernel_julia_wrapper(target::Cint, devno::Cint, ctx::Ptr{Cvoid}, stream_index::Cint, stream::Ptr{Ptr{Cvoid}}, nstreams::Cint, args_type::Ptr{Cint}, args::Ptr{Ptr{Cvoid}}, param_size::Ptr{Csize_t}, param_dim_size::Ptr{Csize_t}, nparams::Cint, c_threads::Ptr{Csize_t}, c_blocks::Ptr{Csize_t}, dim::Cint, kernel_name::Ptr{Cchar})::Cint
         # Array to hold the converted Julia values
         #julia_args = convert_args(args_type, args, nparams, 2)
-        iris_println("nstreams: $nstreams, steram:$stream ctx:$ctx")
+        #iris_println("nstreams: $nstreams, steram:$stream ctx:$ctx")
         julia_args = []
         julia_sizes = []
         julia_dims = []
@@ -232,7 +232,7 @@ module IrisHRT
                 elseif current_type == Int(iris_uint8)
                     arg_ptr = Ptr{Cuchar}(arg_ptr)
                 else
-                    iris_println("No type")
+                    iris_println("[Julia-IrisHRT-Error] No type present")
                 end
                 try 
                     #jptr = unsafe_wrap(CUDA.Array, arg_ptr, size_dims, own=false)
@@ -241,7 +241,7 @@ module IrisHRT
                     #push!(julia_args, jptr)
                     push!(julia_args, (arg_ptr, size_dims, current_type, full_size, element_size))
                 catch e 
-                    iris_println("foo threw an error")
+                    iris_println("[Julia-IrisHRT-Error] exception raised during push of arguments to julia_args")
                     rethrow(e)
                 end
             end
@@ -269,12 +269,12 @@ module IrisHRT
                     arg_ptr = unsafe_wrap(Array, arg_ptr, size_dims, own=false)
                     #iris_println("After Pointer $arg_ptr")
                 else
-                    iris_println("Unknown target to handle arguments")
+                    iris_println("[Julia-IrisHRT-Error] Unknown target to handle arguments")
                 end
                 julia_args[i] = arg_ptr
                 #push!(julia_args, arg_ptr)
             catch e 
-                iris_println("foo threw an error")
+                iris_println("[Julia-IrisHRT-Error] exception raised during conversion to device specific type")
                 rethrow(e)
             end
         end
@@ -294,7 +294,7 @@ module IrisHRT
             #cu_ctx = unsafe_load(Ref{CuContext}(ctx))
             #GC.gc()
             cu_ctx = unsafe_load(reinterpret(Ptr{CuContext}, ctx))
-            iris_println("Ctx: $cu_ctx dev:$devno")
+            #iris_println("Ctx: $cu_ctx dev:$devno")
             func_name = unsafe_string(kernel_name)
             CUDA.device!(Int(devno))
             CUDA.context!(cu_ctx)
@@ -308,7 +308,7 @@ module IrisHRT
             #cu_ctx = unsafe_load(Ref{CuContext}(ctx))
             #GC.gc()
             hip_ctx = unsafe_load(reinterpret(Ptr{HIPContext}, ctx))
-            iris_println("----Ctx: $hip_ctx dev:$devno")
+            #iris_println("----Ctx: $hip_ctx dev:$devno")
             func_name = unsafe_string(kernel_name)
             AMDGPU.device!(AMDGPU.devices()[devno+1])
             AMDGPU.context!(hip_ctx)
@@ -358,7 +358,7 @@ module IrisHRT
         elseif current_type == Int(iris_uint8)
             arg_ptr = reinterpret(CuPtr{UInt8}, arg_ptr)
         else
-            iris_println("No type")
+            iris_println("[Julia-IrisHRT-Error][cuda_reinterpret] Unknown type")
         end
         return arg_ptr
     end
@@ -387,7 +387,7 @@ module IrisHRT
         elseif current_type == Int(iris_uint8)
             arg_ptr = reinterpret(Ptr{UInt8}, arg_ptr)
         else
-            iris_println("No type")
+            iris_println("[Julia-IrisHRT-Error][ptr_reinterpret] Unknown type")
         end
         return arg_ptr
     end
@@ -452,7 +452,7 @@ module IrisHRT
         args_tuple = Tuple(args)
         # Call the function with arguments
         println(Core.stdout, "Args_tuple: $args_tuple")
-        CUDA.@sync @cuda threads=threads blocks=blocks Main.saxpy_cuda(args_tuple...)
+        CUDA.@sync @cuda threads=threads blocks=blocks func(args_tuple...)
         #synchronize(blocking = true)
     end
 
@@ -471,8 +471,8 @@ module IrisHRT
         # Call the function with arguments
         #@hip threads=threads blocks=blocks add_kernel(a,b,c,N)
         println(Core.stdout, "Args_tuple: $args_tuple")
-        println("Threads: $threads blocks:$blocks")
-        AMDGPU.@sync @roc groupsize=threads gridsize=blocks func(args_tuple...)
+        println(Core.stdout, "Threads: $threads blocks:$blocks")
+        AMDGPU.@sync @roc groupsize=threads gridsize=blocks Main.saxpy_hip(args_tuple...)
         #AMDGPU.synchronize()
     end
 

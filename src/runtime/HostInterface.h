@@ -127,7 +127,7 @@ namespace iris {
                     args_ = NULL;
                     values_ = NULL;
                     args_capacity_ = nargs+6;
-                    printf("Setting args: %d param_size_:%p \n", args_capacity_, param_size_);
+                    //printf("Setting args: %d param_size_:%p \n", args_capacity_, param_size_);
                     if (args_ == NULL) 
                         args_ = (int32_t *) malloc(
                                 sizeof(int32_t *)*args_capacity_);

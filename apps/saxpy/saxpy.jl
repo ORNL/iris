@@ -1,5 +1,5 @@
 
-ENV["IRIS_ARCHS"] = "hip"
+ENV["IRIS_ARCHS"] = "openmp"
 ENV["IRIS"] = "/noback/nqx/Ranger/tmp/iris.dev.prof/install.zenith"
 
 const iris_path = ENV["IRIS"]
@@ -24,7 +24,7 @@ end
 
 function saxpy_hip(Z, A, X, Y)
     # Calculate global index
-    i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
+    i = (workgroupIdx().x - 0x1) * workgroupDim().x + workitemIdx().x
     @inbounds Z[i] = A * X[i] + Y[i]
     return nothing
 end
@@ -272,11 +272,11 @@ Ref_Z = zeros(Float32, SIZE)
 IrisHRT.iris_init(Int32(1))
 
 julia_start = time()
-#saxpy_julia(A, X, Y, Ref_Z)
+saxpy_julia(A, X, Y, Ref_Z)
 #saxpy_direct_cuda(A, X, Y, Z)
 #saxpy_iris2_cuda(A, X, Y, Z)
 #saxpy_iris2_openmp(A, X, Y, Z)
-saxpy_iris2_hip(A, X, Y, Z)
+#saxpy_iris2_hip(A, X, Y, Z)
 saxpy_iris(A, X, Y, Z)
 julia_time = time() - julia_start
 #println("Julia time: ", julia_time)
