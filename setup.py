@@ -43,6 +43,7 @@ class CMakeBuild(build_ext):
             os.makedirs(self.build_temp)
 
         print('Source dir:', ext.sourcedir)
+        self.sourcedir = ext.sourcedir
         print(f'Running CMake configure: {cmake_args}')
         subprocess.check_call(['cmake', ext.sourcedir] + cmake_args, cwd=self.build_temp)
         print(f'Running CMake build: {build_args}')
@@ -69,8 +70,8 @@ class CMakeBuild(build_ext):
 
         lib_name = 'iris.dll' if sys.platform == 'win32' else 'libiris.so'
         # Copy all built shared libraries to the target directory
-        self.copy_file(os.path.join(extdir, 'iris.py'), os.path.join(dist_info_dir, 'iris.py'))
-        self.copy_file(os.path.join(extdir, '__init__.py'), os.path.join(dist_info_dir, '__init__.py'))
+        self.copy_file(os.path.join(self.sourcedir, 'src/runtime/iris.py'), os.path.join(dist_info_dir, 'iris.py'))
+        self.copy_file(os.path.join(self.sourcedir, 'src/runtime/__init__.py'), os.path.join(dist_info_dir, '__init__.py'))
         for file_name in os.listdir(extdir):
             if file_name.endswith('.so') or file_name.endswith('.dll'):
                 source_file = os.path.join(extdir, file_name)
