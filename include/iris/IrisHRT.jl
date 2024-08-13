@@ -451,7 +451,7 @@ module IrisHRT
         # Convert the array of arguments to a tuple
         args_tuple = Tuple(args)
         # Call the function with arguments
-        println(Core.stdout, "Args_tuple: $args_tuple")
+        p#rintln(Core.stdout, "Args_tuple: $args_tuple")
         CUDA.@sync @cuda threads=threads blocks=blocks func(args_tuple...)
         #synchronize(blocking = true)
     end
@@ -470,8 +470,8 @@ module IrisHRT
         args_tuple = Tuple(args)
         # Call the function with arguments
         #@hip threads=threads blocks=blocks add_kernel(a,b,c,N)
-        println(Core.stdout, "Args_tuple: $args_tuple")
-        println(Core.stdout, "Threads: $threads blocks:$blocks")
+        #println(Core.stdout, "Args_tuple: $args_tuple")
+        #println(Core.stdout, "Threads: $threads blocks:$blocks")
         AMDGPU.@sync @roc groupsize=threads gridsize=blocks Main.saxpy_hip(args_tuple...)
         #AMDGPU.synchronize()
     end

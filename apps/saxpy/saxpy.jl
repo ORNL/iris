@@ -1,6 +1,6 @@
 
-ENV["IRIS_ARCHS"] = "openmp"
-ENV["IRIS"] = "/noback/nqx/Ranger/tmp/iris.dev.prof/install.zenith"
+ENV["IRIS_ARCHS"] = "hip"
+#ENV["IRIS"] = "/noback/nqx/Ranger/tmp/iris.dev.prof/install.zenith"
 
 const iris_path = ENV["IRIS"]
 const iris_jl = iris_path * "/include/iris/IrisHRT.jl"
@@ -36,7 +36,7 @@ function saxpy_openmp(Z, A, X, Y)
     n = length(X)
     nthreads = Threads.nthreads()
     num_cpus = Sys.CPU_THREADS
-    println(Core.stdout, "NThreads: $nthreads N CPUs:$num_cpus")
+    #println(Core.stdout, "NThreads: $nthreads N CPUs:$num_cpus")
     IrisHRT.@maybethreads for i in 1 : n
         Z[i] = A * X[i] + Y[i]
     end
@@ -58,18 +58,18 @@ function saxpy_direct_cuda(A::Float32, X::Vector{Float32}, Y::Vector{Float32}, Z
     maxPossibleThreads = attribute(device(), CUDA.DEVICE_ATTRIBUTE_MAX_BLOCK_DIM_X)
     threads = min(SIZE, maxPossibleThreads)
     blocks = ceil(Int, SIZE / threads)
-    println("Threads: $threads Blocks: $blocks")
-    println("X:$X_device Y:$Y_device Z:$Z_device A:$A")
+    #println("Threads: $threads Blocks: $blocks")
+    println("In X:$X_device Y:$Y_device Z:$Z_device A:$A")
     CUDA.@sync @cuda threads=threads blocks=blocks saxpy_cuda(Z_device, A, X_device, Y_device) 
     
-    println("Z: $Z_device")
+    println("Out Z: $Z_device")
 
 end
 
 function saxpy_iris2_cuda(A::Float32, X::Vector{Float32}, Y::Vector{Float32}, Z::Vector{Float32})
     SIZE = length(X)
 
-    println("Initialized IRIS")
+    #println("Initialized IRIS")
     # Create IRIS memory objects
     mem_X = IrisHRT.iris_data_mem(X)
     mem_Y = IrisHRT.iris_data_mem(Y)
@@ -85,9 +85,9 @@ function saxpy_iris2_cuda(A::Float32, X::Vector{Float32}, Y::Vector{Float32}, Z:
     #IrisHRT.iris_task_dmem_flush_out(task0, mem_Z)
     # Submit the task
     c_ctx = IrisHRT.iris_dev_get_ctx(0)
-    println("Ctx: $c_ctx")
+    #println("Ctx: $c_ctx")
     cu_ctx = unsafe_load(reinterpret(Ptr{CuContext}, c_ctx))
-    println("Ctx: $cu_ctx")
+    #println("Ctx: $cu_ctx")
     IrisHRT.iris_task_kernel_launch_disabled(task0, 1)
     IrisHRT.iris_task_submit(task0, IrisHRT.iris_roundrobin, Ptr{Int8}(C_NULL), 1)
 
@@ -103,7 +103,7 @@ function saxpy_iris2_cuda(A::Float32, X::Vector{Float32}, Y::Vector{Float32}, Z:
     size_dims = (Int64(SIZE),)
 
     all_args = [Z_ptr, A, X_ptr, Y_ptr]
-    println("X:$X_ptr Y:$Y_ptr Z:$Z_ptr A:$A")
+    println("In X:$X_ptr Y:$Y_ptr Z:$Z_ptr A:$A")
     CUDA.device!(0)
     CUDA.context!(cu_ctx)
     IrisHRT.call_cuda_kernel("saxpy", (SIZE,), (1,), all_args)
@@ -121,8 +121,8 @@ end
 function saxpy_iris2_hip(A::Float32, X::Vector{Float32}, Y::Vector{Float32}, Z::Vector{Float32})
     SIZE = length(X)
 
-    println("Initialized IRIS")
-    println("Xorig:$X, $Y, $Z")
+    #println("Initialized IRIS")
+    #println("Xorig:$X, $Y, $Z")
     # Create IRIS memory objects
     mem_X = IrisHRT.iris_data_mem(X)
     mem_Y = IrisHRT.iris_data_mem(Y)
@@ -138,34 +138,28 @@ function saxpy_iris2_hip(A::Float32, X::Vector{Float32}, Y::Vector{Float32}, Z::
     #IrisHRT.iris_task_dmem_flush_out(task0, mem_Z)
     # Submit the task
     c_ctx = IrisHRT.iris_dev_get_ctx(0)
-    println("Ctx: $c_ctx")
+    #println("Ctx: $c_ctx")
     hip_ctx = unsafe_load(reinterpret(Ptr{HIPContext}, c_ctx))
-    println("Ctx: $hip_ctx")
+    #println("Ctx: $hip_ctx")
     IrisHRT.iris_task_kernel_launch_disabled(task0, 1)
     IrisHRT.iris_task_submit(task0, IrisHRT.iris_roundrobin, Ptr{Int8}(C_NULL), 1)
 
     X_ptr = Ptr{Float32}(IrisHRT.iris_mem_arch_ptr(mem_X, 0))
-    println("X: $X_ptr")
     X_ptr = reinterpret(Ptr{Float32}, X_ptr)
-    println("X1: $X_ptr")
     X_ptr = unsafe_wrap(ROCArray, X_ptr, (SIZE,), lock=false)
-    println("X2: $X_ptr")
+    #println("X2: $X_ptr")
     Y_ptr = Ptr{Float32}(IrisHRT.iris_mem_arch_ptr(mem_Y, 0))
-    println("Y: $Y_ptr SIZE:$SIZE")
     Y_ptr = reinterpret(Ptr{Float32}, Y_ptr)
-    println("Y1: $Y_ptr")
     Y_ptr = unsafe_wrap(ROCArray, Y_ptr, (SIZE,), lock=false)
-    println("Y2: $Y_ptr")
+    #println("Y2: $Y_ptr")
     Z_ptr = Ptr{Float32}(IrisHRT.iris_mem_arch_ptr(mem_Z, 0))
-    println("Z: $Z_ptr")
     Z_ptr = reinterpret(Ptr{Float32}, Z_ptr)
-    println("Z1: $Z_ptr")
     Z_ptr = unsafe_wrap(ROCArray, Z_ptr, (SIZE,), lock=false)
-    println("Z2: $Z_ptr")
+    #println("Z2: $Z_ptr")
     size_dims = (Int64(SIZE),)
 
     all_args = [Z_ptr, A, X_ptr, Y_ptr]
-    println("X:$X_ptr Y:$Y_ptr Z:$Z_ptr A:$A")
+    println("In X:$X_ptr Y:$Y_ptr Z:$Z_ptr A:$A")
     #AMDGPU.device!(AMDGPU.devices()[1])
     #AMDGPU.context!(hip_ctx)
     AMDGPU.@sync @roc groupsize=(SIZE,) gridsize=(1,) saxpy_hip(Z_ptr, Float32(2.0), X_ptr, Y_ptr)
@@ -276,7 +270,7 @@ saxpy_julia(A, X, Y, Ref_Z)
 #saxpy_direct_cuda(A, X, Y, Z)
 #saxpy_iris2_cuda(A, X, Y, Z)
 #saxpy_iris2_openmp(A, X, Y, Z)
-#saxpy_iris2_hip(A, X, Y, Z)
+saxpy_iris2_hip(A, X, Y, Z)
 saxpy_iris(A, X, Y, Z)
 julia_time = time() - julia_start
 #println("Julia time: ", julia_time)
