@@ -97,9 +97,13 @@ class library(CDLL):
 
 class IRIS(library):
     def __init__(self, libname='libiris.so'):
+        so_file = libname
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        if os.path.exists(os.path.join(current_dir, libname)):
+            so_file = os.path.join(current_dir, libname)
         # Do not error on import when Iris is not built. This is needed for Read the Docs to create the API documentation.
         try:
-            super(IRIS, self).__init__(libname)
+            super(IRIS, self).__init__(so_file)
         except OSError as e:
             print(e)
             print('libiris.so not found. Please install IRIS library.', file=sys.stderr)
@@ -210,11 +214,7 @@ class IRIS(library):
         dll.call(dll.iris_free_array, c_ptr)
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
-dll = None
-if os.path.exists(os.path.join(current_dir, 'libiris.so')):
-    dll = IRIS(os.path.join(current_dir, 'libiris.so'))
-else:
-    dll = IRIS()
+dll = IRIS()
 
 def call(fn_name, *args):
     dll.call(fn_name, *args)
