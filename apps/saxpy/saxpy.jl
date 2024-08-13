@@ -1,5 +1,5 @@
 
-ENV["IRIS_ARCHS"] = "openmp"
+ENV["IRIS_ARCHS"] = "cuda"
 #ENV["IRIS"] = "/noback/nqx/Ranger/tmp/iris.dev.prof/install.zenith"
 
 const iris_path = ENV["IRIS"]
@@ -266,7 +266,6 @@ Ref_Z = zeros(Float32, SIZE)
 IrisHRT.iris_init(Int32(1))
 
 julia_start = time()
-saxpy_julia(A, X, Y, Ref_Z)
 #saxpy_direct_cuda(A, X, Y, Z)
 if iris_arch == "cuda"
 saxpy_iris2_cuda(A, X, Y, Z)
@@ -274,6 +273,9 @@ end
 if iris_arch == "hip"
 saxpy_iris2_hip(A, X, Y, Z)
 end
+X = rand(Float32, SIZE)
+Y = rand(Float32, SIZE)
+saxpy_julia(A, X, Y, Ref_Z)
 saxpy_iris(A, X, Y, Z)
 julia_time = time() - julia_start
 #println("Julia time: ", julia_time)
