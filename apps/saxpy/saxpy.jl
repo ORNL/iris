@@ -1,5 +1,5 @@
 
-ENV["IRIS_ARCHS"] = "hip"
+ENV["IRIS_ARCHS"] = "openmp"
 #ENV["IRIS"] = "/noback/nqx/Ranger/tmp/iris.dev.prof/install.zenith"
 
 const iris_path = ENV["IRIS"]
@@ -14,7 +14,7 @@ println("Size of Cint in bits: ", sizeof(Cint) * 8, " bits")
 using CUDA
 using AMDGPU
 using Base.Threads
-
+const iris_arch = ENV["IRIS_ARCHS"]
 function saxpy_cuda(Z, A, X, Y)
     # Calculate global index
     i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
@@ -268,9 +268,12 @@ IrisHRT.iris_init(Int32(1))
 julia_start = time()
 saxpy_julia(A, X, Y, Ref_Z)
 #saxpy_direct_cuda(A, X, Y, Z)
-#saxpy_iris2_cuda(A, X, Y, Z)
-#saxpy_iris2_openmp(A, X, Y, Z)
+if iris_arch == "cuda"
+saxpy_iris2_cuda(A, X, Y, Z)
+end
+if iris_arch == "hip"
 saxpy_iris2_hip(A, X, Y, Z)
+end
 saxpy_iris(A, X, Y, Z)
 julia_time = time() - julia_start
 #println("Julia time: ", julia_time)

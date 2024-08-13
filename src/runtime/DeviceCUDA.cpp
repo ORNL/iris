@@ -1017,7 +1017,7 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
   if (julia_if_ != NULL && kernel->task()->enable_julia_if()) {
       size_t grid_s[3] =  { (size_t)grid[0],  (size_t)grid[1],  (size_t)grid[2] };
       size_t block_s[3] = { (size_t)block[0], (size_t)block[1], (size_t)block[2] };
-      julia_if_->host_launch((void **)kstream, stream_index, (void *)&ctx_,
+      julia_if_->host_launch((void **)kstream, stream_index, (void *)&ctx_, async,
                   nstreams, kernel->name(), 
                   kernel->GetParamWrapperMemory(), devno(),
                   dim, grid_s, block_s);

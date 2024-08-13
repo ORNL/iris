@@ -1989,7 +1989,7 @@ extern int iris_read_bool_env(const char *env_name);
 extern int iris_read_int_env(const char *env_name);
 
 // Define a type for the Julia kernel launch function call pointer
-typedef int32_t (*julia_kernel_t)(int32_t target, int32_t devno, void *ctx, int32_t stream_index, void **stream, int32_t nstreams, int32_t *args, void **values, size_t *param_size, size_t *param_dim_size, int32_t nparams, size_t *threads, size_t *blocks, int dim, const char *kernel_name);
+typedef int32_t (*julia_kernel_t)(int32_t target, int32_t devno, void *ctx, bool async, int32_t stream_index, void **stream, int32_t nstreams, int32_t *args, void **values, size_t *param_size, size_t *param_dim_size, int32_t nparams, size_t *threads, size_t *blocks, int dim, const char *kernel_name);
 
 /* API to initialize Julia interfacea
  * @param kernel_launch_func Kernel launch Julia function 
