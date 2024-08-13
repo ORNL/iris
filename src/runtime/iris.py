@@ -16,6 +16,7 @@ import pdb
 import os
 import struct
 
+path = os.path.dirname(os.path.abspath(__file__))
 class CommData3D(Structure):
     _fields_ = [
         ("from_id", c_uint),
@@ -99,8 +100,10 @@ class IRIS(library):
     def __init__(self, libname='libiris.so'):
         so_file = libname
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        if os.path.exists(os.path.join(current_dir, libname)):
-            so_file = os.path.join(current_dir, libname)
+        if os.path.exists(os.path.join(current_dir, 'lib64', libname)):
+            so_file = os.path.join(current_dir, 'lib64', libname)
+        elif os.path.exists(os.path.join(current_dir, 'lib', libname)):
+            so_file = os.path.join(current_dir, 'lib', libname)
         # Do not error on import when Iris is not built. This is needed for Read the Docs to create the API documentation.
         try:
             super(IRIS, self).__init__(so_file)
@@ -213,7 +216,6 @@ class IRIS(library):
     def free(self, c_ptr):
         dll.call(dll.iris_free_array, c_ptr)
 
-current_dir = os.path.dirname(os.path.abspath(__file__))
 dll = IRIS()
 
 def call(fn_name, *args):
