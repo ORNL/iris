@@ -8,7 +8,7 @@ class Heatmap():
         self.device_colour_palette = device_colour_palette
         self.use_device_background_colour = use_device_background_colour
 
-    def plotHeatmap(self,directory, output, width, height, custom_policy_rename, subtract_gnn_overhead, **kargs):
+    def plotHeatmap(self,directory, output, width, height, custom_policy_rename, subtract_gnn_overhead, normalize, statistic="median", unit="ms", **kargs):
         import matplotlib.pyplot as plt
         import seaborn as sns
         sns.set_theme()
@@ -18,9 +18,10 @@ class Heatmap():
         dataloader = LoadData(directory,custom_policy_rename, subtract_gnn_overhead)
         data = dataloader.GetData()
         data = pandas.DataFrame.from_records(data)
-
-        # statistical reduction (median and variance):
-        data = data.groupby(['system-and-policy','dag']).agg(["median","var"]).reset_index()
+        if normalize:
+            data = data.assign(duration=data.groupby(['system-and-policy','dag']).transform(lambda x: (x - x.min()) / (x.max()- x.min())))
+        # statistical reduction (median and standard deviation):
+        data = data.groupby(['system-and-policy','dag']).agg([statistic,"std"]).reset_index()
         data = data.fillna(0)
         #statistical reduction (median)
         #data = data.groupby(['system-and-policy','dag']).median().reset_index()
@@ -35,8 +36,12 @@ class Heatmap():
         # generate heatmap
         fig, ax = plt.subplots(figsize=(width,height))
         cmap = sns.cm.rocket_r
-        heatmap_plot = sns.heatmap(heatmap_data['duration']['median'],annot=round(heatmap_data['duration']['median'],3).astype(str)+'±'+round(heatmap_data['duration']['var'],3).astype(str),fmt="",cmap=cmap)
-        heatmap_plot.collections[0].colorbar.set_label("median time to completion (sec)")
+        if normalize:
+            heatmap_plot = sns.heatmap(heatmap_data['duration'][statistic],fmt="",cmap=cmap)
+            heatmap_plot.collections[0].colorbar.set_label("normalized "+statistic+" time to completion (%)")
+        else:
+            heatmap_plot = sns.heatmap(heatmap_data['duration'][statistic],annot=round(heatmap_data['duration'][statistic],3).astype(str)+'±'+round(heatmap_data['duration']['std'],3).astype(str),fmt="",cmap=cmap)
+            heatmap_plot.collections[0].colorbar.set_label(statistic+" time to completion ("+unit+")")
         plt.xlabel('DAG', fontsize = 15)
         if dataloader.OnlyOneSystem():
             plt.ylabel('Policy', fontsize = 15)
@@ -62,6 +67,9 @@ if __name__ == '__main__':
     parser.add_argument("--height",dest="height",type=int, default=15, required=False)
     parser.add_argument("--custom-rename",dest="customname", type=str, default=None, required=False)
     parser.add_argument("--subtract-gnn-overhead",dest="subtractgnnoverhead", default=False, required=False, action='store_true')
+    parser.add_argument("--normalize",dest="normalize", help="Normalize each DAG to highlight the contrast between scheduling policies for each system", default=False, required=False, action='store_true')
+    parser.add_argument("--statistic",dest="stat", type=str, default="median", required=False)
+    parser.add_argument("--units",dest="units", type=str, default="ms", required=False)
 
     args = parser.parse_args()
     directory = args.directory
@@ -74,5 +82,5 @@ if __name__ == '__main__':
         print("Incorrect Arguments. Please provide *at least* one output filepath (--output-file)")
         sys.exit(1)
 
-    Heatmap.plotHeatmap(None,directory,output_file,args.width,args.height,args.customname,args.subtractgnnoverhead)
+    Heatmap.plotHeatmap(None,directory,output_file,args.width,args.height,args.customname,args.subtractgnnoverhead,args.normalize,args.stat,args.units)
 

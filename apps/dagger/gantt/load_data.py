@@ -19,9 +19,7 @@ class LoadData:
                 end = end - float(overhead)
             if custom_policy_rename is not None and "custom" in schedule:
                 schedule = custom_policy_rename
-            
             data.append({"system-and-policy":"{}-{}".format(system,schedule), "duration":end-start, "dag":dag})
-
         #if only one system ---just present the policy 
         systems = [d['system-and-policy'].split('-')[0] for d in data]
         self.only_one_system = len(set(systems)) == 1
@@ -32,7 +30,7 @@ class LoadData:
         self.data = data
 
     def GetData(self):
-        return(self.data)
+        return (self.data)
 
     def OnlyOneSystem(self):
-        return(self.only_one_system)
+        return (self.only_one_system)

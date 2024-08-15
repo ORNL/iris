@@ -34,8 +34,7 @@ from functools import reduce
 from operator import itemgetter
 
 # Variable training parameters
-_max_epochs = 10
-#_max_epochs = 200
+_max_epochs = 60
 
 # NOTE: we don't currently support batching which leads to longer training times
 #   TODO    * support batching
@@ -159,6 +158,11 @@ class GraphLevelGNN(pl.LightningModule):
         self.to(device)
         self.model.to(device)
         self.model.train()
+        
+        self.validation_step_outputs = []
+        self.training_step_outputs = []
+        self.train_metrics = {"epoch": [], "mean_accuracy": [], "mean_loss": []}
+        self.valid_metrics = {"epoch": [], "mean_accuracy": [], "mean_loss": []}
 
     def forward(self, data, mode="train"):
         if mode == "predict":
@@ -183,17 +187,42 @@ class GraphLevelGNN(pl.LightningModule):
         loss, acc = self.forward(batch, mode="train")
         _training_log['accuracy'].append(acc.tolist())
         _training_log['loss'].append(loss.tolist())
+        
+        self.training_step_outputs.append({"accuracy": acc, "loss": loss})
         return loss
 
     def validation_step(self, batch, batch_idx):
         loss, acc = self.forward(batch, mode="val")
         _validation_log['accuracy'].append(acc.tolist())
         _validation_log['loss'].append(loss.tolist())
+
+        self.validation_step_outputs.append({"accuracy": acc, "loss": loss})
         self.log('val_acc', acc)
 
     def test_step(self, batch, batch_idx):
         _, acc = self.forward(batch, mode="test")
         self.log('test_acc', acc)
+
+    def on_validation_epoch_end(self):
+        all_acc = [x['accuracy'].item() for x in self.validation_step_outputs]
+        all_loss = [x['loss'].item() for x in self.validation_step_outputs]
+        
+        self.valid_metrics["epoch"].append(self.current_epoch)
+        self.valid_metrics["mean_accuracy"].append(np.mean(all_acc))
+        self.valid_metrics["mean_loss"].append(np.mean(all_loss))
+
+        self.validation_step_outputs.clear()  # free memory
+
+    def on_train_epoch_end(self):
+        all_acc = [x['accuracy'].item() for x in self.training_step_outputs]
+        all_loss = [x['loss'].item() for x in self.training_step_outputs]
+
+        self.train_metrics["epoch"].append(self.current_epoch)
+        self.train_metrics["mean_accuracy"].append(np.mean(all_acc))
+        self.train_metrics["mean_loss"].append(np.mean(all_loss))
+
+        self.training_step_outputs.clear()  # free memory
+
 
 class GraphDataset(torch.utils.data.Dataset):
     # In general:
@@ -378,6 +407,7 @@ def train_graph_classifier(**model_kwargs):
                          devices=num_devices,
                          max_epochs=_max_epochs,
                          #log_every_n_steps=5,
+                         num_sanity_val_steps=0,
                          enable_progress_bar=True)
 
     # Check whether pretrained model exists. If yes, load it and skip training
@@ -390,6 +420,29 @@ def train_graph_classifier(**model_kwargs):
                               c_out=_num_classes,
                               **model_kwargs)
         trainer.fit(model, _graph_train_loader, _graph_val_loader)
+
+        import matplotlib.pylab as plt
+        plt.clf()
+        plt.close("all")
+        plt.plot(model.valid_metrics['epoch'], model.valid_metrics['mean_accuracy'], label='Validation', color="C0")
+        plt.plot(model.train_metrics['epoch'], model.train_metrics['mean_accuracy'], label='Training', color="C1")
+        plt.legend()
+        plt.xlabel('Epoch')
+        plt.ylabel('Accuracy')
+        plt.savefig('accuracy_metrics.pdf')
+        plt.clf()
+        plt.close("all")
+
+        plt.plot(model.valid_metrics['epoch'], model.valid_metrics['mean_loss'], label='Validation', color="C0")
+        plt.plot(model.train_metrics['epoch'], model.train_metrics['mean_loss'], label='Training', color="C1")
+        plt.legend()
+        plt.xlabel('Epoch')
+        plt.ylabel('Loss')
+        plt.savefig('loss_metrics.pdf')
+        plt.clf()
+        plt.close("all")
+
+
         model = GraphLevelGNN.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
     # Test best model on validation and test set
     train_result = trainer.test(model, _graph_train_loader, verbose=False)
@@ -402,15 +455,6 @@ def train_graph_classifier(**model_kwargs):
     # and write out the training size
     with open(_pretrained_shape_file,"wb") as shape_file:
         pickle.dump(_tu_dataset.shape(),shape_file)
-
-    # plot the training accuracy
-    import matplotlib.pyplot as plt
-    plt.plot(_validation_log['accuracy'],label='Validation')
-    plt.plot(_training_log['accuracy'],label='Training')
-    plt.legend()
-    plt.xlabel('Epoch')
-    plt.ylabel('Accuracy')
-    plt.savefig('training_report.pdf')
 
     return model, result
 

@@ -2,14 +2,21 @@
 
 export SYSTEM=$(hostname|cut -d . -f 1|sed 's/[0-9]*//g')
 export WORKING_DIRECTORY=`pwd`
-export PAYLOAD_SIZE=512
-export SIZES=(10 100 700)
-export REPEATS=10
+export PAYLOAD_SIZE=128
+export SIZES=(10 25 100)
+export REPEATS=30
 
-##TODO remove when working
-#cd ../..
-#source ./build.sh
-#[ $? -ne 0 ] &&  exit 1
+#rebuild IRIS from current source
+cd ../..
+source ./build.sh
+[ $? -ne 0 ] &&  exit 1
+
+#if we don't have a model, train a new one
+cd $WORKING_DIRECTORY
+if test ! -d saved_models; then
+  python ./iris-gnn.py
+fi
+[ $? -ne 0 ] &&  exit 1
 
 cd $WORKING_DIRECTORY
 cd dagger
@@ -36,6 +43,8 @@ else
 fi
 export IRIS_HISTORY=1
 export IRIS_ARCHS=cuda,hip
+export IRIS_ASYNC=1
+export IRIS_ASYNC_MALLOC=1
 
 echo Using policies: ${POLICIES[@]}
 echo Using sizes: ${SIZES[@]}
@@ -47,7 +56,7 @@ mkdir -p $RESULTS_DIR $GRAPHS_DIR
 #rm -rf ./dagger-payloads
 source $WORKING_DIRECTORY/generate_dagger_graphs.sh
 echo "Running DAGGER evaluation on GNN policy.... (graph figures can be found in $GRAPHS_DIR)"
-
+#TODO: drop initialization!
 echo "Running DAGGER on payloads..."
 for SIZE in ${SIZES[@]}
 do
@@ -223,7 +232,15 @@ done
 
 #generate heatmap
 cd $WORKING_DIRECTORY
-python3 ./dagger/gantt/heatmap.py --output-file gnn-heatmap.pdf --directory ./results/ --custom-rename="gnn"
-python3 ./dagger/gantt/heatmap.py --output-file gnn-sans-regression-overhead-heatmap.pdf --directory ./results/ --custom-rename="gnn" --subtract-gnn-overhead
-python3 ./dagger/gantt/lineplot-comparison.py --output-file gnn-sans-regression-overhead-vs-dynamic-policies.pdf --directory ./results/ --target="gnn" --custom-rename="gnn" --subtract-gnn-overhead
+python3 ./dagger/gantt/heatmap.py --output-file gnn-heatmap.pdf --directory ./results/ --custom-rename="gnn" --width=21 --height=9
+python3 ./dagger/gantt/heatmap.py --output-file mean-gnn-heatmap.pdf --directory ./results/ --custom-rename="gnn" --width=21 --height=9 --statistic="mean" --units="ms"
+
+python3 ./dagger/gantt/heatmap.py --output-file gnn-sans-regression-overhead-heatmap.pdf --directory ./results/ --custom-rename="gnn" --subtract-gnn-overhead --width=21 --height=9
+python3 ./dagger/gantt/heatmap.py --output-file mean-gnn-sans-regression-overhead-heatmap.pdf --directory ./results/ --custom-rename="gnn" --subtract-gnn-overhead --width=21 --height=9 --statistic="mean" --units="ms"
+
+python3 ./dagger/gantt/lineplot-comparison.py --output-file gnn-sans-regression-overhead-vs-dynamic-policies.pdf --directory ./results/ --target="gnn" --custom-rename="gnn" --subtract-gnn-overhead --width=21 --height=9
+python3 ./dagger/gantt/lineplot-comparison.py --output-file mean-gnn-sans-regression-overhead-vs-dynamic-policies.pdf --directory ./results/ --target="gnn" --custom-rename="gnn" --subtract-gnn-overhead --width=21 --height=9 --statistic="mean" --units="ms"
+
+python3 ./dagger/gantt/heatmap.py --output-file normalized-gnn-sans-regression-overhead-heatmap.pdf --directory ./results/ --custom-rename="gnn" --subtract-gnn-overhead --normalize --width=21 --height=9
+
 exit 0

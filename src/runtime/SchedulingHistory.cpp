@@ -45,7 +45,8 @@ SchedulingHistory::~SchedulingHistory() {
 void SchedulingHistory::AddKernel(Command* cmd) {
   //ignore logging kernels at the moment
   //if (cmd->type_init()){
-  //  printf("not logging initialization -- but performed init on device id %d\n",cmd->task()->dev()->devno());
+  //  //printf("not logging initialization -- but performed init on device id %d\n",cmd->task()->dev()->devno());
+  //  return;
   //}
   Add(cmd);
 }

@@ -6,7 +6,7 @@ class LinePlotComparison():
     def __init__(self):
         print("initialized LinePlotComparison")
 
-    def plotLinePlot(self, directory, output, width, height, target_schedule, custom_policy_rename, subtract_gnn_overhead):
+    def plotLinePlot(self, directory, output, width, height, target_schedule, custom_policy_rename, subtract_gnn_overhead,  statistic="median", unit="ms"):
         import matplotlib.pyplot as plt
         import seaborn as sns
         sns.set_theme()
@@ -27,26 +27,21 @@ class LinePlotComparison():
         data = data[data['system-and-policy']!=target_schedule] 
         for dag in set(data['dag']):
             x = data[data['dag']==dag]
-            y = x.groupby(["system-and-policy","dag"]).agg({"duration":"median"})
+            y = x.groupby(["system-and-policy","dag"]).agg({"duration":statistic})
             entry_with_minimum_time = x['duration'].idxmin(0)
             best_policy = x.loc[entry_with_minimum_time]
             target_data = target_data._append(x[x["system-and-policy"] == best_policy['system-and-policy']])
         data = target_data.sort_values(by="dag")
+        from natsort import index_humansorted
+        import numpy as np
+        data = data.sort_values(by="dag", key=lambda x: np.argsort(index_humansorted(data["dag"])))
         fig, ax = plt.subplots(figsize=(width,height))
         boxplot = sns.boxplot(data=data, x="dag", y="duration", hue="system-and-policy")
+        plt.ylabel(statistic+" time to completion ("+unit+")", fontsize = 15)
+        plt.xlabel("DAG", fontsize = 15)
+        plt.legend(title='Policy')
         fig = boxplot.get_figure()
         fig.savefig(output) 
-
-        # statistical reduction (median and variance):
-        #data = data.groupby(['system-and-policy','dag']).agg(["median","var"]).reset_index()
-        #data = data.fillna(0)
-
-
-        #data = data.sort_values('system-and-policy')
-        #heatmap_data = data.pivot(index='system-and-policy', columns='dag')
-        ##reorder columns to be sensible (linear10, linear25, linear100) etc
-        #from natsort import humansorted
-        #heatmap_data = heatmap_data[humansorted(heatmap_data.columns)]
 
 if __name__ == '__main__':
     import os
@@ -63,6 +58,8 @@ if __name__ == '__main__':
     parser.add_argument("--target",dest="target",type=str, default=None, help="the target policy to compare against")
     parser.add_argument("--custom-rename",dest="customname", type=str, default=None, required=False)
     parser.add_argument("--subtract-gnn-overhead",dest="subtractgnnoverhead", default=False, required=False, action='store_true')
+    parser.add_argument("--statistic",dest="stat", type=str, default="median", required=False)
+    parser.add_argument("--units",dest="units", type=str, default="ms", required=False)
 
     args = parser.parse_args()
     directory = args.directory
@@ -75,5 +72,6 @@ if __name__ == '__main__':
         print("Incorrect Arguments. Please provide *at least* one output filepath (--output-file)")
         sys.exit(1)
 
-    LinePlotComparison.plotLinePlot(None,directory,output_file,args.width,args.height,args.target,args.customname,args.subtractgnnoverhead)
+    LinePlotComparison.plotLinePlot(None,directory,output_file,args.width,args.height,args.target,args.customname,args.subtractgnnoverhead,args.stat,args.units)
+    print("done.")
 
