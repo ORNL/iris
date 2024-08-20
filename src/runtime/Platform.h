@@ -304,7 +304,9 @@ private:
   int InitWorkers();
   int FilterSubmitExecute(Task* task);
   int ShowKernelHistory();
-
+  void Clean();
+  void Reset();
+  
 public:
   static Platform* GetPlatform();
 
