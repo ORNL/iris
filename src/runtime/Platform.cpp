@@ -57,6 +57,16 @@ namespace rt {
 char iris_log_prefix_[256];
 
 Platform::Platform() {
+  Reset();
+  pthread_mutex_init(&mutex_, NULL);
+}
+
+Platform::~Platform() {
+  pthread_mutex_destroy(&mutex_);
+  _debug2("Platform deleted");
+}
+
+void Platform::Reset() {
   init_ = false;
   tmp_dir_[0] = '\0';
   disable_d2d_ = false;
@@ -107,7 +117,6 @@ Platform::Platform() {
   hook_command_pre_ = NULL;
   hook_command_post_ = NULL;
   scheduling_history_ = NULL;
-  pthread_mutex_init(&mutex_, NULL);
   enable_proactive_ = false;
   disable_kernel_launch_ = false;
 #ifdef AUTO_PAR
@@ -115,8 +124,7 @@ Platform::Platform() {
 #endif
 }
 
-Platform::~Platform() {
-  if (!init_) return;
+void Platform::Clean() {
   if (scheduler_) delete scheduler_;
   for (int i = 0; i < ndevs_; i++) delete workers_[i];
   if (queue_) delete queue_;
@@ -160,8 +168,6 @@ Platform::~Platform() {
   if (json_) delete json_;
   if (pool_) delete pool_;
   kernel_history_.clear();
-  pthread_mutex_destroy(&mutex_);
-  _debug2("Platform deleted");
 }
 
 int Platform::JuliaInit() {
@@ -301,7 +307,7 @@ int Platform::Init(int* argc, char*** argv, int sync) {
   timer_->Stop(IRIS_TIMER_PLATFORM);
 
   init_ = true;
-
+  finalize_ = false;
   pthread_mutex_unlock(&mutex_);
 
   return IRIS_SUCCESS;
@@ -2272,6 +2278,8 @@ int Platform::Finalize() {
   _info("t18[%lf] t19[%lf] t20[%lf] t21[%lf]", timer()->Total(18), timer()->Total(19), timer()->Total(20), timer()->Total(21));
   finalize_ = true;
   if (scheduling_history_) delete scheduling_history_;
+  Clean();
+  Reset();
   pthread_mutex_unlock(&mutex_);
   return ret_id;
 }
