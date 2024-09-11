@@ -25,10 +25,11 @@
 #define IRIS_CMD_RESET_INPUT    0x100e
 #define IRIS_CMD_H2BROADCAST    0x100f
 #define IRIS_CMD_D2D            0x1010
+#define IRIS_CMD_DMEM2DMEM_COPY 0x1011
 
 #ifdef AUTO_PAR
 #ifdef AUTO_SHADOW
-#define IRIS_CMD_MEM_FLUSH_TO_SHADOW      0x1011
+#define IRIS_CMD_MEM_FLUSH_TO_SHADOW      0x1012
 #endif
 #endif
 #define IRIS_CMD_KERNEL_NARGS_MAX   16
@@ -76,6 +77,7 @@ public:
   int kernel_nargs() { return kernel_nargs_; }
   DataMem* datamem() { return (DataMem *)mem_; }
   Mem* mem() { return (Mem *)mem_; }
+  DataMem* dst_mem() { return (DataMem *)dst_mem_; }
   Task* task() { return task_; }
   bool last() { return last_; }
   void set_last() { last_ = true; }
@@ -132,6 +134,7 @@ private:
   size_t elem_size_;
   Kernel* kernel_;
   BaseMem* mem_;
+  BaseMem* dst_mem_;
   Task* task_;
   Platform* platform_;
   double time_;
@@ -174,6 +177,7 @@ public:
   static Command* CreateH2Broadcast(Task* task, Mem* mem, size_t off, size_t size, void* host);
   static Command* CreateH2Broadcast(Task* task, Mem* mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host);
   static Command* CreateD2D(Task* task, Mem* mem, size_t off, size_t size, void* host, int src_dev);
+  static Command* CreateDMEM2DMEM(Task* task, DataMem* src_mem, DataMem *dst_mem);
   static Command* CreateH2D(Task* task, Mem* mem, size_t off, size_t size, void* host);
   static Command* CreateH2D(Task* task, Mem* mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host);
   static Command* CreateH2DNP(Task* task, Mem* mem, size_t off, size_t size, void* host);

@@ -25,6 +25,11 @@ module IrisHRT
         false
     end
     using Libdl
+    cwd = pwd()
+    const iris_kernel_jl = cwd * "/kernel.jl"
+    println("Kernel file: $iris_kernel_jl")
+    include(iris_kernel_jl)
+    using .IrisKernelImpl
     libiris = ENV["IRIS"] * "/lib/" * "libiris.so"
     if !isfile(libiris)
         libiris = "libiris.so"
@@ -34,6 +39,7 @@ module IrisHRT
         ENV["IRIS_ARCHS"] = "cuda:hip:openmp"
     end
     lib = Libdl.dlopen(libiris)
+    println(Core.stdout, "PWD: $cwd")
 
     # Define enums
     @enum StreamPolicy STREAM_POLICY_DEFAULT=0 STREAM_POLICY_SAME_FOR_TASK=1 STREAM_POLICY_GIVE_ALL_STREAMS_TO_KERNEL=2
@@ -320,7 +326,6 @@ module IrisHRT
             AMDGPU.context!(hip_ctx)
             iris_println("Calling HIP kernel")
             call_hip_kernel(func_name, j_threads, j_blocks, hip_stream, julia_args, b_async_flag)
-            #CUDA.@sync @cuda threads=j_threads blocks=j_blocks Main.saxpy_cuda(julia_args[1], julia_args[2], julia_args[3], julia_args[4])
             ##############################################################
             iris_println("Completed HIP")
             return target*12
@@ -331,7 +336,6 @@ module IrisHRT
             func_name = unsafe_string(kernel_name)
             #iris_println("Calling OpenMP kernel")
             call_openmp_kernel(func_name, j_threads, j_blocks, julia_args, b_async_flag)
-            #CUDA.@sync @cuda threads=j_threads blocks=j_blocks Main.saxpy_cuda(julia_args[1], julia_args[2], julia_args[3], julia_args[4])
             ##############################################################
             #iris_println("Completed OpenMP")
             return target*13
@@ -414,24 +418,63 @@ module IrisHRT
     end
 
     # Bind functions from the IRIS library using ccall
-    function iris_init(sync::Int32)::Int32
+    function iris_init(sync)::Int32
         func_ptr = @cfunction(kernel_julia_wrapper, Cint, (Cint,        Cint,        Ptr{Cvoid}, Cchar, Cint,               Ptr{Ptr{Cvoid}},         Cint,           Ptr{Cint},       Ptr{Ptr{Cvoid}},         Ptr{Csize_t},  Ptr{Csize_t}, Cint,          Ptr{Csize_t},          Ptr{Csize_t},         Cint,      Ptr{Cchar}))
         global stored_func_ptr = func_ptr
-        flag = ccall(Libdl.dlsym(lib, :iris_julia_init), Int32, (Ptr{Cvoid},), func_ptr)
-        flag = flag & ccall(Libdl.dlsym(lib, :iris_init), Int32, (Ref{Int32}, Ref{Ptr{Ptr{Cchar}}}, Int32), Int32(1), C_NULL, sync)
-        #ndevs = iris_ndevices()
-        #for i in 0:(ndevs- 1)
-        #    flag = flag & iris_init_worker(i)
-        #end
-        #flag = flag & @spawn iris_init_devices(sync)
+        use_julia_threads = false
+        if use_julia_threads
+            flag = ccall(Libdl.dlsym(lib, :iris_julia_init), Int32, (Ptr{Cvoid}, Int32), func_ptr, Int32(1))
+            flag = flag & ccall(Libdl.dlsym(lib, :iris_init), Int32, (Ref{Int32}, Ref{Ptr{Ptr{Cchar}}}, Int32), Int32(1), C_NULL, Int32(sync))
+            ndevs = iris_ndevices()
+            t = @spawn begin 
+                iris_init_scheduler(0)
+            end
+            println(Core.stdout, "Julia: N devices $ndevs")
+            for i in 0:(ndevs- 1)
+                println(Core.stdout, "Julia: Initializing Worker $i")
+                flag = flag & iris_init_worker(i)
+            end
+            t = nothing
+            for i in 0:(ndevs- 1)
+                println(Core.stdout, "Julia: Starting Worker $i")
+                t = @spawn begin
+                    iris_start_worker(i, 0)
+                end
+                println(Core.stdout, t)
+            end
+            for i in 0:(ndevs- 1)
+                println(Core.stdout, "Julia: Initializing device $i")
+                flag = flag & iris_init_device(i)
+            end
+            println(Core.stdout, "Julia: Doing device synchronize")
+            println(Core.stdout, t)
+            flush(stdout)
+            flag = flag & iris_init_devices_synchronize(1)
+            println(Core.stdout, "Julia: Completed device synchronize")
+        else
+            flag = ccall(Libdl.dlsym(lib, :iris_julia_init), Int32, (Ptr{Cvoid}, Int32), func_ptr, Int32(0))
+            flag = ccall(Libdl.dlsym(lib, :iris_init), Int32, (Ref{Int32}, Ref{Ptr{Ptr{Cchar}}}, Int32), Int32(1), C_NULL, Int32(sync))
+        end
         return flag
     end
 
+    function iris_init_scheduler(use_pthread::Int)::Int32
+        return ccall(Libdl.dlsym(lib, :iris_init_scheduler), Int32, (Int32,), Int32(use_pthread))
+    end
     function iris_init_worker(dev::Int)::Int32
         return ccall(Libdl.dlsym(lib, :iris_init_worker), Int32, (Int32,), Int32(dev))
     end
+    function iris_start_worker(dev::Int, use_pthread::Int)::Int32
+        return ccall(Libdl.dlsym(lib, :iris_start_worker), Int32, (Int32, Int32), Int32(dev), Int32(use_pthread))
+    end
+    function iris_init_device(dev::Int)::Int32
+        return ccall(Libdl.dlsym(lib, :iris_init_device), Int32, (Int32,), Int32(dev))
+    end
     function iris_init_devices(sync::Int)::Int32
         return ccall(Libdl.dlsym(lib, :iris_init_devices), Int32, (Int32,), Int32(sync))
+    end
+    function iris_init_devices_synchronize(sync::Int)::Int32
+        return ccall(Libdl.dlsym(lib, :iris_init_devices_synchronize), Int32, (Int32,), Int32(sync))
     end
     # Call Julia kernel 
     # CUDA kernel wrapper
@@ -449,14 +492,28 @@ module IrisHRT
         args_tuple = Tuple(args)
         # Call the function with arguments
         #println(Core.stdout, "Args_tuple: $args_tuple")
+        println(Core.stdout, "Async $async_flag")
         if async_flag
             iris_println("Asynchronous CUDA execution")
             CUDA.@async @cuda threads=threads blocks=blocks stream=stream func(args_tuple...)
-            CUDA.@sync
         else
-            CUDA.@sync @cuda threads=threads blocks=blocks func(args_tuple...)
+            iris_println("---------Synchronous CUDA execution $blocks $threads func:$func----------")
+            gc_state = @ccall(jl_gc_safe_enter()::Int8)
+            CUDA.@sync begin
+                @cuda threads=threads blocks=blocks saxpy_cuda(args_tuple...)
+            end
+            @ccall(jl_gc_safe_leave(gc_state::Int8)::Cvoid)
+
+            #CUDA.@sync @cuda threads=threads blocks=blocks func(args_tuple...)
+            #func1(threads, blocks, args_tuple)
         end
         #synchronize(blocking = true)
+    end
+    function saxpy_cuda(Z, A, X, Y)
+        # Calculate global index
+        i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
+        @inbounds Z[i] = A * X[i] + Y[i]
+        return nothing
     end
 
     # HIP kernel wrapper

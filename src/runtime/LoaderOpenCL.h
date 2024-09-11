@@ -222,6 +222,11 @@ CL_API_ENTRY cl_int CL_API_CALL
                        cl_event *       event) CL_API_SUFFIX__VERSION_1_0;
 
 typedef cl_bitfield         cl_command_queue_properties;
+CL_API_ENTRY CL_EXT_PREFIX__VERSION_1_2_DEPRECATED cl_command_queue CL_API_CALL
+(*clCreateCommandQueue)(cl_context                     context,
+                     cl_device_id                   device,
+                     cl_command_queue_properties    properties,
+                     cl_int *                       errcode_ret) CL_EXT_SUFFIX__VERSION_1_2_DEPRECATED;
 #ifdef CL_VERSION_2_0
 typedef cl_properties       cl_queue_properties;
 CL_API_ENTRY cl_command_queue CL_API_CALL

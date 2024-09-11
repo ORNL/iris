@@ -139,10 +139,11 @@ void Device::Execute(Task* task) {
   //printf("================== Task:%s =====================\n", task->name());
   _event_debug("task[%lu:%s] started execution on dev[%d][%s] time[%lf] start:[%lf] q[%d]", task->uid(), task->name(), devno(), name(), task->time(), task->time_start(), task->recommended_stream());
   _trace("task[%lu:%s] started execution on dev[%d][%s] time[%lf] start:[%lf] q[%d]", task->uid(), task->name(), devno(), name(), task->time(), task->time_start(), task->recommended_stream());
-  for(Command *cmd : task->reset_mems()) {
-      ExecuteMemResetInput(task, cmd);
-  }
-  if (task->cmd_kernel()) ExecuteMemIn(task, task->cmd_kernel());     
+  //for(Command *cmd : task->reset_mems()) {
+      // Handle Memory Reset commands IRIS_CMD_RESET_INPUT first
+  //    ExecuteMemResetInput(task, cmd);
+  //}
+  //if (task->cmd_kernel()) ExecuteMemIn(task, task->cmd_kernel());     
   for (int i = 0; i < task->ncmds(); i++) {
     //printf("Inside device cmd:%d execute and calling free destroy events %lu:%s %lf\n", i, task->uid(), task->name(), timer_->Now());
     Command* cmd = task->cmd(i);
@@ -151,8 +152,13 @@ void Device::Execute(Task* task) {
     switch (cmd->type()) {
       case IRIS_CMD_INIT:         ExecuteInit(cmd);       break;
       case IRIS_CMD_KERNEL:       {
+                                      ExecuteMemIn(task, cmd);
                                       ExecuteKernel(cmd);     
                                       ExecuteMemOut(task, task->cmd_kernel());
+                                      break;
+                                  }
+      case IRIS_CMD_DMEM2DMEM_COPY: {
+                                      ExecuteDMEM2DMEM(task, cmd);
                                       break;
                                   }
       case IRIS_CMD_MALLOC:       ExecuteMalloc(cmd);     break;
@@ -166,7 +172,7 @@ void Device::Execute(Task* task) {
       case IRIS_CMD_MEM_FLUSH_TO_SHADOW:    ExecuteMemFlushOutToShadow(cmd);break;
 #endif
 #endif
-      case IRIS_CMD_RESET_INPUT :                         break;
+      case IRIS_CMD_RESET_INPUT : ExecuteMemResetInput(task, cmd); break;
       case IRIS_CMD_MAP:          ExecuteMap(cmd);        break;
       case IRIS_CMD_RELEASE_MEM:  ExecuteReleaseMem(cmd); break;
       case IRIS_CMD_HOST:         ExecuteHost(cmd);       break;
@@ -796,6 +802,34 @@ void Device::ExecuteMemResetInput(Task *task, Command* cmd) {
     }
 }
 
+void Device::ExecuteDMEM2DMEM(Task *task, Command *cmd) {
+    BaseMem *src_mem = cmd->mem();
+    BaseMem *dst_mem = cmd->dst_mem();
+    if (src_mem->GetMemHandlerType() == IRIS_DMEM) {
+        ExecuteMemInDMemIn(task, cmd, (DataMem *)src_mem);
+    }
+    if (dst_mem->GetMemHandlerType() == IRIS_DMEM) {
+        // Run copy command here 
+        if (src_mem->GetMemHandlerType() == IRIS_DMEM ||
+                src_mem->GetMemHandlerType() == IRIS_DMEM_REGION) {
+            DataMem *dmem = (DataMem *)src_mem;
+            dmem->set_dirty_except(devno_);
+            dmem->set_host_dirty();
+        }
+        if (is_async(task)) {
+            int mem_stream = GetStream(task);
+            dst_mem->clear_d2h_events();
+            dst_mem->clear_streams();
+            dst_mem->SetWriteStream(devno(), mem_stream);
+            dst_mem->SetWriteDevice(devno());
+            //TODO
+            void *k_event = cmd->kernel()->GetCompletionEvent();
+            dst_mem->SetWriteDeviceEvent(devno(), k_event);
+            //mem->RecordEvent(devno(), mem_stream, true); //It should create new entry of event instead of using existing one
+            _event_debug("Rewrite back RecordEvent mem set stream   task:[%lu][%s] output dmem:%lu stream:%d, dev:%d event:%p mem_ptr:%p\n", task->uid(), task->name(), mem->uid(), mem_stream, devno(), k_event, mem->get_arch(devno()));
+        }
+    }
+}
 void Device::ExecuteMemIn(Task *task, Command* cmd) {
     if (cmd == NULL || cmd->kernel() == NULL) return;
     int *params_map = cmd->get_params_map();

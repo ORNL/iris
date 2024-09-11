@@ -9,7 +9,11 @@ LoaderCUDA::LoaderCUDA() {
 
 LoaderCUDA::~LoaderCUDA() {
 }
-
+void *LoaderCUDA::GetSymbol(const char *name) {
+  void *dptr = NULL;
+  cudaGetSymbolAddress(&dptr, name);
+  return (void *)dptr;
+}
 int LoaderCUDA::LoadFunctions() {
   LOADFUNC(cuInit);
   LOADFUNC(cuDriverGetVersion);
@@ -55,6 +59,7 @@ int LoaderCUDA::LoadFunctions() {
   LOADFUNC(cuMemcpyAsync);
   LOADFUNCEXT(cudaMemcpyAsync);
   LOADFUNCEXT(cudaMemcpy2D);
+  LOADFUNCEXT(cudaGetSymbolAddress);
   LOADFUNCEXT(cudaHostGetDevicePointer);
   LOADFUNCEXT(cudaSetDeviceFlags);
   LOADFUNCEXT(cudaMemcpy2DAsync);

@@ -73,6 +73,7 @@ set(IRISKernels_SRC_DIR ${PROJECT_SOURCE_DIR}/src)
 set(IRISKernels_INC_DIR ${PROJECT_SOURCE_DIR}/include)
 set(IRISKernels_BIN_DIR ${PROJECT_BINARY_DIR}/bin)
 
+option(NO_OPENMP "Disable OpenMP in CPU kernel"    OFF)
 option(USE_RISCV "Use RISCV toolchain "    OFF )
 message(STATUS "******* CMAKE_SYSTEM_PROCESSOR: ${CMAKE_SYSTEM_PROCESSOR}")
 if (NOT USE_RISCV)
@@ -318,7 +319,9 @@ set(OPENMP_INC "")
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     set(OPENMP_INC "")
 else()
+if (NOT NO_OPENMP)
     set(OPENMP_INC "-fopenmp")
+endif()
 endif()
 set(HOST2XILINX_FLAGS "${HOST2XILINX_FLAGS} -I$ENV{XILINX_HLS}/include -I$ENV{XILINX_VITIS}/include -I$ENV{XILINX_XRT}/include/ -DENABLE_IRIS ${OPENMP_INC} -O3 -g -fPIC ${COMMON_FLAGS} ${LOCAL_COMMON_FLAGS} -I. ")
 set(HOST2OPENCL_FLAGS "${HOST2OPENCL_FLAGS} -DENABLE_IRIS ${OPENMP_INC} -O3 -g -fPIC ${COMMON_FLAGS} ${LOCAL_COMMON_FLAGS} -I.")
@@ -578,11 +581,12 @@ endif() # XILINX_TARGET
 message(STATUS "XILINX Target (XCL_EMULATION_MODE): ${XILINX_TARGET}")
 initVar(XILINX_LANGUAGE "opencl")
 initVar(XILINX_VERSION "1")
+initVar(XILINX_OUTPUT "xclbin")
 #initVar(XILINX_FREQUENCY 300000000)
 initVar(XILINX_DESIGN_CONFIG "${CMAKE_BINARY_DIR}/design.cfg")
 message(STATUS "XILINX Design config (XILINX_DESIGN_CONFIG): ${XILINX_DESIGN_CONFIG}")
 initVar(XTMP_DIR "${CMAKE_BINARY_DIR}/_x/${XILINX_TARGET}/${XILINX_LANGUAGE}/${XILINX_VERSION}")
-initVar(XILINX_XCLBIN "kernel-fpga.xclbin")
+initVar(XILINX_XCLBIN "kernel-fpga.${XILINX_OUTPUT}")
 if (NOT XILINX_PLATFORM)
 execute_process(COMMAND bash -c "platforminfo  -l | grep baseName | awk '{print $2}' | head -n1 | sed -e s/,//g  -e s/\\\"//g"   OUTPUT_VARIABLE XILINX_PLATFORM)
 string(REGEX REPLACE "\n$" "" XILINX_PLATFORM "${XILINX_PLATFORM}")
@@ -1011,20 +1015,28 @@ add_dependencies(${APP_EXECUTABLE} emconfig.json)
 if (APP_DEPENDS)
 add_dependencies(${APP_EXECUTABLE} ${APP_DEPENDS})
 endif()
+if (XILINX_LANGUAGE STREQUAL "opencl")
 target_link_libraries(${APP_EXECUTABLE} rt pthread OpenCL)
+else() # XILINX_LANGUAGE
+target_link_libraries(${APP_EXECUTABLE} rt pthread)
+endif() # XILINX_LANGUAGE
 if (APP_LINK_LIB)
 target_link_libraries(${APP_EXECUTABLE} ${APP_LINK_LIB})
-endif()
-endif()
-else()
+endif() #APP_LINK_LIB
+endif() #XILINX_OPENCL_SOURCES or XILINX_KERNEL_SOURCES
+else() # APP_SOURCES AND USE_XILINX
 if (APP_LIB_SOURCES AND USE_XILINX)
 if (XILINX_OPENCL_SOURCES OR XILINX_KERNEL_SOURCES)
 add_dependencies(${APP_LIBRARY_NAME} ${XILINX_XCLBIN})
 add_dependencies(${APP_LIBRARY_NAME} emconfig.json)
+if (XILINX_LANGUAGE STREQUAL "opencl")
 target_link_libraries(${APP_LIBRARY_NAME} rt pthread OpenCL)
-endif()
-endif()
-endif()
+else() #XILINX_LANGUAGE
+target_link_libraries(${APP_LIBRARY_NAME} rt pthread)
+endif() #XILINX_LANGUAGE
+endif() #XILINX_OPENCL_SOURCES XILINX_KERNEL_SOURCES
+endif() #APP_LIB_SOURCES AND USE_XILINX
+endif() #APP_SOURCES AND USE_XILINX
 
 if (APP_SOURCES AND APP_LIBRARIES)
 target_link_libraries(${APP_EXECUTABLE} ${APP_LIBRARIES})

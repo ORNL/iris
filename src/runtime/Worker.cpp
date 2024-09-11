@@ -104,7 +104,6 @@ void Worker::Run() {
   while (true) {
     _debug2("Device:%d:%s Worker entering into sleep mode", dev_->devno(), dev_->name());
     //printf("1Device:%d:%s Queue size:%lu\n", dev_->devno(), dev_->name(), queue_->Size());
-    Sleep();
     _debug2("Device:%d:%s Worker thread invoked now running:%d", dev_->devno(), dev_->name(), running_);
     //printf("2Device:%d:%s Queue size:%lu\n", dev_->devno(), dev_->name(), queue_->Size());
     if (!running_) break;
@@ -124,6 +123,7 @@ void Worker::Run() {
       task->Release(); // For Worker::Run Retain call
 #endif
     }
+    Sleep();
   }
   _debug2("Device:%d:%s Worker thread exited\n\n", dev_->devno(), dev_->name());
 }

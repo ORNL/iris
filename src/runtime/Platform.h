@@ -59,8 +59,11 @@ public:
 
 public:
   int Init(int* argc, char*** argv, int sync);
-  int JuliaInit();
+  int JuliaInit(bool decoupled_init=true);
   int InitWorker(int dev);
+  int StartWorker(int dev, bool use_pthread=true);
+  int InitDevice(int dev);
+  int InitDevicesSynchronize(int sync);
   int Finalize();
   int Synchronize();
 
@@ -112,6 +115,7 @@ public:
   int TaskH2BroadcastFull(iris_task brs_task, iris_mem brs_mem, void* host);
   int TaskH2D(iris_task brs_task, iris_mem brs_mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host);
   int TaskH2D(iris_task brs_task, iris_mem brs_mem, size_t off, size_t size, void* host);
+  int TaskDMEM2DMEM(iris_task brs_task, iris_mem src_mem, iris_mem dst_mem);
   int TaskD2D(iris_task brs_task, iris_mem brs_mem, size_t off, size_t size, void* host, int src_dev);
   int TaskD2H(iris_task brs_task, iris_mem brs_mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host);
   int TaskD2H(iris_task brs_task, iris_mem brs_mem, size_t off, size_t size, void* host);
@@ -147,11 +151,13 @@ public:
   int DataMemUpdate(iris_mem brs_mem, void *host);
   int RegisterPin(void *host, size_t size);
   int DataMemRegisterPin(iris_mem brs_mem);
+  iris_mem *DataMemCreate(void *host, size_t size, const char *symbol, int element_type=iris_unknown);
   iris_mem *DataMemCreate(void *host, size_t size, int element_type=iris_unknown);
   iris_mem *DataMemCreate(void *host, size_t *size, int dim, size_t element_size, int element_type=iris_unknown);
   iris_mem *DataMemCreate(void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim);
   iris_mem *DataMemCreate(iris_mem root_mem, int region);
   int DataMemCreate(iris_mem* brs_mem, void *host, size_t size, int element_type=iris_unknown);
+  int DataMemCreate(iris_mem* brs_mem, void *host, size_t size, const char *symbol, int element_type=iris_unknown);
   int DataMemCreate(iris_mem *brs_mem, void *host, size_t *size, int dim, size_t element_size, int element_type=iris_unknown);
   int DataMemCreate(iris_mem* brs_mem, void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim, int element_type=iris_unknown);
   int DataMemCreate(iris_mem* brs_mem, iris_mem root_mem, int region);
@@ -281,6 +287,7 @@ public:
   shared_ptr<History> CreateHistory(string kname);
   bool get_enable_proactive(){ return enable_proactive_;}
   void set_enable_proactive(bool enable_proactive){ enable_proactive_ = enable_proactive;}
+  bool disable_init_scheduler() { return disable_init_scheduler_; }
   bool disable_init_devices() { return disable_init_devices_; }
   bool disable_init_workers() { return disable_init_workers_; }
 
@@ -291,6 +298,7 @@ public:
 #endif
 public:
   int InitDevices(bool sync);
+  int InitScheduler(bool use_pthread=true);
 
 private:
   int SetDevsAvailable();
@@ -300,7 +308,6 @@ private:
   int InitOpenCL();
   int InitOpenMP();
   int InitHexagon();
-  int InitScheduler();
   int InitWorkers();
   int FilterSubmitExecute(Task* task);
   int ShowKernelHistory();
@@ -396,9 +403,11 @@ private:
   char tmp_dir_[263];
   bool enable_proactive_;
   bool disable_init_devices_;
+  bool disable_init_scheduler_;
   bool disable_init_workers_;
   StreamPolicy stream_policy_;
 private:
+  iris_task init_tasks_[IRIS_MAX_NDEVS];
   static shared_ptr<Platform> singleton_;
   static std::once_flag flag_singleton_;
   static std::once_flag flag_finalize_;

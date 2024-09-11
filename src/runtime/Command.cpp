@@ -51,6 +51,7 @@ void Command::Clear(bool init) {
   kernel_ = NULL;
   task_ = NULL;
   mem_ = NULL;
+  dst_mem_ = NULL;
   platform_ = NULL;
   kernel_args_ = NULL;
   polymems_ = NULL;
@@ -359,6 +360,13 @@ Command* Command::CreateH2Broadcast(Task* task, Mem* mem, size_t *off, size_t *h
   cmd->size_ = size;
   cmd->host_ = host;
   cmd->exclusive_ = true;
+  return cmd;
+}
+
+Command* Command::CreateDMEM2DMEM(Task* task, DataMem* src_mem, DataMem *dst_mem) {
+  Command* cmd = Create(task, IRIS_CMD_DMEM2DMEM_COPY);
+  cmd->mem_ = src_mem;
+  cmd->dst_mem_ = dst_mem;
   return cmd;
 }
 

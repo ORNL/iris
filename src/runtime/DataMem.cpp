@@ -14,6 +14,13 @@ DataMem::DataMem(Platform* platform, void *host_ptr, size_t size, int element_ty
     Init(platform, host_ptr, size);
     set_element_type(element_type);
 }
+DataMem::DataMem(Platform* platform, void *host_ptr, size_t size, const char *symbol, int element_type) : BaseMem(IRIS_DMEM, platform->ndevs()) {
+    Init(platform, host_ptr, size);
+    set_element_type(element_type);
+    for (int i = 0; i < ndevs_; i++) {
+        archs_[i] = archs_dev_[i]->GetSymbol(symbol);
+    }
+}
 DataMem::DataMem(Platform* platform, void *host_ptr, size_t *host_size, int dim, size_t elem_size, int element_type) : BaseMem(IRIS_DMEM, platform->ndevs()) {
     size_t size = elem_size;
     set_element_type(element_type);

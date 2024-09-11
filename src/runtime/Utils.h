@@ -6,6 +6,8 @@
 #include <iostream>
 #include <iomanip>
 #include <vector>
+#include <set>
+#include <map>
 using namespace std;
 namespace iris {
     namespace rt {
@@ -22,6 +24,9 @@ namespace iris {
                 static int  CPUCoresCount();
                 static void SetThreadAffinity(unsigned int core_id);
                 static void MemCpy3D(uint8_t *dev, uint8_t *host, size_t *off, size_t *dev_sizes, size_t *host_sizes, size_t elem_size, bool host_2_dev=true);
+                static void ReadSet(std::set<std::string> & out, const char *data);
+                static void ReadVector(std::vector<std::string> & out, const char *data);
+                static void ReadMap(std::map<std::string, int> & in_map, std::map<int, bool> & out_map, const char *data);
         };
 
     } /* namespace rt */

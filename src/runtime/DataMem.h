@@ -21,6 +21,7 @@ class DataMem;
 class DataMem: public BaseMem {
 public:
   DataMem(Platform* platform, void *host, size_t size, int element_type=iris_unknown);
+  DataMem(Platform* platform, void *host, size_t size, const char *symbol, int element_type=iris_unknown);
   DataMem(Platform* platform, void *host, size_t *host_size, int dim, size_t elem_size, int element_type=iris_unknown);
   DataMem(Platform *platform, void *host_ptr, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim, int element_type=iris_unknown);
   void Init(Platform *platform, void *host_ptr, size_t size);

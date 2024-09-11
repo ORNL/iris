@@ -39,7 +39,8 @@ public:
   void (*iris_set_kernel_ptr_with_obj)(void *obj, __iris_kernel_ptr ptr);
   c_string_array (*iris_get_kernel_names)();
   bool IsFunctionExists(const char *name);
-  void *GetFunctionPtr(const char *name);
+  virtual void *GetSymbol(const char *name);
+  void *GetFunctionPtr(const char *name) { return GetSymbol(name); }
   int SetKernelPtr(void *obj, const char *kernel_name);
   int LoadExtHandle(const char *libname);
   void *handle() { return handle_; }

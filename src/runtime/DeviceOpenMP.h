@@ -27,6 +27,10 @@ public:
   int Synchronize();
   int AddCallback(Task* task);
   bool SupportJIT() { return false; }
+  void *GetSymbol(const char *name)  { 
+      ASSERT(ld_ != NULL); 
+      return ld_->GetSymbol(name); 
+  }
 
 private:
   LoaderOpenMP* ld_;

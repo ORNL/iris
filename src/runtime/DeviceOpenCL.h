@@ -47,6 +47,10 @@ private:
   void DestroyEvent(void *event);
   float GetEventTime(void *event, int stream);
   void EventSynchronize(void *event);
+  void *GetSymbol(const char *name)  { 
+      ASSERT(ld_ != NULL); 
+      return ld_->GetSymbol(name); 
+  }
 private:
   LoaderOpenCL* ld_;
   LoaderHost2OpenCL *host2opencl_ld_;

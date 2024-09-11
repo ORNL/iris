@@ -45,6 +45,7 @@ public:
   CUresult (*cuTexRefSetFilterMode)(CUtexref hTexRef, CUfilter_mode fm);
   CUresult (*cuTexRefSetFlags)(CUtexref hTexRef, unsigned int Flags);
   CUresult (*cuTexRefSetFormat)(CUtexref hTexRef, CUarray_format fmt, int NumPackedComponents);
+  CUresult (*cudaGetSymbolAddress)( void** devPtr, const void* symbol );
   CUresult (*cudaMalloc)(CUdeviceptr* dptr, size_t bytesize);
   CUresult (*cuMemAllocAsync) ( CUdeviceptr* dptr, size_t bytesize, CUstream hStream );
   CUresult (*cuMemAlloc)(CUdeviceptr* dptr, size_t bytesize);
@@ -85,6 +86,7 @@ public:
   CUresult (*cuEventElapsedTime)(float *pMilliseconds, CUevent hStart, CUevent hEnd);
   CUresult (*cuEventQuery)(CUevent hEvent);
   CUresult (*cuStreamWaitEvent)(CUstream hStream, CUevent hEvent, unsigned int Flags);
+  void *GetSymbol(const char *name);
 };
 
 } /* namespace rt */

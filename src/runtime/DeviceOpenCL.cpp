@@ -117,7 +117,10 @@ int DeviceOpenCL::Init() {
                   CL_QUEUE_PROPERTIES, CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE,
                       0 // Terminate the properties list
           };
-          clcmdq_[i] = ld_->clCreateCommandQueueWithProperties(clctx_, cldev_, props, &err);
+          if (ld_->clCreateCommandQueueWithProperties == NULL || type_ == iris_fpga)
+              clcmdq_[i] = ld_->clCreateCommandQueue(clctx_, cldev_, CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE, &err);
+          else
+              clcmdq_[i] = ld_->clCreateCommandQueueWithProperties(clctx_, cldev_, props, &err);
 #else
           clcmdq_[i] = ld_->clCreateCommandQueue(clctx_, cldev_, CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE, &err);
 #endif
@@ -136,7 +139,11 @@ int DeviceOpenCL::Init() {
           CL_QUEUE_PROPERTIES, CL_QUEUE_ON_DEVICE_DEFAULT,
               0 // Terminate the properties list
   };
-  default_queue_ = ld_->clCreateCommandQueueWithProperties(clctx_, cldev_, NULL, &err);
+  printf("clCreateCommandQueue:%p clCreateCommandQueueWithProperties:%p\n", ld_->clCreateCommandQueue, ld_->clCreateCommandQueueWithProperties);
+  if (ld_->clCreateCommandQueueWithProperties == NULL || type_ == iris_fpga)
+      default_queue_ = ld_->clCreateCommandQueue(clctx_, cldev_, 0, &err);
+  else
+      default_queue_ = ld_->clCreateCommandQueueWithProperties(clctx_, cldev_, NULL, &err);
 #else
   default_queue_ = ld_->clCreateCommandQueue(clctx_, cldev_, 0, &err);
 #endif

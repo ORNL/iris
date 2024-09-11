@@ -206,6 +206,10 @@ int iris_task_d2d(iris_task task, iris_mem mem, size_t off, size_t size, void* h
   return Platform::GetPlatform()->TaskD2D(task, mem, off, size, host, src_dev);
 }
 
+int iris_task_dmem2dmem(iris_task task, iris_mem src_mem, iris_mem dst_mem) {
+  return Platform::GetPlatform()->TaskDMEM2DMEM(task, src_mem, dst_mem);
+}
+
 int iris_task_h2d(iris_task task, iris_mem mem, size_t off, size_t size, void* host) {
   return Platform::GetPlatform()->TaskH2D(task, mem, off, size, host);
 }
@@ -444,6 +448,9 @@ int iris_data_mem_create_nd(iris_mem *mem, void *host, size_t *size, int dim, si
 }
 int iris_data_mem_create(iris_mem *mem, void *host, size_t size) {
   return Platform::GetPlatform()->DataMemCreate(mem, host, size);
+}
+int iris_data_mem_create_symbol(iris_mem *mem, void *host, size_t size, const char *symbol) {
+  return Platform::GetPlatform()->DataMemCreate(mem, host, size, symbol);
 }
 iris_mem *iris_data_mem_create_ptr(void *host, size_t size) {
   return Platform::GetPlatform()->DataMemCreate(host, size);
@@ -1019,18 +1026,36 @@ void iris_run_hpl_mapping(iris_graph graph)
     }
 }
 julia_kernel_t julia_kernel__ = NULL;
-int iris_julia_init(void *julia_launch_func)
+int iris_julia_init(void *julia_launch_func, int decoupled_init)
 {
     julia_kernel__ = (julia_kernel_t) julia_launch_func;
     //int32_t target = 12; 
     //int32_t devno=0;
     //int32_t result = julia_kernel__(target, devno);
     //printf("Result %d\n", result);
-    return Platform::GetPlatform()->JuliaInit();
+    return Platform::GetPlatform()->JuliaInit((bool)decoupled_init);
+}
+int iris_init_scheduler(int use_pthread)
+{
+    return Platform::GetPlatform()->InitScheduler((bool)use_pthread);
 }
 int iris_init_worker(int dev)
 {
     return Platform::GetPlatform()->InitWorker(dev);
+}
+int iris_start_worker(int dev, int use_pthread)
+{
+    fprintf(stderr, "Calling startWorker\n");
+    fflush(stderr);
+    return Platform::GetPlatform()->StartWorker(dev, (bool)use_pthread);
+}
+int iris_init_device(int dev)
+{
+    return Platform::GetPlatform()->InitDevice(dev);
+}
+int iris_init_devices_synchronize(int sync)
+{
+    return Platform::GetPlatform()->InitDevicesSynchronize(sync);
 }
 int iris_init_devices(int sync)
 {

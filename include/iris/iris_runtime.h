@@ -687,6 +687,15 @@ extern int iris_task_h2broadcast_full(iris_task task, iris_mem mem, void* host);
 extern int iris_task_d2d(iris_task task, iris_mem mem, size_t off, size_t size, void* host, int src_dev);
 
 
+/**@brief Adds a source DMEM to destination DMEM command to the target task.
+ *
+ * @param task target task
+ * @param src_mem source DMEM memory object
+ * @param dst_mem target DMEM memory object
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_task_dmem2dmem(iris_task task, iris_mem src_mem, iris_mem dst_mem);
+
 /**@brief Adds a H2D command to the target task.
  *
  * @param task target task
@@ -745,6 +754,36 @@ extern int iris_task_d2h_offsets(iris_task task, iris_mem mem, size_t *off, size
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_init_worker(int dev);
+
+/**@brief Start Worker for the given device number
+ *
+ * @param dev  iris device number
+ * @param use_pthread either to use native pthread (1/0)
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_start_worker(int dev, int use_pthread);
+
+/**@brief Initialize and Start scheduler 
+ *
+ * @param use_pthread either to use native pthread (1/0)
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_init_scheduler(int use_pthread);
+
+/**@brief Initialize Device with init task for the given device number
+ *
+ * @param dev  iris device number
+ * @param use_pthread either to use native pthread (1/0)
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_init_device(int dev);
+
+/**@brief Synchronize all initialized Devices
+ *
+ * @param sync 0: non-blocking, 1: blocking
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_init_devices_synchronize(int sync);
 
 /**@brief Initialize devices 
  *
@@ -1103,6 +1142,18 @@ extern int iris_data_mem_create_nd(iris_mem* mem, void *host, size_t *size, int 
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_data_mem_create(iris_mem* mem, void *host, size_t size);
+
+/**@brief Cretes IRIS data memory object
+ *
+ * This function creates IRIS data memory object for a given size
+ *
+ * @param mem pointer to the memory object
+ * @param host host pointer of the data structure
+ * @param size size of the memory
+ * @symbol symbol name to be looked into architecture kernel library files
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_data_mem_create_symbol(iris_mem* mem, void *host, size_t size, const char *symbol);
 
 /**@brief Cretes IRIS data memory object
  *
@@ -1993,9 +2044,10 @@ typedef int32_t (*julia_kernel_t)(int32_t target, int32_t devno, void *ctx, bool
 
 /* API to initialize Julia interfacea
  * @param kernel_launch_func Kernel launch Julia function 
+ * @param decoupled_init flag to enable decoupled init of worker, devices and scheduler
  * @return This function returns int flag
  */
-extern int iris_julia_init(void *julia_launch_func);
+extern int iris_julia_init(void *julia_launch_func, int decoupled_init);
 
 /* API to return the Julia kernel launch function
  * @return This function returns Julia kernel launch function pointer

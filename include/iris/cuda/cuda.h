@@ -4421,6 +4421,7 @@ CUresult CUDAAPI cuModuleGetFunction(CUfunction *hfunc, CUmodule hmod, const cha
  * ::cudaGetSymbolSize
  */
 CUresult CUDAAPI cuModuleGetGlobal(CUdeviceptr *dptr, size_t *bytes, CUmodule hmod, const char *name);
+CUresult CUDAAPI cudaGetSymbolAddress ( void** devPtr, const void* symbol );
 #endif /* __CUDA_API_VERSION >= 3020 */
 
 /**

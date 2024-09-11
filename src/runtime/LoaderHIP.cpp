@@ -8,6 +8,12 @@ LoaderHIP::LoaderHIP() {
   pthread_mutex_init(&mutex_, NULL);
 }
 
+void *LoaderHIP::GetSymbol(const char *name) {
+  void *dptr = NULL;
+  hipGetSymbolAddress(&dptr, name);
+  return (void *)dptr;
+}
+
 LoaderHIP::~LoaderHIP() {
   pthread_mutex_destroy(&mutex_);
 }

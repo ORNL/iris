@@ -115,7 +115,7 @@ setup(
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
     url='https://github.com/ORNL/iris',
-    install_requires=['numpy'],
+    install_requires=['numpy', 'regex'],
     packages=find_packages(where='src/runtime'),
     package_dir={'': 'src/runtime'},
     ext_modules=[CMakeExtension('iris', sourcedir='.')],

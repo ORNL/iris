@@ -141,6 +141,7 @@ public:
   virtual int RegisterCallback(int stream, CallBackType callback_fn, void *data, int flags=0);
   int RegisterCommand(int tag, command_handler handler);
   int RegisterHooks();
+  void ExecuteDMEM2DMEM(Task *task, Command *cmd);
 
   virtual int ResetMemory(Task *task, BaseMem *mem, uint8_t reset_value)=0;
   virtual void ResetContext() { }
@@ -172,7 +173,7 @@ public:
   virtual bool IsAddrValidForD2D(BaseMem *mem, void *ptr) { return true; }
   virtual const char* kernel_src() { return " "; }
   virtual const char* kernel_bin() { return " "; }
-
+  virtual void *GetSymbol(const char *name) { return NULL; }
   void set_shared_memory_buffers(bool flag=true) { shared_memory_buffers_ = flag; }
   virtual void set_can_share_host_memory_flag(bool flag=true) { 
       // We leave this decision to device specific

@@ -51,6 +51,13 @@ public:
   void DestroyEvent(void *event);
   void EventSynchronize(void *event);
   void *get_ctx() { return (void *)&ctx_; }
+  void *GetSymbol(const char *name)  { 
+      ASSERT(ld_ != NULL); 
+      void *ptr = ld_->GetSymbol(name); 
+      if (ptr == NULL) 
+          ptr = host2hip_ld_->GetSymbol(name);
+      return ptr;
+  }
 
 private:
   LoaderHIP* ld_;

@@ -83,9 +83,9 @@ int Loader::LoadFunctions() {
     return IRIS_SUCCESS;
 }
 
-void *Loader::GetFunctionPtr(const char *kernel_name) {
+void *Loader::GetSymbol(const char *symbol_name) {
     if (strict_handle_check_ && handle_ == NULL) return NULL;
-    void *kptr = dlsym(handle_, kernel_name);
+    void *kptr = dlsym(handle_, symbol_name);
     return kptr;
 }
 

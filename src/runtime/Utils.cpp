@@ -167,6 +167,42 @@ long Utils::Mtime(char* path) {
   return st.st_mtime;
 }
 
+void Utils::ReadSet(std::set<std::string> & out, const char *data)
+{
+    const char* delim = " :;.,";
+    std::string data_str = std::string(data);
+    std::transform(data_str.begin(), data_str.end(), data_str.begin(), ::tolower);
+    char* rest = (char *)data_str.c_str();
+    char* a = NULL;
+    while ((a = strtok_r(rest, delim, &rest))) {
+        out.insert(a);
+    }
+}
+
+void Utils::ReadVector(std::vector<std::string> & out, const char *data)
+{
+    const char* delim = " :;.,";
+    std::string data_str = std::string(data);
+    std::transform(data_str.begin(), data_str.end(), data_str.begin(), ::tolower);
+    char* rest = (char *)data_str.c_str();
+    char* a = NULL;
+    while ((a = strtok_r(rest, delim, &rest))) {
+        out.push_back(a);
+    }
+}
+void Utils::ReadMap(std::map<std::string, int> & in_map, std::map<int, bool> & out_map, const char *data)
+{
+    const char* delim = " :;.,";
+    std::string data_str = std::string(data);
+    std::transform(data_str.begin(), data_str.end(), data_str.begin(), ::tolower);
+    char* rest = (char *)data_str.c_str();
+    char* a = NULL;
+    while ((a = strtok_r(rest, delim, &rest))) {
+        if (in_map.find(a) != in_map.end()) {
+            out_map[in_map[a]] = true;
+        }
+    }
+}
 void Utils::Datetime(char* str) {
   time_t t = time(NULL);
   struct tm* tm = localtime(&t);

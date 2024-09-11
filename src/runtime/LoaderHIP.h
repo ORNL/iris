@@ -16,9 +16,11 @@ public:
   const char* library() { return "libamdhip64.so"; }
 //  const char* library() { return "libhip_hcc.so"; }
   int LoadFunctions();
+  void *GetSymbol(const char *name);
 
   hipError_t (*hipInit)(unsigned int flags);
   hipError_t (*hipDriverGetVersion)(int* driverVersion);
+  hipError_t (*hipGetSymbolAddress)( void** devPtr, const void* symbol );
   hipError_t (*hipSetDevice)(int deviceId);
   hipError_t (*hipGetDevice)(int* deviceId);
   hipError_t (*hipGetDeviceCount)(int* count);

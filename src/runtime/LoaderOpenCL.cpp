@@ -75,6 +75,7 @@ int LoaderOpenCL::LoadFunctions() {
   LOADFUNC(clEnqueueReadBufferRect);
   LOADFUNC(clEnqueueWriteBufferRect);
   LOADFUNC(clEnqueueNDRangeKernel);
+  LOADFUNC(clCreateCommandQueue);
 #ifdef CL_VERSION_2_0
   LOADFUNC(clCreateCommandQueueWithProperties);
 #else
