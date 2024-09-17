@@ -538,16 +538,22 @@ def task_host(task, func, params):
     cparams = (c_void_p * nparams)(*params)
     return dll.iris_task_host(task, cast(wrapped_py_func, c_void_p), cparams)
 
-def task_h2d(task, mem, off, size, host):
-    return dll.iris_task_h2d(task, mem, c_size_t(off), c_size_t(size), host.ctypes.data_as(c_void_p))
+def task_h2d(task, mem, off=0, size=0, host=None):
+    host_ctype = None
+    if host != None:
+        host_ctype = host.ctypes.data_as(c_void_p)
+    return dll.iris_task_h2d(task, mem, c_size_t(off), c_size_t(size), host_ctype)
 
 def task_params_map(task, params_map_list):
     nparams = len(params_map_list)
     c_params_map_list = (c_int * nparams)(*params_map_list)
     return dll.iris_params_map(task, c_params_map_list)
 
-def task_d2h(task, mem, off, size, host):
-    return dll.iris_task_d2h(task, mem, c_size_t(off), c_size_t(size), host.ctypes.data_as(c_void_p))
+def task_d2h(task, mem, off=0, size=0, host=None):
+    host_ctype = None
+    if host != None:
+        host_ctype = host.ctypes.data_as(c_void_p)
+    return dll.iris_task_d2h(task, mem, c_size_t(off), c_size_t(size), host_ctype)
 
 def task_h2d_full(task, mem, host):
     return dll.iris_task_h2d_full(task, mem, host.ctypes.data_as(c_void_p))
@@ -891,13 +897,23 @@ class task:
             task_handle_2_pobj[self.handle.uid] = self
             return
         (kernel, dim, off, gws, lws, params_list) = args
+        self.handle = task_create(kernel)
+        self.kernel(kernel, dim, off, gws, lws, params_list)
+
+    def kernel(self, kernel, dim, off, gws, lws, params, params_info=[]):
+        if len(params_info) == 0  and len(params) != len(params_info):
+            self.kernel_core2(kernel, dim, off, gws, lws, params)
+        else:
+            self.kernel_core1(kernel, dim, off, gws, lws, params, params_info)
+    def kernel_core1(self, kernel, dim, off, gws, lws, params, params_info):
+        task_kernel(self.handle, kernel, dim, off, gws, lws, params, params_info, self.params)
+    def kernel_core2(self, kernel, dim, off, gws, lws, params_list):
         coff = (c_size_t * dim)(*off)
         cgws = (c_size_t * dim)(*gws)
         clws = (c_size_t * dim)(*lws)
         nparams = len(params_list)
         self.params = []
         cparams = (c_void_p * nparams)()
-        self.handle = task_create(kernel)
         task_handle_2_pobj[self.handle.uid] = self
         params_info = []
         flush_objs = []
@@ -1025,18 +1041,20 @@ class task:
             tasks_list = [ tasks_list ]
         dep_list = [t.handle for t in tasks_list]
         task_depend(self.handle, len(tasks_list), dep_list)
-    def h2d(self, mem, off, size, host):
+    def wait(self):
+        task_wait(self.handle)
+    def dmem2dmem(self, src_mem, dst_mem):
+        dll.iris_task_dmem2dmem(self.handle, src_mem.handle, dst_mem.handle)
+    def h2d(self, mem, off=0, size=0, host=None):
         task_h2d(self.handle, mem.handle, off, size, host)
     def params_map(self, params_map_list):
         task_params_map(self.handle, params_map_list)
-    def d2h(self, mem, off, size, host):
+    def d2h(self, mem, off=0, size=0, host=None):
         task_d2h(self.handle, mem.handle, off, size, host)
     def h2d_full(self, mem, host):
         task_h2d_full(self.handle, mem.handle, host)
     def d2h_full(self, mem, host):
         task_d2h_full(self.handle, mem.handle, host)
-    def kernel(self, kernel, dim, off, gws, lws, params, params_info):
-        task_kernel(self.handle, kernel, dim, off, gws, lws, params, params_info, self.params)
     def pyhost(self, func, params):
         python_task_host(self.handle, func, params)
     def host(self, func, params):

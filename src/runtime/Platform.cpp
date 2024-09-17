@@ -1378,8 +1378,8 @@ int Platform::TaskDMEM2DMEM(iris_task brs_task, iris_mem src_mem, iris_mem dst_m
   assert(task != NULL);
   BaseMem* src_mem_iris = (BaseMem *)Platform::GetPlatform()->get_mem_object(src_mem);
   BaseMem* dst_mem_iris = (BaseMem *)Platform::GetPlatform()->get_mem_object(dst_mem);
-  ASSERT(src_mem_iris->GetMemHandlerType() != IRIS_DMEM);
-  ASSERT(dst_mem_iris->GetMemHandlerType() != IRIS_DMEM);
+  ASSERT(src_mem_iris->GetMemHandlerType() == IRIS_DMEM);
+  ASSERT(dst_mem_iris->GetMemHandlerType() == IRIS_DMEM);
   Command* cmd = Command::CreateDMEM2DMEM(task, (DataMem *)src_mem_iris, (DataMem *)dst_mem_iris);
   task->AddCommand(cmd);
   return IRIS_SUCCESS;

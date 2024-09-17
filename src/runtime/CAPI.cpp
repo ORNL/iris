@@ -214,12 +214,20 @@ int iris_task_h2d(iris_task task, iris_mem mem, size_t off, size_t size, void* h
   return Platform::GetPlatform()->TaskH2D(task, mem, off, size, host);
 }
 
+int iris_task_dmem_h2d(iris_task task, iris_mem mem, size_t off, size_t size, void* host) {
+  return Platform::GetPlatform()->TaskH2D(task, mem, 0, 0, NULL);
+}
+
 int iris_task_h2d_offsets(iris_task task, iris_mem mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host) {
   return Platform::GetPlatform()->TaskH2D(task, mem, off, host_sizes, dev_sizes, elem_size, dim, host);
 }
 
 int iris_task_d2h(iris_task task, iris_mem mem, size_t off, size_t size, void* host) {
   return Platform::GetPlatform()->TaskD2H(task, mem, off, size, host);
+}
+
+int iris_task_dmem_d2h(iris_task task, iris_mem mem) {
+  return Platform::GetPlatform()->TaskD2H(task, mem, 0, 0, NULL);
 }
 
 int iris_task_d2h_offsets(iris_task task, iris_mem mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host) {

@@ -108,6 +108,7 @@ void Command::Set(Task* task, int type) {
     case IRIS_CMD_MEM_FLUSH_TO_SHADOW:   type_name_= std::string("MemFlushToShadow");     break;
 #endif
 #endif
+    case IRIS_CMD_DMEM2DMEM_COPY:         type_name_= std::string("DMem2DMemCopy");     break;
     case IRIS_CMD_MAP:         type_name_= std::string("Map");     break;
     case IRIS_CMD_RELEASE_MEM: type_name_= std::string("Release"); break;
     case IRIS_CMD_HOST:        type_name_= std::string("Host");    break;

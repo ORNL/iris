@@ -461,7 +461,7 @@ int DeviceCUDA::MemFree(BaseMem *mem, void* mem_addr) {
   if (ngarbage_ >= IRIS_MAX_GABAGES) _error("ngarbage[%d]", ngarbage_);
   else garbage_[ngarbage_++] = cumem;
 #else
-  _trace("dptr[%p]", cumem);
+  _trace("dptr[%p]", (void *)cumem);
   int stream = mem->recommended_stream(devno());
   bool async = (is_async(false) && stream != DEFAULT_STREAM_INDEX && stream >=0);
   CUresult err;
@@ -590,7 +590,7 @@ int DeviceCUDA::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
   }
   //testMemcpy(ld_);
   CUdeviceptr cumem = (CUdeviceptr) mem->arch(this, host);
-  _trace("CUDA %sdev[%d][%s] task[%ld:%s] host_mem:%p dev_mem:%p", tag, devno_, name_, task->uid(), task->name(), host, cumem);
+  _trace("CUDA %sdev[%d][%s] task[%ld:%s] host_mem:%p dev_mem:%p", tag, devno_, name_, task->uid(), task->name(), host, (void *)cumem);
   if (mem->is_usm(devno())) return IRIS_SUCCESS;
   int stream_index = 0;
   bool async = false;

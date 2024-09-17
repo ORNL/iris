@@ -707,6 +707,14 @@ extern int iris_task_dmem2dmem(iris_task task, iris_mem src_mem, iris_mem dst_me
  */
 extern int iris_task_h2d(iris_task task, iris_mem mem, size_t off, size_t size, void* host);
 
+/**@brief Adds a H2D command to the target task.
+ *
+ * @param task target task
+ * @param mem target memory object
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_task_dmem_h2d(iris_task task, iris_mem mem);
+
 /**@brief Adds a H2D command to the target task for a portion of the memory
  *
  * @param task target task
@@ -732,6 +740,14 @@ extern int iris_task_h2d_offsets(iris_task task, iris_mem mem, size_t *off, size
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_task_d2h(iris_task task, iris_mem mem, size_t off, size_t size, void* host);
+
+/**@brief Adds a D2H command to the target task.
+ *
+ * @param task target task
+ * @param mem source memory object
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_task_dmem_d2h(iris_task task, iris_mem mem);
 
 /**@brief Adds a D2H command to the target task for a portion of the memory
  *

@@ -102,7 +102,7 @@ public:
   template <typename DMemType>
   void WaitForDataAvailability(int devno, Task *task, DMemType *mem, int read_stream=-1);
   template <typename DMemType>
-  void InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, BaseMem *parent=NULL);
+  void InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, BaseMem *parent=NULL, DMemType *src_mem=NULL);
   void ExecuteMemResetInput(Task *task, Command* cmd);
   void ExecuteMemIn(Task *task, Command* cmd);
   //void ExecuteMemInExternal(Command *cmd);
@@ -127,11 +127,11 @@ public:
 
   Kernel* ExecuteSelectorKernel(Command* cmd);
 
-  void ResolveH2DStartEvents(Task *task, BaseMem *mem, bool async);
+  void ResolveH2DStartEvents(Task *task, BaseMem *mem, bool async, BaseMem *src_mem=NULL);
   void ResolveH2DEndEvents(Task *task, BaseMem *mem, bool async);
-  void ResolveDeviceWrite(Task *task, BaseMem *mem, Device *input_dev, bool instant_wait);
+  void ResolveDeviceWrite(Task *task, BaseMem *mem, Device *input_dev, bool instant_wait, BaseMem *src_mem=NULL);
   template <AsyncResolveType resolve_type>
-  inline void ResolveInputWriteDependency(Task *task, BaseMem *mem, bool async, Device *select_src_dev=NULL);
+  inline void ResolveInputWriteDependency(Task *task, BaseMem *mem, bool async, Device *select_src_dev=NULL, BaseMem *src_mem=NULL);
   template <AsyncResolveType resolve_type>
   inline void ResolveOutputWriteDependency(Task *task, BaseMem *mem, bool async, Device *select_src_dev);
   inline void DeviceEventExchange(Task *task, BaseMem *mem, void *input_event, int input_stream, Device *input_dev);

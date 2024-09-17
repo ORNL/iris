@@ -759,6 +759,18 @@ module IrisHRT
         return ccall(Libdl.dlsym(lib, :iris_task_d2d), Int32, (IrisTask, IrisMem, Csize_t, Csize_t, Ptr{Cvoid}, Int32), task, mem, off, size, host, src_dev)
     end
 
+    function iris_task_dmem2dmem(task::IrisTask, src_mem::IrisMem, dst_mem::IrisMem)::Int32
+        return ccall(Libdl.dlsym(lib, :iris_task_dmem2dmem), Int32, (IrisTask, IrisMem, IrisMem), task, src_mem, dst_mem)
+    end
+
+    function iris_task_dmem_d2h(task::IrisTask, mem::IrisMem)::Int32
+        return ccall(Libdl.dlsym(lib, :iris_task_dmem_d2h), Int32, (IrisTask, IrisMem), task, mem)
+    end
+
+    function iris_task_dmem_h2d(task::IrisTask, mem::IrisMem)::Int32
+        return ccall(Libdl.dlsym(lib, :iris_task_dmem_h2d), Int32, (IrisTask, IrisMem), task, mem)
+    end
+
     function iris_task_h2d(task::IrisTask, mem::IrisMem, off::Csize_t, size::Csize_t, host::Ptr{Cvoid})::Int32
         return ccall(Libdl.dlsym(lib, :iris_task_h2d), Int32, (IrisTask, IrisMem, Csize_t, Csize_t, Ptr{Cvoid}), task, mem, off, size, host)
     end

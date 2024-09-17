@@ -47,9 +47,9 @@ public:
     }
     dirty_flag_[devno] = false;
   }
-  void set_dirty_all(int devno) {
+  void set_dirty_all(bool flag=true) {
     for(int i=0; i<ndevs_; i++) {
-        dirty_flag_[i] = true;
+        dirty_flag_[i] = flag;
     }
   }
   int *get_non_dirty_devices(int *dev) {
