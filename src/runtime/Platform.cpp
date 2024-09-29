@@ -1706,6 +1706,7 @@ int Platform::DataMemInit(BaseMem *mem, bool reset) {
 int Platform::DataMemUpdate(iris_mem brs_mem, void *host) {
   DataMem *mem = (DataMem *) Platform::GetPlatform()->get_mem_object(brs_mem);
   mem->UpdateHost(host);
+  DataMemRegisterPin(mem);
   return IRIS_SUCCESS;
 }
 
@@ -1720,14 +1721,20 @@ int Platform::RegisterPin(void *host, size_t size) {
   return IRIS_SUCCESS;
 }
 
-int Platform::DataMemRegisterPin(iris_mem brs_mem) {
-  DataMem *mem = (DataMem *) Platform::GetPlatform()->get_mem_object(brs_mem);
-  void *host = mem->host_memory();
+int Platform::DataMemRegisterPin(DataMem *mem) {
+  void *host = mem->host_ptr();
+  if (host == NULL) return IRIS_SUCCESS;
   size_t size =mem->size();
+  _trace("Registering PIN for %p size:%lu end_addr:%p", host, size, host+size);
   for (int i=0; i<nplatforms_; i++) {
     first_dev_of_type_[i]->RegisterPin(host, size);
   }  
   return IRIS_SUCCESS;
+}
+
+int Platform::DataMemRegisterPin(iris_mem brs_mem) {
+  DataMem *mem = (DataMem *) Platform::GetPlatform()->get_mem_object(brs_mem);
+  return DataMemRegisterPin(mem);
 }
 
 int Platform::DataMemCreate(iris_mem* brs_mem, void *host, size_t size, int element_type) {

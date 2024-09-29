@@ -649,6 +649,12 @@ class dmem_base:
   def update(self, host):
     c_host = host.ctypes.data_as(c_void_p)
     dll.iris_data_mem_update(self.handle, c_host)
+  def fetch(self, host):
+    c_host = host.ctypes.data_as(c_void_p)
+    dll.iris_fetch_dmem_data(self.handle, c_host)
+  def host(self):
+    c_host = dll.iris_get_dmem_host(self.handle)
+    return c_host
   def mem(self):
     return self.mem
   def release(self):

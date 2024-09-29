@@ -86,7 +86,6 @@ public:
   CUresult (*cuEventElapsedTime)(float *pMilliseconds, CUevent hStart, CUevent hEnd);
   CUresult (*cuEventQuery)(CUevent hEvent);
   CUresult (*cuStreamWaitEvent)(CUstream hStream, CUevent hEvent, unsigned int Flags);
-  void *GetSymbol(const char *name);
 };
 
 } /* namespace rt */

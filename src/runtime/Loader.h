@@ -40,7 +40,8 @@ public:
   c_string_array (*iris_get_kernel_names)();
   bool IsFunctionExists(const char *name);
   virtual void *GetSymbol(const char *name);
-  void *GetFunctionPtr(const char *name) { return GetSymbol(name); }
+  virtual void *GetFunctionSymbol(const char *name);
+  void *GetFunctionPtr(const char *name) { return GetFunctionSymbol(name); }
   int SetKernelPtr(void *obj, const char *kernel_name);
   int LoadExtHandle(const char *libname);
   void *handle() { return handle_; }

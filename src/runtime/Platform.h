@@ -36,6 +36,7 @@ class LoaderOpenCL;
 class LoaderOpenMP;
 class LoaderHexagon;
 class BaseMem;
+class DataMem;
 class Mem;
 class Polyhedral;
 class Pool;
@@ -151,6 +152,7 @@ public:
   int DataMemUpdate(iris_mem brs_mem, void *host);
   int RegisterPin(void *host, size_t size);
   int DataMemRegisterPin(iris_mem brs_mem);
+  int DataMemRegisterPin(DataMem *mem);
   iris_mem *DataMemCreate(void *host, size_t size, const char *symbol, int element_type=iris_unknown);
   iris_mem *DataMemCreate(void *host, size_t size, int element_type=iris_unknown);
   iris_mem *DataMemCreate(void *host, size_t *size, int dim, size_t element_size, int element_type=iris_unknown);

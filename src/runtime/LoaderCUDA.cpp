@@ -9,11 +9,6 @@ LoaderCUDA::LoaderCUDA() {
 
 LoaderCUDA::~LoaderCUDA() {
 }
-void *LoaderCUDA::GetSymbol(const char *name) {
-  void *dptr = NULL;
-  cudaGetSymbolAddress(&dptr, name);
-  return (void *)dptr;
-}
 int LoaderCUDA::LoadFunctions() {
   LOADFUNC(cuInit);
   LOADFUNC(cuDriverGetVersion);

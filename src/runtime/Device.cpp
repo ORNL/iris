@@ -1119,7 +1119,10 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         // None of the devices having valid copy or D2D is not possible
         _event_debug("explore Host2Device (H2D) dev[%d][%s] task[%ld:%s] mem[%lu]", devno_, name_, task->uid(), task->name(), mem->uid());
         void* host = src_mem->host_memory(); // It should work even if host_ptr is null
-        if (cmd_host != NULL && src_mem->host_ptr() != cmd_host) {
+        if (src_mem->tmp_host_ptr() != NULL) {
+            host = src_mem->tmp_host_ptr();
+        }
+        if (cmd_host != NULL && host != cmd_host) {
             host = cmd_host;
         }
 
@@ -1163,105 +1166,107 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         // do D2H and follewed by H2D
         //_trace("explore D2H->H2D dev[%d][%s] task[%ld:%s] mem[%lu]", devno_, name_, task->uid(), task->name(), mem->uid());
         int select_src_dev = nddevs[0];
-        for(int i=1; nddevs[i] != -1; i++) {
+        for(int i=1; nddevs[i] != -1 && select_src_dev != -1; i++) {
             Device *target_dev = Platform::GetPlatform()->device(nddevs[i]);
             if (type() == target_dev->type())
                 select_src_dev = nddevs[i]; 
         }
-        int mem_stream = GetStream(task, mem, true); 
+        if (select_src_dev != -1) { //If it is -1, there is no valid data in any place
+            int mem_stream = GetStream(task, mem, true); 
 #ifndef HALT_UNTIL
-        mem_stream = 0; mem->set_recommended_stream(devno(), mem_stream);
+            mem_stream = 0; mem->set_recommended_stream(devno(), mem_stream);
 #endif
-        void* host = mem->host_memory(); // It should work even if host_ptr is null
-        Device *src_dev = Platform::GetPlatform()->device(select_src_dev);
-        // D2H should be issued from target src (remote) device
-        _event_debug("explore D2H->H2D dev[%d][%s] -> dev[%d][%s] task[%ld:%s] mem[%lu]", src_dev->devno(), src_dev->name(), devno(), name(), task->uid(), task->name(), mem->uid());
-        int src_mem_stream = -1;
-//#ifndef DIRECT_H2D_SYNC
-//        src_mem_stream = 1; mem->set_recommended_stream(src_dev->devno(), src_mem_stream);
-//#endif
-        bool src_async = src_dev->is_async(false);
-        //TODO: Think here
+            void* host = mem->host_memory(); // It should work even if host_ptr is null
+            Device *src_dev = Platform::GetPlatform()->device(select_src_dev);
+            // D2H should be issued from target src (remote) device
+            _event_debug("explore D2H->H2D dev[%d][%s] -> dev[%d][%s] task[%ld:%s] mem[%lu]", src_dev->devno(), src_dev->name(), devno(), name(), task->uid(), task->name(), mem->uid());
+            int src_mem_stream = -1;
+            //#ifndef DIRECT_H2D_SYNC
+            //        src_mem_stream = 1; mem->set_recommended_stream(src_dev->devno(), src_mem_stream);
+            //#endif
+            bool src_async = src_dev->is_async(false);
+            //TODO: Think here
 
-        double d2h_start = 0;
-        if (src_async) mem->HostWriteLock(src_dev->devno());
-        int host_write_dev = mem->GetHostWriteDevice();
-        if ((host_write_dev != src_dev->devno())) {
+            double d2h_start = 0;
+            if (src_async) mem->HostWriteLock(src_dev->devno());
+            int host_write_dev = mem->GetHostWriteDevice();
+            if ((host_write_dev != src_dev->devno())) {
                 //((mem->GetHostWriteStream() != src_mem_stream)) 
-            src_mem_stream = src_dev->GetStream(task, mem, true); 
-            ResolveInputWriteDependency<ASYNC_SAME_DEVICE_DEPENDENCY>(task, mem, src_async, src_dev, src_mem);
-            d2h_start = timer_->Now();
-            src_dev->ResetContext();
-            if (async && src_async && platform_obj_->is_event_profile_enabled()) {
-                ProfileEvent & prof_event = task->CreateProfileEvent(mem, -1, PROFILE_D2HH2D_D2H, src_dev, src_mem_stream);
+                src_mem_stream = src_dev->GetStream(task, mem, true); 
+                ResolveInputWriteDependency<ASYNC_SAME_DEVICE_DEPENDENCY>(task, mem, src_async, src_dev, src_mem);
+                d2h_start = timer_->Now();
+                src_dev->ResetContext();
+                if (async && src_async && platform_obj_->is_event_profile_enabled()) {
+                    ProfileEvent & prof_event = task->CreateProfileEvent(mem, -1, PROFILE_D2HH2D_D2H, src_dev, src_mem_stream);
+                    prof_event.RecordStartEvent(); 
+                }
+                _event_debug("In mem:[%lu] src_mem_stream:%d src_dev:%d dev:%d host_write_dev:%d", mem->uid(), src_mem_stream, src_dev->devno(), devno(), host_write_dev);
+
+                // Do Device to Host Transfer
+                if (!platform_obj_->is_data_transfers_disabled())
+                    errid_ = src_dev->MemD2H(task, src_mem, ptr_off, 
+                            gws, lws, elem_size, dim, size, host, "D2H->H2D(1) ");
+
+                if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
+                d2htime = timer_->Now() - d2h_start;
+                if (async && src_async && platform_obj_->is_event_profile_enabled()) {
+                    ProfileEvent & prof_event = task->LastProfileEvent();
+                    prof_event.RecordEndEvent(); 
+                }
+                if (async && src_async) { 
+                    // Source generated data using asynchronous device
+                    mem->HostRecordEvent(src_dev->devno(), src_mem_stream);
+                    _event_debug("After host write_event:%d stream:%d", mem->GetHostWriteDevice(), mem->GetHostWriteStream());
+                }
+            }
+            else {
+                _event_debug("Reuse of mem:[%lu] src_mem_stream:%d src_dev:%d dev:%d\n", mem->uid(), src_mem_stream, src_dev->devno(), devno());
+                src_mem_stream = mem->GetHostWriteStream();
+            }
+            if (src_async) mem->HostWriteUnLock(src_dev->devno());
+
+            ResetContext();
+            ResolveInputWriteDependency<ASYNC_KNOWN_H2D_RESOLVE>(task, mem, async, src_dev);
+            _event_debug("   MemD2H -> MemH2D registered callbacks completed callbacks");
+
+            // H2D should be issued from this current device
+            if (async && platform_obj_->is_event_profile_enabled()) {
+                ProfileEvent & prof_event = task->CreateProfileEvent(mem, -1, PROFILE_D2HH2D_H2D, this, mem_stream);
                 prof_event.RecordStartEvent(); 
             }
-            _event_debug("In mem:[%lu] src_mem_stream:%d src_dev:%d dev:%d host_write_dev:%d", mem->uid(), src_mem_stream, src_dev->devno(), devno(), host_write_dev);
-
-            // Do Device to Host Transfer
+            double start = timer_->Now();
+            mem->arch(this);
             if (!platform_obj_->is_data_transfers_disabled())
-                errid_ = src_dev->MemD2H(task, src_mem, ptr_off, 
-                        gws, lws, elem_size, dim, size, host, "D2H->H2D(1) ");
-
-            if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
-            d2htime = timer_->Now() - d2h_start;
-            if (async && src_async && platform_obj_->is_event_profile_enabled()) {
+                errid_ = MemH2D(task, mem, ptr_off, 
+                        gws, lws, elem_size, dim, size, host, "D2H->H2D(2) ");
+            double end = timer_->Now();
+            _event_debug("   MemD2H -> MemH2D done");
+            if (async && platform_obj_->is_event_profile_enabled()) {
                 ProfileEvent & prof_event = task->LastProfileEvent();
                 prof_event.RecordEndEvent(); 
             }
-            if (async && src_async) { 
-                // Source generated data using asynchronous device
-                mem->HostRecordEvent(src_dev->devno(), src_mem_stream);
-                _event_debug("After host write_event:%d stream:%d", mem->GetHostWriteDevice(), mem->GetHostWriteStream());
+            if (async) {
+                mem->RecordEvent(devno(), mem_stream, true);
+                //mem->HardDeviceWriteEventSynchronize(this, event); 
             }
-        }
-        else {
-            _event_debug("Reuse of mem:[%lu] src_mem_stream:%d src_dev:%d dev:%d\n", mem->uid(), src_mem_stream, src_dev->devno(), devno());
-            src_mem_stream = mem->GetHostWriteStream();
-        }
-        if (src_async) mem->HostWriteUnLock(src_dev->devno());
-
-        ResetContext();
-        ResolveInputWriteDependency<ASYNC_KNOWN_H2D_RESOLVE>(task, mem, async, src_dev);
-        _event_debug("   MemD2H -> MemH2D registered callbacks completed callbacks");
-
-        // H2D should be issued from this current device
-        if (async && platform_obj_->is_event_profile_enabled()) {
-            ProfileEvent & prof_event = task->CreateProfileEvent(mem, -1, PROFILE_D2HH2D_H2D, this, mem_stream);
-            prof_event.RecordStartEvent(); 
-        }
-        double start = timer_->Now();
-        mem->arch(this);
-        if (!platform_obj_->is_data_transfers_disabled())
-            errid_ = MemH2D(task, mem, ptr_off, 
-                    gws, lws, elem_size, dim, size, host, "D2H->H2D(2) ");
-        double end = timer_->Now();
-        _event_debug("   MemD2H -> MemH2D done");
-        if (async && platform_obj_->is_event_profile_enabled()) {
-            ProfileEvent & prof_event = task->LastProfileEvent();
-            prof_event.RecordEndEvent(); 
-        }
-        if (async) {
-            mem->RecordEvent(devno(), mem_stream, true);
-            //mem->HardDeviceWriteEventSynchronize(this, event); 
-        }
-        h2dtime = end - start;
-        if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
-        mem->clear_host_dirty();
-        d2h_h2d_enabled = true;
-        if (!async && kernel != NULL && kernel->is_profile_data_transfers()) {
-            kernel->AddInDataObjectProfile({(uint32_t) cmd->task()->uid(), (uint32_t) mem->uid(), (uint32_t) iris_dt_d2h_h2d, (uint32_t) select_src_dev, (uint32_t) devno_, d2h_start, end});
-        }
-        if (!async && Platform::GetPlatform()->is_scheduling_history_enabled()){
-            string cmd_name = "Internal-D2H-H2D(" + string(cmd->task()->name()) + ")-from-" + to_string(src_dev->devno()) + "-to-" + to_string(this->devno());
-            Platform::GetPlatform()->scheduling_history()->Add(cmd, cmd_name, "MemD2H_H2D", d2h_start,end);
-        }
-        if (parent != NULL && async) {
-            void *event = mem->GetCompletionEvent(devno());
-            int parent_mem_stream = GetStream(task, parent);
-            _event_debug("WaitForEvent parent mem:%lu  dmem:%lu mem_stream:%d, event:%p dev[%d][%s]\n",
-                   parent->uid(), mem->uid(), parent_mem_stream, event, devno(), name()); 
-            WaitForEvent(event, parent_mem_stream, iris_event_wait_default);
+            h2dtime = end - start;
+            if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
+            mem->clear_host_dirty();
+            d2h_h2d_enabled = true;
+            if (!async && kernel != NULL && kernel->is_profile_data_transfers()) {
+                kernel->AddInDataObjectProfile({(uint32_t) cmd->task()->uid(), (uint32_t) mem->uid(), (uint32_t) iris_dt_d2h_h2d, (uint32_t) select_src_dev, (uint32_t) devno_, d2h_start, end});
+            }
+            if (!async && Platform::GetPlatform()->is_scheduling_history_enabled()){
+                string cmd_name = "Internal-D2H-H2D(" + string(cmd->task()->name()) + ")-from-" + to_string(src_dev->devno()) + "-to-" + to_string(this->devno());
+                Platform::GetPlatform()->scheduling_history()->Add(cmd, cmd_name, "MemD2H_H2D", d2h_start,end);
+            }
+            if (parent != NULL && async) {
+                void *event = mem->GetCompletionEvent(devno());
+                int parent_mem_stream = GetStream(task, parent);
+                _event_debug("WaitForEvent parent mem:%lu  dmem:%lu mem_stream:%d, event:%p dev[%d][%s]\n",
+                        parent->uid(), mem->uid(), parent_mem_stream, event, devno(), name()); 
+                WaitForEvent(event, parent_mem_stream, iris_event_wait_default);
+            }
         }
     }
     mem->clear_dev_dirty(devno_ );
@@ -1347,7 +1352,24 @@ void Device::ExecuteMemInDMemIn(Task *task, Command* cmd, DataMem *mem) {
     else if (mem->is_dev_dirty(devno_)) {
         // Regions are not enabled, but data for device is not valid. 
         // Hence, fetch it either from neightbors or host
-        InvokeDMemInDataTransfer<DataMem>(task, cmd, mem);
+        if (mem->child().size() > 0) {
+            void *host = mem->host_memory();
+            void *tmp_host_ptr = mem->tmp_host_memory();
+            memcpy(tmp_host_ptr, host, mem->size());
+            for(const auto & child : mem->child()) {
+                DataMem *child_mem = child.first;
+                size_t offset = child.second;
+                void **arch_ptr = (void **)(tmp_host_ptr + offset);
+                InvokeDMemInDataTransfer<DataMem>(task, cmd, child_mem);
+                *arch_ptr = child_mem->arch(devno());
+                //printf("parsing child mem:%lu size:%lu parent_tmp_host_ptr:%p parent_host:%p offset:%lu child_arch:%p child_arch_ptr:%p\n", child_mem->uid(), child_mem->size(), tmp_host_ptr, host, offset, *arch_ptr, arch_ptr);
+            }
+            InvokeDMemInDataTransfer<DataMem>(task, cmd, mem);
+            //printf("----- mem:%lu size:%lu arch:%p host:%p tmp_host_ptr:%p\n", mem->uid(), mem->size(), mem->arch(devno()), host, tmp_host_ptr);
+        }
+        else {
+            InvokeDMemInDataTransfer<DataMem>(task, cmd, mem);
+        }
     }
     else {
         _trace("Skipped DMEM H2D data transfer dev[%d:%s] task[%ld:%s] dmem[%lu] dptr[%p]", devno_, name_, task->uid(), task->name(), mem->uid(), mem->get_arch(devno_));

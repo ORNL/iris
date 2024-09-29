@@ -1099,6 +1099,74 @@ extern int iris_mem_create(size_t size, iris_mem* mem);
  */
 extern int iris_data_mem_init_reset(iris_mem mem, int reset);
 
+/**@brief Get DMem host pointer 
+ *
+ * This function returns a DMEM host assigned pointer; It will create host memory if it is null and return the address
+ *
+ * @param mem pointer to the memory object
+ * @return This function returns an DMem host assigned pointer
+ */
+extern void *iris_get_dmem_valid_host(iris_mem mem);
+
+/**@brief Get DMem host pointer 
+ *
+ * This function returns a DMEM host assigned pointer. It returns NULL if the host pointer set to DMEM is null
+ *
+ * @param mem pointer to the memory object
+ * @return This function returns an DMem host assigned pointer
+ */
+extern void *iris_get_dmem_host(iris_mem mem);
+
+/**@brief Get DMem host pointer 
+ *
+ * This function returns a DMEM host assigned pointer after fetching data from device. It returns NULL if the host pointer set to DMEM is null
+ *
+ * @param mem pointer to the memory object
+ * @return This function returns an DMem host assigned pointer
+ */
+extern void *iris_get_dmem_host_fetch(iris_mem mem);
+
+/**@brief Get DMem host pointer 
+ *
+ * This function returns a DMEM host assigned pointer after fetching data from device. It returns NULL if the host pointer set to DMEM is null
+ *
+ * @param mem pointer to the memory object
+ * @param size data size to transfer
+ * @return This function returns an DMem host assigned pointer
+ */
+extern void *iris_get_dmem_host_fetch_with_size(iris_mem mem, size_t size);
+
+/**@brief Fetch DMem data and copy to host pointer
+ *
+ * This function copies data from active DMEM device to host assigned pointer 
+ *
+ * @param mem pointer to the memory object
+ * @param host_ptr pointer to the host object
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_fetch_dmem_data(iris_mem mem, void *host_ptr);
+
+/**@brief Fetch DMem data and copy to host pointer
+ *
+ * This function copies data from active DMEM device to host assigned pointer 
+ *
+ * @param mem pointer to the memory object
+ * @param host_ptr pointer to the host object
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_fetch_dmem_data_with_size(iris_mem mem, void *host_ptr, size_t size);
+
+
+/**@brief Add child DMEM to DMEM which make sure to have data of child mem available to the device and also set aits device pointer into the parent DMEM structure 
+ *
+ * This function copies data from active DMEM device to host assigned pointer 
+ *
+ * @param parent pointer to the memory object
+ * @param child pointer to the memory object
+ * @param offset offset to the parent memory structure
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_dmem_add_child(iris_mem parent, iris_mem child, size_t offset);
 
 /**@brief Cretes IRIS data memory object
  *

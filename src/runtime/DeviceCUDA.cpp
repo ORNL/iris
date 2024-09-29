@@ -14,11 +14,14 @@
 #include "Worker.h"
 #include "Utils.h"
 #include <array>
+#include <string>
 #include <vector>
 #include <stdexcept>
 #include <regex>
 #include <sstream>
 #include <unordered_map>
+
+using namespace std;
 
 namespace iris {
 namespace rt {
@@ -232,6 +235,27 @@ DeviceCUDA::~DeviceCUDA() {
     delete [] streams_;
     if (is_async(false) && platform_obj_->is_event_profile_enabled()) 
         DestroyEvent(single_start_time_event_);
+}
+
+typedef void *(*SymbolFn)();
+typedef void *(*PrintSymbolFn)(void *host_ptr, void *dev_ptr);
+void *DeviceCUDA::GetSymbol(const char *name)  { 
+    if (IsContextChangeRequired()) {
+        ld_->cuCtxSetCurrent(ctx_);
+    }
+    ASSERT(ld_ != NULL); 
+    void *ptr = ld_->GetSymbol(name); 
+    if (ptr == NULL) {
+        string fn_symbol = name;
+        fn_symbol = "get_symbol_"+fn_symbol;
+        void *sptr = (void *) host2cuda_ld_->GetSymbol("cData");
+        SymbolFn fptr = (SymbolFn) host2cuda_ld_->GetSymbol(fn_symbol.c_str());
+        void *dev_var_ptr = fptr();
+        //ld_->cudaGetSymbolAddress((void **)&ptr, dev_var_ptr);
+        //printf("Symbol read name:%s sptr:%p fptr:%p dev_var_ptr:%p\n", name, sptr, fptr, dev_var_ptr);
+        ptr = dev_var_ptr;
+    }
+    return ptr;
 }
 
 int DeviceCUDA::Compile(char* src) {

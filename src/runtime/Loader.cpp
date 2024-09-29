@@ -89,6 +89,12 @@ void *Loader::GetSymbol(const char *symbol_name) {
     return kptr;
 }
 
+void *Loader::GetFunctionSymbol(const char *symbol_name) {
+    if (strict_handle_check_ && handle_ == NULL) return NULL;
+    void *kptr = dlsym(handle_, symbol_name);
+    return kptr;
+}
+
 bool Loader::IsFunctionExists(const char *kernel_name) {
     if (strict_handle_check_ && handle_ == NULL) return false;
     __iris_kernel_ptr kptr;

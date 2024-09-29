@@ -214,7 +214,7 @@ int iris_task_h2d(iris_task task, iris_mem mem, size_t off, size_t size, void* h
   return Platform::GetPlatform()->TaskH2D(task, mem, off, size, host);
 }
 
-int iris_task_dmem_h2d(iris_task task, iris_mem mem, size_t off, size_t size, void* host) {
+int iris_task_dmem_h2d(iris_task task, iris_mem mem) {
   return Platform::GetPlatform()->TaskH2D(task, mem, 0, 0, NULL);
 }
 
@@ -238,6 +238,49 @@ int iris_task_dmem_flush_out(iris_task task, iris_mem mem) {
   return Platform::GetPlatform()->TaskMemFlushOut(task, mem);
 }
 
+void *iris_get_dmem_valid_host(iris_mem brs_mem) {
+    DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (mem != NULL) return mem->host_memory();
+    return NULL;
+}
+
+void *iris_get_dmem_host(iris_mem brs_mem) {
+    DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (mem != NULL) return mem->host_ptr();
+    return NULL;
+}
+
+void *iris_get_dmem_host_fetch(iris_mem brs_mem) {
+    DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (mem != NULL)  {
+        void *host_ptr = mem->host_memory();
+        mem->FetchDataFromDevice(host_ptr);
+        return host_ptr;
+    }
+    return NULL;
+}
+
+void *iris_get_dmem_host_fetch_with_size(iris_mem brs_mem, size_t size) {
+    DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (mem != NULL)  {
+        void *host_ptr = mem->host_memory();
+        mem->FetchDataFromDevice(host_ptr, size);
+        return host_ptr;
+    }
+    return NULL;
+}
+
+int iris_fetch_dmem_data(iris_mem brs_mem, void *host_ptr) {
+    DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+    mem->FetchDataFromDevice(host_ptr);
+    return IRIS_SUCCESS;
+}
+
+int iris_fetch_dmem_data_with_size(iris_mem brs_mem, void *host_ptr, size_t size) {
+    DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+    mem->FetchDataFromDevice(host_ptr, size);
+    return IRIS_SUCCESS;
+}
 
 int iris_task_h2d_full(iris_task task, iris_mem mem, void* host) {
   return Platform::GetPlatform()->TaskH2DFull(task, mem, host);
@@ -490,6 +533,12 @@ iris_mem iris_data_mem_create_tile_struct_with_type(void *host, size_t *off, siz
   iris_mem mem;
   Platform::GetPlatform()->DataMemCreate(&mem, host, off, host_size, dev_size, elem_size, dim, element_type);
   return mem;
+}
+int iris_dmem_add_child(iris_mem brs_parent, iris_mem brs_child, size_t offset) {
+  DataMem* parent = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_parent);
+  DataMem* child = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_child);
+  parent->AddChild(child, offset);
+  return IRIS_SUCCESS;
 }
 int iris_data_mem_clear(iris_mem brs_mem) {
   DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
