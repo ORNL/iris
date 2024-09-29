@@ -80,9 +80,19 @@ int iris_set_shared_memory_model(int flag)
     return Platform::GetPlatform()->SetSharedMemoryModel(flag);
 }
 
+int iris_mem_enable_usm_all(iris_mem mem)
+{
+    return Platform::GetPlatform()->SetSharedMemoryModel(mem, iris_model_all, true);
+}
+
 int iris_mem_enable_usm(iris_mem mem, DeviceModel type)
 {
     return Platform::GetPlatform()->SetSharedMemoryModel(mem, type, true);
+}
+
+int iris_mem_disable_usm_all(iris_mem mem)
+{
+    return Platform::GetPlatform()->SetSharedMemoryModel(mem, iris_model_all, false);
 }
 
 int iris_mem_disable_usm(iris_mem mem, DeviceModel type)

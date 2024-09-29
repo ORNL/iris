@@ -335,6 +335,15 @@ extern int iris_set_shared_memory_model(int flag);
  */
 extern int iris_mem_enable_usm(iris_mem mem, DeviceModel type);
 
+/**@brief Enable shared memory model for the given memory 
+ *
+ * Using this function shared memory model can be set
+ *
+ * @param mem iris memory object
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_mem_enable_usm_all(iris_mem mem);
+
 /**@brief Enable shared memory model for the given memory and device type
  *
  * Using this function shared memory model can be set
@@ -344,6 +353,15 @@ extern int iris_mem_enable_usm(iris_mem mem, DeviceModel type);
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_mem_disable_usm(iris_mem mem, DeviceModel type);
+
+/**@brief Enable shared memory model for the given memory
+ *
+ * Using this function shared memory model can be set
+ *
+ * @param mem iris memory object
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_mem_disable_usm_all(iris_mem mem);
 
 /**@brief Enable/disable profiler
  *

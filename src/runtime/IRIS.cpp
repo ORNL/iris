@@ -24,7 +24,7 @@ Mem::~Mem() {
     iris_mem_release(mem_);
 #endif
 }
-DMem::DMem(void *host, size_t size) {
+DMem::DMem(void *host, size_t size, bool usm_flag) {
 #ifdef ENABLE_SMART_PTR_MEM
     int status = PlatformIRIS::GetPlatform()->DataMemCreate(&mem_, host, size);
     assert(status == IRIS_SUCCESS);
@@ -32,16 +32,29 @@ DMem::DMem(void *host, size_t size) {
     int status = iris_data_mem_create(&mem_, host, size);
     assert(status == IRIS_SUCCESS);
 #endif
+    if (usm_flag) {
+        status = iris_mem_enable_usm_all(mem_);
+        assert(status == IRIS_SUCCESS);
+    }
 }
 DMem::DMem(void *host, size_t size, const char *symbol) {
     int status = iris_data_mem_create_symbol(&mem_, host, size, symbol);
     //printf("Size1:%lu mem:%lu\n", size, mem_.uid);
     assert(status == IRIS_SUCCESS);
 }
-DMem::DMem(size_t size) {
+DMem::DMem(size_t size, bool usm_flag) {
+#ifdef ENABLE_SMART_PTR_MEM
+    int status = PlatformIRIS::GetPlatform()->DataMemCreate(&mem_, host, size);
+    assert(status == IRIS_SUCCESS);
+#else
     int status = iris_data_mem_create(&mem_, NULL, size);
     //printf("Size:%lu mem:%lu\n", size, mem_.uid);
     assert(status == IRIS_SUCCESS);
+#endif
+    if (usm_flag) {
+        status = iris_mem_enable_usm_all(mem_);
+        assert(status == IRIS_SUCCESS);
+    }
 }
 DMem::DMem(void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim) {
 #ifdef ENABLE_SMART_PTR_MEM

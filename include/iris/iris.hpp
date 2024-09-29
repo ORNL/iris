@@ -182,7 +182,7 @@ namespace iris {
              * @param host host pointer of the data structure
              * @param size size of the memory
              */
-            DMem(size_t size);
+            DMem(size_t size, bool usm_flag=false);
             /**@brief DMem Classs constructor.
              *
              * Creates IRIS data memory object for a given size
@@ -190,7 +190,7 @@ namespace iris {
              * @param host host pointer of the data structure
              * @param size size of the memory
              */
-            DMem(void *host, size_t size);
+            DMem(void *host, size_t size, bool usm_flag=false);
             /**@brief DMem Classs constructor.
              *
              * Creates IRIS data memory object for a given size
@@ -212,13 +212,13 @@ namespace iris {
             DMem(void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim);
 
             template<typename T>
-            static DMem *create() { return DMem::create((void *)NULL, sizeof(T)); }
+            static DMem *create(bool usm_flag=false) { return DMem::create((void *)NULL, sizeof(T), usm_flag); }
             template<typename T>
-            static DMem *create(T & host) { return DMem::create((void *)&host, sizeof(T)); }
+            static DMem *create(T & host, bool usm_flag=false) { return DMem::create((void *)&host, sizeof(T), usm_flag); }
             template<typename T>
-            static DMem *create(T *host) { return DMem::create((void *)host, sizeof(T)); }
-            static DMem *create(void *host, size_t size) {
-                DMem *dmem = new DMem(host, size);
+            static DMem *create(T *host, bool usm_flag=false) { return DMem::create((void *)host, sizeof(T), usm_flag); }
+            static DMem *create(void *host, size_t size, bool usm_flag=false) {
+                DMem *dmem = new DMem(host, size, usm_flag);
                 return dmem;
             }
             static void release(DMem *dmem) {
@@ -280,15 +280,15 @@ namespace iris {
     template<typename T> 
     class DMemStruct : public DMem {
         public:
-            DMemStruct() : DMem(sizeof(T)) { }
-            DMemStruct(T & data) : DMem((void *)&data, sizeof(T)) { }
-            DMemStruct(T *data) : DMem((void *)data, sizeof(T)) { }
+            DMemStruct(bool usm_flag=false) : DMem(sizeof(T), usm_flag) { }
+            DMemStruct(T & data, bool usm_flag=false) : DMem((void *)&data, sizeof(T), usm_flag) { }
+            DMemStruct(T *data, bool usm_flag=false) : DMem((void *)data, sizeof(T), usm_flag) { }
             DMemStruct(T & data, const char *symbol) : DMem((void *)&data, sizeof(T), symbol) { }
             DMemStruct(T *data, const char *symbol) : DMem((void *)data, sizeof(T), symbol) { }
             virtual ~DMemStruct() { }
-            static DMemStruct *create() { return new DMemStruct<T>(); }
-            static DMemStruct *create(T & host) { return new DMemStruct<T>(host); }
-            static DMemStruct *create(T * host) { return new DMemStruct<T>(host); }
+            static DMemStruct *create(bool usm_flag=false) { return new DMemStruct<T>(usm_flag); }
+            static DMemStruct *create(T & host, bool usm_flag=false) { return new DMemStruct<T>(host, usm_flag); }
+            static DMemStruct *create(T * host, bool usm_flag=false) { return new DMemStruct<T>(host, usm_flag); }
             int update(T *host) { return DMem::update(host); }
             int update(T & host) { return DMem::update(&host); }
             T *host(bool valid=false) { return (T *) DMem::host(valid); }
@@ -298,14 +298,18 @@ namespace iris {
     template<typename T> 
     class DMemArray : public DMem {
         public:
-            DMemArray(size_t count) : DMem(count*sizeof(T)) { }
-            DMemArray(T *data, size_t count) : DMem((void *)data, sizeof(T)*count) { }
-            DMemArray(T data[]) : DMem((void *)data, sizeof(data)) { }
+            DMemArray(size_t count, bool usm_flag=false) : DMem(count*sizeof(T), usm_flag) { }
+            DMemArray(int count, bool usm_flag=false) : DMem(count*sizeof(T), usm_flag) { }
+            DMemArray(T *data, size_t count, bool usm_flag=false) : DMem((void *)data, sizeof(T)*count, usm_flag) { }
+            DMemArray(T *data, int count, bool usm_flag=false) : DMem((void *)data, sizeof(T)*count, usm_flag) { }
+            DMemArray(T data[], bool usm_flag=false) : DMem((void *)data, sizeof(data), usm_flag) { }
             //DMemArray(T data[], size_t count) : DMem((void *)data, sizeof(T)*count) { }
             virtual ~DMemArray() { }
-            static DMemArray *create(size_t count) { return new DMemArray(count); }
-            static DMemArray *create(T host[]) { return new DMemArray(host); }
-            static DMemArray *create(T *host, size_t count) { return new DMemArray(host, count); }
+            static DMemArray *create(int count, bool usm_flag=false) { return new DMemArray(count, usm_flag); }
+            static DMemArray *create(size_t count, bool usm_flag=false) { return new DMemArray(count, usm_flag); }
+            static DMemArray *create(T host[], bool usm_flag=false) { return new DMemArray(host, usm_flag); }
+            static DMemArray *create(T *host, size_t count, bool usm_flag=false) { return new DMemArray(host, count, usm_flag); }
+            static DMemArray *create(T *host, int count, bool usm_flag=false) { return new DMemArray(host, count, usm_flag); }
             int update(T *host) { return DMem::update(host); }
             T *host(bool valid=false) { return (T *) DMem::host(valid); }
             T *fetch_host() { return (T *) DMem::fetch_host(); }
