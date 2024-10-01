@@ -234,6 +234,13 @@ void DeviceHIP::RegisterPin(void *host, size_t size)
     //ld_->hipHostRegister(host, size, hipHostRegisterMapped);
 }
 
+void DeviceHIP::UnRegisterPin(void *host)
+{
+    hipError_t err = ld_->hipHostUnregister(host);
+    _hiperror(err);
+    //ld_->hipHostRegister(host, size, hipHostRegisterMapped);
+}
+
 void DeviceHIP::set_can_share_host_memory_flag(bool flag)
 {
     hipError_t err;

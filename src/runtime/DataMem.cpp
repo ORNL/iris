@@ -64,6 +64,7 @@ DataMem::DataMem(Platform *platform, void *host_ptr, size_t *off, size_t *host_s
 }
 void DataMem::FetchDataFromDevice(void *dst_host_ptr)
 {   
+    //printf("Fetch mem:%lu dst_host_ptr:%p host_dirty_flag:%d host_ptr:%p\n", uid(), dst_host_ptr, host_dirty_flag_, host_ptr_);
     if (!host_dirty_flag_ && host_ptr_ != NULL) {
         memcpy(dst_host_ptr, host_ptr_, size_);
     }
@@ -86,6 +87,7 @@ void DataMem::FetchDataFromDevice(void *dst_host_ptr)
 }
 void DataMem::FetchDataFromDevice(void *dst_host_ptr, size_t size)
 {   
+    //printf("Fetch1 mem:%lu dst_host_ptr:%p host_dirty_flag:%d host_ptr:%p size:%lu\n", uid(), dst_host_ptr, host_dirty_flag_, host_ptr_, size);
     if (!host_dirty_flag_ && host_ptr_ != NULL) {
         memcpy(dst_host_ptr, host_ptr_, size_);
     }
@@ -96,7 +98,7 @@ void DataMem::FetchDataFromDevice(void *dst_host_ptr, size_t size)
 
         Task* task = Task::Create(platform_, IRIS_TASK, "probe");
         task->set_async(false);
-        //printf("Fetch: Mem:%lu Host do not have valid data host:%p size:%lu\n", uid(), host_ptr(), size);
+        //printf("Fetch1: Mem:%lu Host do not have valid data host:%p size:%lu\n", uid(), host_ptr(), size);
         // No need to submit the task; Just extract data from device
         for (int i = 0; i < ndevs_; i++) {
             if (archs_[i] != NULL && !dirty_flag_[i]) {
@@ -120,6 +122,7 @@ void DataMem::Init(Platform *platform, void *host_ptr, size_t size)
     tmp_host_ptr_ = NULL;
     regions_ = NULL;
     host_dirty_flag_ = false;
+    is_pin_memory_ = false;
     if (host_ptr == NULL)
         host_dirty_flag_ = true;
     dirty_flag_ = new bool[ndevs_];
@@ -161,6 +164,7 @@ void DataMem::Init(Platform *platform, void *host_ptr, size_t size)
   }
 }
 DataMem::~DataMem() {
+    if (is_pin_memory_) platform_->DataMemUnRegisterPin(this);
     if (host_ptr_owner_) free(host_ptr_);
     if (tmp_host_ptr_) free(tmp_host_ptr_);
     for (int i = 0; i < ndevs_; i++) {
@@ -174,13 +178,17 @@ DataMem::~DataMem() {
 }
 void DataMem::UpdateHost(void *host_ptr)
 {
-    if (host_ptr_owner_ && host_ptr_ != NULL) free(host_ptr_);
+    if (host_ptr_owner_ && host_ptr_ != NULL) {
+        if (is_pin_memory_) platform_->DataMemUnRegisterPin(this);
+        free(host_ptr_);
+    }
     host_ptr_ = host_ptr;
     host_ptr_owner_ = false;
     host_dirty_flag_ = false;
     for(int i=0; i<ndevs_; i++) {
         dirty_flag_[i] = true;
     }
+    if (is_pin_memory_) platform_->DataMemRegisterPin(this);
 }
 void DataMem::init_reset(bool reset)
 {

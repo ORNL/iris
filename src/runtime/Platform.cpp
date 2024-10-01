@@ -1710,6 +1710,36 @@ int Platform::DataMemUpdate(iris_mem brs_mem, void *host) {
   return IRIS_SUCCESS;
 }
 
+int Platform::UnRegisterPin(void *host) {
+#if 0
+  for (int i=0; i<ndevs_; i++) 
+      devs_[i]->UnRegisterPin(host, size);
+#else
+  for (int i=0; i<nplatforms_; i++) 
+      first_dev_of_type_[i]->UnRegisterPin(host);
+#endif
+  return IRIS_SUCCESS;
+}
+
+int Platform::DataMemUnRegisterPin(DataMem *mem) {
+    int status = IRIS_SUCCESS;
+    if (mem->is_pin_memory()) {
+        void *host = mem->host_ptr();
+        if (host == NULL) return IRIS_SUCCESS;
+        size_t size =mem->size();
+        _trace("Registering PIN for %p size:%lu end_addr:%p", host, size, host+size);
+        status = UnRegisterPin(host);
+        mem->set_pin_memory(false);
+    }
+  return status;
+}
+
+int Platform::DataMemUnRegisterPin(iris_mem brs_mem) {
+  DataMem *mem = (DataMem *) Platform::GetPlatform()->get_mem_object(brs_mem);
+  return DataMemUnRegisterPin(mem);
+}
+
+
 int Platform::RegisterPin(void *host, size_t size) {
 #if 0
   for (int i=0; i<ndevs_; i++) 
@@ -1725,11 +1755,9 @@ int Platform::DataMemRegisterPin(DataMem *mem) {
   void *host = mem->host_ptr();
   if (host == NULL) return IRIS_SUCCESS;
   size_t size =mem->size();
+  mem->set_pin_memory();
   _trace("Registering PIN for %p size:%lu end_addr:%p", host, size, host+size);
-  for (int i=0; i<nplatforms_; i++) {
-    first_dev_of_type_[i]->RegisterPin(host, size);
-  }  
-  return IRIS_SUCCESS;
+  return RegisterPin(host, size);
 }
 
 int Platform::DataMemRegisterPin(iris_mem brs_mem) {

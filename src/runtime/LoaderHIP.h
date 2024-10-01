@@ -39,6 +39,7 @@ public:
   hipError_t (*hipMalloc)(void** ptr, size_t size);
   hipError_t (*hipMallocAsync)(void** ptr, size_t size, hipStream_t stream);
   hipError_t (*hipHostRegister)(void *ptr, size_t size, unsigned int flags);
+  hipError_t (*hipHostUnregister)(void *ptr);
   hipError_t (*hipMemset)(hipDeviceptr_t ptr, int init, size_t size);
   hipError_t (*hipMemsetAsync)(hipDeviceptr_t ptr, int init, size_t size, hipStream_t stream);
   hipError_t (*hipCtxEnablePeerAccess)(hipCtx_t peerCtx, unsigned int flags);

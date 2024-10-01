@@ -86,6 +86,7 @@ public:
       destroy_events_mutex_.unlock();
   }
   virtual void RegisterPin(void *host, size_t size) { }
+  virtual void UnRegisterPin(void *host) { }
   void ExecuteMalloc(Command* cmd);
   void RegisterHost(BaseMem *mem);
   virtual float GetEventTime(void *event, int stream) { return 0.0f; }

@@ -1094,6 +1094,15 @@ extern int iris_params_map(iris_task task, int *params_map);
 extern int iris_task_info(iris_task task, int param, void* value, size_t* size);
 
 
+/**@brief Unregisters pin memory
+ *
+ * This function disables pinning of host memory
+ *
+ * @param host host pointer of the data structure
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_unregister_pin_memory(void *host);
+
 /**@brief Registers pin memory
  *
  * This function enables pinning of host memory
@@ -1288,6 +1297,15 @@ extern iris_mem *iris_data_mem_create_ptr(void *host, size_t size);
 extern int iris_data_mem_clear(iris_mem mem);
 
 
+
+/**@brief  UnPin/Unregister a host memory for all the available devices
+ *
+ * This function un pins a host memory for all the available devices
+ *
+ * @param mem pointer to the memory object
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_data_mem_unpin(iris_mem mem);
 
 /**@brief  Pins a host memory for all the available devices
  *

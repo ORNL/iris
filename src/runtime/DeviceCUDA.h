@@ -24,6 +24,7 @@ public:
   int MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset=false);
   int MemFree(BaseMem *mem, void* mem_addr);
   void RegisterPin(void *host, size_t size);
+  void UnRegisterPin(void *host);
   int RegisterCallback(int stream, CallBackType callback_fn, void* data, int flags=0);
   void EnablePeerAccess();
   void SetPeerDevices(int *peers, int count);

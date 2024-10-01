@@ -37,6 +37,7 @@ int LoaderHIP::LoadFunctions() {
   LOADFUNC(hipMallocAsync);
   LOADFUNC(hipMalloc);
   LOADFUNC(hipHostRegister);
+  LOADFUNC(hipHostUnregister);
   LOADFUNC(hipMemset);
   LOADFUNC(hipMemsetAsync);
   LOADFUNC(hipFree);

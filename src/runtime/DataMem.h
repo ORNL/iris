@@ -126,6 +126,8 @@ public:
   virtual void** arch_ptr(Device *dev, void *host=NULL);
   inline void create_dev_mem(Device *dev, int devno, void *host);
   Platform *platform() { return platform_; }
+  bool is_pin_memory() { return is_pin_memory_; }
+  void set_pin_memory(bool flag=true) { is_pin_memory_ = flag; }
 protected:
   bool host_dirty_flag_;
   bool  *dirty_flag_;
@@ -155,6 +157,7 @@ protected:
   bool bc_; // for BC distribution
   bool h2d_df_flag_[16];
   bool is_symbol_;
+  bool is_pin_memory_;
   vector<pair<DataMem *, size_t> > child_;
 };
 
