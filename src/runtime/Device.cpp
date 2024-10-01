@@ -144,6 +144,19 @@ void Device::Execute(Task* task) {
   //    ExecuteMemResetInput(task, cmd);
   //}
   //if (task->cmd_kernel()) ExecuteMemIn(task, task->cmd_kernel());     
+  vector<DataMem *> d2h_dmems;
+  for (int i = 0; i < task->ncmds(); i++) {
+      Command* cmd = task->cmd(i);
+      // If there are tasks with explicit D2H of DMEM objects 
+      // which are not part of kernel, these should be tracked 
+      // to set host dirty flag and device valid flags
+      if (cmd->type() == IRIS_CMD_D2H && (
+              cmd->mem()->GetMemHandlerType() == IRIS_DMEM ||
+              cmd->mem()->GetMemHandlerType() == IRIS_DMEM_REGION)) {
+         d2h_dmems.push_back((DataMem*)cmd->mem());
+      }
+  }
+  HandleHiddenDMemIns(task);
   for (int i = 0; i < task->ncmds(); i++) {
     //printf("Inside device cmd:%d execute and calling free destroy events %lu:%s %lf\n", i, task->uid(), task->name(), timer_->Now());
     Command* cmd = task->cmd(i);
@@ -155,6 +168,10 @@ void Device::Execute(Task* task) {
                                       ExecuteMemIn(task, cmd);
                                       ExecuteKernel(cmd);     
                                       ExecuteMemOut(task, task->cmd_kernel());
+                                      for(DataMem *dmem : d2h_dmems) {
+                                          dmem->set_dirty_except(devno_);
+                                          dmem->set_host_dirty();
+                                      }
                                       break;
                                   }
       case IRIS_CMD_DMEM2DMEM_COPY: {
@@ -183,6 +200,7 @@ void Device::Execute(Task* task) {
     cmd->set_time_end(timer_);
     if (hook_command_post_) hook_command_post_(cmd);
   }
+  HandleHiddenDMemOuts(task);
   task->update_status(IRIS_SUBMITTED);
   if (platform_obj_->is_event_profile_enabled()) {
       double execute_end = (timer_->Now()-first_event_cpu_mid_point_time())*1000.0;
@@ -812,6 +830,34 @@ void Device::ExecuteDMEM2DMEM(Task *task, Command *cmd) {
         InvokeDMemInDataTransfer<DataMem>(task, cmd, (DataMem *)dst_mem, NULL, (DataMem*)src_mem);
     }
 }
+void Device::HandleHiddenDMemIns(Task *task) 
+{
+    Command* cmd_kernel = task->cmd_kernel();
+    if (cmd_kernel == NULL) return;
+    // There should be atleast one kernel
+    for(DataMem *dmem : task->hidden_dmem_in()) {
+        if (dmem->GetMemHandlerType() == IRIS_DMEM) {
+            ExecuteMemInDMemIn(task, cmd_kernel, dmem);
+        }
+        else if (dmem->GetMemHandlerType() == IRIS_DMEM_REGION) {
+            DataMemRegion *rdmem = (DataMemRegion*)dmem;
+            ExecuteMemInDMemRegionIn(task, cmd_kernel, rdmem);
+        }
+    }
+}
+void Device::HandleHiddenDMemOuts(Task *task) 
+{
+    Command* cmd_kernel = task->cmd_kernel();
+    if (cmd_kernel == NULL) return;
+    // There should be atleast one kernel
+    for(DataMem *dmem : task->hidden_dmem_out()) {
+        if (dmem->GetMemHandlerType() == IRIS_DMEM ||
+            dmem->GetMemHandlerType() == IRIS_DMEM_REGION) {
+            dmem->set_dirty_except(devno_);
+            dmem->set_host_dirty();
+        }
+    }
+}
 void Device::ExecuteMemIn(Task *task, Command* cmd) {
     if (cmd == NULL || cmd->kernel() == NULL) return;
     int *params_map = cmd->get_params_map();
@@ -1362,7 +1408,7 @@ void Device::ExecuteMemInDMemIn(Task *task, Command* cmd, DataMem *mem) {
                 void **arch_ptr = (void **)(tmp_host_ptr + offset);
                 InvokeDMemInDataTransfer<DataMem>(task, cmd, child_mem);
                 *arch_ptr = child_mem->arch(devno());
-                //printf("parsing child mem:%lu size:%lu parent_tmp_host_ptr:%p parent_host:%p offset:%lu child_arch:%p child_arch_ptr:%p\n", child_mem->uid(), child_mem->size(), tmp_host_ptr, host, offset, *arch_ptr, arch_ptr);
+                //printf("parsing child mem:%lu size:%lu parent_tmp_host_ptr:%p parent_host:%p offset:%lu child_dev_arch:%p child_arch_ptr:%p child_host_arch_ptr:%p\n", child_mem->uid(), child_mem->size(), tmp_host_ptr, host, offset, *arch_ptr, arch_ptr, host+offset);
             }
             InvokeDMemInDataTransfer<DataMem>(task, cmd, mem);
             //printf("----- mem:%lu size:%lu arch:%p host:%p tmp_host_ptr:%p\n", mem->uid(), mem->size(), mem->arch(devno()), host, tmp_host_ptr);
@@ -1389,6 +1435,7 @@ void Device::ExecuteMemOut(Task *task, Command* cmd) {
         if (mem->GetMemHandlerType() == IRIS_DMEM ||
                 mem->GetMemHandlerType() == IRIS_DMEM_REGION) {
             DataMem *dmem = (DataMem *)mem;
+            //printf("ExecuteMemOut mem:%lu dev:%d set_dirty_except:%d host_dirty:True\n", dmem->uid(), devno_, devno_);
             dmem->set_dirty_except(devno_);
             dmem->set_host_dirty();
         }
@@ -1412,7 +1459,6 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
         _error("Flush out is called for unsupported memory handler task:%ld:%s\n", cmd->task()->uid(), cmd->task()->name());
         return;
     }
-    //printf("TODO running transfer : %s\n", cmd->task()->name());
     DataMem* mem = (DataMem *)cmd->mem();
     if (mem->is_host_dirty()) {
         size_t *ptr_off = mem->off();
