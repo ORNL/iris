@@ -224,6 +224,17 @@ int iris_task_h2d(iris_task task, iris_mem mem, size_t off, size_t size, void* h
   return Platform::GetPlatform()->TaskH2D(task, mem, off, size, host);
 }
 
+int iris_task_hidden_dmem(iris_task brs_task, iris_mem brs_mem, int mode) {
+  Task *task = Platform::GetPlatform()->get_task_object(brs_task);
+  BaseMem * mem = Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem->GetMemHandlerType() == IRIS_DMEM || 
+          mem->GetMemHandlerType() == IRIS_DMEM_REGION) {
+    DataMem *dmem = (DataMem *)mem;
+    task->insert_hidden_dmem(dmem, mode);
+  }
+  return IRIS_SUCCESS;
+}
+
 int iris_task_dmem_h2d(iris_task task, iris_mem mem) {
   return Platform::GetPlatform()->TaskH2D(task, mem, 0, 0, NULL);
 }

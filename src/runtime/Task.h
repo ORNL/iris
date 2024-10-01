@@ -180,6 +180,7 @@ public:
   void stream_unlock() {
     pthread_mutex_unlock(&stream_mutex_);
   }
+  void insert_hidden_dmem(DataMem *dmem, int mode); 
   void set_recommended_stream(int stream) { recommended_stream_ = stream; }
   int recommended_dev() { return recommended_dev_; }
   void set_recommended_dev(int dev) { recommended_dev_ = dev; }
@@ -324,7 +325,11 @@ private:
   //pthread_cond_t complete_cond_;
   vector<DataObjectProfile>       out_dataobject_profiles;
   vector<ProfileEvent>            profile_events_;
+  vector<DataMem *> hidden_dmem_in_;
+  vector<DataMem *> hidden_dmem_out_;
 public:
+  vector<DataMem *> & hidden_dmem_in() { return hidden_dmem_in_; }
+  vector<DataMem *> & hidden_dmem_out() { return hidden_dmem_out_; }
   vector<ProfileEvent> & profile_events() { return profile_events_; }
   ProfileEvent & CreateProfileEvent(BaseMem *mem, int connect_dev, ProfileRecordType type, Device *dev, int stream);
   ProfileEvent & CreateProfileEvent(Task *task, int connect_dev, ProfileRecordType type, Device *dev, int stream) {

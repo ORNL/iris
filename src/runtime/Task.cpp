@@ -5,6 +5,7 @@
 #include "Device.h"
 #include "Kernel.h"
 #include "Mem.h"
+#include "DataMem.h"
 #include "Pool.h"
 #include "Scheduler.h"
 #include "Timer.h"
@@ -591,6 +592,22 @@ ProfileEvent & Task::CreateProfileEvent(BaseMem *mem, int connect_dev, ProfileRe
       return profile_events_.back();
 }
 
+void Task::insert_hidden_dmem(DataMem *dmem, int mode)
+{
+    if (mode == iris_r) {
+        hidden_dmem_in_.push_back(dmem);
+    }
+    else if (mode == iris_w) {
+        hidden_dmem_out_.push_back(dmem);
+    }
+    else if (mode == iris_rw) {
+        hidden_dmem_in_.push_back(dmem);
+        hidden_dmem_out_.push_back(dmem);
+    }
+    else {
+        _error("Unknown memory mode dmem:%lu mode:%d\n", dmem->uid(), mode);
+    }
+}
 
 } /* namespace rt */
 } /* namespace iris */

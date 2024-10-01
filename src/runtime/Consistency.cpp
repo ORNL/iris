@@ -158,7 +158,8 @@ void Consistency::ResolveD2H(Task* task, Command* cmd) {
   BaseMem* dmem = (BaseMem *)cmd->mem();
   if (dmem && dmem->GetMemHandlerType() == IRIS_DMEM) {
     //we're using datamem so there is no need to execute this memory transfer --- just flush
-    dev->ExecuteMemFlushOut(cmd);
+    // We shouldn't flush DMEM
+    //dev->ExecuteMemFlushOut(cmd);
     return;
   }
   Mem* mem = (Mem *)cmd->mem();

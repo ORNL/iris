@@ -115,6 +115,8 @@ public:
   void ExecuteMemFlushOutToShadow(Command* cmd);
 #endif
 #endif
+  void HandleHiddenDMemIns(Task *task);
+  void HandleHiddenDMemOuts(Task *task);
   void ExecuteD2D(Command* cmd, Device *dev=NULL);
   void ExecuteH2D(Command* cmd, Device *dev=NULL);
   void ExecuteH2BroadCast(Command* cmd);

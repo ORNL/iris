@@ -725,6 +725,15 @@ extern int iris_task_dmem2dmem(iris_task task, iris_mem src_mem, iris_mem dst_me
  */
 extern int iris_task_h2d(iris_task task, iris_mem mem, size_t off, size_t size, void* host);
 
+/**@brief Add hidden DMEM to a task 
+ *
+ * @param task target task
+ * @param mem target DMEM memory object
+ * @param mode Mode of DMEM object to task (iris_r, iris_w, iris_rw)
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_task_hidden_dmem(iris_task brs_task, iris_mem brs_mem, int mode);
+
 /**@brief Adds a H2D command to the target task.
  *
  * @param task target task

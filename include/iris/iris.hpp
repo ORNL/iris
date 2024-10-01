@@ -174,6 +174,7 @@ namespace iris {
       * DMem class for IRIS (Novel data memory) memory objects. It is a derived from the BaseMem class
       */
     class DMem : public BaseMem {
+        bool is_usm_set_;
         public:
             /**@brief DMem Classs constructor.
              *
@@ -350,6 +351,8 @@ namespace iris {
             void disable_launch() { iris_task_kernel_launch_disabled(task_, true); }
             iris_task_type task() { return task_; }
             int wait();
+            int add_hidden_dmem(DMem & dmem, int mode);
+            int add_hidden_dmem(DMem *dmem, int mode);
         private:
             iris_task_type task_;
             bool retainable_;
