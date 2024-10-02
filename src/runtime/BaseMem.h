@@ -55,7 +55,7 @@ namespace rt {
                 }
                 pthread_mutex_init(&host_mutex_, NULL);
                 // Special device map for host
-                Retain();
+                //Retain();
                 set_object_track(Platform::GetPlatform()->mem_track_ptr());
                 track()->TrackObject(this, uid());
                 _trace("Memory object is Created :%lu:%p", uid(), this);
