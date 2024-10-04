@@ -594,6 +594,8 @@ class dmem_null:
     if self.handle.uid not in mem_handle_2_pobj:
         mem_handle_2_pobj[self.handle.uid] = []
     mem_handle_2_pobj[self.handle.uid].append(self)
+  def release(self):
+    return dll.iris_mem_release(self.handle)
   def size(self):
     dll.iris_mem_get_size.restype = c_size_t
     return dll.iris_mem_get_size(self.handle)
@@ -637,6 +639,8 @@ class dmem_base:
       dll.iris_data_mem_create_tile(byref(m), c_host, coff, chost_size, cdev_size, c_size_t(elem_size), c_int(dim))
       return m, IRIS_DMEM
 
+  def release(self):
+    return dll.iris_mem_release(self.handle)
   def is_reset(self):
     dll.iris_mem_is_reset.restype = c_int
     return dll.iris_mem_is_reset(self.handle)
