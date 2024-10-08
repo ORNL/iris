@@ -257,7 +257,7 @@ endif()
 
 if(USE_PYTHON)
   MESSAGE(STATUS "USE_PYTHON")
-  install(FILES iris.py DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/iris)
+  install(FILES iris.py DESTINATION ${CMAKE_INSTALL_PREFIX})
 endif()
 
 add_library(iris ${IRIS_RUNTIME_SOURCES})
