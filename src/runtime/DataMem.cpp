@@ -74,6 +74,11 @@ void DataMem::FetchDataFromDevice(void *dst_host_ptr)
         //printf("Fetch: Mem:%lu Host do not have valid data host:%p size:%lu\n", uid(), host_ptr(), size());
         // No need to submit the task; Just extract data from device
         for (int i = 0; i < ndevs_; i++) {
+            if (is_usm(i)) {
+                ASSERT(host_ptr_ != NULL);
+                memcpy(dst_host_ptr, host_ptr_, size_);
+                break;
+            }
             if (archs_[i] != NULL && !dirty_flag_[i]) {
                 archs_dev_[i]->MemD2H(task, this, off(), 
                         host_size(), dev_size(), elem_size(), 
@@ -101,6 +106,11 @@ void DataMem::FetchDataFromDevice(void *dst_host_ptr, size_t size)
         //printf("Fetch1: Mem:%lu Host do not have valid data host:%p size:%lu\n", uid(), host_ptr(), size);
         // No need to submit the task; Just extract data from device
         for (int i = 0; i < ndevs_; i++) {
+            if (is_usm(i)) {
+                ASSERT(host_ptr_ != NULL);
+                memcpy(dst_host_ptr, host_ptr_, size);
+                break;
+            }
             if (archs_[i] != NULL && !dirty_flag_[i]) {
                 archs_dev_[i]->MemD2H(task, this, off, 
                         host_size, dev_size, elem_size(), 
