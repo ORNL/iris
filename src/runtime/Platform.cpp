@@ -2428,6 +2428,7 @@ int Platform::Finalize() {
   Clean();
   Reset();
   pthread_mutex_unlock(&mutex_);
+  fflush(stdout);
   return ret_id;
 }
 
