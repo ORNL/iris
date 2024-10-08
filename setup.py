@@ -98,7 +98,7 @@ class CMakeBuild(build_ext):
         self.copy_file(os.path.join(self.sourcedir, 'src/runtime/iris.py'), os.path.join(dist_info_dir, 'iris.py'))
         self.copy_file(os.path.join(self.sourcedir, 'src/runtime/__init__.py'), os.path.join(dist_info_dir, '__init__.py'))
         #self.copy_all_files(os.path.join(self.sourcedir, 'utils'), os.path.join(dist_info_dir, 'utils'))
-        os.remove(os.path.join(dist_info_dir, 'include/iris/iris.py'))
+        #os.remove(os.path.join(dist_info_dir, 'include/iris/iris.py'))
         #for file_name in os.listdir(extdir):
         #    if file_name.endswith('.so') or file_name.endswith('.dll'):
         #        source_file = os.path.join(extdir, file_name)
