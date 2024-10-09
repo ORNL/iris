@@ -139,7 +139,7 @@ int DeviceOpenCL::Init() {
           CL_QUEUE_PROPERTIES, CL_QUEUE_ON_DEVICE_DEFAULT,
               0 // Terminate the properties list
   };
-  printf("clCreateCommandQueue:%p clCreateCommandQueueWithProperties:%p\n", ld_->clCreateCommandQueue, ld_->clCreateCommandQueueWithProperties);
+  //printf("clCreateCommandQueue:%p clCreateCommandQueueWithProperties:%p\n", ld_->clCreateCommandQueue, ld_->clCreateCommandQueueWithProperties);
   if (ld_->clCreateCommandQueueWithProperties == NULL || type_ == iris_fpga)
       default_queue_ = ld_->clCreateCommandQueue(clctx_, cldev_, 0, &err);
   else

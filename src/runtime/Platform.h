@@ -66,6 +66,7 @@ public:
   int InitDevice(int dev);
   int InitDevicesSynchronize(int sync);
   int Finalize();
+  bool IsFinalized() { return finalize_; }
   int Synchronize();
 
   int EnvironmentInit();

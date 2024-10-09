@@ -2429,10 +2429,10 @@ int Platform::Finalize() {
   _info("t10[%lf] t11[%lf] t12[%lf] t13[%lf]", timer()->Total(10), timer()->Total(11), timer()->Total(12), timer()->Total(13));
   _info("t14[%lf] t15[%lf] t16[%lf] t17[%lf]", timer()->Total(14), timer()->Total(15), timer()->Total(16), timer()->Total(17));
   _info("t18[%lf] t19[%lf] t20[%lf] t21[%lf]", timer()->Total(18), timer()->Total(19), timer()->Total(20), timer()->Total(21));
-  finalize_ = true;
   if (scheduling_history_) delete scheduling_history_;
   Clean();
   Reset();
+  finalize_ = true;
   pthread_mutex_unlock(&mutex_);
   fflush(stdout);
   return ret_id;

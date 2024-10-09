@@ -174,11 +174,13 @@ void DataMem::Init(Platform *platform, void *host_ptr, size_t size)
   }
 }
 DataMem::~DataMem() {
-    if (is_pin_memory_) platform_->DataMemUnRegisterPin(this);
+    if (!platform_->IsFinalized() && is_pin_memory_) platform_->DataMemUnRegisterPin(this);
     if (host_ptr_owner_) free(host_ptr_);
     if (tmp_host_ptr_) free(tmp_host_ptr_);
-    for (int i = 0; i < ndevs_; i++) {
+    if (!platform_->IsFinalized()) {
+      for (int i = 0; i < ndevs_; i++) {
         if (archs_[i] && !is_usm(i)) archs_dev_[i]->MemFree(this, archs_[i]);
+      }
     }
     delete [] dirty_flag_;
     for(int i=0; i<n_regions_; i++) {

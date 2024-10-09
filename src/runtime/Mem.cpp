@@ -28,8 +28,10 @@ Mem::Mem(size_t size, Platform* platform) : BaseMem(IRIS_MEM, platform->ndevs())
 }
 
 Mem::~Mem() {
-  for (int i = 0; i < ndevs_; i++) {
-    if (archs_[i] && !is_usm(i)) archs_dev_[i]->MemFree(this, archs_[i]);
+  if (!platform_->IsFinalized()) {
+    for (int i = 0; i < ndevs_; i++) {
+      if (archs_[i] && !is_usm(i)) archs_dev_[i]->MemFree(this, archs_[i]);
+    }
   }
   if (!host_inter_) free(host_inter_);
   pthread_mutex_destroy(&mutex_);
