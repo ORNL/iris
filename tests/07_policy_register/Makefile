@@ -4,6 +4,9 @@ all: $(TEST) libPolicyGWS.so libPolicyGWSHook.so policy_last.so kernel.openmp.so
 
 include ../Makefile.tests
 
+clean:
+	rm -f $(TEST) kernel.ptx kernel.hip kernel.openmp.so policy_last.so libPolicyGWSHook.so libPolicyGWS.so
+
 policy_last.so: policy_last.cpp
 	g++ -std=c++11 -fPIC -shared ${CXXFLAGS} -o $@ $^
 
