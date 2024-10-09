@@ -564,6 +564,8 @@ int Platform::InitCUDA() {
   _cuerror(err);
   if (getenv("IRIS_SINGLE")) ndevs = 1;
 
+  int max_ndevs = -1;
+  EnvironmentIntRead("MAX_CUDA_DEVICE", max_ndevs);
   // added the following to limit the number of devices
   char* c = getenv("IRIS_MAX_CUDA_DEVICE");
   if (c) ndevs = atoi(c);
@@ -584,6 +586,7 @@ int Platform::InitCUDA() {
     cudevs[mdevs] = dev;
     ndevs_++;
     mdevs++;
+    if (max_ndevs != -1 && mdevs >= max_ndevs) break;
 #ifdef ENABLE_SINGLE_DEVICE_PER_CU
     break;
 #endif
@@ -634,6 +637,8 @@ int Platform::InitHIP() {
   _hiperror(err);
   if (getenv("IRIS_SINGLE")) ndevs = 1;
 
+  int max_ndevs = -1;
+  EnvironmentIntRead("MAX_HIP_DEVICE", max_ndevs);
   // added the following to limit the number of devices
   char* c = getenv("IRIS_MAX_HIP_DEVICE");
   if (c) ndevs = atoi(c);
@@ -654,6 +659,7 @@ int Platform::InitHIP() {
     hipdevs[mdevs] = dev;
     ndevs_++;
     mdevs++;
+    if (max_ndevs != -1 && mdevs >= max_ndevs) break;
 #ifdef ENABLE_SINGLE_DEVICE_PER_CU
     break;
 #endif
