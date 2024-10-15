@@ -302,6 +302,9 @@ public:
   void set_auto_dag(AutoDAG* auto_dag){auto_dag_ = auto_dag;}
   //void insert_into_mems(BaseMem* mem){ mems_.insert(mem); }
 #endif
+ void SetAutoPar(bool enable_auto_par){ enable_auto_par_ = enable_auto_par; };
+ bool GetAutoPar(){ return enable_auto_par_;}
+
 public:
   int InitDevices(bool sync);
   int InitScheduler(bool use_pthread=true);
@@ -396,6 +399,7 @@ private:
 #ifdef AUTO_PAR
   AutoDAG* auto_dag_;
 #endif
+  bool enable_auto_par_;
   pthread_mutex_t mutex_;
   hook_task hook_task_pre_;
   hook_task hook_task_post_;

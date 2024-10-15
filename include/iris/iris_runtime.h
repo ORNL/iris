@@ -2183,6 +2183,12 @@ extern int iris_julia_init(void *julia_launch_func, int decoupled_init);
  */
 extern julia_kernel_t iris_get_julia_launch_func();
 
+/* API to return the the status of whether auto parallel macro is on
+ * @return This function returns whether AUTO_PAR macro is set or not
+ */
+extern bool iris_is_enabled_auto_par();
+
+
 #ifdef __cplusplus
 } /* end of extern "C" */
 #endif

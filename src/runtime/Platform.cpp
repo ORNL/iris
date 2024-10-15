@@ -122,6 +122,9 @@ void Platform::Reset() {
   disable_kernel_launch_ = false;
 #ifdef AUTO_PAR
   auto_dag_ = NULL;
+  enable_auto_par_ = true;
+#else
+  enable_auto_par_ = false;
 #endif
 }
 

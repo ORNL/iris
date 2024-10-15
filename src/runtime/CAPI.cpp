@@ -1151,3 +1151,7 @@ julia_kernel_t iris_get_julia_launch_func()
 {
     return julia_kernel__;
 }
+
+bool iris_is_enabled_auto_par() {
+  return Platform::GetPlatform()->GetAutoPar();
+}
