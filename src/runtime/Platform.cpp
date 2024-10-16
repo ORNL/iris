@@ -1715,7 +1715,6 @@ int Platform::DataMemInit(BaseMem *mem, bool reset) {
 int Platform::DataMemUpdate(iris_mem brs_mem, void *host) {
   DataMem *mem = (DataMem *) Platform::GetPlatform()->get_mem_object(brs_mem);
   mem->UpdateHost(host);
-  DataMemRegisterPin(mem);
   return IRIS_SUCCESS;
 }
 
@@ -1736,7 +1735,7 @@ int Platform::DataMemUnRegisterPin(DataMem *mem) {
         void *host = mem->host_ptr();
         if (host == NULL) return IRIS_SUCCESS;
         size_t size =mem->size();
-        _trace("Registering PIN for %p size:%lu end_addr:%p", host, size, host+size);
+        _trace("UnRegistering PIN for %p size:%lu end_addr:%p", host, size, host+size);
         status = UnRegisterPin(host);
         mem->set_pin_memory(false);
     }
