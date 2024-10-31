@@ -1009,6 +1009,42 @@ module IrisHRT
         return ccall(Libdl.dlsym(lib, :iris_data_mem_create_ptr), Ptr{IrisMem}, (Ptr{Cvoid}, Csize_t), host, size)
     end
 
+    function iris_data_mem(T, dims...) 
+        #size = Csize_t(length(host) * sizeof(T))
+        host_size = prod(dims) * sizeof(T)
+        dim = length(dims)
+        element_size = Int32(sizeof(T))
+        host_cptr = C_NULL
+        #println("Type of element: ", T, " Size:", size(host), " Element size:", element_size)
+        element_type = iris_pointer
+        if T == Float32
+            element_type = iris_float 
+        elseif T == Float64
+            element_type = iris_double
+        elseif T == Int64
+            element_type = iris_int64
+        elseif T == Int32
+            element_type = iris_int32
+        elseif T == Int16
+            element_type = iris_int16
+        elseif T == Int8
+            element_type = iris_int8
+        elseif T == UInt64
+            element_type = iris_uint64
+        elseif T == UInt32
+            element_type = iris_uint32
+        elseif T == UInt16
+            element_type = iris_uint16
+        elseif T == UInt8
+            element_type = iris_uint8
+        elseif T == Char
+            element_type = iris_char
+        else
+            element_type = iris_unknown
+        end
+        return ccall(Libdl.dlsym(lib, :iris_data_mem_create_struct_nd), IrisMem, (Ptr{Cvoid}, Ptr{Cvoid}, Int32, Csize_t, Int32), host_cptr, host_size, dim, element_size, Int32(element_type))
+    end
+
     function iris_data_mem(host::Array{T}) where T 
         #size = Csize_t(length(host) * sizeof(T))
         host_size = collect(size(host))
