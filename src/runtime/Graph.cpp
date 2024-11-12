@@ -15,9 +15,7 @@
 #include <set>
 #include <queue>
 #include <typeinfo>
-#ifndef ANDROID
-#include <bits/stdc++.h>
-#endif
+#include <algorithm>
 
 #ifdef AUTO_PAR
 #include "AutoDAG.h"
