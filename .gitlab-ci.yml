@@ -177,39 +177,44 @@ deploy_docs_manual-job:
 
 test-job-zenith-all:
   extends: .test-job
+  variables:
+    IRIS_ARCHS: cuda,hip,openmp,opencl
   before_script:
     - source /auto/software/iris/setup_system.source
     - source /opt/xilinx/xrt/setup.sh
-    - export IRIS_ARCHS=cuda,hip,openmp,opencl
     - echo "Running All version of the tests..."
 
 test-job-zenith-cuda:
   extends: .test-job
+  variables:
+    IRIS_ARCHS: cuda
   before_script:
     - source /auto/software/iris/setup_system.source
-    - export IRIS_ARCHS=cuda
     - echo "Running CUDA version of the tests..."
 
 test-job-zenith-hip:
   extends: .test-job
+  variables:
+    IRIS_ARCHS: hip
   before_script:
     - source /auto/software/iris/setup_system.source
-    - export IRIS_ARCHS=hip
-    - echo "Running CUDA version of the tests..."
+    - echo "Running HIP version of the tests..."
 
 test-job-zenith-openmp:
   extends: .test-job
+  variables:
+    IRIS_ARCHS: openmp
   before_script:
     - source /auto/software/iris/setup_system.source
-    - export IRIS_ARCHS=openmp
     - echo "Running OpenMP version of the tests..."
 
 test-job-zenith-opencl:
   extends: .test-job
+  variables:
+    IRIS_ARCHS: opencl
   before_script:
     - source /auto/software/iris/setup_system.source
     - source /opt/xilinx/xrt/setup.sh
-    - export IRIS_ARCHS=opencl
     - echo "Running OpenCL version of the tests..."
 
 test-job-explorer:
@@ -308,59 +313,67 @@ test-backends-34:
 
 test-job-zenith-all-ffi-async-s2k:
   extends: .test-job-ffi
+  variables:
+    IRIS_ARCHS: cuda,hip,openmp,opencl
+    IRIS_ASYNC: 1
   before_script:
     - source /auto/software/iris/setup_system.source
     - source /opt/xilinx/xrt/setup.sh
-    - export IRIS_ARCHS=cuda,hip,openmp,opencl
-    - export IRIS_ASYNC=1
     - echo "Running All version of the tests..."
 
 test-job-zenith-all-async-s2k:
   extends: .test-job
+  variables:
+    IRIS_ARCHS: cuda,hip,openmp,opencl
+    IRIS_ASYNC: 1
   before_script:
     - source /auto/software/iris/setup_system.source
     - source /opt/xilinx/xrt/setup.sh
-    - export IRIS_ARCHS=cuda,hip,openmp,opencl
-    - export IRIS_ASYNC=1
     - echo "Running All version of the tests..."
 
 test-job-zenith-cuda-async-s2k:
   extends: .test-job
+  variables:
+    IRIS_ARCHS: cuda
+    IRIS_ASYNC: 1
   before_script:
     - source /auto/software/iris/setup_system.source
-    - export IRIS_ARCHS=cuda
-    - export IRIS_ASYNC=1
     - echo "Running CUDA version of the tests..."
 
 test-job-zenith-hip-async-s2k:
   extends: .test-job
+  variables:
+    IRIS_ARCHS: hip
+    IRIS_ASYNC: 1
   before_script:
     - source /auto/software/iris/setup_system.source
-    - export IRIS_ARCHS=hip
-    - export IRIS_ASYNC=1
-    - echo "Running CUDA version of the tests..."
+    - echo "Running HIP version of the tests..."
 
 test-job-zenith-openmp-async-s2k:
   extends: .test-job
+  variables:
+    IRIS_ARCHS: openmp
+    IRIS_ASYNC: 1
   before_script:
     - source /auto/software/iris/setup_system.source
-    - export IRIS_ARCHS=openmp
-    - export IRIS_ASYNC=1
     - echo "Running OpenMP version of the tests..."
 
 test-job-zenith-opencl-async-s2k:
   extends: .test-job
+  variables:
+    IRIS_ARCHS: opencl
+    IRIS_ASYNC: 1
   before_script:
     - source /auto/software/iris/setup_system.source
     - source /opt/xilinx/xrt/setup.sh
-    - export IRIS_ARCHS=opencl
-    - export IRIS_ASYNC=1
     - echo "Running OpenCL version of the tests..."
 
 test-job-explorer-async-s2k:
   extends: .test-job
+  variables:
+    IRIS_ASYNC: 1
   before_script:
-    - export IRIS_ASYNC=1
+    - echo "${IRIS_ASYNC}"
   tags: [explorer]
 
 # test-job-leconte:
@@ -372,10 +385,11 @@ test-backends-29-async-s2k:
   needs: []
   stage: test
   allow_failure: true
+  variables:
+    IRIS_ASYNC: 1
   before_script:
     - source /auto/software/iris/setup_system.source
     - source /opt/xilinx/xrt/setup.sh
-    - export IRIS_ASYNC=1
   script:
     - echo "Installing iris to $IRIS_INSTALL_ROOT"
     - bash build-coverage.sh
@@ -416,10 +430,11 @@ test-backends-34-async-s2k:
   needs: []
   stage: test
   allow_failure: true
+  variables:
+    IRIS_ASYNC: 1
   before_script:
     - source /auto/software/iris/setup_system.source
     - source /opt/xilinx/xrt/setup.sh
-    - export IRIS_ASYNC=1
   script:
     - echo "Installing iris to $IRIS_INSTALL_ROOT"
     - bash build-coverage.sh
