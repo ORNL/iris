@@ -12,5 +12,4 @@ dependencies:
   - pip:
     - sphinxcontrib-contentui
     - sphinx_rtd_theme
-    - cgi
 
