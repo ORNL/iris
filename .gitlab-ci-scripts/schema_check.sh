@@ -4,7 +4,7 @@ errors=0
 total=0
 
 # Validate against record schema.
-for f in tests-$IRIS_ARCHS-$IRIS_ASYNC/**/output.json
+for f in tests-${IRIS_ARCHS}-${IRIS_ASYNC}/**/output.json
 do
    echo python utils/validate_schema.py -i $f -s schema/record.schema.json
    python utils/validate_schema.py -i $f -s schema/record.schema.json
@@ -17,7 +17,7 @@ do
 done
 
 # Validate against dagger schema.
-for f in tests-$IRIS_ARCHS-$IRIS_ASYNC/**/*.json
+for f in tests-${IRIS_ARCHS}-${IRIS_ASYNC}/**/*.json
 do
    echo python utils/validate_schema.py -i $f -s schema/dagger.schema.json
    python utils/validate_schema.py -i $f -s schema/dagger.schema.json
