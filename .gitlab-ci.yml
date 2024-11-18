@@ -83,7 +83,10 @@ deploy_docs_manual-job:
     - echo $PATH
     - echo $LD_LIBRARY_PATH
     - echo $HIP_ROOT
-    - cd tests
+    - echo $IRIS_ARCHS
+    - echo $IRIS_ASYNC
+    - cp tests tests-$IRIS_ARCHS-$IRIS_ASYNC
+    - cd tests-$IRIS_ARCHS-$IRIS_ASYNC
     - mkdir build
     - cd build
     - cmake .. -DIRIS=$IRIS
@@ -133,7 +136,10 @@ deploy_docs_manual-job:
     - echo $PATH
     - echo $LD_LIBRARY_PATH
     - echo $HIP_ROOT
-    - cd tests
+    - echo $IRIS_ARCHS
+    - echo $IRIS_ASYNC
+    - cp tests tests-$IRIS_ARCHS-$IRIS_ASYNC
+    - cd tests-$IRIS_ARCHS-$IRIS_ASYNC
     - mkdir build
     - cd build
     - cmake .. -DIRIS=$IRIS
