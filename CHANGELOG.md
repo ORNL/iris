@@ -20,13 +20,42 @@ A summary of Development Versioning Specification is shown below.
 ## [Unreleased]
 
 ### Added
+#### New capabilties
+- Asynchronous task execution and utilizes underlying device specific asynchronous multi-stream capabilities
+- Handle stream synchronization within device and avoid host involvement
+- Overlapped computation with data transfer using device provided asynchronous multi-stream capabilities
+- Also give all streams to host wrapper of (CUDA/HIP) kernel if exists, which can explore all streams
+- Automatic dependency identification based on data flow analysis
+- Added Tiling data structures
+- Added initial Julia support with IRIS Julia APIs to call kernels written in native language
+- New Retain-Release logic based tasks garbage collection
+- Advanced Dagger features and testing
+- Task Graph policy
 - Changelog added to the repo to track major changes.
+- Xilinx FPGA kernel acceleration support
+- FFI based kernel calls (No need of boiler plate. To be enabled using ENABLE_FFI)
+- Added multi-purpose HostInterface for traditional boiler-plate based host kernel calls and FFI based calls
+- Generalized Loader for loading shared libraries of kernels
+- Support for UniSYCL (In external repository)
+
+#### Updates
+- Also enabled manual control of DMEM (H2D, D2H) through IRIS APIs along with automatic data orchestration
+- Added DMEM to DMEM copy command support
 
 ### Changed
+- Improved Python interface and Python PIP package installation
+- Improved C++ IRIS interface with DMEM type specific templates
+- iris_task and iris_mem are no longer pointers. They are structs now and the memory will be in application's memory space.
 
 ### Removed
+- None
 
 ### Fixed
+- Several bug fixes and fixes for deadlock issues
+- DMEM multiple PIN memory registrations
+- Fixed fortan host
+- Fixed OpenCL device loading issues
+- iris_task and iris_mem are no longer pointers. They are structs now and the memory will be in application's memory space.
 
 ## [2.0.0] - 2023-06-02
 
