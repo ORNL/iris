@@ -82,14 +82,16 @@ namespace rt {
             }
             virtual ~BaseMem() { 
                 pthread_mutex_destroy(&host_mutex_);
-                _trace("Memory object is deleted:%lu:%p", uid(), this);
+                _trace("Memory object is getting deleted:%lu:%p", uid(), this);
                 for(int i=0; i<ndevs_; i++) {
                     pthread_mutex_destroy(&host_write_lock_[i]);
                     stack<void *> & stk = device_map_[i].GetCompletionStack();
                     int n = stk.size();
                     for(int j=0; j<n; j++) { 
                         void *top = stk.top();
-                        DestroyEvent(i, top);
+                        if (top != NULL) 
+                            DestroyEvent(i, top);
+                        stk.pop();
                     } 
                 }
                 delete [] d2h_events_;

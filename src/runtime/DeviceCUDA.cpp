@@ -233,6 +233,7 @@ void DeviceCUDA::UnRegisterPin(void *host)
 }
 
 DeviceCUDA::~DeviceCUDA() {
+    _trace("CUDA device:%d is getting destroyed", devno());
     host2cuda_ld_->finalize(devno());
     if (julia_if_ != NULL) julia_if_->finalize(devno());
     for (int i = 0; i < nqueues_; i++) {
@@ -243,6 +244,7 @@ DeviceCUDA::~DeviceCUDA() {
     delete [] streams_;
     if (is_async(false) && platform_obj_->is_event_profile_enabled()) 
         DestroyEvent(single_start_time_event_);
+    _trace("CUDA device:%d is destroyed", devno());
 }
 
 typedef void *(*SymbolFn)();
@@ -1196,9 +1198,10 @@ void DeviceCUDA::DestroyEvent(void *event)
         ld_->cuCtxSetCurrent(ctx_);
     }
     //printf("Trying to Destroy dev:%d event:%p\n", devno(), event);
+    _event_debug("Destroying dev:%d event:%p ld_:%p cuEventQuery:%p", devno(), event, ld_, ld_->cuEventQuery);
     CUresult err1 = ld_->cuEventQuery((CUevent) event);
     //printf("Query result: %d\n", err1);
-    //_event_debug("Destroyed dev:%d event:%p", devno(), event);
+    _event_debug("Destroyed dev:%d event:%p", devno(), event);
     CUresult err = ld_->cuEventDestroy((CUevent) event);
     _cuerror(err);
     if (err != CUDA_SUCCESS)

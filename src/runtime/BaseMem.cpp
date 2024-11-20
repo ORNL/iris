@@ -22,6 +22,7 @@ void BaseMem::HostRecordEvent(int devno, int stream)
 void *BaseMem::RecordEvent(int devno, int stream, bool new_entry) {
     Device *dev = archs_dev_[devno];
     void **event_ptr = GetCompletionEventPtr(devno, new_entry);
+    _event_debug("Created mem:%lu devno:%d *event:%p event:%p", uid(), devno, *event_ptr, event_ptr);
     dev->ResetContext();
     if (*event_ptr == NULL) {
         dev->CreateEvent(event_ptr, iris_event_disable_timing);
@@ -32,6 +33,7 @@ void *BaseMem::RecordEvent(int devno, int stream, bool new_entry) {
     _trace(" devno:%d stream:%d uid:%lu event:%p", devno, stream, uid(), GetCompletionEvent(devno)); 
     _event_debug("dev:[%d][%s] mem:%lu event:%p event_ptr:%p stream:%d",  dev->devno(), dev->name(), uid(), *event_ptr, event_ptr, stream);
     dev->RecordEvent(event_ptr, stream);
+    _event_debug("Recorded event mem:%lu devno:%d *event:%p event:%p", uid(), devno, *event_ptr, event_ptr);
     SetWriteDevice(devno);
     SetWriteStream(devno, stream);
     SetWriteDeviceEvent(devno, *event_ptr);
