@@ -230,6 +230,8 @@ test-backends-29:
   needs: []
   stage: test
   allow_failure: true
+  variables:
+    IRIS_TESTNAME: backends-29
   before_script:
     - source /auto/software/iris/setup_system.source
     - source /opt/xilinx/xrt/setup.sh
@@ -244,8 +246,8 @@ test-backends-29:
     - echo $HIP_ROOT
     - echo $IRIS_ARCHS
     - echo $IRIS_ASYNC
-    - cp -r tests tests-$IRIS_ARCHS-$IRIS_ASYNC
-    - cd tests-$IRIS_ARCHS-$IRIS_ASYNC
+    - cp -r tests tests-$IRIS_ARCHS-$IRIS_ASYNC$IRIS_TESTNAME
+    - cd tests-$IRIS_ARCHS-$IRIS_ASYNC$IRIS_TESTNAME
     - echo "Test backends for test 29"
     - cd 29_data_mem
     - bash test_backends.sh
@@ -273,6 +275,8 @@ test-backends-34:
   needs: []
   stage: test
   allow_failure: true
+  variables:
+    IRIS_TESTNAME: backends-34
   before_script:
     - source /auto/software/iris/setup_system.source
     - source /opt/xilinx/xrt/setup.sh
@@ -287,8 +291,8 @@ test-backends-34:
     - echo $HIP_ROOT
     - echo $IRIS_ARCHS
     - echo $IRIS_ASYNC
-    - cp -r tests tests-$IRIS_ARCHS-$IRIS_ASYNC
-    - cd tests-$IRIS_ARCHS-$IRIS_ASYNC
+    - cp -r tests tests-$IRIS_ARCHS-$IRIS_ASYNC$IRIS_TESTNAME
+    - cd tests-$IRIS_ARCHS-$IRIS_ASYNC$IRIS_TESTNAME
     - echo "Test backends for test 34"
     - cd 34_set_mem
     - bash test_backends.sh
@@ -387,6 +391,7 @@ test-backends-29-async-s2k:
   allow_failure: true
   variables:
     IRIS_ASYNC: 1
+    IRIS_TESTNAME: backends-29
   before_script:
     - source /auto/software/iris/setup_system.source
     - source /opt/xilinx/xrt/setup.sh
@@ -401,8 +406,8 @@ test-backends-29-async-s2k:
     - echo $HIP_ROOT
     - echo $IRIS_ASYNC
     - echo $IRIS_ARCHS
-    - cp -r tests tests-$IRIS_ARCHS-$IRIS_ASYNC
-    - cd tests-$IRIS_ARCHS-$IRIS_ASYNC
+    - cp -r tests tests-$IRIS_ARCHS-$IRIS_ASYNC$IRIS_TESTNAME
+    - cd tests-$IRIS_ARCHS-$IRIS_ASYNC$IRIS_TESTNAME
     - echo "Test backends for test 29"
     - cd 29_data_mem
     - bash test_backends.sh
@@ -432,6 +437,7 @@ test-backends-34-async-s2k:
   allow_failure: true
   variables:
     IRIS_ASYNC: 1
+    IRIS_TESTNAME: backends-34
   before_script:
     - source /auto/software/iris/setup_system.source
     - source /opt/xilinx/xrt/setup.sh
@@ -444,8 +450,8 @@ test-backends-34-async-s2k:
     - echo $PATH
     - echo $LD_LIBRARY_PATH
     - echo $HIP_ROOT
-    - cp -r tests tests-$IRIS_ARCHS-$IRIS_ASYNC
-    - cd tests-$IRIS_ARCHS-$IRIS_ASYNC
+    - cp -r tests tests-$IRIS_ARCHS-$IRIS_ASYNC$IRIS_TESTNAME
+    - cd tests-$IRIS_ARCHS-$IRIS_ASYNC$IRIS_TESTNAME
     - echo "Test backends for test 34"
     - cd 34_set_mem
     - bash test_backends.sh
@@ -474,6 +480,8 @@ test-backends-37:
   needs: []
   stage: test
   allow_failure: true
+  variables:
+    IRIS_TESTNAME: backends-37
   before_script:
     - source /auto/software/iris/setup_system.source
     - source /opt/xilinx/xrt/setup.sh
@@ -486,8 +494,8 @@ test-backends-37:
     - echo $PATH
     - echo $LD_LIBRARY_PATH
     - echo $HIP_ROOT
-    - cp -r tests tests-$IRIS_ARCHS-$IRIS_ASYNC
-    - cd tests-$IRIS_ARCHS-$IRIS_ASYNC
+    - cp -r tests tests-$IRIS_ARCHS-$IRIS_ASYNC$IRIS_TESTNAME
+    - cd tests-$IRIS_ARCHS-$IRIS_ASYNC$IRIS_TESTNAME
     - echo "Test backends for test 37"
     - cd 37_opencl_icd
     - bash test_backends.sh
