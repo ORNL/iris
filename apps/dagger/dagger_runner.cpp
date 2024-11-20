@@ -382,6 +382,7 @@ int main(int argc, char** argv) {
         for(auto & buffer : kernel.buffers){
           //create and add the host-side buffer based on it's type
           std::string buf = std::string(buffer);
+          void *host_mem_ptr = NULL;
           if(buf == "r"){
             //create and populate memory
             double* tmp = new double[(int)pow(SIZE,kernel.dimensions)];
@@ -389,10 +390,12 @@ int main(int argc, char** argv) {
               tmp[i] = i;
             }
             host_mem.push_back(tmp);
+            host_mem_ptr = tmp;
             num_buffers_used++;
           } else if(buf == "w"){
             double* tmp = new double[(int)pow(SIZE,kernel.dimensions)];
             host_mem.push_back(tmp);
+            host_mem_ptr = tmp;
             num_buffers_used++;
           } else if(buf == "rw"){
             //create and populate memory
@@ -401,6 +404,7 @@ int main(int argc, char** argv) {
               tmp[i] = i;
             }
             host_mem.push_back(tmp);
+            host_mem_ptr = tmp;
             num_buffers_used++;
           } else {
             printf("\033[41mInvalid memory argument! Kernel %s has a buffer of memory type %s but only r,w or rw are allowed.\n\033[0m",kernel.name,buf.c_str());
@@ -411,7 +415,7 @@ int main(int argc, char** argv) {
           char buffer_name[80];
           sprintf(buffer_name,"%s-%s-%d",kernel.name,buf.c_str(),argument_index);
           if (use_data_memory){
-            retcode = iris_data_mem_create(&x,host_mem[0], (int)pow(SIZE,kernel.dimensions)*sizeof(double));
+            retcode = iris_data_mem_create(&x,host_mem_ptr, (int)pow(SIZE,kernel.dimensions)*sizeof(double));
             memory_task_target = iris_pending;
           }
           else
@@ -488,13 +492,13 @@ int main(int argc, char** argv) {
       }
     }
 */
-    //clean up host memory
-    for (auto & this_mem : host_mem){
-      delete [] this_mem;
-    }
     //clean up device memory
     for (auto& this_mem : dev_mem){
       iris_mem_release(this_mem);
+    }
+    //clean up host memory
+    for (auto & this_mem : host_mem){
+      delete [] this_mem;
     }
   }
 

@@ -1735,7 +1735,7 @@ int Platform::DataMemUnRegisterPin(DataMem *mem) {
         void *host = mem->host_ptr();
         if (host == NULL) return IRIS_SUCCESS;
         size_t size =mem->size();
-        _trace("UnRegistering PIN for %p size:%lu end_addr:%p", host, size, host+size);
+        _trace("UnRegistering PIN for %p size:%lu end_addr:%p", host, size, (char*)host+size);
         status = UnRegisterPin(host);
         mem->set_pin_memory(false);
     }
@@ -1764,7 +1764,7 @@ int Platform::DataMemRegisterPin(DataMem *mem) {
   if (host == NULL) return IRIS_SUCCESS;
   size_t size =mem->size();
   mem->set_pin_memory();
-  _trace("Registering PIN for %p size:%lu end_addr:%p", host, size, host+size);
+  _trace("Registering PIN for %p size:%lu end_addr:%p", host, size, (char*)host+size);
   return RegisterPin(host, size);
 }
 

@@ -28,6 +28,10 @@
 #define _HIPERROR_ENABLE
 #define _ZEERROR_ENABLE
 
+#define _HIPWARNING_ENABLE
+#define _CUWARNING_ENABLE
+#define _CLWARNING_ENABLE
+
 #define _COLOR_DEBUG
 
 #define ASSERT(X)   assert(X)
@@ -195,8 +199,8 @@ extern char iris_log_prefix_[];
 #define  _cuerror(err) do { if (err != CUDA_SUCCESS) { printf( RED "[E] %s [%s:%d:%s] err[%d]" RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, err); FFLUSH(stdout); } } while (0)
 #define __cuerror(err) do { if (err != CUDA_SUCCESS) { printf(_RED "[E] %s [%s:%d:%s] err[%d]" RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, err); FFLUSH(stdout); } } while (0)
 #else
-#define  _clerror(err) do { } while (0)
-#define __clerror(err) do { } while (0)
+#define  _cuerror(err) do { } while (0)
+#define __cuerror(err) do { } while (0)
 #endif
 
 #ifdef _HIPERROR_ENABLE
@@ -206,6 +210,31 @@ extern char iris_log_prefix_[];
 #define  _hiperror(err) do { } while (0)
 #define __hiperror(err) do { } while (0)
 #endif
+
+#ifdef _CLWARNING_ENABLE
+#define  _clwarning(err) do { if (err != CL_SUCCESS) { printf( RED "[E] %s [%s:%d:%s] err[%d]" RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, err); FFLUSH(stdout); } } while (0)
+#define __clwarning(err) do { if (err != CL_SUCCESS) { printf(_RED "[E] %s [%s:%d:%s] err[%d]" RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, err); FFLUSH(stdout); } } while (0)
+#else
+#define  _clwarning(err) do { } while (0)
+#define __clwarning(err) do { } while (0)
+#endif
+
+#ifdef _CUWARNING_ENABLE
+#define  _cuwarning(err) do { if (err != CUDA_SUCCESS) { printf( RED "[E] %s [%s:%d:%s] err[%d]" RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, err); FFLUSH(stdout); } } while (0)
+#define __cuwarning(err) do { if (err != CUDA_SUCCESS) { printf(_RED "[E] %s [%s:%d:%s] err[%d]" RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, err); FFLUSH(stdout); } } while (0)
+#else
+#define  _cuwarning(err) do { } while (0)
+#define __cuwarning(err) do { } while (0)
+#endif
+
+#ifdef _HIPWARNING_ENABLE
+#define  _hipwarning(err) do { if (err != hipSuccess) { printf( RED "[E] %s [%s:%d:%s] err[%d]" RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, err); FFLUSH(stdout); } } while (0)
+#define __hipwarning(err) do { if (err != hipSuccess) { printf(_RED "[E] %s [%s:%d:%s] err[%d]" RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, err); FFLUSH(stdout); } } while (0)
+#else
+#define  _hipwarning(err) do { } while (0)
+#define __hipwarning(err) do { } while (0)
+#endif
+
 
 #ifdef _ZEERROR_ENABLE
 #define  _zeerror(err) do { if (err != ZE_RESULT_SUCCESS) { printf( RED "[E] %s [%s:%d:%s] err[%d]" RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, err); FFLUSH(stdout); } } while (0)

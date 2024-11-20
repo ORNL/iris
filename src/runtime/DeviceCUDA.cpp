@@ -221,13 +221,15 @@ DeviceCUDA::DeviceCUDA(LoaderCUDA* ld, LoaderHost2CUDA *host2cuda_ld, CUdevice c
 void DeviceCUDA::RegisterPin(void *host, size_t size)
 {
     //ld_->cudaHostRegister(host, size, cudaHostRegisterMapped);
-    ld_->cudaHostRegister(host, size, cudaHostRegisterDefault);
+    CUresult err = ld_->cudaHostRegister(host, size, cudaHostRegisterDefault);
+    _cuwarning(err);
 }
 
 void DeviceCUDA::UnRegisterPin(void *host)
 {
     //ld_->cudaHostRegister(host, size, cudaHostRegisterMapped);
-    ld_->cudaHostUnregister(host);
+    CUresult err = ld_->cudaHostUnregister(host);
+    _cuwarning(err);
 }
 
 DeviceCUDA::~DeviceCUDA() {
