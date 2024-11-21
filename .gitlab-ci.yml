@@ -187,7 +187,7 @@ deploy_docs_manual-job:
 test-job-zenith-all:
   needs: [build-noffi-zenith]
   <<: *zenith_config
-  extends: test-job
+  extends: .test-job
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
@@ -196,7 +196,7 @@ test-job-zenith-all:
 test-job-zenith-cuda:
   needs: [build-noffi-zenith]
   <<: *zenith_config
-  extends: test-job
+  extends: .test-job
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
@@ -205,7 +205,7 @@ test-job-zenith-cuda:
 test-job-zenith-hip:
   needs: [build-noffi-zenith]
   <<: *zenith_config
-  extends: test-job
+  extends: .test-job
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
@@ -214,7 +214,7 @@ test-job-zenith-hip:
 test-job-zenith-openmp:
   needs: [build-noffi-zenith]
   <<: *zenith_config
-  extends: test-job
+  extends: .test-job
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
@@ -223,7 +223,7 @@ test-job-zenith-openmp:
 test-job-zenith-opencl:
   needs: [build-noffi-zenith]
   <<: *zenith_config
-  extends: test-job
+  extends: .test-job
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
@@ -232,7 +232,7 @@ test-job-zenith-opencl:
 test-job-explorer:
   needs: [build-noffi-explorer]
   <<: *explorer_config
-  extends: test-job
+  extends: .test-job
   variables:
     IRIS_MACHINE: explorer
     IRIS_TAG: "noffi"
@@ -241,7 +241,7 @@ test-job-explorer:
 test-job-zenith-all-async-s2k:
   needs: [build-noffi-zenith]
   <<: *zenith_config
-  extends: test-job
+  extends: .test-job
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
@@ -251,7 +251,7 @@ test-job-zenith-all-async-s2k:
 test-job-zenith-cuda-async-s2k:
   needs: [build-noffi-zenith]
   <<: *zenith_config
-  extends: test-job
+  extends: .test-job
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
@@ -261,7 +261,7 @@ test-job-zenith-cuda-async-s2k:
 test-job-zenith-hip-async-s2k:
   needs: [build-noffi-zenith]
   <<: *zenith_config
-  extends: test-job
+  extends: .test-job
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
@@ -271,7 +271,7 @@ test-job-zenith-hip-async-s2k:
 test-job-zenith-openmp-async-s2k:
   needs: [build-noffi-zenith]
   <<: *zenith_config
-  extends: test-job
+  extends: .test-job
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
@@ -281,7 +281,7 @@ test-job-zenith-openmp-async-s2k:
 test-job-zenith-opencl-async-s2k:
   needs: [build-noffi-zenith]
   <<: *zenith_config
-  extends: test-job
+  extends: .test-job
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
@@ -291,7 +291,7 @@ test-job-zenith-opencl-async-s2k:
 test-job-explorer-async-s2k:
   needs: [build-noffi-explorer]
   <<: *explorer_config
-  extends: test-job
+  extends: .test-job
   variables:
     IRIS_MACHINE: explorer
     IRIS_TAG: "noffi"
@@ -301,7 +301,7 @@ test-job-explorer-async-s2k:
 test-job-zenith-all-ffi-async-s2k:
   needs: [build-noffi-zenith]
   <<: *zenith_config
-  extends: test-job
+  extends: .test-job
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "ffi"
@@ -351,13 +351,13 @@ test-job-zenith-all-ffi-async-s2k:
 
 
 # test-job-leconte:
-#   extends: test-job
+#   extends: .test-job
 #   tags: [leconte]
 
 test-backends-29:
   needs: [build-noffi-zenith]
   <<: *zenith_config
-  extends: test-backend
+  extends: .test-backend
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
@@ -367,7 +367,7 @@ test-backends-29:
 test-backends-34:
   needs: [build-noffi-zenith]
   <<: *zenith_config
-  extends: test-backend
+  extends: .test-backend
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
@@ -375,13 +375,13 @@ test-backends-34:
     IRIS_TESTNAME: "34_set_mem"
 
 # test-job-leconte:
-#   extends: test-job
+#   extends: .test-job
 #   tags: [leconte]
 
 test-backends-29-async-s2k:
   needs: [build-noffi-zenith]
   <<: *zenith_config
-  extends: test-backend
+  extends: .test-backend
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
@@ -392,7 +392,7 @@ test-backends-29-async-s2k:
 test-backends-34-async-s2k:
   needs: [build-noffi-zenith]
   <<: *zenith_config
-  extends: test-backend
+  extends: .test-backend
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
@@ -403,7 +403,7 @@ test-backends-34-async-s2k:
 test-backends-37:
   needs: [build-noffi-zenith]
   <<: *zenith_config
-  extends: test-backend
+  extends: .test-backend
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
