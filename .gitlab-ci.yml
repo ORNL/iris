@@ -143,6 +143,7 @@ deploy_docs_manual-job:
     - echo $IRIS_ASYNC
     - echo $IRIS_TAG
     - echo $IRIS_MACHINE
+    - echo "Test: tests-${IRIS_ARCHS}-${IRIS_ASYNC}-${IRIS_TAG}-${IRIS_MACHINE}"
     - cp -r tests tests-$IRIS_ARCHS-$IRIS_ASYNC-$IRIS_TAG-$IRIS_MACHINE
     - cd tests-$IRIS_ARCHS-$IRIS_ASYNC-$IRIS_TAG-$IRIS_MACHINE
     - mkdir build
@@ -308,6 +309,7 @@ test-job-zenith-all-ffi-async-s2k:
     - echo $IRIS_ARCHS
     - echo $IRIS_MACHINE
     - echo $IRIS_ASYNC
+    - echo "Test: tests-${IRIS_ARCHS}-${IRIS_ASYNC}-${IRIS_TAG}-${IRIS_MACHINE}${IRIS_TESTNAME}"
     - cp -r tests tests-$IRIS_ARCHS-$IRIS_ASYNC-$IRIS_TAG-$IRIS_MACHINE$IRIS_TESTNAME
     - cd tests-$IRIS_ARCHS-$IRIS_ASYNC-$IRIS_TAG-$IRIS_MACHINE$IRIS_TESTNAME
     - echo "Test backends for test 29"
@@ -343,7 +345,7 @@ test-backends-29:
   variables:
     IRIS_MACHINE: zenith
     IRIS_TAG: noffi
-    IRIS_ARCHS: hip
+    IRIS_ARCHS: cuda,hip,openmp,opencl
     IRIS_TESTNAME: 29_data_mem
 
 test-backends-34:
@@ -352,7 +354,7 @@ test-backends-34:
   variables:
     IRIS_MACHINE: zenith
     IRIS_TAG: noffi
-    IRIS_ARCHS: hip
+    IRIS_ARCHS: cuda,hip,openmp,opencl
     IRIS_TESTNAME: 34_set_mem
 
 # test-job-leconte:
@@ -365,7 +367,7 @@ test-backends-29-async-s2k:
   variables:
     IRIS_MACHINE: zenith
     IRIS_TAG: noffi
-    IRIS_ARCHS: hip
+    IRIS_ARCHS: cuda,hip,openmp,opencl
     IRIS_ASYNC: 1
     IRIS_TESTNAME: 29_data_mem
 
@@ -375,7 +377,7 @@ test-backends-34-async-s2k:
   variables:
     IRIS_MACHINE: zenith
     IRIS_TAG: noffi
-    IRIS_ARCHS: hip
+    IRIS_ARCHS: cuda,hip,openmp,opencl
     IRIS_ASYNC: 1
     IRIS_TESTNAME: 34_set_mem
 
@@ -385,7 +387,7 @@ test-backends-37:
   variables:
     IRIS_MACHINE: zenith
     IRIS_TAG: noffi
-    IRIS_ARCHS: hip
+    IRIS_ARCHS: cuda,hip,openmp,opencl
     IRIS_TESTNAME: 37_opencl_icd
 
 .dagger:
