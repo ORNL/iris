@@ -351,7 +351,7 @@ test-job-zenith-all-ffi-async-s2k:
 
 
 # test-job-leconte:
-#   extends: .test-job
+#   extends: test-job
 #   tags: [leconte]
 
 test-backends-29:
@@ -375,7 +375,7 @@ test-backends-34:
     IRIS_TESTNAME: "34_set_mem"
 
 # test-job-leconte:
-#   extends: .test-job
+#   extends: test-job
 #   tags: [leconte]
 
 test-backends-29-async-s2k:
