@@ -100,7 +100,7 @@ deploy_docs_manual-job:
   extends: .deploy_docs_common
   when: manual
 
-.test-job:
+.test-job: &test_job
   stage: test
   allow_failure: true
   before_script:
@@ -209,9 +209,8 @@ deploy_docs_manual-job:
         path: coverage.xml
 
 test-job-zenith-all:
-  <<: *zenith_config
+  <<: [*zenith_config, *test_job]
   needs: [build-noffi-zenith]
-  extends: .test-job
   variables:
     IRIS_ARCHS: cuda,hip,openmp,opencl
   before_script:
