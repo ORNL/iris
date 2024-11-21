@@ -26,25 +26,25 @@ variables:
 #CONDA_ROOT: /auto/ciscratch/conda
 
 .zenith-config: &zenith_config
-  <<: *common_iris
   tags: [zenith]
   variables:
     IRIS_MACHINE: zenith
+  before_script:
+    - echo "Setting up environment..."
+    - source /auto/software/iris/setup_system.source
+    - source /opt/xilinx/xrt/setup.sh
+    - module load cmake
+    - module load gnu
 
 .explorer-config: &explorer_config
-  <<: *common_iris
   tags: [explorer]
+  variables:
+    IRIS_MACHINE: explorer
   before_script:
+    - echo "Setting up environment..."
     - source /auto/software/iris/setup_system.source
     - module load cmake
     - module load gnu
-  variables:
-    IRIS_MACHINE: explorer
-
-
-.archs-config_all: &archs_config_all
-  variables:
-    IRIS_ARCHS: cuda,hip,openmp,opencl
 
 .build-ffi: &build_ffi
   stage: build
