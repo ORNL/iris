@@ -127,7 +127,7 @@ deploy_docs_manual-job:
   extends: .deploy_docs_common
   when: manual
 
-.test-job: &test_job
+.test-job:
   stage: test
   allow_failure: true
   script:
@@ -186,116 +186,129 @@ deploy_docs_manual-job:
 
 test-job-zenith-all:
   needs: [build-noffi-zenith]
+  <<: *zenith_config
+  extends: test-job
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
     IRIS_ARCHS: "cuda,hip,openmp,opencl"
-  <<: [*zenith_config, *test_job]
 
 test-job-zenith-cuda:
   needs: [build-noffi-zenith]
+  <<: *zenith_config
+  extends: test-job
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
     IRIS_ARCHS: "cuda"
-  <<: [*zenith_config, *test_job]
 
 test-job-zenith-hip:
   needs: [build-noffi-zenith]
+  <<: *zenith_config
+  extends: test-job
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
     IRIS_ARCHS: "hip"
-  <<: [*zenith_config, *test_job]
 
 test-job-zenith-openmp:
   needs: [build-noffi-zenith]
+  <<: *zenith_config
+  extends: test-job
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
     IRIS_ARCHS: "openmp"
-  <<: [*zenith_config, *test_job]
 
 test-job-zenith-opencl:
   needs: [build-noffi-zenith]
+  <<: *zenith_config
+  extends: test-job
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
     IRIS_ARCHS: "opencl"
-  <<: [*zenith_config, *test_job]
 
 test-job-explorer:
   needs: [build-noffi-explorer]
+  <<: *explorer_config
+  extends: test-job
   variables:
     IRIS_MACHINE: explorer
     IRIS_TAG: "noffi"
     IRIS_ARCHS: "hip,openmp,opencl"
-  <<: [*explorer_config, *test_job]
 
 test-job-zenith-all-async-s2k:
   needs: [build-noffi-zenith]
+  <<: *zenith_config
+  extends: test-job
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
     IRIS_ARCHS: "cuda,hip,openmp,opencl"
     IRIS_ASYNC: 1
-  <<: [*zenith_config, *test_job]
 
 test-job-zenith-cuda-async-s2k:
   needs: [build-noffi-zenith]
+  <<: *zenith_config
+  extends: test-job
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
     IRIS_ARCHS: "cude"
     IRIS_ASYNC: 1
-  <<: [*zenith_config, *test_job]
 
 test-job-zenith-hip-async-s2k:
   needs: [build-noffi-zenith]
+  <<: *zenith_config
+  extends: test-job
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
     IRIS_ARCHS: "hip"
     IRIS_ASYNC: 1
-  <<: [*zenith_config, *test_job]
 
 test-job-zenith-openmp-async-s2k:
   needs: [build-noffi-zenith]
+  <<: *zenith_config
+  extends: test-job
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
     IRIS_ARCHS: "openmp"
     IRIS_ASYNC: 1
-  <<: [*zenith_config, *test_job]
 
 test-job-zenith-opencl-async-s2k:
   needs: [build-noffi-zenith]
+  <<: *zenith_config
+  extends: test-job
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
     IRIS_ARCHS: "opencl"
     IRIS_ASYNC: 1
-  <<: [*zenith_config, *test_job]
 
 test-job-explorer-async-s2k:
   needs: [build-noffi-explorer]
+  <<: *explorer_config
+  extends: test-job
   variables:
     IRIS_MACHINE: explorer
     IRIS_TAG: "noffi"
     IRIS_ARCHS: "hip,openmp,opencl"
     IRIS_ASYNC: 1
-  <<: [*explorer_config, *test_job]
 
 test-job-zenith-all-ffi-async-s2k:
   needs: [build-noffi-zenith]
+  <<: *zenith_config
+  extends: test-job
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "ffi"
     IRIS_ARCHS: "cuda,hip,openmp,opencl"
     IRIS_ASYNC: 1
-  <<: [*zenith_config, *test_job]
 
-.test-backend: &test_backend
+.test-backend:
   stage: test
   allow_failure: true
   script:
@@ -343,21 +356,23 @@ test-job-zenith-all-ffi-async-s2k:
 
 test-backends-29:
   needs: [build-noffi-zenith]
+  <<: *zenith_config
+  extends: test-backend
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
     IRIS_ARCHS: "cuda,hip,openmp,opencl"
     IRIS_TESTNAME: "29_data_mem"
-  <<: [*zenith_config, *test_backend]
 
 test-backends-34:
   needs: [build-noffi-zenith]
+  <<: *zenith_config
+  extends: test-backend
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
     IRIS_ARCHS: "cuda,hip,openmp,opencl"
     IRIS_TESTNAME: "34_set_mem"
-  <<: [*zenith_config, *test_backend]
 
 # test-job-leconte:
 #   extends: .test-job
@@ -365,32 +380,35 @@ test-backends-34:
 
 test-backends-29-async-s2k:
   needs: [build-noffi-zenith]
+  <<: *zenith_config
+  extends: test-backend
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
     IRIS_ARCHS: "cuda,hip,openmp,opencl"
     IRIS_ASYNC: 1
     IRIS_TESTNAME: "29_data_mem"
-  <<: [*zenith_config, *test_backend]
 
 test-backends-34-async-s2k:
   needs: [build-noffi-zenith]
+  <<: *zenith_config
+  extends: test-backend
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
     IRIS_ARCHS: "cuda,hip,openmp,opencl"
     IRIS_ASYNC: 1
     IRIS_TESTNAME: "34_set_mem"
-  <<: [*zenith_config, *test_backend]
 
 test-backends-37:
   needs: [build-noffi-zenith]
+  <<: *zenith_config
+  extends: test-backend
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
     IRIS_ARCHS: "cuda,hip,openmp,opencl"
     IRIS_TESTNAME: "37_opencl_icd"
-  <<: [*zenith_config, *test_backend]
 
 .dagger:
   stage: dagger
