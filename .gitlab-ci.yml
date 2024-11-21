@@ -49,6 +49,12 @@ variables:
     paths:
       - $IRIS_INSTALL_ROOT.noffi.$IRIS_MACHINE
 
+build-job-noffi:
+  <<: [*zenith_config, *build_noffi]
+
+build-job-ffi:
+  <<: [*zenith_config, *build_ffi]
+
 build-ffi-zenith:
   # Using aliasin features
   <<: [*zenith_config, *build_ffi]
