@@ -12,6 +12,8 @@ stages:
     - echo "Setting up environment..."
     - module load cmake
     - module load gnu
+    - source /auto/software/iris/setup_system.source
+    - source /opt/xilinx/xrt/setup.sh
 
 .excl_runner:
   extends: [.iris_common]
@@ -107,8 +109,6 @@ deploy_docs_manual-job:
 .test-job: &test_job
   stage: test
   allow_failure: true
-  before_script:
-    - source /auto/software/iris/setup_system.source
   script:
 #    - echo "Installing iris to $IRIS_INSTALL_ROOT"
 #    - bash build-coverage.sh
@@ -216,13 +216,9 @@ deploy_docs_manual-job:
 
 test-job-zenith-all:
   needs: [build-noffi-zenith]
-  <<: [*test_job, *archs_config_all, *zenith_config]
+  <<: [*zenith_config, *archs_config_all, *test_job]
   variables:
     IRIS_MACHINE: zenith
-  before_script:
-    - source /auto/software/iris/setup_system.source
-    - source /opt/xilinx/xrt/setup.sh
-    - echo "Running All version of the tests..."
 
 test-job-zenith-cuda:
   <<: *zenith_config
