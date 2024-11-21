@@ -49,14 +49,6 @@ variables:
     paths:
       - $IRIS_INSTALL_ROOT.noffi.$IRIS_MACHINE
 
-build-job-noffi:
-  <<: [*zenith_config, *build_noffi]
-  extends: [.excl_runner]
-
-build-job-ffi:
-  <<: [*zenith_config, *build_ffi]
-  extends: [.excl_runner]
-
 build-ffi-zenith:
   # Using aliasin features
   <<: [*zenith_config, *build_ffi]
@@ -112,8 +104,6 @@ deploy_docs_manual-job:
   stage: test
   allow_failure: true
   before_script:
-    - module load cmake
-    - module load gnu
     - source /auto/software/iris/setup_system.source
   script:
 #    - echo "Installing iris to $IRIS_INSTALL_ROOT"
@@ -165,8 +155,7 @@ deploy_docs_manual-job:
         path: coverage.xml
 
 .test-job-ffi:
-  tags: [zenith]
-  needs: [build-job-ffi]
+  needs: [build-ffi-zenith]
   stage: test
   allow_failure: true
   before_script:
@@ -221,6 +210,7 @@ deploy_docs_manual-job:
 
 test-job-zenith-all:
   <<: *zenith_config
+  needs: [build-noffi-zenith]
   extends: .test-job
   variables:
     IRIS_ARCHS: cuda,hip,openmp,opencl
@@ -275,7 +265,7 @@ test-job-explorer:
 #   tags: [leconte]
 
 test-backends-29:
-  needs: [build-job-noffi]
+  needs: [build-noffi-zenith]
   stage: test
   allow_failure: true
   variables:
@@ -321,7 +311,7 @@ test-backends-29:
         path: coverage.xml
 
 test-backends-34:
-  needs: [build-job-noffi]
+  needs: [build-noffi-zenith]
   stage: test
   allow_failure: true
   variables:
@@ -436,7 +426,7 @@ test-job-explorer-async-s2k:
 #   tags: [leconte]
 
 test-backends-29-async-s2k:
-  needs: [build-job-noffi]
+  needs: [build-noffi-zenith]
   stage: test
   allow_failure: true
   variables:
@@ -483,7 +473,7 @@ test-backends-29-async-s2k:
         path: coverage.xml
 
 test-backends-34-async-s2k:
-  needs: [build-job-noffi]
+  needs: [build-noffi-zenith]
   stage: test
   allow_failure: true
   variables:
@@ -529,7 +519,7 @@ test-backends-34-async-s2k:
 
 
 test-backends-37:
-  needs: [build-job-noffi]
+  needs: [build-noffi-zenith]
   stage: test
   allow_failure: true
   variables:
@@ -570,7 +560,7 @@ test-backends-37:
 .dagger:
   stage: dagger
   resource_group: slurm_zenith
-  needs: [build-job-noffi]
+  needs: [build-noffi-zenith]
   before_script:
     - module load cmake
     - module load gnu
