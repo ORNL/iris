@@ -10,10 +10,10 @@ stages:
 .iris_common: &common_iris
   before_script:
     - echo "Setting up environment..."
-    - module load cmake
-    - module load gnu
     - source /auto/software/iris/setup_system.source
     - source /opt/xilinx/xrt/setup.sh
+    - module load cmake
+    - module load gnu
 
 .excl_runner:
   extends: [.iris_common]
@@ -35,9 +35,9 @@ variables:
   <<: *common_iris
   tags: [explorer]
   before_script:
+    - source /auto/software/iris/setup_system.source
     - module load cmake
     - module load gnu
-    - source /auto/software/iris/setup_system.source
   variables:
     IRIS_MACHINE: explorer
 
