@@ -133,8 +133,8 @@ deploy_docs_manual-job:
     - echo $CI_PROJECT_PATH
     - echo $IRIS_MACHINE
     - echo $IRIS_TAG
-    - echo $IRIS_INSTALL_ROOT.noffi.zenith
-    - ls $IRIS_INSTALL_ROOT.noffi.zenith
+    - echo $IRIS_INSTALL_ROOT.$IRIS_TAG.$IRIS_MACHINE
+    - ls $IRIS_INSTALL_ROOT.$IRIS_TAG.$IRIS_MACHINE
     - source $IRIS_INSTALL_ROOT.$IRIS_TAG.$IRIS_MACHINE/setup.source
     - echo $PATH
     - echo $LD_LIBRARY_PATH
@@ -291,6 +291,47 @@ test-job-zenith-all-ffi-async-s2k:
     IRIS_ARCHS: openmp:cuda:hip:levelzero:hexagon:opencl
     IRIS_ASYNC: 1
 
+.test-backend: &test_backend
+  stage: test
+  allow_failure: true
+  script:
+#    - echo "Installing iris to $IRIS_INSTALL_ROOT"
+#    - bash build-coverage.sh
+    - echo $CI_REPOSITORY_URL
+    - echo $CI_PROJECT_PATH
+    - source $IRIS_INSTALL_ROOT.noffi.$IRIS_MACHINE/setup.source
+    - echo $PATH
+    - echo $LD_LIBRARY_PATH
+    - echo $HIP_ROOT
+    - echo $IRIS_TESTNAME
+    - echo $IRIS_TAG
+    - echo $IRIS_ARCHS
+    - echo $IRIS_MACHINE
+    - echo $IRIS_ASYNC
+    - cp -r tests tests-$IRIS_ARCHS-$IRIS_ASYNC-$IRIS_TAG-$IRIS_MACHINE$IRIS_TESTNAME
+    - cd tests-$IRIS_ARCHS-$IRIS_ASYNC-$IRIS_TAG-$IRIS_MACHINE$IRIS_TESTNAME
+    - echo "Test backends for test 29"
+    - cd $IRIS_TESTNAME
+    - bash test_backends.sh
+  after_script:
+    - python3 -m venv .venv
+    - source .venv/bin/activate
+    - pip install gcovr
+    - gcovr --xml-pretty --exclude-unreachable-branches --print-summary -o coverage.xml --gcov-ignore-parse-errors --json ${CI_JOB_NAME}-coverage.json --html-details coverage.html
+  coverage: /^\s*lines:\s*\d+.\d+\%/
+  artifacts:
+    name: "$CI_JOB_NAME"
+    when: always
+    paths:
+      - ${CI_JOB_NAME}-coverage.json
+      - coverage.xml
+      - coverage*.html
+      - coverage.css
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+
 
 # test-job-leconte:
 #   extends: .test-job
@@ -298,97 +339,21 @@ test-job-zenith-all-ffi-async-s2k:
 
 test-backends-29:
   needs: [build-noffi-zenith]
-  stage: test
-  allow_failure: true
+  <<: [*zenith_config, *archs_config_all, *test_backend]
   variables:
-    IRIS_TESTNAME: backends-29
-  before_script:
-    - module load cmake
-    - module load gnu
-    - source /auto/software/iris/setup_system.source
-    - source /opt/xilinx/xrt/setup.sh
-  script:
-#    - echo "Installing iris to $IRIS_INSTALL_ROOT"
-#    - bash build-coverage.sh
-    - echo $CI_REPOSITORY_URL
-    - echo $CI_PROJECT_PATH
-    - source $IRIS_INSTALL_ROOT.noffi/setup.source
-    - echo $PATH
-    - echo $LD_LIBRARY_PATH
-    - echo $HIP_ROOT
-    - echo $IRIS_ARCHS
-    - echo $IRIS_MACHINE
-    - echo $IRIS_ASYNC
-    - cp -r tests tests-$IRIS_ARCHS-$IRIS_ASYNC-$IRIS_TAG-$IRIS_MACHINE$IRIS_TESTNAME
-    - cd tests-$IRIS_ARCHS-$IRIS_ASYNC-$IRIS_TAG-$IRIS_MACHINE$IRIS_TESTNAME
-    - echo "Test backends for test 29"
-    - cd 29_data_mem
-    - bash test_backends.sh
-  after_script:
-    - python3 -m venv .venv
-    - source .venv/bin/activate
-    - pip install gcovr
-    - gcovr --xml-pretty --exclude-unreachable-branches --print-summary -o coverage.xml --gcov-ignore-parse-errors --json ${CI_JOB_NAME}-coverage.json --html-details coverage.html
-  coverage: /^\s*lines:\s*\d+.\d+\%/
-  artifacts:
-    name: "$CI_JOB_NAME"
-    when: always
-    paths:
-      - ${CI_JOB_NAME}-coverage.json
-      - coverage.xml
-      - coverage*.html
-      - coverage.css
-    reports:
-      coverage_report:
-        coverage_format: cobertura
-        path: coverage.xml
+    IRIS_MACHINE: zenith
+    IRIS_TAG: noffi
+    IRIS_ARCHS: hip
+    IRIS_TESTNAME: 29_data_mem
 
 test-backends-34:
   needs: [build-noffi-zenith]
-  stage: test
-  allow_failure: true
+  <<: [*zenith_config, *archs_config_all, *test_backend]
   variables:
-    IRIS_TESTNAME: backends-34
-  before_script:
-    - module load cmake
-    - module load gnu
-    - source /auto/software/iris/setup_system.source
-    - source /opt/xilinx/xrt/setup.sh
-  script:
-#    - echo "Installing iris to $IRIS_INSTALL_ROOT"
-#- bash build-coverage.sh
-    - echo $CI_REPOSITORY_URL
-    - echo $CI_PROJECT_PATH
-    - source $IRIS_INSTALL_ROOT.noffi/setup.source
-    - echo $PATH
-    - echo $LD_LIBRARY_PATH
-    - echo $HIP_ROOT
-    - echo $IRIS_MACHINE
-    - echo $IRIS_ARCHS
-    - echo $IRIS_ASYNC
-    - cp -r tests tests-$IRIS_ARCHS-$IRIS_ASYNC-$IRIS_TAG-$IRIS_MACHINE$IRIS_TESTNAME
-    - cd tests-$IRIS_ARCHS-$IRIS_ASYNC-$IRIS_TAG-$IRIS_MACHINE$IRIS_TESTNAME
-    - echo "Test backends for test 34"
-    - cd 34_set_mem
-    - bash test_backends.sh
-  after_script:
-    - python3 -m venv .venv
-    - source .venv/bin/activate
-    - pip install gcovr
-    - gcovr --xml-pretty --exclude-unreachable-branches --print-summary -o coverage.xml --gcov-ignore-parse-errors --json ${CI_JOB_NAME}-coverage.json --html-details coverage.html
-  coverage: /^\s*lines:\s*\d+.\d+\%/
-  artifacts:
-    name: "$CI_JOB_NAME"
-    when: always
-    paths:
-      - ${CI_JOB_NAME}-coverage.json
-      - coverage.xml
-      - coverage*.html
-      - coverage.css
-    reports:
-      coverage_report:
-        coverage_format: cobertura
-        path: coverage.xml
+    IRIS_MACHINE: zenith
+    IRIS_TAG: noffi
+    IRIS_ARCHS: hip
+    IRIS_TESTNAME: 34_set_mem
 
 # test-job-leconte:
 #   extends: .test-job
@@ -396,144 +361,32 @@ test-backends-34:
 
 test-backends-29-async-s2k:
   needs: [build-noffi-zenith]
-  stage: test
-  allow_failure: true
+  <<: [*zenith_config, *archs_config_all, *test_backend]
   variables:
+    IRIS_MACHINE: zenith
+    IRIS_TAG: noffi
+    IRIS_ARCHS: hip
     IRIS_ASYNC: 1
-    IRIS_TESTNAME: backends-29
-  before_script:
-    - module load cmake
-    - module load gnu
-    - source /auto/software/iris/setup_system.source
-    - source /opt/xilinx/xrt/setup.sh
-  script:
-#- echo "Installing iris to $IRIS_INSTALL_ROOT"
-#    - bash build-coverage.sh
-    - echo $CI_REPOSITORY_URL
-    - echo $CI_PROJECT_PATH
-    - source $IRIS_INSTALL_ROOT.noffi/setup.source
-    - echo $PATH
-    - echo $LD_LIBRARY_PATH
-    - echo $HIP_ROOT
-    - echo $IRIS_MACHINE
-    - echo $IRIS_ASYNC
-    - echo $IRIS_ARCHS
-    - cp -r tests tests-$IRIS_ARCHS-$IRIS_ASYNC-$IRIS_TAG-$IRIS_MACHINE$IRIS_TESTNAME
-    - cd tests-$IRIS_ARCHS-$IRIS_ASYNC-$IRIS_TAG-$IRIS_MACHINE$IRIS_TESTNAME
-    - echo "Test backends for test 29"
-    - cd 29_data_mem
-    - bash test_backends.sh
-  after_script:
-    - python3 -m venv .venv
-    - source .venv/bin/activate
-    - pip install gcovr
-    - gcovr --xml-pretty --exclude-unreachable-branches --print-summary -o coverage.xml --gcov-ignore-parse-errors --json ${CI_JOB_NAME}-coverage.json --html-details coverage.html
-  coverage: /^\s*lines:\s*\d+.\d+\%/
-  artifacts:
-    name: "$CI_JOB_NAME"
-    when: always
-    paths:
-      - ${CI_JOB_NAME}-coverage.json
-      - coverage.xml
-      - coverage*.html
-      - coverage.css
-    reports:
-      coverage_report:
-        coverage_format: cobertura
-        path: coverage.xml
+    IRIS_TESTNAME: 29_data_mem
 
 test-backends-34-async-s2k:
   needs: [build-noffi-zenith]
-  stage: test
-  allow_failure: true
+  <<: [*zenith_config, *archs_config_all, *test_backend]
   variables:
+    IRIS_MACHINE: zenith
+    IRIS_TAG: noffi
+    IRIS_ARCHS: hip
     IRIS_ASYNC: 1
-    IRIS_TESTNAME: backends-34
-  before_script:
-    - module load cmake
-    - module load gnu
-    - source /auto/software/iris/setup_system.source
-    - source /opt/xilinx/xrt/setup.sh
-  script:
-#- echo "Installing iris to $IRIS_INSTALL_ROOT"
-#    - bash build-coverage.sh
-    - echo $CI_REPOSITORY_URL
-    - echo $CI_PROJECT_PATH
-    - source $IRIS_INSTALL_ROOT.noffi/setup.source
-    - echo $PATH
-    - echo $LD_LIBRARY_PATH
-    - echo $HIP_ROOT
-    - echo $IRIS_TAG
-    - echo $IRIS_MACHINE
-    - echo $IRIS_ASYNC
-    - echo $IRIS_ARCHS
-    - cp -r tests tests-$IRIS_ARCHS-$IRIS_ASYNC-$IRIS_TAG-$IRIS_MACHINE$IRIS_TESTNAME
-    - cd tests-$IRIS_ARCHS-$IRIS_ASYNC-$IRIS_TAG-$IRIS_MACHINE$IRIS_TESTNAME
-    - echo "Test backends for test 34"
-    - cd 34_set_mem
-    - bash test_backends.sh
-  after_script:
-    - python3 -m venv .venv
-    - source .venv/bin/activate
-    - pip install gcovr
-    - gcovr --xml-pretty --exclude-unreachable-branches --print-summary -o coverage.xml --gcov-ignore-parse-errors --json ${CI_JOB_NAME}-coverage.json --html-details coverage.html
-  coverage: /^\s*lines:\s*\d+.\d+\%/
-  artifacts:
-    name: "$CI_JOB_NAME"
-    when: always
-    paths:
-      - ${CI_JOB_NAME}-coverage.json
-      - coverage.xml
-      - coverage*.html
-      - coverage.css
-    reports:
-      coverage_report:
-        coverage_format: cobertura
-        path: coverage.xml
-
+    IRIS_TESTNAME: 34_set_mem
 
 test-backends-37:
   needs: [build-noffi-zenith]
-  stage: test
-  allow_failure: true
+  <<: [*zenith_config, *archs_config_all, *test_backend]
   variables:
-    IRIS_TESTNAME: backends-37
-  before_script:
-    - module load cmake
-    - module load gnu
-    - source /auto/software/iris/setup_system.source
-    - source /opt/xilinx/xrt/setup.sh
-  script:
-#    - echo "Installing iris to $IRIS_INSTALL_ROOT"
-#- bash build-coverage.sh
-    - echo $CI_REPOSITORY_URL
-    - echo $CI_PROJECT_PATH
-    - source $IRIS_INSTALL_ROOT.noffi/setup.source
-    - echo $PATH
-    - echo $LD_LIBRARY_PATH
-    - echo $HIP_ROOT
-    - echo $IRIS_TAG
-    - echo $IRIS_MACHINE
-    - echo $IRIS_ASYNC
-    - echo $IRIS_ARCHS
-    - cp -r tests tests-$IRIS_ARCHS-$IRIS_ASYNC-$IRIS_TAG-$IRIS_MACHINE$IRIS_TESTNAME
-    - cd tests-$IRIS_ARCHS-$IRIS_ASYNC-$IRIS_TAG-$IRIS_MACHINE$IRIS_TESTNAME
-    - echo "Test backends for test 37"
-    - cd 37_opencl_icd
-    - bash test_backends.sh
-  after_script:
-    - python3 -m venv .venv
-    - source .venv/bin/activate
-    - pip install gcovr==5.0 # There seems to be a bug for newer versions of gcovr.
-    - gcovr --xml-pretty --exclude-unreachable-branches --print-summary -o coverage.xml --gcov-ignore-parse-errors
-  coverage: /^\s*lines:\s*\d+.\d+\%/
-  artifacts:
-    when: always
-    paths:
-    reports:
-      coverage_report:
-        coverage_format: cobertura
-        path: coverage.xml
+    IRIS_MACHINE: zenith
+    IRIS_TAG: noffi
+    IRIS_ARCHS: hip
+    IRIS_TESTNAME: 37_opencl_icd
 
 .dagger:
   stage: dagger
@@ -549,7 +402,7 @@ test-backends-37:
     - source /auto/software/iris/setup_system.source
 #    - echo "Installing iris to $IRIS_INSTALL_ROOT"
 #- bash build-coverage.sh
-    - source $IRIS_INSTALL_ROOT.noffi/setup.source
+    - source $IRIS_INSTALL_ROOT.noffi.$IRIS_MACHINE/setup.source
     - .gitlab-ci-scripts/runner_watcher.sh $$ &
     - sbatch --partition=gpu --nodelist=zenith .gitlab-ci-scripts/slurm-dagger-run-policy-evaluations.sh
     - python3 -u .gitlab-ci-scripts/slurm-tee.py slurm-test-err.txt slurm-test-out.txt
@@ -591,7 +444,7 @@ dagger-zenith-test-correctness:
     - source /auto/software/iris/setup_system.source
 #    - echo "Installing iris to $IRIS_INSTALL_ROOT"
 #- bash build-coverage.sh
-    - source $IRIS_INSTALL_ROOT.noffi/setup.source
+    - source $IRIS_INSTALL_ROOT.noffi.$IRIS_MACHINE/setup.source
     - .gitlab-ci-scripts/runner_watcher.sh $$ &
     - sbatch --partition=gpu --nodelist=zenith .gitlab-ci-scripts/slurm-dagger-test-correctness.sh
     - python3 -u .gitlab-ci-scripts/slurm-tee.py slurm-test-err.txt slurm-test-out.txt
@@ -611,7 +464,7 @@ dagger-zenith-test-correctness:
     - source /auto/software/iris/setup_system.source
 #    - echo "Installing iris to $IRIS_INSTALL_ROOT"
 #- bash build-coverage.sh
-    - source $IRIS_INSTALL_ROOT.noffi/setup.source
+    - source $IRIS_INSTALL_ROOT.noffi.$IRIS_MACHINE/setup.source
     - .gitlab-ci-scripts/runner_watcher.sh $$ &
     - sbatch --partition=gpu --nodelist=zenith .gitlab-ci-scripts/slurm-dagger-test-local-workgroup-sizes.sh
     - python3 -u .gitlab-ci-scripts/slurm-tee.py slurm-test-err.txt slurm-test-out.txt
@@ -655,6 +508,8 @@ dagger-zenith-test-local-workgroup-sizes-asynchronous-dmem:
 coverage-collect:
   tags: [zenith]
   stage: coverage
+  variables:
+    IRIS_MACHINE: zenith
   needs:
     - test-job-zenith-all
     - test-job-zenith-cuda
@@ -662,14 +517,15 @@ coverage-collect:
     - test-job-zenith-openmp
     - test-job-zenith-opencl
     - test-job-explorer
-    - test-backends-29
-    - test-backends-34
     - test-job-zenith-all-async-s2k
     - test-job-zenith-cuda-async-s2k
     - test-job-zenith-hip-async-s2k
     - test-job-zenith-openmp-async-s2k
     - test-job-zenith-opencl-async-s2k
     - test-job-explorer-async-s2k
+    - test-backends-29
+    - test-backends-34
+    - test-backends-37
     - test-backends-29-async-s2k
     - test-backends-34-async-s2k
   before_script:
@@ -677,7 +533,7 @@ coverage-collect:
   script:
 #    - echo "Installing iris to $IRIS_INSTALL_ROOT"
 #- bash build-coverage.sh
-    - source $IRIS_INSTALL_ROOT.noffi/setup.source
+    - source $IRIS_INSTALL_ROOT.noffi.$IRIS_MACHINE/setup.source
     - python3 -m venv .venv
     - source .venv/bin/activate
     - pip install gcovr
