@@ -7,7 +7,14 @@ stages:
   - coverage
   - deploy_coverage
 
+.iris_common: &common_iris
+  before_script:
+    - echo "Setting up environment..."
+    - module load cmake
+    - module load gnu
+
 .excl_runner:
+  extends: [.iris_common]
   tags: [excl]
 
 variables:
@@ -16,33 +23,39 @@ variables:
   IRIS_INSTALL_ROOT_W_FFI: $CI_PROJECT_DIR/install.ffi
 #CONDA_ROOT: /auto/ciscratch/conda
 
-build-job-with-ffi:
-  extends: [.excl_runner]
-  stage: build
-  before_script:
-    - module load cmake
-    - module load gnu
-  script:
-    - echo "Installing iris to $CI_PROJECT_DIR/install"
-    - bash build.sh
-    - IRIS_TAG=.ffi bash build.sh -DENABLE_FFI=ON
-  artifacts:
-    paths:
-      - $IRIS_INSTALL_ROOT
+.zenith-config: &zenith_config
+  tags: [zenith]
+  <<: [*common_iris]
+  variables:
+    IRIS_MACHINE: zenith
 
-build-job-noffi:
-  extends: [.excl_runner]
+.build-job-ffi: &build_ffi
   stage: build
-  before_script:
-    - module load cmake
-    - module load gnu
   script:
     - echo "Installing iris to $CI_PROJECT_DIR/install"
     - bash build.sh
-    - IRIS_TAG=.noffi bash build.sh 
+    - IRIS_TAG=.ffi.$IRIS_MACHINE bash build.sh -DENABLE_FFI=ON
   artifacts:
     paths:
-      - $IRIS_INSTALL_ROOT
+      - $IRIS_INSTALL_ROOT.ffi.$IRIS_MACHINE
+
+.build-job-noffi: &build_noffi
+  stage: build
+  script:
+    - echo "Installing iris to $CI_PROJECT_DIR/install"
+    - bash build.sh
+    - IRIS_TAG=.noffi.$IRIS_MACHINE bash build.sh 
+  artifacts:
+    paths:
+      - $IRIS_INSTALL_ROOT.noffi.$IRIS_MACHINE
+
+build-ffi-zenith:
+  # Using aliasin features
+  <<: [*zenith_config, *build_ffi]
+
+build-noffi-zenith:
+  # Using aliasin features
+  <<: [*zenith_config, *build_noffi]
 
 docs-job:
   tags: [devdocs]
@@ -88,8 +101,6 @@ deploy_docs_manual-job:
   when: manual
 
 .test-job:
-  tags: [zenith]
-  needs: [build-job-noffi]
   stage: test
   allow_failure: true
   before_script:
@@ -101,7 +112,8 @@ deploy_docs_manual-job:
 #    - bash build-coverage.sh
     - echo $CI_REPOSITORY_URL
     - echo $CI_PROJECT_PATH
-    - source $IRIS_INSTALL_ROOT.noffi/setup.source
+    - echo $IRIS_MACHINE
+    - source $IRIS_INSTALL_ROOT.noffi.$IRIS_MACHINE/setup.source
     - echo $PATH
     - echo $LD_LIBRARY_PATH
     - echo $HIP_ROOT
@@ -146,7 +158,7 @@ deploy_docs_manual-job:
 
 .test-job-ffi:
   tags: [zenith]
-  needs: [build-job-with-ffi]
+  needs: [build-job-ffi]
   stage: test
   allow_failure: true
   before_script:
@@ -200,6 +212,7 @@ deploy_docs_manual-job:
         path: coverage.xml
 
 test-job-zenith-all:
+  <<: [*zenith_config]
   extends: .test-job
   variables:
     IRIS_ARCHS: cuda,hip,openmp,opencl
@@ -209,6 +222,7 @@ test-job-zenith-all:
     - echo "Running All version of the tests..."
 
 test-job-zenith-cuda:
+  <<: [*zenith_config]
   extends: .test-job
   variables:
     IRIS_ARCHS: cuda
@@ -217,6 +231,7 @@ test-job-zenith-cuda:
     - echo "Running CUDA version of the tests..."
 
 test-job-zenith-hip:
+  <<: [*zenith_config]
   extends: .test-job
   variables:
     IRIS_ARCHS: hip
@@ -225,6 +240,7 @@ test-job-zenith-hip:
     - echo "Running HIP version of the tests..."
 
 test-job-zenith-openmp:
+  <<: [*zenith_config]
   extends: .test-job
   variables:
     IRIS_ARCHS: openmp
@@ -233,6 +249,7 @@ test-job-zenith-openmp:
     - echo "Running OpenMP version of the tests..."
 
 test-job-zenith-opencl:
+  <<: [*zenith_config]
   extends: .test-job
   variables:
     IRIS_ARCHS: opencl
