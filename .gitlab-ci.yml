@@ -10,10 +10,10 @@ stages:
 .iris_common: &common_iris
   before_script:
     - echo "Setting up environment..."
-    - module load cmake
-    - module load gnu
     - source /auto/software/iris/setup_system.source
     - source /opt/xilinx/xrt/setup.sh
+    - module load cmake
+    - module load gnu
 
 .excl_runner:
   extends: [.iris_common]
@@ -26,25 +26,25 @@ variables:
 #CONDA_ROOT: /auto/ciscratch/conda
 
 .zenith-config: &zenith_config
-  <<: *common_iris
   tags: [zenith]
   variables:
     IRIS_MACHINE: zenith
-
-.explorer-config: &explorer_config
-  <<: *common_iris
-  tags: [explorer]
   before_script:
+    - echo "Setting up environment..."
+    - source /auto/software/iris/setup_system.source
+    - source /opt/xilinx/xrt/setup.sh
     - module load cmake
     - module load gnu
-    - source /auto/software/iris/setup_system.source
+
+.explorer-config: &explorer_config
+  tags: [explorer]
   variables:
     IRIS_MACHINE: explorer
-
-
-.archs-config_all: &archs_config_all
-  variables:
-    IRIS_ARCHS: cuda,hip,openmp,opencl
+  before_script:
+    - echo "Setting up environment..."
+    - source /auto/software/iris/setup_system.source
+    - module load cmake
+    - module load gnu
 
 .build-ffi: &build_ffi
   stage: build
@@ -234,7 +234,7 @@ test-job-zenith-all-async-s2k:
   variables:
     IRIS_MACHINE: zenith
     IRIS_TAG: noffi
-    IRIS_ARCHS: openmp:cuda:hip:levelzero:hexagon:opencl
+    IRIS_ARCHS: cuda,hip,openmp,opencl
     IRIS_ASYNC: 1
 
 test-job-zenith-cuda-async-s2k:
@@ -288,7 +288,7 @@ test-job-zenith-all-ffi-async-s2k:
   variables:
     IRIS_MACHINE: zenith
     IRIS_TAG: ffi
-    IRIS_ARCHS: openmp:cuda:hip:levelzero:hexagon:opencl
+    IRIS_ARCHS: cuda,hip,openmp,opencl
     IRIS_ASYNC: 1
 
 .test-backend: &test_backend
@@ -343,7 +343,7 @@ test-backends-29:
   variables:
     IRIS_MACHINE: zenith
     IRIS_TAG: noffi
-    IRIS_ARCHS: hip
+    IRIS_ARCHS: cuda,hip,openmp,opencl
     IRIS_TESTNAME: 29_data_mem
 
 test-backends-34:
@@ -352,7 +352,7 @@ test-backends-34:
   variables:
     IRIS_MACHINE: zenith
     IRIS_TAG: noffi
-    IRIS_ARCHS: hip
+    IRIS_ARCHS: cuda,hip,openmp,opencl
     IRIS_TESTNAME: 34_set_mem
 
 # test-job-leconte:
