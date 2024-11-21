@@ -217,6 +217,8 @@ deploy_docs_manual-job:
 test-job-zenith-all:
   needs: [build-noffi-zenith]
   <<: [*test_job, *archs_config_all, *zenith_config]
+  variables:
+    IRIS_MACHINE: zenith
   before_script:
     - source /auto/software/iris/setup_system.source
     - source /opt/xilinx/xrt/setup.sh
