@@ -140,6 +140,7 @@ deploy_docs_manual-job:
     - echo $IRIS_INSTALL_ROOT.$IRIS_TAG.$IRIS_MACHINE
     - ls $IRIS_INSTALL_ROOT.$IRIS_TAG.$IRIS_MACHINE
     - source $IRIS_INSTALL_ROOT.$IRIS_TAG.$IRIS_MACHINE/setup.source
+    - export IRIS_ARCHS=$IRIS_ARCHS_CICD
     - echo $PATH
     - echo $LD_LIBRARY_PATH
     - echo $HIP_ROOT
@@ -191,14 +192,14 @@ test-job-zenith-all:
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
-    IRIS_ARCHS: "cuda,hip,openmp,opencl"
+    IRIS_ARCHS_CICD: "cuda,hip,openmp,opencl"
 
 test-job-zenith-cuda:
   needs: [build-noffi-zenith]
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
-    IRIS_ARCHS: "cuda"
+    IRIS_ARCHS_CICD: "cuda"
   <<: *zenith_config
   extends: .test-job
 
@@ -209,7 +210,7 @@ test-job-zenith-hip:
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
-    IRIS_ARCHS: "hip"
+    IRIS_ARCHS_CICD: "hip"
 
 test-job-zenith-openmp:
   needs: [build-noffi-zenith]
@@ -218,7 +219,7 @@ test-job-zenith-openmp:
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
-    IRIS_ARCHS: "openmp"
+    IRIS_ARCHS_CICD: "openmp"
 
 test-job-zenith-opencl:
   needs: [build-noffi-zenith]
@@ -227,7 +228,7 @@ test-job-zenith-opencl:
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
-    IRIS_ARCHS: "opencl"
+    IRIS_ARCHS_CICD: "opencl"
 
 test-job-explorer:
   needs: [build-noffi-explorer]
@@ -236,7 +237,7 @@ test-job-explorer:
   variables:
     IRIS_MACHINE: explorer
     IRIS_TAG: "noffi"
-    IRIS_ARCHS: "hip,openmp,opencl"
+    IRIS_ARCHS_CICD: "hip,openmp,opencl"
 
 test-job-zenith-all-async-s2k:
   needs: [build-noffi-zenith]
@@ -245,7 +246,7 @@ test-job-zenith-all-async-s2k:
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
-    IRIS_ARCHS: "cuda,hip,openmp,opencl"
+    IRIS_ARCHS_CICD: "cuda,hip,openmp,opencl"
     IRIS_ASYNC: 1
 
 test-job-zenith-cuda-async-s2k:
@@ -255,7 +256,7 @@ test-job-zenith-cuda-async-s2k:
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
-    IRIS_ARCHS: "cude"
+    IRIS_ARCHS_CICD: "cude"
     IRIS_ASYNC: 1
 
 test-job-zenith-hip-async-s2k:
@@ -265,7 +266,7 @@ test-job-zenith-hip-async-s2k:
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
-    IRIS_ARCHS: "hip"
+    IRIS_ARCHS_CICD: "hip"
     IRIS_ASYNC: 1
 
 test-job-zenith-openmp-async-s2k:
@@ -275,7 +276,7 @@ test-job-zenith-openmp-async-s2k:
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
-    IRIS_ARCHS: "openmp"
+    IRIS_ARCHS_CICD: "openmp"
     IRIS_ASYNC: 1
 
 test-job-zenith-opencl-async-s2k:
@@ -285,7 +286,7 @@ test-job-zenith-opencl-async-s2k:
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
-    IRIS_ARCHS: "opencl"
+    IRIS_ARCHS_CICD: "opencl"
     IRIS_ASYNC: 1
 
 test-job-explorer-async-s2k:
@@ -295,7 +296,7 @@ test-job-explorer-async-s2k:
   variables:
     IRIS_MACHINE: explorer
     IRIS_TAG: "noffi"
-    IRIS_ARCHS: "hip,openmp,opencl"
+    IRIS_ARCHS_CICD: "hip,openmp,opencl"
     IRIS_ASYNC: 1
 
 test-job-zenith-all-ffi-async-s2k:
@@ -305,7 +306,7 @@ test-job-zenith-all-ffi-async-s2k:
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "ffi"
-    IRIS_ARCHS: "cuda,hip,openmp,opencl"
+    IRIS_ARCHS_CICD: "cuda,hip,openmp,opencl"
     IRIS_ASYNC: 1
 
 .test-backend:
@@ -317,6 +318,7 @@ test-job-zenith-all-ffi-async-s2k:
     - echo $CI_REPOSITORY_URL
     - echo $CI_PROJECT_PATH
     - source $IRIS_INSTALL_ROOT.noffi.$IRIS_MACHINE/setup.source
+    - export IRIS_ARCHS=$IRIS_ARCHS_CICD
     - echo $PATH
     - echo $LD_LIBRARY_PATH
     - echo $HIP_ROOT
@@ -361,7 +363,7 @@ test-backends-29:
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
-    IRIS_ARCHS: "cuda,hip,openmp,opencl"
+    IRIS_ARCHS_CICD: "cuda,hip,openmp,opencl"
     IRIS_TESTNAME: "29_data_mem"
 
 test-backends-34:
@@ -371,7 +373,7 @@ test-backends-34:
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
-    IRIS_ARCHS: "cuda,hip,openmp,opencl"
+    IRIS_ARCHS_CICD: "cuda,hip,openmp,opencl"
     IRIS_TESTNAME: "34_set_mem"
 
 # test-job-leconte:
@@ -385,7 +387,7 @@ test-backends-29-async-s2k:
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
-    IRIS_ARCHS: "cuda,hip,openmp,opencl"
+    IRIS_ARCHS_CICD: "cuda,hip,openmp,opencl"
     IRIS_ASYNC: 1
     IRIS_TESTNAME: "29_data_mem"
 
@@ -396,7 +398,7 @@ test-backends-34-async-s2k:
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
-    IRIS_ARCHS: "cuda,hip,openmp,opencl"
+    IRIS_ARCHS_CICD: "cuda,hip,openmp,opencl"
     IRIS_ASYNC: 1
     IRIS_TESTNAME: "34_set_mem"
 
@@ -407,7 +409,7 @@ test-backends-37:
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
-    IRIS_ARCHS: "cuda,hip,openmp,opencl"
+    IRIS_ARCHS_CICD: "cuda,hip,openmp,opencl"
     IRIS_TESTNAME: "37_opencl_icd"
 
 .dagger:
