@@ -60,6 +60,14 @@ variables:
     paths:
       - $IRIS_INSTALL_ROOT.noffi.$IRIS_MACHINE
 
+build-ffi-explorer:
+  # Using aliasin features
+  <<: [*explorer_config, *build_ffi]
+
+build-noffi-explorer:
+  # Using aliasin features
+  <<: [*explorer_config, *build_noffi]
+
 build-ffi-zenith:
   # Using aliasin features
   <<: [*zenith_config, *build_ffi]
