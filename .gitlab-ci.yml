@@ -24,8 +24,8 @@ variables:
 #CONDA_ROOT: /auto/ciscratch/conda
 
 .zenith-config: &zenith_config
+  <<: *common_iris
   tags: [zenith]
-  <<: [*common_iris]
   variables:
     IRIS_MACHINE: zenith
 
@@ -212,7 +212,7 @@ deploy_docs_manual-job:
         path: coverage.xml
 
 test-job-zenith-all:
-  <<: [*zenith_config]
+  <<: *zenith_config
   extends: .test-job
   variables:
     IRIS_ARCHS: cuda,hip,openmp,opencl
@@ -222,7 +222,7 @@ test-job-zenith-all:
     - echo "Running All version of the tests..."
 
 test-job-zenith-cuda:
-  <<: [*zenith_config]
+  <<: *zenith_config
   extends: .test-job
   variables:
     IRIS_ARCHS: cuda
@@ -231,7 +231,7 @@ test-job-zenith-cuda:
     - echo "Running CUDA version of the tests..."
 
 test-job-zenith-hip:
-  <<: [*zenith_config]
+  <<: *zenith_config
   extends: .test-job
   variables:
     IRIS_ARCHS: hip
@@ -240,7 +240,7 @@ test-job-zenith-hip:
     - echo "Running HIP version of the tests..."
 
 test-job-zenith-openmp:
-  <<: [*zenith_config]
+  <<: *zenith_config
   extends: .test-job
   variables:
     IRIS_ARCHS: openmp
@@ -249,7 +249,7 @@ test-job-zenith-openmp:
     - echo "Running OpenMP version of the tests..."
 
 test-job-zenith-opencl:
-  <<: [*zenith_config]
+  <<: *zenith_config
   extends: .test-job
   variables:
     IRIS_ARCHS: opencl
