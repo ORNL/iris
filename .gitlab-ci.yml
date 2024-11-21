@@ -12,7 +12,7 @@ stages:
 
 variables:
   IRIS_INSTALL_ROOT: $CI_PROJECT_DIR/install
-  CONDA_ROOT: /auto/ciscratch/conda
+#CONDA_ROOT: /auto/ciscratch/conda
 
 build-job:
   extends: [.excl_runner]
@@ -38,8 +38,9 @@ docs-job:
 #    - conda activate ./envs
     - python3 -m venv sphinx_venv
     - source sphinx_venv/bin/activate
+    - python3 -m pip install -e .
     - python3 -m pip install sphinx breathe numpy sphinxcontrib-contentui sphinx_rtd_theme json-schema-for-humans
-    - source $IRIS_INSTALL_ROOT/setup.source
+    - source `python3 -c 'import iris; print(iris.path)'`/setup.source 
 #    - pip install json-schema-for-humans
   script:
     - pushd docs/sphinx/source
