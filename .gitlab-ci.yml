@@ -29,6 +29,10 @@ variables:
   variables:
     IRIS_MACHINE: zenith
 
+.archs-config_all: &archs_config_all
+  variables:
+    IRIS_ARCHS: cuda,hip,openmp,opencl
+
 .build-ffi: &build_ffi
   stage: build
   script:
@@ -211,10 +215,8 @@ deploy_docs_manual-job:
         path: coverage.xml
 
 test-job-zenith-all:
-  <<: [*zenith_config, *test_job]
   needs: [build-noffi-zenith]
-  variables:
-    IRIS_ARCHS: cuda,hip,openmp,opencl
+  <<: [*test_job, *archs_config_all, *zenith_config]
   before_script:
     - source /auto/software/iris/setup_system.source
     - source /opt/xilinx/xrt/setup.sh
