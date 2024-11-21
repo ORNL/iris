@@ -235,7 +235,7 @@ test-job-zenith-all-async-s2k:
   variables:
     IRIS_MACHINE: zenith
     IRIS_TAG: noffi
-    IRIS_ARCHS: openmp:cuda:hip:levelzero:hexagon:opencl
+    IRIS_ARCHS: cuda,hip,openmp,opencl
     IRIS_ASYNC: 1
 
 test-job-zenith-cuda-async-s2k:
@@ -289,7 +289,7 @@ test-job-zenith-all-ffi-async-s2k:
   variables:
     IRIS_MACHINE: zenith
     IRIS_TAG: ffi
-    IRIS_ARCHS: openmp:cuda:hip:levelzero:hexagon:opencl
+    IRIS_ARCHS: cuda,hip,openmp,opencl
     IRIS_ASYNC: 1
 
 .test-backend: &test_backend
