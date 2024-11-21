@@ -63,18 +63,26 @@ variables:
 build-ffi-explorer:
   # Using aliasin features
   <<: [*explorer_config, *build_ffi]
+  variables:
+    IRIS_MACHINE: explorer
 
 build-noffi-explorer:
   # Using aliasin features
   <<: [*explorer_config, *build_noffi]
+  variables:
+    IRIS_MACHINE: explorer
 
 build-ffi-zenith:
   # Using aliasin features
   <<: [*zenith_config, *build_ffi]
+  variables:
+    IRIS_MACHINE: zenith
 
 build-noffi-zenith:
   # Using aliasin features
   <<: [*zenith_config, *build_noffi]
+  variables:
+    IRIS_MACHINE: zenith
 
 docs-job:
   tags: [devdocs]
