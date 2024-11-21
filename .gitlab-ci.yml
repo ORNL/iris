@@ -29,7 +29,7 @@ variables:
   variables:
     IRIS_MACHINE: zenith
 
-.build-job-ffi: &build_ffi
+.build-ffi: &build_ffi
   stage: build
   script:
     - echo "Installing iris to $CI_PROJECT_DIR/install"
@@ -39,7 +39,7 @@ variables:
     paths:
       - $IRIS_INSTALL_ROOT.ffi.$IRIS_MACHINE
 
-.build-job-noffi: &build_noffi
+.build-noffi: &build_noffi
   stage: build
   script:
     - echo "Installing iris to $CI_PROJECT_DIR/install"
@@ -51,9 +51,11 @@ variables:
 
 build-job-noffi:
   <<: [*zenith_config, *build_noffi]
+  extends: [.excl_runner]
 
 build-job-ffi:
   <<: [*zenith_config, *build_ffi]
+  extends: [.excl_runner]
 
 build-ffi-zenith:
   # Using aliasin features
@@ -273,7 +275,6 @@ test-job-explorer:
 #   tags: [leconte]
 
 test-backends-29:
-  tags: [zenith]
   needs: [build-job-noffi]
   stage: test
   allow_failure: true
@@ -320,7 +321,6 @@ test-backends-29:
         path: coverage.xml
 
 test-backends-34:
-  tags: [zenith]
   needs: [build-job-noffi]
   stage: test
   allow_failure: true
@@ -436,7 +436,6 @@ test-job-explorer-async-s2k:
 #   tags: [leconte]
 
 test-backends-29-async-s2k:
-  tags: [zenith]
   needs: [build-job-noffi]
   stage: test
   allow_failure: true
@@ -484,7 +483,6 @@ test-backends-29-async-s2k:
         path: coverage.xml
 
 test-backends-34-async-s2k:
-  tags: [zenith]
   needs: [build-job-noffi]
   stage: test
   allow_failure: true
@@ -531,7 +529,6 @@ test-backends-34-async-s2k:
 
 
 test-backends-37:
-  tags: [zenith]
   needs: [build-job-noffi]
   stage: test
   allow_failure: true
@@ -571,7 +568,6 @@ test-backends-37:
         path: coverage.xml
 
 .dagger:
-  tags: [zenith]
   stage: dagger
   resource_group: slurm_zenith
   needs: [build-job-noffi]
