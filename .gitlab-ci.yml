@@ -195,12 +195,12 @@ test-job-zenith-all:
 
 test-job-zenith-cuda:
   needs: [build-noffi-zenith]
-  <<: *zenith_config
-  extends: .test-job
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
     IRIS_ARCHS: "cuda"
+  <<: *zenith_config
+  extends: .test-job
 
 test-job-zenith-hip:
   needs: [build-noffi-zenith]
