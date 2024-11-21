@@ -137,6 +137,8 @@ deploy_docs_manual-job:
     - echo $HIP_ROOT
     - echo $IRIS_ARCHS
     - echo $IRIS_ASYNC
+    - echo $IRIS_TAG
+    - echo $IRIS_MACHINE
     - cp -r tests tests-$IRIS_ARCHS-$IRIS_ASYNC-$IRIS_TAG-$IRIS_MACHINE
     - cd tests-$IRIS_ARCHS-$IRIS_ASYNC-$IRIS_TAG-$IRIS_MACHINE
     - mkdir build
@@ -222,6 +224,70 @@ test-job-explorer:
     IRIS_TAG: noffi
     IRIS_ARCHS: openmp:cuda:hip:levelzero:hexagon:opencl
 
+test-job-zenith-all-async-s2k:
+  needs: [build-noffi-zenith]
+  <<: [*zenith_config, *archs_config_all, *test_job]
+  variables:
+    IRIS_MACHINE: zenith
+    IRIS_TAG: noffi
+    IRIS_ARCHS: openmp:cuda:hip:levelzero:hexagon:opencl
+    IRIS_ASYNC: 1
+
+test-job-zenith-cuda-async-s2k:
+  needs: [build-noffi-zenith]
+  <<: [*zenith_config, *archs_config_all, *test_job]
+  variables:
+    IRIS_MACHINE: zenith
+    IRIS_TAG: noffi
+    IRIS_ARCHS: cude
+    IRIS_ASYNC: 1
+
+test-job-zenith-hip-async-s2k:
+  needs: [build-noffi-zenith]
+  <<: [*zenith_config, *archs_config_all, *test_job]
+  variables:
+    IRIS_MACHINE: zenith
+    IRIS_TAG: noffi
+    IRIS_ARCHS: hip
+    IRIS_ASYNC: 1
+
+test-job-zenith-openmp-async-s2k:
+  needs: [build-noffi-zenith]
+  <<: [*zenith_config, *archs_config_all, *test_job]
+  variables:
+    IRIS_MACHINE: zenith
+    IRIS_TAG: noffi
+    IRIS_ARCHS: openmp
+    IRIS_ASYNC: 1
+
+test-job-zenith-opencl-async-s2k:
+  needs: [build-noffi-zenith]
+  <<: [*zenith_config, *archs_config_all, *test_job]
+  variables:
+    IRIS_MACHINE: zenith
+    IRIS_TAG: noffi
+    IRIS_ARCHS: opencl
+    IRIS_ASYNC: 1
+
+test-job-explorer-async-s2k:
+  needs: [build-noffi-explorer]
+  <<: [*explorer_config, *archs_config_all, *test_job]
+  variables:
+    IRIS_MACHINE: explorer
+    IRIS_TAG: noffi
+    IRIS_ARCHS: openmp:cuda:hip:levelzero:hexagon:opencl
+    IRIS_ASYNC: 1
+
+test-job-zenith-all-ffi-async-s2k:
+  needs: [build-noffi-explorer]
+  <<: [*explorer_config, *archs_config_all, *test_job]
+  variables:
+    IRIS_MACHINE: explorer
+    IRIS_TAG: ffi
+    IRIS_ARCHS: openmp:cuda:hip:levelzero:hexagon:opencl
+    IRIS_ASYNC: 1
+
+
 # test-job-leconte:
 #   extends: .test-job
 #   tags: [leconte]
@@ -247,9 +313,10 @@ test-backends-29:
     - echo $LD_LIBRARY_PATH
     - echo $HIP_ROOT
     - echo $IRIS_ARCHS
+    - echo $IRIS_MACHINE
     - echo $IRIS_ASYNC
-    - cp -r tests tests-$IRIS_ARCHS-$IRIS_ASYNC$IRIS_TESTNAME
-    - cd tests-$IRIS_ARCHS-$IRIS_ASYNC$IRIS_TESTNAME
+    - cp -r tests tests-$IRIS_ARCHS-$IRIS_ASYNC-$IRIS_TAG-$IRIS_MACHINE$IRIS_TESTNAME
+    - cd tests-$IRIS_ARCHS-$IRIS_ASYNC-$IRIS_TAG-$IRIS_MACHINE$IRIS_TESTNAME
     - echo "Test backends for test 29"
     - cd 29_data_mem
     - bash test_backends.sh
@@ -292,10 +359,11 @@ test-backends-34:
     - echo $PATH
     - echo $LD_LIBRARY_PATH
     - echo $HIP_ROOT
+    - echo $IRIS_MACHINE
     - echo $IRIS_ARCHS
     - echo $IRIS_ASYNC
-    - cp -r tests tests-$IRIS_ARCHS-$IRIS_ASYNC$IRIS_TESTNAME
-    - cd tests-$IRIS_ARCHS-$IRIS_ASYNC$IRIS_TESTNAME
+    - cp -r tests tests-$IRIS_ARCHS-$IRIS_ASYNC-$IRIS_TAG-$IRIS_MACHINE$IRIS_TESTNAME
+    - cd tests-$IRIS_ARCHS-$IRIS_ASYNC-$IRIS_TAG-$IRIS_MACHINE$IRIS_TESTNAME
     - echo "Test backends for test 34"
     - cd 34_set_mem
     - bash test_backends.sh
@@ -343,10 +411,11 @@ test-backends-29-async-s2k:
     - echo $PATH
     - echo $LD_LIBRARY_PATH
     - echo $HIP_ROOT
+    - echo $IRIS_MACHINE
     - echo $IRIS_ASYNC
     - echo $IRIS_ARCHS
-    - cp -r tests tests-$IRIS_ARCHS-$IRIS_ASYNC$IRIS_TESTNAME
-    - cd tests-$IRIS_ARCHS-$IRIS_ASYNC$IRIS_TESTNAME
+    - cp -r tests tests-$IRIS_ARCHS-$IRIS_ASYNC-$IRIS_TAG-$IRIS_MACHINE$IRIS_TESTNAME
+    - cd tests-$IRIS_ARCHS-$IRIS_ASYNC-$IRIS_TAG-$IRIS_MACHINE$IRIS_TESTNAME
     - echo "Test backends for test 29"
     - cd 29_data_mem
     - bash test_backends.sh
@@ -390,8 +459,12 @@ test-backends-34-async-s2k:
     - echo $PATH
     - echo $LD_LIBRARY_PATH
     - echo $HIP_ROOT
-    - cp -r tests tests-$IRIS_ARCHS-$IRIS_ASYNC$IRIS_TESTNAME
-    - cd tests-$IRIS_ARCHS-$IRIS_ASYNC$IRIS_TESTNAME
+    - echo $IRIS_TAG
+    - echo $IRIS_MACHINE
+    - echo $IRIS_ASYNC
+    - echo $IRIS_ARCHS
+    - cp -r tests tests-$IRIS_ARCHS-$IRIS_ASYNC-$IRIS_TAG-$IRIS_MACHINE$IRIS_TESTNAME
+    - cd tests-$IRIS_ARCHS-$IRIS_ASYNC-$IRIS_TAG-$IRIS_MACHINE$IRIS_TESTNAME
     - echo "Test backends for test 34"
     - cd 34_set_mem
     - bash test_backends.sh
@@ -435,8 +508,12 @@ test-backends-37:
     - echo $PATH
     - echo $LD_LIBRARY_PATH
     - echo $HIP_ROOT
-    - cp -r tests tests-$IRIS_ARCHS-$IRIS_ASYNC$IRIS_TESTNAME
-    - cd tests-$IRIS_ARCHS-$IRIS_ASYNC$IRIS_TESTNAME
+    - echo $IRIS_TAG
+    - echo $IRIS_MACHINE
+    - echo $IRIS_ASYNC
+    - echo $IRIS_ARCHS
+    - cp -r tests tests-$IRIS_ARCHS-$IRIS_ASYNC-$IRIS_TAG-$IRIS_MACHINE$IRIS_TESTNAME
+    - cd tests-$IRIS_ARCHS-$IRIS_ASYNC-$IRIS_TAG-$IRIS_MACHINE$IRIS_TESTNAME
     - echo "Test backends for test 37"
     - cd 37_opencl_icd
     - bash test_backends.sh
