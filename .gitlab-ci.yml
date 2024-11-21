@@ -143,7 +143,6 @@ deploy_docs_manual-job:
     - echo $IRIS_ASYNC
     - echo $IRIS_TAG
     - echo $IRIS_MACHINE
-    - echo "Test: tests-$IRIS_ARCHS-$IRIS_ASYNC-$IRIS_TAG-$IRIS_MACHINE"
     - cp -r tests tests-$IRIS_ARCHS-$IRIS_ASYNC-$IRIS_TAG-$IRIS_MACHINE
     - cd tests-$IRIS_ARCHS-$IRIS_ASYNC-$IRIS_TAG-$IRIS_MACHINE
     - mkdir build
@@ -309,7 +308,6 @@ test-job-zenith-all-ffi-async-s2k:
     - echo $IRIS_ARCHS
     - echo $IRIS_MACHINE
     - echo $IRIS_ASYNC
-    - echo "Test: tests-$IRIS_ARCHS-$IRIS_ASYNC-$IRIS_TAG-$IRIS_MACHINE$IRIS_TESTNAME"
     - cp -r tests tests-$IRIS_ARCHS-$IRIS_ASYNC-$IRIS_TAG-$IRIS_MACHINE$IRIS_TESTNAME
     - cd tests-$IRIS_ARCHS-$IRIS_ASYNC-$IRIS_TAG-$IRIS_MACHINE$IRIS_TESTNAME
     - echo "Test backends for test 29"
