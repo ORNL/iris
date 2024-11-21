@@ -27,8 +27,6 @@ variables:
 
 .zenith-config: &zenith_config
   tags: [zenith]
-  variables:
-    IRIS_MACHINE: zenith
   before_script:
     - echo "Setting up environment..."
     - source /auto/software/iris/setup_system.source
@@ -38,8 +36,6 @@ variables:
 
 .explorer-config: &explorer_config
   tags: [explorer]
-  variables:
-    IRIS_MACHINE: explorer
   before_script:
     - echo "Setting up environment..."
     - source /auto/software/iris/setup_system.source
