@@ -34,6 +34,10 @@ variables:
 .explorer-config: &explorer_config
   <<: *common_iris
   tags: [explorer]
+  before_script:
+    - module load cmake
+    - module load gnu
+    - source /auto/software/iris/setup_system.source
   variables:
     IRIS_MACHINE: explorer
 
