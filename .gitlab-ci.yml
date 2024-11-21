@@ -64,25 +64,25 @@ build-ffi-explorer:
   # Using aliasin features
   <<: [*explorer_config, *build_ffi]
   variables:
-    IRIS_MACHINE: explorer
+    IRIS_MACHINE: "explorer"
 
 build-noffi-explorer:
   # Using aliasin features
   <<: [*explorer_config, *build_noffi]
   variables:
-    IRIS_MACHINE: explorer
+    IRIS_MACHINE: "explorer"
 
 build-ffi-zenith:
   # Using aliasin features
   <<: [*zenith_config, *build_ffi]
   variables:
-    IRIS_MACHINE: zenith
+    IRIS_MACHINE: "zenith"
 
 build-noffi-zenith:
   # Using aliasin features
   <<: [*zenith_config, *build_noffi]
   variables:
-    IRIS_MACHINE: zenith
+    IRIS_MACHINE: "zenith"
 
 docs-job:
   tags: [devdocs]
@@ -187,93 +187,93 @@ deploy_docs_manual-job:
 test-job-zenith-all:
   needs: [build-noffi-zenith]
   variables:
-    IRIS_MACHINE: zenith
-    IRIS_TAG: noffi
-    IRIS_ARCHS: cuda,hip,openmp,opencl
+    IRIS_MACHINE: "zenith"
+    IRIS_TAG: "noffi"
+    IRIS_ARCHS: "cuda,hip,openmp,opencl"
   <<: [*zenith_config, *test_job]
 
 test-job-zenith-cuda:
   needs: [build-noffi-zenith]
   variables:
-    IRIS_MACHINE: zenith
-    IRIS_TAG: noffi
-    IRIS_ARCHS: cuda
+    IRIS_MACHINE: "zenith"
+    IRIS_TAG: "noffi"
+    IRIS_ARCHS: "cuda"
   <<: [*zenith_config, *test_job]
 
 test-job-zenith-hip:
   needs: [build-noffi-zenith]
   variables:
-    IRIS_MACHINE: zenith
-    IRIS_TAG: noffi
-    IRIS_ARCHS: hip
+    IRIS_MACHINE: "zenith"
+    IRIS_TAG: "noffi"
+    IRIS_ARCHS: "hip"
   <<: [*zenith_config, *test_job]
 
 test-job-zenith-openmp:
   needs: [build-noffi-zenith]
   variables:
-    IRIS_MACHINE: zenith
-    IRIS_TAG: noffi
-    IRIS_ARCHS: openmp
+    IRIS_MACHINE: "zenith"
+    IRIS_TAG: "noffi"
+    IRIS_ARCHS: "openmp"
   <<: [*zenith_config, *test_job]
 
 test-job-zenith-opencl:
   needs: [build-noffi-zenith]
   variables:
-    IRIS_MACHINE: zenith
-    IRIS_TAG: noffi
-    IRIS_ARCHS: opencl
+    IRIS_MACHINE: "zenith"
+    IRIS_TAG: "noffi"
+    IRIS_ARCHS: "opencl"
   <<: [*zenith_config, *test_job]
 
 test-job-explorer:
   needs: [build-noffi-explorer]
   variables:
     IRIS_MACHINE: explorer
-    IRIS_TAG: noffi
-    IRIS_ARCHS: hip,openmp,opencl
+    IRIS_TAG: "noffi"
+    IRIS_ARCHS: "hip,openmp,opencl"
   <<: [*explorer_config, *test_job]
 
 test-job-zenith-all-async-s2k:
   needs: [build-noffi-zenith]
   variables:
-    IRIS_MACHINE: zenith
-    IRIS_TAG: noffi
-    IRIS_ARCHS: cuda,hip,openmp,opencl
+    IRIS_MACHINE: "zenith"
+    IRIS_TAG: "noffi"
+    IRIS_ARCHS: "cuda,hip,openmp,opencl"
     IRIS_ASYNC: 1
   <<: [*zenith_config, *test_job]
 
 test-job-zenith-cuda-async-s2k:
   needs: [build-noffi-zenith]
   variables:
-    IRIS_MACHINE: zenith
-    IRIS_TAG: noffi
-    IRIS_ARCHS: cude
+    IRIS_MACHINE: "zenith"
+    IRIS_TAG: "noffi"
+    IRIS_ARCHS: "cude"
     IRIS_ASYNC: 1
   <<: [*zenith_config, *test_job]
 
 test-job-zenith-hip-async-s2k:
   needs: [build-noffi-zenith]
   variables:
-    IRIS_MACHINE: zenith
-    IRIS_TAG: noffi
-    IRIS_ARCHS: hip
+    IRIS_MACHINE: "zenith"
+    IRIS_TAG: "noffi"
+    IRIS_ARCHS: "hip"
     IRIS_ASYNC: 1
   <<: [*zenith_config, *test_job]
 
 test-job-zenith-openmp-async-s2k:
   needs: [build-noffi-zenith]
   variables:
-    IRIS_MACHINE: zenith
-    IRIS_TAG: noffi
-    IRIS_ARCHS: openmp
+    IRIS_MACHINE: "zenith"
+    IRIS_TAG: "noffi"
+    IRIS_ARCHS: "openmp"
     IRIS_ASYNC: 1
   <<: [*zenith_config, *test_job]
 
 test-job-zenith-opencl-async-s2k:
   needs: [build-noffi-zenith]
   variables:
-    IRIS_MACHINE: zenith
-    IRIS_TAG: noffi
-    IRIS_ARCHS: opencl
+    IRIS_MACHINE: "zenith"
+    IRIS_TAG: "noffi"
+    IRIS_ARCHS: "opencl"
     IRIS_ASYNC: 1
   <<: [*zenith_config, *test_job]
 
@@ -281,17 +281,17 @@ test-job-explorer-async-s2k:
   needs: [build-noffi-explorer]
   variables:
     IRIS_MACHINE: explorer
-    IRIS_TAG: noffi
-    IRIS_ARCHS: hip,openmp,opencl
+    IRIS_TAG: "noffi"
+    IRIS_ARCHS: "hip,openmp,opencl"
     IRIS_ASYNC: 1
   <<: [*explorer_config, *test_job]
 
 test-job-zenith-all-ffi-async-s2k:
   needs: [build-noffi-zenith]
   variables:
-    IRIS_MACHINE: zenith
-    IRIS_TAG: ffi
-    IRIS_ARCHS: cuda,hip,openmp,opencl
+    IRIS_MACHINE: "zenith"
+    IRIS_TAG: "ffi"
+    IRIS_ARCHS: "cuda,hip,openmp,opencl"
     IRIS_ASYNC: 1
   <<: [*zenith_config, *test_job]
 
@@ -344,19 +344,19 @@ test-job-zenith-all-ffi-async-s2k:
 test-backends-29:
   needs: [build-noffi-zenith]
   variables:
-    IRIS_MACHINE: zenith
-    IRIS_TAG: noffi
-    IRIS_ARCHS: cuda,hip,openmp,opencl
-    IRIS_TESTNAME: 29_data_mem
+    IRIS_MACHINE: "zenith"
+    IRIS_TAG: "noffi"
+    IRIS_ARCHS: "cuda,hip,openmp,opencl"
+    IRIS_TESTNAME: "29_data_mem"
   <<: [*zenith_config, *test_backend]
 
 test-backends-34:
   needs: [build-noffi-zenith]
   variables:
-    IRIS_MACHINE: zenith
-    IRIS_TAG: noffi
-    IRIS_ARCHS: cuda,hip,openmp,opencl
-    IRIS_TESTNAME: 34_set_mem
+    IRIS_MACHINE: "zenith"
+    IRIS_TAG: "noffi"
+    IRIS_ARCHS: "cuda,hip,openmp,opencl"
+    IRIS_TESTNAME: "34_set_mem"
   <<: [*zenith_config, *test_backend]
 
 # test-job-leconte:
@@ -366,30 +366,30 @@ test-backends-34:
 test-backends-29-async-s2k:
   needs: [build-noffi-zenith]
   variables:
-    IRIS_MACHINE: zenith
-    IRIS_TAG: noffi
-    IRIS_ARCHS: cuda,hip,openmp,opencl
+    IRIS_MACHINE: "zenith"
+    IRIS_TAG: "noffi"
+    IRIS_ARCHS: "cuda,hip,openmp,opencl"
     IRIS_ASYNC: 1
-    IRIS_TESTNAME: 29_data_mem
+    IRIS_TESTNAME: "29_data_mem"
   <<: [*zenith_config, *test_backend]
 
 test-backends-34-async-s2k:
   needs: [build-noffi-zenith]
   variables:
-    IRIS_MACHINE: zenith
-    IRIS_TAG: noffi
-    IRIS_ARCHS: cuda,hip,openmp,opencl
+    IRIS_MACHINE: "zenith"
+    IRIS_TAG: "noffi"
+    IRIS_ARCHS: "cuda,hip,openmp,opencl"
     IRIS_ASYNC: 1
-    IRIS_TESTNAME: 34_set_mem
+    IRIS_TESTNAME: "34_set_mem"
   <<: [*zenith_config, *test_backend]
 
 test-backends-37:
   needs: [build-noffi-zenith]
   variables:
-    IRIS_MACHINE: zenith
-    IRIS_TAG: noffi
-    IRIS_ARCHS: cuda,hip,openmp,opencl
-    IRIS_TESTNAME: 37_opencl_icd
+    IRIS_MACHINE: "zenith"
+    IRIS_TAG: "noffi"
+    IRIS_ARCHS: "cuda,hip,openmp,opencl"
+    IRIS_TESTNAME: "37_opencl_icd"
   <<: [*zenith_config, *test_backend]
 
 .dagger:
@@ -513,7 +513,7 @@ coverage-collect:
   tags: [zenith]
   stage: coverage
   variables:
-    IRIS_MACHINE: zenith
+    IRIS_MACHINE: "zenith"
   needs:
     - test-job-zenith-all
     - test-job-zenith-cuda
