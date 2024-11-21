@@ -111,6 +111,8 @@ deploy_docs_manual-job:
     - echo $CI_REPOSITORY_URL
     - echo $CI_PROJECT_PATH
     - echo $IRIS_MACHINE
+    - echo $IRIS_INSTALL_ROOT.noffi.zenith
+    - ls $IRIS_INSTALL_ROOT.noffi.zenith
     - source $IRIS_INSTALL_ROOT.noffi.$IRIS_MACHINE/setup.source
     - echo $PATH
     - echo $LD_LIBRARY_PATH
