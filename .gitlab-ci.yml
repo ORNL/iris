@@ -264,7 +264,7 @@ test-job-zenith-cuda-async-s2k:
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
-    IRIS_ARCHS_CICD: "cude"
+    IRIS_ARCHS_CICD: "cuda"
     IRIS_ASYNC: 1
 
 test-job-zenith-hip-async-s2k:
