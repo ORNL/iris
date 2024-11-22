@@ -152,7 +152,7 @@ deploy_docs_manual-job:
     - cd tests-$IRIS_ARCHS-$IRIS_ASYNC-$IRIS_TAG-$IRIS_MACHINE
     - mkdir build
     - cd build
-    - cmake .. -DIRIS=$IRIS
+    - cmake .. -DIRIS=$IRIS -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++
     - make --ignore-errors
     - echo IRIS_ARCHS is $IRIS_ARCHS
     - ctest --output-junit testRes.xml
