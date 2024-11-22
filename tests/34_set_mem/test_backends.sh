@@ -1,5 +1,6 @@
 #!/bin/bash
 
+set -x;
 source /auto/software/iris/setup_system.source
 
 export SYSTEM=$(hostname|cut -d . -f 1|sed 's/[0-9]*//g')

@@ -1,4 +1,5 @@
 #!/bin/bash
+set -x;
 
 source /auto/software/iris/setup_system.source
 
