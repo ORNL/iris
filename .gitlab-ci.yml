@@ -156,7 +156,7 @@ deploy_docs_manual-job:
     - make --ignore-errors
     - echo $IRIS_ARCHS
     - echo $IRIS_ASYNC
-    - ctest --output-junit testRes.xml || true
+    - ctest --output-junit testRes.xml 
     - cd ../..
     - echo $IRIS_ARCHS
     - echo $IRIS_ASYNC
