@@ -575,7 +575,7 @@ void Device::ExecuteInit(Command* cmd) {
     bool stat_bin = Utils::Exist(bin);
     errid_ = IRIS_SUCCESS;
     if (!stat_src && !stat_bin) {
-      _error("NO KERNEL SRC[%s] NO KERNEL BIN[%s]", src, bin);
+      _warning("NO KERNEL SRC[%s] NO KERNEL BIN[%s]", src, bin);
       native_kernel_not_exists_ = true;
     } else if (!stat_src && stat_bin) {
       kernel_path_ = std::string(bin);

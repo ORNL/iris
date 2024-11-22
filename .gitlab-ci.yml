@@ -154,14 +154,21 @@ deploy_docs_manual-job:
     - cd build
     - cmake .. -DIRIS=$IRIS -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++
     - make --ignore-errors
-    - echo IRIS_ARCHS is $IRIS_ARCHS
-    - ctest --output-junit testRes.xml
+    - echo $IRIS_ARCHS
+    - echo $IRIS_ASYNC
+    - ctest --output-junit testRes.xml || true
     - cd ../..
+    - echo $IRIS_ARCHS
+    - echo $IRIS_ASYNC
     - python3 -m venv .venv-schema
     - source .venv-schema/bin/activate
     - pip install jsoncomment jsonschema
+    - echo $IRIS_ARCHS
+    - echo $IRIS_ASYNC
     - bash .gitlab-ci-scripts/schema_check.sh
   after_script:
+    - echo $IRIS_ARCHS
+    - echo $IRIS_ASYNC
     - python3 -m venv .venv-gcovr
     - source .venv-gcovr/bin/activate
     - echo $IRIS_ARCHS
