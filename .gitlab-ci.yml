@@ -12,8 +12,6 @@ stages:
     - echo "Setting up environment..."
     - source /auto/software/iris/setup_system.source
     - source /opt/xilinx/xrt/setup.sh
-    - module load cmake
-    - module load gnu
 
 .excl_runner:
   extends: [.iris_common]
@@ -31,16 +29,12 @@ variables:
     - echo "Setting up environment..."
     - source /auto/software/iris/setup_system.source
     - source /opt/xilinx/xrt/setup.sh
-    - module load cmake
-    - module load gnu
 
 .explorer-config: &explorer_config
   tags: [explorer]
   before_script:
     - echo "Setting up environment..."
     - source /auto/software/iris/setup_system.source
-    - module load cmake
-    - module load gnu
 
 .build-ffi: &build_ffi
   stage: build
