@@ -5,6 +5,7 @@
 #include "Device.h"
 #include "Kernel.h"
 #include "Mem.h"
+#include "DataMem.h"
 #include "Pool.h"
 #include "Scheduler.h"
 #include "Timer.h"
@@ -23,12 +24,14 @@ void ProfileEvent::Clean() {
     //printf("completed prof_event trying to destroy :%p %p\n", &start_event_, start_event_);
 }
 float ProfileEvent::GetStartTime() {
+    if (!event_fetch_flag_) return start_time_; 
     float etime =0.0;
     if (start_event_ != NULL && event_dev_ != NULL) 
         etime = event_dev_->GetEventTime(start_event_, stream_);
     return etime;
 }
 float ProfileEvent::GetEndTime() {
+    if (!event_fetch_flag_) return end_time_; 
     float etime =0.0;
     if (end_event_ != NULL && event_dev_ != NULL) 
         etime = event_dev_->GetEventTime(end_event_, stream_);
@@ -38,14 +41,17 @@ float ProfileEvent::GetEndTime() {
 void ProfileEvent::RecordStartEvent() {
     event_dev_->RecordEvent(&start_event_, stream_, iris_event_default);
     event_dev_->TrackDestroyEvent(start_event_);
+    _event_prof_debug("Recorded id:%lu type:%d Start event:%p stream:%d", id_, type_, start_event_, stream_);
 }
 void ProfileEvent::RecordEndEvent() {
     event_dev_->RecordEvent(&end_event_, stream_, iris_event_default);
     event_dev_->TrackDestroyEvent(end_event_);
+    _event_prof_debug("Recorded id:%lu type:%d End event:%p stream:%d", id_, type_, end_event_, stream_);
 }
 Task::Task(Platform* platform, int type, const char* name, int max_cmds) {
   //printf("Creating task:%lu:%s ptr:%p\n", uid(), name, this);
   is_kernel_launch_disabled_ = false;
+  enable_julia_if_ = false;
   type_ = type;
   recommended_stream_ = -1;
   recommended_dev_ = -1;
@@ -106,6 +112,7 @@ Task::Task(Platform* platform, int type, const char* name, int max_cmds) {
   shadow_dep_added_ = false;
 #endif
 #endif
+  df_scheduling_ = false;
   set_object_track(Platform::GetPlatform()->task_track_ptr());
   platform_->task_track().TrackObject(this, uid());
   async_execution_ = platform_->is_async(); // Same as platform by default
@@ -132,6 +139,7 @@ Task::~Task() {
   pthread_mutex_destroy(&mutex_subtasks_);
   //pthread_cond_destroy(&complete_cond_);
   subtasks_.clear();
+  if (childs_uids_ != NULL) delete [] childs_uids_;
   _trace("released task:%lu:%s released ref_cnt:%d", uid(), name(), ref_cnt());
 }
 bool Task::IsKernelSupported(Device *dev)
@@ -163,6 +171,8 @@ void Task::set_parent(Task* task) {
 }
 
 void Task::set_brs_policy(int brs_policy) {
+  if(df_scheduling_) return;
+  //printf("task %s old dev %d, new dev %d\n", name(), brs_policy_, brs_policy);
   brs_policy_ = brs_policy;// == iris_default ? platform_->device_default() : brs_policy;
   if(ncmds_ <= 1){//iris_pending policy only works on single command tasks
     if (brs_policy == iris_pending) status_ = IRIS_PENDING;
@@ -202,15 +212,29 @@ const char* Task::task_status_string() {
 
 void Task::set_opt(const char* opt) {
   if (!opt) return;
-  if (std::string(opt) == std::string(opt_)) return;
-  memset(opt_, 0, sizeof(opt_));
-  strncpy(opt_, opt, strlen(opt)+1);
+  if (std::string(opt) == opt_) return;
+  opt_ = std::string(opt);
+  //memset(opt_, 0, sizeof(opt_));
+  //strncpy(opt_, opt, strlen(opt)+1);
 }
 
 void Task::AddMemResetCommand(Command* cmd) {
   reset_mems_.push_back(cmd);
 }
 
+bool Task::is_task_with_single_flush() {
+    if (ncmds_ == 1 && cmds_[0]->type() == IRIS_CMD_MEM_FLUSH) {
+        return true;
+    }
+    return false;
+}
+int Task::get_device_affinity() {
+    if (is_task_with_single_flush()) {
+        BaseMem* mem = (BaseMem *)cmds_[0]->mem();
+        return mem->get_dev_affinity();
+    }
+    return -1;
+}
 void Task::AddCommand(Command* cmd) {
   if (ncmds_ >= max_cmds_) _error("ncmds[%d]", ncmds_);
   cmds_[ncmds_++] = cmd;
@@ -253,10 +277,14 @@ bool Task::Dispatchable() {
   //print_incomplete_tasks();
   if (status_ == IRIS_PENDING) return false;
   if (depends_uids_ == NULL) return true;
+  bool has_cmds = (ncmds() > 0) ? true: false;
+  _event_prof_debug("Checking task:%lu:%s dispatchable depends_uids_:%p ndepends_:%d pending:%d has_cmds:%d", uid(), name(), depends_uids_, ndepends_, (status_ == IRIS_PENDING), has_cmds);
   for (int i = 0; i < ndepends_; i++) {
       Task *dep = platform_->get_task_object(depends_uids_[i]);
-#if 0
-      if ( dep != NULL && dep->is_async() && !(dep->status() == IRIS_COMPLETE || dep->status() == IRIS_RUNNING)) return false;
+      //printf("dep:%p dep async:%d dep_status:%d,%d dep->status():%d IRIS_COMPLETE:%d IRIS_RUNNING:%d\n", dep, dep->is_async(), dep->status() == IRIS_COMPLETE, dep->status() == IRIS_RUNNING, dep->status(), IRIS_COMPLETE, IRIS_RUNNING);
+#if 1
+      if ( dep != NULL && dep->is_async() && has_cmds && !(dep->status() == IRIS_COMPLETE || dep->status() == IRIS_SUBMITTED)) return false;
+      if ( dep != NULL && dep->is_async() && !has_cmds && dep->status() != IRIS_COMPLETE) return false;
       if ( dep != NULL && !dep->is_async() && dep->status() != IRIS_COMPLETE) return false;
 #else
       if ( dep != NULL && dep->status() != IRIS_COMPLETE) return false;
@@ -315,6 +343,7 @@ void Task::Complete() {
   std::unique_lock<std::mutex> lock(mutex_complete_cpp_);
   status_ = IRIS_COMPLETE;
   complete_cond_cpp_.notify_all();
+  lock.unlock();
   //pthread_mutex_lock(&mutex_complete_);
   //pthread_cond_broadcast(&complete_cond_);
   //pthread_mutex_unlock(&mutex_complete_);
@@ -563,6 +592,22 @@ ProfileEvent & Task::CreateProfileEvent(BaseMem *mem, int connect_dev, ProfileRe
       return profile_events_.back();
 }
 
+void Task::insert_hidden_dmem(DataMem *dmem, int mode)
+{
+    if (mode == iris_r) {
+        hidden_dmem_in_.push_back(dmem);
+    }
+    else if (mode == iris_w) {
+        hidden_dmem_out_.push_back(dmem);
+    }
+    else if (mode == iris_rw) {
+        hidden_dmem_in_.push_back(dmem);
+        hidden_dmem_out_.push_back(dmem);
+    }
+    else {
+        _error("Unknown memory mode dmem:%lu mode:%d\n", dmem->uid(), mode);
+    }
+}
 
 } /* namespace rt */
 } /* namespace iris */

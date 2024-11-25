@@ -38,7 +38,7 @@ protected:
 
 private:
   int fd_;
-  char path_[256];
+  char path_[1024];
   char profiler_name_[64];
   Message* msg_;
 };

@@ -34,6 +34,8 @@ endif() # USE_RISCV
 
 add_subdirectory(include)
 add_subdirectory(src)
+#set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/utils DESTINATION ${CMAKE_INSTALL_PREFIX}/.)
 
 add_custom_command(
@@ -56,7 +58,7 @@ add_custom_command(
   COMMAND echo "export IRIS=$(dirname -- \${SCRIPT})" >> ${CMAKE_BINARY_DIR}/setup.source
   COMMAND echo "export LD_LIBRARY_PATH=.:\$IRIS/lib:\$IRIS/lib64:\$LD_LIBRARY_PATH" >> ${CMAKE_BINARY_DIR}/setup.source
   COMMAND echo "export CPATH=\$IRIS/include:\$CPATH" >> ${CMAKE_BINARY_DIR}/setup.source
-  COMMAND echo "export PYTHONPATH=\$IRIS/include/iris:\$PYTHONPATH" >> ${CMAKE_BINARY_DIR}/setup.source
+  COMMAND echo "export PYTHONPATH=\$IRIS:\$PYTHONPATH" >> ${CMAKE_BINARY_DIR}/setup.source
   COMMAND echo "export SYSTEM=\$(hostname|cut -d . -f 1|sed 's/[0-9]*//g')" >>  ${CMAKE_BINARY_DIR}/setup.source
   COMMAND echo "export MACHINE=\${SYSTEM^}" >>  ${CMAKE_BINARY_DIR}/setup.source
   COMMAND echo "echo \"*********************** IRIS Environent *********************\"" >> ${CMAKE_BINARY_DIR}/setup.source
@@ -84,9 +86,9 @@ add_custom_command(
   COMMAND echo "export LD_LIBRARY_PATH=.:\$IRIS/lib:\$IRIS/lib64:\$LD_LIBRARY_PATH" >> ${CMAKE_BINARY_DIR}/setup.zsh
   COMMAND echo "export LIBRARY_PATH=.:\$IRIS/lib:\$IRIS/lib64:\$LIBRARY_PATH" >> ${CMAKE_BINARY_DIR}/setup.zsh
   COMMAND echo "export CPATH=\$IRIS/include:\$CPATH" >> ${CMAKE_BINARY_DIR}/setup.zsh
-  COMMAND echo "export PYTHONPATH=\$IRIS/include/iris:\$PYTHONPATH" >> ${CMAKE_BINARY_DIR}/setup.zsh
+  COMMAND echo "export PYTHONPATH=\$IRIS:\$PYTHONPATH" >> ${CMAKE_BINARY_DIR}/setup.zsh
   COMMAND echo "export SYSTEM=\$(hostname|cut -d . -f 1|sed 's/[0-9]*//g')" >>  ${CMAKE_BINARY_DIR}/setup.zsh
-  COMMAND echo "export MACHINE=\${SYSTEM^}" >>  ${CMAKE_BINARY_DIR}/setup.zsh
+  COMMAND echo "export MACHINE=\$(tr '[:lower:]' '[:upper:]' <<< \${SYSTEM:0:1})\${SYSTEM:1}" >>  ${CMAKE_BINARY_DIR}/setup.zsh
   COMMAND echo "echo \"*********************** IRIS Environent *********************\"" >> ${CMAKE_BINARY_DIR}/setup.zsh
   COMMAND echo "echo \"IRIS: \$IRIS\"" >> ${CMAKE_BINARY_DIR}/setup.zsh
   COMMAND echo "echo \"*************************************************************\"" >> ${CMAKE_BINARY_DIR}/setup.zsh
@@ -109,7 +111,7 @@ add_custom_command(
   COMMAND echo "set -gx IRIS (dirname -- \$SCRIPT)" >> ${CMAKE_BINARY_DIR}/setup.fish
   COMMAND echo "set -gx LD_LIBRARY_PATH . \$IRIS/lib \$IRIS/lib64 \$LD_LIBRARY_PATH" >> ${CMAKE_BINARY_DIR}/setup.fish
   COMMAND echo "set -gx CPATH \$IRIS/include \$CPATH" >> ${CMAKE_BINARY_DIR}/setup.fish
-  COMMAND echo "set -gx PYTHONPATH \$IRIS/include/iris \$PYTHONPATH" >> ${CMAKE_BINARY_DIR}/setup.fish
+  COMMAND echo "set -gx PYTHONPATH \$IRIS \$PYTHONPATH" >> ${CMAKE_BINARY_DIR}/setup.fish
   COMMAND echo "set -gx SYSTEM (hostname|cut -d . -f 1|sed 's/[0-9]*//g')" >>  ${CMAKE_BINARY_DIR}/setup.fish
   COMMAND echo "set -gx MACHINE \${SYSTEM^}" >>  ${CMAKE_BINARY_DIR}/setup.fish
   COMMAND echo "echo \"*********************** IRIS Environent *********************\"" >> ${CMAKE_BINARY_DIR}/setup.fish

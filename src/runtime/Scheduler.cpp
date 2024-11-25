@@ -141,16 +141,23 @@ void Scheduler::Submit(Task* task) {
 
 void Scheduler::SubmitTask(Task* task) {
   int brs_policy = task->brs_policy();
-  char* opt = task->opt();
+  const char* opt = task->opt();
   int ndevs = 0;
+  int task_affinity = task->get_device_affinity();
   Device* devs[IRIS_MAX_NDEVS];
-  if (brs_policy < IRIS_MAX_NDEVS) {
-    if (brs_policy >= ndevs_) ndevs = 0;
-    else {
+  if (task_affinity < 0) {
+      if (brs_policy < IRIS_MAX_NDEVS) {
+          if (brs_policy >= ndevs_) ndevs = 0;
+          else {
+              ndevs = 1;
+              devs[0] = devs_[brs_policy];
+          }
+      } else policies_->GetPolicy(brs_policy, opt)->GetDevices(task, devs, &ndevs);
+  }
+  else {
+      devs[0] = devs_[task_affinity];
       ndevs = 1;
-      devs[0] = devs_[brs_policy];
-    }
-  } else policies_->GetPolicy(brs_policy, opt)->GetDevices(task, devs, &ndevs);
+  }
   if (ndevs == 1) {
     task->set_recommended_dev(devs[0]->devno());
   }

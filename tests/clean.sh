@@ -31,15 +31,59 @@ rm -rf                                                    \
   ./19_replay/*.json                                      \
   ./20_cublas/test20_cublas                               \
   ./21_task_malloc/test21_task_malloc                     \
+  ./22_json_mixed_args/test22_json_mixed_args             \
   ./23_multigraph/test23_multigraph                       \
   ./24_multi_kernels/test24_multi_kernels                 \
   ./25_random_tasks/test25_random_tasks                   \
   ./26_env_set/test26_env_set                             \
   ./27_deadlock2/test27_deadlock2                         \
   ./28_json2/test28_json2                                 \
-  ./29_data_mem/test29_data_mem                          \
+  ./29_data_mem/test29_data_mem                           \
   ./30_task_info/test30_task_info                         \
   ./32_json3/test32_json3                                 \
   ./33_graph_cpp/test33_graph_cpp                         \
   ./33_graph_cpp/*.so                                     \
-  ./34_set_mem/test34_set_mem
+  ./34_set_mem/test34_set_mem                             \
+  ./35_json_mixed_args_record_replay/test35_json_mixed_args_record_replay \
+  ./36_double_json_mixed_args_record_replay/test36_double_json_mixed_args_record_replay  \
+  ./37_opencl_icd/test37_opencl_icd                      \
+  ./38_offset/test38_offset                              \
+  **/*.ptx                                                
+
+rm -rf ./35_json_mixed_args_record_replay/*.csv  \
+       ./34_set_mem/*.csv \
+       ./30_task_info/*.csv \
+       ./32_json3/*.csv \
+       ./38_offset/*.csv \
+       ./33_graph_cpp/*.csv \
+       ./29_data_mem/*.csv \
+       ./27_deadlock2/*.csv \
+       ./28_json2/*.csv \
+       ./26_env_set/*.csv \
+       ./01_init_finalize/*.csv \
+       ./02_task_depend/*.csv \
+       ./02_task_depend/*.html \
+       ./03_release/*.csv \
+       ./04_enclosing_targets/*.csv \
+       ./06_device/*.csv \
+       ./07_policy_register/*.csv \
+       ./08_multithreading/*.csv \
+       ./09_dataflow/*.csv \
+       ./10_multikernelexecution/*.csv \
+       ./13_hooks/*.csv \
+       ./14_permanent_task/*.csv \
+       ./15_graph/*.csv \
+       ./16_task_host/*.csv \
+       ./17_json/*.csv \
+       ./18_record/*.csv \
+       ./19_replay/*.csv \
+       ./21_task_malloc/*.csv \
+       ./22_json_mixed_args/*.csv \
+       ./23_multigraph/*.csv \
+       ./24_multi_kernels/*.csv \
+       ./25_random_tasks/*.csv \
+       ./26_env_set/*.csv \
+       ./29_data_mem/*.csv \
+       ./31_isaxpy/*.csv \
+       ./35_json_mixed_args_record_replay/*.csv \
+       ./36_double_json_mixed_args_record_replay/*.csv 

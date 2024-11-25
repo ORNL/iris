@@ -73,6 +73,7 @@ set(IRISKernels_SRC_DIR ${PROJECT_SOURCE_DIR}/src)
 set(IRISKernels_INC_DIR ${PROJECT_SOURCE_DIR}/include)
 set(IRISKernels_BIN_DIR ${PROJECT_BINARY_DIR}/bin)
 
+option(NO_OPENMP "Disable OpenMP in CPU kernel"    OFF)
 option(USE_RISCV "Use RISCV toolchain "    OFF )
 message(STATUS "******* CMAKE_SYSTEM_PROCESSOR: ${CMAKE_SYSTEM_PROCESSOR}")
 if (NOT USE_RISCV)
@@ -318,7 +319,9 @@ set(OPENMP_INC "")
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     set(OPENMP_INC "")
 else()
+if (NOT NO_OPENMP)
     set(OPENMP_INC "-fopenmp")
+endif()
 endif()
 set(HOST2XILINX_FLAGS "${HOST2XILINX_FLAGS} -I$ENV{XILINX_HLS}/include -I$ENV{XILINX_VITIS}/include -I$ENV{XILINX_XRT}/include/ -DENABLE_IRIS ${OPENMP_INC} -O3 -g -fPIC ${COMMON_FLAGS} ${LOCAL_COMMON_FLAGS} -I. ")
 set(HOST2OPENCL_FLAGS "${HOST2OPENCL_FLAGS} -DENABLE_IRIS ${OPENMP_INC} -O3 -g -fPIC ${COMMON_FLAGS} ${LOCAL_COMMON_FLAGS} -I.")
@@ -474,7 +477,7 @@ function(extractIRISAPIs)
         list(APPEND src_iris_files "${CMAKE_BINARY_DIR}/${rule_name}.iris")
    endwhile()
    add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/iris_app_cpu_dsp_interface.h
-           COMMAND python3 $ENV{IRIS}/utils/extract_iris_task_calls.py -input ${src_iris_files} -output ${CMAKE_BINARY_DIR}/iris_app_cpu_dsp_interface.h -generate 
+           COMMAND python3 $ENV{IRIS}/utils/extract_iris_task_calls.py -input ${src_iris_files} -output ${CMAKE_BINARY_DIR}/iris_app_cpu_dsp_interface.h -generate $ENV{IRIS_NO_CODEGEN}
            DEPENDS ${src_rules}
            )
     add_custom_target(iris_app_cpu_dsp_interface.h DEPENDS ${CMAKE_BINARY_DIR}/iris_app_cpu_dsp_interface.h)
@@ -578,11 +581,12 @@ endif() # XILINX_TARGET
 message(STATUS "XILINX Target (XCL_EMULATION_MODE): ${XILINX_TARGET}")
 initVar(XILINX_LANGUAGE "opencl")
 initVar(XILINX_VERSION "1")
+initVar(XILINX_OUTPUT "xclbin")
 #initVar(XILINX_FREQUENCY 300000000)
 initVar(XILINX_DESIGN_CONFIG "${CMAKE_BINARY_DIR}/design.cfg")
 message(STATUS "XILINX Design config (XILINX_DESIGN_CONFIG): ${XILINX_DESIGN_CONFIG}")
 initVar(XTMP_DIR "${CMAKE_BINARY_DIR}/_x/${XILINX_TARGET}/${XILINX_LANGUAGE}/${XILINX_VERSION}")
-initVar(XILINX_XCLBIN "kernel-fpga.xclbin")
+initVar(XILINX_XCLBIN "kernel-fpga.${XILINX_OUTPUT}")
 if (NOT XILINX_PLATFORM)
 execute_process(COMMAND bash -c "platforminfo  -l | grep baseName | awk '{print $2}' | head -n1 | sed -e s/,//g  -e s/\\\"//g"   OUTPUT_VARIABLE XILINX_PLATFORM)
 string(REGEX REPLACE "\n$" "" XILINX_PLATFORM "${XILINX_PLATFORM}")
@@ -758,7 +762,7 @@ function(addKernelSpecificCompiler
         foreach(cuda_source ${kernel_sources})
             message(STATUS ${cuda_source})
             string(REGEX REPLACE " $" "" first "${cuda_source}")
-            string(REGEX REPLACE "/" ".__" rule_name "${first}.iris.specific")
+            string(REGEX REPLACE "/" ".__" rule_name "${first}.iris.${kernel_target}.specific")
             string(REGEX REPLACE "\n$" "" rule_name "${rule_name}")
             get_filename_component(SRC_PATH ${first} DIRECTORY)
             if (SRC_PATH STREQUAL "")
@@ -823,7 +827,7 @@ function(addKernelCUDARule kernel_target
             set(output "${rule_name}.o")
             add_custom_command(
                     OUTPUT ${output}
-                    COMMAND ${HOST2CUDA_COMP_COMPILER} -O2 ${OPENMP_GPU_FLAGS} -c ${SRC_FILE_PATH} ${flags_X} -I$ENV{IRIS}/include -I${SRC_DIR_PATH} -o ${output}
+                    COMMAND ${HOST2CUDA_COMP_COMPILER} -O2 -c ${SRC_FILE_PATH} ${flags_X} -I$ENV{IRIS}/include -I${SRC_DIR_PATH} -o ${output}
                     DEPENDS ${SRC_FILE_PATH} iris_app_cpu_dsp_interface.h
                     VERBATIM
             )
@@ -890,8 +894,10 @@ if (HOST2CUDA_KERNEL_SOURCES AND USE_CUDA)
 if (ENABLE_HOST2CUDA_NATIVE)
 set(output_obj_files "")
 set(output_rules "")
+set(HOST2CUDA_FLAGS "${HOST2CUDA_FLAGS} -cuda -x cu -DNATIVE_CUDA")
+set(HOST2CUDA_LDFLAGS "${HOST2CUDA_LDFLAGS} -cuda ")
 addKernelSpecificCompiler(kernel.host2cuda nvc++ "${HOST2CUDA_KERNEL_SOURCES}" ${HOST2CUDA_FLAGS} ${HOST2CUDA_LDFLAGS} "${HOST2CUDA_LIBRARIES}" "${output_obj_files}" "${output_rules}")
-set(HOST2CUDA_LDFLAGS "${HOST2CUDA_LDFLAGS} -stdpar ${OPENMP_GPU_LDFLAGS} ${output_obj_files} -L${CMAKE_CURRENT_BINARY_DIR}")
+set(HOST2CUDA_LDFLAGS "${HOST2CUDA_LDFLAGS} -stdpar ${OPENMP_GPU_LDFLAGS} ${output_obj_files} -lcudart -L${CMAKE_CURRENT_BINARY_DIR}")
 set(HOST2CUDA_LIBRARIES  ${HOST2CUDA_LIBRARIES} )
 else()
 addKernelRule(kernel.host2cuda "${HOST2CUDA_KERNEL_SOURCES}" ${HOST2CUDA_FLAGS} ${HOST2CUDA_LDFLAGS} "${HOST2CUDA_LIBRARIES}")
@@ -957,7 +963,9 @@ if (APP_LIB_SOURCES)
     endif() # USE_RISCV
     set_target_properties(${APP_LIBRARY_NAME} PROPERTIES COMPILE_FLAGS ${APP_FLAGS})
     set_target_properties(${APP_LIBRARY_NAME} PROPERTIES LINK_FLAGS ${APP_LDFLAGS})
+    if (NOT APP_LIB_NO_INSTALL)
     install(TARGETS ${APP_LIBRARY_NAME} DESTINATION ${LIB_INSTALL_PATH})
+    endif() # APP_LIB_NO_INSTALL
 endif() #APP_LIB_SOURCES
 
 if (APP_SOURCES)
@@ -1007,20 +1015,28 @@ add_dependencies(${APP_EXECUTABLE} emconfig.json)
 if (APP_DEPENDS)
 add_dependencies(${APP_EXECUTABLE} ${APP_DEPENDS})
 endif()
+if (XILINX_LANGUAGE STREQUAL "opencl")
 target_link_libraries(${APP_EXECUTABLE} rt pthread OpenCL)
+else() # XILINX_LANGUAGE
+target_link_libraries(${APP_EXECUTABLE} rt pthread)
+endif() # XILINX_LANGUAGE
 if (APP_LINK_LIB)
 target_link_libraries(${APP_EXECUTABLE} ${APP_LINK_LIB})
-endif()
-endif()
-else()
+endif() #APP_LINK_LIB
+endif() #XILINX_OPENCL_SOURCES or XILINX_KERNEL_SOURCES
+else() # APP_SOURCES AND USE_XILINX
 if (APP_LIB_SOURCES AND USE_XILINX)
 if (XILINX_OPENCL_SOURCES OR XILINX_KERNEL_SOURCES)
 add_dependencies(${APP_LIBRARY_NAME} ${XILINX_XCLBIN})
 add_dependencies(${APP_LIBRARY_NAME} emconfig.json)
+if (XILINX_LANGUAGE STREQUAL "opencl")
 target_link_libraries(${APP_LIBRARY_NAME} rt pthread OpenCL)
-endif()
-endif()
-endif()
+else() #XILINX_LANGUAGE
+target_link_libraries(${APP_LIBRARY_NAME} rt pthread)
+endif() #XILINX_LANGUAGE
+endif() #XILINX_OPENCL_SOURCES XILINX_KERNEL_SOURCES
+endif() #APP_LIB_SOURCES AND USE_XILINX
+endif() #APP_SOURCES AND USE_XILINX
 
 if (APP_SOURCES AND APP_LIBRARIES)
 target_link_libraries(${APP_EXECUTABLE} ${APP_LIBRARIES})

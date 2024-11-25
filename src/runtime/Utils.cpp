@@ -15,7 +15,14 @@
 #include <cstdlib>
 #include <regex>
 #include <cxxabi.h>
+#include <thread>
+#include <sched.h>
 
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <pthread.h>
+#endif
 namespace iris {
 namespace rt {
 
@@ -160,10 +167,75 @@ long Utils::Mtime(char* path) {
   return st.st_mtime;
 }
 
+void Utils::ReadSet(std::set<std::string> & out, const char *data)
+{
+    const char* delim = " :;.,";
+    std::string data_str = std::string(data);
+    std::transform(data_str.begin(), data_str.end(), data_str.begin(), ::tolower);
+    char* rest = (char *)data_str.c_str();
+    char* a = NULL;
+    while ((a = strtok_r(rest, delim, &rest))) {
+        out.insert(a);
+    }
+}
+
+void Utils::ReadVector(std::vector<std::string> & out, const char *data)
+{
+    const char* delim = " :;.,";
+    std::string data_str = std::string(data);
+    std::transform(data_str.begin(), data_str.end(), data_str.begin(), ::tolower);
+    char* rest = (char *)data_str.c_str();
+    char* a = NULL;
+    while ((a = strtok_r(rest, delim, &rest))) {
+        out.push_back(a);
+    }
+}
+void Utils::ReadMap(std::map<std::string, int> & in_map, std::map<int, bool> & out_map, const char *data)
+{
+    const char* delim = " :;.,";
+    std::string data_str = std::string(data);
+    std::transform(data_str.begin(), data_str.end(), data_str.begin(), ::tolower);
+    char* rest = (char *)data_str.c_str();
+    char* a = NULL;
+    while ((a = strtok_r(rest, delim, &rest))) {
+        if (in_map.find(a) != in_map.end()) {
+            out_map[in_map[a]] = true;
+        }
+    }
+}
 void Utils::Datetime(char* str) {
   time_t t = time(NULL);
   struct tm* tm = localtime(&t);
   strftime(str, 256, "%Y%m%d%H%M%S", tm);
+}
+
+int Utils::CPUCoresCount() {
+    unsigned int num_cores = std::thread::hardware_concurrency();
+    return num_cores;
+}
+void Utils::SetThreadAffinity(unsigned int core_id) {
+    unsigned int num_cores = std::thread::hardware_concurrency();
+    unsigned int lcore_id = core_id;
+    if (lcore_id >= num_cores) 
+        lcore_id = lcore_id % num_cores;
+#ifdef _WIN32
+    DWORD_PTR mask = 1ULL << lcore_id;
+    SetThreadAffinityMask(GetCurrentThread(), mask);
+#else //_WIN32
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    CPU_SET(lcore_id, &cpuset);
+
+#if 1
+    sched_setaffinity(0, sizeof(cpuset), &cpuset);
+#else
+    pthread_t current_thread = pthread_self();
+    int s = pthread_setaffinity_np(current_thread, sizeof(cpu_set_t), &cpuset);
+    printf("Device:%u Setting affinity of thread to core id:%u\n", core_id, lcore_id);
+    if (s != 0)
+        _error("CPU affinity set to %u is failed with pthread_setaffinity_np", core_id);
+#endif
+#endif // _WIN32
 }
 
 } /* namespace rt */

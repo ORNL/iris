@@ -13,9 +13,11 @@ public:
   virtual ~Thread();
 
   void Start();
+  void StartWithOutThread();
   virtual void Stop();
   virtual void Sleep();
   virtual void Invoke();
+  void set_running(bool flag=true) { running_ = flag; }
   pthread_t thread() { return thread_; }
   pthread_t self() { return pthread_self(); }
 

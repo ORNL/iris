@@ -109,6 +109,7 @@ set(IRIS_RUNTIME_SOURCES
   Policies.cpp
   Policy.cpp
   HostInterface.cpp
+  PolicyBlockCycle.cpp
   PolicyFirstToFinish.cpp
   PolicyData.cpp
   PolicyDefault.cpp
@@ -183,6 +184,7 @@ set(IRIS_RUNTIME_HEADERS
   ObjectTrack.h
   Policies.h
   Policy.h
+  PolicyBlockCycle.h
   PolicyFirstToFinish.h
   PolicyShortestDeviceQueue.h
   PolicyData.h
@@ -255,7 +257,7 @@ endif()
 
 if(USE_PYTHON)
   MESSAGE(STATUS "USE_PYTHON")
-  install(FILES iris.py DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/iris)
+  install(FILES iris.py DESTINATION ${CMAKE_INSTALL_PREFIX})
 endif()
 
 add_library(iris ${IRIS_RUNTIME_SOURCES})

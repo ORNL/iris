@@ -37,10 +37,12 @@ enum ProfileRecordType
     PROFILE_H2D = 0,
     PROFILE_D2H = 1,
     PROFILE_D2D = 2,
-    PROFILE_D2H_H2D = 3,
-    PROFILE_KERNEL = 4,
-    PROFILE_O2D = 5,
-    PROFILE_D2O = 6,
+    PROFILE_D2HH2D_D2H = 3,
+    PROFILE_D2HH2D_H2D = 4,
+    PROFILE_KERNEL = 5,
+    PROFILE_O2D = 6,
+    PROFILE_D2O = 7,
+    PROFILE_INIT = 8,
 }; 
 class ProfileEvent {
     public:
@@ -52,14 +54,29 @@ class ProfileEvent {
             connect_dev_ = connect_dev;
             event_dev_ = event_dev;
             stream_ = stream;
+            event_fetch_flag_ = true;
             //printf("prof_event created:%p %p\n", &start_event_, start_event_);
+        }
+        ProfileEvent(unsigned long id, int connect_dev, ProfileRecordType type, Device *event_dev, float start_time, float end_time) {
+            start_event_ = NULL;
+            end_event_ = NULL;
+            type_ = type;
+            id_ = id;
+            connect_dev_ = connect_dev;
+            event_dev_ = event_dev;
+            stream_ = -1;
+            start_time_ = start_time;
+            end_time_ = end_time;
+            event_fetch_flag_ = false;
         }
         ~ProfileEvent(){ /*It shouldn't destroy any events*/ }
         void Clean();
         float GetStartTime();
         float GetEndTime();
         void RecordStartEvent();
+        void RecordStartEvent(float start_time) { start_time_ = start_time; }
         void RecordEndEvent();
+        void RecordEndEvent(float end_time) { end_time_ = end_time; }
         int stream() { return stream_; }
         void **start_event_ptr() { return &start_event_; }
         void **end_event_ptr()   { return &end_event_; }
@@ -72,6 +89,9 @@ class ProfileEvent {
         unsigned long uid() { return id_; }
     private:
         Device *event_dev_;
+        float start_time_;
+        float end_time_;
+        bool event_fetch_flag_; 
         void *start_event_;
         void *end_event_;
         ProfileRecordType type_;
@@ -118,6 +138,7 @@ public:
   void set_system() { system_ = true; }
   bool marker() { return type_ == IRIS_MARKER; }
   int status() { return status_; }
+  void update_status(int status) { status_ = status; }
   Task* parent() { return platform_->get_task_object(parent_); }
   Command* cmd(int i) { return cmds_[i]; }
   Command* cmd_kernel() { return cmd_kernel_; }
@@ -142,14 +163,15 @@ public:
   double time_end() { return time_end_; }
   void set_parent(Task* task);
   void set_brs_policy(int brs_policy);
+  int get_brs_policy(){ return brs_policy_;};
   void set_profile_data_transfers(bool flag=true) { profile_data_transfers_ = flag; }
   bool is_profile_data_transfers() { return profile_data_transfers_; }
   void AddOutDataObjectProfile(DataObjectProfile hist) { out_dataobject_profiles.push_back(hist); }
   void ClearMemOutProfile() { out_dataobject_profiles.clear(); }
   vector<DataObjectProfile> & out_mem_profiles() { return out_dataobject_profiles; }
   void set_opt(const char* opt);
-  const char* get_opt(){return opt_;}
-  char* opt() { return opt_; }
+  const char* get_opt(){return opt_.c_str();}
+  const char* opt() { return opt_.c_str(); }
   int brs_policy() { return brs_policy_; }
   int recommended_stream() { return recommended_stream_; }
   void stream_lock() {
@@ -158,6 +180,7 @@ public:
   void stream_unlock() {
     pthread_mutex_unlock(&stream_mutex_);
   }
+  void insert_hidden_dmem(DataMem *dmem, int mode); 
   void set_recommended_stream(int stream) { recommended_stream_ = stream; }
   int recommended_dev() { return recommended_dev_; }
   void set_recommended_dev(int dev) { recommended_dev_ = dev; }
@@ -187,6 +210,8 @@ public:
   void DispatchDependencies();
   bool is_internal_memory_transfer() { return internal_memory_transfer_;}
   void set_internal_memory_transfer() { internal_memory_transfer_ = true;}
+  bool is_task_with_single_flush();
+  int get_device_affinity();
   void set_metadata(int index, int data) { meta_data_[index] = data; }
   int metadata(int index) { return meta_data_[index]; }
   void print_incomplete_tasks();
@@ -212,6 +237,9 @@ public:
   bool get_shadow_dep_added(){ return shadow_dep_added_;}
 #endif
 #endif
+  void set_df_scheduling(){df_scheduling_ = true;}
+  void unset_df_scheduling(){df_scheduling_ = false;}
+  bool get_df_scheduling(){ return df_scheduling_;}
   void set_last_cmd_stream(int stream) { last_cmd_stream_ = stream; }
   int last_cmd_stream() { return last_cmd_stream_; }
   void set_last_cmd_device(Device *dev) { last_cmd_device_ = dev; }
@@ -246,6 +274,7 @@ private:
   bool shadow_dep_added_;
 #endif
 #endif
+  bool df_scheduling_; // flag for data flow scheduling
   size_t subtasks_complete_;
   void* arch_;
 
@@ -264,7 +293,8 @@ private:
   int recommended_stream_;
   int recommended_dev_;
   int brs_policy_;
-  char opt_[128];
+  //char opt_[128];
+  std::string opt_;
 
   int type_;
   int status_;
@@ -295,11 +325,19 @@ private:
   //pthread_cond_t complete_cond_;
   vector<DataObjectProfile>       out_dataobject_profiles;
   vector<ProfileEvent>            profile_events_;
+  vector<DataMem *> hidden_dmem_in_;
+  vector<DataMem *> hidden_dmem_out_;
 public:
+  vector<DataMem *> & hidden_dmem_in() { return hidden_dmem_in_; }
+  vector<DataMem *> & hidden_dmem_out() { return hidden_dmem_out_; }
   vector<ProfileEvent> & profile_events() { return profile_events_; }
   ProfileEvent & CreateProfileEvent(BaseMem *mem, int connect_dev, ProfileRecordType type, Device *dev, int stream);
   ProfileEvent & CreateProfileEvent(Task *task, int connect_dev, ProfileRecordType type, Device *dev, int stream) {
       profile_events_.push_back(ProfileEvent(task->uid(), connect_dev, type, dev, stream));
+      return profile_events_.back();
+  }
+  ProfileEvent &CreateProfileEvent(Task *task, int connect_dev, ProfileRecordType type, Device *dev, float start, float end) {
+      profile_events_.push_back(ProfileEvent(task->uid(), connect_dev, type, dev, start, end));
       return profile_events_.back();
   }
   ProfileEvent & LastProfileEvent() {
@@ -312,6 +350,9 @@ public:
   bool IsKernelSupported(Device *dev);
   int last_cmd_stream_;
   Device *last_cmd_device_;
+  void set_enable_julia_if() { enable_julia_if_ = true; }
+  bool enable_julia_if() { return enable_julia_if_; }
+  bool enable_julia_if_;
 };
 
 } /* namespace rt */

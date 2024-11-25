@@ -31,13 +31,17 @@ namespace rt {
                 handler_type_ = type;
                 reset_ = false;
                 size_ = 0;
+                element_type_ = iris_unknown;
                 ndevs_ = ndevs;
                 write_dev_ = -1;
                 device_map_ = new BaseMemDevice[ndevs_+1];
                 d2h_events_ = new void *[ndevs_];
                 write_event_ = new void *[ndevs+1];
                 for (int i = 0; i < ndevs_+1; i++) {
-                    device_map_[i].Init(this, i);
+                    if (i == ndevs_)
+                        device_map_[i].Init(this, -1);
+                    else
+                        device_map_[i].Init(this, i);
                     write_event_[i] = NULL;
                 }
                 for (int i = 0; i < ndevs_; i++) {
@@ -47,11 +51,11 @@ namespace rt {
                   is_usm_[i] = false;
                   d2h_events_[i] = NULL;
                   recommended_stream_[i] = -1;
+                  pthread_mutex_init(&host_write_lock_[i], NULL);
                 }
                 pthread_mutex_init(&host_mutex_, NULL);
                 // Special device map for host
-                device_map_[ndevs_].Init(this, -1);
-                Retain();
+                //Retain();
                 set_object_track(Platform::GetPlatform()->mem_track_ptr());
                 track()->TrackObject(this, uid());
                 _trace("Memory object is Created :%lu:%p", uid(), this);
@@ -70,20 +74,32 @@ namespace rt {
             void HostLock() {
                 pthread_mutex_lock(&host_mutex_);
             }
+            void HostWriteLock(int devno) {
+                pthread_mutex_lock(&host_write_lock_[devno]);
+            }
+            void HostWriteUnLock(int devno) {
+                pthread_mutex_unlock(&host_write_lock_[devno]);
+            }
             virtual ~BaseMem() { 
                 pthread_mutex_destroy(&host_mutex_);
-                _trace("Memory object is deleted:%lu:%p", uid(), this);
+                _trace("Memory object is getting deleted:%lu:%p", uid(), this);
                 for(int i=0; i<ndevs_; i++) {
+                    pthread_mutex_destroy(&host_write_lock_[i]);
                     stack<void *> & stk = device_map_[i].GetCompletionStack();
                     int n = stk.size();
                     for(int j=0; j<n; j++) { 
                         void *top = stk.top();
-                        DestroyEvent(i, top);
+                        if (top != NULL) 
+                            DestroyEvent(i, top);
+                        stk.pop();
                     } 
                 }
+                delete [] d2h_events_;
+                delete [] write_event_;
                 delete [] device_map_;
                 //track()->UntrackObject(this, uid());
             }
+            virtual int  get_dev_affinity()  { return -1; }
             virtual void* arch(Device* dev, void *host=NULL) = 0;
             virtual void* arch(int devno, void *host=NULL) = 0;
             virtual void** arch_ptr(Device *dev, void *host=NULL) = 0;
@@ -116,29 +132,92 @@ namespace rt {
                 device_map_[ndevs_].ClearDevice();
                 write_dev_ = -1;
             }
-            void ClearAndAddWaitEvent(int devno, void *event) { device_map_[devno].ClearAndAddWaitEvent(event); }
-            void AddWaitEvent(int devno, void *event) { device_map_[devno].AddWaitEvent(event); }
-            void ClearWaitEvents(int devno) { device_map_[devno].ClearWaitEvents(); }
-            vector<void *> & GetWaitEvents(int devno) { return device_map_[devno].GetWaitEvents(); }
+            void ClearAndAddWaitEvent(int devno, void *event) { 
+                ASSERT(devno >=0 && devno < ndevs_+1);
+                device_map_[devno].ClearAndAddWaitEvent(event); 
+            }
+            void AddWaitEvent(int devno, void *event) { 
+                ASSERT(devno >=0 && devno < ndevs_+1);
+                device_map_[devno].AddWaitEvent(event); 
+            }
+            void ClearWaitEvents(int devno) { 
+                ASSERT(devno >=0 && devno < ndevs_+1);
+                device_map_[devno].ClearWaitEvents(); 
+            }
+            vector<void *> & GetWaitEvents(int devno) { 
+                ASSERT(devno >=0 && devno < ndevs_+1);
+                return device_map_[devno].GetWaitEvents(); 
+            }
             void SetWriteDevice(int devno) { write_dev_ = devno; }
             int GetWriteDevice() { return write_dev_; }
-            void SetWriteDeviceEvent(int devno, void *event) { write_event_[devno] = event; }
-            void *GetWriteDeviceEvent(int devno) { return write_event_[devno]; }
-            int GetWriteStream(int devno) { return device_map_[devno].GetWriteStream(); }
-            void SetWriteStream(int devno, int stream) { device_map_[devno].SetWriteStream(stream); }
-            bool IsProactive(int devno) { return device_map_[devno].IsProactive(); }
-            void EnableProactive(int devno) { device_map_[devno].EnableProactive(); }
-            void DisableProactive(int devno) { device_map_[devno].DisableProactive(); }
-            EventExchange *GetEventExchange(int devno) { return device_map_[devno].exchange(); }
-            void *GetCompletionEvent(int devno) { return device_map_[devno].GetCompletionEvent(); }
-            void **GetCompletionEventPtr(int devno, bool new_entry=false) { return device_map_[devno].GetCompletionEventPtr(new_entry); }
-            int GetHostWriteStream() { return device_map_[ndevs_].GetWriteStream(); }
-            void SetHostWriteStream(int stream) { device_map_[ndevs_].SetWriteStream(stream); }
-            int GetHostWriteDevice() { return device_map_[ndevs_].devno(); }
-            void SetHostWriteDevice(int dev) { device_map_[ndevs_].set_devno(dev); }
+            void SetWriteDeviceEvent(int devno, void *event) { 
+                ASSERT(devno >=0 && devno < ndevs_+1);
+                write_event_[devno] = event; 
+            }
+            void *GetWriteDeviceEvent(int devno) { 
+                ASSERT(devno >=0 && devno < ndevs_+1);
+                return write_event_[devno]; 
+            }
+            int GetWriteStream(int devno) { 
+                ASSERT(devno >=0 && devno < ndevs_+1);
+                return device_map_[devno].GetWriteStream(); 
+            }
+            void SetWriteStream(int devno, int stream) { 
+                ASSERT(devno >=0 && devno < ndevs_+1);
+                device_map_[devno].SetWriteStream(stream); 
+            }
+            void HardDeviceWriteEventSynchronize(Device *dev, void *event);
+            void HardHostWriteEventSynchronize(Device *dev, void *event);
+            bool IsProactive(int devno) { 
+                ASSERT(devno >=0 && devno < ndevs_+1);
+                return device_map_[devno].IsProactive(); 
+            }
+            void EnableProactive(int devno) { 
+                ASSERT(devno >=0 && devno < ndevs_+1);
+                device_map_[devno].EnableProactive(); 
+            }
+            void DisableProactive(int devno) { 
+                ASSERT(devno >=0 && devno < ndevs_+1);
+                device_map_[devno].DisableProactive(); 
+            }
+            EventExchange *GetEventExchange(int devno) { 
+                ASSERT(devno >=0 && devno < ndevs_+1);
+                return device_map_[devno].exchange(); 
+            }
+            void *GetCompletionEvent(int devno) { 
+                ASSERT(devno >=0 && devno < ndevs_+1);
+                return device_map_[devno].GetCompletionEvent(); 
+            }
+            void **GetCompletionEventPtr(int devno, bool new_entry=false) { 
+                ASSERT(devno >=0 && devno < ndevs_+1);
+                return device_map_[devno].GetCompletionEventPtr(new_entry); 
+            }
+            int GetHostWriteStream() { 
+                return device_map_[ndevs_].GetWriteStream(); 
+            }
+            void SetHostWriteStream(int stream) { 
+                device_map_[ndevs_].SetWriteStream(stream); 
+            }
+            int GetHostWriteDevice() { 
+                return device_map_[ndevs_].devno(); 
+            }
+            void SetHostWriteDevice(int dev) { 
+                device_map_[ndevs_].set_devno(dev); 
+            }
             void HostRecordEvent(int devno, int stream);
-            void *GetHostCompletionEvent() { return device_map_[ndevs_].GetCompletionEvent(); }
-            void **GetHostCompletionEventPtr() { return device_map_[ndevs_].GetCompletionEventPtr(); }
+            void *GetHostCompletionEvent() { 
+                return device_map_[ndevs_].GetCompletionEvent(); 
+            }
+            void **GetHostCompletionEventPtr(bool new_entry=false) { 
+                return device_map_[ndevs_].GetCompletionEventPtr(new_entry); 
+            }
+            void *GetDeviceSpecificHostCompletionEvent(int devno) {
+                ASSERT(devno >=0 && devno < ndevs_);
+                return d2h_events_[devno];
+            }
+            void clear_d2h_events() { 
+                for (int i=0; i<ndevs_; i++) d2h_events_[i] = NULL; 
+            }
 #ifdef AUTO_PAR
   	    inline Task* get_current_writing_task() { return current_writing_task_;}
   	    inline void set_current_writing_task(Task* task) { current_writing_task_ = task;}
@@ -158,12 +237,15 @@ namespace rt {
             virtual inline void clear() { }
         void set_recommended_stream(int devno, int stream) { recommended_stream_[devno] = stream; }
         int recommended_stream(int devno) { return recommended_stream_[devno]; }
-        void RecordEvent(int devno, int stream, bool new_entry=false);
+        void *RecordEvent(int devno, int stream, bool new_entry=false);
         void WaitForEvent(int devno, int stream, int dep_devno);
         void DestroyEvent(int devno, void *event);
         bool is_usm(int devno) { return is_usm_[devno]; }
         void set_usm_flag(int devno, bool flag=true) { is_usm_[devno] = flag; }
+        int element_type() { return element_type_; }
+        void set_element_type(int t) { element_type_ = t; }
         protected:
+            int element_type_;
             int recommended_stream_[IRIS_MAX_NDEVS];
             MemHandlerType handler_type_;
             void* archs_[IRIS_MAX_NDEVS];
@@ -178,6 +260,7 @@ namespace rt {
             void **write_event_;
             void **d2h_events_;
             pthread_mutex_t host_mutex_;
+            pthread_mutex_t host_write_lock_[IRIS_MAX_NDEVS];
 #ifdef AUTO_PAR
   	    Task* current_writing_task_;
   	    std::vector<Task*> read_task_list_;

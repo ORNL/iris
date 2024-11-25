@@ -37,6 +37,7 @@ _dimensionality = {}
 _graph = None
 _memory_object_pool = None
 _local_sizes = {}
+_memory_shuffle_count = 0
 
 def init_parser(parser):
     parser.add_argument("--graph",default="graph.json",type=str,help="The DAGGER json graph file to load, e.g. \"graph.json\".")
@@ -58,20 +59,9 @@ def init_parser(parser):
     parser.add_argument("--sandwich",help="Sandwich the DAG between a lead in and terminating task (akin to a scatter-gather).", action='store_true')
     parser.add_argument("--num-memory-objects",required=False,type=int,help="Enables sharing of memory objects dealt between tasks! It is the total number of memory objects to be passed around in the DAG between tasks (allows greater task interactions).", default=None)
     parser.add_argument("--use-data-memory",required=False,help="Enables the graph to use memory instead of the default explicit memory buffers. This results in final explicit flush events of buffers that are written.",default=False,action='store_true')
+    parser.add_argument("--num-memory-shuffles",required=False,type=int,help="Memory shuffles is the number of swaps (positive integer) between memory buffers based on a random task selection and random memory buffer selection.",default=0)
+    parser.add_argument("--handover-in-memory-shuffle",required=False,help="Setting this argument to True yields a stricter form of Memory shuffle where each swap ensures the selected memory buffer is of different permissions, this results in the same memory being written to in one kernel then later read from.",default=False,action='store_true')
 
-#TODO: Add dagger_generator to support additional arguments:
-#                  {
-#                    "type": "scalar",
-#                    "value": 100000000,
-#                    "data_size":"int",
-#                    "data_type":"int"
-#                  },
-#                  {
-#                    "type": "scalar",
-#                    "value": 25000000,
-#                    "data_size":"int",
-#                    "data_type":"int"
-#                  },
 
 def parse_args(pargs=None,additional_arguments=[]):
     parser = argparse.ArgumentParser(description='DAGGER: Directed Acyclic Graph Generator for Evaluating Runtimes')
@@ -87,7 +77,7 @@ def parse_args(pargs=None,additional_arguments=[]):
     else:
         args = parser.parse_args(shlex.split(pargs))
 
-    global _kernels, _k_probs, _depth, _num_tasks, _min_width, _max_width, _mean, _std_dev, _skips, _seed, _sandwich, _concurrent_kernels, _duplicates, _dimensionality, _graph, _memory_object_pool, _use_data_memory, _total_num_concurrent_kernels, _local_sizes
+    global _kernels, _k_probs, _depth, _num_tasks, _min_width, _max_width, _mean, _std_dev, _skips, _seed, _sandwich, _concurrent_kernels, _duplicates, _dimensionality, _graph, _memory_object_pool, _use_data_memory, _total_num_concurrent_kernels, _local_sizes, _memory_shuffle_count, _handover
 
     _graph = args.graph
     _depth = args.depth
@@ -98,6 +88,8 @@ def parse_args(pargs=None,additional_arguments=[]):
     _seed = args.seed
     _sandwich = args.sandwich
     _duplicates = args.duplicates
+    _memory_shuffle_count = args.num_memory_shuffles
+    _handover = args.handover_in_memory_shuffle
 
     if _duplicates <= 1: _duplicates = 1
     #if _duplicates > 1: print("currently duplicates flag unsupported!\n")
@@ -157,7 +149,7 @@ def parse_args(pargs=None,additional_arguments=[]):
             num_provided_memory_objects += len(_kernel_buffs[k])
         assert args.num_memory_objects < num_provided_memory_objects, "Incorrect arguments given to --num-memory-objects. The number should be less than the default {} . Broken on {}".format(num_provided_memory_objects,i)
         _memory_object_pool = []
-        n = 0 
+        n = 0
         for kname in _kernel_buffs:
             kinstk = 0
             for i,j in enumerate(_kernel_buffs[kname]):
@@ -181,7 +173,7 @@ def parse_args(pargs=None,additional_arguments=[]):
             except:
                 assert False, "Incorrect arguments given to --concurrent-kernels. Broken on {}".format(i)
            # \"process:2\" indicates that the kernel called \"process\" will only allow two unique sets of memory buffers in the generated DAG, effectively limiting concurrency by indicating a data dependency.")
-    assert _total_num_concurrent_kernels == _max_width, "Incorrect arguments given: the total number of concurrent kernels must be equal to the maximum width of any level in the graph. The total number of concurrent kernels are: {} while the width is {}\n".format(_total_num_concurrent_kernels,_max_width)
+    #assert _total_num_concurrent_kernels == _max_width, "Incorrect arguments given: the total number of concurrent kernels must be equal to the maximum width of any level in the graph. The total number of concurrent kernels are: {} while the width is {}\n".format(_total_num_concurrent_kernels,_max_width)
 
     for i in args.kernel_dimensions.split(','):
         try:
@@ -338,6 +330,7 @@ def create_d2h_task_from_kernel_bag(_kernel_bag,dag):
     return transfer_task
 
 def generate_attributes(task_dependencies,tasks_per_level):
+    global _memory_shuffle_count, _handover
     #generate internal kernel instance names based on duplicates
     _kernel_bag = {}
     for k in _kernels:
@@ -380,10 +373,7 @@ def generate_attributes(task_dependencies,tasks_per_level):
                 current_task_number += 1
                 print("replacing the last task")
                 continue
-        #TODO: we could add a memory shuffle step here to mix up the kernels memory objects in use --- for instance shuffle memory objects in the _kernel_bag at each new level...
         #TODO: duplication should work again now --- bring it back, or at least test it out
-        #TODO: do all the old payloads look and behave the same?
-        #TODO: contact Monil with changes to test out with his data-dependency tracker tool
         tasks_this_level = tasks_per_level[level_num]
         #flatten the _kernel_bag to yield a flattened list to help with the kernel selection
         pool = []
@@ -409,6 +399,42 @@ def generate_attributes(task_dependencies,tasks_per_level):
                 task = {"name":"task"+str(current_task_number), "commands":[selected_task], "depends":deps, "target":"user-target-data"}
                 dag.append(task)
                 current_task_number += 1
+
+    # Memory Shuffle Algorithm:
+    # -------------------------
+    # input variables: memory_shuffles is the number of swaps to make -- positive integer
+    #0) for each memory_shuffle_count
+    #1) perform random selection of task and memory buffer
+    #2) look for another task with memory buffer
+    #3) ensure the we aren't swapping the same buffer
+    #4) ensure the selected memory buffer not currently being used in the task (we don't want the kernel reading and writing to the same buffer since that's undefined and dangerous)
+    #5) if handover (a stricter form of memory swap) ensure the opposite permission (if the first selected buffer was read only, swap with a write buffer) --- akin to a producer/consumer model
+    #6) perform swap
+    #7) decrement the memory_shuffle_count
+    while _memory_shuffle_count > 0: #0)
+        #1)
+        selected_tasks = random.sample(range(len(dag)),k=2)
+        assert dag[selected_tasks[0]]['commands'][0].keys() == {"kernel"} and dag[selected_tasks[1]]['commands'][0].keys() == {"kernel"}, print("Error: all tasks selected for the memory shuffle should be kernel tasks")
+        #2)
+        first = dag[selected_tasks[0]]['commands'][0]['kernel']['parameters'] #all kernel tasks *currently* only contain a single command
+        second = dag[selected_tasks[1]]['commands'][0]['kernel']['parameters']
+        first_mobj = random.choice(range(len(first)))
+        second_mobj = random.choice(range(len(second)))
+        #3)
+        if first[first_mobj]['value'] == second[second_mobj]['value']:
+            continue
+        #4)
+        if second[second_mobj]['value'] in [x['value'] for x in first]:
+            continue
+        #5)
+        if _handover and first[first_mobj]['permissions'] == second[second_mobj]['permissions']:
+            continue
+        #6)
+        print("replacing task: {} arg: {} buffer: {} with buffer: {}".format(dag[selected_tasks[0]]["name"],first_mobj,first[first_mobj]['value'], second[second_mobj]['value']))
+        dag[selected_tasks[0]]['commands'][0]['kernel']['parameters'][first_mobj]['value'] = second[second_mobj]['value']
+        dag[selected_tasks[1]]['commands'][0]['kernel']['parameters'][second_mobj]['value'] = first[first_mobj]['value']
+        #7)
+        _memory_shuffle_count -= 1
     return dag
 
 def rename_special_tasks(task_dag):
@@ -434,9 +460,6 @@ def rename_special_tasks(task_dag):
     return(task_dag)
 
 def gen_attr(tasks,kernel_names,kernel_probs):
-    #TODO: how do handle memory transfers between each task? Insert h2d and d2h calls around each kernel -- but how should we treat this when multiple dependencies are scheduled on the same device, are they simple dropped in 1024dagger.c?
-    #TODO: we should automate kernel arguments being set
-    #TODO: handle transfers and arguments
     #TODO: how do we automatically handle user-x?
 
     #NOTE: TOP-DOWN data-structure (aka tasks in this function) doesn't pin the dependency to how the edges may look--how to determine this, is it sufficient to prune them in the prune_edge function?
@@ -445,7 +468,7 @@ def gen_attr(tasks,kernel_names,kernel_probs):
 
     #set of kernel names to use based on the probabilities
     bag_of_kernels = random.choices(kernel_names, weights=kernel_probs, k=len(tasks))
-    
+
     dag = []
     for i in range(0,len(tasks)):
         tname = "task"+str(i)
@@ -657,7 +680,7 @@ def determine_iris_inputs():
         for ck in range(0,_concurrent_kernels[k]):
             for i,j in enumerate(_kernel_buffs[k]):
                 if type(j) is dict and j['type'] == 'scalar' and type(j['value']) is str:
-                    print("Error: we still need to add kernel argument passing to the runner, currently we only accept numerical values to the dagger_generator.py") 
+                    print("Error: we still need to add kernel argument passing to the runner, currently we only accept numerical values to the dagger_generator.py")
                     import ipdb
                     ipdb.set_trace()
                     import sys

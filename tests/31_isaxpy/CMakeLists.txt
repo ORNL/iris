@@ -3,12 +3,12 @@ cmake_minimum_required(VERSION 2.8)
 project(ISaxpy)
 set(XILINX_VERSION 1)
 #set(XILINX_TARGET  "$ENV{XCL_EMULATION_MODE}")  # sw_emu, hw_emu, hw
-set(XILINX_LANGUAGE "opencl")
+set(XILINX_LANGUAGE "xilinx") # opencl, xilinx
 
 set(XILINX_OPENCL_SOURCES 
-    saxpy              kernel_stage  src/kernel.cl
    )
 set(XILINX_KERNEL_SOURCES 
+    saxpy              kernel_stage  src/kernel.xilinx.cpp
    )
 
 #set(EXTRACT_IRIS_KERNEL_SIGNATURES

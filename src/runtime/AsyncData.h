@@ -18,7 +18,7 @@ namespace iris {
                     }
                     ~AsyncData() {
                         pthread_mutex_destroy(&mutex_);
-                        delete exchange_;
+                        if (exchange_ != NULL) delete exchange_;
                     }
                     void Init(CoreClass *core, int devno) {
                         devno_ = devno; core_ = core;

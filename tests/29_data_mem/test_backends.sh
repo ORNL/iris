@@ -1,4 +1,5 @@
 #!/bin/bash
+set -x;
 
 source /auto/software/iris/setup_system.source
 
@@ -28,14 +29,14 @@ echo "Running HIP..."
 IRIS_ARCHS=hip ./test29_data_mem
 [ $? -ne 0 ] && echo "Failed! (HIP backend) Exiting." && exit 1
 
-module load gcc/12.1.0
+#module load gcc
 make clean
 make kernel.openmp.so test29_data_mem
 [ $? -ne 0 ] && echo "Failed! Couldn't compile openmp kernels. Exiting." && exit 1
 echo "Running (GNU) OpenMP..."
 IRIS_ARCHS=openmp IRIS_KERNEL_BIN_OPENMP=`pwd`/kernel.openmp.so ./test29_data_mem
 [ $? -ne 0 ] && echo "Failed! (OpenMP [GNU] backend) Exiting." && exit 1
-module unload gcc/12.1.0
+#module unload gcc
 
 make clean
 make kernel.nvopenmp.so test29_data_mem

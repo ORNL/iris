@@ -1,0 +1,16 @@
+#####################################################
+#   Author: Narasinga Rao Miniskar
+#   Date: 06/06/2024
+#   File: pyproject.toml
+#   Contact: miniskarnr@ornl.gov
+#   Comment: Files for python pip package
+#####################################################
+[tool.project]
+name = "iris"
+version = "3.0"
+description = "IRIS project with CMake build"
+authors = ["Narasinga Rao Miniskar <miniskarnr@ornl.gov>"]
+
+[build-system]
+requires = ["setuptools>=42", "wheel", "cmake"]
+build-backend = "setuptools.build_meta"

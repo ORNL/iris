@@ -21,6 +21,10 @@ elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64")
   set(CUDAToolkit_TARGET_NAME "x86_64-linux")
 endif()
 
+message(STATUS "Current working directory: ${CMAKE_CURRENT_LIST_DIR}")
+message(STATUS "Current working directory (binary): ${CMAKE_CURRENT_BINARY_DIR}")
+message(STATUS "Current working directory (source): ${CMAKE_CURRENT_SOURCE_DIR}")
+
 message(STATUS "CUDAToolkit_FOUND=${CUDAToolkit_FOUND}")
 message(STATUS "CUDAToolkit_INCLUDE_DIRS=${CUDAToolkit_INCLUDE_DIRS}")
 message(STATUS "CUDAToolkit_LIBRARY_DIR=${CUDAToolkit_LIBRARY_DIR}")

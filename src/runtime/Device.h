@@ -11,6 +11,10 @@
 #include <atomic>
 using namespace std;
 
+//TODO:
+#define ENABLE_SAME_TYPE_GPU_OPTIMIZATION
+#define DIRECT_H2D_SYNC
+//#define DISABLE_D2D
 
 #define DEFAULT_STREAM_INDEX -2
 
@@ -27,7 +31,20 @@ class Task;
 class Timer;
 class Worker;
 class Platform;
+class JuliaHostInterfaceLoader;
 
+enum AsyncResolveType
+{
+    //ASYNC_GENERIC_RESOLVE,
+    ASYNC_D2D_RESOLVE,
+    ASYNC_DEV_INPUT_RESOLVE,
+    ASYNC_D2H_SYNC,
+    ASYNC_D2O_SYNC,
+    ASYNC_KNOWN_H2D_RESOLVE,
+    ASYNC_UNKNOWN_H2D_RESOLVE,
+    ASYNC_SAME_DEVICE_DEPENDENCY,
+    //ASYNC_H2D_RESOLVE_SYNC,
+};
 typedef void (*CallBackType)(void *stream, int status, void *data);
 class Device {
 public:
@@ -69,6 +86,7 @@ public:
       destroy_events_mutex_.unlock();
   }
   virtual void RegisterPin(void *host, size_t size) { }
+  virtual void UnRegisterPin(void *host) { }
   void ExecuteMalloc(Command* cmd);
   void RegisterHost(BaseMem *mem);
   virtual float GetEventTime(void *event, int stream) { return 0.0f; }
@@ -76,13 +94,16 @@ public:
   virtual void RecordEvent(void **event, int stream, int event_creation_flag=iris_event_disable_timing);
   virtual void WaitForEvent(void *event, int stream, int flags=0);
   virtual void DestroyEvent(void *event);
+  virtual void DestroyEvent(BaseMem *mem, void *event);
   virtual void EventSynchronize(void *event);
+  virtual void EnablePeerAccess() { }
+  virtual bool IsD2DPossible(Device *target) { return true; }
   void ProactiveTransfers(Task *task, Command *cmd);
   void WaitForTaskInputAvailability(int devno, Task *task, Command *cmd);
   template <typename DMemType>
   void WaitForDataAvailability(int devno, Task *task, DMemType *mem, int read_stream=-1);
   template <typename DMemType>
-  void InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, BaseMem *parent=NULL);
+  void InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, BaseMem *parent=NULL, DMemType *src_mem=NULL);
   void ExecuteMemResetInput(Task *task, Command* cmd);
   void ExecuteMemIn(Task *task, Command* cmd);
   //void ExecuteMemInExternal(Command *cmd);
@@ -95,6 +116,8 @@ public:
   void ExecuteMemFlushOutToShadow(Command* cmd);
 #endif
 #endif
+  void HandleHiddenDMemIns(Task *task);
+  void HandleHiddenDMemOuts(Task *task);
   void ExecuteD2D(Command* cmd, Device *dev=NULL);
   void ExecuteH2D(Command* cmd, Device *dev=NULL);
   void ExecuteH2BroadCast(Command* cmd);
@@ -107,23 +130,34 @@ public:
 
   Kernel* ExecuteSelectorKernel(Command* cmd);
 
-  void GetPossibleDevices(int devno, int *nddevs, 
-          int &d2d_dev, int &cpu_dev, int &non_cpu_dev);
+  void ResolveH2DStartEvents(Task *task, BaseMem *mem, bool async, BaseMem *src_mem=NULL);
+  void ResolveH2DEndEvents(Task *task, BaseMem *mem, bool async);
+  void ResolveDeviceWrite(Task *task, BaseMem *mem, Device *input_dev, bool instant_wait, BaseMem *src_mem=NULL);
+  template <AsyncResolveType resolve_type>
+  inline void ResolveInputWriteDependency(Task *task, BaseMem *mem, bool async, Device *select_src_dev=NULL, BaseMem *src_mem=NULL);
+  template <AsyncResolveType resolve_type>
+  inline void ResolveOutputWriteDependency(Task *task, BaseMem *mem, bool async, Device *select_src_dev);
+  inline void DeviceEventExchange(Task *task, BaseMem *mem, void *input_event, int input_stream, Device *input_dev);
+  void SynchronizeInputToMemory(Task *task, BaseMem *mem);
+  void GetPossibleDevices(BaseMem *mem, int devno, int *nddevs, 
+          int &d2d_dev, int &cpu_dev, int &non_cpu_dev, bool async);
   virtual int RegisterCallback(int stream, CallBackType callback_fn, void *data, int flags=0);
   int RegisterCommand(int tag, command_handler handler);
   int RegisterHooks();
+  void ExecuteDMEM2DMEM(Task *task, Command *cmd);
 
   virtual int ResetMemory(Task *task, BaseMem *mem, uint8_t reset_value)=0;
   virtual void ResetContext() { }
+  virtual void SetContextToCurrentThread() { }
   virtual bool IsContextChangeRequired() { return false; }
   virtual bool IsDeviceValid() { return true; }
   virtual int Compile(char* src) { return IRIS_SUCCESS; }
   virtual int Init() = 0;
   virtual int BuildProgram(char* path) { return IRIS_SUCCESS; }
   virtual void *GetSharedMemPtr(void* mem, size_t size) { return mem; }
-  virtual int MemAlloc(void** mem, size_t size, bool reset=false) = 0;
-  virtual int MemFree(void* mem) = 0;
-  virtual int MemD2D(Task *task, BaseMem *mem, void *dst, void *src, size_t size) { _error("Device:%d:%s doesn't support MemD2D", devno_, name()); return IRIS_ERROR; }
+  virtual int MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset=false) = 0;
+  virtual int MemFree(BaseMem *mem, void* mem_addr) = 0;
+  virtual int MemD2D(Task *task, Device *src_dev, BaseMem *mem, void *dst, void *src, size_t size) { _error("Device:%d:%s doesn't support MemD2D", devno_, name()); return IRIS_ERROR; }
   virtual int MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag="") = 0;
   virtual int MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag="") = 0;
   virtual int KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bool report_error=true) = 0;
@@ -139,9 +173,10 @@ public:
   virtual int RecreateContext() { return IRIS_ERROR; }
   virtual bool SupportJIT() { return true; }
   virtual void SetPeerDevices(int *peers, int count) { }
+  virtual bool IsAddrValidForD2D(BaseMem *mem, void *ptr) { return true; }
   virtual const char* kernel_src() { return " "; }
   virtual const char* kernel_bin() { return " "; }
-
+  virtual void *GetSymbol(const char *name) { return NULL; }
   void set_shared_memory_buffers(bool flag=true) { shared_memory_buffers_ = flag; }
   virtual void set_can_share_host_memory_flag(bool flag=true) { 
       // We leave this decision to device specific
@@ -161,9 +196,15 @@ public:
   void set_root_device(Device *root) { root_dev_ = root; }
   double first_event_cpu_end_time() { return first_event_cpu_end_time_; }
   double first_event_cpu_begin_time() { return first_event_cpu_begin_time_; }
-  void set_first_event_cpu_end_time(double time) { first_event_cpu_end_time_ = time; }
+  double first_event_cpu_mid_point_time() { return first_event_cpu_mid_point_time_; }
+  void set_first_event_cpu_end_time(double time) { 
+      first_event_cpu_end_time_ = time; 
+      first_event_cpu_mid_point_time_ = first_event_cpu_begin_time_ + (first_event_cpu_end_time_-first_event_cpu_begin_time_)/2.0f;
+  }
   void set_first_event_cpu_begin_time(double time) { first_event_cpu_begin_time_ = time; }
+  void EnableJuliaInterface(); 
   bool IsFree();
+  int active_tasks() { return active_tasks_; }
   void FreeActiveTask() { active_tasks_--; }
   void ReserveActiveTask() { active_tasks_++; }
   int platform() { return platform_; }
@@ -176,6 +217,7 @@ public:
   bool idle() { return !busy_; }
   bool enable() { return enable_; }
   bool native_kernel_not_exists() { return native_kernel_not_exists_; }
+  virtual void *get_ctx() { return NULL; }
   void enableD2D() { is_d2d_possible_ = true; }
   bool isD2DEnabled() { return is_d2d_possible_; }
   int ok() { return errid_; }
@@ -186,13 +228,16 @@ public:
   StreamPolicy stream_policy(Task *task);
   StreamPolicy stream_policy() { return stream_policy_; }
   double Now() { return timer_->Now(); }
+  const char *kernel_path() { return kernel_path_.c_str(); }
 private:
   int get_new_stream_queue(int offset=0) {
+    int nqs = ((nqueues_-1)-offset);
+    if (nqs <= 0) return current_queue_ + offset+1;
     unsigned long new_current_queue;
     do {
         new_current_queue = current_queue_ + 1;
     } while (!__sync_bool_compare_and_swap(&current_queue_, current_queue_, new_current_queue));
-    int stream = new_current_queue%((nqueues_-1)-offset)+offset+1;
+    int stream = new_current_queue%nqs+offset+1;
     //printf("New queue:%d\n", stream);
     return stream;
   }
@@ -225,7 +270,7 @@ protected:
   int current_copy_queue_;
   int n_copy_engines_;
 
-  char kernel_path_[256];
+  std::string kernel_path_;
 
   bool busy_;
   bool enable_;
@@ -251,9 +296,13 @@ private:
   Device *root_dev_;
   double first_event_cpu_begin_time_;
   double first_event_cpu_end_time_;
+  double first_event_cpu_mid_point_time_;
   std::atomic<int> active_tasks_;
 protected:
+  int *peer_access_;
+  int local_devno_;
   Device *root_device() { return root_dev_; }
+  JuliaHostInterfaceLoader *julia_if_;
 };
 
 } /* namespace rt */

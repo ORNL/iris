@@ -36,6 +36,7 @@ class LoaderOpenCL;
 class LoaderOpenMP;
 class LoaderHexagon;
 class BaseMem;
+class DataMem;
 class Mem;
 class Polyhedral;
 class Pool;
@@ -59,11 +60,19 @@ public:
 
 public:
   int Init(int* argc, char*** argv, int sync);
+  int JuliaInit(bool decoupled_init=true);
+  int InitWorker(int dev);
+  int StartWorker(int dev, bool use_pthread=true);
+  int InitDevice(int dev);
+  int InitDevicesSynchronize(int sync);
   int Finalize();
+  bool IsFinalized() { return finalize_; }
   int Synchronize();
 
   int EnvironmentInit();
   int EnvironmentSet(const char* key, const char* value, bool overwrite);
+  void EnvironmentIntRead(const char *env_name, int & env_var);
+  void EnvironmentBoolRead(const char *env_name, bool & flag);
   int EnvironmentGet(const char* key, char** value, size_t* vallen);
   int GetFilePath(const char *key, char** value, size_t* vallen);
 
@@ -108,6 +117,7 @@ public:
   int TaskH2BroadcastFull(iris_task brs_task, iris_mem brs_mem, void* host);
   int TaskH2D(iris_task brs_task, iris_mem brs_mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host);
   int TaskH2D(iris_task brs_task, iris_mem brs_mem, size_t off, size_t size, void* host);
+  int TaskDMEM2DMEM(iris_task brs_task, iris_mem src_mem, iris_mem dst_mem);
   int TaskD2D(iris_task brs_task, iris_mem brs_mem, size_t off, size_t size, void* host, int src_dev);
   int TaskD2H(iris_task brs_task, iris_mem brs_mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host);
   int TaskD2H(iris_task brs_task, iris_mem brs_mem, size_t off, size_t size, void* host);
@@ -119,6 +129,7 @@ public:
   int TaskMapFrom(iris_task brs_task, void* host, size_t size);
   int TaskMapFromFull(iris_task brs_task, void* host);
   int SetTaskPolicy(iris_task brs_task, int brs_policy);
+  int GetTaskPolicy(iris_task brs_task);
   int TaskSubmit(iris_task brs_task, int brs_policy, const char* opt, int wait);
   int TaskSubmit(Task *task, int brs_policy, const char* opt, int wait);
   void TaskSafeRetain(iris_task brs_task);
@@ -142,8 +153,19 @@ public:
   int DataMemUpdate(iris_mem brs_mem, void *host);
   int RegisterPin(void *host, size_t size);
   int DataMemRegisterPin(iris_mem brs_mem);
-  int DataMemCreate(iris_mem* brs_mem, void *host, size_t size);
-  int DataMemCreate(iris_mem* brs_mem, void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim);
+  int DataMemRegisterPin(DataMem *mem);
+  int UnRegisterPin(void *host);
+  int DataMemUnRegisterPin(iris_mem brs_mem);
+  int DataMemUnRegisterPin(DataMem *mem);
+  iris_mem *DataMemCreate(void *host, size_t size, const char *symbol, int element_type=iris_unknown);
+  iris_mem *DataMemCreate(void *host, size_t size, int element_type=iris_unknown);
+  iris_mem *DataMemCreate(void *host, size_t *size, int dim, size_t element_size, int element_type=iris_unknown);
+  iris_mem *DataMemCreate(void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim);
+  iris_mem *DataMemCreate(iris_mem root_mem, int region);
+  int DataMemCreate(iris_mem* brs_mem, void *host, size_t size, int element_type=iris_unknown);
+  int DataMemCreate(iris_mem* brs_mem, void *host, size_t size, const char *symbol, int element_type=iris_unknown);
+  int DataMemCreate(iris_mem *brs_mem, void *host, size_t *size, int dim, size_t element_size, int element_type=iris_unknown);
+  int DataMemCreate(iris_mem* brs_mem, void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim, int element_type=iris_unknown);
   int DataMemCreate(iris_mem* brs_mem, iris_mem root_mem, int region);
   int DataMemEnableOuterDimRegions(iris_mem mem);
   int MemArch(iris_mem brs_mem, int device, void** arch);
@@ -235,6 +257,8 @@ public:
   Kernel *get_kernel_object(unsigned long uid) { return (Kernel *)kernel_track_.GetObject(uid); }
   Kernel *get_kernel_object(iris_kernel brs_kernel) { return (Kernel *)kernel_track_.GetObject(brs_kernel.uid); }
   int nprofilers() { return nprofilers_; }
+  bool is_malloc_async() { return is_malloc_async_; }
+  void set_malloc_async_flag(int flag) { is_malloc_async_ = (bool) flag; }
   bool is_scheduling_history_enabled() { return enable_scheduling_history_; }
   bool is_event_profile_enabled() { return event_profile_enabled_; }
   bool is_async() { return async_; }
@@ -244,8 +268,16 @@ public:
   double time_init() { return time_init_; }
   bool enable_profiler() { return enable_profiler_; }
   void set_enable_profiler(bool profiler) { enable_profiler_ = profiler; }
+  int nstreams() { return nstreams_; }
+  void set_nstreams(int nstreams) { nstreams_ = nstreams; }
+  int ncopy_streams() { return ncopy_streams_; }
+  void set_ncopy_streams(int ncopy_streams) { ncopy_streams_ = ncopy_streams; }
+  void disable_data_transfers() { disable_data_transfers_ = true; }
+  void enable_data_transfers() { disable_data_transfers_ = false; }
+  bool is_data_transfers_disabled() { return disable_data_transfers_; }
   void disable_d2d() { disable_d2d_ = true; }
   void enable_d2d() { disable_d2d_ = false; }
+  void *GetDeviceContext(int device);
   bool is_d2d_disabled() { return disable_d2d_; }
   bool is_kernel_launch_disabled() { return disable_kernel_launch_; }
   void set_kernel_launch_disabled(bool flag) { disable_kernel_launch_ = flag; }
@@ -254,18 +286,28 @@ public:
   hook_task hook_task_post() { return hook_task_post_; }
   hook_command hook_command_pre() { return hook_command_pre_; }
   hook_command hook_command_post() { return hook_command_post_; }
+  bool is_julia_enabled() { return iris_get_julia_launch_func() != NULL; }
   Kernel* GetKernel(const char* name);
   BaseMem* GetMem(iris_mem brs_mem);
   BaseMem* GetMem(void* host, size_t* off);
   shared_ptr<History> CreateHistory(string kname);
   bool get_enable_proactive(){ return enable_proactive_;}
   void set_enable_proactive(bool enable_proactive){ enable_proactive_ = enable_proactive;}
+  bool disable_init_scheduler() { return disable_init_scheduler_; }
+  bool disable_init_devices() { return disable_init_devices_; }
+  bool disable_init_workers() { return disable_init_workers_; }
 
 #ifdef AUTO_PAR
   AutoDAG* get_auto_dag(){return auto_dag_;}
   void set_auto_dag(AutoDAG* auto_dag){auto_dag_ = auto_dag;}
   //void insert_into_mems(BaseMem* mem){ mems_.insert(mem); }
 #endif
+ void SetAutoPar(bool enable_auto_par){ enable_auto_par_ = enable_auto_par; };
+ bool GetAutoPar(){ return enable_auto_par_;}
+
+public:
+  int InitDevices(bool sync);
+  int InitScheduler(bool use_pthread=true);
 
 private:
   int SetDevsAvailable();
@@ -275,12 +317,12 @@ private:
   int InitOpenCL();
   int InitOpenMP();
   int InitHexagon();
-  int InitDevices(bool sync);
-  int InitScheduler();
   int InitWorkers();
   int FilterSubmitExecute(Task* task);
   int ShowKernelHistory();
-
+  void Clean();
+  void Reset();
+  
 public:
   static Platform* GetPlatform();
 
@@ -293,6 +335,8 @@ private:
   Device* devs_[IRIS_MAX_NDEVS];
   Device *first_dev_of_type_[IRIS_MAX_NDEVS];
   int ndevs_;
+  int nstreams_;
+  int ncopy_streams_;
   int dev_default_;
   int devs_enabled_[IRIS_MAX_NDEVS];
   int ndevs_enabled_;
@@ -339,9 +383,12 @@ private:
   bool enable_profiler_;
   Profiler* profilers_[8];
   int nprofilers_;
+  int device_factor_;
+  bool is_malloc_async_;
 
   bool enable_scheduling_history_;
   bool disable_d2d_;
+  bool disable_data_transfers_;
   bool disable_kernel_launch_;
   bool release_task_flag_;
   bool event_profile_enabled_;
@@ -352,6 +399,7 @@ private:
 #ifdef AUTO_PAR
   AutoDAG* auto_dag_;
 #endif
+  bool enable_auto_par_;
   pthread_mutex_t mutex_;
   hook_task hook_task_pre_;
   hook_task hook_task_post_;
@@ -364,8 +412,12 @@ private:
   double time_init_;
   char tmp_dir_[263];
   bool enable_proactive_;
+  bool disable_init_devices_;
+  bool disable_init_scheduler_;
+  bool disable_init_workers_;
   StreamPolicy stream_policy_;
 private:
+  iris_task init_tasks_[IRIS_MAX_NDEVS];
   static shared_ptr<Platform> singleton_;
   static std::once_flag flag_singleton_;
   static std::once_flag flag_finalize_;

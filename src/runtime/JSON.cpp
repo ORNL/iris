@@ -13,9 +13,6 @@
 #include <string.h>
 #include <unistd.h>
 #include <ctype.h>
-#ifndef ANDROID
-#include <bits/stdc++.h>
-#endif
 #include "rapidjson/rapidjson.h"
 #include "rapidjson/document.h"
 #include "rapidjson/filewritestream.h"
@@ -35,11 +32,9 @@ rapidjson::Document iris_output_document_;
 
 JSON::JSON(Platform* platform){
   platform_ = platform;
-  timer_ = new Timer();
 }
 
 JSON::~JSON() {
-  delete timer_;
 }
 
 int JSON::Load(Graph* graph, const char* path, void** params) {

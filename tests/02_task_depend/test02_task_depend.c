@@ -33,5 +33,7 @@ int main(int argc, char** argv) {
 
   iris_finalize();
 
-  return iris_error_count();
+  int errors = iris_error_count();
+  printf("Errors:%d\n", errors);
+  return errors;
 }

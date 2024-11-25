@@ -8,6 +8,7 @@
 namespace iris {
 namespace rt {
 
+typedef void (*OpenCLCallBack)(cl_event, cl_int, void*);
 class LoaderOpenCL : public Loader {
 public:
   LoaderOpenCL();
@@ -22,6 +23,12 @@ cl_int
 (*clGetPlatformIDs)(cl_uint          num_entries,
                  cl_platform_id * platforms,
                  cl_uint *        num_platforms) CL_API_SUFFIX__VERSION_1_0;
+
+CL_API_ENTRY cl_int CL_API_CALL
+(*clEnqueueMarkerWithWaitList)(cl_command_queue  command_queue,
+                            cl_uint           num_events_in_wait_list,
+                            const cl_event *  event_wait_list,
+                            cl_event *        event) CL_API_SUFFIX__VERSION_1_2;
 
 CL_API_ENTRY cl_int CL_API_CALL
 (*clGetPlatformInfo)(cl_platform_id   platform,
@@ -214,12 +221,26 @@ CL_API_ENTRY cl_int CL_API_CALL
                        const cl_event * event_wait_list,
                        cl_event *       event) CL_API_SUFFIX__VERSION_1_0;
 
+typedef cl_bitfield         cl_command_queue_properties;
 CL_API_ENTRY CL_EXT_PREFIX__VERSION_1_2_DEPRECATED cl_command_queue CL_API_CALL
 (*clCreateCommandQueue)(cl_context                     context,
                      cl_device_id                   device,
                      cl_command_queue_properties    properties,
                      cl_int *                       errcode_ret) CL_EXT_SUFFIX__VERSION_1_2_DEPRECATED;
-
+#ifdef CL_VERSION_2_0
+typedef cl_properties       cl_queue_properties;
+CL_API_ENTRY cl_command_queue CL_API_CALL
+(*clCreateCommandQueueWithProperties)(cl_context               context,
+                                   cl_device_id             device,
+                                   const cl_queue_properties *    properties,
+                                   cl_int *                 errcode_ret) CL_API_SUFFIX__VERSION_2_0;
+#else
+CL_API_ENTRY CL_EXT_PREFIX__VERSION_1_2_DEPRECATED cl_command_queue CL_API_CALL
+(*clCreateCommandQueue)(cl_context                     context,
+                     cl_device_id                   device,
+                     cl_command_queue_properties    properties,
+                     cl_int *                       errcode_ret) CL_EXT_SUFFIX__VERSION_1_2_DEPRECATED;
+#endif
 CL_API_ENTRY cl_int CL_API_CALL
 (*clReleaseCommandQueue)(cl_command_queue command_queue) CL_API_SUFFIX__VERSION_1_0;
 

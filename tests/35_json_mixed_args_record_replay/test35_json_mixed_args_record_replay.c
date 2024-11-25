@@ -102,11 +102,11 @@ int main(int argc, char** argv) {
 
   if (bitexactErrors != 0){
     iris_finalize();
-    printf("Failed the record static (data_size) test!\n");
+    printf("Failed the record static (data_size) test-1!\n");
     return(bitexactErrors+iris_error_count());
   }
   iris_record_stop();
-  printf("Passed the record static (data_size) test!\n");
+  printf("Passed the record static (data_size) test-1!\n");
   }
 
   //replay static option
@@ -165,10 +165,10 @@ int main(int argc, char** argv) {
 
   if (bitexactErrors != 0){
     iris_finalize();
-    printf("Failed the record static (data_size) test!\n");
+    printf("Failed the replay static (data_size) test-1!\n");
     return(bitexactErrors+iris_error_count());
   }
-  printf("Passed the replay static (data_size) test!\n");
+  printf("Passed the replay static (data_size) test-1!\n");
   }
 
   //static record option (data_type)
@@ -226,10 +226,10 @@ int main(int argc, char** argv) {
   free(Z);
   if (bitexactErrors != 0){
     iris_finalize();
-    printf("Failed the record static (data_type) test!\n");
+    printf("Failed the record static (data_type) test-2!\n");
     return(bitexactErrors+iris_error_count());
   }
-  printf("Passed the record static (data_type) test!\n");
+  printf("Passed the record static (data_type) test-2!\n");
   }
 
   //replay static (data_type) option
@@ -288,10 +288,10 @@ int main(int argc, char** argv) {
 
   if (bitexactErrors != 0){
     iris_finalize();
-    printf("Failed the record static (data_type) test!\n");
+    printf("Failed the replay static (data_type) test-2!\n");
     return(bitexactErrors+iris_error_count());
   }
-  printf("Passed the replay static (data_type) test!\n");
+  printf("Passed the replay static (data_type) test-2!\n");
   }
 
   //dynamic record option
@@ -348,10 +348,10 @@ int main(int argc, char** argv) {
   free(Z);
   if (bitexactErrors != 0){
     iris_finalize();
-    printf("Failed the record dynamic (data_size) test!\n");
+    printf("Failed the record dynamic (data_size) test-3!\n");
     return(bitexactErrors+iris_error_count());
   }
-  printf("Passed the record dynamic (data_size) test!\n");
+  printf("Passed the record dynamic (data_size) test-3!\n");
   }
   //replay dynamic (data_size) option
   {
@@ -409,10 +409,10 @@ int main(int argc, char** argv) {
 
   if (bitexactErrors != 0){
     iris_finalize();
-    printf("Failed the record dynamic (data_size) test!\n");
+    printf("Failed the replay dynamic (data_size) test-3!\n");
     return(bitexactErrors+iris_error_count());
   }
-  printf("Passed the replay dynamic (data_size) test!\n");
+  printf("Passed the replay dynamic (data_size) test-3!\n");
   }
 
   iris_finalize();

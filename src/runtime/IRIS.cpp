@@ -24,7 +24,7 @@ Mem::~Mem() {
     iris_mem_release(mem_);
 #endif
 }
-DMem::DMem(void *host, size_t size) {
+DMem::DMem(void *host, size_t size, bool usm_flag) {
 #ifdef ENABLE_SMART_PTR_MEM
     int status = PlatformIRIS::GetPlatform()->DataMemCreate(&mem_, host, size);
     assert(status == IRIS_SUCCESS);
@@ -32,6 +32,27 @@ DMem::DMem(void *host, size_t size) {
     int status = iris_data_mem_create(&mem_, host, size);
     assert(status == IRIS_SUCCESS);
 #endif
+    if (usm_flag && host != NULL) {
+        status = iris_mem_enable_usm_all(mem_);
+        assert(status == IRIS_SUCCESS);
+    }
+    is_usm_set_ = usm_flag;
+}
+DMem::DMem(void *host, size_t size, const char *symbol) {
+    int status = iris_data_mem_create_symbol(&mem_, host, size, symbol);
+    //printf("Size1:%lu mem:%lu\n", size, mem_.uid);
+    assert(status == IRIS_SUCCESS);
+}
+DMem::DMem(size_t size, bool usm_flag) {
+#ifdef ENABLE_SMART_PTR_MEM
+    int status = PlatformIRIS::GetPlatform()->DataMemCreate(&mem_, host, size);
+    assert(status == IRIS_SUCCESS);
+#else
+    int status = iris_data_mem_create(&mem_, NULL, size);
+    //printf("Size:%lu mem:%lu\n", size, mem_.uid);
+    assert(status == IRIS_SUCCESS);
+#endif
+    is_usm_set_ = usm_flag;
 }
 DMem::DMem(void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim) {
 #ifdef ENABLE_SMART_PTR_MEM
@@ -47,12 +68,23 @@ DMem::~DMem() {
     iris_mem_release(mem_);
 #endif
 }
+int DMem::fetch(void *host) {
+    return iris_fetch_dmem_data(mem_, host);
+}
+int DMem::fetch(void *host, size_t size) {
+    return iris_fetch_dmem_data_with_size(mem_, host, size);
+}
 int DMem::update(void *host) {
 #ifdef ENABLE_SMART_PTR_MEM
-    return PlatformIRIS::GetPlatform()->DataMemUpdate(mem_, host);
+    int status = PlatformIRIS::GetPlatform()->DataMemUpdate(mem_, host);
 #else
-    return iris_data_mem_update(mem_, host);
+    int status = iris_data_mem_update(mem_, host);
+    if (is_usm_set_ && host != NULL) {
+        status = iris_mem_enable_usm_all(mem_);
+        assert(status == IRIS_SUCCESS);
+    }
 #endif
+    return status;
 }
 int DMem::reset(bool reset) { 
 #ifdef ENABLE_SMART_PTR_MEM
@@ -67,6 +99,18 @@ int DMem::enable_outer_dim_regions() {
 #else
     return iris_data_mem_enable_outer_dim_regions(mem_);
 #endif
+}
+void * DMem::host(bool valid) {
+    if (valid)
+        return iris_get_dmem_valid_host(mem());
+    else
+        return iris_get_dmem_host(mem());
+}
+void * DMem::fetch_host() {
+    return iris_get_dmem_host_fetch(mem());
+}
+void * DMem::fetch_host(size_t size) {
+    return iris_get_dmem_host_fetch_with_size(mem(), size);
 }
 DMemRegion::DMemRegion(iris_mem_type root_mem, int region) {
 #ifdef ENABLE_SMART_PTR_MEM
@@ -105,12 +149,32 @@ void Task::disable_async() {
 int Task::set_order(int *order) {
     return iris_task_kernel_dmem_fetch_order(task_, order);
 }
+int Task::dmem2dmem(DMem* src_mem, DMem *dst_mem) {
+    return iris_task_dmem2dmem(task_, src_mem->mem(), dst_mem->mem());
+}
+
+int Task::h2d(DMem* mem) {
+    return iris_task_dmem_h2d(task_, mem->mem());
+}
+
+int Task::d2h(DMem* mem) {
+    return iris_task_dmem_d2h(task_, mem->mem());
+}
+
 int Task::h2d(Mem* mem, size_t off, size_t size, void* host) {
 #ifdef ENABLE_SMART_PTR_TASK
     return PlatformIRIS::GetPlatform()->TaskH2D(task_, mem->mem(), off, size, host);
 #else
     return iris_task_h2d(task_, mem->mem(), off, size, host);
 #endif
+}
+
+int Task::add_hidden_dmem(DMem & dmem, int mode) {
+    return iris_task_hidden_dmem(task_, dmem.mem(), mode);
+}
+
+int Task::add_hidden_dmem(DMem *dmem, int mode) {
+    return iris_task_hidden_dmem(task_, dmem->mem(), mode);
 }
 
 int Task::h2broadcast(Mem* mem, size_t off, size_t size, void* host) {

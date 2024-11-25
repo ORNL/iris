@@ -22,10 +22,11 @@ std::string DeviceOpenCL::GetLoaderHost2OpenCLSuffix(LoaderOpenCL *ld, cl_device
     char vendor[64];
     char version[64];
     char name[64];
-    cl_int err = ld->clGetDeviceInfo(cldev, CL_DEVICE_TYPE, sizeof(cltype), &cltype, NULL);
-    err = ld->clGetDeviceInfo(cldev, CL_DEVICE_VENDOR, sizeof(vendor), vendor, NULL);
-    err = ld->clGetDeviceInfo(cldev, CL_DEVICE_NAME, sizeof(name), name, NULL);
-    err = ld->clGetDeviceInfo(cldev, CL_DEVICE_VERSION, sizeof(version), version, NULL);
+    //cl_int err;
+    ld->clGetDeviceInfo(cldev, CL_DEVICE_TYPE, sizeof(cltype), &cltype, NULL);
+    ld->clGetDeviceInfo(cldev, CL_DEVICE_VENDOR, sizeof(vendor), vendor, NULL);
+    ld->clGetDeviceInfo(cldev, CL_DEVICE_NAME, sizeof(name), name, NULL);
+    ld->clGetDeviceInfo(cldev, CL_DEVICE_VERSION, sizeof(version), version, NULL);
     std::string fpga_bin_suffix = "xilinx";   
     int type;
     if (cltype == CL_DEVICE_TYPE_CPU) type = iris_cpu;
@@ -54,14 +55,15 @@ DeviceOpenCL::DeviceOpenCL(LoaderOpenCL* ld, LoaderHost2OpenCL *host2opencl_ld, 
   clctx_ = clctx;
   clprog_ = NULL;
   timer_ = new Timer();
-  cl_int err = ld_->clGetDeviceInfo(cldev_, CL_DEVICE_VENDOR, sizeof(vendor_), vendor_, NULL);
-  err = ld_->clGetDeviceInfo(cldev_, CL_DEVICE_NAME, sizeof(name_), name_, NULL);
-  err = ld_->clGetDeviceInfo(cldev_, CL_DEVICE_TYPE, sizeof(cltype_), &cltype_, NULL);
-  err = ld_->clGetDeviceInfo(cldev_, CL_DEVICE_VERSION, sizeof(version_), version_, NULL);
-  err = ld_->clGetDeviceInfo(cldev_, CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(max_compute_units_), &max_compute_units_, NULL);
-  err = ld_->clGetDeviceInfo(cldev_, CL_DEVICE_MAX_WORK_GROUP_SIZE, sizeof(max_work_group_size_), &max_work_group_size_, NULL);
-  err = ld_->clGetDeviceInfo(cldev_, CL_DEVICE_MAX_WORK_ITEM_SIZES, sizeof(max_work_item_sizes_), max_work_item_sizes_, NULL);
-  err = ld_->clGetDeviceInfo(cldev_, CL_DEVICE_COMPILER_AVAILABLE, sizeof(compiler_available_), &compiler_available_, NULL);
+  //cl_int err;
+  ld_->clGetDeviceInfo(cldev_, CL_DEVICE_VENDOR, sizeof(vendor_), vendor_, NULL);
+  ld_->clGetDeviceInfo(cldev_, CL_DEVICE_NAME, sizeof(name_), name_, NULL);
+  ld_->clGetDeviceInfo(cldev_, CL_DEVICE_TYPE, sizeof(cltype_), &cltype_, NULL);
+  ld_->clGetDeviceInfo(cldev_, CL_DEVICE_VERSION, sizeof(version_), version_, NULL);
+  ld_->clGetDeviceInfo(cldev_, CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(max_compute_units_), &max_compute_units_, NULL);
+  ld_->clGetDeviceInfo(cldev_, CL_DEVICE_MAX_WORK_GROUP_SIZE, sizeof(max_work_group_size_), &max_work_group_size_, NULL);
+  ld_->clGetDeviceInfo(cldev_, CL_DEVICE_MAX_WORK_ITEM_SIZES, sizeof(max_work_item_sizes_), max_work_item_sizes_, NULL);
+  ld_->clGetDeviceInfo(cldev_, CL_DEVICE_COMPILER_AVAILABLE, sizeof(compiler_available_), &compiler_available_, NULL);
   fpga_bin_suffix_ = "aocx";   
 
   if (cltype_ == CL_DEVICE_TYPE_CPU) type_ = iris_cpu;
@@ -77,6 +79,7 @@ DeviceOpenCL::DeviceOpenCL(LoaderOpenCL* ld, LoaderHost2OpenCL *host2opencl_ld, 
   }
   else type_ = iris_cpu;
   model_ = iris_opencl;
+  clcmdq_ = new cl_command_queue[nqueues_];
   for (int i = 0; i < nqueues_; i++) {
     clcmdq_[i] = NULL;
   }
@@ -95,11 +98,12 @@ DeviceOpenCL::~DeviceOpenCL() {
           _clerror(err);
       }
     }
+    delete [] clcmdq_;
     if (default_queue_) {
         cl_int err = ld_->clReleaseCommandQueue(default_queue_);
         _clerror(err);
     }
-    if (is_async(false)) 
+    if (is_async(false) && platform_obj_->is_event_profile_enabled()) 
         DestroyEvent(single_start_time_event_);
 }
 
@@ -107,17 +111,42 @@ int DeviceOpenCL::Init() {
   cl_int err;
   if (is_async(false)) {
       for (int i = 0; i < nqueues_; i++) {
+#ifdef CL_VERSION_2_0
+          const cl_queue_properties props[] = {
+                  //CL_QUEUE_PROPERTIES, CL_QUEUE_PROFILING_ENABLE | CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE,
+                  CL_QUEUE_PROPERTIES, CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE,
+                      0 // Terminate the properties list
+          };
+          if (ld_->clCreateCommandQueueWithProperties == NULL || type_ == iris_fpga)
+              clcmdq_[i] = ld_->clCreateCommandQueue(clctx_, cldev_, CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE, &err);
+          else
+              clcmdq_[i] = ld_->clCreateCommandQueueWithProperties(clctx_, cldev_, props, &err);
+#else
           clcmdq_[i] = ld_->clCreateCommandQueue(clctx_, cldev_, CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE, &err);
+#endif
+          _clerror(err);
       }
       set_first_event_cpu_begin_time(timer_->Now());
       RecordEvent((void **)(&single_start_time_event_), 0, iris_event_default);
       set_first_event_cpu_end_time(timer_->Now());
-      _info("Event start time of device:%f end time of record:%f\n", first_event_cpu_begin_time(), first_event_cpu_end_time());
+      _event_prof_debug("Event start time of device:%f end time of record:%f", first_event_cpu_begin_time(), first_event_cpu_end_time());
   }
   else {
       nqueues_ = 0;
   }
+#ifdef CL_VERSION_2_0
+  const cl_queue_properties props[] = {
+          CL_QUEUE_PROPERTIES, CL_QUEUE_ON_DEVICE_DEFAULT,
+              0 // Terminate the properties list
+  };
+  //printf("clCreateCommandQueue:%p clCreateCommandQueueWithProperties:%p\n", ld_->clCreateCommandQueue, ld_->clCreateCommandQueueWithProperties);
+  if (ld_->clCreateCommandQueueWithProperties == NULL || type_ == iris_fpga)
+      default_queue_ = ld_->clCreateCommandQueue(clctx_, cldev_, 0, &err);
+  else
+      default_queue_ = ld_->clCreateCommandQueueWithProperties(clctx_, cldev_, NULL, &err);
+#else
   default_queue_ = ld_->clCreateCommandQueue(clctx_, cldev_, 0, &err);
+#endif
   _clerror(err);
   host2opencl_ld_->init(ocldevno_);
   if (err != CL_SUCCESS){
@@ -228,9 +257,9 @@ int DeviceOpenCL::ResetMemory(Task *task, BaseMem *mem, uint8_t reset_value) {
     return IRIS_ERROR;
 }
 
-int DeviceOpenCL::MemAlloc(void** mem, size_t size, bool reset) {
+int DeviceOpenCL::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset) {
   cl_int err;
-  cl_mem* clmem = (cl_mem*) mem;
+  cl_mem* clmem = (cl_mem*) mem_addr;
   *clmem = ld_->clCreateBuffer(clctx_, CL_MEM_READ_WRITE, size, NULL, &err);
   if (reset) {
     _error("OpenCL not supported with reset for size:%lu", size);
@@ -243,8 +272,8 @@ int DeviceOpenCL::MemAlloc(void** mem, size_t size, bool reset) {
   return IRIS_SUCCESS;
 }
 
-int DeviceOpenCL::MemFree(void* mem) {
-  cl_mem clmem = (cl_mem) mem;
+int DeviceOpenCL::MemFree(BaseMem *mem, void* mem_addr) {
+  cl_mem clmem = (cl_mem) mem_addr;
   cl_int err = ld_->clReleaseMemObject(clmem);
   _clerror(err);
   if (err != CL_SUCCESS){
@@ -259,11 +288,11 @@ int DeviceOpenCL::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_siz
   if (mem->is_usm(devno())) return IRIS_SUCCESS;
   int stream_index = 0;
   cl_command_queue queue = default_queue_;
-  bool async = false;
+  //bool async = false;
   if (is_async(task)) {
       stream_index = GetStream(task, mem); //task->uid() % nqueues_; 
-      async = true;
-      if (stream_index == DEFAULT_STREAM_INDEX) { async = false; stream_index = 0; }
+      //async = true;
+      if (stream_index == DEFAULT_STREAM_INDEX) { /*async = false;*/ stream_index = 0; }
       queue = clcmdq_[stream_index];
   }
   cl_int err;
@@ -292,7 +321,7 @@ int DeviceOpenCL::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_siz
   }
   else {
       _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), clmem, off[0], size, host, stream_index);
-      err = ld_->clEnqueueWriteBuffer(queue, clmem, CL_TRUE, off[0], size, host, 0, NULL, NULL);
+      err = ld_->clEnqueueWriteBuffer(queue, clmem, CL_TRUE, 0, size, (uint8_t *)host+off[0]*elem_size, 0, NULL, NULL);
 #if 0
       printf("H2D: Dev%d: ", devno_);
       float *A = (float *) host;
@@ -314,12 +343,12 @@ int DeviceOpenCL::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_siz
   cl_mem clmem = (cl_mem) mem->arch(this, host);
   if (mem->is_usm(devno())) return IRIS_SUCCESS;
   int stream_index = 0;
-  bool async = false;
+  //bool async = false;
   cl_command_queue queue = default_queue_;
   if (is_async(task)) {
       stream_index = GetStream(task, mem); //task->uid() % nqueues_; 
-      async = true;
-      if (stream_index == DEFAULT_STREAM_INDEX) { async = false; stream_index = 0; }
+      //async = true;
+      if (stream_index == DEFAULT_STREAM_INDEX) { /*async = false;*/ stream_index = 0; }
       queue = clcmdq_[stream_index];
   }
   cl_int err;
@@ -336,7 +365,7 @@ int DeviceOpenCL::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_siz
   }
   else {
       _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d] ref_cnt[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), clmem, off[0], size, host, stream_index, task->ref_cnt());
-      err = ld_->clEnqueueReadBuffer(queue, clmem, CL_TRUE, off[0], size, host, 0, NULL, NULL);
+      err = ld_->clEnqueueReadBuffer(queue, clmem, CL_TRUE, 0, size, (uint8_t *)host+off[0]*elem_size, 0, NULL, NULL);
 #if 0
       printf("D2H: Dev:%d: ", devno_);
       float *A = (float *) host;
@@ -445,7 +474,7 @@ int DeviceOpenCL::KernelLaunchInit(Command *cmd, Kernel* kernel) {
         kstream = &clcmdq_[stream_index];
         nstreams = nqueues_ - stream_index;
     }
-    host2opencl_ld_->launch_init(model(), ocldevno_, nstreams, (void **)kstream, kernel->GetParamWrapperMemory(), cmd);
+    host2opencl_ld_->launch_init(model(), ocldevno_, stream_index, nstreams, (void **)kstream, kernel->GetParamWrapperMemory(), cmd);
     return IRIS_SUCCESS;
 }
 
@@ -465,7 +494,7 @@ int DeviceOpenCL::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws
   }
   _debug2("dev[%d][%s] task[%ld:%s] kernel launch::%ld:%s q[%d]", devno_, name_, kernel->task()->uid(), kernel->task()->name(), kernel->uid(), kernel->name(), stream_index);
   if (kernel->is_vendor_specific_kernel(devno_)) {
-     if (host2opencl_ld_->host_launch((void **)kstream, nstreams, kernel->name(), 
+     if (host2opencl_ld_->host_launch((void **)kstream, stream_index, nstreams, kernel->name(), 
                  kernel->GetParamWrapperMemory(), ocldevno_,
                  dim, off, gws) == IRIS_SUCCESS) {
          if (!async) {
@@ -527,10 +556,22 @@ int DeviceOpenCL::Synchronize() {
   return IRIS_SUCCESS;
 }
 
+int DeviceOpenCL::RegisterCallback(int stream, CallBackType callback_fn, void *data, int flags) 
+{
+    // Create an event for the callback
+    cl_event callbackEvent;
+    //cl_int err = ld_->clEnqueueMarker(clcmdq_[stream], &callbackEvent);
+    cl_int err = ld_->clEnqueueMarkerWithWaitList(clcmdq_[stream], 0, NULL, &callbackEvent);
+
+    // Set up callback function
+    ld_->clSetEventCallback(callbackEvent, CL_COMPLETE, (OpenCLCallBack)callback_fn, data);
+    return IRIS_SUCCESS;
+}
+/*
 int DeviceOpenCL::AddCallback(Task* task) {
   task->Complete();
   return IRIS_SUCCESS;
-}
+}*/
 
 #if 0
 void DeviceOpenCL::ExecuteKernel(Command* cmd) {

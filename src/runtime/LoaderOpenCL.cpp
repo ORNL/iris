@@ -64,6 +64,7 @@ int LoaderOpenCL::LoadFunctions() {
   LOADFUNC(clReleaseProgram);
   LOADFUNC(clReleaseEvent);
   LOADFUNC(clBuildProgram);
+  LOADFUNC(clEnqueueMarkerWithWaitList);
   LOADFUNC(clGetProgramInfo);
   LOADFUNC(clGetProgramBuildInfo);
   LOADFUNC(clCreateKernel);
@@ -75,6 +76,11 @@ int LoaderOpenCL::LoadFunctions() {
   LOADFUNC(clEnqueueWriteBufferRect);
   LOADFUNC(clEnqueueNDRangeKernel);
   LOADFUNC(clCreateCommandQueue);
+#ifdef CL_VERSION_2_0
+  LOADFUNC(clCreateCommandQueueWithProperties);
+#else
+  LOADFUNC(clCreateCommandQueue);
+#endif
   LOADFUNC(clEnqueueMarker);
   LOADFUNC(clEnqueueWaitForEvents);
   LOADFUNC(clWaitForEvents);

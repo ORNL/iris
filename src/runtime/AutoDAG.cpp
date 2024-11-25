@@ -8,20 +8,41 @@
 
 #include <iostream>
 
+//#define AUTO_FLUSH ON
+//#define INCORRECT_AUTO_FLUSH ON
+
 namespace iris {
 namespace rt {
 
-AutoDAG::AutoDAG(Platform* platform){ 
+AutoDAG::AutoDAG(Platform* platform, bool enable_df_sched){ 
     platform_ = platform;
-#ifdef AUTO_FLUSH
     current_graph_ = NULL;
+#ifdef AUTO_FLUSH
+    enable_auto_flush_ = true;
 #endif
+
 #ifdef AUTO_SHADOW
   number_of_shadow_ = 0;
 #endif
-  auto_dep_ = false;
+    auto_dep_ = false;
+    num_dev_ = platform_->ndevs();
+    cur_dev_ = 0;
+    enable_df_sched_ = false;
+    if (enable_df_sched) {
+        enable_df_sched_ = true;
+        initalize_h2d_task();
+    }
 }
 
+void AutoDAG:: initalize_h2d_task(){
+    for (int i = 0; i < num_dev_; i++){
+        sprintf(tn, "Task-H2D-Dev-%d", num_dev_);
+	    Task* task = Task::Create(platform_, IRIS_TASK, tn);
+	    task->set_brs_policy(num_dev_);
+	    //task_flush = Task::Create(cmd->platform_, IRIS_TASK, tn);
+        h2d_task_list_.push_back(task);
+    }
+}
 //AutoDAG::platform_ = NULL;
 
 void AutoDAG::create_dependency(Command* cmd, Task* task, 
@@ -30,6 +51,13 @@ void AutoDAG::create_dependency(Command* cmd, Task* task,
     current_kernel_ = kernel;
     current_idx_ = idx;
     current_param_info_ = param_info;
+    if(enable_auto_flush_ == true && current_graph_ != NULL && enable_df_sched_ == true){
+        if(h2d_task_list_.size()>0){
+            for (int i = 0; i < h2d_task_list_.size(); i++){
+                current_graph_->AddTask(h2d_task_list_.at(i), h2d_task_list_.at(i)->uid());
+            }
+        }
+    }
 
 #ifdef IGNORE_MANUAL
     set_auto_dep();
@@ -71,6 +99,10 @@ void AutoDAG::create_dependency(Command* cmd, Task* task,
             }
 #endif 
         }
+    if (enable_df_sched_){
+        df_bc_scheduling(task, ((DataMem*)mem));
+        //add_h2d_df_task(((DataMem*)mem);
+    }
  
     //printf("Seting current task info %d\n", param_info);
 #ifndef AUTO_SHADOW
@@ -92,6 +124,7 @@ void AutoDAG::create_dependency(Command* cmd, Task* task,
     if( mem->GetMemHandlerType() == IRIS_DMEM)
  	    create_auto_flush(cmd, task, mem);
 #endif
+
     }
     else if (param_info == iris_r) {
     	if(mem->get_current_writing_task() != NULL) {
@@ -222,7 +255,12 @@ void AutoDAG::create_auto_flush(Command* cmd, Task* task,
         sprintf(tn, "%s-from-shadow-flushed-out", task->name());
 #endif
 
+
+#ifdef INCORRECT_AUTO_FLUSH
+	if ( task_flush == NULL || task_flush != NULL ){
+#else
 	if ( task_flush == NULL){
+#endif
 	    task_flush = Task::Create(platform_, IRIS_TASK, tn);
 	    //task_flush = Task::Create(cmd->platform_, IRIS_TASK, tn);
         Command* cmd_flush;
@@ -247,6 +285,11 @@ void AutoDAG::create_auto_flush(Command* cmd, Task* task,
 		//printf("-------Graph NULL----------\n");
         	_error("Graph is NULL:%ld:%s\n", task->uid(), task->name());
 	    }
+
+#ifdef INCORRECT_AUTO_FLUSH
+ 	    mem->set_current_writing_task(task_flush);
+#endif
+
 	} else {
 	    //printf("-------Flush task Null----------\n");
     	//printf("Total dependency %d\n", task_flush->ndepends());
@@ -267,8 +310,10 @@ void AutoDAG::create_auto_flush(Command* cmd, Task* task,
     }
 #endif
 
-	task_flush->set_opt(task->get_opt());
-	task_flush->set_brs_policy(task->brs_policy());
+	//task_flush->set_opt(task->get_opt());
+	//task_flush->set_brs_policy(task->brs_policy());
+    //task_flush->set_df_scheduling();
+
 	//task_flush->set_brs_policy(task->get_brs_policy());
 }
 #endif
@@ -301,6 +346,117 @@ void AutoDAG::missing_dependencies() {
 #endif
 
 
+
+int iris_bc_mapping(int row, int col)
+{
+    int ndevices = 4;
+    int dev_map[16][16];
+    for(int i=0; i<16; i++) {
+        for(int j=0; j<16; j++) {
+            if (j>=i) dev_map[i][j] = j*j+i;
+            else dev_map[i][j] = (i*(i+2))-j;
+            dev_map[i][j] = dev_map[i][j]%ndevices;
+        }
+    }
+    int nrows = ndevices;
+    int ncols = ndevices;
+    if (ndevices == 1) return 0;
+    else if (ndevices == 9) {
+        nrows = 3; ncols = 3;
+    }
+    else if (ndevices == 4) {
+        nrows = 2; ncols = 2;
+    }
+    else if (ndevices == 6) {
+        dev_map[0][0] = 0;
+        dev_map[0][1] = 1;
+        dev_map[1][0] = 2;
+        dev_map[1][1] = 3;
+        dev_map[2][0] = 4;
+        dev_map[2][1] = 5;
+        nrows = 3; ncols = 2;
+    }
+    else if (ndevices == 8) {
+        dev_map[0][0] = 0;
+        dev_map[0][1] = 1;
+        dev_map[1][0] = 2;
+        dev_map[1][1] = 3;
+        dev_map[2][0] = 4;
+        dev_map[2][1] = 5;
+        dev_map[3][0] = 6;
+        dev_map[3][1] = 7;
+        nrows = 4; ncols = 2;
+    }
+    else if (ndevices % 2 == 1) {
+        int incrementer = (ndevices+1) / 2;
+        int i_pos = 0;
+        for(int i=0; i<ndevices; i++) {
+            int j_pos = (ndevices - i_pos)%ndevices;
+            for(int j=0; j<ndevices; j++) {
+                dev_map[i][j] = (j_pos + j)%ndevices;
+            }
+            i_pos = (i_pos+incrementer)%ndevices;
+        }
+    }
+    /*printf("Dev Map:\n");
+    for(int i=0; i<nrows; i++) {
+        for(int j=0; j<ncols; j++) {
+            printf("%2d ", dev_map[i][j]);
+        }
+        printf("\n");
+    }*/
+    return dev_map[row%nrows][col%ncols];
+}
+
+void AutoDAG::df_bc_scheduling(Task *task, DataMem* mem)
+{
+    /*printf("Task %s, uid %d Row %d, Col %d, bc %d, num device %d\n", task->name(), 
+        mem->uid(), mem->get_row(), 
+        mem->get_col(), mem->get_bc(), num_dev_);*/
+    int dmem_dev = -1;
+
+
+    if(mem->get_rr_bc_dev() == -1) {
+        
+        dmem_dev = cur_dev_++;
+        mem->set_rr_bc_dev(dmem_dev);
+        if (cur_dev_ == num_dev_) cur_dev_ = 0;
+        
+       
+       /*dmem_dev = (mem->get_col() + mem->get_row())% num_dev_;
+       mem->set_rr_bc_dev(dmem_dev); */
+       
+       //dmem_dev = iris_bc_mapping(mem->get_row(), mem->get_col());
+       //mem->set_rr_bc_dev(dmem_dev);
+
+    } else {
+        dmem_dev = mem->get_rr_bc_dev();
+    }
+    task->set_brs_policy(dmem_dev);
+    task->set_df_scheduling();
+}
+
+
+void AutoDAG::add_h2d_df_task(Task* task, Kernel* kernel){
+    /*
+    DataMem* dmem;
+    if(task->get_df_scheduling() != true) {
+        printf("no target is set for task %s\n", task->name());
+        return;
+    }
+    int task_dev = task->get_brs_policy(); 
+    Task* df_task = h2d_task_list_.at(task_dev);
+    for (size_t i = 0; i < kernel->all_data_mems_in().size(); i++){
+        dmem = (DataMem*) kernel->all_data_mems_in().at(i);
+        if (dmem->get_h2d_df_flag(task_dev) == false){
+            Command* cmd_h2d = Command* Command::CreateH2D(task, mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host) {
+            df_task->AddCommand(cmd_h2d);
+
+            dmem->set_h2d_df_flag(task_dev) 
+        }
+
+    } */
+}
 
 } /* namespace rt */
 } /* namespace iris */

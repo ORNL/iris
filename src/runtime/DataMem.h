@@ -7,7 +7,10 @@
 #include <pthread.h>
 #include <set>
 #include <vector>
+#include <utility>
 #include <assert.h>
+
+using namespace std;
 
 namespace iris {
 namespace rt {
@@ -20,18 +23,30 @@ class DataMem;
 
 class DataMem: public BaseMem {
 public:
-  DataMem(Platform* platform, void *host, size_t size);
-  DataMem(Platform *platform, void *host_ptr, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim);
+  DataMem(Platform* platform, void *host, size_t size, int element_type=iris_unknown);
+  DataMem(Platform* platform, void *host, size_t size, const char *symbol, int element_type=iris_unknown);
+  DataMem(Platform* platform, void *host, size_t *host_size, int dim, size_t elem_size, int element_type=iris_unknown);
+  DataMem(Platform *platform, void *host_ptr, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim, int element_type=iris_unknown);
   void Init(Platform *platform, void *host_ptr, size_t size);
   virtual ~DataMem();
+  void AddChild(DataMem *child, size_t offset);
+  void FetchDataFromDevice(void *dst_host_ptr);
+  void FetchDataFromDevice(void *dst_host_ptr, size_t size);
   void UpdateHost(void *host);
   void EnableOuterDimensionRegions();
+  vector<pair<DataMem *, size_t>> & child() { return child_; }
   void init_reset(bool reset=true);
   bool is_host_dirty() { return host_dirty_flag_; }
   void clear_host_dirty() { host_dirty_flag_ = false; }
   void set_host_dirty(bool flag=true) { host_dirty_flag_ = flag; }
   bool is_dev_dirty(int devno) { return dirty_flag_[devno]; }
   void set_dev_dirty(int devno, bool flag=true) { dirty_flag_[devno] = flag; }
+  int  get_dev_affinity() { 
+      for(int i=0; i<ndevs_; i++) 
+          if (!dirty_flag_[i]) 
+              return i; 
+      return -1;
+  }
   void clear_dev_dirty(int devno) { dirty_flag_[devno] = false; }
   void set_dirty_except(int devno) {
     for(int i=0; i<ndevs_; i++) {
@@ -39,9 +54,9 @@ public:
     }
     dirty_flag_[devno] = false;
   }
-  void set_dirty_all(int devno) {
+  void set_dirty_all(bool flag=true) {
     for(int i=0; i<ndevs_; i++) {
-        dirty_flag_[i] = true;
+        dirty_flag_[i] = flag;
     }
   }
   int *get_non_dirty_devices(int *dev) {
@@ -67,6 +82,7 @@ public:
   size_t elem_size() { return elem_size_; }
   int dim() { return dim_; }
   void *host_ptr() { return host_ptr_; }
+  void *tmp_host_ptr() { return tmp_host_ptr_; }
 #ifdef AUTO_PAR
 #ifdef AUTO_SHADOW
   void* get_host_ptr_shadow(){return host_ptr_shadow_;}
@@ -85,9 +101,20 @@ public:
   void set_has_shadow(bool has_shadow){ has_shadow_ = has_shadow;}
 #endif
 #endif
+  void update_bc_row_col(bool bc, int row, int col){  bc_ = bc; row_ = row; col_ = col;}
+  bool get_bc(){ return bc_;}
+  int get_row(){ return row_;}
+  int get_col(){ return col_;}
+  int get_rr_bc_dev(){ return rr_bc_dev_;}
+  void set_rr_bc_dev(int rr_bc_dev){ rr_bc_dev_ = rr_bc_dev;}
+  void set_h2d_df_flag(int dev) { h2d_df_flag_[dev] = true;}
+  void unset_h2d_df_flag(int dev) { h2d_df_flag_[dev] = false;}
+  bool get_h2d_df_flag(int dev) { return h2d_df_flag_[dev];}
+  bool is_symbol() { return is_symbol_; }
 
   void *host_root_memory() { return host_memory(); }
   void *host_memory();
+  void *tmp_host_memory();
   void lock_host_region(int region);
   void unlock_host_region(int region);
   int get_n_regions() { return n_regions_; }
@@ -99,15 +126,18 @@ public:
   virtual void** arch_ptr(Device *dev, void *host=NULL);
   inline void create_dev_mem(Device *dev, int devno, void *host);
   Platform *platform() { return platform_; }
+  bool is_pin_memory() { return is_pin_memory_; }
+  void set_pin_memory(bool flag=true) { is_pin_memory_ = flag; }
 protected:
   bool host_dirty_flag_;
   bool  *dirty_flag_;
   pthread_mutex_t host_mutex_;
   int n_regions_;
   void *host_ptr_;
-  size_t off_[3];
-  size_t host_size_[3];
-  size_t dev_size_[3];
+  void *tmp_host_ptr_;
+  size_t off_[DMEM_MAX_DIM];
+  size_t host_size_[DMEM_MAX_DIM];
+  size_t dev_size_[DMEM_MAX_DIM];
   size_t elem_size_;
   int dim_;
   bool host_ptr_owner_;
@@ -123,6 +153,12 @@ protected:
   bool has_shadow_;
 #endif
 #endif
+  int row_, col_, rr_bc_dev_; // index for BC distribution
+  bool bc_; // for BC distribution
+  bool h2d_df_flag_[16];
+  bool is_symbol_;
+  bool is_pin_memory_;
+  vector<pair<DataMem *, size_t> > child_;
 };
 
 } /* namespace rt */

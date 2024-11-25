@@ -31,8 +31,14 @@ int Profiler::OpenFD(const char *path) {
       strcpy(path_, path);
   } else {
       char s[64];
+      string app_path = platform_->app();
+      string app_base_name = app_path;
+      size_t last_slash = app_path.find_last_of("/\\");
+      if (last_slash != std::string::npos) {
+          app_base_name = app_path.substr(last_slash + 1);
+      } 
       strftime(s, 64, "%Y%m%d-%H%M%S", localtime(&t));
-      sprintf(path_, "%s-%s-%s.%s", platform_->app(), platform_->host(), s, FileExtension());
+      sprintf(path_, "%s-%s-%s.%s", app_base_name.c_str(), platform_->host(), s, FileExtension());
   }
   fd_ = open(path_, O_CREAT | O_WRONLY, 0666);
   if (fd_ == -1) {
@@ -94,7 +100,7 @@ int Profiler::CloseFD() {
   Flush();
   if (fd_ != -1) {
     int iret = close(fd_);
-    _info("Profiler %s output in file: %s", profiler_name_,  path_);
+    _printf("Profiler %s output in file: %s", profiler_name_,  path_);
     if (iret == -1) {
       _error("close profiler file[%s]", path_);
       perror("close");

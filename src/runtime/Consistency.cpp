@@ -87,7 +87,7 @@ void Consistency::ResolveKernelWithPolymem(Task* task, Command* cmd, Mem* mem, K
   task_d2h->AddCommand(d2h);
   task_d2h->Retain();
   task_d2h->Retain(); // For Wait
-  iris_task task_d2h_brs = *(task_d2h->struct_obj());
+  //iris_task task_d2h_brs = *(task_d2h->struct_obj());
   scheduler_->SubmitTaskDirect(task_d2h, owner);
   //scheduler_->platform()->TaskWait(task_d2h_brs);
   task_d2h->Wait();
@@ -124,7 +124,7 @@ void Consistency::ResolveKernelWithoutPolymem(Task* task, Command* cmd, Mem* mem
   if (context_shift) owner->ResetContext();
   task_d2h->Retain();
   task_d2h->Retain(); // For Wait
-  iris_task task_d2h_brs = *(task_d2h->struct_obj());
+  //iris_task task_d2h_brs = *(task_d2h->struct_obj());
   scheduler_->SubmitTaskDirect(task_d2h,owner);
   //scheduler_->platform()->TaskWait(task_d2h_brs);
   task_d2h->Wait();
@@ -141,7 +141,7 @@ void Consistency::ResolveKernelWithoutPolymem(Task* task, Command* cmd, Mem* mem
   task_h2d->set_internal_memory_transfer();
   task_h2d->Retain();
   task_h2d->Retain(); // For Wait
-  iris_task task_h2d_brs = *(task_h2d->struct_obj());
+  //iris_task task_h2d_brs = *(task_h2d->struct_obj());
   scheduler_->SubmitTaskDirect(task_h2d,dev);
   //scheduler_->platform()->TaskWait(task_h2d_brs);
   task_h2d->Wait();
@@ -158,7 +158,8 @@ void Consistency::ResolveD2H(Task* task, Command* cmd) {
   BaseMem* dmem = (BaseMem *)cmd->mem();
   if (dmem && dmem->GetMemHandlerType() == IRIS_DMEM) {
     //we're using datamem so there is no need to execute this memory transfer --- just flush
-    dev->ExecuteMemFlushOut(cmd);
+    // We shouldn't flush DMEM
+    //dev->ExecuteMemFlushOut(cmd);
     return;
   }
   Mem* mem = (Mem *)cmd->mem();
@@ -171,7 +172,7 @@ void Consistency::ResolveD2H(Task* task, Command* cmd) {
   task_d2h->AddCommand(d2h);
   task_d2h->Retain();
   task_d2h->Retain(); //For Wait
-  iris_task task_d2h_brs = *(task_d2h->struct_obj());
+  //iris_task task_d2h_brs = *(task_d2h->struct_obj());
   scheduler_->SubmitTaskDirect(task_d2h, owner);
   //scheduler_->platform()->TaskWait(task_d2h_brs);
   task_d2h->Wait();

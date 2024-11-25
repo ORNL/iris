@@ -28,15 +28,23 @@ namespace iris {
                 Device *dest_dev_;
                 void *src_event_;
                 void *dest_event_;
+                void *src_event() { return src_event_; }
+                void *dest_event() { return dest_event_; }
                 BaseEventExchange() {
-                    fired = false;
-                    dest_dev_ = NULL;
-                    src_dev_ = NULL;
-                    dest_event_ = NULL;
-                    src_event_ = NULL;
+                    Clear();
                 }
                 void Clear() { 
                     fired = false;
+                    src_mem_stream_ = -1;
+                    src_devno_ = -1;
+                    devno_ = -1;
+                    dest_mem_stream_ = -1;
+                    uid_ = 0;
+                    dest_dev_ = NULL;
+                    src_dev_ = NULL;
+                    dest_dev_ = NULL;
+                    dest_event_ = NULL;
+                    src_event_ = NULL;
                 }
                 virtual void Wait()=0;
                 virtual void Fire()=0;

@@ -9,7 +9,6 @@ LoaderCUDA::LoaderCUDA() {
 
 LoaderCUDA::~LoaderCUDA() {
 }
-
 int LoaderCUDA::LoadFunctions() {
   LOADFUNC(cuInit);
   LOADFUNC(cuDriverGetVersion);
@@ -20,6 +19,8 @@ int LoaderCUDA::LoadFunctions() {
   LOADFUNC(cuCtxGetCurrent);
   LOADFUNC(cuCtxSetCurrent);
   LOADFUNC(cuCtxEnablePeerAccess);
+  LOADFUNC(cuDeviceCanAccessPeer);
+  //LOADFUNC(cuDeviceEnablePeerAccess);
   LOADFUNCEXT(cudaSetDevice);
   LOADFUNCEXT(cudaDeviceCanAccessPeer);
   LOADFUNCEXT(cudaDeviceEnablePeerAccess);
@@ -38,22 +39,33 @@ int LoaderCUDA::LoadFunctions() {
   LOADFUNC(cuTexRefSetFilterMode);
   LOADFUNC(cuTexRefSetFlags);
   LOADFUNC(cuTexRefSetFormat);
+  LOADFUNC(cuGetErrorString);
+  LOADFUNC(cuPointerGetAttributes);
+  LOADFUNC(cuPointerGetAttribute);
+  LOADFUNC(cuMemcpyPeer);
+  LOADFUNC(cuMemcpyPeerAsync);
   LOADFUNC(cuMemcpy2D);
   //LOADFUNC(cuMemset);
   LOADFUNC(cuMemcpyDtoD);
   LOADFUNC(cuMemcpyDtoDAsync);
   LOADFUNCEXT(cudaMalloc);
   LOADFUNCEXT(cudaMemcpy);
+  LOADFUNC(cuMemcpy);
+  LOADFUNC(cuMemcpyAsync);
   LOADFUNCEXT(cudaMemcpyAsync);
   LOADFUNCEXT(cudaMemcpy2D);
+  LOADFUNCEXT(cudaGetSymbolAddress);
   LOADFUNCEXT(cudaHostGetDevicePointer);
   LOADFUNCEXT(cudaSetDeviceFlags);
   LOADFUNCEXT(cudaMemcpy2DAsync);
   LOADFUNCEXT(cudaMemset);
   LOADFUNCEXT(cudaMemsetAsync);
   LOADFUNCEXT(cudaHostRegister);
+  LOADFUNCEXT(cudaHostUnregister);
   LOADFUNC(cuMemcpy2DUnaligned);
   LOADFUNC(cuMemcpy2DAsync);
+  LOADFUNC(cuMemAllocAsync);
+  LOADFUNC(cuMemFreeAsync);
   LOADFUNCSYM(cuMemAlloc, cuMemAlloc_v2);
   LOADFUNCSYM(cuMemFree, cuMemFree_v2);
   LOADFUNCSYM(cuMemcpyHtoD, cuMemcpyHtoD_v2);

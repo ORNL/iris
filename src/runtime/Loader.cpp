@@ -83,9 +83,15 @@ int Loader::LoadFunctions() {
     return IRIS_SUCCESS;
 }
 
-void *Loader::GetFunctionPtr(const char *kernel_name) {
+void *Loader::GetSymbol(const char *symbol_name) {
     if (strict_handle_check_ && handle_ == NULL) return NULL;
-    void *kptr = dlsym(handle_, kernel_name);
+    void *kptr = dlsym(handle_, symbol_name);
+    return kptr;
+}
+
+void *Loader::GetFunctionSymbol(const char *symbol_name) {
+    if (strict_handle_check_ && handle_ == NULL) return NULL;
+    void *kptr = dlsym(handle_, symbol_name);
     return kptr;
 }
 
@@ -97,7 +103,7 @@ bool Loader::IsFunctionExists(const char *kernel_name) {
     return true;
 }
 
-int Loader::SetKernelPtr(void *obj, char *kernel_name)
+int Loader::SetKernelPtr(void *obj, const char *kernel_name)
 {
     if (iris_set_kernel_ptr_with_obj) {
         if (strict_handle_check_ && handle_ == NULL) return IRIS_ERROR;

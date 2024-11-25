@@ -51,6 +51,7 @@ void Command::Clear(bool init) {
   kernel_ = NULL;
   task_ = NULL;
   mem_ = NULL;
+  dst_mem_ = NULL;
   platform_ = NULL;
   kernel_args_ = NULL;
   polymems_ = NULL;
@@ -107,6 +108,7 @@ void Command::Set(Task* task, int type) {
     case IRIS_CMD_MEM_FLUSH_TO_SHADOW:   type_name_= std::string("MemFlushToShadow");     break;
 #endif
 #endif
+    case IRIS_CMD_DMEM2DMEM_COPY:         type_name_= std::string("DMem2DMemCopy");     break;
     case IRIS_CMD_MAP:         type_name_= std::string("Map");     break;
     case IRIS_CMD_RELEASE_MEM: type_name_= std::string("Release"); break;
     case IRIS_CMD_HOST:        type_name_= std::string("Host");    break;
@@ -235,6 +237,11 @@ Command* Command::CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off,
     arg->mem_off = memranges ? memranges[i * 2] : 0;
     arg->mem_size = memranges ? memranges[i * 2 + 1] : mem->size();
   }
+
+#ifdef AUTO_PAR
+  cmd->platform_->get_auto_dag()->add_h2d_df_task(task, kernel);
+#endif
+
   return cmd;
 }
 
@@ -354,6 +361,13 @@ Command* Command::CreateH2Broadcast(Task* task, Mem* mem, size_t *off, size_t *h
   cmd->size_ = size;
   cmd->host_ = host;
   cmd->exclusive_ = true;
+  return cmd;
+}
+
+Command* Command::CreateDMEM2DMEM(Task* task, DataMem* src_mem, DataMem *dst_mem) {
+  Command* cmd = Create(task, IRIS_CMD_DMEM2DMEM_COPY);
+  cmd->mem_ = src_mem;
+  cmd->dst_mem_ = dst_mem;
   return cmd;
 }
 

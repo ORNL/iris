@@ -8,6 +8,12 @@ LoaderHIP::LoaderHIP() {
   pthread_mutex_init(&mutex_, NULL);
 }
 
+void *LoaderHIP::GetSymbol(const char *name) {
+  void *dptr = NULL;
+  hipGetSymbolAddress(&dptr, name);
+  return (void *)dptr;
+}
+
 LoaderHIP::~LoaderHIP() {
   pthread_mutex_destroy(&mutex_);
 }
@@ -18,6 +24,7 @@ int LoaderHIP::LoadFunctions() {
   LOADFUNC(hipSetDevice);
   LOADFUNC(hipGetDevice);
   LOADFUNC(hipGetDeviceCount);
+  LOADFUNC(hipPointerGetAttribute);
   LOADFUNC(hipDeviceGetAttribute);
   LOADFUNC(hipDeviceGet);
   LOADFUNC(hipDeviceGetName);
@@ -27,13 +34,17 @@ int LoaderHIP::LoadFunctions() {
   LOADFUNC(hipCtxSynchronize);
   LOADFUNC(hipModuleLoad);
   LOADFUNC(hipModuleGetFunction);
+  LOADFUNC(hipMallocAsync);
   LOADFUNC(hipMalloc);
   LOADFUNC(hipHostRegister);
+  LOADFUNC(hipHostUnregister);
   LOADFUNC(hipMemset);
   LOADFUNC(hipMemsetAsync);
   LOADFUNC(hipFree);
+  LOADFUNC(hipFreeAsync);
   LOADFUNC(hipGetDeviceProperties);
   LOADFUNC(hipDeviceCanAccessPeer);
+  LOADFUNC(hipCtxEnablePeerAccess);
   LOADFUNC(hipDeviceEnablePeerAccess);
   LOADFUNC(hipStreamCreate);
   LOADFUNC(hipStreamDestroy);

@@ -16,13 +16,14 @@ public:
   Policies(Scheduler* scheduler);
   ~Policies();
 
-  Policy* GetPolicy(int brs_policy, char* opt);
+  Policy* GetPolicy(int brs_policy, const char* opt);
 
   int Register(const char* lib, const char* name, void* params);
 
 private:
   Scheduler* scheduler_;
 
+  Policy* policy_block_cycle_;
   Policy* policy_ftf_;
   Policy* policy_data_;
   Policy* policy_default_;

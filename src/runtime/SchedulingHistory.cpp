@@ -21,15 +21,20 @@ namespace rt {
 
 SchedulingHistory::SchedulingHistory(Platform* platform) {
   char* provided_filepath = getenv("IRIS_HISTORY_FILE");
+  std::string provided_filepath_str;
   if (!provided_filepath){
     time_t t = time(NULL);
     char s[64];
     strftime(s, 64, "%Y%m%d-%H%M%S", localtime(&t));
-    provided_filepath = new char[512];
-    sprintf(provided_filepath, "%s-%s-%s.%s", platform->app(), platform->host(), s, ".csv");
+    //provided_filepath = new char[512];
+    //sprintf(provided_filepath, "%s-%s-%s.%s", platform->app(), platform->host(), s, ".csv");
+    provided_filepath_str = string(platform->app()) + "-" + string(platform->host()) + "-" + string(s) + string(".csv");
   }
+  else 
+    provided_filepath_str = string(provided_filepath);
+  _trace("Schedule history path:%s", provided_filepath_str.c_str());
 
-  myfile.open(provided_filepath, std::ios::out);
+  myfile.open(provided_filepath_str.c_str(), std::ios::out);
   myfile << SCHEDULING_HISTORY_HEADER << std::endl;
 }
 
@@ -42,7 +47,7 @@ void SchedulingHistory::AddKernel(Command* cmd) {
   if (cmd->type_init()){
     printf("not logging initialization -- but performed init on device id %d\n",cmd->task()->dev()->devno());
   }
-  //Add(cmd);
+  Add(cmd);
 }
 
 void SchedulingHistory::AddH2D(Command* cmd) {
