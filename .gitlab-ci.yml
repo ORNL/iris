@@ -428,6 +428,7 @@ test-backends-37:
     IRIS_TESTNAME: "37_opencl_icd"
 
 .dagger:
+  tags: [slurm]
   stage: dagger
   resource_group: slurm_zenith
   needs: [build-noffi-zenith]
