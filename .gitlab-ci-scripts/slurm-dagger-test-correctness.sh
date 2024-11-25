@@ -37,7 +37,7 @@ source /etc/profile.d/lmod.sh
 
 # General setup for IRIS
 source /auto/software/iris/setup_system.source
-source $IRIS_INSTALL_ROOT/setup.source
+source $IRIS_INSTALL_ROOT.noffi.$IRIS_MACHINE/setup.source
 
 set -e
 
