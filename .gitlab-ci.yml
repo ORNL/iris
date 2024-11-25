@@ -46,7 +46,7 @@ variables:
   stage: build
   script:
     - echo "Installing iris to $CI_PROJECT_DIR/install"
-    - IRIS_TAG=.ffi.$IRIS_MACHINE bash build.sh -DENABLE_FFI=ON
+    - IRIS_TAG=.ffi.$IRIS_MACHINE bash build-coverage.sh -DENABLE_FFI=ON
   artifacts:
     paths:
       - $IRIS_INSTALL_ROOT.ffi.$IRIS_MACHINE
@@ -55,7 +55,7 @@ variables:
   stage: build
   script:
     - echo "Installing iris to $CI_PROJECT_DIR/install"
-    - IRIS_TAG=.noffi.$IRIS_MACHINE bash build.sh 
+    - IRIS_TAG=.noffi.$IRIS_MACHINE bash build-coverage.sh 
   artifacts:
     paths:
       - $IRIS_INSTALL_ROOT.noffi.$IRIS_MACHINE
