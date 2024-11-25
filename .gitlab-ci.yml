@@ -481,6 +481,8 @@ dagger-zenith-test-correctness:
     - echo "Errors $(wc -l apps/dagger/errors.txt)"
     - cat apps/dagger/errors.txt
     - if [ -s apps/dagger/errors.txt ]; then exit 1; fi
+  variables:
+    IRIS_MACHINE: "zenith"
   artifacts:
     when: always
     paths:
