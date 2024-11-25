@@ -428,9 +428,6 @@ test-backends-37:
   stage: dagger
   resource_group: slurm_zenith
   needs: [build-noffi-zenith]
-  before_script:
-    - module load cmake
-    - module load gnu
 
 .dagger-zenith-run-policy-evaluations:
   extends: [.dagger]
