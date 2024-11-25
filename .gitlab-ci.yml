@@ -206,6 +206,7 @@ test-job-zenith-all:
   <<: *zenith_config
   extends: .test-job
   variables:
+    IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
     IRIS_ARCHS_CICD: "cuda,hip,openmp,opencl"
 
@@ -250,6 +251,7 @@ test-job-explorer:
   <<: *explorer_config
   extends: .test-job
   variables:
+    IRIS_MACHINE: "explorer"
     IRIS_TAG: "noffi"
     IRIS_ARCHS_CICD: "hip,openmp,opencl"
 
@@ -341,6 +343,8 @@ test-job-zenith-all-ffi-async-s2k:
     - echo $IRIS_ARCHS
     - echo $IRIS_MACHINE
     - echo $IRIS_ASYNC
+    - echo $OPENCL_VENDOR_PATH
+    - echo $OPENCL_PATH
     - cp -r tests tests-$IRIS_ARCHS-$IRIS_ASYNC-$IRIS_TAG-$IRIS_MACHINE$IRIS_TESTNAME
     - cd tests-$IRIS_ARCHS-$IRIS_ASYNC-$IRIS_TAG-$IRIS_MACHINE$IRIS_TESTNAME
     - echo "Test backends for test 29"
