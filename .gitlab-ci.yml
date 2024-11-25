@@ -47,18 +47,12 @@ variables:
   script:
     - echo "Installing iris to $CI_PROJECT_DIR/install"
     - IRIS_TAG=.ffi.$IRIS_MACHINE bash build.sh -DENABLE_FFI=ON -DCMAKE_BUILD_TYPE=DEBUG -DCOVERAGE=true
-  artifacts:
-    paths:
-      - $IRIS_INSTALL_ROOT.ffi.$IRIS_MACHINE
 
 .build-noffi: &build_noffi
   stage: build
   script:
     - echo "Installing iris to $CI_PROJECT_DIR/install"
     - IRIS_TAG=.noffi.$IRIS_MACHINE bash build.sh -DCMAKE_BUILD_TYPE=DEBUG -DCOVERAGE=true 
-  artifacts:
-    paths:
-      - $IRIS_INSTALL_ROOT.noffi.$IRIS_MACHINE
 
 build-ffi-explorer:
   # Using aliasin features
@@ -127,8 +121,9 @@ deploy_docs_manual-job:
   stage: test
   allow_failure: true
   script:
-#    - echo "Installing iris to $IRIS_INSTALL_ROOT"
-#    - bash build-coverage.sh
+    - echo "Installing iris to $CI_PROJECT_DIR/install"
+    - IRIS_TAG=.ffi.$IRIS_MACHINE bash build.sh -DENABLE_FFI=ON -DCMAKE_BUILD_TYPE=DEBUG -DCOVERAGE=true
+    - IRIS_TAG=.noffi.$IRIS_MACHINE bash build.sh -DCMAKE_BUILD_TYPE=DEBUG -DCOVERAGE=true 
     - echo $CI_REPOSITORY_URL
     - echo $CI_PROJECT_PATH
     - echo $IRIS_MACHINE
