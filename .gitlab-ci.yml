@@ -450,30 +450,31 @@ test-backends-37:
 
 dagger-zenith-run-policy-evaluations-synchronous-explicit-data-transfers:
   extends: [.dagger-zenith-run-policy-evaluations]
+  variables:
+    IRIS_MACHINE: "zenith"
 
 dagger-zenith-run-policy-evaluations-synchronous-dmem:
   extends: [.dagger-zenith-run-policy-evaluations]
   variables:
+    IRIS_MACHINE: "zenith"
     USE_DATA_MEMORY: --use-data-memory
 
 dagger-zenith-run-policy-evaluations-asynchronous-explicit-data-transfers:
   extends: [.dagger-zenith-run-policy-evaluations]
   variables:
+    IRIS_MACHINE: "zenith"
     IRIS_ASYNC: 1
 
 dagger-zenith-run-policy-evaluations-asynchronous-dmem:
   extends: [.dagger-zenith-run-policy-evaluations]
   variables:
+    IRIS_MACHINE: "zenith"
     IRIS_ASYNC: 1
     USE_DATA_MEMORY: --use-data-memory
 
 dagger-zenith-test-correctness:
   extends: [.dagger]
   script:
-    - source /auto/software/iris/setup_system.source
-#    - echo "Installing iris to $IRIS_INSTALL_ROOT"
-#- bash build-coverage.sh
-    - source $IRIS_INSTALL_ROOT.noffi.$IRIS_MACHINE/setup.source
     - .gitlab-ci-scripts/runner_watcher.sh $$ &
     - sbatch --partition=gpu --nodelist=zenith .gitlab-ci-scripts/slurm-dagger-test-correctness.sh
     - python3 -u .gitlab-ci-scripts/slurm-tee.py slurm-test-err.txt slurm-test-out.txt
@@ -490,10 +491,6 @@ dagger-zenith-test-correctness:
 .dagger-zenith-test-local-workgroup-sizes:
   extends: [.dagger]
   script:
-    - source /auto/software/iris/setup_system.source
-#    - echo "Installing iris to $IRIS_INSTALL_ROOT"
-#- bash build-coverage.sh
-    - source $IRIS_INSTALL_ROOT.noffi.$IRIS_MACHINE/setup.source
     - .gitlab-ci-scripts/runner_watcher.sh $$ &
     - sbatch --partition=gpu --nodelist=zenith .gitlab-ci-scripts/slurm-dagger-test-local-workgroup-sizes.sh
     - python3 -u .gitlab-ci-scripts/slurm-tee.py slurm-test-err.txt slurm-test-out.txt
@@ -513,23 +510,27 @@ dagger-zenith-test-correctness:
 dagger-zenith-test-local-workgroup-sizes-synchronous-explicit-data-transfers:
   extends: [.dagger-zenith-test-local-workgroup-sizes]
   variables:
+    IRIS_MACHINE: "zenith"
     REPEATS: 1
 
 dagger-zenith-test-local-workgroup-sizes-synchronous-dmem:
   extends: [.dagger-zenith-test-local-workgroup-sizes]
   variables:
+    IRIS_MACHINE: "zenith"
     REPEATS: 1
     USE_DATA_MEMORY: --use-data-memory
 
 dagger-zenith-test-local-workgroup-sizes-asynchronous-explicit-data-transfers:
   extends: [.dagger-zenith-test-local-workgroup-sizes]
   variables:
+    IRIS_MACHINE: "zenith"
     REPEATS: 1
     IRIS_ASYNC: 1
 
 dagger-zenith-test-local-workgroup-sizes-asynchronous-dmem:
   extends: [.dagger-zenith-test-local-workgroup-sizes]
   variables:
+    IRIS_MACHINE: "zenith"
     REPEATS: 1
     IRIS_ASYNC: 1
     USE_DATA_MEMORY: --use-data-memory
