@@ -122,7 +122,7 @@ deploy_docs_manual-job:
   allow_failure: true
   script:
     - echo "Installing iris to $CI_PROJECT_DIR/install"
-    - IRIS_TAG=.ffi.$IRIS_MACHINE bash build.sh -DENABLE_FFI=ON -DCMAKE_BUILD_TYPE=DEBUG -DCOVERAGE=true
+    # - IRIS_TAG=.ffi.$IRIS_MACHINE bash build.sh -DENABLE_FFI=ON -DCMAKE_BUILD_TYPE=DEBUG -DCOVERAGE=true
     - IRIS_TAG=.noffi.$IRIS_MACHINE bash build.sh -DCMAKE_BUILD_TYPE=DEBUG -DCOVERAGE=true 
     - echo $CI_REPOSITORY_URL
     - echo $CI_PROJECT_PATH
