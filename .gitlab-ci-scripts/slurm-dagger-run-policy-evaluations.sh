@@ -32,12 +32,15 @@ echo ---------------------------------------------------------------------------
 unset MODULEPATH_ROOT
 unset MODULEPATH
 source /etc/profile.d/lmod.sh
+module load cmake
+module load gnu
+
 # Load conda
 #source $CONDA_ROOT/etc/profile.d/conda.sh
 
 # General setup for IRIS
 source /auto/software/iris/setup_system.source
-source $IRIS_INSTALL_ROOT/setup.source
+source $IRIS_INSTALL_ROOT.noffi.$IRIS_MACHINE/setup.source
 
 set -e
 

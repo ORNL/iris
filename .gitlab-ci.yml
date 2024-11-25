@@ -46,7 +46,7 @@ variables:
   stage: build
   script:
     - echo "Installing iris to $CI_PROJECT_DIR/install"
-    - IRIS_TAG=.ffi.$IRIS_MACHINE bash build-coverage.sh -DENABLE_FFI=ON
+    - IRIS_TAG=.ffi.$IRIS_MACHINE bash build.sh -DENABLE_FFI=ON -DCMAKE_BUILD_TYPE=DEBUG -DCOVERAGE=true
   artifacts:
     paths:
       - $IRIS_INSTALL_ROOT.ffi.$IRIS_MACHINE
@@ -55,7 +55,7 @@ variables:
   stage: build
   script:
     - echo "Installing iris to $CI_PROJECT_DIR/install"
-    - IRIS_TAG=.noffi.$IRIS_MACHINE bash build-coverage.sh 
+    - IRIS_TAG=.noffi.$IRIS_MACHINE bash build.sh -DCMAKE_BUILD_TYPE=DEBUG -DCOVERAGE=true 
   artifacts:
     paths:
       - $IRIS_INSTALL_ROOT.noffi.$IRIS_MACHINE
@@ -89,15 +89,11 @@ docs-job:
   stage: docs
   needs: []
   before_script:
-#- source $CONDA_ROOT/etc/profile.d/conda.sh
-#    - conda env create --force -p ./envs -f docs/sphinx/environment.yml
-#    - conda activate ./envs
-    - python3 -m venv sphinx_venv
+    - python3 -m venv --upgrade-deps --prompt $(basename $PWD) sphinx_venv
     - source sphinx_venv/bin/activate
     - python3 -m pip install -e .
-    - python3 -m pip install sphinx breathe numpy sphinxcontrib-contentui sphinx_rtd_theme json-schema-for-humans
+    - python3 -m pip install -r docs/sphinx/requirements.txt
     - source `python3 -c 'import iris; print(iris.path)'`/setup.source 
-#    - pip install json-schema-for-humans
   script:
     - pushd docs/sphinx/source
     - python -m sphinx -T -E -b html -d _build/doctrees -D language=en . _build/html
@@ -152,7 +148,7 @@ deploy_docs_manual-job:
     - cd tests-$IRIS_ARCHS-$IRIS_ASYNC-$IRIS_TAG-$IRIS_MACHINE
     - mkdir build
     - cd build
-    - cmake .. -DIRIS=$IRIS -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++
+    - cmake .. -DIRIS=$IRIS -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DCMAKE_BUILD_TYPE=DEBUG -DCOVERAGE=true
     - make --ignore-errors
     - echo $IRIS_ARCHS
     - echo $IRIS_ASYNC
@@ -428,20 +424,14 @@ test-backends-37:
     IRIS_TESTNAME: "37_opencl_icd"
 
 .dagger:
+  tags: [slurm]
   stage: dagger
   resource_group: slurm_zenith
   needs: [build-noffi-zenith]
-  before_script:
-    - module load cmake
-    - module load gnu
 
 .dagger-zenith-run-policy-evaluations:
   extends: [.dagger]
   script:
-    - source /auto/software/iris/setup_system.source
-#    - echo "Installing iris to $IRIS_INSTALL_ROOT"
-#- bash build-coverage.sh
-    - source $IRIS_INSTALL_ROOT.noffi.$IRIS_MACHINE/setup.source
     - .gitlab-ci-scripts/runner_watcher.sh $$ &
     - sbatch --partition=gpu --nodelist=zenith .gitlab-ci-scripts/slurm-dagger-run-policy-evaluations.sh
     - python3 -u .gitlab-ci-scripts/slurm-tee.py slurm-test-err.txt slurm-test-out.txt
@@ -466,29 +456,25 @@ dagger-zenith-run-policy-evaluations-synchronous-explicit-data-transfers:
 dagger-zenith-run-policy-evaluations-synchronous-dmem:
   extends: [.dagger-zenith-run-policy-evaluations]
   variables:
-    USE_DATA_MEMORY: --use-data-memory
     IRIS_MACHINE: "zenith"
+    USE_DATA_MEMORY: --use-data-memory
 
 dagger-zenith-run-policy-evaluations-asynchronous-explicit-data-transfers:
   extends: [.dagger-zenith-run-policy-evaluations]
   variables:
-    IRIS_ASYNC: 1
     IRIS_MACHINE: "zenith"
+    IRIS_ASYNC: 1
 
 dagger-zenith-run-policy-evaluations-asynchronous-dmem:
   extends: [.dagger-zenith-run-policy-evaluations]
   variables:
+    IRIS_MACHINE: "zenith"
     IRIS_ASYNC: 1
     USE_DATA_MEMORY: --use-data-memory
-    IRIS_MACHINE: "zenith"
 
 dagger-zenith-test-correctness:
   extends: [.dagger]
   script:
-    - source /auto/software/iris/setup_system.source
-#    - echo "Installing iris to $IRIS_INSTALL_ROOT"
-#- bash build-coverage.sh
-    - source $IRIS_INSTALL_ROOT.noffi.$IRIS_MACHINE/setup.source
     - .gitlab-ci-scripts/runner_watcher.sh $$ &
     - sbatch --partition=gpu --nodelist=zenith .gitlab-ci-scripts/slurm-dagger-test-correctness.sh
     - python3 -u .gitlab-ci-scripts/slurm-tee.py slurm-test-err.txt slurm-test-out.txt
@@ -507,10 +493,6 @@ dagger-zenith-test-correctness:
 .dagger-zenith-test-local-workgroup-sizes:
   extends: [.dagger]
   script:
-    - source /auto/software/iris/setup_system.source
-#    - echo "Installing iris to $IRIS_INSTALL_ROOT"
-#- bash build-coverage.sh
-    - source $IRIS_INSTALL_ROOT.noffi.$IRIS_MACHINE/setup.source
     - .gitlab-ci-scripts/runner_watcher.sh $$ &
     - sbatch --partition=gpu --nodelist=zenith .gitlab-ci-scripts/slurm-dagger-test-local-workgroup-sizes.sh
     - python3 -u .gitlab-ci-scripts/slurm-tee.py slurm-test-err.txt slurm-test-out.txt
@@ -536,23 +518,23 @@ dagger-zenith-test-local-workgroup-sizes-synchronous-explicit-data-transfers:
 dagger-zenith-test-local-workgroup-sizes-synchronous-dmem:
   extends: [.dagger-zenith-test-local-workgroup-sizes]
   variables:
-    REPEATS: 1
     IRIS_MACHINE: "zenith"
+    REPEATS: 1
     USE_DATA_MEMORY: --use-data-memory
 
 dagger-zenith-test-local-workgroup-sizes-asynchronous-explicit-data-transfers:
   extends: [.dagger-zenith-test-local-workgroup-sizes]
   variables:
-    REPEATS: 1
     IRIS_MACHINE: "zenith"
+    REPEATS: 1
     IRIS_ASYNC: 1
 
 dagger-zenith-test-local-workgroup-sizes-asynchronous-dmem:
   extends: [.dagger-zenith-test-local-workgroup-sizes]
   variables:
+    IRIS_MACHINE: "zenith"
     REPEATS: 1
     IRIS_ASYNC: 1
-    IRIS_MACHINE: "zenith"
     USE_DATA_MEMORY: --use-data-memory
 
 coverage-collect:
@@ -583,7 +565,7 @@ coverage-collect:
   script:
 #    - echo "Installing iris to $IRIS_INSTALL_ROOT"
 #- bash build-coverage.sh
-    - source $IRIS_INSTALL_ROOT.noffi.$IRIS_MACHINE/setup.source
+    # - source $IRIS_INSTALL_ROOT.noffi.$IRIS_MACHINE/setup.source
     - python3 -m venv .venv
     - source .venv/bin/activate
     - pip install gcovr
