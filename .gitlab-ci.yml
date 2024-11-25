@@ -312,7 +312,7 @@ test-job-explorer-async-s2k:
     IRIS_ASYNC: 1
 
 test-job-zenith-all-ffi-async-s2k:
-  needs: [build-noffi-zenith]
+  needs: [build-ffi-zenith]
   <<: *zenith_config
   extends: .test-job
   variables:
