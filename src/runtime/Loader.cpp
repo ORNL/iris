@@ -45,7 +45,7 @@ int Loader::LoadExtHandle(const char *libname) {
     _trace("shared library path[%s]", realpath(map->l_name, NULL));
 #endif
   } else {
-    _trace("%s", dlerror());
+    _warning("%s", dlerror());
     return IRIS_ERROR;
   }
 #else
@@ -68,7 +68,7 @@ int Loader::LoadHandle() {
     _trace("shared library path[%s]", realpath(map->l_name, NULL));
 #endif
   } else {
-    _trace("%s", dlerror());
+    _warning("%s", dlerror());
     return IRIS_ERROR;
   }
 #else

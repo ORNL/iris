@@ -460,22 +460,27 @@ test-backends-37:
 
 dagger-zenith-run-policy-evaluations-synchronous-explicit-data-transfers:
   extends: [.dagger-zenith-run-policy-evaluations]
+  variables:
+    IRIS_MACHINE: "zenith"
 
 dagger-zenith-run-policy-evaluations-synchronous-dmem:
   extends: [.dagger-zenith-run-policy-evaluations]
   variables:
     USE_DATA_MEMORY: --use-data-memory
+    IRIS_MACHINE: "zenith"
 
 dagger-zenith-run-policy-evaluations-asynchronous-explicit-data-transfers:
   extends: [.dagger-zenith-run-policy-evaluations]
   variables:
     IRIS_ASYNC: 1
+    IRIS_MACHINE: "zenith"
 
 dagger-zenith-run-policy-evaluations-asynchronous-dmem:
   extends: [.dagger-zenith-run-policy-evaluations]
   variables:
     IRIS_ASYNC: 1
     USE_DATA_MEMORY: --use-data-memory
+    IRIS_MACHINE: "zenith"
 
 dagger-zenith-test-correctness:
   extends: [.dagger]
@@ -490,6 +495,8 @@ dagger-zenith-test-correctness:
     - echo "Errors $(wc -l apps/dagger/errors.txt)"
     - cat apps/dagger/errors.txt
     - if [ -s apps/dagger/errors.txt ]; then exit 1; fi
+  variables:
+    IRIS_MACHINE: "zenith"
   artifacts:
     when: always
     paths:
@@ -523,18 +530,21 @@ dagger-zenith-test-correctness:
 dagger-zenith-test-local-workgroup-sizes-synchronous-explicit-data-transfers:
   extends: [.dagger-zenith-test-local-workgroup-sizes]
   variables:
+    IRIS_MACHINE: "zenith"
     REPEATS: 1
 
 dagger-zenith-test-local-workgroup-sizes-synchronous-dmem:
   extends: [.dagger-zenith-test-local-workgroup-sizes]
   variables:
     REPEATS: 1
+    IRIS_MACHINE: "zenith"
     USE_DATA_MEMORY: --use-data-memory
 
 dagger-zenith-test-local-workgroup-sizes-asynchronous-explicit-data-transfers:
   extends: [.dagger-zenith-test-local-workgroup-sizes]
   variables:
     REPEATS: 1
+    IRIS_MACHINE: "zenith"
     IRIS_ASYNC: 1
 
 dagger-zenith-test-local-workgroup-sizes-asynchronous-dmem:
@@ -542,6 +552,7 @@ dagger-zenith-test-local-workgroup-sizes-asynchronous-dmem:
   variables:
     REPEATS: 1
     IRIS_ASYNC: 1
+    IRIS_MACHINE: "zenith"
     USE_DATA_MEMORY: --use-data-memory
 
 coverage-collect:
