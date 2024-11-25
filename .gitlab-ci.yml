@@ -27,6 +27,8 @@ variables:
 
 .zenith-config: &zenith_config
   tags: [zenith]
+  variables:
+    IRIS_MACHINE: "zenith"
   before_script:
     - echo "Setting up environment..."
     - source /auto/software/iris/setup_system.source
@@ -36,6 +38,8 @@ variables:
 
 .explorer-config: &explorer_config
   tags: [explorer]
+  variables:
+    IRIS_MACHINE: explorer
   before_script:
     - echo "Setting up environment..."
     - source /auto/software/iris/setup_system.source
@@ -156,10 +160,14 @@ deploy_docs_manual-job:
     - make --ignore-errors
     - echo $IRIS_ARCHS
     - echo $IRIS_ASYNC
+    - echo $OPENCL_VENDOR_PATH
+    - echo $OPENCL_PATH
     - ctest --output-junit testRes.xml 
     - cd ../..
     - echo $IRIS_ARCHS
     - echo $IRIS_ASYNC
+    - echo $OPENCL_VENDOR_PATH
+    - echo $OPENCL_PATH
     - python3 -m venv .venv-schema
     - source .venv-schema/bin/activate
     - pip install jsoncomment jsonschema
@@ -198,7 +206,6 @@ test-job-zenith-all:
   <<: *zenith_config
   extends: .test-job
   variables:
-    IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
     IRIS_ARCHS_CICD: "cuda,hip,openmp,opencl"
 
@@ -243,7 +250,6 @@ test-job-explorer:
   <<: *explorer_config
   extends: .test-job
   variables:
-    IRIS_MACHINE: explorer
     IRIS_TAG: "noffi"
     IRIS_ARCHS_CICD: "hip,openmp,opencl"
 
