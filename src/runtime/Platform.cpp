@@ -141,6 +141,7 @@ void Platform::Clean() {
       sprintf(cmd, "rm -rf %s", tmp_dir_);
       system(cmd);
   }
+  for (int i = 0; i < ndevs_; i++) delete devs_[i];
 #ifdef AUTO_PAR
 #ifdef AUTO_SHADOW
   printf("Total Shadow created %d\n", auto_dag_->get_number_of_shadow());
@@ -1089,6 +1090,7 @@ int Platform::DeviceSynchronize(int ndevs, int* devices) {
   //TaskWait(brs_task);
   // Task::Ok returns only Device::Ok. However, the parent task doesn't map to any 
   // device. It is meaningless to call task->Ok(). Hence, returning  IRIS_SUCCESS.
+  delete task;
   return IRIS_SUCCESS;
 }
 
