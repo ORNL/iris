@@ -439,10 +439,6 @@ test-backends-37:
 .dagger-zenith-run-policy-evaluations:
   extends: [.dagger]
   script:
-    - source /auto/software/iris/setup_system.source
-#    - echo "Installing iris to $IRIS_INSTALL_ROOT"
-#- bash build-coverage.sh
-    - source $IRIS_INSTALL_ROOT.noffi.$IRIS_MACHINE/setup.source
     - .gitlab-ci-scripts/runner_watcher.sh $$ &
     - sbatch --partition=gpu --nodelist=zenith .gitlab-ci-scripts/slurm-dagger-run-policy-evaluations.sh
     - python3 -u .gitlab-ci-scripts/slurm-tee.py slurm-test-err.txt slurm-test-out.txt
