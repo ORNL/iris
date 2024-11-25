@@ -92,7 +92,7 @@ docs-job:
     - python3 -m venv --upgrade-deps --prompt $(basename $PWD) sphinx_venv
     - source sphinx_venv/bin/activate
     - python3 -m pip install -e .
-    - python3 -m pip install -f docs/sphinx/requirements.txt
+    - python3 -m pip install -r docs/sphinx/requirements.txt
     - source `python3 -c 'import iris; print(iris.path)'`/setup.source 
   script:
     - pushd docs/sphinx/source
