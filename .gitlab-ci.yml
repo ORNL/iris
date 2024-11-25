@@ -572,7 +572,7 @@ coverage-collect:
   script:
 #    - echo "Installing iris to $IRIS_INSTALL_ROOT"
 #- bash build-coverage.sh
-    - source $IRIS_INSTALL_ROOT.noffi.$IRIS_MACHINE/setup.source
+    # - source $IRIS_INSTALL_ROOT.noffi.$IRIS_MACHINE/setup.source
     - python3 -m venv .venv
     - source .venv/bin/activate
     - pip install gcovr
