@@ -1,3 +1,4 @@
+#include <unistd.h>
 #include "Device.h"
 #include "Debug.h"
 #include "Command.h"
@@ -56,6 +57,9 @@ Device::Device(int devno, int platform) {
 }
 
 Device::~Device() {
+  while(active_tasks_ > 0) {
+    sleep(1);
+  }
   _event_prof_debug("Device:%d deleted\n", devno());
   FreeDestroyEvents();
   if (peer_access_ != NULL) delete [] peer_access_;
@@ -1405,7 +1409,7 @@ void Device::ExecuteMemInDMemIn(Task *task, Command* cmd, DataMem *mem) {
             for(const auto & child : mem->child()) {
                 DataMem *child_mem = child.first;
                 size_t offset = child.second;
-                void **arch_ptr = (void **)(tmp_host_ptr + offset);
+                void **arch_ptr = (void **)((char *)tmp_host_ptr + offset);
                 InvokeDMemInDataTransfer<DataMem>(task, cmd, child_mem);
                 *arch_ptr = child_mem->arch(devno());
                 //printf("parsing child mem:%lu size:%lu parent_tmp_host_ptr:%p parent_host:%p offset:%lu child_dev_arch:%p child_arch_ptr:%p child_host_arch_ptr:%p\n", child_mem->uid(), child_mem->size(), tmp_host_ptr, host, offset, *arch_ptr, arch_ptr, host+offset);

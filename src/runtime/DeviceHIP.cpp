@@ -61,6 +61,7 @@ DeviceHIP::DeviceHIP(LoaderHIP* ld, LoaderHost2HIP *host2hip_ld, hipDevice_t dev
 }
 
 DeviceHIP::~DeviceHIP() {
+    _trace("HIP device:%d is getting destroyed", devno());
     host2hip_ld_->finalize(devno());
     if (julia_if_ != NULL) julia_if_->finalize(devno());
     for (int i = 0; i < nqueues_; i++) {
@@ -69,8 +70,9 @@ DeviceHIP::~DeviceHIP() {
       //DestroyEvent(start_time_event_[i]);
     }
     delete [] streams_;
-    if (is_async(false)) 
+    if (is_async(false) && platform_obj_->is_event_profile_enabled()) 
         DestroyEvent(single_start_time_event_);
+    _trace("HIP device:%d is destroyed", devno());
 }
 bool DeviceHIP::IsAddrValidForD2D(BaseMem *mem, void *ptr)
 {

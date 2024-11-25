@@ -103,7 +103,7 @@ DeviceOpenCL::~DeviceOpenCL() {
         cl_int err = ld_->clReleaseCommandQueue(default_queue_);
         _clerror(err);
     }
-    if (is_async(false)) 
+    if (is_async(false) && platform_obj_->is_event_profile_enabled()) 
         DestroyEvent(single_start_time_event_);
 }
 

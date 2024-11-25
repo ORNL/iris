@@ -132,9 +132,6 @@ void Platform::Clean() {
   if (scheduler_) delete scheduler_;
   for (int i = 0; i < ndevs_; i++) delete workers_[i];
   if (queue_) delete queue_;
-  for(LoaderHost2OpenCL *ld : loaderHost2OpenCL_) {
-      delete ld;
-  }
   if (tmp_dir_[0] != '\0') {
       char cmd[270];
       //printf("Removing tmp_dir:%s\n", tmp_dir_);
@@ -154,6 +151,10 @@ void Platform::Clean() {
       Mem *mem = *I;
       delete mem;
   }*/
+  // All loaders should be cleared now only
+  for(LoaderHost2OpenCL *ld : loaderHost2OpenCL_) {
+      delete ld;
+  }
   loaderHost2OpenCL_.clear();
   if (loaderHost2HIP_) delete loaderHost2HIP_;
   if (loaderHost2CUDA_) delete loaderHost2CUDA_;
