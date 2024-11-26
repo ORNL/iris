@@ -555,7 +555,7 @@ dagger-zenith-test-local-workgroup-sizes-asynchronous-dmem:
     USE_DATA_MEMORY: --use-data-memory
 
 coverage-collect:
-  tags: [zenith]
+  <<: *zenith_config
   stage: coverage
   variables:
     IRIS_MACHINE: "zenith"
@@ -577,8 +577,6 @@ coverage-collect:
     - test-backends-37
     - test-backends-29-async-s2k
     - test-backends-34-async-s2k
-  before_script:
-    - source /auto/software/iris/setup_system.source
   script:
 #    - echo "Installing iris to $IRIS_INSTALL_ROOT"
 #- bash build-coverage.sh
