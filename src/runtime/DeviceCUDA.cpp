@@ -234,6 +234,7 @@ void DeviceCUDA::UnRegisterPin(void *host)
 
 DeviceCUDA::~DeviceCUDA() {
     _trace("CUDA device:%d is getting destroyed", devno());
+    ld_->cuCtxSetCurrent(ctx_);
     host2cuda_ld_->finalize(devno());
     if (julia_if_ != NULL) julia_if_->finalize(devno());
     for (int i = 0; i < nqueues_; i++) {
