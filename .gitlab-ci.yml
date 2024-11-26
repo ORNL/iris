@@ -441,11 +441,9 @@ test-backends-37:
 .dagger-zenith-run-policy-evaluations:
   extends: [.dagger]
   script:
-    - echo "PWD: $(pwd)"
     - .gitlab-ci-scripts/runner_watcher.sh $$ &
     - sbatch --partition=gpu --nodelist=zenith .gitlab-ci-scripts/slurm-dagger-run-policy-evaluations.sh
     - python3 -u .gitlab-ci-scripts/slurm-tee.py slurm-test-err.txt slurm-test-out.txt
-    - echo "PWD: $(pwd)"
     - echo "Errors $(wc -l apps/dagger/errors.txt)"
     - cat apps/dagger/errors.txt
     - if [ -s apps/dagger/errors.txt ]; then exit 1; fi
