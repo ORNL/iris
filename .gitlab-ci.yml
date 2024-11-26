@@ -170,9 +170,9 @@ deploy_docs_manual-job:
     - echo $IRIS_ARCHS
     - echo $IRIS_ASYNC
     - pip install gcovr
-    - gcc --version
-    - gcov --version
-    - gcovr --xml-pretty --exclude-unreachable-branches --print-summary -o coverage.xml --gcov-ignore-parse-errors --json ${CI_JOB_NAME}-coverage.json --html-details coverage.html
+    - export GCOV_PATH=$(which gcov)
+    - echo $GCOV_PATH
+    - gcovr --gcov-executable=$GCOV_PATH --xml-pretty --exclude-unreachable-branches --print-summary -o coverage.xml --gcov-ignore-parse-errors --json ${CI_JOB_NAME}-coverage.json --html-details coverage.html
   coverage: /^\s*lines:\s*\d+.\d+\%/
   artifacts:
     name: "$CI_JOB_NAME"
@@ -357,7 +357,9 @@ test-job-zenith-all-ffi-async-s2k:
     - python3 -m venv .venv
     - source .venv/bin/activate
     - pip install gcovr
-    - gcovr --xml-pretty --exclude-unreachable-branches --print-summary -o coverage.xml --gcov-ignore-parse-errors --json ${CI_JOB_NAME}-coverage.json --html-details coverage.html
+    - export GCOV_PATH=$(which gcov)
+    - echo $GCOV_PATH
+    - gcovr --gcov-executable=$GCOV_PATH --xml-pretty --exclude-unreachable-branches --print-summary -o coverage.xml --gcov-ignore-parse-errors --json ${CI_JOB_NAME}-coverage.json --html-details coverage.html
   coverage: /^\s*lines:\s*\d+.\d+\%/
   artifacts:
     name: "$CI_JOB_NAME"
@@ -584,7 +586,9 @@ coverage-collect:
     - python3 -m venv .venv
     - source .venv/bin/activate
     - pip install gcovr
-    - gcovr --xml-pretty --exclude-unreachable-branches --print-summary -o coverage.xml --gcov-ignore-parse-errors --json ${CI_JOB_NAME}-coverage.json --html-details coverage.html -a '*coverage.json'
+    - export GCOV_PATH=$(which gcov)
+    - echo $GCOV_PATH
+    - gcovr --gcov-executable=$GCOV_PATH --xml-pretty --exclude-unreachable-branches --print-summary -o coverage.xml --gcov-ignore-parse-errors --json ${CI_JOB_NAME}-coverage.json --html-details coverage.html -a '*coverage.json'
   coverage: /^\s*lines:\s*\d+.\d+\%/
   artifacts:
     name: "$CI_JOB_NAME"
