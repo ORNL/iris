@@ -28,6 +28,8 @@ variables:
 .zenith-config: &zenith_config
   tags: [zenith]
   before_script:
+    - which gcc
+    - gcc --version
     - echo "Setting up environment..."
     - source /auto/software/iris/setup_system.source
     - source /opt/xilinx/xrt/setup.sh
@@ -121,6 +123,8 @@ deploy_docs_manual-job:
   stage: test
   allow_failure: true
   script:
+    - which gcc
+    - gcc --version
     - echo "Installing iris to $CI_PROJECT_DIR/install"
     # - IRIS_TAG=.ffi.$IRIS_MACHINE bash build.sh -DENABLE_FFI=ON -DCMAKE_BUILD_TYPE=DEBUG -DCOVERAGE=true
     - IRIS_TAG=.$IRIS_TAG.$IRIS_MACHINE bash build.sh -DENABLE_FFI=$IRIS_FFI_FLAG -DCMAKE_BUILD_TYPE=DEBUG -DCOVERAGE=true 
@@ -162,6 +166,8 @@ deploy_docs_manual-job:
     - echo $IRIS_ASYNC
     - bash .gitlab-ci-scripts/schema_check.sh
   after_script:
+    - which gcc
+    - gcc --version
     - export IRIS_ARCHS=$IRIS_ARCHS_CICD
     - echo $IRIS_ARCHS
     - echo $IRIS_ASYNC
