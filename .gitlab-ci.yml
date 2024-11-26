@@ -28,15 +28,11 @@ variables:
 .zenith-config: &zenith_config
   tags: [zenith]
   before_script:
-    - which gcc
-    - gcc --version
     - echo "Setting up environment..."
     - source /auto/software/iris/setup_system.source
     - source /opt/xilinx/xrt/setup.sh
     - module load cmake
     - module load gnu
-    - which gcc
-    - gcc --version
 
 .explorer-config: &explorer_config
   tags: [explorer]
@@ -125,8 +121,6 @@ deploy_docs_manual-job:
   stage: test
   allow_failure: true
   script:
-    - which gcc
-    - gcc --version
     - echo "Installing iris to $CI_PROJECT_DIR/install"
     # - IRIS_TAG=.ffi.$IRIS_MACHINE bash build.sh -DENABLE_FFI=ON -DCMAKE_BUILD_TYPE=DEBUG -DCOVERAGE=true
     - IRIS_TAG=.$IRIS_TAG.$IRIS_MACHINE bash build.sh -DENABLE_FFI=$IRIS_FFI_FLAG -DCMAKE_BUILD_TYPE=DEBUG -DCOVERAGE=true 
@@ -173,8 +167,6 @@ deploy_docs_manual-job:
     - source /opt/xilinx/xrt/setup.sh
     - module load cmake
     - module load gnu
-    - which gcc
-    - gcc --version
     - export IRIS_ARCHS=$IRIS_ARCHS_CICD
     - echo $IRIS_ARCHS
     - echo $IRIS_ASYNC
@@ -183,9 +175,7 @@ deploy_docs_manual-job:
     - echo $IRIS_ARCHS
     - echo $IRIS_ASYNC
     - pip install gcovr
-    - export GCOV_PATH=$(which gcov)
-    - echo $GCOV_PATH
-    - gcovr --gcov-executable=$GCOV_PATH --xml-pretty --exclude-unreachable-branches --print-summary -o coverage.xml --gcov-ignore-parse-errors --json ${CI_JOB_NAME}-coverage.json --html-details coverage.html
+    - gcovr --xml-pretty --exclude-unreachable-branches --print-summary -o coverage.xml --gcov-ignore-parse-errors --json ${CI_JOB_NAME}-coverage.json --html-details coverage.html
   coverage: /^\s*lines:\s*\d+.\d+\%/
   artifacts:
     name: "$CI_JOB_NAME"
@@ -375,9 +365,7 @@ test-job-zenith-all-ffi-async-s2k:
     - python3 -m venv .venv
     - source .venv/bin/activate
     - pip install gcovr
-    - export GCOV_PATH=$(which gcov)
-    - echo $GCOV_PATH
-    - gcovr --gcov-executable=$GCOV_PATH --xml-pretty --exclude-unreachable-branches --print-summary -o coverage.xml --gcov-ignore-parse-errors --json ${CI_JOB_NAME}-coverage.json --html-details coverage.html
+    - gcovr --xml-pretty --exclude-unreachable-branches --print-summary -o coverage.xml --gcov-ignore-parse-errors --json ${CI_JOB_NAME}-coverage.json --html-details coverage.html
   coverage: /^\s*lines:\s*\d+.\d+\%/
   artifacts:
     name: "$CI_JOB_NAME"
@@ -602,9 +590,7 @@ coverage-collect:
     - python3 -m venv .venv
     - source .venv/bin/activate
     - pip install gcovr
-    - export GCOV_PATH=$(which gcov)
-    - echo $GCOV_PATH
-    - gcovr --gcov-executable=$GCOV_PATH --xml-pretty --exclude-unreachable-branches --print-summary -o coverage.xml --gcov-ignore-parse-errors --json ${CI_JOB_NAME}-coverage.json --html-details coverage.html -a '*coverage.json'
+    - gcovr --xml-pretty --exclude-unreachable-branches --print-summary -o coverage.xml --gcov-ignore-parse-errors --json ${CI_JOB_NAME}-coverage.json --html-details coverage.html -a '*coverage.json'
   coverage: /^\s*lines:\s*\d+.\d+\%/
   artifacts:
     name: "$CI_JOB_NAME"
