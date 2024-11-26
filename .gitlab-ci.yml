@@ -35,6 +35,8 @@ variables:
     - source /opt/xilinx/xrt/setup.sh
     - module load cmake
     - module load gnu
+    - which gcc
+    - gcc --version
 
 .explorer-config: &explorer_config
   tags: [explorer]
