@@ -185,7 +185,7 @@ deploy_docs_manual-job:
         path: coverage.xml
 
 test-job-zenith-all:
-  needs: [build-noffi-zenith]
+  #needs: [build-noffi-zenith]
   <<: *zenith_config
   extends: .test-job
   variables:
@@ -195,7 +195,7 @@ test-job-zenith-all:
     IRIS_ARCHS_CICD: "cuda,hip,openmp,opencl"
 
 test-job-zenith-cuda:
-  needs: [build-noffi-zenith]
+  #needs: [build-noffi-zenith]
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
@@ -205,7 +205,7 @@ test-job-zenith-cuda:
   extends: .test-job
 
 test-job-zenith-hip:
-  needs: [build-noffi-zenith]
+  #needs: [build-noffi-zenith]
   <<: *zenith_config
   extends: .test-job
   variables:
@@ -215,7 +215,7 @@ test-job-zenith-hip:
     IRIS_ARCHS_CICD: "hip"
 
 test-job-zenith-openmp:
-  needs: [build-noffi-zenith]
+  #needs: [build-noffi-zenith]
   <<: *zenith_config
   extends: .test-job
   variables:
@@ -225,7 +225,7 @@ test-job-zenith-openmp:
     IRIS_ARCHS_CICD: "openmp"
 
 test-job-zenith-opencl:
-  needs: [build-noffi-zenith]
+  #needs: [build-noffi-zenith]
   <<: *zenith_config
   extends: .test-job
   variables:
@@ -235,7 +235,7 @@ test-job-zenith-opencl:
     IRIS_ARCHS_CICD: "opencl"
 
 test-job-explorer:
-  needs: [build-noffi-explorer]
+  #needs: [build-noffi-explorer]
   <<: *explorer_config
   extends: .test-job
   variables:
@@ -245,7 +245,7 @@ test-job-explorer:
     IRIS_ARCHS_CICD: "hip,openmp,opencl"
 
 test-job-zenith-all-async-s2k:
-  needs: [build-noffi-zenith]
+  #needs: [build-noffi-zenith]
   <<: *zenith_config
   extends: .test-job
   variables:
@@ -256,7 +256,7 @@ test-job-zenith-all-async-s2k:
     IRIS_ASYNC: 1
 
 test-job-zenith-cuda-async-s2k:
-  needs: [build-noffi-zenith]
+  #needs: [build-noffi-zenith]
   <<: *zenith_config
   extends: .test-job
   variables:
@@ -267,7 +267,7 @@ test-job-zenith-cuda-async-s2k:
     IRIS_ASYNC: 1
 
 test-job-zenith-hip-async-s2k:
-  needs: [build-noffi-zenith]
+  #needs: [build-noffi-zenith]
   <<: *zenith_config
   extends: .test-job
   variables:
@@ -278,7 +278,7 @@ test-job-zenith-hip-async-s2k:
     IRIS_ASYNC: 1
 
 test-job-zenith-openmp-async-s2k:
-  needs: [build-noffi-zenith]
+  #needs: [build-noffi-zenith]
   <<: *zenith_config
   extends: .test-job
   variables:
@@ -289,7 +289,7 @@ test-job-zenith-openmp-async-s2k:
     IRIS_ASYNC: 1
 
 test-job-zenith-opencl-async-s2k:
-  needs: [build-noffi-zenith]
+  #needs: [build-noffi-zenith]
   <<: *zenith_config
   extends: .test-job
   variables:
@@ -300,7 +300,7 @@ test-job-zenith-opencl-async-s2k:
     IRIS_ASYNC: 1
 
 test-job-explorer-async-s2k:
-  needs: [build-noffi-explorer]
+  #needs: [build-noffi-explorer]
   <<: *explorer_config
   extends: .test-job
   variables:
@@ -311,7 +311,7 @@ test-job-explorer-async-s2k:
     IRIS_ASYNC: 1
 
 test-job-zenith-all-ffi-async-s2k:
-  needs: [build-ffi-zenith]
+  #needs: [build-ffi-zenith]
   <<: *zenith_config
   extends: .test-job
   variables:
@@ -373,7 +373,7 @@ test-job-zenith-all-ffi-async-s2k:
 #   tags: [leconte]
 
 test-backends-29:
-  needs: [build-noffi-zenith]
+  #needs: [build-noffi-zenith]
   <<: *zenith_config
   extends: .test-backend
   variables:
@@ -384,7 +384,7 @@ test-backends-29:
     IRIS_TESTNAME: "29_data_mem"
 
 test-backends-34:
-  needs: [build-noffi-zenith]
+  #needs: [build-noffi-zenith]
   <<: *zenith_config
   extends: .test-backend
   variables:
@@ -399,7 +399,7 @@ test-backends-34:
 #   tags: [leconte]
 
 test-backends-29-async-s2k:
-  needs: [build-noffi-zenith]
+  #needs: [build-noffi-zenith]
   <<: *zenith_config
   extends: .test-backend
   variables:
@@ -411,7 +411,7 @@ test-backends-29-async-s2k:
     IRIS_TESTNAME: "29_data_mem"
 
 test-backends-34-async-s2k:
-  needs: [build-noffi-zenith]
+  #needs: [build-noffi-zenith]
   <<: *zenith_config
   extends: .test-backend
   variables:
@@ -423,7 +423,7 @@ test-backends-34-async-s2k:
     IRIS_TESTNAME: "34_set_mem"
 
 test-backends-37:
-  needs: [build-noffi-zenith]
+  #needs: [build-noffi-zenith]
   <<: *zenith_config
   extends: .test-backend
   variables:
