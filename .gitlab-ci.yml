@@ -168,6 +168,11 @@ deploy_docs_manual-job:
     - echo $IRIS_ASYNC
     - bash .gitlab-ci-scripts/schema_check.sh
   after_script:
+    - echo "Setting up environment..."
+    - source /auto/software/iris/setup_system.source
+    - source /opt/xilinx/xrt/setup.sh
+    - module load cmake
+    - module load gnu
     - which gcc
     - gcc --version
     - export IRIS_ARCHS=$IRIS_ARCHS_CICD
@@ -361,6 +366,11 @@ test-job-zenith-all-ffi-async-s2k:
     - cd $IRIS_TESTNAME
     - bash test_backends.sh
   after_script:
+    - echo "Setting up environment..."
+    - source /auto/software/iris/setup_system.source
+    - source /opt/xilinx/xrt/setup.sh
+    - module load cmake
+    - module load gnu
     - export IRIS_ARCHS=$IRIS_ARCHS_CICD
     - python3 -m venv .venv
     - source .venv/bin/activate
