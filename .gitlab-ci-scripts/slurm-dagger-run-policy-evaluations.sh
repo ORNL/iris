@@ -40,12 +40,15 @@ module load gnu
 
 # General setup for IRIS
 source /auto/software/iris/setup_system.source
-source $IRIS_INSTALL_ROOT.noffi.$IRIS_MACHINE/setup.source
+IRIS_TAG=.$IRIS_TAG.$IRIS_MACHINE.$IRIS_TESTNAME IRIS_INSTALL_ROOT=$IRIS_INSTALL_ROOT bash build.sh -DENABLE_FFI=$IRIS_FFI_FLAG -DCMAKE_BUILD_TYPE=DEBUG -DCOVERAGE=true 
+source $IRIS_INSTALL_ROOT.$IRIS_TAG.$IRIS_MACHINE.$IRIS_TESTNAME/setup.source
 
 set -e
 
 # Local conda environment setup
+echo "Before push PWD: $(pwd)"
 pushd apps/dagger
+echo "After push PWD: $(pwd)"
 #conda env create --force -p ./envs -f dagger.yaml
 #conda activate ./envs
 
@@ -56,7 +59,9 @@ make -f Makefile.venv clean
 REPEATS=10 make -f Makefile.venv run-policy
 make -f Makefile.venv validate-run-policy
 #./run-policy-evaluation.sh
+echo "PWD $(pwd)"
 popd
+echo "After pop PWD $(pwd)"
 
 # Collect Output
 #grep -e '\[E\]' test-out.txt > errors.txt

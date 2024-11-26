@@ -11,7 +11,7 @@ if [ $MACHINE != "Zenith" ] ; then
   exit
 fi
 
-export LD_LIBRARY_PATH=$IRIS/lib:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=$IRIS/lib64:$IRIS/lib:$LD_LIBRARY_PATH
 
 make clean
 make kernel.ptx kernel.hip test29_data_mem
