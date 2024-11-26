@@ -238,8 +238,10 @@ DeviceCUDA::~DeviceCUDA() {
     host2cuda_ld_->finalize(devno());
     if (julia_if_ != NULL) julia_if_->finalize(devno());
     for (int i = 0; i < nqueues_; i++) {
-      CUresult err = ld_->cuStreamDestroy(streams_[i]);
-      _cuerror(err);
+      if (streams_[i] != NULL) {
+        CUresult err = ld_->cuStreamDestroy(streams_[i]);
+        _cuerror(err);
+      }
       //DestroyEvent(start_time_event_[i]);
     }
     delete [] streams_;

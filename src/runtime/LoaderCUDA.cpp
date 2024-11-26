@@ -13,7 +13,6 @@ LoaderCUDA::~LoaderCUDA() {
 const char * LoaderCUDA::library() {
     char* path = NULL;
     Platform::GetPlatform()->EnvironmentGet("LIB_CUDA", &path, NULL);
-    printf("CUDA path:%s\n", path);
     return path;
 }
 int LoaderCUDA::LoadFunctions() {

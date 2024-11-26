@@ -1,12 +1,14 @@
 
 ENV["IRIS_ARCHS"] = "cuda"
-ENV["IRIS"] = "/noback/nqx/Ranger/tmp/iris.dev.prof/install.zenith"
-ENV["LD_LIBRARY_PATH"] =  "/noback/nqx/Ranger/tmp/iris.dev.prof/install.zenith/lib:" * ENV["LD_LIBRARY_PATH"]
+#ENV["IRIS"] = "/noback/nqx/Ranger/tmp/iris.dev.prof/install.zenith"
+#ENV["LD_LIBRARY_PATH"] =  "/noback/nqx/Ranger/tmp/iris.dev.prof/install.zenith/lib:" * ENV["LD_LIBRARY_PATH"]
 const iris_path = ENV["IRIS"]
 const iris_jl = iris_path * "/include/iris/IrisHRT.jl"
+ENV["LD_LIBRARY_PATH"] =  iris_path * "/lib64:" * iris_path * "/lib:" * ENV["LD_LIBRARY_PATH"]
 include(iris_jl)
 using .IrisHRT
 using Base.Threads
+println("IRIS path: ", iris_path)
 println("Size of Cint in bytes: ", sizeof(Cint), " bytes")
 println("Size of Cint in bits: ", sizeof(Cint) * 8, " bits")
 
