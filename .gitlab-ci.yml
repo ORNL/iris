@@ -12,6 +12,8 @@ stages:
     - echo "Setting up environment..."
     - source /auto/software/iris/setup_system.source
     - source /opt/xilinx/xrt/setup.sh
+    - module load cmake
+    - module load gnu
 
 .excl_runner:
   extends: [.iris_common]
@@ -29,12 +31,16 @@ variables:
     - echo "Setting up environment..."
     - source /auto/software/iris/setup_system.source
     - source /opt/xilinx/xrt/setup.sh
+    - module load cmake
+    - module load gnu
 
 .explorer-config: &explorer_config
   tags: [explorer]
   before_script:
     - echo "Setting up environment..."
     - source /auto/software/iris/setup_system.source
+    - module load cmake
+    - module load gnu
 
 .build-ffi: &build_ffi
   stage: build
@@ -156,6 +162,11 @@ deploy_docs_manual-job:
     - echo $IRIS_ASYNC
     - bash .gitlab-ci-scripts/schema_check.sh
   after_script:
+    - echo "Setting up environment..."
+    - source /auto/software/iris/setup_system.source
+    - source /opt/xilinx/xrt/setup.sh
+    - module load cmake
+    - module load gnu
     - export IRIS_ARCHS=$IRIS_ARCHS_CICD
     - echo $IRIS_ARCHS
     - echo $IRIS_ASYNC
@@ -164,8 +175,6 @@ deploy_docs_manual-job:
     - echo $IRIS_ARCHS
     - echo $IRIS_ASYNC
     - pip install gcovr
-    - gcc --version
-    - gcov --version
     - gcovr --xml-pretty --exclude-unreachable-branches --print-summary -o coverage.xml --gcov-ignore-parse-errors --json ${CI_JOB_NAME}-coverage.json --html-details coverage.html
   coverage: /^\s*lines:\s*\d+.\d+\%/
   artifacts:
@@ -347,6 +356,11 @@ test-job-zenith-all-ffi-async-s2k:
     - cd $IRIS_TESTNAME
     - bash test_backends.sh
   after_script:
+    - echo "Setting up environment..."
+    - source /auto/software/iris/setup_system.source
+    - source /opt/xilinx/xrt/setup.sh
+    - module load cmake
+    - module load gnu
     - export IRIS_ARCHS=$IRIS_ARCHS_CICD
     - python3 -m venv .venv
     - source .venv/bin/activate
@@ -547,7 +561,7 @@ dagger-zenith-test-local-workgroup-sizes-asynchronous-dmem:
     USE_DATA_MEMORY: --use-data-memory
 
 coverage-collect:
-  tags: [zenith]
+  <<: *zenith_config
   stage: coverage
   variables:
     IRIS_MACHINE: "zenith"
@@ -569,8 +583,6 @@ coverage-collect:
     - test-backends-37
     - test-backends-29-async-s2k
     - test-backends-34-async-s2k
-  before_script:
-    - source /auto/software/iris/setup_system.source
   script:
 #    - echo "Installing iris to $IRIS_INSTALL_ROOT"
 #- bash build-coverage.sh
