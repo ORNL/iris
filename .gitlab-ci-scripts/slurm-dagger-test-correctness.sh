@@ -40,12 +40,19 @@ module load gnu
 
 # General setup for IRIS
 source /auto/software/iris/setup_system.source
-source $IRIS_INSTALL_ROOT.noffi.$IRIS_MACHINE/setup.source
+IRIS_TAG=.$IRIS_TAG.$IRIS_MACHINE.$IRIS_TESTNAME IRIS_INSTALL_ROOT=$IRIS_INSTALL_ROOT bash build.sh -DENABLE_FFI=$IRIS_FFI_FLAG -DCMAKE_BUILD_TYPE=DEBUG -DCOVERAGE=true 
+source $IRIS_INSTALL_ROOT.$IRIS_TAG.$IRIS_MACHINE.$IRIS_TESTNAME/setup.source
 
 set -e
 
 # Local conda environment setup
-pushd apps/dagger
+if [ "x$IRIS_TAG" = "x" ]; then
+echo "Working on apps/dagger"
+else
+cp -r apps/dagger apps/dagger$IRIS_TAG
+echo "Working on apps/dagger$IRIS_TAG"
+fi
+pushd apps/dagger$IRIS_TAG
 #conda env create --force -p ./envs -f dagger.yaml
 #conda activate ./envs
 

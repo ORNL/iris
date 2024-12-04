@@ -8,6 +8,7 @@
 #SBATCH --exclusive
 #SBATCH --time="1:01:00"
 
+set -x;
 GIT_ROOT=$(git rev-parse --show-toplevel)
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
@@ -43,11 +44,18 @@ source /auto/software/iris/setup_system.source
 IRIS_TAG=.$IRIS_TAG.$IRIS_MACHINE.$IRIS_TESTNAME IRIS_INSTALL_ROOT=$IRIS_INSTALL_ROOT bash build.sh -DENABLE_FFI=$IRIS_FFI_FLAG -DCMAKE_BUILD_TYPE=DEBUG -DCOVERAGE=true 
 source $IRIS_INSTALL_ROOT.$IRIS_TAG.$IRIS_MACHINE.$IRIS_TESTNAME/setup.source
 
-set -e
+set -x;
 
 # Local conda environment setup
 echo "Before push PWD: $(pwd)"
-pushd apps/dagger
+if [ "x$IRIS_TAG" = "x" ]; then
+echo "Working on apps/dagger"
+else
+cp -r apps/dagger apps/dagger$IRIS_TAG
+echo "Working on apps/dagger$IRIS_TAG"
+fi
+pushd apps/dagger$IRIS_TAG
+CWD=$(pwd)
 echo "After push PWD: $(pwd)"
 #conda env create --force -p ./envs -f dagger.yaml
 #conda activate ./envs
@@ -55,8 +63,13 @@ echo "After push PWD: $(pwd)"
 # Run command
 #export REPEATS=10
 make -f Makefile.venv setup
+echo "PWD1: $(pwd)"
 make -f Makefile.venv clean
+echo "PWD2: $(pwd)"
+cd $CWD 
+echo "PWD2-1: $(pwd)"
 REPEATS=10 make -f Makefile.venv run-policy
+echo "PWD3: $(pwd)"
 make -f Makefile.venv validate-run-policy
 #./run-policy-evaluation.sh
 echo "PWD $(pwd)"
