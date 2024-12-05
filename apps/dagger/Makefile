@@ -1,4 +1,6 @@
 include ../makefile_defs.mk
+CXX=g++
+CC=gcc
 
 all: dagger_runner dagger_test
 

@@ -296,6 +296,32 @@ IRIS_MEM = 0x1
 IRIS_DMEM = 0x2
 IRIS_DMEM_REGION = 0x4
 
+def get_iris_type(np_dtype):
+    if np_dtype == np.float64:
+        return iris_double
+    if np_dtype == np.float32:
+        return iris_float
+    if np_dtype == np.int8:
+        return iris_int8
+    if np_dtype == np.int16:
+        return iris_int16
+    if np_dtype == np.int32:
+        return iris_int32
+    if np_dtype == np.int64:
+        return iris_int64
+    if np_dtype == np.uint8:
+        return iris_uint8
+    if np_dtype == np.uint16:
+        return iris_uint16
+    if np_dtype == np.uint32:
+        return iris_uint32
+    if np_dtype == np.uint64:
+        return iris_uint64
+    if np_dtype.itemsize == 4:
+        return iris_uint32
+    if np_dtype.itemsize == 8:
+        return iris_uint64
+    return iris_double
 class iris_kernel(Structure):
     _fields_ = [("class_obj", c_void_p), ("uid", c_ulong)]
 
@@ -618,8 +644,16 @@ class dmem_base:
       if reuse and c_host.value in dmem_base.track_host2dmems:
         return dmem_base.track_host2dmems[c_host.value], IRIS_DMEM
       m = iris_mem()
+      host_size = np.array(host.shape)
+      dim = len(host_size)
       size = host.nbytes
-      dll.iris_data_mem_create(byref(m), c_host, c_size_t(size))
+      if dim == 1:
+        dll.iris_data_mem_create(byref(m), c_host, c_size_t(size))
+      elif dim > 1:
+        chost_size = (c_size_t * dim)(*host_size)
+        elem_size = host.dtype.itemsize
+        elem_type = get_iris_type(host.dtype)
+        dll.iris_data_mem_create_nd(byref(m), c_host, chost_size, c_int(dim), c_size_t(elem_size), c_int(elem_type))
       dmem_base.track_host2dmems[c_host.value] = m
       return m, IRIS_DMEM
     elif len(args) == 2:
@@ -675,7 +709,7 @@ class dmem(dmem_base):
       output.append(dll.call_ret(dll.iris_data_mem_get_region_uid, np.uint32, self.handle, np.int32(i)))
     return output
 
-class dmem_new(dmem_base):
+class dmem_noreuse(dmem_base):
   def __init__(self, *args):
     super().__init__(False, *args)
   def get_region_uids(self):

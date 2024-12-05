@@ -46,19 +46,13 @@ variables:
   stage: build
   script:
     - echo "Installing iris to $CI_PROJECT_DIR/install"
-    - IRIS_TAG=.ffi.$IRIS_MACHINE bash build.sh -DENABLE_FFI=ON
-  artifacts:
-    paths:
-      - $IRIS_INSTALL_ROOT.ffi.$IRIS_MACHINE
+    - IRIS_TAG=.ffi.$IRIS_MACHINE bash build.sh -DENABLE_FFI=ON -DCMAKE_BUILD_TYPE=DEBUG -DCOVERAGE=true
 
 .build-noffi: &build_noffi
   stage: build
   script:
     - echo "Installing iris to $CI_PROJECT_DIR/install"
-    - IRIS_TAG=.noffi.$IRIS_MACHINE bash build.sh 
-  artifacts:
-    paths:
-      - $IRIS_INSTALL_ROOT.noffi.$IRIS_MACHINE
+    - IRIS_TAG=.noffi.$IRIS_MACHINE bash build.sh -DCMAKE_BUILD_TYPE=DEBUG -DCOVERAGE=true 
 
 build-ffi-explorer:
   # Using aliasin features
@@ -89,15 +83,11 @@ docs-job:
   stage: docs
   needs: []
   before_script:
-#- source $CONDA_ROOT/etc/profile.d/conda.sh
-#    - conda env create --force -p ./envs -f docs/sphinx/environment.yml
-#    - conda activate ./envs
-    - python3 -m venv sphinx_venv
+    - python3 -m venv --upgrade-deps --prompt $(basename $PWD) sphinx_venv
     - source sphinx_venv/bin/activate
     - python3 -m pip install -e .
-    - python3 -m pip install sphinx breathe numpy sphinxcontrib-contentui sphinx_rtd_theme json-schema-for-humans
+    - python3 -m pip install -r docs/sphinx/requirements.txt
     - source `python3 -c 'import iris; print(iris.path)'`/setup.source 
-#    - pip install json-schema-for-humans
   script:
     - pushd docs/sphinx/source
     - python -m sphinx -T -E -b html -d _build/doctrees -D language=en . _build/html
@@ -131,8 +121,9 @@ deploy_docs_manual-job:
   stage: test
   allow_failure: true
   script:
-#    - echo "Installing iris to $IRIS_INSTALL_ROOT"
-#    - bash build-coverage.sh
+    - echo "Installing iris to $CI_PROJECT_DIR/install"
+    # - IRIS_TAG=.ffi.$IRIS_MACHINE bash build.sh -DENABLE_FFI=ON -DCMAKE_BUILD_TYPE=DEBUG -DCOVERAGE=true
+    - IRIS_TAG=.$IRIS_TAG.$IRIS_MACHINE bash build.sh -DENABLE_FFI=$IRIS_FFI_FLAG -DCMAKE_BUILD_TYPE=DEBUG -DCOVERAGE=true 
     - echo $CI_REPOSITORY_URL
     - echo $CI_PROJECT_PATH
     - echo $IRIS_MACHINE
@@ -171,6 +162,11 @@ deploy_docs_manual-job:
     - echo $IRIS_ASYNC
     - bash .gitlab-ci-scripts/schema_check.sh
   after_script:
+    - echo "Setting up environment..."
+    - source /auto/software/iris/setup_system.source
+    - source /opt/xilinx/xrt/setup.sh
+    - module load cmake
+    - module load gnu
     - export IRIS_ARCHS=$IRIS_ARCHS_CICD
     - echo $IRIS_ARCHS
     - echo $IRIS_ASYNC
@@ -198,125 +194,138 @@ deploy_docs_manual-job:
         path: coverage.xml
 
 test-job-zenith-all:
-  needs: [build-noffi-zenith]
+  #needs: [build-noffi-zenith]
   <<: *zenith_config
   extends: .test-job
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
+    IRIS_FFI_FLAG: OFF
     IRIS_ARCHS_CICD: "cuda,hip,openmp,opencl"
 
 test-job-zenith-cuda:
-  needs: [build-noffi-zenith]
+  #needs: [build-noffi-zenith]
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
+    IRIS_FFI_FLAG: OFF
     IRIS_ARCHS_CICD: "cuda"
   <<: *zenith_config
   extends: .test-job
 
 test-job-zenith-hip:
-  needs: [build-noffi-zenith]
+  #needs: [build-noffi-zenith]
   <<: *zenith_config
   extends: .test-job
   variables:
     IRIS_MACHINE: "zenith"
+    IRIS_FFI_FLAG: OFF
     IRIS_TAG: "noffi"
     IRIS_ARCHS_CICD: "hip"
 
 test-job-zenith-openmp:
-  needs: [build-noffi-zenith]
+  #needs: [build-noffi-zenith]
   <<: *zenith_config
   extends: .test-job
   variables:
     IRIS_MACHINE: "zenith"
+    IRIS_FFI_FLAG: OFF
     IRIS_TAG: "noffi"
     IRIS_ARCHS_CICD: "openmp"
 
 test-job-zenith-opencl:
-  needs: [build-noffi-zenith]
+  #needs: [build-noffi-zenith]
   <<: *zenith_config
   extends: .test-job
   variables:
     IRIS_MACHINE: "zenith"
+    IRIS_FFI_FLAG: OFF
     IRIS_TAG: "noffi"
     IRIS_ARCHS_CICD: "opencl"
 
 test-job-explorer:
-  needs: [build-noffi-explorer]
+  #needs: [build-noffi-explorer]
   <<: *explorer_config
   extends: .test-job
   variables:
     IRIS_MACHINE: "explorer"
+    IRIS_FFI_FLAG: OFF
     IRIS_TAG: "noffi"
     IRIS_ARCHS_CICD: "hip,openmp,opencl"
 
 test-job-zenith-all-async-s2k:
-  needs: [build-noffi-zenith]
+  #needs: [build-noffi-zenith]
   <<: *zenith_config
   extends: .test-job
   variables:
     IRIS_MACHINE: "zenith"
+    IRIS_FFI_FLAG: OFF
     IRIS_TAG: "noffi"
     IRIS_ARCHS_CICD: "cuda,hip,openmp,opencl"
     IRIS_ASYNC: 1
 
 test-job-zenith-cuda-async-s2k:
-  needs: [build-noffi-zenith]
+  #needs: [build-noffi-zenith]
   <<: *zenith_config
   extends: .test-job
   variables:
     IRIS_MACHINE: "zenith"
+    IRIS_FFI_FLAG: OFF
     IRIS_TAG: "noffi"
     IRIS_ARCHS_CICD: "cuda"
     IRIS_ASYNC: 1
 
 test-job-zenith-hip-async-s2k:
-  needs: [build-noffi-zenith]
+  #needs: [build-noffi-zenith]
   <<: *zenith_config
   extends: .test-job
   variables:
     IRIS_MACHINE: "zenith"
+    IRIS_FFI_FLAG: OFF
     IRIS_TAG: "noffi"
     IRIS_ARCHS_CICD: "hip"
     IRIS_ASYNC: 1
 
 test-job-zenith-openmp-async-s2k:
-  needs: [build-noffi-zenith]
+  #needs: [build-noffi-zenith]
   <<: *zenith_config
   extends: .test-job
   variables:
     IRIS_MACHINE: "zenith"
+    IRIS_FFI_FLAG: OFF
     IRIS_TAG: "noffi"
     IRIS_ARCHS_CICD: "openmp"
     IRIS_ASYNC: 1
 
 test-job-zenith-opencl-async-s2k:
-  needs: [build-noffi-zenith]
+  #needs: [build-noffi-zenith]
   <<: *zenith_config
   extends: .test-job
   variables:
     IRIS_MACHINE: "zenith"
+    IRIS_FFI_FLAG: OFF
     IRIS_TAG: "noffi"
     IRIS_ARCHS_CICD: "opencl"
     IRIS_ASYNC: 1
 
 test-job-explorer-async-s2k:
-  needs: [build-noffi-explorer]
+  #needs: [build-noffi-explorer]
   <<: *explorer_config
   extends: .test-job
   variables:
     IRIS_MACHINE: explorer
+    IRIS_FFI_FLAG: OFF
     IRIS_TAG: "noffi"
     IRIS_ARCHS_CICD: "hip,openmp,opencl"
     IRIS_ASYNC: 1
 
 test-job-zenith-all-ffi-async-s2k:
-  needs: [build-ffi-zenith]
+  #needs: [build-ffi-zenith]
   <<: *zenith_config
   extends: .test-job
   variables:
     IRIS_MACHINE: "zenith"
+    IRIS_FFI_FLAG: ON
     IRIS_TAG: "ffi"
     IRIS_ARCHS_CICD: "cuda,hip,openmp,opencl"
     IRIS_ASYNC: 1
@@ -326,10 +335,10 @@ test-job-zenith-all-ffi-async-s2k:
   allow_failure: true
   script:
 #    - echo "Installing iris to $IRIS_INSTALL_ROOT"
-#    - bash build-coverage.sh
     - echo $CI_REPOSITORY_URL
     - echo $CI_PROJECT_PATH
-    - source $IRIS_INSTALL_ROOT.noffi.$IRIS_MACHINE/setup.source
+    - IRIS_TAG=.$IRIS_TAG.$IRIS_MACHINE.$IRIS_TESTNAME bash build.sh -DENABLE_FFI=$IRIS_FFI_FLAG -DCMAKE_BUILD_TYPE=DEBUG -DCOVERAGE=true 
+    - source $IRIS_INSTALL_ROOT.$IRIS_TAG.$IRIS_MACHINE.$IRIS_TESTNAME/setup.source
     - export IRIS_ARCHS=$IRIS_ARCHS_CICD
     - echo $PATH
     - echo $LD_LIBRARY_PATH
@@ -347,6 +356,11 @@ test-job-zenith-all-ffi-async-s2k:
     - cd $IRIS_TESTNAME
     - bash test_backends.sh
   after_script:
+    - echo "Setting up environment..."
+    - source /auto/software/iris/setup_system.source
+    - source /opt/xilinx/xrt/setup.sh
+    - module load cmake
+    - module load gnu
     - export IRIS_ARCHS=$IRIS_ARCHS_CICD
     - python3 -m venv .venv
     - source .venv/bin/activate
@@ -372,22 +386,24 @@ test-job-zenith-all-ffi-async-s2k:
 #   tags: [leconte]
 
 test-backends-29:
-  needs: [build-noffi-zenith]
+  #needs: [build-noffi-zenith]
   <<: *zenith_config
   extends: .test-backend
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
+    IRIS_FFI_FLAG: OFF
     IRIS_ARCHS_CICD: "cuda,hip,openmp,opencl"
     IRIS_TESTNAME: "29_data_mem"
 
 test-backends-34:
-  needs: [build-noffi-zenith]
+  #needs: [build-noffi-zenith]
   <<: *zenith_config
   extends: .test-backend
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
+    IRIS_FFI_FLAG: OFF
     IRIS_ARCHS_CICD: "cuda,hip,openmp,opencl"
     IRIS_TESTNAME: "34_set_mem"
 
@@ -396,156 +412,165 @@ test-backends-34:
 #   tags: [leconte]
 
 test-backends-29-async-s2k:
-  needs: [build-noffi-zenith]
+  #needs: [build-noffi-zenith]
   <<: *zenith_config
   extends: .test-backend
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
+    IRIS_FFI_FLAG: OFF
     IRIS_ARCHS_CICD: "cuda,hip,openmp,opencl"
     IRIS_ASYNC: 1
     IRIS_TESTNAME: "29_data_mem"
 
 test-backends-34-async-s2k:
-  needs: [build-noffi-zenith]
+  #needs: [build-noffi-zenith]
   <<: *zenith_config
   extends: .test-backend
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
+    IRIS_FFI_FLAG: OFF
     IRIS_ARCHS_CICD: "cuda,hip,openmp,opencl"
     IRIS_ASYNC: 1
     IRIS_TESTNAME: "34_set_mem"
 
 test-backends-37:
-  needs: [build-noffi-zenith]
+  #needs: [build-noffi-zenith]
   <<: *zenith_config
   extends: .test-backend
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: "noffi"
+    IRIS_FFI_FLAG: OFF
     IRIS_ARCHS_CICD: "cuda,hip,openmp,opencl"
     IRIS_TESTNAME: "37_opencl_icd"
 
 .dagger:
+  tags: [slurm]
   stage: dagger
   resource_group: slurm_zenith
   needs: [build-noffi-zenith]
-  before_script:
-    - module load cmake
-    - module load gnu
 
 .dagger-zenith-run-policy-evaluations:
   extends: [.dagger]
   script:
-    - source /auto/software/iris/setup_system.source
-#    - echo "Installing iris to $IRIS_INSTALL_ROOT"
-#- bash build-coverage.sh
-    - source $IRIS_INSTALL_ROOT.noffi.$IRIS_MACHINE/setup.source
     - .gitlab-ci-scripts/runner_watcher.sh $$ &
     - sbatch --partition=gpu --nodelist=zenith .gitlab-ci-scripts/slurm-dagger-run-policy-evaluations.sh
     - python3 -u .gitlab-ci-scripts/slurm-tee.py slurm-test-err.txt slurm-test-out.txt
-    - echo "Errors $(wc -l apps/dagger/errors.txt)"
-    - cat apps/dagger/errors.txt
-    - if [ -s apps/dagger/errors.txt ]; then exit 1; fi
+    - echo "Errors $(wc -l apps/dagger$IRIS_TAG/errors.txt)"
+    - cat apps/dagger$IRIS_TAG/errors.txt
+    - if [ -s apps/dagger$IRIS_TAG/errors.txt ]; then exit 1; fi
   artifacts:
     when: always
     paths:
-      - apps/dagger/test-out.txt 
-      - apps/dagger/errors.txt 
-      - apps/dagger/dagger-payloads
-      - apps/dagger/dagger-graphs
-      - apps/dagger/dagger-results
+      - apps/dagger$IRIS_TAG/test-out.txt 
+      - apps/dagger$IRIS_TAG/errors.txt 
+      - apps/dagger$IRIS_TAG/dagger-payloads
+      - apps/dagger$IRIS_TAG/dagger-graphs
+      - apps/dagger$IRIS_TAG/dagger-results
       - slurm*.txt
 
 dagger-zenith-run-policy-evaluations-synchronous-explicit-data-transfers:
   extends: [.dagger-zenith-run-policy-evaluations]
+  variables:
+    IRIS_MACHINE: "zenith"
+    IRIS_TAG: .run_sync_exp_dt
 
 dagger-zenith-run-policy-evaluations-synchronous-dmem:
   extends: [.dagger-zenith-run-policy-evaluations]
   variables:
+    IRIS_MACHINE: "zenith"
+    IRIS_TAG: .run_sync_dmem
     USE_DATA_MEMORY: --use-data-memory
 
 dagger-zenith-run-policy-evaluations-asynchronous-explicit-data-transfers:
   extends: [.dagger-zenith-run-policy-evaluations]
   variables:
+    IRIS_MACHINE: "zenith"
+    IRIS_TAG: .run_async_exp_dt
     IRIS_ASYNC: 1
 
 dagger-zenith-run-policy-evaluations-asynchronous-dmem:
   extends: [.dagger-zenith-run-policy-evaluations]
   variables:
+    IRIS_MACHINE: "zenith"
+    IRIS_TAG: .run_async_dmem
     IRIS_ASYNC: 1
     USE_DATA_MEMORY: --use-data-memory
 
 dagger-zenith-test-correctness:
   extends: [.dagger]
   script:
-    - source /auto/software/iris/setup_system.source
-#    - echo "Installing iris to $IRIS_INSTALL_ROOT"
-#- bash build-coverage.sh
-    - source $IRIS_INSTALL_ROOT.noffi.$IRIS_MACHINE/setup.source
     - .gitlab-ci-scripts/runner_watcher.sh $$ &
     - sbatch --partition=gpu --nodelist=zenith .gitlab-ci-scripts/slurm-dagger-test-correctness.sh
     - python3 -u .gitlab-ci-scripts/slurm-tee.py slurm-test-err.txt slurm-test-out.txt
-    - echo "Errors $(wc -l apps/dagger/errors.txt)"
-    - cat apps/dagger/errors.txt
-    - if [ -s apps/dagger/errors.txt ]; then exit 1; fi
+    - echo "Errors $(wc -l apps/dagger$IRIS_TAG/errors.txt)"
+    - cat apps/dagger$IRIS_TAG/errors.txt
+    - if [ -s apps/dagger$IRIS_TAG/errors.txt ]; then exit 1; fi
+  variables:
+    IRIS_MACHINE: "zenith"
+    IRIS_TAG: .test-correctness
   artifacts:
     when: always
     paths:
-      - apps/dagger/test-out.txt 
-      - apps/dagger/errors.txt 
+      - apps/dagger$IRIS_TAG/test-out.txt 
+      - apps/dagger$IRIS_TAG/errors.txt 
       - slurm*.txt
 
 .dagger-zenith-test-local-workgroup-sizes:
   extends: [.dagger]
   script:
-    - source /auto/software/iris/setup_system.source
-#    - echo "Installing iris to $IRIS_INSTALL_ROOT"
-#- bash build-coverage.sh
-    - source $IRIS_INSTALL_ROOT.noffi.$IRIS_MACHINE/setup.source
     - .gitlab-ci-scripts/runner_watcher.sh $$ &
     - sbatch --partition=gpu --nodelist=zenith .gitlab-ci-scripts/slurm-dagger-test-local-workgroup-sizes.sh
     - python3 -u .gitlab-ci-scripts/slurm-tee.py slurm-test-err.txt slurm-test-out.txt
-    - echo "Errors $(wc -l apps/dagger/errors.txt)"
-    - cat apps/dagger/errors.txt
-    - if [ -s apps/dagger/errors.txt ]; then exit 1; fi
+    - echo "Errors $(wc -l apps/dagger$IRIS_TAG/errors.txt)"
+    - cat apps/dagger$IRIS_TAG/errors.txt
+    - if [ -s apps/dagger$IRIS_TAG/errors.txt ]; then exit 1; fi
   artifacts:
     when: always
     paths:
-      - apps/dagger/test-out.txt 
-      - apps/dagger/errors.txt 
-      - apps/dagger/dagger-payloads
-      - apps/dagger/dagger-graphs
-      - apps/dagger/dagger-results
+      - apps/dagger$IRIS_TAG/test-out.txt 
+      - apps/dagger$IRIS_TAG/errors.txt 
+      - apps/dagger$IRIS_TAG/dagger-payloads
+      - apps/dagger$IRIS_TAG/dagger-graphs
+      - apps/dagger$IRIS_TAG/dagger-results
       - slurm*.txt
 
 dagger-zenith-test-local-workgroup-sizes-synchronous-explicit-data-transfers:
   extends: [.dagger-zenith-test-local-workgroup-sizes]
   variables:
+    IRIS_MACHINE: "zenith"
+    IRIS_TAG: .local_workgroup_sync_exp_dt
     REPEATS: 1
 
 dagger-zenith-test-local-workgroup-sizes-synchronous-dmem:
   extends: [.dagger-zenith-test-local-workgroup-sizes]
   variables:
+    IRIS_MACHINE: "zenith"
     REPEATS: 1
+    IRIS_TAG: .local_workgroup_sync_dmem
     USE_DATA_MEMORY: --use-data-memory
 
 dagger-zenith-test-local-workgroup-sizes-asynchronous-explicit-data-transfers:
   extends: [.dagger-zenith-test-local-workgroup-sizes]
   variables:
+    IRIS_MACHINE: "zenith"
     REPEATS: 1
+    IRIS_TAG: .local_workgroup_async_exp_dt
     IRIS_ASYNC: 1
 
 dagger-zenith-test-local-workgroup-sizes-asynchronous-dmem:
   extends: [.dagger-zenith-test-local-workgroup-sizes]
   variables:
+    IRIS_MACHINE: "zenith"
+    IRIS_TAG: .local_workgroup_async_dmem
     REPEATS: 1
     IRIS_ASYNC: 1
     USE_DATA_MEMORY: --use-data-memory
 
 coverage-collect:
-  tags: [zenith]
+  <<: *zenith_config
   stage: coverage
   variables:
     IRIS_MACHINE: "zenith"
@@ -567,12 +592,10 @@ coverage-collect:
     - test-backends-37
     - test-backends-29-async-s2k
     - test-backends-34-async-s2k
-  before_script:
-    - source /auto/software/iris/setup_system.source
   script:
 #    - echo "Installing iris to $IRIS_INSTALL_ROOT"
 #- bash build-coverage.sh
-    - source $IRIS_INSTALL_ROOT.noffi.$IRIS_MACHINE/setup.source
+    # - source $IRIS_INSTALL_ROOT.noffi.$IRIS_MACHINE/setup.source
     - python3 -m venv .venv
     - source .venv/bin/activate
     - pip install gcovr

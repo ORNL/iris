@@ -1,5 +1,6 @@
 #include "LoaderCUDA.h"
 #include "Debug.h"
+#include "Platform.h"
 
 namespace iris {
 namespace rt {
@@ -8,6 +9,11 @@ LoaderCUDA::LoaderCUDA() {
 }
 
 LoaderCUDA::~LoaderCUDA() {
+}
+const char * LoaderCUDA::library() {
+    char* path = NULL;
+    Platform::GetPlatform()->EnvironmentGet("LIB_CUDA", &path, NULL);
+    return path;
 }
 int LoaderCUDA::LoadFunctions() {
   LOADFUNC(cuInit);

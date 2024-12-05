@@ -65,8 +65,10 @@ DeviceHIP::~DeviceHIP() {
     host2hip_ld_->finalize(devno());
     if (julia_if_ != NULL) julia_if_->finalize(devno());
     for (int i = 0; i < nqueues_; i++) {
-      hipError_t err = ld_->hipStreamDestroy(streams_[i]);
-      _hiperror(err);
+      if (streams_[i] != NULL) {
+        hipError_t err = ld_->hipStreamDestroy(streams_[i]);
+        _hiperror(err);
+      }
       //DestroyEvent(start_time_event_[i]);
     }
     delete [] streams_;

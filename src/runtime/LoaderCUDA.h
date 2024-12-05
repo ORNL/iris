@@ -13,7 +13,7 @@ public:
   ~LoaderCUDA();
 
   const char* library_precheck() { return "cuInit"; }
-  const char* library() { return "libcuda.so"; }
+  const char* library();// { return "libcuda.so"; }
   int LoadFunctions();
 
   CUresult (*cuInit)(unsigned int Flags);

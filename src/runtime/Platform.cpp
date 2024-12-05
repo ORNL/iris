@@ -441,6 +441,7 @@ int Platform::EnvironmentInit() {
   EnvironmentSet("KERNEL_SRC_SPV",      "kernel.cl",          false);
   EnvironmentSet("KERNEL_BIN_SPV",      "kernel.spv",         false);
   EnvironmentSet("KERNEL_JULIA",        "libjulia.so",        false);
+  EnvironmentSet("LIB_CUDA",            "libcuda.so",         false);
   EnvironmentSet("KERNEL_HOST2CUDA","kernel.host2cuda.so",false);
   EnvironmentSet("KERNEL_HOST2HIP", "kernel.host2hip.so", false);
   EnvironmentSet("KERNEL_HOST2OPENCL","kernel.host2opencl.so",false);
