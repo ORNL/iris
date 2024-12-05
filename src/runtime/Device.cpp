@@ -601,7 +601,7 @@ void Device::ExecuteInit(Command* cmd) {
          kernel_path_ = string(bin); 
           //strncpy(kernel_path_, bin, strlen(bin)+1);
     }
-    if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
+    if (errid_ == IRIS_ERROR) _error("iret[%d]", errid_);
   }
   errid_ = Init();
   if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
