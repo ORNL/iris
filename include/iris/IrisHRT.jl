@@ -40,6 +40,8 @@ module IrisHRT
     end
     lib = Libdl.dlopen(libiris)
     println(Core.stdout, "PWD: $cwd")
+    println(Core.stdout, "CUDA availability: $cuda_available")
+    println(Core.stdout, "HIP availability: $hip_available")
 
     # Define enums
     @enum StreamPolicy STREAM_POLICY_DEFAULT=0 STREAM_POLICY_SAME_FOR_TASK=1 STREAM_POLICY_GIVE_ALL_STREAMS_TO_KERNEL=2
@@ -498,11 +500,9 @@ module IrisHRT
             CUDA.@async @cuda threads=threads blocks=blocks stream=stream func(args_tuple...)
         else
             iris_println("---------Synchronous CUDA execution $blocks $threads func:$func----------")
-            gc_state = @ccall(jl_gc_safe_enter()::Int8)
             CUDA.@sync begin
                 @cuda threads=threads blocks=blocks saxpy_cuda(args_tuple...)
             end
-            @ccall(jl_gc_safe_leave(gc_state::Int8)::Cvoid)
 
             #CUDA.@sync @cuda threads=threads blocks=blocks func(args_tuple...)
             #func1(threads, blocks, args_tuple)

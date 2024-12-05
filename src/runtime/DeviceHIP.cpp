@@ -125,11 +125,18 @@ void DeviceHIP::EnablePeerAccess()
 int DeviceHIP::Compile(char* src) {
   char cmd[1024];
   memset(cmd, 0, 256);
-  sprintf(cmd, "hipcc --genco %s -o %s", src, kernel_path());
+  sprintf(cmd, "hipcc --genco %s -o %s > /dev/null 2>&1", src, kernel_path());
   if (system(cmd) != EXIT_SUCCESS) {
-    _error("cmd[%s]", cmd);
-    worker_->platform()->IncrementErrorCount();
-    return IRIS_ERROR;
+    int result = system("hipcc --version > /dev/null 2>&1");
+    if (result == 0) {
+        _error("cmd[%s]", cmd);
+        worker_->platform()->IncrementErrorCount();
+        return IRIS_ERROR;
+    }
+    else {
+        _warning("hipcc is not available for JIT compilation of cmd [%s]", cmd);
+        return IRIS_WARNING;
+    }
   }
   return IRIS_SUCCESS;
 }
