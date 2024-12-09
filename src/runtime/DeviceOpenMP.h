@@ -25,6 +25,7 @@ public:
   int KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, size_t off);
   int KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws);
   int Synchronize();
+  int Compile(char* src, const char *out, const char *flags);
   int AddCallback(Task* task);
   bool SupportJIT() { return false; }
   void *GetSymbol(const char *name)  { 

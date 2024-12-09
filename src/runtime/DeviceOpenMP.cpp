@@ -42,6 +42,31 @@ DeviceOpenMP::~DeviceOpenMP() {
 void DeviceOpenMP::TaskPre(Task *task) {
 }
 
+int DeviceOpenMP::Compile(char* src, const char *out, const char *flags) {
+  char default_comp_flags[] = "";
+  char cmd[1024];
+  memset(cmd, 0, 256);
+  if (flags == NULL) 
+      flags = default_comp_flags;
+  if (out == NULL) 
+      out = kernel_path();
+  sprintf(cmd, "g++ %s -o %s %s > /dev/null 2>&1", src, out, flags);
+  //printf("Cmd: %s\n", cmd);
+  if (system(cmd) != EXIT_SUCCESS) {
+    int result = system("g++ --version > /dev/null 2>&1");
+    if (result == 0) {
+        _error("cmd[%s]", cmd);
+        worker_->platform()->IncrementErrorCount();
+        return IRIS_ERROR;
+    }
+    else {
+        _warning("g++ is not available for JIT compilation of cmd [%s]", cmd);
+        return IRIS_WARNING;
+    }
+  }
+  return IRIS_SUCCESS;
+}
+
 int DeviceOpenMP::GetProcessorNameIntel(char* cpuinfo) {
   char* c1 = strstr(cpuinfo, "model name\t: ");
   if (!c1) return IRIS_ERROR;
@@ -98,6 +123,10 @@ int DeviceOpenMP::Init() {
   if (julia_if_ != NULL) julia_if_->init(devno());
   set_first_event_cpu_begin_time(timer_->Now());
   set_first_event_cpu_end_time(timer_->Now());
+  char flags[128];
+  sprintf(flags, "-shared -fopenmp -fPIC");
+  LoadDefaultKernelLibrary("DEFAULT_OMP_KERNELS", flags);
+
   return IRIS_SUCCESS;
 }
 
@@ -115,7 +144,20 @@ int DeviceOpenMP::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool rese
     return IRIS_ERROR;
   }
   _trace("Allocated mem:%lu addr:%p, size:%lu reset:%d", mem->uid(), *mem_addr, size, reset);
-  if (reset) memset(*mpmem, 0, size);
+  if (reset) {
+      if (mem->reset_data().reset_type_ == iris_reset_memset) {
+          memset(*mpmem, 0, size);
+      }
+      else if (ld_default() != NULL) {
+          pair<bool, int8_t> out = mem->IsResetPossibleWithMemset();
+          if (out.first) {
+              memset(*mpmem, out.second, size);
+          }
+          else {
+              CallMemReset(mem, size, NULL);
+          }
+      }
+  }
   return IRIS_SUCCESS;
 }
 

@@ -424,8 +424,9 @@ int Platform::EnvironmentInit() {
 #else
   EnvironmentSet("ARCHS",  "openmp:cuda:hip:levelzero:hexagon:opencl",  false);
 #endif
-  EnvironmentSet("DEFAULT_CUDA_KERNELS", "default_gpu_kernels.cpp", false);
-  EnvironmentSet("DEFAULT_HIP_KERNELS",  "default_gpu_kernels.cpp", false);
+  EnvironmentSet("DEFAULT_OMP_KERNELS",  "default_cpu_gpu_kernels.cpp", false);
+  EnvironmentSet("DEFAULT_CUDA_KERNELS", "default_cpu_gpu_kernels.cpp", false);
+  EnvironmentSet("DEFAULT_HIP_KERNELS",  "default_cpu_gpu_kernels.cpp", false);
   EnvironmentSet("TMPDIR",               tmp_dir_,               false);
   EnvironmentSet("OPENCL_VENDORS",       "all",                  false);
   EnvironmentSet("INCLUDE_DIR",          "include/iris",         false);

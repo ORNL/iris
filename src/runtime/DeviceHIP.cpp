@@ -341,9 +341,9 @@ int DeviceHIP::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset) 
           pair<bool, int8_t> out = mem->IsResetPossibleWithMemset();
           if (out.first) {
               if (l_async)
-                  err = ld_->hipMemsetAsync(*hipmem, 0, size, streams_[stream]);
+                  err = ld_->hipMemsetAsync(*hipmem, out.second, size, streams_[stream]);
               else
-                  err = ld_->hipMemset(*hipmem, 0, size);
+                  err = ld_->hipMemset(*hipmem, out.second, size);
               _hiperror(err);
               if (err != hipSuccess) {
                   worker_->platform()->IncrementErrorCount();

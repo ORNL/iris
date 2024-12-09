@@ -541,9 +541,9 @@ int DeviceCUDA::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset)
           pair<bool, int8_t> out = mem->IsResetPossibleWithMemset();
           if (out.first) {
               if (l_async) 
-                  err = ld_->cudaMemsetAsync((void *)(*cumem), 0, size, streams_[stream]);
+                  err = ld_->cudaMemsetAsync((void *)(*cumem), out.second, size, streams_[stream]);
               else
-                  err = ld_->cudaMemset((void *)(*cumem), 0, size);
+                  err = ld_->cudaMemset((void *)(*cumem), out.second, size);
           }
           else {
               if (l_async)
