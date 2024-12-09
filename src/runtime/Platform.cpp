@@ -136,7 +136,8 @@ void Platform::Clean() {
       char cmd[270];
       //printf("Removing tmp_dir:%s\n", tmp_dir_);
       sprintf(cmd, "rm -rf %s", tmp_dir_);
-      system(cmd);
+      int result = system(cmd);
+      (void)result;
   }
   for (int i = 0; i < ndevs_; i++) delete devs_[i];
 #ifdef AUTO_PAR
@@ -423,25 +424,27 @@ int Platform::EnvironmentInit() {
 #else
   EnvironmentSet("ARCHS",  "openmp:cuda:hip:levelzero:hexagon:opencl",  false);
 #endif
-  EnvironmentSet("TMPDIR", tmp_dir_,                                 false);
-
-  EnvironmentSet("OPENCL_VENDORS",     "all",             false);
-  EnvironmentSet("KERNEL_DIR",      "",                   false);
-  EnvironmentSet("KERNEL_SRC_CUDA",     "kernel.cu",          false);
-  EnvironmentSet("KERNEL_BIN_CUDA",     "kernel.ptx",         false);
-  EnvironmentSet("KERNEL_XILINX_XCLBIN", "kernel.xilinx.xclbin",  false);
-  EnvironmentSet("KERNEL_FPGA_XCLBIN",   "kernel-fpga.xclbin",  false);
-  EnvironmentSet("KERNEL_INTEL_AOCX", "kernel.intel.aocx",  false);
-  EnvironmentSet("KERNEL_SRC_HEXAGON",  "kernel.hexagon.cpp", false);
-  EnvironmentSet("KERNEL_BIN_HEXAGON",  "kernel.hexagon.so",  false);
-  EnvironmentSet("KERNEL_SRC_HIP",      "kernel.hip.cpp",     false);
-  EnvironmentSet("KERNEL_BIN_HIP",      "kernel.hip",         false);
-  EnvironmentSet("KERNEL_SRC_OPENMP",   "kernel.openmp.h",    false);
-  EnvironmentSet("KERNEL_BIN_OPENMP",   "kernel.openmp.so",   false);
-  EnvironmentSet("KERNEL_SRC_SPV",      "kernel.cl",          false);
-  EnvironmentSet("KERNEL_BIN_SPV",      "kernel.spv",         false);
-  EnvironmentSet("KERNEL_JULIA",        "libjulia.so",        false);
-  EnvironmentSet("LIB_CUDA",            "libcuda.so",         false);
+  EnvironmentSet("DEFAULT_CUDA_KERNELS", "default_gpu_kernels.cpp", false);
+  EnvironmentSet("DEFAULT_HIP_KERNELS",  "default_gpu_kernels.cpp", false);
+  EnvironmentSet("TMPDIR",               tmp_dir_,               false);
+  EnvironmentSet("OPENCL_VENDORS",       "all",                  false);
+  EnvironmentSet("INCLUDE_DIR",          "include/iris",         false);
+  EnvironmentSet("KERNEL_DIR",           "",                     false);
+  EnvironmentSet("KERNEL_SRC_CUDA",      "kernel.cu",            false);
+  EnvironmentSet("KERNEL_BIN_CUDA",      "kernel.ptx",           false);
+  EnvironmentSet("KERNEL_XILINX_XCLBIN", "kernel.xilinx.xclbin", false);
+  EnvironmentSet("KERNEL_FPGA_XCLBIN",   "kernel-fpga.xclbin",   false);
+  EnvironmentSet("KERNEL_INTEL_AOCX",    "kernel.intel.aocx",    false);
+  EnvironmentSet("KERNEL_SRC_HEXAGON",   "kernel.hexagon.cpp",   false);
+  EnvironmentSet("KERNEL_BIN_HEXAGON",   "kernel.hexagon.so",    false);
+  EnvironmentSet("KERNEL_SRC_HIP",       "kernel.hip.cpp",       false);
+  EnvironmentSet("KERNEL_BIN_HIP",       "kernel.hip",           false);
+  EnvironmentSet("KERNEL_SRC_OPENMP",    "kernel.openmp.h",      false);
+  EnvironmentSet("KERNEL_BIN_OPENMP",    "kernel.openmp.so",     false);
+  EnvironmentSet("KERNEL_SRC_SPV",       "kernel.cl",            false);
+  EnvironmentSet("KERNEL_BIN_SPV",       "kernel.spv",           false);
+  EnvironmentSet("KERNEL_JULIA",         "libjulia.so",          false);
+  EnvironmentSet("LIB_CUDA",             "libcuda.so",           false);
   EnvironmentSet("KERNEL_HOST2CUDA","kernel.host2cuda.so",false);
   EnvironmentSet("KERNEL_HOST2HIP", "kernel.host2hip.so", false);
   EnvironmentSet("KERNEL_HOST2OPENCL","kernel.host2opencl.so",false);
@@ -495,9 +498,12 @@ int Platform::GetFilePath(const char *key, char **value, size_t* vallen)
     }
     return IRIS_SUCCESS;
 }
-int Platform::EnvironmentGet(const char* key, char** value, size_t* vallen) {
+int Platform::EnvironmentGet(const char* key, char** value, size_t* vallen, char sep) {
   char env_key[128];
-  sprintf(env_key, "IRIS_%s", key);
+  if (sep == '\0')
+      sprintf(env_key, "IRIS%s", key);
+  else
+      sprintf(env_key, "IRIS%c%s", sep, key);
   const char* val = getenv(env_key);
   if (!val) {
     std::string keystr = std::string(key);

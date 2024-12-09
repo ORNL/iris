@@ -17,7 +17,7 @@ public:
   ~DeviceCUDA();
 
   void set_can_share_host_memory_flag(bool flag=true); 
-  int Compile(char* src);
+  int Compile(char* src, const char *out=NULL, const char *flags=NULL);
   int Init();
   int ResetMemory(Task *task, BaseMem *mem, uint8_t reset_value);
   void *GetSharedMemPtr(void* mem, size_t size);

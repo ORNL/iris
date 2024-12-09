@@ -1,6 +1,7 @@
 
-Base.Experimental.make_io_thread()
-ENV["IRIS_ARCHS"] = "cuda"
+if !haskey(ENV, "IRIS_ARCHS")
+ENV["IRIS_ARCHS"] = "hip"
+end
 #ENV["IRIS"] = "/noback/nqx/Ranger/tmp/iris.dev.prof/install.ffi.original"
 const iris_path = ENV["IRIS"]
 ENV["LD_LIBRARY_PATH"] =  iris_path * "/lib64:" * iris_path * "/lib:" * ENV["LD_LIBRARY_PATH"]
@@ -8,18 +9,20 @@ const iris_jl = iris_path * "/include/iris/IrisHRT.jl"
 include(iris_jl)
 using .IrisHRT
 using Base.Threads
-@spawn IrisHRT.iris_println("******Hello World******")
-println("Size of Cint in bytes: ", sizeof(Cint), " bytes")
-println("Size of Cint in bits: ", sizeof(Cint) * 8, " bits")
+#@spawn IrisHRT.iris_println("******Hello World******")
+#println("Size of Cint in bytes: ", sizeof(Cint), " bytes")
+#println("Size of Cint in bits: ", sizeof(Cint) * 8, " bits")
 
 # Define a CUDA kernel function
-using CUDA
+#using AMDGPU
+#println(Core.stdout, "Checking...")
+
 using Base.Threads
 const iris_arch = ENV["IRIS_ARCHS"]
+println(Core.stdout, "IRIS_ARCHS is set to $iris_arch")
+println(Core.stdout, "IRIS is set to $iris_path")
 
-#__precompile__(false)
-
-@spawn IrisHRT.iris_println("******Hello World-2******")
+#@spawn IrisHRT.iris_println("******Hello World-2******")
 function saxpy_cuda(Z, A, X, Y)
     # Calculate global index
     i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
@@ -29,7 +32,7 @@ end
 
 function saxpy_hip(Z, A, X, Y)
     # Calculate global index
-    i = (workgroupIdx().x - 0x1) * workgroupDim().x + workitemIdx().x
+    i = (workgroupIdx().x - 1) * workgroupDim().x + workitemIdx().x
     @inbounds Z[i] = A * X[i] + Y[i]
     return nothing
 end
@@ -50,29 +53,9 @@ function saxpy_openmp(Z, A, X, Y)
 end
 
 #@precompile saxpy_cuda(CuArray{Flat32}, Float32, CuArray{Flat32}, CuArray{Flat32})
-function saxpy_direct_cuda(A::Float32, X::Vector{Float32}, Y::Vector{Float32}, Z::Vector{Float32})
-
-    A = 2.0
-    SIZE=256
-    X_host = ones(SIZE)
-    Y_host = ones(SIZE)
-    Z_host = ones(SIZE)
-
-    SIZE=length(X)
-    X_device = CuArray(X)
-    Y_device = CuArray(Y)
-    Z_device = CuArray(Z)
-
-    maxPossibleThreads = attribute(device(), CUDA.DEVICE_ATTRIBUTE_MAX_BLOCK_DIM_X)
-    threads = min(SIZE, maxPossibleThreads)
-    blocks = ceil(Int, SIZE / threads)
-    #println("Threads: $threads Blocks: $blocks")
-    println("In X:$X_device Y:$Y_device Z:$Z_device A:$A")
-    CUDA.@sync @cuda threads=threads blocks=blocks saxpy_cuda(Z_device, A, X_device, Y_device) 
-    
-    println("Out Z: $Z_device")
-
-end
+#maxPossibleThreads = attribute(device(), CUDA.DEVICE_ATTRIBUTE_MAX_BLOCK_DIM_X)
+#threads = min(SIZE, maxPossibleThreads)
+#blocks = ceil(Int, SIZE / threads)
 
 function saxpy_iris(A::Float32, X::Vector{Float32}, Y::Vector{Float32}, Z::Vector{Float32})
     SIZE = length(X)
@@ -154,8 +137,6 @@ function compare_arrays(X::Vector{Float32}, Y::Vector{Float32})::Bool
     return true
 end
 
-
-
 # Example usage
 SIZE = 8
 #1024*128*2048
@@ -169,20 +150,29 @@ Ref_Z = zeros(Float32, SIZE)
 IrisHRT.iris_init(1)
 @spawn IrisHRT.iris_println("******Hello World******2")
 
-julia_start = time()
-#saxpy_direct_cuda(A, X, Y, Z)
-if iris_arch == "cuda"
-#saxpy_iris2_cuda(A, X, Y, Z)
-end
-if iris_arch == "hip"
-#saxpy_iris2_hip(A, X, Y, Z)
-end
 X = rand(Float32, SIZE)
 Y = rand(Float32, SIZE)
 saxpy_julia(A, X, Y, Ref_Z)
+julia_start = time()
 saxpy_iris(A, X, Y, Z)
 julia_time = time() - julia_start
-#println("Julia time: ", julia_time)
+println("Julia time: ", julia_time)
+println("Z     :", Z)
+println("Ref_Z :", Ref_Z)
+
+julia_start = time()
+saxpy_iris(A, X, Y, Z)
+julia_time = time() - julia_start
+println("2nd Julia time: ", julia_time)
+println("Z     :", Z)
+println("Ref_Z :", Ref_Z)
+
+julia_start = time()
+saxpy_iris(A, X, Y, Z)
+julia_time = time() - julia_start
+println("3rd Julia time: ", julia_time)
+println("Z     :", Z)
+println("Ref_Z :", Ref_Z)
 #julia_iris_start = time()
 #output = compare_arrays(Z, Ref_Z)
 #println("Output Matching: ", output)
@@ -191,8 +181,6 @@ julia_time = time() - julia_start
 #println("Julia IRIS time: ", julia_iris_time)
 #output = compare_arrays(Z, Ref_Z)
 #println("Output Matching: ", output)
-println("Z     :", Z)
-println("Ref_Z :", Ref_Z)
 # Finalize IRIS
 IrisHRT.iris_finalize()
 

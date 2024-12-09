@@ -32,6 +32,7 @@ class Timer;
 class Worker;
 class Platform;
 class JuliaHostInterfaceLoader;
+class LoaderDefaultKernel;
 
 enum AsyncResolveType
 {
@@ -151,7 +152,7 @@ public:
   virtual void SetContextToCurrentThread() { }
   virtual bool IsContextChangeRequired() { return false; }
   virtual bool IsDeviceValid() { return true; }
-  virtual int Compile(char* src) { return IRIS_SUCCESS; }
+  virtual int Compile(char* src, const char *out=NULL, const char *flags=NULL) { return IRIS_SUCCESS; }
   virtual int Init() = 0;
   virtual int BuildProgram(char* path) { return IRIS_SUCCESS; }
   virtual void *GetSharedMemPtr(void* mem, size_t size) { return mem; }
@@ -229,7 +230,12 @@ public:
   StreamPolicy stream_policy() { return stream_policy_; }
   double Now() { return timer_->Now(); }
   const char *kernel_path() { return kernel_path_.c_str(); }
+protected:
+  LoaderDefaultKernel* ld_default() { return ld_default_; }
+  void CallMemReset(BaseMem *mem, size_t size, void *stream);
+  void LoadDefaultKernelLibrary(const char *key, const char *flags);
 private:
+  LoaderDefaultKernel *ld_default_;
   int get_new_stream_queue(int offset=0) {
     int nqs = ((nqueues_-1)-offset);
     if (nqs <= 0) return current_queue_ + offset+1;

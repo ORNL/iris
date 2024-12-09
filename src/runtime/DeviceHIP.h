@@ -15,7 +15,7 @@ public:
   DeviceHIP(LoaderHIP* ld, LoaderHost2HIP *host2hip_ld, hipDevice_t cudev, int ordinal, int devno, int platform, int local_devno);
   ~DeviceHIP();
 
-  int Compile(char* src);
+  int Compile(char* src, const char *out=NULL, const char *flags=NULL);
   int Init();
   int ResetMemory(Task *task, BaseMem *mem, uint8_t reset_value);
   void RegisterPin(void *host, size_t size);

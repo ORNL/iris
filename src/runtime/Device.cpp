@@ -14,6 +14,7 @@
 #include "Timer.h"
 #include "Utils.h"
 #include "Worker.h"
+#include "LoaderDefaultKernel.h"
 
 #define _debug3 _debug2
 namespace iris {
@@ -50,6 +51,7 @@ Device::Device(int devno, int platform) {
   hook_command_post_ = NULL;
   julia_if_ = NULL;
   worker_ = NULL;
+  ld_default_ = NULL;
   stream_policy_ = STREAM_POLICY_DEFAULT;
   //stream_policy_ = STREAM_POLICY_SAME_FOR_TASK;
   //stream_policy_ = STREAM_POLICY_GIVE_ALL_STREAMS_TO_KERNEL;
@@ -60,11 +62,102 @@ Device::~Device() {
   while(active_tasks_ > 0) {
     sleep(1);
   }
+  if (ld_default_ != NULL) delete ld_default_;
   _event_prof_debug("Device:%d deleted\n", devno());
   FreeDestroyEvents();
   if (peer_access_ != NULL) delete [] peer_access_;
   if (julia_if_ != NULL) delete julia_if_;
   delete timer_;
+}
+
+void Device::CallMemReset(BaseMem *mem, size_t size, void *stream)
+{
+    int elem_type = mem->element_type();
+    if (elem_type == iris_unknown) return;
+    if (ld_default_ == NULL) return;
+    ResetData & reset_data = mem->reset_data();
+    int reset_type = reset_data.reset_type_;
+    void *arch = mem->arch(devno());
+    if (reset_type == iris_reset_assign) {
+        switch(elem_type) {
+            case iris_uint8: 
+                ld_default_->iris_reset_u8(static_cast<uint8_t*>(arch), reset_data.value_.u8, size, stream); break;
+            case iris_uint16: 
+                ld_default_->iris_reset_u16(static_cast<uint16_t*>(arch), reset_data.value_.u16, size, stream); break;
+            case iris_uint32: 
+                ld_default_->iris_reset_u32(static_cast<uint32_t*>(arch), reset_data.value_.u32, size, stream); break;
+            case iris_uint64: 
+                ld_default_->iris_reset_u64(static_cast<uint64_t*>(arch), reset_data.value_.u64, size, stream); break;
+            case iris_int8: 
+                ld_default_->iris_reset_i8(static_cast<int8_t*>(arch), reset_data.value_.i8, size, stream); break;
+            case iris_int16: 
+                ld_default_->iris_reset_i16(static_cast<int16_t*>(arch), reset_data.value_.i16, size, stream); break;
+            case iris_int32: 
+                ld_default_->iris_reset_i32(static_cast<int32_t*>(arch), reset_data.value_.i32, size, stream); break;
+            case iris_int64: 
+                ld_default_->iris_reset_i64(static_cast<int64_t*>(arch), reset_data.value_.i64, size, stream); break;
+            case iris_float: 
+                ld_default_->iris_reset_float(static_cast<float*>(arch), reset_data.value_.f32, size, stream); break;
+            case iris_double: 
+                ld_default_->iris_reset_double(static_cast<double*>(arch), reset_data.value_.f64, size, stream); break;
+            default: 
+                _error("Invalid element type:%d for mem uid:%lu for reset assign\n", elem_type, mem->uid()); break;
+        }
+    }
+    else if (reset_type == iris_reset_arith_seq) {
+        switch(elem_type) {
+            case iris_uint8: 
+                ld_default_->iris_arithmetic_seq_u8(static_cast<uint8_t*>(arch), reset_data.start_.u8, reset_data.increment_.u8, size, stream); break;
+            case iris_uint16: 
+                ld_default_->iris_arithmetic_seq_u16(static_cast<uint16_t*>(arch), reset_data.start_.u16, reset_data.increment_.u16, size, stream); break;
+            case iris_uint32: 
+                ld_default_->iris_arithmetic_seq_u32(static_cast<uint32_t*>(arch), reset_data.start_.u32, reset_data.increment_.u32, size, stream); break;
+            case iris_uint64: 
+                ld_default_->iris_arithmetic_seq_u64(static_cast<uint64_t*>(arch), reset_data.start_.u64, reset_data.increment_.u64, size, stream); break;
+            case iris_int8: 
+                ld_default_->iris_arithmetic_seq_i8(static_cast<int8_t*>(arch), reset_data.start_.i8, reset_data.increment_.i8, size, stream); break;
+            case iris_int16: 
+                ld_default_->iris_arithmetic_seq_i16(static_cast<int16_t*>(arch), reset_data.start_.i16, reset_data.increment_.i16, size, stream); break;
+            case iris_int32: 
+                ld_default_->iris_arithmetic_seq_i32(static_cast<int32_t*>(arch), reset_data.start_.i32, reset_data.increment_.i32, size, stream); break;
+            case iris_int64: 
+                ld_default_->iris_arithmetic_seq_i64(static_cast<int64_t*>(arch), reset_data.start_.i64, reset_data.increment_.i64, size, stream); break;
+            case iris_float: 
+                ld_default_->iris_arithmetic_seq_float(static_cast<float*>(arch), reset_data.start_.f32, reset_data.increment_.f32, size, stream); break;
+            case iris_double: 
+                ld_default_->iris_arithmetic_seq_double(static_cast<double*>(arch), reset_data.start_.f64, reset_data.increment_.f64, size, stream); break;
+            default: 
+                _error("Invalid element type:%d for mem uid:%lu for reset arithmatic sequence\n", elem_type, mem->uid()); break;
+        }
+    }
+}
+
+void Device::LoadDefaultKernelLibrary(const char *key, const char *flags)
+{
+    char *src = NULL;
+    char *iris = NULL;
+    char *filename = NULL;
+    char *tmpdir = NULL;
+    char path[2048];
+    char out[1024];
+    worker_->platform()->EnvironmentGet("", &iris, NULL, '\0');
+    worker_->platform()->EnvironmentGet("INCLUDE_DIR", &src, NULL);
+    worker_->platform()->EnvironmentGet(key, &filename, NULL);
+    sprintf(path, "%s/%s/%s", iris, src, filename);
+    Platform::GetPlatform()->EnvironmentGet("TMPDIR", &tmpdir, NULL);
+    sprintf(out, "%s/%s.so", tmpdir, filename);
+    int result = Compile(path, out, flags);
+    if (result == IRIS_SUCCESS) {
+        ld_default_ = new LoaderDefaultKernel(out);
+        ld_default_->LoadFunctions();
+    }
+    else {
+        _warning("Couldn't load default kernel library for dev:(%d, %s) for default kernels in %s\n", devno(), name(), path);
+    }
+    delete [] src;
+    delete [] iris;
+    delete [] filename;
+    delete [] tmpdir;
 }
 
 void Device::EnableJuliaInterface() {

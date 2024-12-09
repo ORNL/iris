@@ -8,6 +8,37 @@
 #import Pkg
 #import Pkg.add("CUDA")
 #import Pkg.add("AMDGPU")
+Base.Experimental.make_io_thread()
+if !haskey(ENV, "IRIS_ARCHS")
+    ENV["IRIS_ARCHS"] = "cuda:hip:openmp"
+end
+module DummyAMDGPU
+    macro sync() end
+    macro async() end
+    macro roc(args...) end  # Use a varargs definition instead of keyword arguments
+end
+
+module DummyCUDA
+    macro sync() end
+    macro async() end
+    macro cuda(args...) end  # Use a varargs definition instead of keyword arguments
+end
+
+#__precompile__(false)
+const hip_available = try
+    using AMDGPU
+    if AMDGPU.has_rocm_gpu()
+        println(Core.stdout, "AMDGPU is defined!")
+        true  # Assign true if AMDGPU is available
+    else
+        println(Core.stdout, "AMDGPU is defined but no ROCm GPU available.")
+        false  # Assign false if AMDGPU is defined but no GPU
+    end
+catch
+    AMDGPU = DummyAMDGPU
+    println(Core.stdout, "AMDGPU is not defined!")
+    false  # Assign false if AMDGPU is not available
+end
 module IrisHRT
     using Requires
     using Base.Threads: @spawn
@@ -17,12 +48,19 @@ module IrisHRT
         true
     catch 
         false
+        const CUDA = DummyCUDA
     end
     const hip_available = try
         using AMDGPU
-        AMDGPU.has_rocm_gpu()
+        if AMDGPU.has_rocm_gpu()
+            println(Core.stdout, "AMDGPU is defined and a ROCm GPU is available!")
+            true  # Assign true if AMDGPU is available
+        else
+            println(Core.stdout, "AMDGPU is defined but no ROCm GPU is available.")
+            false  # Assign false if AMDGPU is defined but no GPU
+        end
     catch
-        false
+        const AMDGPU = DummyAMDGPU
     end
     using Libdl
     cwd = pwd()
@@ -124,6 +162,8 @@ module IrisHRT
     end
 
     macro maybethreads(ex)
+       nthreads = Threads.nthreads()
+       println(Core.stdout, "Nthreads: $nthreads") 
        if Threads.nthreads() > 1
             esc(:(Threads.@threads $ex))
        else
@@ -522,6 +562,7 @@ module IrisHRT
             error("HIP device not available.")
         end
 
+        iris_println("Func $func_name")
         func_name_target = func_name * "_hip"
         # Initialize CUDA
         #AMDGPU.allowscalar(false)  # Disable scalar operations on the GPU
@@ -532,10 +573,13 @@ module IrisHRT
         #@hip threads=threads blocks=blocks add_kernel(a,b,c,N)
         #println(Core.stdout, "Args_tuple: $args_tuple")
         #println(Core.stdout, "Threads: $threads blocks:$blocks")
+        iris_println("Async $async_flag")
         if async_flag
             AMDGPU.@async @roc groupsize=threads gridsize=blocks stream=stream func(args_tuple...)
         else
-            AMDGPU.@sync @roc groupsize=threads gridsize=blocks func(args_tuple...)
+            AMDGPU.@sync begin
+                @roc groupsize=threads gridsize=blocks func(args_tuple...)
+            end
         end
         #AMDGPU.synchronize()
     end
@@ -946,7 +990,10 @@ module IrisHRT
     end
 
     function iris_task_submit(task::IrisTask, device::Int64, opt::Ptr{Int8}, sync::Int64)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_task_submit), Int32, (IrisTask, Int32, Ptr{Int8}, Int32), task, Int32(device), opt, Int32(sync))
+        #gc_state = @ccall(jl_gc_safe_enter()::Int8)
+        status = ccall(Libdl.dlsym(lib, :iris_task_submit), Int32, (IrisTask, Int32, Ptr{Int8}, Int32), task, Int32(device), opt, Int32(sync))
+        #@ccall(jl_gc_safe_leave(gc_state::Int8)::Cvoid)
+        return status
     end
 
     function iris_task_set_policy(task::IrisTask, device::Int32)::Int32

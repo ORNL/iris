@@ -509,6 +509,22 @@ int iris_mem_is_reset(iris_mem mem) {
   return Platform::GetPlatform()->get_mem_object(mem)->is_reset();
 }
 
+int iris_mem_init_reset(iris_mem brs_mem, int memset_value) {
+  BaseMem * mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  mem->set_reset_type(iris_reset_memset);
+  mem->init_reset(true);
+  return IRIS_SUCCESS;
+}
+int iris_mem_init_reset_assign(iris_mem brs_mem, IRISValue value) {
+  BaseMem * mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  mem->set_reset_assign(value);
+  return IRIS_SUCCESS;
+}
+int iris_mem_init_reset_arith_seq(iris_mem brs_mem, IRISValue start, IRISValue increment) {
+  BaseMem * mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  mem->set_reset_arith_seq(start, increment);
+  return IRIS_SUCCESS;
+}
 int iris_data_mem_init_reset(iris_mem mem, int reset) {
   return Platform::GetPlatform()->DataMemInit(mem, (bool)reset);
 }

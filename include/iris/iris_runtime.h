@@ -156,6 +156,10 @@ typedef enum DeviceModel DeviceModel;
 #define iris_unsigned_long      (15 << 16)
 #define iris_pointer            (0x4000 << 16)
 
+#define iris_reset_memset       0
+#define iris_reset_assign       1 
+#define iris_reset_arith_seq    2
+
 #define iris_normal             (1 << 10)
 #define iris_reduction          (1 << 11)
 #define iris_sum                ((1 << 12) | iris_reduction)
@@ -206,6 +210,18 @@ typedef int (*hook_command)(void* command);
 
 typedef int (*iris_selector_kernel)(iris_task task, void* params, char* kernel_name);
 
+typedef union _IRISValue {
+    int8_t   i8;
+    int16_t  i16;
+    int32_t  i32;
+    int64_t  i64;
+    uint8_t  u8;
+    uint16_t u16;
+    uint32_t u32;
+    uint64_t u64;
+    float    f32;
+    double   f64;
+}IRISValue;
 
 /**@brief Initializes the IRIS execution environment.
  *

@@ -17,6 +17,9 @@ import os
 import struct
 
 path = os.path.dirname(os.path.abspath(__file__))
+if 'IRIS' not in os.environ:
+    os.environ['IRIS'] = path
+
 class CommData3D(Structure):
     _fields_ = [
         ("from_id", c_uint),

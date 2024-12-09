@@ -12,7 +12,7 @@ public:
   DeviceLevelZero(LoaderLevelZero* ld, ze_device_handle_t zedev, ze_context_handle_t zectx, ze_driver_handle_t zedriver, int devno, int platform);
   ~DeviceLevelZero();
 
-  int Compile(char* src);
+  int Compile(char* src, const char *out=NULL, const char *flags=NULL);
   int Init();
   int ResetMemory(Task *task, BaseMem *mem, uint8_t reset_value);
   int MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset=false);

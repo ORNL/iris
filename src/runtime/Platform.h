@@ -73,7 +73,7 @@ public:
   int EnvironmentSet(const char* key, const char* value, bool overwrite);
   void EnvironmentIntRead(const char *env_name, int & env_var);
   void EnvironmentBoolRead(const char *env_name, bool & flag);
-  int EnvironmentGet(const char* key, char** value, size_t* vallen);
+  int EnvironmentGet(const char* key, char** value, size_t* vallen, char sep='_');
   int GetFilePath(const char *key, char** value, size_t* vallen);
 
   void ShowOverview();

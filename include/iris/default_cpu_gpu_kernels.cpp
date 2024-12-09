@@ -1,12 +1,24 @@
 #ifdef __HIPCC__
 #include <hip/hip_runtime.h>  // HIP header for HIPCC
 #define gpuStream_t  hipStream_t
-#else
+#define IS_DEFAULT_GPU 1 
+#endif // __HIPCC__
+
+#ifdef __CUDAACC__
 #include <cuda.h>     // CUDA header for NVCC
 #include <cuda_runtime.h>     // CUDA header for NVCC
 #define gpuStream_t  CUstream //cudaStream_t
+#define IS_DEFAULT_GPU 1 
+#endif // __CUDAACC__
+
+#ifndef IS_DEFAULT_GPU
+#include <omp.h>
 #endif
+
 #include <stdint.h>
+#include <stdlib.h>
+
+#ifdef IS_DEFAULT_GPU
 template <typename T>
 __global__ void iris_reset_core(T *arr, T value, size_t size) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -37,7 +49,7 @@ void iris_reset(T *arr, T value, size_t size, void *stream) {
 }
 
 template <typename T>
-void  iris_arithmetic_seq(T *arr, T start, T increment, size_t size, void *stream) {
+void iris_arithmetic_seq(T *arr, T start, T increment, size_t size, void *stream) {
     int threadsPerBlock = 256;
     int blocksPerGrid = static_cast<int>((size + threadsPerBlock - 1) / threadsPerBlock);
     if (stream != NULL) {
@@ -48,6 +60,25 @@ void  iris_arithmetic_seq(T *arr, T start, T increment, size_t size, void *strea
         iris_arithmetic_seq_core<T><<<blocksPerGrid, threadsPerBlock>>>(arr, start, increment, size);
     }
 }
+#else // IS_DEFAULT_GPU
+template <typename T>
+void iris_reset(T *arr, T value, size_t size, void *stream) {
+    #pragma omp parallel for
+    for(int i=0; i<size; i++) {
+        arr[i] = value;
+    }
+}
+
+template <typename T>
+void iris_arithmetic_seq(T *arr, T start, T increment, size_t size, void *stream) {
+    #pragma omp parallel for
+    for(int i=0; i<size; i++) {
+        arr[i] = start + i * increment;
+    }
+}
+#endif // IS_DEFAULT_GPU
+
+
 
 extern "C" void iris_reset_i64(int64_t *arr, int64_t value, size_t size, void *stream) { iris_reset<int64_t>(arr, value, size, stream); }
 extern "C" void iris_reset_i32(int32_t *arr, int32_t value, size_t size, void *stream) { iris_reset<int32_t>(arr, value, size, stream); }
