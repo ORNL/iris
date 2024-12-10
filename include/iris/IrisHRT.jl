@@ -23,7 +23,6 @@ module DummyCUDA
     macro async() end
     macro cuda(args...) end  # Use a varargs definition instead of keyword arguments
 end
-
 #__precompile__(false)
 const hip_available = try
     using AMDGPU
@@ -43,6 +42,7 @@ module IrisHRT
     using Requires
     using Base.Threads: @spawn
     #__precompile__(false)
+
     const cuda_available = try
         using CUDA
         true
@@ -344,8 +344,8 @@ module IrisHRT
             if b_async_flag 
                 cu_stream = unsafe_load(reinterpret(Ptr{CuStream}, stream))
             end
-            #iris_println("Stream: $cu_stream dev:$devno")
-            #iris_println("Ctx: $cu_ctx dev:$devno")
+            iris_println("Stream: $cu_stream dev:$devno")
+            iris_println("Ctx: $cu_ctx dev:$devno")
             func_name = unsafe_string(kernel_name)
             CUDA.device!(Int(devno))
             CUDA.context!(cu_ctx)
@@ -525,35 +525,30 @@ module IrisHRT
             error("CUDA device not available.")
         end
 
+        iris_println("Func $func_name")
         func_name_target = func_name * "_cuda"
-        iris_println("CUDA func name: $func_name_target")
         # Initialize CUDA
         #CUDA.allowscalar(false)  # Disable scalar operations on the GPU
         func = getfield(Main, Symbol(func_name_target))
+        #func = getfield(IrisKernelImpl, Symbol(func_name_target))
         # Convert the array of arguments to a tuple
         args_tuple = Tuple(args)
         # Call the function with arguments
         #println(Core.stdout, "Args_tuple: $args_tuple")
         println(Core.stdout, "Async $async_flag")
         if async_flag
-            iris_println("Asynchronous CUDA execution")
+            iris_println("---------ASynchronous CUDA execution $blocks $threads func:$func stream:$stream----------")
             CUDA.@async @cuda threads=threads blocks=blocks stream=stream func(args_tuple...)
         else
             iris_println("---------Synchronous CUDA execution $blocks $threads func:$func----------")
             CUDA.@sync begin
-                @cuda threads=threads blocks=blocks saxpy_cuda(args_tuple...)
+                @cuda threads=threads blocks=blocks func(args_tuple...)
             end
 
             #CUDA.@sync @cuda threads=threads blocks=blocks func(args_tuple...)
             #func1(threads, blocks, args_tuple)
         end
         #synchronize(blocking = true)
-    end
-    function saxpy_cuda(Z, A, X, Y)
-        # Calculate global index
-        i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
-        @inbounds Z[i] = A * X[i] + Y[i]
-        return nothing
     end
 
     # HIP kernel wrapper
@@ -566,6 +561,7 @@ module IrisHRT
         func_name_target = func_name * "_hip"
         # Initialize CUDA
         #AMDGPU.allowscalar(false)  # Disable scalar operations on the GPU
+        #func = getfield(IrisKernelImpl, Symbol(func_name_target))
         func = getfield(Main, Symbol(func_name_target))
         # Convert the array of arguments to a tuple
         args_tuple = Tuple(args)
@@ -577,6 +573,7 @@ module IrisHRT
         if async_flag
             AMDGPU.@async @roc groupsize=threads gridsize=blocks stream=stream func(args_tuple...)
         else
+            iris_println("---------Synchronous HIP execution $blocks $threads func:$func----------")
             AMDGPU.@sync begin
                 @roc groupsize=threads gridsize=blocks func(args_tuple...)
             end
@@ -587,6 +584,7 @@ module IrisHRT
     # OpenMP kernel wrapper
     function call_openmp_kernel(func_name::String, threads::Any, blocks::Any, args::Any, async_flag::Bool=false)
         func_name_target = func_name * "_openmp"
+        #func = getfield(IrisKernelImpl, Symbol(func_name_target))
         func = getfield(Main, Symbol(func_name_target))
         # Convert the array of arguments to a tuple
         args_tuple = Tuple(args)
@@ -1042,6 +1040,50 @@ module IrisHRT
 
     function iris_mem_create(size::Csize_t, mem::Ptr{IrisMem})::Int32
         return ccall(Libdl.dlsym(lib, :iris_mem_create), Int32, (Csize_t, Ptr{IrisMem}), size, mem)
+    end
+
+    function iris_mem_init_reset(mem::IrisMem, reset::Int32)::Int32
+        return ccall(Libdl.dlsym(lib, :iris_mem_init_reset), Int32, (IrisMem, Int32), mem, reset)
+    end
+
+    const VALUE_SIZE = 8
+    function iris_mem_init_reset_assign(mem::IrisMem, element::Any)::Int32
+        value_buffer = zeors(UInt8, VALUE_SIZE)
+        
+        if typeof(element) == Float32
+            value_bytes = reinterpret(UInt8, [element])
+            value_buffer[1:4] .= value_bytes
+        elseif typeof(element) == Float64
+            value_bytes = reinterpret(UInt8, [element])
+            value_buffer[1:8] .= value_bytes
+        elseif typeof(element) == Int64
+            value_bytes = reinterpret(UInt8, [element])
+            value_buffer[1:8] .= value_bytes
+        elseif typeof(element) == Int32
+            value_bytes = reinterpret(UInt8, [element])
+            value_buffer[1:4] .= value_bytes
+        elseif typeof(element) == Int16
+            value_bytes = reinterpret(UInt8, [element])
+            value_buffer[1:2] .= value_bytes
+        elseif typeof(element) == Int8
+            value_bytes = reinterpret(UInt8, [element])
+            value_buffer[1:1] .= value_bytes
+        elseif typeof(element) == UInt64
+            value_bytes = reinterpret(UInt8, [element])
+            value_buffer[1:8] .= value_bytes
+        elseif typeof(element) == UInt32
+            value_bytes = reinterpret(UInt8, [element])
+            value_buffer[1:4] .= value_bytes
+        elseif typeof(element) == UInt16
+            value_bytes = reinterpret(UInt8, [element])
+            value_buffer[1:2] .= value_bytes
+        elseif typeof(element) == UInt8
+            value_bytes = reinterpret(UInt8, [element])
+            value_buffer[1:1] .= value_bytes
+        else
+            println(Core.stdout, "Unknown type of $element")
+        end
+        return ccall(Libdl.dlsym(lib, :iris_mem_init_reset_assign), Int32, (IrisMem, Ptr{UInt8}), mem, value_buffer)
     end
 
     function iris_data_mem_init_reset(mem::IrisMem, reset::Int32)::Int32
