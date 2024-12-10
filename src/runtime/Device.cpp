@@ -154,10 +154,10 @@ void Device::LoadDefaultKernelLibrary(const char *key, const char *flags)
     else {
         _warning("Couldn't load default kernel library for dev:(%d, %s) for default kernels in %s\n", devno(), name(), path);
     }
-    delete [] src;
-    delete [] iris;
-    delete [] filename;
-    delete [] tmpdir;
+    free(src);
+    free(iris);
+    free(filename);
+    free(tmpdir);
 }
 
 void Device::EnableJuliaInterface() {

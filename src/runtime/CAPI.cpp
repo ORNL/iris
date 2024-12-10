@@ -512,7 +512,7 @@ int iris_mem_is_reset(iris_mem mem) {
 int iris_mem_init_reset(iris_mem brs_mem, int memset_value) {
   BaseMem * mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
   mem->set_reset_type(iris_reset_memset);
-  mem->init_reset(true);
+  mem->init_reset((bool) memset_value);
   return IRIS_SUCCESS;
 }
 int iris_mem_init_reset_assign(iris_mem brs_mem, IRISValue value) {
