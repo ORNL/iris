@@ -16,7 +16,8 @@ using Base.Threads
 # Define a CUDA kernel function
 #using AMDGPU
 #println(Core.stdout, "Checking...")
-
+using CUDA
+using AMDGPU
 using Base.Threads
 const iris_arch = ENV["IRIS_ARCHS"]
 println(Core.stdout, "IRIS_ARCHS is set to $iris_arch")
