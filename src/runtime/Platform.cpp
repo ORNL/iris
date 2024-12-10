@@ -129,7 +129,6 @@ void Platform::Reset() {
 }
 
 void Platform::Clean() {
-  if (scheduler_) delete scheduler_;
   for (int i = 0; i < ndevs_; i++) delete workers_[i];
   if (queue_) delete queue_;
   if (tmp_dir_[0] != '\0') {
@@ -140,6 +139,7 @@ void Platform::Clean() {
       (void)result;
   }
   for (int i = 0; i < ndevs_; i++) delete devs_[i];
+  if (scheduler_) delete scheduler_;
 #ifdef AUTO_PAR
 #ifdef AUTO_SHADOW
   printf("Total Shadow created %d\n", auto_dag_->get_number_of_shadow());
@@ -1583,7 +1583,8 @@ int Platform::TaskWait(iris_task brs_task) {
   TaskSafeRetain(brs_task);
   Task *task = get_task_object(brs_task);
   if (task != NULL) {
-    unsigned long uid = task->uid(); string lname = task->name(); _debug2("Task wait release:%lu:%s ref_cnt:%d after callback\n", task->uid(), task->name(), task->ref_cnt());
+    unsigned long uid = task->uid(); string lname = task->name(); 
+    _debug2("Task wait release:%lu:%s ref_cnt:%d after callback\n", task->uid(), task->name(), task->ref_cnt());
     task->Wait();
     _debug2("Task wait before release:%lu:%s ref_cnt:%d\n", uid, lname.c_str(), task->ref_cnt());
     int ref_cnt = task->Release();
