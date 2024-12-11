@@ -188,13 +188,13 @@ module IrisHRT
     end 
     function iris_print_array_size_t(data::Ptr{Csize_t}, index::Int)::Cvoid
         ldata = UInt64(unsafe_load(data + index*sizeof(Cint)))
-        iris_println("Array:$index Data:$ldata")
+        #iris_println("Array:$index Data:$ldata")
     end
     function iris_print_array_int(data::Ptr{Cint}, index::Int)::Cvoid
         ldata = Int(unsafe_load(data + index*sizeof(Cint)))
-        iris_println("Array:$index Data:$ldata")
+        #iris_println("Array:$index Data:$ldata")
     end
-    function kernel_julia_wrapper(target::Cint, devno::Cint, ctx::Ptr{Cvoid}, async_flag::Cchar, stream_index::Cint, stream::Ptr{Ptr{Cvoid}}, nstreams::Cint, args_type::Ptr{Cint}, args::Ptr{Ptr{Cvoid}}, param_size::Ptr{Csize_t}, param_dim_size::Ptr{Csize_t}, nparams::Cint, c_threads::Ptr{Csize_t}, c_blocks::Ptr{Csize_t}, dim::Cint, kernel_name::Ptr{Cchar})::Cint
+    function kernel_julia_wrapper(target::Cint, devno::Cint, ctx::Ptr{Cvoid}, async_flag::Cchar, stream_index::Cint, stream::Ptr{Ptr{Cvoid}}, nstreams::Cint, args_type::Ptr{Cint}, args::Ptr{Ptr{Cvoid}}, param_size::Ptr{Csize_t}, param_dim_size::Ptr{Csize_t}, nparams::Cint, c_blocks::Ptr{Csize_t}, c_threads::Ptr{Csize_t}, dim::Cint, kernel_name::Ptr{Cchar})::Cint
         # Array to hold the converted Julia values
         #julia_args = convert_args(args_type, args, nparams, 2)
         #iris_println("nstreams: $nstreams, steram:$stream ctx:$ctx stream_index:$stream_index")
@@ -339,21 +339,32 @@ module IrisHRT
         if Int(target) == Int(iris_cuda)
             #cu_ctx = unsafe_load(Ref{CuContext}(ctx))
             #GC.gc()
-            cu_ctx = unsafe_load(reinterpret(Ptr{CuContext}, ctx))
-            cu_stream = nothing
-            if b_async_flag 
-                cu_stream = unsafe_load(reinterpret(Ptr{CuStream}, stream))
-            end
-            iris_println("Stream: $cu_stream dev:$devno")
-            iris_println("Ctx: $cu_ctx dev:$devno")
             func_name = unsafe_string(kernel_name)
-            CUDA.device!(Int(devno))
-            CUDA.context!(cu_ctx)
-            iris_println("Calling CUDA kernel")
+            if true
+                cu_ctx = unsafe_load(reinterpret(Ptr{CuContext}, ctx))
+                cu_stream = nothing
+                if b_async_flag 
+                    cu_stream = unsafe_load(reinterpret(Ptr{CuStream}, stream))
+                end
+                #iris_println("Stream: $cu_stream dev:$devno")
+                #iris_println("Ctx: $cu_ctx dev:$devno")
+                CUDA.device!(Int(devno))
+                CUDA.context!(cu_ctx)
+            else
+                #cu_ctx = unsafe_load(ctx)  # CUcontext
+                cu_ctx = unsafe_load(reinterpret(Ptr{CuContext}, ctx))
+                cu_stream = unsafe_load(reinterpret(Ptr{CuStream}, stream))
+                #iris_println("Stream: $cu_stream dev:$devno")
+                #iris_println("Ctx: $cu_ctx dev:$devno")
+                CUDA.device!(Int(devno))
+                CUDA.context!(cu_ctx)
+                cu_stream.ctx = cu_ctx
+            end
+            #iris_println("Calling CUDA kernel")
             call_cuda_kernel(func_name, j_threads, j_blocks, cu_stream, julia_args, b_async_flag)
             #CUDA.@sync @cuda threads=j_threads blocks=j_blocks Main.saxpy_cuda(julia_args[1], julia_args[2], julia_args[3], julia_args[4])
             ##############################################################
-            iris_println("Completed CUDA")
+            #iris_println("Completed CUDA")
             return target*11
         elseif Int(target) == Int(iris_hip)
             #GC.gc()
@@ -366,10 +377,10 @@ module IrisHRT
             func_name = unsafe_string(kernel_name)
             AMDGPU.device!(AMDGPU.devices()[devno+1])
             AMDGPU.context!(hip_ctx)
-            iris_println("Calling HIP kernel")
+            #iris_println("Calling HIP kernel")
             call_hip_kernel(func_name, j_threads, j_blocks, hip_stream, julia_args, b_async_flag)
             ##############################################################
-            iris_println("Completed HIP")
+            #iris_println("Completed HIP")
             return target*12
         elseif Int(target) == Int(iris_openmp)
             #cu_ctx = unsafe_load(Ref{CuContext}(ctx))
@@ -525,7 +536,7 @@ module IrisHRT
             error("CUDA device not available.")
         end
 
-        iris_println("Func $func_name")
+        #iris_println("Func $func_name")
         func_name_target = func_name * "_cuda"
         # Initialize CUDA
         #CUDA.allowscalar(false)  # Disable scalar operations on the GPU
@@ -535,12 +546,12 @@ module IrisHRT
         args_tuple = Tuple(args)
         # Call the function with arguments
         #println(Core.stdout, "Args_tuple: $args_tuple")
-        println(Core.stdout, "Async $async_flag")
+        #println(Core.stdout, "Async $async_flag")
         if async_flag
-            iris_println("---------ASynchronous CUDA execution $blocks $threads func:$func stream:$stream----------")
+            #iris_println("---------ASynchronous CUDA execution $blocks $threads func:$func stream:$stream----------")
             CUDA.@async @cuda threads=threads blocks=blocks stream=stream func(args_tuple...)
         else
-            iris_println("---------Synchronous CUDA execution $blocks $threads func:$func----------")
+            #iris_println("---------Synchronous CUDA execution $blocks $threads func:$func----------")
             CUDA.@sync begin
                 @cuda threads=threads blocks=blocks func(args_tuple...)
             end
@@ -557,7 +568,7 @@ module IrisHRT
             error("HIP device not available.")
         end
 
-        iris_println("Func $func_name")
+        #iris_println("Func $func_name")
         func_name_target = func_name * "_hip"
         # Initialize CUDA
         #AMDGPU.allowscalar(false)  # Disable scalar operations on the GPU
@@ -569,11 +580,11 @@ module IrisHRT
         #@hip threads=threads blocks=blocks add_kernel(a,b,c,N)
         #println(Core.stdout, "Args_tuple: $args_tuple")
         #println(Core.stdout, "Threads: $threads blocks:$blocks")
-        iris_println("Async $async_flag")
+        #iris_println("Async $async_flag")
         if async_flag
             AMDGPU.@async @roc groupsize=threads gridsize=blocks stream=stream func(args_tuple...)
         else
-            iris_println("---------Synchronous HIP execution $blocks $threads func:$func----------")
+            #iris_println("---------Synchronous HIP execution $blocks $threads func:$func----------")
             AMDGPU.@sync begin
                 @roc groupsize=threads gridsize=blocks func(args_tuple...)
             end
