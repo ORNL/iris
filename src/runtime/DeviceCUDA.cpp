@@ -370,7 +370,7 @@ int DeviceCUDA::Init() {
   //err = ld_->cuCtxEnablePeerAccess(ctx_, 0);
   //_cuerror(err);
   //EnablePeerAccess();
-  _cuerror(err);
+  //_printf("Init:: Context create dev:%d ctx:%p self:%p thread:%p", devno_, ctx_, (void *)worker()->self(), (void *)worker()->thread());
 #ifndef TRACE_DISABLE
   CUcontext ctx;
   err = ld_->cuCtxGetCurrent(&ctx);
@@ -1120,6 +1120,12 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
   _debug2("dev[%d][%s] kernel[%s:%s] dim[%d] grid[%d,%d,%d] block[%d,%d,%d] blockoff[%lu,%lu,%lu] max_arg_idx[%d] shared_mem_bytes[%u] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, grid[0], grid[1], grid[2], block[0], block[1], block[2], blockOff_x, blockOff_y, blockOff_z, max_arg_idx_, shared_mem_bytes_, stream_index);
   _event_debug("dev[%d][%s] kernel[%s:%s] dim[%d] grid[%d,%d,%d] off[%ld,%ld,%ld] block[%d,%d,%d] blockoff[%lu,%lu,%lu] max_arg_idx[%d] shared_mem_bytes[%u] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, grid[0], grid[1], grid[2], off[0], off[1], off[2], block[0], block[1], block[2], blockOff_x, blockOff_y, blockOff_z, max_arg_idx_, shared_mem_bytes_, stream_index);
   _trace("dev[%d][%s] kernel[%s:%s] dim[%d] grid[%d,%d,%d] off[%ld,%ld,%ld] block[%d,%d,%d] blockoff[%lu,%lu,%lu] max_arg_idx[%d] shared_mem_bytes[%u] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, grid[0], grid[1], grid[2], off[0], off[1], off[2], block[0], block[1], block[2], blockOff_x, blockOff_y, blockOff_z, max_arg_idx_, shared_mem_bytes_, stream_index);
+  /*if (async) {
+      _printf("dev[%d][%s] kernel[%s:%s] dim[%d] grid[%d,%d,%d] off[%ld,%ld,%ld] block[%d,%d,%d] blockoff[%lu,%lu,%lu] max_arg_idx[%d] shared_mem_bytes[%u] q[%d] stream[%p] ctx[%p]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, grid[0], grid[1], grid[2], off[0], off[1], off[2], block[0], block[1], block[2], blockOff_x, blockOff_y, blockOff_z, max_arg_idx_, shared_mem_bytes_, stream_index, *kstream, ctx_);
+  }
+  else {
+      _printf("dev[%d][%s] kernel[%s:%s] dim[%d] grid[%d,%d,%d] off[%ld,%ld,%ld] block[%d,%d,%d] blockoff[%lu,%lu,%lu] max_arg_idx[%d] shared_mem_bytes[%u] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, grid[0], grid[1], grid[2], off[0], off[1], off[2], block[0], block[1], block[2], blockOff_x, blockOff_y, blockOff_z, max_arg_idx_, shared_mem_bytes_, stream_index);
+  }*/
   if (julia_if_ != NULL && kernel->task()->enable_julia_if()) {
       size_t grid_s[3] =  { (size_t)grid[0],  (size_t)grid[1],  (size_t)grid[2] };
       size_t block_s[3] = { (size_t)block[0], (size_t)block[1], (size_t)block[2] };
@@ -1129,6 +1135,7 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
                   dim, grid_s, block_s);
       return IRIS_SUCCESS;
   }
+  //printf("Shared mem bytes: %d\n", shared_mem_bytes_);
   if (!async) {
       err = ld_->cuLaunchKernel(cukernel, grid[0], grid[1], grid[2], block[0], block[1], block[2], shared_mem_bytes_, 0, params_, NULL);
       _cuerror(err);
@@ -1155,6 +1162,21 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
   max_arg_idx_ = 0;
   shared_mem_bytes_ = 0;
   return IRIS_SUCCESS;
+}
+void DeviceCUDA::VendorKernelLaunch(void *kernel, int gridx, int gridy, int gridz, int blockx, int blocky, int blockz, int shared_mem_bytes, void *stream, void **params) 
+{ 
+  printf("IRIS Received kernel:%p stream:%p\n", kernel, stream);
+  if (IsContextChangeRequired()) {
+      ld_->cuCtxSetCurrent(ctx_);
+  }
+  //void *par[4] = { (void *)&params[0], (void *)params[1], (void *)&params[2], (void *)&params[3] };
+  //printf("Params0: %p %p\n", params[0], par[0]);
+  //printf("Params1: %p fl:%f\n", params[1], *((float*)params[1]));
+  //printf("Params2: %p %p\n", params[2], par[2]);
+  //printf("Params3: %p %p\n", params[3], par[3]);
+  CUresult err = ld_->cuLaunchKernel((CUfunction)kernel, gridx, gridy, gridz, blockx, blocky, blockz, shared_mem_bytes, (CUstream)stream, params, NULL);
+  _cuerror(err);
+  //ld_->cuStreamSynchronize((CUstream)stream);
 }
 
 int DeviceCUDA::Synchronize() {

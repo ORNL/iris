@@ -141,6 +141,7 @@ Task::~Task() {
   subtasks_.clear();
   if (childs_uids_ != NULL) delete [] childs_uids_;
   _trace("released task:%lu:%s released ref_cnt:%d", uid(), name(), ref_cnt());
+  //_printf("released task:%lu:%s released ref_cnt:%d", uid(), name(), ref_cnt());
 }
 bool Task::IsKernelSupported(Device *dev)
 {
@@ -369,6 +370,7 @@ void Task::Complete() {
       unsigned long luid = uid(); string lname = name_; _debug2(" task:%lu:%s is completed and trying to release ref_cnt:%d", uid(), name(), ref_cnt());
       int ret_ref_cnt = Release();
       _debug2(" task:%lu:%s is completed and after release ref_cnt:%d", luid, lname.c_str(), ret_ref_cnt);
+      //_printf(" Complete: task:%lu:%s ref_cnt:%d", luid, lname.c_str(), ret_ref_cnt);
   }
 }
 
@@ -387,6 +389,7 @@ void Task::CompleteSub() {
   pthread_mutex_lock(&mutex_subtasks_);
   if (++subtasks_complete_ == subtasks_.size()) Complete();
   pthread_mutex_unlock(&mutex_subtasks_);
+  //_printf(" CompleteSub:: task:%lu:%s is ref_cnt:%d", uid(), name(), ref_cnt());
   Release();
 }
 

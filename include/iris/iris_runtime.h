@@ -2169,6 +2169,14 @@ extern void iris_println(const char *s);
   */
 extern void *iris_dev_get_ctx(int device);
 
+/**
+  * This function returns device context
+  * @param Device number
+  * @param index of stream 
+  * @return Stream pointer
+  */
+extern void *iris_dev_get_stream(int device, int index);
+
 /* Run HPL Mapping algorithm*/
 extern void iris_run_hpl_mapping(iris_graph graph);
 
@@ -2204,6 +2212,7 @@ extern julia_kernel_t iris_get_julia_launch_func();
  */
 extern bool iris_is_enabled_auto_par();
 
+extern int iris_vendor_kernel_launch(int dev, void *kernel, int gridx, int gridy, int gridz, int blockx, int blocky, int blockz, int shared_mem_bytes, void *stream, void **params);
 
 #ifdef __cplusplus
 } /* end of extern "C" */

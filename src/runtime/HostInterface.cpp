@@ -245,7 +245,7 @@ namespace iris {
         void JuliaHostInterfaceLoader::init(int dev) 
         {
             HostInterfaceLoader::init(dev);
-            printf("Initialized Julia init\n");
+            //printf("Initialized Julia init\n");
             //printf("Loading julia library\n");
             if (Load() != IRIS_SUCCESS) {
               _trace("%s", "skipping Julia wrapper calls");

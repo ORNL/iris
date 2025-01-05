@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <malloc.h>
+#include <time.h>
 
 int main(int argc, char** argv) {
   iris_init(&argc, &argv, 1);
@@ -14,11 +15,16 @@ int main(int argc, char** argv) {
   int ERROR = 0;
 
   SIZE = argc > 1 ? atol(argv[1]) : 8;
-  TARGET = argc > 2 ? atol(argv[2]) : 0;
+  TARGET = argc > 2 ? atol(argv[2]) : iris_default;
   VERBOSE = argc > 3 ? atol(argv[3]) : 1;
 
   printf("[%s:%d] SIZE[%zu] TARGET[%d] VERBOSE[%d]\n", __FILE__, __LINE__, SIZE, TARGET, VERBOSE);
 
+  int target = iris_default;
+  if (TARGET == 0) target = iris_cpu;
+  else if (TARGET == 1) target = iris_cuda;
+  else if (TARGET == 2) target = iris_hip;
+  else target= TARGET;
   X = (float*) malloc(SIZE * sizeof(float));
   Y = (float*) malloc(SIZE * sizeof(float));
   Z = (float*) malloc(SIZE * sizeof(float));
@@ -39,6 +45,7 @@ int main(int argc, char** argv) {
 
   }
 
+  clock_t start = clock();
   iris_mem mem_X;
   iris_mem mem_Y;
   iris_mem mem_Z;
@@ -54,7 +61,10 @@ int main(int argc, char** argv) {
   int saxpy_params_info[4] = { iris_w, sizeof(A), iris_r, iris_r };
   iris_task_kernel(task0, "saxpy", 1, NULL, &SIZE, NULL, 4, saxpy_params, saxpy_params_info);
   iris_task_d2h_full(task0, mem_Z, Z);
-  iris_task_submit(task0, TARGET, NULL, 1);
+  iris_task_submit(task0, target, NULL, 1);
+  clock_t end = clock();
+  double     cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
+  printf("Time spent in the for loop: %f seconds\n", cpu_time_used);
 
   if (VERBOSE) {
 

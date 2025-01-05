@@ -167,6 +167,7 @@ public:
   virtual int KernelSetArg(Kernel* kernel, int idx, int kindex, size_t size, void* value) = 0;
   virtual int KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, size_t off) = 0;
   virtual int KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws) = 0;
+  virtual void VendorKernelLaunch(void *kernel, int gridx, int gridy, int gridz, int blockx, int blocky, int blockz, int shared_mem_bytes, void *stream, void **params) { }
   virtual int Synchronize() = 0;
   virtual int AddCallback(Task* task);
   static void Callback(void *stream, int status, void* data);
@@ -219,6 +220,7 @@ public:
   bool enable() { return enable_; }
   bool native_kernel_not_exists() { return native_kernel_not_exists_; }
   virtual void *get_ctx() { return NULL; }
+  virtual void *get_stream(int index) { return NULL; }
   void enableD2D() { is_d2d_possible_ = true; }
   bool isD2DEnabled() { return is_d2d_possible_; }
   int ok() { return errid_; }

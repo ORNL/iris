@@ -33,6 +33,7 @@ public:
   int KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, size_t off);
   void CheckVendorSpecificKernel(Kernel* kernel);
   int KernelLaunchInit(Command *cmd, Kernel* kernel);
+  void VendorKernelLaunch(void *kernel, int gridx, int gridy, int gridz, int blockx, int blocky, int blockz, int shared_mem_bytes, void *stream, void **params);
   int KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws);
   int Synchronize();
   void EnablePeerAccess();

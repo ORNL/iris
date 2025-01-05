@@ -721,6 +721,17 @@ int DeviceHIP::KernelLaunchInit(Command *cmd, Kernel* kernel) {
     return IRIS_SUCCESS;
 }
 
+void DeviceHIP::VendorKernelLaunch(void *kernel, int gridx, int gridy, int gridz, int blockx, int blocky, int blockz, int shared_mem_bytes, void *stream, void **params) 
+{ 
+  printf("IRIS Received kernel:%p stream:%p\n", kernel, stream);
+  if (IsContextChangeRequired()) {
+      ld_->hipCtxSetCurrent(ctx_);
+  }
+  hipError_t err = ld_->hipModuleLaunchKernel((hipFunction_t)kernel, gridx, gridy, gridz, blockx, blocky, blockz, shared_mem_bytes, (hipStream_t)stream, params, NULL);
+  _hiperror(err);
+  //ld_->hipStreamSynchronize((CUstream)stream);
+}
+
 
 int DeviceHIP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws) {
 #ifdef TRACE_DISABLE

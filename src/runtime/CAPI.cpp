@@ -1049,6 +1049,10 @@ void *iris_dev_get_ctx(int device) {
   return Platform::GetPlatform()->GetDeviceContext(device);
 }
 
+void *iris_dev_get_stream(int device, int stream) {
+  return Platform::GetPlatform()->GetDeviceStream(device, stream);
+}
+
 void iris_run_hpl_mapping(iris_graph graph)
 {
     int ndevices = 0;
@@ -1167,7 +1171,10 @@ julia_kernel_t iris_get_julia_launch_func()
 {
     return julia_kernel__;
 }
-
+int iris_vendor_kernel_launch(int dev, void *kernel, int gridx, int gridy, int gridz, int blockx, int blocky, int blockz, int shared_mem_bytes, void *stream, void **params) 
+{
+    return Platform::GetPlatform()->VendorKernelLaunch(dev, kernel, gridx, gridy, gridz, blockx, blocky, blockz, shared_mem_bytes, stream, params);
+}
 bool iris_is_enabled_auto_par() {
   return Platform::GetPlatform()->GetAutoPar();
 }

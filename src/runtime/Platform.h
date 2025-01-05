@@ -166,6 +166,7 @@ public:
   int DataMemCreate(iris_mem* brs_mem, void *host, size_t size, const char *symbol, int element_type=iris_unknown);
   int DataMemCreate(iris_mem *brs_mem, void *host, size_t *size, int dim, size_t element_size, int element_type=iris_unknown);
   int DataMemCreate(iris_mem* brs_mem, void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim, int element_type=iris_unknown);
+  int VendorKernelLaunch(int dev, void *kernel, int gridx, int gridy, int gridz, int blockx, int blocky, int blockz, int shared_mem_bytes, void *stream, void **params);
   int DataMemCreate(iris_mem* brs_mem, iris_mem root_mem, int region);
   int DataMemEnableOuterDimRegions(iris_mem mem);
   int MemArch(iris_mem brs_mem, int device, void** arch);
@@ -278,6 +279,7 @@ public:
   void disable_d2d() { disable_d2d_ = true; }
   void enable_d2d() { disable_d2d_ = false; }
   void *GetDeviceContext(int device);
+  void *GetDeviceStream(int device, int index);
   bool is_d2d_disabled() { return disable_d2d_; }
   bool is_kernel_launch_disabled() { return disable_kernel_launch_; }
   void set_kernel_launch_disabled(bool flag) { disable_kernel_launch_ = flag; }
@@ -383,7 +385,9 @@ private:
   bool enable_profiler_;
   Profiler* profilers_[8];
   int nprofilers_;
-  int device_factor_;
+  int openmp_device_factor_;
+  int cuda_device_factor_;
+  int hip_device_factor_;
   bool is_malloc_async_;
 
   bool enable_scheduling_history_;
