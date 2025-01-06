@@ -78,13 +78,28 @@ end
 #threads = min(SIZE, maxPossibleThreads)
 #blocks = ceil(Int, SIZE / threads)
 
-function saxpy_iris_new(A::Float32, X::Vector{Float32}, Y::Vector{Float32}, Z::Vector{Float32})
+function saxpy_iris_new_v1(A::Float32, X::Vector{Float32}, Y::Vector{Float32}, Z::Vector{Float32})
     SIZE = length(X)
     gc_state = IrisHRT.gc_enter()
     #@iris in=[X,Y] out=[Z] flush=[Z] sync=0 gws=Int64[SIZE] saxpy(Z, A, X, Y)
-    IrisHRT.iris(in=[X,Y], out=[Z], sync=0, gws=Int64[SIZE], kernel="saxpy", args=[Z, A, X, Y])
-    IrisHRT.iris(in=[X,Y], out=[Z], sync=0, gws=Int64[SIZE], kernel="saxpy", args=[Z, A, X, Y])
-    IrisHRT.iris(in=[X,Y], flush=[Z], sync=0, gws=Int64[SIZE], kernel="saxpy", args=[Z, A, X, Y])
+    task0=IrisHRT.task(in=[X,Y],   out=[Z], wait=0, gws=Int64[SIZE], kernel="saxpy", args=[Z, A, X, Y], dependencies=[])
+    task1=IrisHRT.task(in=[X,Y],   out=[Z], wait=0, gws=Int64[SIZE], kernel="saxpy", args=[Z, A, X, Y], dependencies=[task0])
+    task2=IrisHRT.task(in=[X,Y], flush=[Z], wait=0, gws=Int64[SIZE], kernel="saxpy", args=[Z, A, X, Y], dependencies=[task0, task1])
+
+    IrisHRT.synchronize()
+    IrisHRT.gc_leave(gc_state)
+end
+
+function saxpy_iris_new(A::Float32, X::Vector{Float32}, Y::Vector{Float32}, Z::Vector{Float32})
+    SIZE = length(X)
+    gc_state = IrisHRT.gc_enter()
+    mem_X = IrisHRT.dmem(X)
+    mem_Y = IrisHRT.dmem(Y)
+    mem_Z = IrisHRT.dmem(Z)
+    #@iris in=[X,Y] out=[Z] flush=[Z] sync=0 gws=Int64[SIZE] saxpy(Z, A, X, Y)
+    task0=IrisHRT.task(in=[mem_X,mem_Y], out=[mem_Z], wait=0, gws=Int64[SIZE], kernel="saxpy", args=[mem_Z, A, mem_X, mem_Y], dependencies=[])
+    task1=IrisHRT.task(in=[mem_X,mem_Y], out=[mem_Z], wait=0, gws=Int64[SIZE], kernel="saxpy", args=[mem_Z, A, mem_X, mem_Y], dependencies=[task0])
+    task2=IrisHRT.task(in=[mem_X,mem_Y], flush=[mem_Z], wait=0, gws=Int64[SIZE], kernel="saxpy", args=[mem_Z, A, mem_X, mem_Y], dependencies=[task0, task1])
 
     IrisHRT.synchronize()
     IrisHRT.gc_leave(gc_state)
@@ -417,7 +432,7 @@ Z = zeros(Float32, SIZE)
 Ref_Z = zeros(Float32, SIZE)
 # Initialize IRIS
 #@spawn IrisHRT.iris_println("******Hello World******1")
-IrisHRT.iris_init(1)
+IrisHRT.init(1)
 #@spawn IrisHRT.iris_println("******Hello World******2")
 exit
 X = rand(Float32, SIZE)
@@ -464,7 +479,7 @@ println("SIZE:$SIZE time0:$julia_time0 time1:$julia_time1 time2:$julia_time2")
 #output = compare_arrays(Z, Ref_Z)
 #println("Output Matching: ", output)
 # Finalize IRIS
-IrisHRT.iris_finalize()
+IrisHRT.finalize()
 end
 
 main(SIZE)

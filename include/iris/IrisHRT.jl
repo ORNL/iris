@@ -608,6 +608,14 @@ module IrisHRT
         return flag
     end
 
+    function init(sync)::Int32
+        return iris_init(sync)
+    end
+
+    function init()::Int32
+        return iris_init(1)
+    end
+
     function iris_init_scheduler(use_pthread::Int)::Int32
         return ccall(Libdl.dlsym(lib, :iris_init_scheduler), Int32, (Int32,), Int32(use_pthread))
     end
@@ -720,6 +728,10 @@ module IrisHRT
 
     function iris_finalize()::Int32
         return ccall(Libdl.dlsym(lib, :iris_finalize), Int32, ())
+    end
+
+    function finalize()::Int32
+        return iris_finalize()
     end
 
     function synchronize()::Int32
@@ -886,6 +898,10 @@ module IrisHRT
         return ccall(Libdl.dlsym(lib, :iris_task_depend), Int32, (IrisTask, Int32, Ptr{IrisTask}), task, ntasks, tasks)
     end
 
+    function iris_task_depend(task::IrisTask, tasks::Vector{IrisTask})::Int32
+        return iris_task_depend(task, Int32(length(tasks)), pointer(tasks)) 
+    end
+
     function iris_task_malloc(task::IrisTask, mem::IrisMem)::Int32
         return ccall(Libdl.dlsym(lib, :iris_task_malloc), Int32, (IrisTask, IrisMem), task, mem)
     end
@@ -956,6 +972,10 @@ module IrisHRT
 
     function iris_task_dmem_flush_out(task::IrisTask, mem::IrisMem)::Int32
         return ccall(Libdl.dlsym(lib, :iris_task_dmem_flush_out), Int32, (IrisTask, IrisMem), task, mem)
+    end
+
+    function flush(task::IrisTask, mem::IrisMem)::Int32
+        return iris_task_dmem_flush_out(task, mem)
     end
 
     function iris_task_h2d_full(task::IrisTask, mem::IrisMem, host::Ptr{Cvoid})::Int32
@@ -1112,11 +1132,23 @@ module IrisHRT
         return ccall(Libdl.dlsym(lib, :iris_task_custom), Int32, (IrisTask, Int32, Ptr{Cvoid}, Csize_t), task, tag, params, params_size)
     end
 
-    function iris_task_submit(task::IrisTask, device::Int64, opt::Ptr{Int8}, sync::Int64)::Int32
+    function iris_task_submit(task::IrisTask, device_policy::Int64, opt::Ptr{Int8}, sync::Int64)::Int32
         #gc_state = @ccall(jl_gc_safe_enter()::Int8)
-        status = ccall(Libdl.dlsym(lib, :iris_task_submit), Int32, (IrisTask, Int32, Ptr{Int8}, Int32), task, Int32(device), opt, Int32(sync))
+        status = ccall(Libdl.dlsym(lib, :iris_task_submit), Int32, (IrisTask, Int32, Ptr{Int8}, Int32), task, Int32(device_policy), opt, Int32(sync))
         #@ccall(jl_gc_safe_leave(gc_state::Int8)::Cvoid)
         return status
+    end
+
+    function submit(task::IrisTask, device_policy::Int64, opt::Ptr{Int8}, sync::Int64)::Int32
+        return iris_task_submit(task, device_policy, opt, sync)
+    end
+
+    function submit(task::IrisTask, device_policy::Int64, sync::Int64)::Int32
+        return iris_task_submit(task, device_policy, Ptr{Int8}(C_NULL), sync)
+    end
+
+    function submit(task::IrisTask, device_policy::Int64)::Int32
+        return iris_task_submit(task, device_policy, Ptr{Int8}(C_NULL), 1)
     end
 
     function iris_task_set_policy(task::IrisTask, device::Int32)::Int32
@@ -1135,6 +1167,15 @@ module IrisHRT
         return ccall(Libdl.dlsym(lib, :iris_task_wait_all), Int32, (Int32, Ptr{IrisTask}), ntasks, tasks)
     end
 
+    function wait(task::IrisTask)::Int32
+        return iris_task_wait(task)
+    end
+
+    function wait(tasks::Vector{IrisTask})::Int32
+        return iris_task_wait_all(Int32(length(tasks)), pointer(tasks))
+    end
+
+
     #function iris_task_add_subtask(task::IrisTask, subtask::IrisTask)::Int32
     #    return ccall(Libdl.dlsym(lib, :iris_task_add_subtask), Int32, (IrisTask, IrisTask), task, subtask)
     #end
@@ -1145,6 +1186,10 @@ module IrisHRT
 
     function iris_task_release(task::IrisTask)::Int32
         return ccall(Libdl.dlsym(lib, :iris_task_release), Int32, (IrisTask,), task)
+    end
+
+    function release(task::IrisTask)::Int32
+        return iris_task_release(task)
     end
 
     function iris_task_release_mem(task::IrisTask, mem::IrisMem)::Int32
@@ -1295,6 +1340,14 @@ module IrisHRT
         return ccall(Libdl.dlsym(lib, :iris_data_mem_create_struct_nd), IrisMem, (Ptr{Cvoid}, Ptr{Cvoid}, Int32, Csize_t, Int32), host_cptr, host_size, dim, element_size, Int32(element_type))
     end
 
+    function dmem(T, dims...)
+        return iris_data_mem(T, dims...)
+    end
+
+    function dmem(host::Array{T}) where T 
+        return iris_data_mem(host)
+    end
+
     function iris_data_mem_create_struct(host::Ptr{Cvoid}, size::Csize_t)::IrisMem
         return ccall(Libdl.dlsym(lib, :iris_data_mem_create_struct), IrisMem, (Ptr{Cvoid}, Csize_t), host, size)
     end
@@ -1387,6 +1440,10 @@ module IrisHRT
         return ccall(Libdl.dlsym(lib, :iris_mem_release), Int32, (IrisMem,), mem)
     end
 
+    function release(mem::IrisMem)::Int32
+        return iris_mem_release(mem)
+    end
+
     function iris_graph_create(graph::Ptr{IrisGraph})::Int32
         return ccall(Libdl.dlsym(lib, :iris_graph_create), Int32, (Ptr{IrisGraph},), graph)
     end
@@ -1423,6 +1480,10 @@ module IrisHRT
         return ccall(Libdl.dlsym(lib, :iris_graph_release), Int32, (IrisGraph,), graph)
     end
 
+    function release(graph::IrisGraph)::Int32
+        return iris_graph_release(graph)
+    end
+
     function iris_graph_submit(graph::IrisGraph, device::Int32, sync::Int32)::Int32
         return ccall(Libdl.dlsym(lib, :iris_graph_submit), Int32, (IrisGraph, Int32, Int32), graph, device, sync)
     end
@@ -1445,6 +1506,14 @@ module IrisHRT
 
     function iris_graph_wait_all(ngraphs::Int32, graphs::Ptr{IrisGraph})::Int32
         return ccall(Libdl.dlsym(lib, :iris_graph_wait_all), Int32, (Int32, Ptr{IrisGraph}), ngraphs, graphs)
+    end
+
+    function wait(graph::IrisGraph)::Int32
+        return iris_graph_wait(graph)
+    end
+
+    function wait(graphs::Vector{IrisGraph})::Int32
+        return iris_graph_wait_all(Int32(length(graphs)), pointer(graphs))
     end
 
     function iris_record_start()::Int32
@@ -1779,78 +1848,101 @@ module IrisHRT
         return ccall(Libdl.dlsym(lib, :iris_read_int_env), Int32, (Ptr{Cchar},), pointer(env_name))
     end
 
-    function gc_enter()
+    function gc_safe_enter()
         gc_state = @ccall(jl_gc_safe_enter()::Int8)
         return gc_state
     end
+
     function gc_leave(gc_state)
-        clear_gc()
+        clear_map()
         @ccall(jl_gc_safe_leave(gc_state::Int8)::Cvoid)
         return gc_state
     end
-    function clear_gc() 
+
+    function clear_map() 
         for (key, value) in Main.__iris_dmem_map 
             IrisHRT.iris_mem_release(value)
         end
         # Clear all elements in the dictionary
         empty!(Main.__iris_dmem_map)
     end
-    function iris(; in=[], out=[], flush=[], lws=Int64[], gws=Int64[], off=Int64[], policy=IrisHRT.iris_roundrobin, sync=1, args=[], kernel="kernel")
-        kernel_name = kernel
-        in_memories = in
-        out_memories = out
-        flush_memories = flush
-        sync_flag = sync
+
+    function task(; in=[], out=[], flush=[], lws=Int64[], gws=Int64[], off=Int64[], policy=IrisHRT.iris_roundrobin, wait=true, kernel="kernel", args=[], dependencies=[])
         call_args = args
         mem_params = Dict{Any, Any}()
-        for array in vcat(out_memories, flush_memories)
+        for array in vcat(out, flush)
+            p_array = pointer(array)
             #println(Core.stdout, "Out ---- ", array, " typeof:", typeof(array))
-             if !haskey(Main.__iris_dmem_map, array)
+             if !haskey(Main.__iris_dmem_map, p_array)
                 # Generate DMEM object if not found
-                #println("Array not found in global map. Creating DMEM object for: ", array)
-                Main.__iris_dmem_map[array] = IrisHRT.iris_data_mem(array)
+                #println("Array not found in global map. Out/Flush Creating DMEM object for: ", pointer(array))
+                if !isa(array, IrisMem) 
+                    #println("Array is not IrisMem")
+                    Main.__iris_dmem_map[p_array] = IrisHRT.iris_data_mem(array)
+                end
             else
                 #println("Array already mapped to Output DMEM object: ", array)
             end
-            mem_params[array] = IrisHRT.iris_w
+            mem_params[p_array] = IrisHRT.iris_w
         end
-        for array in in_memories
+        for array in in
+            p_array = pointer(array)
             #println(Core.stdout, "In ---- ", array, " typeof:", typeof(array))
             #println("DMEM object t: ", array)
-            if !haskey(Main.__iris_dmem_map, array)
+            if !haskey(Main.__iris_dmem_map, p_array)
                 # Generate DMEM object if not found
-                #println("Array not found in global map. Creating DMEM object for: ", array)
-                Main.__iris_dmem_map[array] = IrisHRT.iris_data_mem(array)
+                #println("Array not found in global map. In Creating DMEM object for: ", pointer(array))
+                if !isa(array, IrisMem) 
+                    #println("Array is not IrisMem")
+                    Main.__iris_dmem_map[p_array] = IrisHRT.iris_data_mem(array)
+                end
             else
                 #println("Array already mapped to Input DMEM object: ", array)
             end
-            if !haskey(mem_params, array)
-                mem_params[array] = IrisHRT.iris_r
+            if !haskey(mem_params, p_array)
+                mem_params[p_array] = IrisHRT.iris_r
             else
-                mem_params[array] = IrisHRT.iris_rw
+                mem_params[p_array] = IrisHRT.iris_rw
             end
         end
         kernel_params = []
         for arg in call_args
             #println(Core.stdout, "- s - s - s - : ", arg, " type:", typeof(arg))
-            if haskey(Main.__iris_dmem_map, arg)
-                push!(kernel_params, (Main.__iris_dmem_map[arg], mem_params[arg]))
+            if isa(arg, Array)
+                p_arg = pointer(arg)
+                if haskey(Main.__iris_dmem_map, p_arg)
+                    push!(kernel_params, (Main.__iris_dmem_map[p_arg], mem_params[p_arg]))
+                else
+                    Main.__iris_dmem_map[p_arg] = IrisHRT.iris_data_mem(arg)
+                    push!(kernel_params, (Main.__iris_dmem_map[p_arg], IrisHRT.iris_r))
+                end
+            elseif isa(arg, IrisMem)
+                p_arg = pointer(arg)
+                push!(kernel_params, (arg, mem_params[p_arg])) 
             else
                 push!(kernel_params, arg)
-                #println("Argument ", arg, " does not exist in __iris_dmem_map .")
             end
         end
         #println(Core.stdout, "kernel_params: ", kernel_params)
-        #println(Core.stdout, "kernel name:", kernel_name)
+        #println(Core.stdout, "kernel name:", kernel)
         #println(Core.stdout, "off:", off)
         #println(Core.stdout, "gws:", gws)
         #println(Core.stdout, "lws:", lws)
         #println(Core.stdout, "kernel_params     :", kernel_params)
-        task0 = IrisHRT.iris_task_julia(kernel_name, length(gws), off, gws, lws, kernel_params)
-        for mem in flush_memories
-            IrisHRT.iris_task_dmem_flush_out(task0, Main.__iris_dmem_map[mem])
+        task0 = IrisHRT.iris_task_julia(kernel, length(gws), off, gws, lws, kernel_params)
+        for mem in flush 
+            p_mem = pointer(mem)
+            if isa(mem, IrisMem)
+                IrisHRT.iris_task_dmem_flush_out(task0, mem)
+            else
+                IrisHRT.iris_task_dmem_flush_out(task0, Main.__iris_dmem_map[p_mem])
+            end
         end
-        IrisHRT.iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), sync_flag)
+        if length(dependencies) > 0
+            iris_task_depend(task0, dependencies)
+        end
+        IrisHRT.iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
+        return task0
     end
 
 end  # module Iris
