@@ -29,6 +29,7 @@ public:
   void EnablePeerAccess();
   void SetPeerDevices(int *peers, int count);
   bool IsD2DPossible(Device *target);
+  int CheckPinnedMemory(void* ptr);
   void MemCpy3D(CUdeviceptr dev, uint8_t *host, size_t *off, 
           size_t *dev_sizes, size_t *host_sizes, 
           size_t elem_size, bool host_2_dev);

@@ -217,19 +217,43 @@ DeviceCUDA::DeviceCUDA(LoaderCUDA* ld, LoaderHost2CUDA *host2cuda_ld, CUdevice c
   single_start_time_event_ = NULL;
   _info("device[%d] platform[%d] vendor[%s] device[%s] type[%d] version[%s] max_compute_units[%zu] max_work_group_size_[%zu] max_work_item_sizes[%zu,%zu,%zu] max_block_dims[%d,%d,%d] concurrent_kernels[%d] async_engines[%d] ncopy_engines[%d]", devno_, platform_, vendor_, name_, type_, version_, max_compute_units_, max_work_group_size_, max_work_item_sizes_[0], max_work_item_sizes_[1], max_work_item_sizes_[2], max_block_dims_[0], max_block_dims_[1], max_block_dims_[2], ck, ae, n_copy_engines_);
 }
+int DeviceCUDA::CheckPinnedMemory(void* ptr) {
+    unsigned int memoryType;
+    CUresult result = ld_->cuPointerGetAttribute(&memoryType, CU_POINTER_ATTRIBUTE_MEMORY_TYPE, (CUdeviceptr)ptr);
 
+    if (result == CUDA_SUCCESS) {
+        if (memoryType == CU_MEMORYTYPE_HOST) {
+            return 1;
+        } else {
+            return 0;
+        }
+    } else {
+        return -1;
+    }
+}
 void DeviceCUDA::RegisterPin(void *host, size_t size)
 {
     //ld_->cudaHostRegister(host, size, cudaHostRegisterMapped);
-    CUresult err = ld_->cudaHostRegister(host, size, cudaHostRegisterDefault);
-    _cuwarning(err);
+    //CUresult err = ld_->cudaHostRegister(host, size, cudaHostRegisterDefault);
+    ld_->cuCtxSetCurrent(ctx_);
+    //printf("Host:%p size:%lu, flags:%d\n", host, size, 0);
+    //int mem_type = CheckPinnedMemory(host);
+    //printf("Host:%p size:%lu, flags:%d mem:%d\n", host, size, 0, mem_type);
+    if (CheckPinnedMemory(host) != 1) {
+        CUresult err = ld_->cuMemHostRegister_v2(host, size, 0);
+        _cuwarning(err);
+    }
 }
 
 void DeviceCUDA::UnRegisterPin(void *host)
 {
     //ld_->cudaHostRegister(host, size, cudaHostRegisterMapped);
-    CUresult err = ld_->cudaHostUnregister(host);
-    _cuwarning(err);
+    //CUresult err = ld_->cudaHostUnregister(host);
+    ld_->cuCtxSetCurrent(ctx_);
+    if (CheckPinnedMemory(host) == 1) {
+        CUresult err = ld_->cuMemHostUnregister(host); 
+        _cuwarning(err);
+    }
 }
 
 DeviceCUDA::~DeviceCUDA() {

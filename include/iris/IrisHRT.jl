@@ -380,43 +380,29 @@ module IrisHRT
                     #jptr = unsafe_wrap(CuDeviceArray{Float32, 1}, arg_ptr, size_dims, own=false)
                     #iris_println("After Pointer $arg_ptr $jptr")
                     #push!(julia_args, jptr)
-                    push!(julia_args, (arg_ptr, size_dims, current_type, full_size, element_size))
+                    if Int(target) == Int(iris_cuda)
+                        arg_ptr = cuda_reinterpret(arg_ptr, current_type)
+                        #iris_println("Index: $i target arg:$arg_ptr size:$size_dims")
+                        arg_ptr = unsafe_wrap(Main.CUDA.CuArray, arg_ptr, size_dims, own=false)
+                        #iris_println("After Pointer $arg_ptr")
+                    elseif Int(target) == Int(iris_hip)
+                        arg_ptr = ptr_reinterpret(arg_ptr, current_type)
+                        #iris_println("Index: $i target arg:$arg_ptr size:$size_dims")
+                        arg_ptr = unsafe_wrap(Main.AMDGPU.ROCArray, arg_ptr, size_dims, lock=false)
+                        #iris_println("After Pointer $arg_ptr")
+                    elseif Int(target) == Int(iris_openmp)
+                        arg_ptr = ptr_reinterpret(arg_ptr, current_type)
+                        #iris_println("Index: $i target arg:$arg_ptr size:$size_dims")
+                        arg_ptr = unsafe_wrap(Array, arg_ptr, size_dims, own=false)
+                        #iris_println("After Pointer $arg_ptr")
+                    else
+                        iris_println("[Julia-IrisHRT-Error] Unknown target to handle arguments")
+                    end
+                    push!(julia_args, arg_ptr)
                 catch e 
                     iris_println("[Julia-IrisHRT-Error] exception raised during push of arguments to julia_args")
                     rethrow(e)
                 end
-            end
-        end
-        #iris_println("-----Hello:$target Devno:$devno nparams:$nparams" * vec_string(julia_args))
-        for i in dev_ptr_index
-            (arg_ptr, size_dims, current_type, full_size, element_size)  = julia_args[i]
-            #iris_println("Index: $i arg:$arg_ptr ---")
-            try 
-                #type_name = CuPtr{Float32}
-                #cu_arg_ptr = reinterpret(type_name, arg_ptr)
-                if Int(target) == Int(iris_cuda)
-                    arg_ptr = cuda_reinterpret(arg_ptr, current_type)
-                    #iris_println("Index: $i target arg:$arg_ptr size:$size_dims")
-                    arg_ptr = unsafe_wrap(Main.CUDA.CuArray, arg_ptr, size_dims, own=false)
-                    #iris_println("After Pointer $arg_ptr")
-                elseif Int(target) == Int(iris_hip)
-                    arg_ptr = ptr_reinterpret(arg_ptr, current_type)
-                    #iris_println("Index: $i target arg:$arg_ptr size:$size_dims")
-                    arg_ptr = unsafe_wrap(Main.AMDGPU.ROCArray, arg_ptr, size_dims, lock=false)
-                    #iris_println("After Pointer $arg_ptr")
-                elseif Int(target) == Int(iris_openmp)
-                    arg_ptr = ptr_reinterpret(arg_ptr, current_type)
-                    #iris_println("Index: $i target arg:$arg_ptr size:$size_dims")
-                    arg_ptr = unsafe_wrap(Array, arg_ptr, size_dims, own=false)
-                    #iris_println("After Pointer $arg_ptr")
-                else
-                    iris_println("[Julia-IrisHRT-Error] Unknown target to handle arguments")
-                end
-                julia_args[i] = arg_ptr
-                #push!(julia_args, arg_ptr)
-            catch e 
-                iris_println("[Julia-IrisHRT-Error] exception raised during conversion to device specific type")
-                rethrow(e)
             end
         end
         #iris_println("Hello:$target Devno:$devno nparams:$nparams" * vec_string(julia_args))
