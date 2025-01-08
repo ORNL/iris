@@ -159,6 +159,7 @@ typedef enum DeviceModel DeviceModel;
 #define iris_reset_memset       0
 #define iris_reset_assign       1 
 #define iris_reset_arith_seq    2
+#define iris_reset_geom_seq     3
 
 #define iris_normal             (1 << 10)
 #define iris_reduction          (1 << 11)
@@ -223,6 +224,12 @@ typedef union _IRISValue {
     double   f64;
 }IRISValue;
 
+typedef struct _ResetData {
+    IRISValue value_;
+    IRISValue start_;
+    IRISValue step_;
+    int reset_type_;
+}ResetData;
 /**@brief Initializes the IRIS execution environment.
  *
  * This function initializes the IRIS execution environment.
@@ -1151,6 +1158,15 @@ extern int iris_mem_create(size_t size, iris_mem* mem);
  */
 extern int iris_data_mem_init_reset(iris_mem mem, int reset);
 
+/**@brief Get DMem element type
+ *
+ * This function returns a DMEM element type if it is configured
+ *
+ * @param mem pointer to the memory object
+ * @return This function returns an DMem element type
+ */
+extern int iris_get_dmem_element_type(iris_mem mem);
+
 /**@brief Get DMem host pointer 
  *
  * This function returns a DMEM host assigned pointer; It will create host memory if it is null and return the address
@@ -1716,7 +1732,16 @@ extern void *iris_task_get_cmd_kernel(iris_task brs_task);
 extern size_t iris_mem_get_size(iris_mem mem);
 extern int iris_mem_get_type(iris_mem mem);
 extern int iris_mem_get_uid(iris_mem mem);
+extern int iris_get_mem_element_type(iris_mem brs_mem);
 extern int iris_mem_is_reset(iris_mem mem);
+extern int iris_mem_init_reset(iris_mem brs_mem, int memset_value);
+extern int iris_mem_init_reset_assign(iris_mem brs_mem, IRISValue value);
+extern int iris_mem_init_reset_arith_seq(iris_mem brs_mem, IRISValue start, IRISValue increment);
+extern int iris_mem_init_reset_geom_seq(iris_mem brs_mem, IRISValue start, IRISValue step);
+
+// DMem Memory member access
+extern int iris_dmem_get_dim(iris_mem mem);
+extern size_t *iris_dmem_get_host_size(iris_mem mem);
 extern iris_mem iris_get_dmem_for_region(iris_mem dmem_region_obj);
 
 // Command kernel member access

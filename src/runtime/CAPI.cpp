@@ -259,6 +259,18 @@ int iris_task_dmem_flush_out(iris_task task, iris_mem mem) {
   return Platform::GetPlatform()->TaskMemFlushOut(task, mem);
 }
 
+size_t *iris_dmem_get_host_size(iris_mem brs_mem) {
+    DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (mem != NULL) return mem->host_size();
+    return NULL;
+}
+
+int iris_dmem_get_dim(iris_mem brs_mem) {
+    DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (mem != NULL) return mem->dim();
+    return 0;
+}
+
 void *iris_get_dmem_valid_host(iris_mem brs_mem) {
     DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
     if (mem != NULL) return mem->host_memory();
@@ -505,6 +517,12 @@ int iris_mem_get_uid(iris_mem mem) {
   return Platform::GetPlatform()->get_mem_object(mem)->uid();
 }
 
+int iris_get_mem_element_type(iris_mem brs_mem) {
+    BaseMem * mem = (BaseMem*)Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (mem != NULL) return mem->element_type();
+    return iris_unknown;
+}
+
 int iris_mem_is_reset(iris_mem mem) {
   return Platform::GetPlatform()->get_mem_object(mem)->is_reset();
 }
@@ -523,6 +541,11 @@ int iris_mem_init_reset_assign(iris_mem brs_mem, IRISValue value) {
 int iris_mem_init_reset_arith_seq(iris_mem brs_mem, IRISValue start, IRISValue increment) {
   BaseMem * mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
   mem->set_reset_arith_seq(start, increment);
+  return IRIS_SUCCESS;
+}
+int iris_mem_init_reset_geom_seq(iris_mem brs_mem, IRISValue start, IRISValue step) {
+  BaseMem * mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  mem->set_reset_geom_seq(start, step);
   return IRIS_SUCCESS;
 }
 int iris_data_mem_init_reset(iris_mem mem, int reset) {

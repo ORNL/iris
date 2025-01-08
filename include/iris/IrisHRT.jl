@@ -199,6 +199,12 @@ module IrisHRT
     const iris_max = (1 << 13) | iris_reduction
     const iris_min = (1 << 14) | iris_reduction
 
+    const iris_reset_memset       = 0
+    const iris_reset_assign       = 1 
+    const iris_reset_arith_seq    = 2
+    const iris_reset_geom_seq     = 3
+
+
     # Define structs (adjust as necessary based on iris.h definitions)
     struct IrisTask
         class_obj::Ptr{Cvoid}
@@ -208,6 +214,10 @@ module IrisHRT
     struct IrisKernel
         class_obj::Ptr{Cvoid}
         uid::Culong
+    end
+
+    struct IRISValue
+        value_buffer::NTuple{8, UInt8} 
     end
 
     struct IrisMem
@@ -1204,8 +1214,7 @@ module IrisHRT
 
     const VALUE_SIZE = 8
     function iris_mem_init_reset_assign(mem::IrisMem, element::Any)::Int32
-        value_buffer = zeors(UInt8, VALUE_SIZE)
-        
+        value_buffer = Base.zeros(UInt8, VALUE_SIZE)
         if typeof(element) == Float32
             value_bytes = reinterpret(UInt8, [element])
             value_buffer[1:4] .= value_bytes
@@ -1239,11 +1248,132 @@ module IrisHRT
         else
             println(Core.stdout, "Unknown type of $element")
         end
-        return ccall(Libdl.dlsym(lib, :iris_mem_init_reset_assign), Int32, (IrisMem, Ptr{UInt8}), mem, value_buffer)
+        #println("Element: ", element, " value_buffer:", value_buffer)
+        ivalue = IRISValue(Tuple(value_buffer))
+        #println("Element: ", element, " buffer:", ivalue)
+        return ccall(Libdl.dlsym(lib, :iris_mem_init_reset_assign), Int32, (IrisMem, IRISValue), mem, ivalue)
+    end
+
+    function iris_mem_init_reset_arith_seq(mem::IrisMem, element::Any, step::Any)::Int32
+        value_buffer = Base.zeros(UInt8, VALUE_SIZE)
+        step_buffer = Base.zeros(UInt8, VALUE_SIZE)
+        if typeof(element) == Float32
+            value_bytes = reinterpret(UInt8, [element])
+            value_buffer[1:4] .= value_bytes
+            step_buffer[1:4] .= reinterpret(UInt8, [step])
+        elseif typeof(element) == Float64
+            value_bytes = reinterpret(UInt8, [element])
+            value_buffer[1:8] .= value_bytes
+            step_buffer[1:8] .= reinterpret(UInt8, [step])
+        elseif typeof(element) == Int64
+            value_bytes = reinterpret(UInt8, [element])
+            value_buffer[1:8] .= value_bytes
+            step_buffer[1:8] .= reinterpret(UInt8, [step])
+        elseif typeof(element) == Int32
+            value_bytes = reinterpret(UInt8, [element])
+            value_buffer[1:4] .= value_bytes
+            step_buffer[1:4] .= reinterpret(UInt8, [step])
+        elseif typeof(element) == Int16
+            value_bytes = reinterpret(UInt8, [element])
+            value_buffer[1:2] .= value_bytes
+            step_buffer[1:2] .= reinterpret(UInt8, [step])
+        elseif typeof(element) == Int8
+            value_bytes = reinterpret(UInt8, [element])
+            value_buffer[1:1] .= value_bytes
+            step_buffer[1:1] .= reinterpret(UInt8, [step])
+        elseif typeof(element) == UInt64
+            value_bytes = reinterpret(UInt8, [element])
+            value_buffer[1:8] .= value_bytes
+            step_buffer[1:8] .= reinterpret(UInt8, [step])
+        elseif typeof(element) == UInt32
+            value_bytes = reinterpret(UInt8, [element])
+            value_buffer[1:4] .= value_bytes
+            step_buffer[1:4] .= reinterpret(UInt8, [step])
+        elseif typeof(element) == UInt16
+            value_bytes = reinterpret(UInt8, [element])
+            value_buffer[1:2] .= value_bytes
+            step_buffer[1:2] .= reinterpret(UInt8, [step])
+        elseif typeof(element) == UInt8
+            value_bytes = reinterpret(UInt8, [element])
+            value_buffer[1:1] .= value_bytes
+            step_buffer[1:1] .= reinterpret(UInt8, [step])
+        else
+            println(Core.stdout, "Unknown type of $element")
+        end
+        #println("Element: ", element, " value_buffer:", value_buffer)
+        ivalue = IRISValue(Tuple(value_buffer))
+        istep = IRISValue(Tuple(step_buffer))
+        #println("Element: ", element, " buffer:", ivalue)
+        return ccall(Libdl.dlsym(lib, :iris_mem_init_reset_arith_seq), Int32, (IrisMem, IRISValue, IRISValue), mem, ivalue, istep)
+    end
+
+    function iris_mem_init_reset_geom_seq(mem::IrisMem, element::Any, step::Any)::Int32
+        value_buffer = Base.zeros(UInt8, VALUE_SIZE)
+        step_buffer = Base.zeros(UInt8, VALUE_SIZE)
+        if typeof(element) == Float32
+            value_bytes = reinterpret(UInt8, [element])
+            value_buffer[1:4] .= value_bytes
+            step_buffer[1:4] .= reinterpret(UInt8, [step])
+        elseif typeof(element) == Float64
+            value_bytes = reinterpret(UInt8, [element])
+            value_buffer[1:8] .= value_bytes
+            step_buffer[1:8] .= reinterpret(UInt8, [step])
+        elseif typeof(element) == Int64
+            value_bytes = reinterpret(UInt8, [element])
+            value_buffer[1:8] .= value_bytes
+            step_buffer[1:8] .= reinterpret(UInt8, [step])
+        elseif typeof(element) == Int32
+            value_bytes = reinterpret(UInt8, [element])
+            value_buffer[1:4] .= value_bytes
+            step_buffer[1:4] .= reinterpret(UInt8, [step])
+        elseif typeof(element) == Int16
+            value_bytes = reinterpret(UInt8, [element])
+            value_buffer[1:2] .= value_bytes
+            step_buffer[1:2] .= reinterpret(UInt8, [step])
+        elseif typeof(element) == Int8
+            value_bytes = reinterpret(UInt8, [element])
+            value_buffer[1:1] .= value_bytes
+            step_buffer[1:1] .= reinterpret(UInt8, [step])
+        elseif typeof(element) == UInt64
+            value_bytes = reinterpret(UInt8, [element])
+            value_buffer[1:8] .= value_bytes
+            step_buffer[1:8] .= reinterpret(UInt8, [step])
+        elseif typeof(element) == UInt32
+            value_bytes = reinterpret(UInt8, [element])
+            value_buffer[1:4] .= value_bytes
+            step_buffer[1:4] .= reinterpret(UInt8, [step])
+        elseif typeof(element) == UInt16
+            value_bytes = reinterpret(UInt8, [element])
+            value_buffer[1:2] .= value_bytes
+            step_buffer[1:2] .= reinterpret(UInt8, [step])
+        elseif typeof(element) == UInt8
+            value_bytes = reinterpret(UInt8, [element])
+            value_buffer[1:1] .= value_bytes
+            step_buffer[1:1] .= reinterpret(UInt8, [step])
+        else
+            println(Core.stdout, "Unknown type of $element")
+        end
+        #println("Element: ", element, " value_buffer:", value_buffer)
+        ivalue = IRISValue(Tuple(value_buffer))
+        istep = IRISValue(Tuple(step_buffer))
+        #println("Element: ", element, " buffer:", ivalue)
+        return ccall(Libdl.dlsym(lib, :iris_mem_init_reset_geom_seq), Int32, (IrisMem, IRISValue, IRISValue), mem, ivalue, istep)
     end
 
     function iris_data_mem_init_reset(mem::IrisMem, reset::Int32)::Int32
         return ccall(Libdl.dlsym(lib, :iris_data_mem_init_reset), Int32, (IrisMem, Int32), mem, reset)
+    end
+
+    function zeros(T, dims...)
+        dmem = iris_data_mem(T, dims...)
+        iris_mem_init_reset_assign(dmem, T(0))
+        return dmem
+    end
+
+    function ones(T, dims...)
+        dmem = iris_data_mem(T, dims...)
+        iris_mem_init_reset_assign(dmem, T(1))
+        return dmem
     end
 
     function iris_data_mem_create(mem::Ptr{IrisMem}, host::Ptr{Cvoid}, size::Csize_t)::Int32
@@ -1256,11 +1386,17 @@ module IrisHRT
 
     function iris_data_mem(T, dims...) 
         #size = Csize_t(length(host) * sizeof(T))
-        host_size = prod(dims) * sizeof(T)
-        dim = length(dims)
+        dim_size = dims
+        #println("Type of element: ", T, " dim:", dims)
+        if length(dims) == 1 && isa(dims[1], Tuple)
+            dim_size = dims[1]
+        end
+        host_size = prod(dim_size) * sizeof(T)
+        dim = length(dim_size)
+        dim_size_v = collect(dim_size)
         element_size = Int32(sizeof(T))
         host_cptr = C_NULL
-        #println("Type of element: ", T, " Size:", host_size, " Element size:", element_size)
+        #println("Type of element: ", T, " dim:", dim, " Size:", host_size, " Element size:", element_size)
         element_type = iris_pointer
         if T == Float32
             element_type = iris_float 
@@ -1287,7 +1423,7 @@ module IrisHRT
         else
             element_type = iris_unknown
         end
-        return ccall(Libdl.dlsym(lib, :iris_data_mem_create_struct_nd), IrisMem, (Ptr{Cvoid}, Ptr{Cvoid}, Int32, Csize_t, Int32), host_cptr, host_size, dim, element_size, Int32(element_type))
+        return ccall(Libdl.dlsym(lib, :iris_data_mem_create_struct_nd), IrisMem, (Ptr{Cvoid}, Ptr{Cvoid}, Int32, Csize_t, Int32), host_cptr, pointer(dim_size_v), dim, element_size, Int32(element_type))
     end
 
     function iris_data_mem(host::Array{T}) where T 
@@ -1332,6 +1468,92 @@ module IrisHRT
 
     function dmem(host::Array{T}) where T 
         return iris_data_mem(host)
+    end
+
+    # Function: void* iris_get_dmem_host(iris_mem brs_mem);
+    function iris_get_dmem_host(brs_mem::IrisMem)::Ptr{Cvoid}
+        func = Libdl.dlsym(lib, :iris_get_dmem_host)
+        return ccall(func, Ptr{Cvoid}, (IrisMem,), brs_mem)
+    end
+
+    function host(mem::IrisMem)
+        arg_ptr = iris_get_dmem_host(mem)
+        if arg_ptr == C_NULL
+            return nothing
+        end
+        size = host_size(mem)
+        j_ptr = ptr_reinterpret(arg_ptr, get_type(mem))
+        return unsafe_wrap(Array, j_ptr, size, own=false)
+    end
+
+    function valid_host(mem::IrisMem)
+        arg_ptr = iris_get_dmem_valid_host(mem)
+        if arg_ptr == C_NULL
+            return nothing
+        end
+        size = host_size(mem)
+        j_ptr = ptr_reinterpret(arg_ptr, get_type(mem))
+        return unsafe_wrap(Array, j_ptr, size, own=false)
+    end
+
+    function get_type(mem::IrisMem)
+        return iris_get_mem_element_type(mem)
+    end
+
+    function ndim(mem::IrisMem)
+        return iris_dmem_get_dim(mem)
+    end
+
+    function host_size(mem::IrisMem)
+        size_ptr = iris_dmem_get_host_size(mem)
+        dim = iris_dmem_get_dim(mem)
+        dims_array = unsafe_wrap(Array, size_ptr, dim)
+        return Tuple(dims_array)
+    end
+
+    function iris_dmem_get_dim(brs_mem::IrisMem)::Cint
+        func = Libdl.dlsym(lib, :iris_dmem_get_dim)
+        return ccall(func, Cint, (IrisMem,), brs_mem)
+    end
+
+    function iris_dmem_get_host_size(brs_mem::IrisMem)::Ptr{Csize_t}
+        func = Libdl.dlsym(lib, :iris_dmem_get_host_size)
+        return ccall(func, Ptr{Csize_t}, (IrisMem,), brs_mem)
+    end
+
+    function iris_get_mem_element_type(brs_mem::IrisMem)::Cint
+        func = Libdl.dlsym(lib, :iris_get_mem_element_type)
+        return ccall(func, Cint, (IrisMem,), brs_mem)
+    end
+
+    # Function: void* iris_get_dmem_valid_host(iris_mem brs_mem);
+    function iris_get_dmem_valid_host(brs_mem::IrisMem)::Ptr{Cvoid}
+        func = Libdl.dlsym(lib, :iris_get_dmem_valid_host)
+        return ccall(func, Ptr{Cvoid}, (IrisMem,), brs_mem)
+    end
+
+    # Function: void* iris_get_dmem_host_fetch(iris_mem brs_mem);
+    function iris_get_dmem_host_fetch(brs_mem::IrisMem)::Ptr{Cvoid}
+        func = Libdl.dlsym(lib, :iris_get_dmem_host_fetch)
+        return ccall(func, Ptr{Cvoid}, (IrisMem,), brs_mem)
+    end
+
+    # Function: void* iris_get_dmem_host_fetch_with_size(iris_mem brs_mem, size_t size);
+    function iris_get_dmem_host_fetch_with_size(brs_mem::IrisMem, size::Csize_t)::Ptr{Cvoid}
+        func = Libdl.dlsym(lib, :iris_get_dmem_host_fetch_with_size)
+        return ccall(func, Ptr{Cvoid}, (IrisMem, Csize_t), brs_mem, size)
+    end
+
+    # Function: int iris_fetch_dmem_data(iris_mem brs_mem, void* host_ptr);
+    function iris_fetch_dmem_data(brs_mem::IrisMem, host_ptr::Ptr{Cvoid})::Cint
+        func = Libdl.dlsym(lib, :iris_fetch_dmem_data)
+        return ccall(func, Cint, (IrisMem, Ptr{Cvoid}), brs_mem, host_ptr)
+    end
+
+    # Function: int iris_fetch_dmem_data_with_size(iris_mem brs_mem, void* host_ptr, size_t size);
+    function iris_fetch_dmem_data_with_size(brs_mem::IrisMem, host_ptr::Ptr{Cvoid}, size::Csize_t)::Cint
+        func = Libdl.dlsym(lib, :iris_fetch_dmem_data_with_size)
+        return ccall(func, Cint, (IrisMem, Ptr{Cvoid}, Csize_t), brs_mem, host_ptr, size)
     end
 
     function iris_data_mem_create_struct(host::Ptr{Cvoid}, size::Csize_t)::IrisMem

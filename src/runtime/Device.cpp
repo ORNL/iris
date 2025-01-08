@@ -107,27 +107,53 @@ void Device::CallMemReset(BaseMem *mem, size_t size, void *stream)
     else if (reset_type == iris_reset_arith_seq) {
         switch(elem_type) {
             case iris_uint8: 
-                ld_default_->iris_arithmetic_seq_u8(static_cast<uint8_t*>(arch), reset_data.start_.u8, reset_data.increment_.u8, size, stream); break;
+                ld_default_->iris_arithmetic_seq_u8(static_cast<uint8_t*>(arch), reset_data.start_.u8, reset_data.step_.u8, size, stream); break;
             case iris_uint16: 
-                ld_default_->iris_arithmetic_seq_u16(static_cast<uint16_t*>(arch), reset_data.start_.u16, reset_data.increment_.u16, size, stream); break;
+                ld_default_->iris_arithmetic_seq_u16(static_cast<uint16_t*>(arch), reset_data.start_.u16, reset_data.step_.u16, size, stream); break;
             case iris_uint32: 
-                ld_default_->iris_arithmetic_seq_u32(static_cast<uint32_t*>(arch), reset_data.start_.u32, reset_data.increment_.u32, size, stream); break;
+                ld_default_->iris_arithmetic_seq_u32(static_cast<uint32_t*>(arch), reset_data.start_.u32, reset_data.step_.u32, size, stream); break;
             case iris_uint64: 
-                ld_default_->iris_arithmetic_seq_u64(static_cast<uint64_t*>(arch), reset_data.start_.u64, reset_data.increment_.u64, size, stream); break;
+                ld_default_->iris_arithmetic_seq_u64(static_cast<uint64_t*>(arch), reset_data.start_.u64, reset_data.step_.u64, size, stream); break;
             case iris_int8: 
-                ld_default_->iris_arithmetic_seq_i8(static_cast<int8_t*>(arch), reset_data.start_.i8, reset_data.increment_.i8, size, stream); break;
+                ld_default_->iris_arithmetic_seq_i8(static_cast<int8_t*>(arch), reset_data.start_.i8, reset_data.step_.i8, size, stream); break;
             case iris_int16: 
-                ld_default_->iris_arithmetic_seq_i16(static_cast<int16_t*>(arch), reset_data.start_.i16, reset_data.increment_.i16, size, stream); break;
+                ld_default_->iris_arithmetic_seq_i16(static_cast<int16_t*>(arch), reset_data.start_.i16, reset_data.step_.i16, size, stream); break;
             case iris_int32: 
-                ld_default_->iris_arithmetic_seq_i32(static_cast<int32_t*>(arch), reset_data.start_.i32, reset_data.increment_.i32, size, stream); break;
+                ld_default_->iris_arithmetic_seq_i32(static_cast<int32_t*>(arch), reset_data.start_.i32, reset_data.step_.i32, size, stream); break;
             case iris_int64: 
-                ld_default_->iris_arithmetic_seq_i64(static_cast<int64_t*>(arch), reset_data.start_.i64, reset_data.increment_.i64, size, stream); break;
+                ld_default_->iris_arithmetic_seq_i64(static_cast<int64_t*>(arch), reset_data.start_.i64, reset_data.step_.i64, size, stream); break;
             case iris_float: 
-                ld_default_->iris_arithmetic_seq_float(static_cast<float*>(arch), reset_data.start_.f32, reset_data.increment_.f32, size, stream); break;
+                ld_default_->iris_arithmetic_seq_float(static_cast<float*>(arch), reset_data.start_.f32, reset_data.step_.f32, size, stream); break;
             case iris_double: 
-                ld_default_->iris_arithmetic_seq_double(static_cast<double*>(arch), reset_data.start_.f64, reset_data.increment_.f64, size, stream); break;
+                ld_default_->iris_arithmetic_seq_double(static_cast<double*>(arch), reset_data.start_.f64, reset_data.step_.f64, size, stream); break;
             default: 
                 _error("Invalid element type:%d for mem uid:%lu for reset arithmatic sequence\n", elem_type, mem->uid()); break;
+        }
+    }
+    else if (reset_type == iris_reset_geom_seq) {
+        switch(elem_type) {
+            case iris_uint8: 
+                ld_default_->iris_geometric_seq_u8(static_cast<uint8_t*>(arch), reset_data.start_.u8, reset_data.step_.u8, size, stream); break;
+            case iris_uint16: 
+                ld_default_->iris_geometric_seq_u16(static_cast<uint16_t*>(arch), reset_data.start_.u16, reset_data.step_.u16, size, stream); break;
+            case iris_uint32: 
+                ld_default_->iris_geometric_seq_u32(static_cast<uint32_t*>(arch), reset_data.start_.u32, reset_data.step_.u32, size, stream); break;
+            case iris_uint64: 
+                ld_default_->iris_geometric_seq_u64(static_cast<uint64_t*>(arch), reset_data.start_.u64, reset_data.step_.u64, size, stream); break;
+            case iris_int8: 
+                ld_default_->iris_geometric_seq_i8(static_cast<int8_t*>(arch), reset_data.start_.i8, reset_data.step_.i8, size, stream); break;
+            case iris_int16: 
+                ld_default_->iris_geometric_seq_i16(static_cast<int16_t*>(arch), reset_data.start_.i16, reset_data.step_.i16, size, stream); break;
+            case iris_int32: 
+                ld_default_->iris_geometric_seq_i32(static_cast<int32_t*>(arch), reset_data.start_.i32, reset_data.step_.i32, size, stream); break;
+            case iris_int64: 
+                ld_default_->iris_geometric_seq_i64(static_cast<int64_t*>(arch), reset_data.start_.i64, reset_data.step_.i64, size, stream); break;
+            case iris_float: 
+                ld_default_->iris_geometric_seq_float(static_cast<float*>(arch), reset_data.start_.f32, reset_data.step_.f32, size, stream); break;
+            case iris_double: 
+                ld_default_->iris_geometric_seq_double(static_cast<double*>(arch), reset_data.start_.f64, reset_data.step_.f64, size, stream); break;
+            default: 
+                _error("Invalid element type:%d for mem uid:%lu for reset geometric sequence\n", elem_type, mem->uid()); break;
         }
     }
 }

@@ -23,12 +23,6 @@ namespace rt {
         IRIS_DMEM = 0x2,
         IRIS_DMEM_REGION = 0x4,
     };
-    struct ResetData {
-        IRISValue value_;
-        IRISValue start_;
-        IRISValue increment_;
-        int reset_type_;
-    };
     class BaseMem;
     using BaseMemDevice = AsyncData<BaseMem>;
     //This is an abstract class
@@ -37,9 +31,10 @@ namespace rt {
             BaseMem(MemHandlerType type, int ndevs) {
                 handler_type_ = type;
                 reset_ = false;
-                reset_data_.value_.u8 = 0;
-                reset_data_.start_.u8 = 0;
-                reset_data_.increment_.u8 = 1;
+                host_reset_ = false;
+                reset_data_.value_.u64 = 0;
+                reset_data_.start_.u64 = 0;
+                reset_data_.step_.u64 = 1;
                 reset_data_.reset_type_ = iris_reset_memset;
                 size_ = 0;
                 element_type_ = iris_unknown;
@@ -130,7 +125,13 @@ namespace rt {
                 reset_ = true;
                 reset_data_.reset_type_ = iris_reset_arith_seq; 
                 reset_data_.start_ = start;
-                reset_data_.increment_ = increment;
+                reset_data_.step_ = increment;
+            } 
+            inline void set_reset_geom_seq(IRISValue start, IRISValue step) { 
+                reset_ = true;
+                reset_data_.reset_type_ = iris_reset_geom_seq; 
+                reset_data_.start_ = start;
+                reset_data_.step_ = step;
             } 
             inline void** archs_off() { return archs_off_; }
             inline void** archs() { return archs_; }
@@ -281,6 +282,7 @@ namespace rt {
             size_t size_;
             int ndevs_;
             bool  reset_;
+            bool host_reset_;
             bool  is_usm_[IRIS_MAX_NDEVS];
             ResetData reset_data_;
             BaseMemDevice *device_map_;

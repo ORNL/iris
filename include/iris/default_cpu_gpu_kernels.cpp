@@ -4,7 +4,7 @@
 #define IS_DEFAULT_GPU 1 
 #endif // __HIPCC__
 
-#ifdef __CUDAACC__
+#ifdef __CUDACC__
 #include <cuda.h>     // CUDA header for NVCC
 #include <cuda_runtime.h>     // CUDA header for NVCC
 #define gpuStream_t  CUstream //cudaStream_t
@@ -12,6 +12,7 @@
 #endif // __CUDAACC__
 
 #ifndef IS_DEFAULT_GPU
+#include <math.h>
 #include <omp.h>
 #endif
 
@@ -32,6 +33,22 @@ __global__ void  iris_arithmetic_seq_core(T *arr, T start, T increment, size_t s
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < size) {
         arr[idx] = start + idx * increment;
+    }
+}
+
+template <typename T>
+__global__ void  iris_geometric_seq_core(T *arr, T start, T ratio, size_t size) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < size) {
+        if constexpr (std::is_floating_point<T>::value) {
+            arr[idx] = start * pow(ratio, idx);
+        } else {
+            T value = start;
+            for(int i=0; i<idx; i++) {
+                value *= ratio;
+            }
+            arr[idx] = value;
+        }
     }
 }
 
@@ -60,7 +77,21 @@ void iris_arithmetic_seq(T *arr, T start, T increment, size_t size, void *stream
         iris_arithmetic_seq_core<T><<<blocksPerGrid, threadsPerBlock>>>(arr, start, increment, size);
     }
 }
+
+template <typename T>
+void iris_geometric_seq(T *arr, T start, T ratio, size_t size, void *stream) {
+    int threadsPerBlock = 256;
+    int blocksPerGrid = static_cast<int>((size + threadsPerBlock - 1) / threadsPerBlock);
+    if (stream != NULL) {
+        gpuStream_t gpu_stream = reinterpret_cast<gpuStream_t>(stream);
+        iris_geometric_seq_core<T><<<blocksPerGrid, threadsPerBlock, 0, gpu_stream>>>(arr, start, ratio, size);
+    }
+    else {
+        iris_geometric_seq_core<T><<<blocksPerGrid, threadsPerBlock>>>(arr, start, ratio, size);
+    }
+}
 #else // IS_DEFAULT_GPU
+// CPU Implementation
 template <typename T>
 void iris_reset(T *arr, T value, size_t size, void *stream) {
     #pragma omp parallel for
@@ -74,6 +105,35 @@ void iris_arithmetic_seq(T *arr, T start, T increment, size_t size, void *stream
     #pragma omp parallel for
     for(int i=0; i<size; i++) {
         arr[i] = start + i * increment;
+    }
+}
+template <typename T>
+void  iris_geometric_seq(T *arr, T start, T ratio, size_t size) {
+    #pragma omp parallel for
+    for(int idx=0; idx<size; idx++) {
+        if constexpr (std::is_floating_point<T>::value) {
+            arr[idx] = start * pow(ratio, idx);
+        } else {
+            T value = start;
+            for(int i=0; i<idx; i++) {
+                value *= ratio;
+            }
+            arr[idx] = value;
+        }
+    }
+}
+template <>
+void  iris_geometric_seq(float *arr, float start, float ratio, size_t size) {
+    #pragma omp parallel for
+    for(int idx=0; idx<size; idx++) {
+        arr[idx] = start * powf(ratio, idx);
+    }
+}
+template <>
+void  iris_geometric_seq(double *arr, double start, double ratio, size_t size) {
+    #pragma omp parallel for
+    for(int idx=0; idx<size; idx++) {
+        arr[idx] = start * pow(ratio, idx);
     }
 }
 #endif // IS_DEFAULT_GPU
@@ -102,3 +162,14 @@ extern "C" void iris_arithmetic_seq_u16(uint16_t *arr, uint16_t start, uint16_t 
 extern "C" void iris_arithmetic_seq_u8 (uint8_t  *arr, uint8_t start, uint8_t increment,  size_t size, void *stream) { iris_arithmetic_seq<uint8_t> (arr, start, increment, size, stream); }
 extern "C" void iris_arithmetic_seq_float(float *arr, float start, float increment, size_t size, void *stream) { iris_arithmetic_seq<float>(arr, start, increment, size, stream); }
 extern "C" void iris_arithmetic_seq_double(double *arr, double start, double increment, size_t size, void *stream) { iris_arithmetic_seq<double>(arr, start, increment, size, stream); }
+
+extern "C" void iris_geometric_seq_i64(int64_t *arr, int64_t start, int64_t ratio, size_t size, void *stream) { iris_geometric_seq<int64_t>(arr, start, ratio, size, stream); }
+extern "C" void iris_geometric_seq_i32(int32_t *arr, int32_t start, int32_t ratio, size_t size, void *stream) { iris_geometric_seq<int32_t>(arr, start, ratio, size, stream); }
+extern "C" void iris_geometric_seq_i16(int16_t *arr, int16_t start, int16_t ratio, size_t size, void *stream) { iris_geometric_seq<int16_t>(arr, start, ratio, size, stream); }
+extern "C" void iris_geometric_seq_i8 (int8_t  *arr, int8_t start, int8_t ratio,  size_t size, void *stream) { iris_geometric_seq<int8_t> (arr, start, ratio, size, stream); }
+extern "C" void iris_geometric_seq_u64(uint64_t *arr, uint64_t start, uint64_t ratio, size_t size, void *stream) { iris_geometric_seq<uint64_t>(arr, start, ratio, size, stream); }
+extern "C" void iris_geometric_seq_u32(uint32_t *arr, uint32_t start, uint32_t ratio, size_t size, void *stream) { iris_geometric_seq<uint32_t>(arr, start, ratio, size, stream); }
+extern "C" void iris_geometric_seq_u16(uint16_t *arr, uint16_t start, uint16_t ratio, size_t size, void *stream) { iris_geometric_seq<uint16_t>(arr, start, ratio, size, stream); }
+extern "C" void iris_geometric_seq_u8 (uint8_t  *arr, uint8_t start, uint8_t ratio,  size_t size, void *stream) { iris_geometric_seq<uint8_t> (arr, start, ratio, size, stream); }
+extern "C" void iris_geometric_seq_float(float *arr, float start, float ratio, size_t size, void *stream) { iris_geometric_seq<float>(arr, start, ratio, size, stream); }
+extern "C" void iris_geometric_seq_double(double *arr, double start, double ratio, size_t size, void *stream) { iris_geometric_seq<double>(arr, start, ratio, size, stream); }

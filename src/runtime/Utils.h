@@ -17,6 +17,15 @@ namespace iris {
                 static void Logo(bool color);
                 static int ReadFile(char* path, char** string, size_t* len);
                 static int Mkdir(char* path);
+                template <typename T>
+                static void Fill(T* array_ptr, size_t n_elements, T value);
+                static void Fill(void *array_ptr, size_t n_elements, int element_type, ResetData &value);
+                template <typename T>
+                static void ArithSequence(T* array_ptr, size_t n_elements, T start, T increment);
+                static void ArithSequence(void *array_ptr, size_t n_elements, int element_type, ResetData &value);
+                template <typename T>
+                static void GeometricSequence(T* array_ptr, size_t n_elements, T start, T ratio);
+                static void GeometricSequence(void *array_ptr, size_t n_elements, int element_type, ResetData &value);
                 static bool Exist(char* path);
                 static long Mtime(char* path);
                 static void Datetime(char* str);
