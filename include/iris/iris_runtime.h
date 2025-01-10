@@ -156,10 +156,16 @@ typedef enum DeviceModel DeviceModel;
 #define iris_unsigned_long      (15 << 16)
 #define iris_pointer            (0x4000 << 16)
 
-#define iris_reset_memset       0
-#define iris_reset_assign       1 
-#define iris_reset_arith_seq    2
-#define iris_reset_geom_seq     3
+#define iris_reset_memset                      0
+#define iris_reset_assign                      1 
+#define iris_reset_arith_seq                   2
+#define iris_reset_geom_seq                    3
+#define iris_reset_random_uniform_seq          4
+#define iris_reset_random_normal_seq           5 
+#define iris_reset_random_log_normal_seq       6
+#define iris_reset_random_uniform_sobol_seq    7
+#define iris_reset_random_normal_sobol_seq     8
+#define iris_reset_random_log_normal_sobol_seq 9
 
 #define iris_normal             (1 << 10)
 #define iris_reduction          (1 << 11)
@@ -228,7 +234,10 @@ typedef struct _ResetData {
     IRISValue value_;
     IRISValue start_;
     IRISValue step_;
+    IRISValue p1_;
+    IRISValue p2_;
     int reset_type_;
+    long long seed_;
 }ResetData;
 /**@brief Initializes the IRIS execution environment.
  *
@@ -1738,6 +1747,12 @@ extern int iris_mem_init_reset(iris_mem brs_mem, int memset_value);
 extern int iris_mem_init_reset_assign(iris_mem brs_mem, IRISValue value);
 extern int iris_mem_init_reset_arith_seq(iris_mem brs_mem, IRISValue start, IRISValue increment);
 extern int iris_mem_init_reset_geom_seq(iris_mem brs_mem, IRISValue start, IRISValue step);
+extern int iris_mem_init_reset_random_uniform_seq(iris_mem brs_mem, long long seed, IRISValue min, IRISValue max);
+extern int iris_mem_init_reset_random_normal_seq(iris_mem brs_mem, long long seed, IRISValue mean, IRISValue stddev);
+extern int iris_mem_init_reset_random_log_normal_seq(iris_mem brs_mem, long long seed, IRISValue mean, IRISValue stddev);
+extern int iris_mem_init_reset_random_uniform_sobol_seq(iris_mem brs_mem, IRISValue min, IRISValue max);
+extern int iris_mem_init_reset_random_normal_sobol_seq(iris_mem brs_mem, IRISValue mean, IRISValue stddev);
+extern int iris_mem_init_reset_random_log_normal_sobol_seq(iris_mem brs_mem, IRISValue mean, IRISValue stddev);
 
 // DMem Memory member access
 extern int iris_dmem_get_dim(iris_mem mem);

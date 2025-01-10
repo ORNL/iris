@@ -548,6 +548,57 @@ int iris_mem_init_reset_geom_seq(iris_mem brs_mem, IRISValue start, IRISValue st
   mem->set_reset_geom_seq(start, step);
   return IRIS_SUCCESS;
 }
+int iris_mem_init_reset_random_uniform_seq(iris_mem brs_mem, long long seed, IRISValue min, IRISValue max) {
+  BaseMem * mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  mem->init_reset(true);
+  mem->set_reset_type(iris_reset_random_uniform_seq);
+  mem->set_reset_seed(seed);
+  mem->set_reset_min(min);
+  mem->set_reset_max(max);
+  return IRIS_SUCCESS;
+}
+int iris_mem_init_reset_random_normal_seq(iris_mem brs_mem, long long seed, IRISValue mean, IRISValue stddev) {
+  BaseMem * mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  mem->init_reset(true);
+  mem->set_reset_type(iris_reset_random_normal_seq);
+  mem->set_reset_seed(seed);
+  mem->set_reset_mean(mean);
+  mem->set_reset_stddev(stddev);
+  return IRIS_SUCCESS;
+}
+int iris_mem_init_reset_random_log_normal_seq(iris_mem brs_mem, long long seed, IRISValue mean, IRISValue stddev) {
+  BaseMem * mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  mem->init_reset(true);
+  mem->set_reset_type(iris_reset_random_log_normal_seq);
+  mem->set_reset_seed(seed);
+  mem->set_reset_mean(mean);
+  mem->set_reset_stddev(stddev);
+  return IRIS_SUCCESS;
+}
+int iris_mem_init_reset_random_uniform_sobol_seq(iris_mem brs_mem, IRISValue min, IRISValue max) {
+  BaseMem * mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  mem->init_reset(true);
+  mem->set_reset_type(iris_reset_random_uniform_sobol_seq);
+  mem->set_reset_min(min);
+  mem->set_reset_max(max);
+  return IRIS_SUCCESS;
+}
+int iris_mem_init_reset_random_normal_sobol_seq(iris_mem brs_mem, IRISValue mean, IRISValue stddev) {
+  BaseMem * mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  mem->init_reset(true);
+  mem->set_reset_type(iris_reset_random_normal_sobol_seq);
+  mem->set_reset_mean(mean);
+  mem->set_reset_stddev(stddev);
+  return IRIS_SUCCESS;
+}
+int iris_mem_init_reset_random_log_normal_sobol_seq(iris_mem brs_mem, IRISValue mean, IRISValue stddev) {
+  BaseMem * mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  mem->init_reset(true);
+  mem->set_reset_type(iris_reset_random_log_normal_sobol_seq);
+  mem->set_reset_mean(mean);
+  mem->set_reset_stddev(stddev);
+  return IRIS_SUCCESS;
+}
 int iris_data_mem_init_reset(iris_mem mem, int reset) {
   return Platform::GetPlatform()->DataMemInit(mem, (bool)reset);
 }

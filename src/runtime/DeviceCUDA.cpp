@@ -428,7 +428,7 @@ int DeviceCUDA::Init() {
       }
   }
   char flags[128];
-  sprintf(flags, "-shared -x cu -Xcompiler -fPIC");
+  sprintf(flags, "-shared -x cu -g -Xcompiler -fPIC");
   LoadDefaultKernelLibrary("DEFAULT_CUDA_KERNELS", flags);
 
   host2cuda_ld_->init(devno());

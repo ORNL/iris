@@ -15,6 +15,7 @@
 #endif
 #include <cstdlib>
 #include <regex>
+#include <random>
 #include <cxxabi.h>
 #include <thread>
 #include <sched.h>
@@ -234,6 +235,68 @@ void Utils::GeometricSequence(void *array_ptr, size_t n_elements, int element_ty
     }
 }
 
+template <typename T>
+void Utils::RandomUniformSeq(T *arr, long long seed, size_t size, T p1, T p2) {
+    std::mt19937 generator(seed);
+    std::uniform_real_distribution<> dist(p1, p2);
+    //#pragma omp parallel for
+    for(size_t i=0; i<size; i++) {
+        arr[i] = dist(generator);
+        //printf("Arr: %d %f\n", i, (float)arr[i]);
+    }
+}
+
+void Utils::RandomUniformSeq(void *array_ptr, size_t size, int element_type, ResetData &reset) {
+#define RU_SEQ(IT, T, M)   case IT: RandomUniformSeq<T>((T*)array_ptr, reset.seed_, size, reset.p1_.M, reset.p2_.M); break;
+    switch(element_type) {
+        RU_SEQ(iris_float, float, f32);
+        RU_SEQ(iris_double, double, f64);
+        RU_SEQ(iris_uint64, uint64_t, u64);
+        RU_SEQ(iris_uint32, uint32_t, u32);
+        RU_SEQ(iris_uint16, uint16_t, u16);
+        RU_SEQ(iris_uint8,  uint8_t,  u8);
+        RU_SEQ(iris_int64,  int64_t,  i64);
+        RU_SEQ(iris_int32,  int32_t,  i32);
+        RU_SEQ(iris_int16,  int16_t,  i16);
+        RU_SEQ(iris_int8,   int8_t,   i8);
+        default: break;
+    }
+}
+
+template <typename T>
+void Utils::RandomNormalSeq(T *arr, unsigned long long seed, size_t size, T p1, T p2, void *stream) {
+    std::mt19937 generator(seed);
+    std::normal_distribution<> dist(p1, p2);
+    //#pragma omp parallel for
+    for(int i=0; i<size; i++) {
+        arr[i] = dist(generator);
+    }
+}
+
+template <typename T>
+void Utils::RandomLogNormalSeq(T *arr, unsigned long long seed, size_t size, T p1, T p2, void *stream) {
+    std::mt19937 generator(seed);
+    std::lognormal_distribution<> dist(p1, p2);
+    //#pragma omp parallel for
+    for(int i=0; i<size; i++) {
+        arr[i] = dist(generator);
+    }
+}
+
+template <typename T>
+void Utils::RandomUniformSobolSeq(T *arr, unsigned long long seed, size_t size, T p1, T p2, void *stream) {
+    fprintf(stderr, "[Error] Undefined openmp function: %s\n", __func__);
+}
+
+template <typename T>
+void Utils::RandomNormalSobolSeq(T *arr, unsigned long long seed, size_t size, T p1, T p2, void *stream) {
+    fprintf(stderr, "[Error] Undefined openmp function: %s\n", __func__);
+}
+
+template <typename T>
+void Utils::RandomLogNormalSobolSeq(T *arr, unsigned long long seed, size_t size, T p1, T p2, void *stream) {
+    fprintf(stderr, "[Error] Undefined openmp function: %s\n", __func__);
+}
 
 int Utils::ReadFile(char* path, char** string, size_t* len) {
   int fd = open((const char*) path, O_RDONLY);

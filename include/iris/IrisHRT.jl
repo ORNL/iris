@@ -1254,114 +1254,65 @@ module IrisHRT
         return ccall(Libdl.dlsym(lib, :iris_mem_init_reset_assign), Int32, (IrisMem, IRISValue), mem, ivalue)
     end
 
-    function iris_mem_init_reset_arith_seq(mem::IrisMem, element::Any, step::Any)::Int32
+    function flat_in_buffer(value::Any)::IRISValue
         value_buffer = Base.zeros(UInt8, VALUE_SIZE)
-        step_buffer = Base.zeros(UInt8, VALUE_SIZE)
-        if typeof(element) == Float32
-            value_bytes = reinterpret(UInt8, [element])
-            value_buffer[1:4] .= value_bytes
-            step_buffer[1:4] .= reinterpret(UInt8, [step])
-        elseif typeof(element) == Float64
-            value_bytes = reinterpret(UInt8, [element])
-            value_buffer[1:8] .= value_bytes
-            step_buffer[1:8] .= reinterpret(UInt8, [step])
-        elseif typeof(element) == Int64
-            value_bytes = reinterpret(UInt8, [element])
-            value_buffer[1:8] .= value_bytes
-            step_buffer[1:8] .= reinterpret(UInt8, [step])
-        elseif typeof(element) == Int32
-            value_bytes = reinterpret(UInt8, [element])
-            value_buffer[1:4] .= value_bytes
-            step_buffer[1:4] .= reinterpret(UInt8, [step])
-        elseif typeof(element) == Int16
-            value_bytes = reinterpret(UInt8, [element])
-            value_buffer[1:2] .= value_bytes
-            step_buffer[1:2] .= reinterpret(UInt8, [step])
-        elseif typeof(element) == Int8
-            value_bytes = reinterpret(UInt8, [element])
-            value_buffer[1:1] .= value_bytes
-            step_buffer[1:1] .= reinterpret(UInt8, [step])
-        elseif typeof(element) == UInt64
-            value_bytes = reinterpret(UInt8, [element])
-            value_buffer[1:8] .= value_bytes
-            step_buffer[1:8] .= reinterpret(UInt8, [step])
-        elseif typeof(element) == UInt32
-            value_bytes = reinterpret(UInt8, [element])
-            value_buffer[1:4] .= value_bytes
-            step_buffer[1:4] .= reinterpret(UInt8, [step])
-        elseif typeof(element) == UInt16
-            value_bytes = reinterpret(UInt8, [element])
-            value_buffer[1:2] .= value_bytes
-            step_buffer[1:2] .= reinterpret(UInt8, [step])
-        elseif typeof(element) == UInt8
-            value_bytes = reinterpret(UInt8, [element])
-            value_buffer[1:1] .= value_bytes
-            step_buffer[1:1] .= reinterpret(UInt8, [step])
+        if typeof(value) == Float32
+            value_buffer[1:4] .= reinterpret(UInt8, [value])
+        elseif typeof(value) == Float64
+            value_buffer[1:8] .= reinterpret(UInt8, [value])
+        elseif typeof(value) == Int64
+            value_buffer[1:8] .= reinterpret(UInt8, [value])
+        elseif typeof(value) == Int32
+            value_buffer[1:4] .= reinterpret(UInt8, [value])
+        elseif typeof(value) == Int16
+            value_buffer[1:2] .= reinterpret(UInt8, [value])
+        elseif typeof(value) == Int8
+            value_buffer[1:1] .= reinterpret(UInt8, [value])
+        elseif typeof(value) == UInt64
+            value_buffer[1:8] .= reinterpret(UInt8, [value])
+        elseif typeof(value) == UInt32
+            value_buffer[1:4] .= reinterpret(UInt8, [value])
+        elseif typeof(value) == UInt16
+            value_buffer[1:2] .= reinterpret(UInt8, [value])
+        elseif typeof(value) == UInt8
+            value_buffer[1:1] .= reinterpret(UInt8, [value])
         else
-            println(Core.stdout, "Unknown type of $element")
+            println(Core.stdout, "Unknown type of $value")
         end
-        #println("Element: ", element, " value_buffer:", value_buffer)
         ivalue = IRISValue(Tuple(value_buffer))
-        istep = IRISValue(Tuple(step_buffer))
+        #println("Element: ", value, " buffer:", ivalue)
+        return ivalue 
+    end
+
+    function iris_mem_init_reset_random_uniform_seq(mem::IrisMem, seed::Int, min::Any, max::Any)::Int32
+        imin = flat_in_buffer(min)
+        imax = flat_in_buffer(max)
+        #println("Element: ", element, " buffer:", ivalue)
+        return ccall(Libdl.dlsym(lib, :iris_mem_init_reset_random_uniform_seq), Int32, (IrisMem, Clonglong, IRISValue, IRISValue), mem, seed, imin, imax)
+    end
+
+    function iris_mem_init_reset_arith_seq(mem::IrisMem, element::Any, step::Any)::Int32
+        ivalue = flat_in_buffer(element)
+        istep = flat_in_buffer(step)
         #println("Element: ", element, " buffer:", ivalue)
         return ccall(Libdl.dlsym(lib, :iris_mem_init_reset_arith_seq), Int32, (IrisMem, IRISValue, IRISValue), mem, ivalue, istep)
     end
 
     function iris_mem_init_reset_geom_seq(mem::IrisMem, element::Any, step::Any)::Int32
-        value_buffer = Base.zeros(UInt8, VALUE_SIZE)
-        step_buffer = Base.zeros(UInt8, VALUE_SIZE)
-        if typeof(element) == Float32
-            value_bytes = reinterpret(UInt8, [element])
-            value_buffer[1:4] .= value_bytes
-            step_buffer[1:4] .= reinterpret(UInt8, [step])
-        elseif typeof(element) == Float64
-            value_bytes = reinterpret(UInt8, [element])
-            value_buffer[1:8] .= value_bytes
-            step_buffer[1:8] .= reinterpret(UInt8, [step])
-        elseif typeof(element) == Int64
-            value_bytes = reinterpret(UInt8, [element])
-            value_buffer[1:8] .= value_bytes
-            step_buffer[1:8] .= reinterpret(UInt8, [step])
-        elseif typeof(element) == Int32
-            value_bytes = reinterpret(UInt8, [element])
-            value_buffer[1:4] .= value_bytes
-            step_buffer[1:4] .= reinterpret(UInt8, [step])
-        elseif typeof(element) == Int16
-            value_bytes = reinterpret(UInt8, [element])
-            value_buffer[1:2] .= value_bytes
-            step_buffer[1:2] .= reinterpret(UInt8, [step])
-        elseif typeof(element) == Int8
-            value_bytes = reinterpret(UInt8, [element])
-            value_buffer[1:1] .= value_bytes
-            step_buffer[1:1] .= reinterpret(UInt8, [step])
-        elseif typeof(element) == UInt64
-            value_bytes = reinterpret(UInt8, [element])
-            value_buffer[1:8] .= value_bytes
-            step_buffer[1:8] .= reinterpret(UInt8, [step])
-        elseif typeof(element) == UInt32
-            value_bytes = reinterpret(UInt8, [element])
-            value_buffer[1:4] .= value_bytes
-            step_buffer[1:4] .= reinterpret(UInt8, [step])
-        elseif typeof(element) == UInt16
-            value_bytes = reinterpret(UInt8, [element])
-            value_buffer[1:2] .= value_bytes
-            step_buffer[1:2] .= reinterpret(UInt8, [step])
-        elseif typeof(element) == UInt8
-            value_bytes = reinterpret(UInt8, [element])
-            value_buffer[1:1] .= value_bytes
-            step_buffer[1:1] .= reinterpret(UInt8, [step])
-        else
-            println(Core.stdout, "Unknown type of $element")
-        end
-        #println("Element: ", element, " value_buffer:", value_buffer)
-        ivalue = IRISValue(Tuple(value_buffer))
-        istep = IRISValue(Tuple(step_buffer))
+        ivalue = flat_in_buffer(element)
+        istep = flat_in_buffer(step)
         #println("Element: ", element, " buffer:", ivalue)
         return ccall(Libdl.dlsym(lib, :iris_mem_init_reset_geom_seq), Int32, (IrisMem, IRISValue, IRISValue), mem, ivalue, istep)
     end
 
     function iris_data_mem_init_reset(mem::IrisMem, reset::Int32)::Int32
         return ccall(Libdl.dlsym(lib, :iris_data_mem_init_reset), Int32, (IrisMem, Int32), mem, reset)
+    end
+
+    function rand(T, seed, dims...)
+        dmem = iris_data_mem(T, dims...)
+        iris_mem_init_reset_random_uniform_seq(dmem, seed, T(0), T(1))
+        return dmem
     end
 
     function zeros(T, dims...)
@@ -1373,6 +1324,24 @@ module IrisHRT
     function ones(T, dims...)
         dmem = iris_data_mem(T, dims...)
         iris_mem_init_reset_assign(dmem, T(1))
+        return dmem
+    end
+
+    function arange(T, dims...)
+        dmem = iris_data_mem(T, dims...)
+        iris_mem_init_reset_arith_seq(dmem, T(0), T(1))
+        return dmem
+    end
+
+    function linspace(T, start, step, dims...)
+        dmem = iris_data_mem(T, dims...)
+        iris_mem_init_reset_arith_seq(dmem, T(start), T(step))
+        return dmem
+    end
+
+    function geomspace(T, start, step, dims...)
+        dmem = iris_data_mem(T, dims...)
+        iris_mem_init_reset_geom_seq(dmem, T(start), T(step))
         return dmem
     end
 
@@ -2079,33 +2048,35 @@ module IrisHRT
         call_args = args
         mem_params = Dict{Any, Any}()
         for array in vcat(out, flush)
-            p_array = pointer(array)
-            #println(Core.stdout, "Out ---- ", array, " typeof:", typeof(array))
-             if !haskey(Main.__iris_dmem_map, p_array)
-                # Generate DMEM object if not found
-                #println("Array not found in global map. Out/Flush Creating DMEM object for: ", pointer(array))
-                if !isa(array, IrisMem) 
-                    #println("Array is not IrisMem")
+            p_array = array
+            if !isa(array, IrisMem) 
+                #println("Array is not IrisMem")
+                p_array = pointer(array)
+                #println(Core.stdout, "Out ---- ", array, " typeof:", typeof(array))
+                if !haskey(Main.__iris_dmem_map, p_array)
+                    # Generate DMEM object if not found
+                    #println("Array not found in global map. Out/Flush Creating DMEM object for: ", pointer(array))
                     Main.__iris_dmem_map[p_array] = IrisHRT.iris_data_mem(array)
+                else
+                    #println("Array already mapped to Output DMEM object: ", array)
                 end
-            else
-                #println("Array already mapped to Output DMEM object: ", array)
             end
             mem_params[p_array] = IrisHRT.iris_w
         end
         for array in in
-            p_array = pointer(array)
-            #println(Core.stdout, "In ---- ", array, " typeof:", typeof(array))
-            #println("DMEM object t: ", array)
-            if !haskey(Main.__iris_dmem_map, p_array)
-                # Generate DMEM object if not found
-                #println("Array not found in global map. In Creating DMEM object for: ", pointer(array))
-                if !isa(array, IrisMem) 
+            p_array = array
+            if !isa(array, IrisMem) 
+                p_array = pointer(array)
+                #println(Core.stdout, "In ---- ", array, " typeof:", typeof(array))
+                #println("DMEM object t: ", array)
+                if !haskey(Main.__iris_dmem_map, p_array)
+                    # Generate DMEM object if not found
+                    #println("Array not found in global map. In Creating DMEM object for: ", pointer(array))
                     #println("Array is not IrisMem")
                     Main.__iris_dmem_map[p_array] = IrisHRT.iris_data_mem(array)
+                else
+                    #println("Array already mapped to Input DMEM object: ", array)
                 end
-            else
-                #println("Array already mapped to Input DMEM object: ", array)
             end
             if !haskey(mem_params, p_array)
                 mem_params[p_array] = IrisHRT.iris_r
@@ -2125,8 +2096,8 @@ module IrisHRT
                     push!(kernel_params, (Main.__iris_dmem_map[p_arg], IrisHRT.iris_r))
                 end
             elseif isa(arg, IrisMem)
-                p_arg = pointer(arg)
-                push!(kernel_params, (arg, mem_params[p_arg])) 
+                #p_arg = pointer(arg)
+                push!(kernel_params, (arg, mem_params[arg])) 
             else
                 push!(kernel_params, arg)
             end
@@ -2139,10 +2110,10 @@ module IrisHRT
         #println(Core.stdout, "kernel_params     :", kernel_params)
         task0 = IrisHRT.iris_task_julia(kernel, length(gws), off, gws, lws, kernel_params)
         for mem in flush 
-            p_mem = pointer(mem)
             if isa(mem, IrisMem)
                 IrisHRT.iris_task_dmem_flush_out(task0, mem)
             else
+                p_mem = pointer(mem)
                 IrisHRT.iris_task_dmem_flush_out(task0, Main.__iris_dmem_map[p_mem])
             end
         end
