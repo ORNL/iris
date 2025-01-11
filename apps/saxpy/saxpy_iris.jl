@@ -80,7 +80,7 @@ end
 
 function saxpy_iris_new_v1(A::Float32, X::Vector{Float32}, Y::Vector{Float32}, Z::Vector{Float32})
     SIZE = length(X)
-    gc_state = IrisHRT.gc_enter()
+    gc_state = IrisHRT.gc_safe_enter()
     #@iris in=[X,Y] out=[Z] flush=[Z] sync=0 gws=Int64[SIZE] saxpy(Z, A, X, Y)
     task0=IrisHRT.task(in=[X,Y],   out=[Z], wait=0, gws=Int64[SIZE], kernel="saxpy", args=[Z, A, X, Y], dependencies=[])
     task1=IrisHRT.task(in=[X,Y],   out=[Z], wait=0, gws=Int64[SIZE], kernel="saxpy", args=[Z, A, X, Y], dependencies=[task0])
@@ -92,7 +92,7 @@ end
 
 function saxpy_iris_new(A::Float32, X::Vector{Float32}, Y::Vector{Float32}, Z::Vector{Float32})
     SIZE = length(X)
-    gc_state = IrisHRT.gc_enter()
+    gc_state = IrisHRT.gc_safe_enter()
     mem_X = IrisHRT.dmem(X)
     mem_Y = IrisHRT.dmem(Y)
     mem_Z = IrisHRT.dmem(Z)

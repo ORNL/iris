@@ -569,11 +569,16 @@ int DeviceCUDA::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset)
               else
                   err = ld_->cudaMemset((void *)(*cumem), out.second, size);
           }
-          else {
+          else if (mem->GetMemHandlerType() == IRIS_DMEM || 
+                  mem->GetMemHandlerType() == IRIS_DMEM_REGION) {
+              size_t elem_size = ((DataMem*)mem)->elem_size();
               if (l_async)
-                  CallMemReset(mem, size, streams_[stream]);
+                  CallMemReset(mem, size/elem_size, streams_[stream]);
               else
-                  CallMemReset(mem, size, NULL);
+                  CallMemReset(mem, size/elem_size, NULL);
+          }
+          else {
+              _error("Unknow reset type for memory:%lu\n", mem->uid());
           }
       }
       else {
