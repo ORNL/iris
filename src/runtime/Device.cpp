@@ -245,7 +245,7 @@ void Device::LoadDefaultKernelLibrary(const char *key, const char *flags)
     int result = Compile(path, out, flags);
     if (result == IRIS_SUCCESS) {
         ld_default_ = new LoaderDefaultKernel(out);
-        ld_default_->LoadFunctions();
+        ld_default_->Load();
     }
     else {
         _warning("Couldn't load default kernel library for dev:(%d, %s) for default kernels in %s\n", devno(), name(), path);

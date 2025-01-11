@@ -1,3 +1,4 @@
+#include <stdio.h>
 #ifdef __HIPCC__
 #include <hip/hip_runtime.h>  // HIP header for HIPCC
 #include <hiprand_kernel.h>
@@ -32,7 +33,6 @@
 #ifndef IS_DEFAULT_GPU
 #include <math.h>
 #include <omp.h>
-#include <stdio.h>
 #include <random>
 #endif
 
@@ -236,6 +236,7 @@ template <typename T>
 void iris_random_uniform_seq(T *arr, unsigned long long seed, size_t size, T p1, T p2, void *stream) {
     int threadsPerBlock = 256;
     int blocksPerGrid = static_cast<int>((size + threadsPerBlock - 1) / threadsPerBlock);
+    //printf("Size: %lu seed:%ld p1:%f p2:%f stream:%p\n", size, seed, (float)p1, (float)p2, stream);
     if (stream != NULL) {
         gpuStream_t gpu_stream = reinterpret_cast<gpuStream_t>(stream);
         iris_random_uniform_seq_core<T><<<blocksPerGrid, threadsPerBlock, 0, gpu_stream>>>(arr, seed, size, p1, p2);

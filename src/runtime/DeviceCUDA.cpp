@@ -296,14 +296,14 @@ void *DeviceCUDA::GetSymbol(const char *name)  {
 }
 
 int DeviceCUDA::Compile(char* src, const char *out, const char *flags) {
-  char default_comp_flags[] = "";
+  char default_comp_flags[] = "-ptx";
   char cmd[1024];
   memset(cmd, 0, 256);
   if (flags == NULL) 
       flags = default_comp_flags;
   if (out == NULL) 
       out = kernel_path();
-  sprintf(cmd, "nvcc -ptx %s -o %s %s > /dev/null 2>&1", src, out, flags);
+  sprintf(cmd, "nvcc %s -o %s %s > /dev/null 2>&1", src, out, flags);
   //printf("Cmd: %s\n", cmd);
   if (system(cmd) != EXIT_SUCCESS) {
     int result = system("nvcc --version > /dev/null 2>&1");

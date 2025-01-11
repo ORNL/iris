@@ -43,7 +43,7 @@ namespace iris {
             public:
                 HostInterfaceLoader(string kernel_env);
                 HostInterfaceLoader(string kernel_env, string suffix);
-                ~HostInterfaceLoader() { }
+                virtual ~HostInterfaceLoader() { }
                 virtual const char* library();
 #ifdef DISABLE_DYNAMIC_LINKING
                 virtual bool IsFunctionExists(const char *kernel_name);
@@ -74,6 +74,7 @@ namespace iris {
                 int (*iris_host_launch)(int dim, size_t *off, size_t *bws);
                 int (*iris_ffi_launch)();
                 int (*iris_host_launch_with_obj)(void *stream, void *obj, uint32_t devno, int dim, size_t *off, size_t *bws);
+                string & kernel_env() { return kernel_env_; }
             private:
                 string kernel_env_;
         };
