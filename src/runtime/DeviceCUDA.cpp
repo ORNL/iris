@@ -496,11 +496,16 @@ int DeviceCUDA::ResetMemory(Task *task, BaseMem *mem, uint8_t reset_value) {
                 return IRIS_ERROR;
             }
         }
-        else {
+        else if (mem->GetMemHandlerType() == IRIS_DMEM || 
+                mem->GetMemHandlerType() == IRIS_DMEM_REGION) {
+            size_t elem_size = ((DataMem*)mem)->elem_size();
             if (async)
                 CallMemReset(mem, mem->size(), streams_[stream_index]);
             else
                 CallMemReset(mem, mem->size(), NULL);
+        }
+        else {
+            _error("Unknow reset type for memory:%lu\n", mem->uid());
         }
     }
     else {

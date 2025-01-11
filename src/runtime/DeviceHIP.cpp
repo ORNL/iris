@@ -5,6 +5,7 @@
 #include "Kernel.h"
 #include "LoaderHIP.h"
 #include "BaseMem.h"
+#include "DataMem.h"
 #include "Worker.h"
 #include "Mem.h"
 #include "Reduction.h"
@@ -260,11 +261,16 @@ int DeviceHIP::ResetMemory(Task *task, BaseMem *mem, uint8_t reset_value) {
                 return IRIS_ERROR;
             }
         }
-        else {
+        else if (mem->GetMemHandlerType() == IRIS_DMEM || 
+                mem->GetMemHandlerType() == IRIS_DMEM_REGION) {
+            size_t elem_size = ((DataMem*)mem)->elem_size();
             if (async)
-                CallMemReset(mem, mem->size(), streams_[stream_index]);
+                CallMemReset(mem, mem->size()/elem_size, streams_[stream_index]);
             else
-                CallMemReset(mem, mem->size(), NULL);
+                CallMemReset(mem, mem->size()/elem_size, NULL);
+        }
+        else {
+            _error("Unknow reset type for memory:%lu\n", mem->uid());
         }
     }
     else {
@@ -351,11 +357,16 @@ int DeviceHIP::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset) 
               }
 
           }
-          else {
+          else if (mem->GetMemHandlerType() == IRIS_DMEM || 
+                  mem->GetMemHandlerType() == IRIS_DMEM_REGION) {
+              size_t elem_size = ((DataMem*)mem)->elem_size();
               if (l_async)
-                  CallMemReset(mem, size, streams_[stream]);
+                  CallMemReset(mem, size/elem_size, streams_[stream]);
               else
-                  CallMemReset(mem, size, NULL);
+                  CallMemReset(mem, size/elem_size, NULL);
+          }
+          else {
+              _error("Unknow reset type for memory:%lu\n", mem->uid());
           }
       }
       else {

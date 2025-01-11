@@ -153,8 +153,13 @@ int DeviceOpenMP::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool rese
           if (out.first) {
               memset(*mpmem, out.second, size);
           }
+          else if (mem->GetMemHandlerType() == IRIS_DMEM || 
+                  mem->GetMemHandlerType() == IRIS_DMEM_REGION) {
+              size_t elem_size = ((DataMem*)mem)->elem_size();
+              CallMemReset(mem, size/elem_size, NULL);
+          }
           else {
-              CallMemReset(mem, size, NULL);
+              _error("Unknow reset type for memory:%lu\n", mem->uid());
           }
       }
   }
