@@ -3,6 +3,7 @@
 #include "Kernel.h"
 #include "LoaderOpenMP.h"
 #include "BaseMem.h"
+#include "DataMem.h"
 #include "Mem.h"
 #include "Task.h"
 #include "Utils.h"
