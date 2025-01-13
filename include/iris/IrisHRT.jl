@@ -60,6 +60,7 @@ module DummyCUDA
     end
     macro sync() end
     macro async() end
+    function CuContext(ctx) end
     function context!(ctx) end
     function device!(dev) end
     macro cuda(args...) end  # Use a varargs definition instead of keyword arguments
@@ -95,9 +96,9 @@ catch e
     false  # Assign false if AMDGPU is not available
 end
 mutable struct IRISCuStream
-    handle::CUDA.CUstream
+    handle::MyCUDA.CUstream
     Base.@atomic valid::Bool
-    ctx::Union{Nothing,CUDA.CuContext}
+    ctx::Union{Nothing,MyCUDA.CuContext}
 end
 mutable struct IRISHIPStream
     stream::MyAMDGPU.HIP.hipStream_t
@@ -113,14 +114,8 @@ module IrisHRT
 
     using Libdl
     cwd = pwd()
-    const cuda_available = try
-        using CUDA
-        true
-    catch e
-        #println(Core.stdout, "CUDA is not defined")
-        const CUDA = Main.DummyCUDA
-        false
-    end
+    const cuda_available = Main.cuda_available
+    const MyCUDA = Main.MyCUDA
     const MyAMDGPU = Main.MyAMDGPU
     const hip_available = Main.hip_available
     const iris_kernel_jl = cwd * "/kernel.jl"
@@ -271,13 +266,13 @@ module IrisHRT
     end
     function set_cuda_context!(c_ctx::Ptr{Cvoid})
         # Load the pointer to CUcontext
-        cu_ctx_ptr = unsafe_load(reinterpret(Ptr{Ptr{CUDA.CUctx_st}}, c_ctx))
+        cu_ctx_ptr = unsafe_load(reinterpret(Ptr{Ptr{MyCUDA.CUctx_st}}, c_ctx))
 
         # Convert the pointer to CuContext
-        cu_ctx_conv = CUDA.CuContext(cu_ctx_ptr)
+        cu_ctx_conv = MyCUDA.CuContext(cu_ctx_ptr)
 
         # Set the CUDA context
-        CUDA.context!(cu_ctx_conv)
+        MyCUDA.context!(cu_ctx_conv)
         return cu_ctx_conv
     end
 
@@ -307,9 +302,9 @@ module IrisHRT
         cu_ctx = nothing
         hip_ctx = nothing
         if Int(target) == Int(iris_cuda)
-            CUDA.device!(Int(devno))
+            MyCUDA.device!(Int(devno))
             cu_ctx = set_cuda_context!(ctx)
-            CUDA.context!(cu_ctx)
+            MyCUDA.context!(cu_ctx)
         elseif Int(target) == Int(iris_hip)
             MyAMDGPU.device!(MyAMDGPU.devices()[devno+1])
             hip_ctx = set_hip_context!(ctx)
@@ -400,7 +395,7 @@ module IrisHRT
                     if Int(target) == Int(iris_cuda)
                         arg_ptr = cuda_reinterpret(arg_ptr, current_type)
                         #iris_println("Index: $i target arg:$arg_ptr size:$size_dims")
-                        arg_ptr = unsafe_wrap(Main.CUDA.CuArray, arg_ptr, size_dims, own=false)
+                        arg_ptr = unsafe_wrap(MyCUDA.CuArray, arg_ptr, size_dims, own=false)
                         #iris_println("After Pointer $arg_ptr")
                     elseif Int(target) == Int(iris_hip)
                         arg_ptr = ptr_reinterpret(arg_ptr, current_type)
@@ -443,9 +438,9 @@ module IrisHRT
                 cu_stream = nothing
                 #iris_println("Ctx: $cu_ctx dev:$devno")
             else
-                cu_stream_ptr = unsafe_load(reinterpret(Ptr{CUDA.CUstream}, stream))
+                cu_stream_ptr = unsafe_load(reinterpret(Ptr{MyCUDA.CUstream}, stream))
                 iris_stream = Main.IRISCuStream(cu_stream_ptr, true, cu_ctx)
-                cu_stream = unsafe_load(reinterpret(Ptr{CUDA.CuStream}, Base.unsafe_convert(Ptr{Main.IRISCuStream}, Ref(iris_stream))))
+                cu_stream = unsafe_load(reinterpret(Ptr{MyCUDA.CuStream}, Base.unsafe_convert(Ptr{Main.IRISCuStream}, Ref(iris_stream))))
                 #cu_ctx = unsafe_load(ctx)  # CUcontext
                 #iris_println("Stream: $cu_stream dev:$devno")
                 #iris_println("Ctx: $cu_ctx dev:$devno")
@@ -503,27 +498,27 @@ module IrisHRT
 
     function cuda_reinterpret(arg_ptr::Any, current_type::Any)
         if current_type == Int(iris_float)
-            arg_ptr = reinterpret(Main.CUDA.CuPtr{Float32}, arg_ptr)
+            arg_ptr = reinterpret(MyCUDA.CuPtr{Float32}, arg_ptr)
         elseif current_type == Int(iris_double)
-            arg_ptr = reinterpret(Main.CUDA.CuPtr{Float64}, arg_ptr)
+            arg_ptr = reinterpret(MyCUDA.CuPtr{Float64}, arg_ptr)
         elseif current_type == Int(iris_int64)
-            arg_ptr = reinterpret(Main.CUDA.CuPtr{Int64}, arg_ptr)
+            arg_ptr = reinterpret(MyCUDA.CuPtr{Int64}, arg_ptr)
         elseif current_type == Int(iris_int32)
-            arg_ptr = reinterpret(Main.CUDA.CuPtr{Int32}, arg_ptr)
+            arg_ptr = reinterpret(MyCUDA.CuPtr{Int32}, arg_ptr)
         elseif current_type == Int(iris_int16)
-            arg_ptr = reinterpret(Main.CUDA.CuPtr{Int16}, arg_ptr)
+            arg_ptr = reinterpret(MyCUDA.CuPtr{Int16}, arg_ptr)
         elseif current_type == Int(iris_int8)
-            arg_ptr = reinterpret(Main.CUDA.CuPtr{Int8}, arg_ptr)
+            arg_ptr = reinterpret(MyCUDA.CuPtr{Int8}, arg_ptr)
         elseif current_type == Int(iris_char)
-            arg_ptr = reinterpret(Main.CUDA.CuPtr{Char}, arg_ptr)
+            arg_ptr = reinterpret(MyCUDA.CuPtr{Char}, arg_ptr)
         elseif current_type == Int(iris_uint64)
-            arg_ptr = reinterpret(Main.CUDA.CuPtr{UInt64}, arg_ptr)
+            arg_ptr = reinterpret(MyCUDA.CuPtr{UInt64}, arg_ptr)
         elseif current_type == Int(iris_uint32)
-            arg_ptr = reinterpret(Main.CUDA.CuPtr{UInt32}, arg_ptr)
+            arg_ptr = reinterpret(MyCUDA.CuPtr{UInt32}, arg_ptr)
         elseif current_type == Int(iris_uint16)
-            arg_ptr = reinterpret(Main.CUDA.CuPtr{UInt16}, arg_ptr)
+            arg_ptr = reinterpret(MyCUDA.CuPtr{UInt16}, arg_ptr)
         elseif current_type == Int(iris_uint8)
-            arg_ptr = reinterpret(Main.CUDA.CuPtr{UInt8}, arg_ptr)
+            arg_ptr = reinterpret(MyCUDA.CuPtr{UInt8}, arg_ptr)
         else
             iris_println("[Julia-IrisHRT-Error][cuda_reinterpret] Unknown type")
         end
@@ -663,14 +658,14 @@ module IrisHRT
             #iris_println("---------ASynchronous CUDA execution $blocks $threads func:$func stream:$stream----------")
             #Main.CUDA.@async begin
                 #Main.CUDA.context!(ctx)
-                Main.CUDA.@cuda threads=threads blocks=blocks stream=stream func(args_tuple...)
+                MyCUDA.@cuda threads=threads blocks=blocks stream=stream func(args_tuple...)
             #end
             # Ensure all tasks and CUDA operations complete
         else
             #iris_println("---------Synchronous CUDA execution $blocks $threads func:$func----------")
-            CUDA.@sync begin
-                CUDA.context!(ctx)
-                @cuda threads=threads blocks=blocks func(args_tuple...)
+            MyCUDA.@sync begin
+                MyCUDA.context!(ctx)
+                MyCUDA.@cuda threads=threads blocks=blocks func(args_tuple...)
             end
 
             #CUDA.@sync @cuda threads=threads blocks=blocks func(args_tuple...)
