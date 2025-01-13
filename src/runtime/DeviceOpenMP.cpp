@@ -262,6 +262,7 @@ int DeviceOpenMP::KernelLaunchInit(Command *cmd, Kernel* kernel) {
   int status=IRIS_ERROR;
   if (julia_if_ != NULL && kernel->task()->enable_julia_if()) {
       julia_if_->launch_init(model(), devno_, 0, 0, (void **)NULL, kernel->GetParamWrapperMemory(), cmd);
+      julia_if_->set_julia_kernel_type(kernel->GetParamWrapperMemory(), kernel->task()->julia_kernel_type());
       return IRIS_SUCCESS;
   }
   else {

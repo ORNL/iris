@@ -156,9 +156,10 @@ int iris_task_create(iris_task* task) {
   return Platform::GetPlatform()->TaskCreate(NULL, false, task);
 }
 
-int iris_task_enable_julia_interface(iris_task brs_task) {
+int iris_task_enable_julia_interface(iris_task brs_task, int type) {
   Task *task = Platform::GetPlatform()->get_task_object(brs_task);
   task->set_enable_julia_if();
+  task->set_julia_kernel_type(type);
   return IRIS_SUCCESS;
 }
 

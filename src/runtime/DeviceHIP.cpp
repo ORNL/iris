@@ -727,8 +727,10 @@ int DeviceHIP::KernelLaunchInit(Command *cmd, Kernel* kernel) {
     }
     host2hip_ld_->launch_init(model(), devno_, stream_index, nstreams, (void **)kstream, kernel->GetParamWrapperMemory(), cmd);
     //printf(" Is task julia enabled:%d param:%p\n", kernel->task()->enable_julia_if(), kernel->GetParamWrapperMemory());
-    if (julia_if_ != NULL && kernel->task()->enable_julia_if()) 
+    if (julia_if_ != NULL && kernel->task()->enable_julia_if()) {
         julia_if_->launch_init(model(), devno_, stream_index, nstreams, (void **)kstream, kernel->GetParamWrapperMemory(), cmd);
+        julia_if_->set_julia_kernel_type(kernel->GetParamWrapperMemory(), kernel->task()->julia_kernel_type());
+    }
     return IRIS_SUCCESS;
 }
 
