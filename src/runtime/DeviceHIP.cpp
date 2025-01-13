@@ -124,14 +124,14 @@ void DeviceHIP::EnablePeerAccess()
     }
 }
 int DeviceHIP::Compile(char* src, const char *out, const char *flags) {
-  char default_comp_flags[] = "";
+  char default_comp_flags[] = "--genco";
   char cmd[1024];
   memset(cmd, 0, 256);
   if (flags == NULL) 
       flags = default_comp_flags;
   if (out == NULL) 
       out = kernel_path();
-  sprintf(cmd, "hipcc --genco %s -o %s %s > /dev/null 2>&1", src, out, flags);
+  sprintf(cmd, "hipcc %s -o %s %s > /dev/null 2>&1", src, out, flags);
   if (system(cmd) != EXIT_SUCCESS) {
     int result = system("hipcc --version > /dev/null 2>&1");
     if (result == 0) {
@@ -175,7 +175,7 @@ int DeviceHIP::Init() {
   }
   char flags[128];
   sprintf(flags, "-shared -fPIC");
-  //LoadDefaultKernelLibrary("DEFAULT_HIP_KERNELS", flags);
+  LoadDefaultKernelLibrary("DEFAULT_HIP_KERNELS", flags);
 
   err = ld_->hipGetDevice(&devid_);
   _hiperror(err);

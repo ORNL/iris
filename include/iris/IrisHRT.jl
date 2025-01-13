@@ -66,10 +66,12 @@ module DummyCUDA
 end
 const cuda_available = try
     using CUDA
+    const MyCUDA = CUDA
     true
 catch e
     println(Core.stdout, "CUDA is not defined")
     const CUDA = DummyCUDA
+    const MyCUDA = DummyCUDA
     false
 end
 

@@ -1,7 +1,7 @@
 #include <stdio.h>
 #ifdef __HIPCC__
 #include <hip/hip_runtime.h>  // HIP header for HIPCC
-#include <hiprand_kernel.h>
+#include <hiprand/hiprand_kernel.h>
 #define gpuStream_t         hipStream_t
 #define gpurandState        hiprandState_t
 #define gpurandStateSobol32 hiprandStateSobol32_t
