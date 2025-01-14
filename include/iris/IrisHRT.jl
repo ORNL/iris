@@ -24,9 +24,10 @@ module DummyAMDGPU
     end
     function device!(dev) end
     function context!(ctx) end
+    function stream!(str) end
     # Mockup for the status variable
     const status = "No ROCm GPU available"
-    struct HIP
+    module HIP
     struct hipStream_t
         id::Int64
     end
@@ -62,6 +63,7 @@ module DummyCUDA
     macro async() end
     function CuContext(ctx) end
     function context!(ctx) end
+    function stream!(str) end
     function device!(dev) end
     macro cuda(args...) end  # Use a varargs definition instead of keyword arguments
 end
@@ -71,7 +73,6 @@ const cuda_available = try
     true
 catch e
     println(Core.stdout, "CUDA is not defined")
-    const CUDA = DummyCUDA
     const MyCUDA = DummyCUDA
     false
 end
@@ -84,14 +85,14 @@ const hip_available = try
         const MyAMDGPU = AMDGPU
         true  # Assign true if AMDGPU is available
     else
-        const AMDGPU = DummyAMDGPU
-        const MyAMDGPU = AMDGPU
+        #const AMDGPU = DummyAMDGPU
+        const MyAMDGPU = DummyAMDGPU
         println(Core.stdout, "AMDGPU is defined but no ROCm GPU available.")
         false  # Assign false if AMDGPU is defined but no GPU
     end
 catch e
     const MyAMDGPU = DummyAMDGPU
-    const MyAMDGPU = AMDGPU
+    #const MyAMDGPU = AMDGPU
     println(Core.stdout, "AMDGPU is not defined!")
     false  # Assign false if AMDGPU is not available
 end
@@ -452,7 +453,11 @@ module IrisHRT
                 #println("Size of IRISCuStream type: ", sizeof(Main.IRISCuStream), " bytes")
             end
             #iris_println("Calling CUDA kernel")
-            call_cuda_kernel(julia_kernel_type, devno, func_name, j_threads, j_blocks, cu_ctx, cu_stream, julia_args, b_async_flag)
+            if julia_kernel_type == julia_kernel_abstraction 
+                call_cuda_kernel_ka(julia_kernel_type, devno, func_name, j_threads, j_blocks, cu_ctx, cu_stream, julia_args, b_async_flag)
+            else
+                call_cuda_kernel(julia_kernel_type, devno, func_name, j_threads, j_blocks, cu_ctx, cu_stream, julia_args, b_async_flag)
+            end
             #CUDA.@sync @cuda threads=j_threads blocks=j_blocks Main.saxpy_cuda(julia_args[1], julia_args[2], julia_args[3], julia_args[4])
             ##############################################################
             #iris_println("Completed CUDA")
@@ -477,7 +482,11 @@ module IrisHRT
             #Main.AMDGPU.device!(Main.AMDGPU.devices()[devno+1])
             #Main.AMDGPU.context!(hip_ctx)
             #iris_println("Calling HIP kernel")
+            if julia_kernel_type == julia_kernel_abstraction 
+            call_hip_kernel_ka(julia_kernel_type, devno, func_name, j_threads, j_blocks, hip_ctx, hip_stream, julia_args, b_async_flag)
+            else
             call_hip_kernel(julia_kernel_type, devno, func_name, j_threads, j_blocks, hip_ctx, hip_stream, julia_args, b_async_flag)
+            end
             ##############################################################
             #iris_println("Completed HIP")
             return target*12
@@ -637,7 +646,60 @@ module IrisHRT
         return ccall(Libdl.dlsym(lib, :iris_init_devices_synchronize), Int32, (Int32,), Int32(sync))
     end
     # Call Julia kernel 
-    # CUDA kernel wrapper
+    # CUDA kernel wrapper (KernelAbstraction kernels)
+    using KernelAbstractions
+    function call_cuda_kernel_ka(julia_kernel_type::Any, devno::Any, func_name::String, threads::Any, blocks::Any, ctx::Any, stream::Any, args::Any, async_flag::Bool=false)
+        if !Main.cuda_available
+            error("CUDA device not available.")
+        end
+
+        #iris_println("Func $func_name")
+        func_name_target = func_name
+        # Initialize CUDA
+        #CUDA.allowscalar(false)  # Disable scalar operations on the GPU
+        func = getfield(Main, Symbol(func_name_target))
+        #func = getfield(IrisKernelImpl, Symbol(func_name_target))
+        # Convert the array of arguments to a tuple
+        args_tuple = Tuple(args)
+        # Call the function with arguments
+        #println(Core.stdout, "Args_tuple: $args_tuple")
+        #println(Core.stdout, "Async $async_flag")
+        gws = map(*, threads, blocks)
+        if async_flag
+            #iris_println("---------ASynchronous CUDA execution $blocks $threads func:$func stream:$stream----------")
+            #Main.CUDA.@async begin
+                #Main.CUDA.context!(ctx)
+                MyCUDA.stream!(stream)
+                backend = MyCUDA.CUDAKernels.CUDABackend(false, false)
+                func(backend)(args_tuple...; ndrange=gws, workgroupsize=threads)
+                #MyCUDA.@cuda threads=threads blocks=blocks stream=stream func(args_tuple...)
+            #end
+            # Ensure all tasks and CUDA operations complete
+        else
+            #iris_println("---------Synchronous CUDA execution $blocks $threads func:$func----------")
+            backend = MyCUDA.CUDAKernels.CUDABackend(false, false)
+            #MyCUDA.@sync begin
+                #MyCUDA.context!(ctx)
+                #println(Core.stdout, " func:", func)
+                #println(Core.stdout, " threads:", threads)
+                #println(Core.stdout, " blocks:", blocks)
+                #println(Core.stdout, " args:", args_tuple)
+                #println(Core.stdout, " ndrange:", gws)
+                func(backend)(args_tuple...; ndrange=gws, workgroupsize=threads)
+                #Main.saxpy_ka(backend)(args_tuple...; ndrange=32, workgroupsize=32)
+                #Main.saxpy_ka_wrapper(args_tuple, backend, threads, (32,)) 
+                #func(backend)(args_tuple; ndrange=(32,), workgroupsize=threads)
+                #k(args_tuple; ndrange=(32,), workgroupsize=threads)
+                ##MyCUDA.@cuda threads=threads blocks=blocks func(args_tuple...)
+            #end
+            KernelAbstractions.synchronize(backend)
+
+            #CUDA.@sync @cuda threads=threads blocks=blocks func(args_tuple...)
+            #func1(threads, blocks, args_tuple)
+        end
+        #synchronize(blocking = true)
+    end
+
     function call_cuda_kernel(julia_kernel_type::Any, devno::Any, func_name::String, threads::Any, blocks::Any, ctx::Any, stream::Any, args::Any, async_flag::Bool=false)
         if !Main.cuda_available
             error("CUDA device not available.")
@@ -672,6 +734,42 @@ module IrisHRT
             #func1(threads, blocks, args_tuple)
         end
         #synchronize(blocking = true)
+    end
+
+    function call_hip_kernel_ka(julia_kernel_type::Any, devno::Any, func_name::String, threads::Any, blocks::Any, ctx::Any, stream::Any, args::Any, async_flag::Bool=false)
+        if !Main.hip_available
+            error("HIP device not available.")
+        end
+
+        #iris_println("Func $func_name")
+        func_name_target = func_name 
+        # Initialize CUDA
+        #AMDGPU.allowscalar(false)  # Disable scalar operations on the GPU
+        #func = getfield(IrisKernelImpl, Symbol(func_name_target))
+        func = getfield(Main, Symbol(func_name_target))
+        # Convert the array of arguments to a tuple
+        args_tuple = Tuple(args)
+        # Call the function with arguments
+        #@hip threads=threads blocks=blocks add_kernel(a,b,c,N)
+        #println(Core.stdout, "Args_tuple: $args_tuple")
+        #println(Core.stdout, "Threads: $threads blocks:$blocks")
+        #iris_println("Async $async_flag")
+        gws = map(*, threads, blocks)
+        if async_flag
+            #Main.AMDGPU.@async begin
+                #MyAMDGPU.@roc groupsize=threads gridsize=blocks stream=stream func(args_tuple...)
+                MyAMDGPU.context!(ctx)
+                MyAMDGPU.stream!(stream)
+                backend = MyAMDGPU.ROCKernels.ROCBackend()
+                func(backend)(args_tuple...; ndrange=gws, workgroupsize=threads)
+            #end
+        else
+            #iris_println("---------Synchronous HIP execution $blocks $threads func:$func----------")
+            backend = MyAMDGPU.ROCKernels.ROCBackend()
+            func(backend)(args_tuple...; ndrange=gws, workgroupsize=threads)
+            KernelAbstractions.synchronize(backend)
+        end
+        #AMDGPU.synchronize()
     end
 
     # HIP kernel wrapper
