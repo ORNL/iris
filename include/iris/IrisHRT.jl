@@ -483,9 +483,9 @@ module IrisHRT
             #Main.AMDGPU.context!(hip_ctx)
             #iris_println("Calling HIP kernel")
             if julia_kernel_type == julia_kernel_abstraction 
-            call_hip_kernel_ka(julia_kernel_type, devno, func_name, j_threads, j_blocks, hip_ctx, hip_stream, julia_args, b_async_flag)
+                call_hip_kernel_ka(julia_kernel_type, devno, func_name, j_threads, j_blocks, hip_ctx, hip_stream, julia_args, b_async_flag)
             else
-            call_hip_kernel(julia_kernel_type, devno, func_name, j_threads, j_blocks, hip_ctx, hip_stream, julia_args, b_async_flag)
+                call_hip_kernel(julia_kernel_type, devno, func_name, j_threads, j_blocks, hip_ctx, hip_stream, julia_args, b_async_flag)
             end
             ##############################################################
             #iris_println("Completed HIP")
@@ -496,7 +496,11 @@ module IrisHRT
             #iris_println("dev:$devno")
             func_name = unsafe_string(kernel_name)
             #iris_println("Calling OpenMP kernel")
-            call_openmp_kernel(julia_kernel_type, func_name, j_threads, j_blocks, julia_args, b_async_flag)
+            if julia_kernel_type == julia_kernel_abstraction 
+                call_openmp_kernel_ka(julia_kernel_type, func_name, j_threads, j_blocks, julia_args, b_async_flag)
+            else
+                call_openmp_kernel(julia_kernel_type, func_name, j_threads, j_blocks, julia_args, b_async_flag)
+            end
             ##############################################################
             #iris_println("Completed OpenMP")
             return target*13
@@ -667,35 +671,14 @@ module IrisHRT
         gws = map(*, threads, blocks)
         if async_flag
             #iris_println("---------ASynchronous CUDA execution $blocks $threads func:$func stream:$stream----------")
-            #Main.CUDA.@async begin
-                #Main.CUDA.context!(ctx)
-                MyCUDA.stream!(stream)
-                backend = MyCUDA.CUDAKernels.CUDABackend(false, false)
-                func(backend)(args_tuple...; ndrange=gws, workgroupsize=threads)
-                #MyCUDA.@cuda threads=threads blocks=blocks stream=stream func(args_tuple...)
-            #end
-            # Ensure all tasks and CUDA operations complete
+            MyCUDA.stream!(stream)
+            backend = MyCUDA.CUDAKernels.CUDABackend(false, false)
+            func(backend)(args_tuple...; ndrange=gws, workgroupsize=threads)
         else
             #iris_println("---------Synchronous CUDA execution $blocks $threads func:$func----------")
             backend = MyCUDA.CUDAKernels.CUDABackend(false, false)
-            #MyCUDA.@sync begin
-                #MyCUDA.context!(ctx)
-                #println(Core.stdout, " func:", func)
-                #println(Core.stdout, " threads:", threads)
-                #println(Core.stdout, " blocks:", blocks)
-                #println(Core.stdout, " args:", args_tuple)
-                #println(Core.stdout, " ndrange:", gws)
-                func(backend)(args_tuple...; ndrange=gws, workgroupsize=threads)
-                #Main.saxpy_ka(backend)(args_tuple...; ndrange=32, workgroupsize=32)
-                #Main.saxpy_ka_wrapper(args_tuple, backend, threads, (32,)) 
-                #func(backend)(args_tuple; ndrange=(32,), workgroupsize=threads)
-                #k(args_tuple; ndrange=(32,), workgroupsize=threads)
-                ##MyCUDA.@cuda threads=threads blocks=blocks func(args_tuple...)
-            #end
+            func(backend)(args_tuple...; ndrange=gws, workgroupsize=threads)
             KernelAbstractions.synchronize(backend)
-
-            #CUDA.@sync @cuda threads=threads blocks=blocks func(args_tuple...)
-            #func1(threads, blocks, args_tuple)
         end
         #synchronize(blocking = true)
     end
@@ -814,6 +797,20 @@ module IrisHRT
         args_tuple = Tuple(args)
         # Call the function with arguments
         func(args_tuple...)
+        #AMDGPU.synchronize()
+    end
+
+    function call_openmp_kernel_ka(julia_kernel_type::Any, func_name::String, threads::Any, blocks::Any, args::Any, async_flag::Bool=false)
+        func_name_target = func_name
+        #func = getfield(IrisKernelImpl, Symbol(func_name_target))
+        func = getfield(Main, Symbol(func_name_target))
+        # Convert the array of arguments to a tuple
+        args_tuple = Tuple(args)
+        # Call the function with arguments
+        gws = threads
+        backend = CPU()
+        func(backend)(args_tuple...; ndrange=gws)
+        KernelAbstractions.synchronize(backend)
         #AMDGPU.synchronize()
     end
 
