@@ -232,6 +232,11 @@ module IrisHRT
         uid::Culong
     end
 
+    # Define the struct for IRISBackend
+    struct IRISBackend
+        backend_name::String
+    end
+
     macro maybethreads(ex)
        nthreads = Threads.nthreads()
        #println(Core.stdout, "Nthreads: $nthreads") 
@@ -2255,178 +2260,8 @@ module IrisHRT
         IrisHRT.iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
         return task0
     end
+    function describe_backend(backend::IRISBackend)
+        println("Backend Name: ", backend.backend_name)
+    end
 
 end  # module Iris
-
-macro iris(args...)
-    # Ensure args is an iterator of 2-tuples or pairs
-    println(Core.stdout, "Args: ", args)
-    call = args[end]
-    kernel_str = string("")
-    # Extract the kernel name from the call
-    if call isa Expr && call.head == :call
-        kernel = call.args[1]  # This should be the kernel name as a Symbol
-        kernel_str = string(kernel)  # Convert the Symbol to a String
-        println("Kernel as Symbol: ", kernel)
-        println("Kernel as String: ", kernel_str)
-    else
-        throw(ArgumentError("Expected a kernel call as the last argument, but got: $call"))
-    end
-
-    kwargs = Dict{Symbol, Any}()
-    for kwarg in args[1:end-1]
-        if kwarg isa Expr && kwarg.head == :(=)  # Match expressions of the form `key = value`
-            key, value = kwarg.args
-            if key isa Symbol
-                kwargs[key] = value
-            else
-                throw(ArgumentError("Invalid key in keyword argument '$kwarg'"))
-            end
-        else
-            throw(ArgumentError("Expected keyword argument but got: $kwarg"))
-        end
-    end
-    println(Core.stdout, "K Args: ", kwargs)
-    println(Core.stdout, "K Args in: ", kwargs[:in])
-    println(Core.stdout, "Call: ", call)
-     # destructure the kernel call
-    Meta.isexpr(call, :call) || throw(ArgumentError("second argument to @cuda should be a function call"))
-    f = call.args[1]
-    call_args = call.args[2:end]
-
-    println(Core.stdout, "Call Args: ", call_args)
-
-    # Check if the `:in` key exists
-    in_memories = []
-    in_memories_p = []
-    out_memories = []
-    flush_memories = []
-    off=Int64[]
-    gws=Int64[]
-    lws=Int64[]
-    policy = IrisHRT.iris_roundrobin
-    sync_flag = 1
-    if haskey(kwargs, :policy)
-        policy = kwargs[:flush]
-    end
-    if haskey(kwargs, :sync)
-        sync_flag = kwargs[:sync]
-    end
-    if haskey(kwargs, :in)
-        in_memories = kwargs[:in].args
-    end
-    if haskey(kwargs, :out)
-        out_memories = kwargs[:out].args
-    end
-    if haskey(kwargs, :flush)
-        flush_memories = kwargs[:flush].args
-    end
-    if haskey(kwargs, :off)
-        off = kwargs[:off].args
-    end
-    if haskey(kwargs, :gws)
-        gws = kwargs[:gws].args
-    end
-    if haskey(kwargs, :lws)
-        lws = kwargs[:lws].args
-    end
-    println(Core.stdout, "Policy: ", policy)
-    println(Core.stdout, "Sync: ", sync_flag)
-    println(Core.stdout, "In : ", in_memories)
-    println(Core.stdout, "Out: ", out_memories)
-    
-    mem_params = Dict{Symbol, Any}()
-    for array in in_memories
-        println(Core.stdout, "In ---- ", array)
-        println(Core.stdout, "In ---- ", array, " typeof:", typeof(eval(array)))
-        println("DMEM object t: ", array)
-        if !haskey(ARRAY_TO_DMEM_MAP, array)
-         # Generate DMEM object if not found
-            println("Array not found in global map. Creating DMEM object for: ", array)
-            ARRAY_TO_DMEM_MAP[array] = :(IrisHRT.iris_data_mem(eval($array)))
-        else
-            println("Array already mapped to Input DMEM object: ", array)
-        end
-        push!(in_memories_p, :(eval(esc($array))))
-        mem_params[array] = IrisHRT.iris_r
-    end
-    for array in out_memories
-        println(Core.stdout, "Out ---- ", array)
-         if !haskey(ARRAY_TO_DMEM_MAP, array)
-         # Generate DMEM object if not found
-            println("Array not found in global map. Creating DMEM object for: ", array)
-            ARRAY_TO_DMEM_MAP[array] = :(IrisHRT.iris_data_mem(eval($array)))
-        else
-            println("Array already mapped to Output DMEM object: ", array)
-        end
-        if !haskey(mem_params, array)
-            mem_params[array] = IrisHRT.iris_w
-        else
-            mem_params[array] = IrisHRT.iris_rw
-        end
-    end
-    kernel_params = []
-    for arg in call_args
-        println(Core.stdout, "- s - s - s - : ", arg, " type:", typeof(arg))
-    end
-    if call isa Expr && call.head == :call
-        call_args = call.args[2:end]  # Exclude the function name, keep only the arguments
-        for arg in call_args
-            if haskey(ARRAY_TO_DMEM_MAP, arg)
-                if arg isa Symbol
-                    push!(kernel_params, (ARRAY_TO_DMEM_MAP[arg], mem_params[arg]))
-                    println("Argument ", arg, " exists in ARRAY_TO_DMEM_MAP and is of type Symbol.", arg)
-                elseif ARRAY_TO_DMEM_MAP[arg] isa Array
-                    println("Argument ", arg, " exists in ARRAY_TO_DMEM_MAP and is of type Array.")
-                else
-                    println("Argument ", arg, " exists in ARRAY_TO_DMEM_MAP but is not of type Array.")
-                end
-            else
-                push!(kernel_params, arg)
-                println("Argument ", arg, " does not exist in ARRAY_TO_DMEM_MAP.")
-            end
-        end
-    else
-        throw(ArgumentError("Kernel call must be an expression of type `call`."))
-    end
-    println(Core.stdout, "kernel_params: ", kernel_params)
-    kernel_name = kernel_str
-    println(Core.stdout, "kernel name:", kernel_name)
-    println(Core.stdout, "off:", off)
-    println(Core.stdout, "gws:", gws)
-    println(Core.stdout, "lws:", lws)
-    quote
-        for array in $in_memories_p
-            println(Core.stdout, "In-11 ---- ", array, " Type:", typeof(array))
-            __iris_dmem_map[array] = IrisHRT.iris_data_mem(array)
-            println(Core.stdout, "iri: ", __iris_dmem_map[array])
-        end
-        for array in $out_memories
-            println(Core.stdout, "Out-11 ---- ", array, " Type:", typeof(array))
-#__iris_dmem_map[array] = IrisHRT.iris_data_mem(eval(array))
-        end
-        lws = map(x -> Int(eval(x)), $lws)
-        #gws = map(x -> Int(eval(x)), $gws)
-        off = map(x -> Int(eval(x)), $off)
-        simplified_params = [] 
-        for element in $kernel_params
-            println(Core.stdout, "Out type: ", typeof(element), " element:", element)
-            if element isa Tuple
-                println(Core.stdout, "Out type: Is ", typeof(element))
-                push!(simplified_params, eval(esc(element)))
-            else
-                println(Core.stdout, "Out type: Symbol ", typeof(element))
-                push!(simplified_params, eval(esc(element)))
-            end
-        end
-        println(Core.stdout, "kernel_params     :", $kernel_params)
-        println(Core.stdout, "simplified parmas :", simplified_params)
-        task0 = IrisHRT.iris_task_julia($kernel_name, length($gws), off, $gws, lws, simplified_params)
-        for mem in $flush_memories
-            IrisHRT.iris_task_dmem_flush_out(task0, ARRAY_TO_DMEM_MAP[mem])
-        end
-        IrisHRT.iris_task_submit(task0, $policy, Ptr{Int8}(C_NULL), $sync_flag)
-    end
-end
-
-
