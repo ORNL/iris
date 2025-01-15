@@ -34,6 +34,7 @@ class LoaderHIP;
 class LoaderLevelZero;
 class LoaderOpenCL;
 class LoaderOpenMP;
+class LoaderQIREE;
 class LoaderHexagon;
 class BaseMem;
 class DataMem;
@@ -318,6 +319,7 @@ private:
   int InitLevelZero();
   int InitOpenCL();
   int InitOpenMP();
+  int InitQIREE();
   int InitHexagon();
   int InitWorkers();
   int FilterSubmitExecute(Task* task);
@@ -353,6 +355,7 @@ private:
   LoaderLevelZero* loaderLevelZero_;
   LoaderOpenCL* loaderOpenCL_;
   LoaderOpenMP* loaderOpenMP_;
+  LoaderQIREE * loaderQIREE_;
   LoaderHexagon* loaderHexagon_;
   size_t arch_available_;
 
@@ -386,6 +389,7 @@ private:
   Profiler* profilers_[8];
   int nprofilers_;
   int openmp_device_factor_;
+  int qiree_device_factor_;
   int cuda_device_factor_;
   int hip_device_factor_;
   bool is_malloc_async_;

@@ -3,6 +3,7 @@
 #include "Utils.h"
 #include "Command.h"
 #include "DeviceCUDA.h"
+#include "DeviceQIREE.h"
 #include "DeviceHexagon.h"
 #include "DeviceHIP.h"
 #include "DeviceLevelZero.h"
@@ -14,6 +15,7 @@
 #include "JSON.h"
 #include "Kernel.h"
 #include "LoaderCUDA.h"
+#include "LoaderQIREE.h"
 #include "LoaderHost2HIP.h"
 #include "LoaderHost2CUDA.h"
 #include "LoaderHost2OpenCL.h"
@@ -89,6 +91,7 @@ void Platform::Reset() {
   polyhedral_ = NULL;
   sig_handler_ = NULL;
   openmp_device_factor_ = 1;
+  qiree_device_factor_ = 1;
   cuda_device_factor_ = 1;
   hip_device_factor_ = 1;
   event_profile_enabled_ = false;
@@ -102,6 +105,7 @@ void Platform::Reset() {
   loaderLevelZero_ = NULL;
   loaderOpenCL_ = NULL;
   loaderOpenMP_ = NULL;
+  loaderQIREE_ = NULL;
   loaderHexagon_ = NULL;
   arch_available_ = 0UL;
   present_table_ = NULL;
@@ -166,6 +170,7 @@ void Platform::Clean() {
   if (loaderLevelZero_) delete loaderLevelZero_;
   if (loaderOpenCL_) delete loaderOpenCL_;
   if (loaderOpenMP_) delete loaderOpenMP_;
+  if (loaderQIREE_) delete loaderQIREE_;
   if (loaderHexagon_) delete loaderHexagon_;
   if (present_table_) delete present_table_;
   if (polyhedral_) delete polyhedral_;
@@ -231,6 +236,7 @@ int Platform::Init(int* argc, char*** argv, int sync) {
   EnvironmentBoolRead("DISABLE_D2D", disable_d2d_);
   EnvironmentBoolRead("DISABLE_DATA_TRANSFERS", disable_data_transfers_);
   EnvironmentIntRead("OPENMP_DEVICE_FACTOR", openmp_device_factor_);
+  EnvironmentIntRead("QIREE_DEVICE_FACTOR", qiree_device_factor_);
   EnvironmentIntRead("CUDA_DEVICE_FACTOR", cuda_device_factor_);
   EnvironmentIntRead("HIP_DEVICE_FACTOR", hip_device_factor_);
   EnvironmentIntRead("NSTREAMS", nstreams_);
@@ -269,6 +275,8 @@ int Platform::Init(int* argc, char*** argv, int sync) {
       if (!loaderOpenCL_) InitOpenCL();
     } else if (strcasecmp(a, "openmp") == 0) {
       if (!loaderOpenMP_) InitOpenMP();
+    } else if (strcasecmp(a, "qiree") == 0) {
+      if (!loaderQIREE_) InitQIREE();
     } else if (strcasecmp(a, "hexagon") == 0) {
       if (!loaderHexagon_) InitHexagon();
     } else _error("not support arch[%s]", a);
@@ -446,6 +454,7 @@ int Platform::EnvironmentInit() {
   EnvironmentSet("KERNEL_BIN_HIP",       "kernel.hip",           false);
   EnvironmentSet("KERNEL_SRC_OPENMP",    "kernel.openmp.h",      false);
   EnvironmentSet("KERNEL_BIN_OPENMP",    "kernel.openmp.so",     false);
+  EnvironmentSet("KERNEL_QIR",           "kernel.qir.ll",        false);
   EnvironmentSet("KERNEL_SRC_SPV",       "kernel.cl",            false);
   EnvironmentSet("KERNEL_BIN_SPV",       "kernel.spv",           false);
   EnvironmentSet("KERNEL_JULIA",         "libjulia.so",          false);
@@ -781,6 +790,30 @@ int Platform::InitOpenMP() {
       mdevs++;
   }
   strcpy(platform_names_[nplatforms_], "OpenMP");
+  first_dev_of_type_[nplatforms_] = devs_[ndevs_-mdevs];
+  nplatforms_++;
+  return IRIS_SUCCESS;
+}
+
+int Platform::InitQIREE() {
+  loaderQIREE_ = new LoaderQIREE();
+  if (loaderQIREE_->Load() != IRIS_SUCCESS) {
+      char *filename = (char *)malloc(512);
+      EnvironmentGet("KERNEL_QIR", &filename, NULL);
+      _warning("couldn't find QIR architecture kernel library:%s", filename);
+      free(filename);
+  }
+  int mdevs = 0;
+  for(int i=0; i<qiree_device_factor_; i++) {
+      _trace("QIR platform[%d] dev[%d] ndevs[%d]", nplatforms_, ndevs_, ndevs_+1);
+      devs_[ndevs_] = new DeviceQIREE(loaderQIREE_, ndevs_, nplatforms_);
+      if (is_julia_enabled()) 
+          devs_[ndevs_]->EnableJuliaInterface();
+      arch_available_ |= devs_[ndevs_]->type();
+      ndevs_++;
+      mdevs++;
+  }
+  strcpy(platform_names_[nplatforms_], "QIR");
   first_dev_of_type_[nplatforms_] = devs_[ndevs_-mdevs];
   nplatforms_++;
   return IRIS_SUCCESS;
