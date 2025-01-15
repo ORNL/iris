@@ -101,7 +101,9 @@ int DeviceQIREE::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws,
   argv[3] = "qpp";
   // Call the function with an argument
   //parse_input_c(4, (char**)argv);
-  return ld_->parse_input_c(4, (char**)argv);
+  ld_->parse_input_c(4, (char**)argv);
+  //return ld_->parse_input_c(4, (char**)argv);
+  return IRIS_SUCCESS;
 }
 
 int DeviceQIREE::Synchronize() {

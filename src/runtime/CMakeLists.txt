@@ -81,6 +81,7 @@ set(IRIS_RUNTIME_SOURCES
   DeviceLevelZero.cpp
   DeviceOpenCL.cpp
   DeviceOpenMP.cpp
+  DeviceQIREE.cpp
   FilterTaskSplit.cpp
   Graph.cpp
   History.cpp
@@ -154,6 +155,7 @@ set(IRIS_RUNTIME_HEADERS
   DeviceLevelZero.h
   DeviceOpenCL.h
   DeviceOpenMP.h
+  DeviceQIREE.h
   Filter.h
   FilterTaskSplit.h
   Graph.h
