@@ -94,6 +94,7 @@ int DeviceQIREE::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem,
 
 int DeviceQIREE::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws) {
   _trace("kernel[%s] dim[%d] off[%zu] gws[%zu]", kernel->name(), dim, off[0], gws[0]);
+
   char* argv[4]; 
   argv[0] = "null";
   argv[1] = "bell.ll";

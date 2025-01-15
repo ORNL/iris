@@ -6,7 +6,7 @@
 int main(int argc, char** argv) {
   iris_init(&argc, &argv, 1);
 
-  size_t SIZE;
+  size_t SIZE = 0;
   int TARGET;
   int VERBOSE;
 
@@ -26,7 +26,7 @@ int main(int argc, char** argv) {
   iris_task_create_name(tn, &task0); 
   //void* params0[] = {};
   //int pinfo0[] = {};
-  iris_task_kernel(task0, "bell.ll", 1, NULL, NULL, NULL, 0, NULL, NULL);
+  iris_task_kernel(task0, "bell.ll", 1, NULL, &SIZE, NULL, 0, NULL, NULL);
   //iris_task_kernel(task0, "saxpy", 1, NULL, &SIZE, NULL, 4, params0, pinfo0);
   //iris_task_dmem_flush_out(task0, mem_Z);
   //iris_graph_task(graph, task0, iris_any, NULL);
