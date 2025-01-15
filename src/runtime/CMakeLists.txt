@@ -98,6 +98,7 @@ set(IRIS_RUNTIME_SOURCES
   LoaderOpenCL.cpp
   LoaderOpenMP.cpp
   LoaderPolicy.cpp
+  LoaderQIREE.cpp
   Message.cpp
   DataMemRegion.cpp
   DataMem.cpp
@@ -174,6 +175,7 @@ set(IRIS_RUNTIME_HEADERS
   LoaderOpenCL.h
   LoaderOpenMP.h
   LoaderPolicy.h
+  LoaderQIREE.h
   Message.h
   DataMemRegion.h
   DataMem.h
