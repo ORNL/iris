@@ -15,7 +15,7 @@ public:
   DeviceHIP(LoaderHIP* ld, LoaderHost2HIP *host2hip_ld, hipDevice_t cudev, int ordinal, int devno, int platform, int local_devno);
   ~DeviceHIP();
 
-  int Compile(char* src);
+  int Compile(char* src, const char *out=NULL, const char *flags=NULL);
   int Init();
   int ResetMemory(Task *task, BaseMem *mem, uint8_t reset_value);
   void RegisterPin(void *host, size_t size);
@@ -33,6 +33,7 @@ public:
   int KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, size_t off);
   void CheckVendorSpecificKernel(Kernel* kernel);
   int KernelLaunchInit(Command *cmd, Kernel* kernel);
+  void VendorKernelLaunch(void *kernel, int gridx, int gridy, int gridz, int blockx, int blocky, int blockz, int shared_mem_bytes, void *stream, void **params);
   int KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws);
   int Synchronize();
   void EnablePeerAccess();

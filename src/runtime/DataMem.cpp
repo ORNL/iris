@@ -4,6 +4,7 @@
 #include "Platform.h"
 #include "Device.h"
 #include "Task.h"
+#include "Utils.h"
 #include <stdlib.h>
 
 #define USE_MEMRANGE
@@ -197,6 +198,8 @@ void DataMem::UpdateHost(void *host_ptr)
     host_ptr_ = host_ptr;
     host_ptr_owner_ = false;
     host_dirty_flag_ = false;
+    host_reset_ = false;
+    enable_reset_ = false;
     for(int i=0; i<ndevs_; i++) {
         dirty_flag_[i] = true;
     }
@@ -205,6 +208,7 @@ void DataMem::UpdateHost(void *host_ptr)
 void DataMem::init_reset(bool reset)
 {
     reset_ = reset;
+    enable_reset_ = reset;
     host_dirty_flag_ = reset;
     for(int i=0;  i<ndevs_; i++) {
         dirty_flag_[i] = !reset;
@@ -225,6 +229,7 @@ void DataMem::clear() {
           archs_[i] = NULL;
       }
   }
+  enable_reset_ = reset_;
 }
 void *DataMem::tmp_host_memory() {
     if (!tmp_host_ptr_)  {
@@ -239,6 +244,33 @@ void *DataMem::host_memory() {
         host_ptr_owner_ = true;
         host_dirty_flag_ = true;
         //printf("host_ptr_owner is enabled:%lu size:%lu\n", uid(), size_);
+        if (is_reset()) {
+            ResetData & r_data = reset_data();
+            if (r_data.reset_type_ == iris_reset_memset) {
+                memset(host_ptr_, 0, size_);
+                host_dirty_flag_ = false;
+                host_reset_ = true;
+            }
+            else if (element_type_ != iris_unknown) {
+                int reset_type = r_data.reset_type_;
+                if (reset_type == iris_reset_assign) 
+                    Utils::Fill(host_ptr_, size_/elem_size(), element_type_, reset_data_);
+                else if (reset_type == iris_reset_arith_seq) 
+                    Utils::ArithSequence(host_ptr_, size_/elem_size(), element_type_, reset_data_);
+                else if (reset_type == iris_reset_geom_seq) 
+                    Utils::GeometricSequence(host_ptr_, size_/elem_size(), element_type_, reset_data_);
+                else if (reset_type == iris_reset_random_uniform_seq) 
+                    Utils::RandomUniformSeq(host_ptr_, size_/elem_size(), element_type_, reset_data_);
+                else {
+                    _error("Unknown reset_type: %d\n", reset_type);
+                }
+                host_dirty_flag_ = false;
+                host_reset_ = true;
+            }
+            else {
+                _error("Dont know how to handle element_type:%d\n", element_type_);
+            }
+        }
     }
     return host_ptr_;
 }
@@ -276,7 +308,10 @@ void DataMem::create_dev_mem(Device *dev, int devno, void *host)
         dev->MemAlloc(this, archs_ + devno, size_, is_reset());
         if (is_reset()) {
             dirty_flag_[devno] = false;
-            host_dirty_flag_ = true;
+            // It is not required to make host dirty for all reset types. 
+            // It is required only for certain reset types such as random.
+            // TODO: Think one more time about this.
+            if (!host_reset_) host_dirty_flag_ = true;
         }
     }
 }

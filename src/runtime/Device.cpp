@@ -14,6 +14,7 @@
 #include "Timer.h"
 #include "Utils.h"
 #include "Worker.h"
+#include "LoaderDefaultKernel.h"
 
 #define _debug3 _debug2
 namespace iris {
@@ -50,6 +51,7 @@ Device::Device(int devno, int platform) {
   hook_command_post_ = NULL;
   julia_if_ = NULL;
   worker_ = NULL;
+  ld_default_ = NULL;
   stream_policy_ = STREAM_POLICY_DEFAULT;
   //stream_policy_ = STREAM_POLICY_SAME_FOR_TASK;
   //stream_policy_ = STREAM_POLICY_GIVE_ALL_STREAMS_TO_KERNEL;
@@ -60,11 +62,198 @@ Device::~Device() {
   while(active_tasks_ > 0) {
     sleep(1);
   }
+  if (ld_default_ != NULL) delete ld_default_;
   _event_prof_debug("Device:%d deleted\n", devno());
   FreeDestroyEvents();
   if (peer_access_ != NULL) delete [] peer_access_;
   if (julia_if_ != NULL) delete julia_if_;
   delete timer_;
+}
+
+void Device::CallMemReset(BaseMem *mem, size_t size, void *stream)
+{
+    int elem_type = mem->element_type();
+    if (elem_type == iris_unknown) return;
+    if (ld_default_ == NULL) return;
+    ResetData & reset_data = mem->reset_data();
+    int reset_type = reset_data.reset_type_;
+    void *arch = mem->arch(devno());
+    if (reset_type == iris_reset_assign) {
+#define RESET_SEQ(IT, T, M)  case IT: ld_default_->iris_reset_ ## M(static_cast<T*>(arch), reset_data.value_.M, size, stream); break;
+        switch(elem_type) {
+            RESET_SEQ(iris_uint8,  uint8_t,  u8);
+            RESET_SEQ(iris_uint16, uint16_t, u16);
+            RESET_SEQ(iris_uint32, uint32_t, u32);
+            RESET_SEQ(iris_uint64, uint64_t, u64);
+            RESET_SEQ(iris_int8,   int8_t,   i8);
+            RESET_SEQ(iris_int16,  int16_t,  i16);
+            RESET_SEQ(iris_int32,  int32_t,  i32);
+            RESET_SEQ(iris_int64,  int64_t,  i64);
+            RESET_SEQ(iris_float,  float,    f32);
+            RESET_SEQ(iris_double, double,   f64);
+            default: 
+                _error("Invalid element type:%d for mem uid:%lu for reset assign\n", elem_type, mem->uid()); break;
+        }
+    }
+    else if (reset_type == iris_reset_arith_seq) {
+#define ARITH_SEQ(IT, T, M)  case IT: ld_default_->iris_arithmetic_seq_ ## M(static_cast<T*>(arch), reset_data.start_.M, reset_data.step_.M, size, stream); break;
+        switch(elem_type) {
+            ARITH_SEQ(iris_uint8,  uint8_t,  u8);
+            ARITH_SEQ(iris_uint16, uint16_t, u16);
+            ARITH_SEQ(iris_uint32, uint32_t, u32);
+            ARITH_SEQ(iris_uint64, uint64_t, u64);
+            ARITH_SEQ(iris_int8,   int8_t,   i8);
+            ARITH_SEQ(iris_int16,  int16_t,  i16);
+            ARITH_SEQ(iris_int32,  int32_t,  i32);
+            ARITH_SEQ(iris_int64,  int64_t,  i64);
+            ARITH_SEQ(iris_float,  float,    f32);
+            ARITH_SEQ(iris_double, double,   f64);
+            default: 
+                _error("Invalid element type:%d for mem uid:%lu for reset arithmatic sequence\n", elem_type, mem->uid()); break;
+        }
+    }
+    else if (reset_type == iris_reset_geom_seq) {
+#define GEOM_SEQ(IT, T, M)  case IT: ld_default_->iris_geometric_seq_ ## M(static_cast<T*>(arch), reset_data.start_.M, reset_data.step_.M, size, stream); break;
+        switch(elem_type) {
+            GEOM_SEQ(iris_uint8,  uint8_t,  u8);
+            GEOM_SEQ(iris_uint16, uint16_t, u16);
+            GEOM_SEQ(iris_uint32, uint32_t, u32);
+            GEOM_SEQ(iris_uint64, uint64_t, u64);
+            GEOM_SEQ(iris_int8,   int8_t,   i8);
+            GEOM_SEQ(iris_int16,  int16_t,  i16);
+            GEOM_SEQ(iris_int32,  int32_t,  i32);
+            GEOM_SEQ(iris_int64,  int64_t,  i64);
+            GEOM_SEQ(iris_float,  float,    f32);
+            GEOM_SEQ(iris_double, double,   f64);
+            default: 
+                _error("Invalid element type:%d for mem uid:%lu for reset geometric sequence\n", elem_type, mem->uid()); break;
+        }
+    }
+#define RANDOM_SEQ(IT, RTYPE, T, M)  case IT: ld_default_->iris_random_ ## RTYPE ## _seq_ ## M(static_cast<T*>(arch), reset_data.seed_, reset_data.p1_.M, reset_data.p2_.M, size, stream); break;
+    else if (reset_type == iris_reset_random_uniform_seq) {
+        switch(elem_type) {
+            RANDOM_SEQ(iris_uint8,  uniform, uint8_t,  u8);
+            RANDOM_SEQ(iris_uint16, uniform, uint16_t, u16);
+            RANDOM_SEQ(iris_uint32, uniform, uint32_t, u32);
+            RANDOM_SEQ(iris_uint64, uniform, uint64_t, u64);
+            RANDOM_SEQ(iris_int8,   uniform, int8_t,   i8);
+            RANDOM_SEQ(iris_int16,  uniform, int16_t,  i16);
+            RANDOM_SEQ(iris_int32,  uniform, int32_t,  i32);
+            RANDOM_SEQ(iris_int64,  uniform, int64_t,  i64);
+            RANDOM_SEQ(iris_float,  uniform, float,    f32);
+            RANDOM_SEQ(iris_double, uniform, double,   f64);
+            default: 
+                _error("Invalid element type:%d for mem uid:%lu for reset uniform sequence\n", elem_type, mem->uid()); break;
+        }
+    }
+    else if (reset_type == iris_reset_random_normal_seq) {
+        switch(elem_type) {
+            RANDOM_SEQ(iris_uint8,  normal, uint8_t,  u8);
+            RANDOM_SEQ(iris_uint16, normal, uint16_t, u16);
+            RANDOM_SEQ(iris_uint32, normal, uint32_t, u32);
+            RANDOM_SEQ(iris_uint64, normal, uint64_t, u64);
+            RANDOM_SEQ(iris_int8,   normal, int8_t,   i8);
+            RANDOM_SEQ(iris_int16,  normal, int16_t,  i16);
+            RANDOM_SEQ(iris_int32,  normal, int32_t,  i32);
+            RANDOM_SEQ(iris_int64,  normal, int64_t,  i64);
+            RANDOM_SEQ(iris_float,  normal, float,    f32);
+            RANDOM_SEQ(iris_double, normal, double,   f64);
+            default: 
+                _error("Invalid element type:%d for mem uid:%lu for reset normal sequence\n", elem_type, mem->uid()); break;
+        }
+    }
+    else if (reset_type == iris_reset_random_log_normal_seq) {
+        switch(elem_type) {
+            RANDOM_SEQ(iris_uint8,  log_normal, uint8_t,  u8);
+            RANDOM_SEQ(iris_uint16, log_normal, uint16_t, u16);
+            RANDOM_SEQ(iris_uint32, log_normal, uint32_t, u32);
+            RANDOM_SEQ(iris_uint64, log_normal, uint64_t, u64);
+            RANDOM_SEQ(iris_int8,   log_normal, int8_t,   i8);
+            RANDOM_SEQ(iris_int16,  log_normal, int16_t,  i16);
+            RANDOM_SEQ(iris_int32,  log_normal, int32_t,  i32);
+            RANDOM_SEQ(iris_int64,  log_normal, int64_t,  i64);
+            RANDOM_SEQ(iris_float,  log_normal, float,    f32);
+            RANDOM_SEQ(iris_double, log_normal, double,   f64);
+            default: 
+                _error("Invalid element type:%d for mem uid:%lu for reset log_normal sequence\n", elem_type, mem->uid()); break;
+        }
+    }
+    else if (reset_type == iris_reset_random_uniform_sobol_seq) {
+        switch(elem_type) {
+            RANDOM_SEQ(iris_uint8,  uniform_sobol, uint8_t,  u8);
+            RANDOM_SEQ(iris_uint16, uniform_sobol, uint16_t, u16);
+            RANDOM_SEQ(iris_uint32, uniform_sobol, uint32_t, u32);
+            RANDOM_SEQ(iris_uint64, uniform_sobol, uint64_t, u64);
+            RANDOM_SEQ(iris_int8,   uniform_sobol, int8_t,   i8);
+            RANDOM_SEQ(iris_int16,  uniform_sobol, int16_t,  i16);
+            RANDOM_SEQ(iris_int32,  uniform_sobol, int32_t,  i32);
+            RANDOM_SEQ(iris_int64,  uniform_sobol, int64_t,  i64);
+            RANDOM_SEQ(iris_float,  uniform_sobol, float,    f32);
+            RANDOM_SEQ(iris_double, uniform_sobol, double,   f64);
+            default: 
+                _error("Invalid element type:%d for mem uid:%lu for reset uniform sobol sequence\n", elem_type, mem->uid()); break;
+        }
+    }
+    else if (reset_type == iris_reset_random_normal_sobol_seq) {
+        switch(elem_type) {
+            RANDOM_SEQ(iris_uint8,  normal_sobol, uint8_t,  u8);
+            RANDOM_SEQ(iris_uint16, normal_sobol, uint16_t, u16);
+            RANDOM_SEQ(iris_uint32, normal_sobol, uint32_t, u32);
+            RANDOM_SEQ(iris_uint64, normal_sobol, uint64_t, u64);
+            RANDOM_SEQ(iris_int8,   normal_sobol, int8_t,   i8);
+            RANDOM_SEQ(iris_int16,  normal_sobol, int16_t,  i16);
+            RANDOM_SEQ(iris_int32,  normal_sobol, int32_t,  i32);
+            RANDOM_SEQ(iris_int64,  normal_sobol, int64_t,  i64);
+            RANDOM_SEQ(iris_float,  normal_sobol, float,    f32);
+            RANDOM_SEQ(iris_double, normal_sobol, double,   f64);
+            default: 
+                _error("Invalid element type:%d for mem uid:%lu for reset normal sobol sequence\n", elem_type, mem->uid()); break;
+        }
+    }
+    else if (reset_type == iris_reset_random_log_normal_sobol_seq) {
+        switch(elem_type) {
+            RANDOM_SEQ(iris_uint8,  log_normal_sobol, uint8_t,  u8);
+            RANDOM_SEQ(iris_uint16, log_normal_sobol, uint16_t, u16);
+            RANDOM_SEQ(iris_uint32, log_normal_sobol, uint32_t, u32);
+            RANDOM_SEQ(iris_uint64, log_normal_sobol, uint64_t, u64);
+            RANDOM_SEQ(iris_int8,   log_normal_sobol, int8_t,   i8);
+            RANDOM_SEQ(iris_int16,  log_normal_sobol, int16_t,  i16);
+            RANDOM_SEQ(iris_int32,  log_normal_sobol, int32_t,  i32);
+            RANDOM_SEQ(iris_int64,  log_normal_sobol, int64_t,  i64);
+            RANDOM_SEQ(iris_float,  log_normal_sobol, float,    f32);
+            RANDOM_SEQ(iris_double, log_normal_sobol, double,   f64);
+            default: 
+                _error("Invalid element type:%d for mem uid:%lu for reset log normal sobol sequence\n", elem_type, mem->uid()); break;
+        }
+    }
+}
+
+void Device::LoadDefaultKernelLibrary(const char *key, const char *flags)
+{
+    char *src = NULL;
+    char *iris = NULL;
+    char *filename = NULL;
+    char *tmpdir = NULL;
+    char path[2048];
+    char out[1024];
+    worker_->platform()->EnvironmentGet("", &iris, NULL, '\0');
+    worker_->platform()->EnvironmentGet("INCLUDE_DIR", &src, NULL);
+    worker_->platform()->EnvironmentGet(key, &filename, NULL);
+    sprintf(path, "%s/%s/%s", iris, src, filename);
+    Platform::GetPlatform()->EnvironmentGet("TMPDIR", &tmpdir, NULL);
+    sprintf(out, "%s/%s.so", tmpdir, filename);
+    int result = Compile(path, out, flags);
+    if (result == IRIS_SUCCESS) {
+        ld_default_ = new LoaderDefaultKernel(out);
+        ld_default_->Load();
+    }
+    else {
+        _warning("Couldn't load default kernel library for dev:(%d, %s) for default kernels in %s\n", devno(), name(), path);
+    }
+    free(src);
+    free(iris);
+    free(filename);
+    free(tmpdir);
 }
 
 void Device::EnableJuliaInterface() {
@@ -175,6 +364,7 @@ void Device::Execute(Task* task) {
                                       for(DataMem *dmem : d2h_dmems) {
                                           dmem->set_dirty_except(devno_);
                                           dmem->set_host_dirty();
+                                          dmem->disable_reset();
                                       }
                                       break;
                                   }
@@ -859,6 +1049,7 @@ void Device::HandleHiddenDMemOuts(Task *task)
             dmem->GetMemHandlerType() == IRIS_DMEM_REGION) {
             dmem->set_dirty_except(devno_);
             dmem->set_host_dirty();
+            dmem->disable_reset();
         }
     }
 }
@@ -1442,6 +1633,7 @@ void Device::ExecuteMemOut(Task *task, Command* cmd) {
             //printf("ExecuteMemOut mem:%lu dev:%d set_dirty_except:%d host_dirty:True\n", dmem->uid(), devno_, devno_);
             dmem->set_dirty_except(devno_);
             dmem->set_host_dirty();
+            dmem->disable_reset();
         }
         if (is_async(task)) {
             int mem_stream = GetStream(task);

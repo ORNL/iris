@@ -138,6 +138,12 @@ typedef enum DeviceModel DeviceModel;
 #define iris_dt_d2h_h2d         6
 #define iris_dt_error           0
 
+#define iris_julia_native               0
+#define iris_core_native                1
+#define iris_julia_kernel_abstraction   2
+#define iris_julia_jacc                 3
+
+
 #define iris_unknown            (0 << 16)
 #define iris_int                (1 << 16)
 #define iris_uint               (2 << 16)
@@ -155,6 +161,17 @@ typedef enum DeviceModel DeviceModel;
 #define iris_long               (14 << 16)
 #define iris_unsigned_long      (15 << 16)
 #define iris_pointer            (0x4000 << 16)
+
+#define iris_reset_memset                      0
+#define iris_reset_assign                      1 
+#define iris_reset_arith_seq                   2
+#define iris_reset_geom_seq                    3
+#define iris_reset_random_uniform_seq          4
+#define iris_reset_random_normal_seq           5 
+#define iris_reset_random_log_normal_seq       6
+#define iris_reset_random_uniform_sobol_seq    7
+#define iris_reset_random_normal_sobol_seq     8
+#define iris_reset_random_log_normal_sobol_seq 9
 
 #define iris_normal             (1 << 10)
 #define iris_reduction          (1 << 11)
@@ -206,7 +223,28 @@ typedef int (*hook_command)(void* command);
 
 typedef int (*iris_selector_kernel)(iris_task task, void* params, char* kernel_name);
 
+typedef union _IRISValue {
+    int8_t   i8;
+    int16_t  i16;
+    int32_t  i32;
+    int64_t  i64;
+    uint8_t  u8;
+    uint16_t u16;
+    uint32_t u32;
+    uint64_t u64;
+    float    f32;
+    double   f64;
+}IRISValue;
 
+typedef struct _ResetData {
+    IRISValue value_;
+    IRISValue start_;
+    IRISValue step_;
+    IRISValue p1_;
+    IRISValue p2_;
+    int reset_type_;
+    long long seed_;
+}ResetData;
 /**@brief Initializes the IRIS execution environment.
  *
  * This function initializes the IRIS execution environment.
@@ -837,9 +875,10 @@ extern int iris_init_devices(int sync);
 /**@brief Enable Julia Interface for task kernels inside
  *
  * @param task iris task object
+ * @param type type of julia kernel (iris_julia_native, iris_core_native, iris_julia_kernel_abstraction, iris_julia_jacc)
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
-extern int iris_task_enable_julia_interface(iris_task task);
+extern int iris_task_enable_julia_interface(iris_task task, int type);
 
 /**@brief Adds a flush command to a task
  *
@@ -1134,6 +1173,15 @@ extern int iris_mem_create(size_t size, iris_mem* mem);
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_data_mem_init_reset(iris_mem mem, int reset);
+
+/**@brief Get DMem element type
+ *
+ * This function returns a DMEM element type if it is configured
+ *
+ * @param mem pointer to the memory object
+ * @return This function returns an DMem element type
+ */
+extern int iris_get_dmem_element_type(iris_mem mem);
 
 /**@brief Get DMem host pointer 
  *
@@ -1700,7 +1748,22 @@ extern void *iris_task_get_cmd_kernel(iris_task brs_task);
 extern size_t iris_mem_get_size(iris_mem mem);
 extern int iris_mem_get_type(iris_mem mem);
 extern int iris_mem_get_uid(iris_mem mem);
+extern int iris_get_mem_element_type(iris_mem brs_mem);
 extern int iris_mem_is_reset(iris_mem mem);
+extern int iris_mem_init_reset(iris_mem brs_mem, int memset_value);
+extern int iris_mem_init_reset_assign(iris_mem brs_mem, IRISValue value);
+extern int iris_mem_init_reset_arith_seq(iris_mem brs_mem, IRISValue start, IRISValue increment);
+extern int iris_mem_init_reset_geom_seq(iris_mem brs_mem, IRISValue start, IRISValue step);
+extern int iris_mem_init_reset_random_uniform_seq(iris_mem brs_mem, long long seed, IRISValue min, IRISValue max);
+extern int iris_mem_init_reset_random_normal_seq(iris_mem brs_mem, long long seed, IRISValue mean, IRISValue stddev);
+extern int iris_mem_init_reset_random_log_normal_seq(iris_mem brs_mem, long long seed, IRISValue mean, IRISValue stddev);
+extern int iris_mem_init_reset_random_uniform_sobol_seq(iris_mem brs_mem, IRISValue min, IRISValue max);
+extern int iris_mem_init_reset_random_normal_sobol_seq(iris_mem brs_mem, IRISValue mean, IRISValue stddev);
+extern int iris_mem_init_reset_random_log_normal_sobol_seq(iris_mem brs_mem, IRISValue mean, IRISValue stddev);
+
+// DMem Memory member access
+extern int iris_dmem_get_dim(iris_mem mem);
+extern size_t *iris_dmem_get_host_size(iris_mem mem);
 extern iris_mem iris_get_dmem_for_region(iris_mem dmem_region_obj);
 
 // Command kernel member access
@@ -2153,6 +2216,14 @@ extern void iris_println(const char *s);
   */
 extern void *iris_dev_get_ctx(int device);
 
+/**
+  * This function returns device context
+  * @param Device number
+  * @param index of stream 
+  * @return Stream pointer
+  */
+extern void *iris_dev_get_stream(int device, int index);
+
 /* Run HPL Mapping algorithm*/
 extern void iris_run_hpl_mapping(iris_graph graph);
 
@@ -2169,7 +2240,7 @@ extern int iris_read_bool_env(const char *env_name);
 extern int iris_read_int_env(const char *env_name);
 
 // Define a type for the Julia kernel launch function call pointer
-typedef int32_t (*julia_kernel_t)(int32_t target, int32_t devno, void *ctx, bool async, int32_t stream_index, void **stream, int32_t nstreams, int32_t *args, void **values, size_t *param_size, size_t *param_dim_size, int32_t nparams, size_t *threads, size_t *blocks, int dim, const char *kernel_name);
+typedef int32_t (*julia_kernel_t)(int32_t julia_kernel_type, int32_t target, int32_t devno, void *ctx, bool async, int32_t stream_index, void **stream, int32_t nstreams, int32_t *args, void **values, size_t *param_size, size_t *param_dim_size, int32_t nparams, size_t *threads, size_t *blocks, int dim, const char *kernel_name);
 
 /* API to initialize Julia interfacea
  * @param kernel_launch_func Kernel launch Julia function 
@@ -2188,6 +2259,7 @@ extern julia_kernel_t iris_get_julia_launch_func();
  */
 extern bool iris_is_enabled_auto_par();
 
+extern int iris_vendor_kernel_launch(int dev, void *kernel, int gridx, int gridy, int gridz, int blockx, int blocky, int blockz, int shared_mem_bytes, void *stream, void **params);
 
 #ifdef __cplusplus
 } /* end of extern "C" */

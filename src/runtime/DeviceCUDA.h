@@ -17,7 +17,7 @@ public:
   ~DeviceCUDA();
 
   void set_can_share_host_memory_flag(bool flag=true); 
-  int Compile(char* src);
+  int Compile(char* src, const char *out=NULL, const char *flags=NULL);
   int Init();
   int ResetMemory(Task *task, BaseMem *mem, uint8_t reset_value);
   void *GetSharedMemPtr(void* mem, size_t size);
@@ -29,6 +29,7 @@ public:
   void EnablePeerAccess();
   void SetPeerDevices(int *peers, int count);
   bool IsD2DPossible(Device *target);
+  int CheckPinnedMemory(void* ptr);
   void MemCpy3D(CUdeviceptr dev, uint8_t *host, size_t *off, 
           size_t *dev_sizes, size_t *host_sizes, 
           size_t elem_size, bool host_2_dev);
@@ -42,6 +43,7 @@ public:
   int KernelSetArg(Kernel* kernel, int idx, int kindex, size_t size, void* value);
   int KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, size_t off);
   int KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws);
+  void VendorKernelLaunch(void *kernel, int gridx, int gridy, int gridz, int blockx, int blocky, int blockz, int shared_mem_bytes, void *stream, void **params);
   int Synchronize();
   int Custom(int tag, char* params);
   float GetEventTime(void *event, int stream);
@@ -51,6 +53,7 @@ public:
   void DestroyEvent(void *event);
   void EventSynchronize(void *event);
   void *get_ctx() { return (void *)&ctx_; }
+  void *get_stream(int index) { return (void *)&streams_[index]; }
   void *GetSymbol(const char *name);
 
   const char* kernel_src() { return "KERNEL_SRC_CUDA"; }

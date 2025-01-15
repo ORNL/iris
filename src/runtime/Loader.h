@@ -8,14 +8,14 @@ typedef void (*__iris_kernel_ptr)();
 
 #ifndef ENABLE_STATIC_LINKING
 #define LOADFUNC(FUNC)          *(void**) (&FUNC) = dlsym(handle_, #FUNC);      \
-                                if (!FUNC) _error("%s", dlerror())
+                                if (!FUNC) _error("%s", dlerror());
 #define LOADFUNC_OPTIONAL(FUNC) *(void**) (&FUNC) = dlsym(handle_, #FUNC);      
 #define LOADFUNCSYM(FUNC, SYM)  *(void**) (&FUNC) = dlsym(handle_, #SYM);       \
-                                if (!FUNC) _error("%s", dlerror())
+                                if (!FUNC) _error("%s", dlerror());
 #define LOADFUNCSYM_OPTIONAL(FUNC, SYM)  *(void**) (&FUNC) = dlsym(handle_, #SYM);       
 #define LOADFUNCSILENT(FUNC)    *(void**) (&FUNC) = dlsym(handle_, #FUNC);
 #define LOADFUNCEXT(FUNC)       *(void**) (&FUNC) = dlsym(handle_ext_, #FUNC);  \
-                                if (!FUNC) _error("%s", dlerror())
+                                if (!FUNC) _error("%s", dlerror());
 #else
 #define LOADFUNC(FUNC)                   FUNC = CLinkage::FUNC;
 #define LOADFUNC_OPTIONAL(FUNC)          FUNC = CLinkage::FUNC;

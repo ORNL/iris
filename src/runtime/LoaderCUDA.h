@@ -55,6 +55,8 @@ public:
   CUresult (*cuMemcpyPeerAsync)(CUdeviceptr dstDevice, CUcontext dstContext, CUdeviceptr srcDevice, CUcontext srcContext, size_t ByteCount, CUstream hStream);
   CUresult (*cuMemcpyPeer)(CUdeviceptr dstDevice, CUcontext dstContext, CUdeviceptr srcDevice, CUcontext srcContext, size_t ByteCount);
   CUresult (*cuMemcpy2D)(const CUDA_MEMCPY2D *pCopy);
+  CUresult (*cuMemHostRegister_v2)(void *p, size_t bytesize, unsigned int Flags);
+  CUresult (*cuMemHostUnregister)(void *p);
   CUresult (*cudaHostRegister)(void *ptr, size_t size, unsigned int flags);
   CUresult (*cudaHostUnregister)(void *ptr);
   CUresult (*cudaMemset)(void *devPtr, int value, size_t count);

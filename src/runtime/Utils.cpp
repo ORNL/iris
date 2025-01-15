@@ -1,4 +1,5 @@
 #include <iris/iris.h>
+#include "math.h"
 #include "Utils.h"
 #include "Config.h"
 #include "Debug.h"
@@ -14,6 +15,7 @@
 #endif
 #include <cstdlib>
 #include <regex>
+#include <random>
 #include <cxxabi.h>
 #include <thread>
 #include <sched.h>
@@ -125,6 +127,175 @@ void Utils::Logo(bool color) {
     printf(RESET);
     fprintf(stderr, RESET);
   }
+}
+
+template <typename T>
+void Utils::Fill(T* array_ptr, size_t n_elements, T value) {
+    if (array_ptr == nullptr) {
+        std::cerr << "Null pointer error: cannot fill a null array." << std::endl;
+        return;
+    }
+    std::fill(array_ptr, array_ptr + n_elements, value);  // Fill using pointer arithmetic
+}
+
+void Utils::Fill(void *array_ptr, size_t n_elements, int element_type, ResetData &reset) {
+    switch(element_type) {
+        case iris_float:  Fill<float   >((float*)array_ptr, n_elements, reset.value_.f32); break;
+        case iris_double: Fill<double  >((double*)array_ptr, n_elements, reset.value_.f64); break;
+        case iris_uint64: Fill<uint64_t>((uint64_t*)array_ptr, n_elements, reset.value_.u64); break;
+        case iris_uint32: Fill<uint32_t>((uint32_t*)array_ptr, n_elements, reset.value_.u32); break;
+        case iris_uint16: Fill<uint16_t>((uint16_t*)array_ptr, n_elements, reset.value_.u16); break;
+        case iris_uint8:  Fill<uint8_t >((uint8_t*)array_ptr, n_elements, reset.value_.u8); break;
+        case iris_int64:  Fill<int64_t >((int64_t*)array_ptr, n_elements, reset.value_.i64); break;
+        case iris_int32:  Fill<int32_t >((int32_t*)array_ptr, n_elements, reset.value_.i32); break;
+        case iris_int16:  Fill<int16_t >((int16_t*)array_ptr, n_elements, reset.value_.i16); break;
+        case iris_int8:   Fill<int8_t  >((int8_t*)array_ptr, n_elements, reset.value_.i8); break;
+        default: break;
+    }
+}
+
+template <typename T>
+void Utils::ArithSequence(T* array_ptr, size_t n_elements, T start, T increment) {
+    if (array_ptr == nullptr) {
+        std::cerr << "Null pointer error: cannot fill a null array." << std::endl;
+        return;
+    }
+    for (size_t i = 0; i < n_elements; ++i) {
+        array_ptr[i] = start + i * increment;  // Fill with sequence
+    }
+}
+
+void Utils::ArithSequence(void *array_ptr, size_t n_elements, int element_type, ResetData &reset) {
+    switch(element_type) {
+        case iris_float:  ArithSequence<float   >((float*)array_ptr, n_elements, reset.start_.f32, reset.step_.f32); break;
+        case iris_double: ArithSequence<double  >((double*)array_ptr, n_elements, reset.start_.f64, reset.step_.f64); break;
+        case iris_uint64: ArithSequence<uint64_t>((uint64_t*)array_ptr, n_elements, reset.start_.u64, reset.step_.u64); break;
+        case iris_uint32: ArithSequence<uint32_t>((uint32_t*)array_ptr, n_elements, reset.start_.u32, reset.step_.u32); break;
+        case iris_uint16: ArithSequence<uint16_t>((uint16_t*)array_ptr, n_elements, reset.start_.u16, reset.step_.u16); break;
+        case iris_uint8:  ArithSequence<uint8_t >((uint8_t*)array_ptr, n_elements, reset.start_.u8, reset.step_.u8); break;
+        case iris_int64:  ArithSequence<int64_t >((int64_t*)array_ptr, n_elements, reset.start_.i64, reset.step_.i64); break;
+        case iris_int32:  ArithSequence<int32_t >((int32_t*)array_ptr, n_elements, reset.start_.i32, reset.step_.i32); break;
+        case iris_int16:  ArithSequence<int16_t >((int16_t*)array_ptr, n_elements, reset.start_.i16, reset.step_.i16); break;
+        case iris_int8:   ArithSequence<int8_t  >((int8_t*)array_ptr, n_elements, reset.start_.i8, reset.step_.i8); break;
+        default: break;
+    }
+}
+
+template <typename T>
+void Utils::GeometricSequence(T* array_ptr, size_t n_elements, T start, T ratio) {
+    if (array_ptr == nullptr) {
+        std::cerr << "Null pointer error: cannot fill a null array." << std::endl;
+        return;
+    }
+    for (size_t i = 0; i < n_elements; ++i) {
+        // Integer types: use loop-based multiplication
+        T value = start;
+        for (size_t j = 0; j < i; ++j) {
+            value *= ratio;
+        }
+        array_ptr[i] = value;
+    }
+}
+
+template <>
+void Utils::GeometricSequence<float>(float* array_ptr, size_t n_elements, float start, float ratio) {
+    if (array_ptr == nullptr) {
+        std::cerr << "Null pointer error: cannot fill a null array." << std::endl;
+        return;
+    }
+    for (size_t i = 0; i < n_elements; ++i) {
+        array_ptr[i] = start * powf(ratio, i);  // Fill with sequence
+    }
+}
+
+template <>
+void Utils::GeometricSequence<double>(double* array_ptr, size_t n_elements, double start, double ratio) {
+    if (array_ptr == nullptr) {
+        std::cerr << "Null pointer error: cannot fill a null array." << std::endl;
+        return;
+    }
+    for (size_t i = 0; i < n_elements; ++i) {
+        array_ptr[i] = start * pow(ratio, i);  // Fill with sequence
+    }
+}
+
+void Utils::GeometricSequence(void *array_ptr, size_t n_elements, int element_type, ResetData &reset) {
+    switch(element_type) {
+        case iris_float:  GeometricSequence<float   >((float*)array_ptr, n_elements, reset.start_.f32, reset.step_.f32); break;
+        case iris_double: GeometricSequence<double  >((double*)array_ptr, n_elements, reset.start_.f64, reset.step_.f64); break;
+        case iris_uint64: GeometricSequence<uint64_t>((uint64_t*)array_ptr, n_elements, reset.start_.u64, reset.step_.u64); break;
+        case iris_uint32: GeometricSequence<uint32_t>((uint32_t*)array_ptr, n_elements, reset.start_.u32, reset.step_.u32); break;
+        case iris_uint16: GeometricSequence<uint16_t>((uint16_t*)array_ptr, n_elements, reset.start_.u16, reset.step_.u16); break;
+        case iris_uint8:  GeometricSequence<uint8_t >((uint8_t*)array_ptr, n_elements, reset.start_.u8, reset.step_.u8); break;
+        case iris_int64:  GeometricSequence<int64_t >((int64_t*)array_ptr, n_elements, reset.start_.i64, reset.step_.i64); break;
+        case iris_int32:  GeometricSequence<int32_t >((int32_t*)array_ptr, n_elements, reset.start_.i32, reset.step_.i32); break;
+        case iris_int16:  GeometricSequence<int16_t >((int16_t*)array_ptr, n_elements, reset.start_.i16, reset.step_.i16); break;
+        case iris_int8:   GeometricSequence<int8_t  >((int8_t*)array_ptr, n_elements, reset.start_.i8, reset.step_.i8); break;
+        default: break;
+    }
+}
+
+template <typename T>
+void Utils::RandomUniformSeq(T *arr, long long seed, size_t size, T p1, T p2) {
+    std::mt19937 generator(seed);
+    std::uniform_real_distribution<> dist(p1, p2);
+    //#pragma omp parallel for
+    for(size_t i=0; i<size; i++) {
+        arr[i] = dist(generator);
+        //printf("Arr: %d %f\n", i, (float)arr[i]);
+    }
+}
+
+void Utils::RandomUniformSeq(void *array_ptr, size_t size, int element_type, ResetData &reset) {
+#define RU_SEQ(IT, T, M)   case IT: RandomUniformSeq<T>((T*)array_ptr, reset.seed_, size, reset.p1_.M, reset.p2_.M); break;
+    switch(element_type) {
+        RU_SEQ(iris_float, float, f32);
+        RU_SEQ(iris_double, double, f64);
+        RU_SEQ(iris_uint64, uint64_t, u64);
+        RU_SEQ(iris_uint32, uint32_t, u32);
+        RU_SEQ(iris_uint16, uint16_t, u16);
+        RU_SEQ(iris_uint8,  uint8_t,  u8);
+        RU_SEQ(iris_int64,  int64_t,  i64);
+        RU_SEQ(iris_int32,  int32_t,  i32);
+        RU_SEQ(iris_int16,  int16_t,  i16);
+        RU_SEQ(iris_int8,   int8_t,   i8);
+        default: break;
+    }
+}
+
+template <typename T>
+void Utils::RandomNormalSeq(T *arr, unsigned long long seed, size_t size, T p1, T p2, void *stream) {
+    std::mt19937 generator(seed);
+    std::normal_distribution<> dist(p1, p2);
+    //#pragma omp parallel for
+    for(int i=0; i<size; i++) {
+        arr[i] = dist(generator);
+    }
+}
+
+template <typename T>
+void Utils::RandomLogNormalSeq(T *arr, unsigned long long seed, size_t size, T p1, T p2, void *stream) {
+    std::mt19937 generator(seed);
+    std::lognormal_distribution<> dist(p1, p2);
+    //#pragma omp parallel for
+    for(int i=0; i<size; i++) {
+        arr[i] = dist(generator);
+    }
+}
+
+template <typename T>
+void Utils::RandomUniformSobolSeq(T *arr, unsigned long long seed, size_t size, T p1, T p2, void *stream) {
+    fprintf(stderr, "[Error] Undefined openmp function: %s\n", __func__);
+}
+
+template <typename T>
+void Utils::RandomNormalSobolSeq(T *arr, unsigned long long seed, size_t size, T p1, T p2, void *stream) {
+    fprintf(stderr, "[Error] Undefined openmp function: %s\n", __func__);
+}
+
+template <typename T>
+void Utils::RandomLogNormalSobolSeq(T *arr, unsigned long long seed, size_t size, T p1, T p2, void *stream) {
+    fprintf(stderr, "[Error] Undefined openmp function: %s\n", __func__);
 }
 
 int Utils::ReadFile(char* path, char** string, size_t* len) {

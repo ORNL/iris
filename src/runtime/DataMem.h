@@ -38,7 +38,7 @@ public:
   void init_reset(bool reset=true);
   bool is_host_dirty() { return host_dirty_flag_; }
   void clear_host_dirty() { host_dirty_flag_ = false; }
-  void set_host_dirty(bool flag=true) { host_dirty_flag_ = flag; }
+  void set_host_dirty(bool flag=true) { host_dirty_flag_ = flag; host_reset_ = false; }
   bool is_dev_dirty(int devno) { return dirty_flag_[devno]; }
   void set_dev_dirty(int devno, bool flag=true) { dirty_flag_[devno] = flag; }
   int  get_dev_affinity() { 

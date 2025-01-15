@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <malloc.h>
 #include <time.h>
+#include <sys/mman.h>
 
 int main(int argc, char** argv) {
   iris_init(&argc, &argv, 1);
@@ -25,10 +26,12 @@ int main(int argc, char** argv) {
   else if (TARGET == 1) target = iris_cuda;
   else if (TARGET == 2) target = iris_hip;
   else target= TARGET;
-  X = (float*) malloc(SIZE * sizeof(float));
-  Y = (float*) malloc(SIZE * sizeof(float));
-  Z = (float*) malloc(SIZE * sizeof(float));
-
+  size_t alignment = 4096;
+  int result;
+  size_t size = SIZE*sizeof(float);
+  posix_memalign(&X, alignment, SIZE*sizeof(float));
+  posix_memalign(&Y, alignment, SIZE*sizeof(float));
+  posix_memalign(&Z, alignment, SIZE*sizeof(float));
   if (VERBOSE) {
 
   for (int i = 0; i < SIZE; i++) {
@@ -46,21 +49,37 @@ int main(int argc, char** argv) {
   }
 
   clock_t start = clock();
+#if 1
+  if (mlock(X, size) != 0) {
+      perror("mlock failed");
+      free(X);
+      return 1;
+  }
+  if (mlock(Y, size) != 0) {
+      perror("mlock failed");
+      free(Y);
+      return 1;
+  }
+  if (mlock(Z, size) != 0) {
+      perror("mlock failed");
+      free(Z);
+      return 1;
+  }
+#endif
+
   iris_mem mem_X;
   iris_mem mem_Y;
   iris_mem mem_Z;
-  iris_mem_create(SIZE * sizeof(float), &mem_X);
-  iris_mem_create(SIZE * sizeof(float), &mem_Y);
-  iris_mem_create(SIZE * sizeof(float), &mem_Z);
+  iris_data_mem_create(&mem_X, X, SIZE * sizeof(float));
+  iris_data_mem_create(&mem_Y, Y, SIZE * sizeof(float));
+  iris_data_mem_create(&mem_Z, Z, SIZE * sizeof(float));
 
   iris_task task0;
   iris_task_create(&task0);
-  iris_task_h2d_full(task0, mem_X, X);
-  iris_task_h2d_full(task0, mem_Y, Y);
-  void* saxpy_params[4] = { &mem_Z, &A, &mem_X, &mem_Y };
-  int saxpy_params_info[4] = { iris_w, sizeof(A), iris_r, iris_r };
+  void* saxpy_params[4]      = { &mem_Z, &A,        &mem_X, &mem_Y };
+  int   saxpy_params_info[4] = { iris_w, sizeof(A), iris_r, iris_r };
   iris_task_kernel(task0, "saxpy", 1, NULL, &SIZE, NULL, 4, saxpy_params, saxpy_params_info);
-  iris_task_d2h_full(task0, mem_Z, Z);
+  iris_task_dmem_flush_out(task0, mem_Z);
   iris_task_submit(task0, target, NULL, 1);
   clock_t end = clock();
   double     cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;

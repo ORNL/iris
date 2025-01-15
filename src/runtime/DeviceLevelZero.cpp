@@ -33,7 +33,7 @@ DeviceLevelZero::DeviceLevelZero(LoaderLevelZero* ld, ze_device_handle_t zedev, 
 DeviceLevelZero::~DeviceLevelZero() {
 }
 
-int DeviceLevelZero::Compile(char* src) {
+int DeviceLevelZero::Compile(char* src, const char *out, const char *flags) {
   char cmd[1024];
   memset(cmd, 0, 256);
   sprintf(cmd, "clang -cc1 -finclude-default-header -triple spir %s -flto -emit-llvm-bc -o %s.bc", src, kernel_path());

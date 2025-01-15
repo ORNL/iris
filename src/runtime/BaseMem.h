@@ -9,7 +9,8 @@
 #endif //AUTO_PAR
 
 #include "AsyncData.h"
-
+#include <utility>
+using namespace std;
 
 namespace iris {
 namespace rt {
@@ -30,6 +31,12 @@ namespace rt {
             BaseMem(MemHandlerType type, int ndevs) {
                 handler_type_ = type;
                 reset_ = false;
+                enable_reset_ = false;
+                host_reset_ = false;
+                reset_data_.value_.u64 = 0;
+                reset_data_.start_.u64 = 0;
+                reset_data_.step_.u64 = 1;
+                reset_data_.reset_type_ = iris_reset_memset;
                 size_ = 0;
                 element_type_ = iris_unknown;
                 ndevs_ = ndevs;
@@ -104,8 +111,49 @@ namespace rt {
             virtual void* arch(int devno, void *host=NULL) = 0;
             virtual void** arch_ptr(Device *dev, void *host=NULL) = 0;
             virtual void** arch_ptr(int devno, void *host=NULL) = 0;
-            virtual void init_reset(bool reset=true) { reset_ = reset; }
-            inline bool is_reset() { return reset_; }
+            virtual void init_reset(bool reset=true) { reset_ = reset; enable_reset_ = reset; }
+            inline bool is_reset() { return reset_ & enable_reset_; }
+            inline void disable_reset() { enable_reset_ = false; }
+            inline void enable_reset() { enable_reset_ = true; }
+            inline ResetData & reset_data() { return reset_data_; }
+            inline void set_reset_type(int reset_type) { 
+                reset_data_.reset_type_ = reset_type; 
+            } 
+            inline void set_reset_assign(IRISValue value) {
+                reset_ = true;
+                enable_reset_ = true;
+                reset_data_.reset_type_ = iris_reset_assign; 
+                reset_data_.value_ = value;
+            } 
+            inline void set_reset_arith_seq(IRISValue start, IRISValue increment) { 
+                reset_ = true;
+                enable_reset_ = true;
+                reset_data_.reset_type_ = iris_reset_arith_seq; 
+                reset_data_.start_ = start;
+                reset_data_.step_ = increment;
+            } 
+            inline void set_reset_geom_seq(IRISValue start, IRISValue step) { 
+                reset_ = true;
+                enable_reset_ = true;
+                reset_data_.reset_type_ = iris_reset_geom_seq; 
+                reset_data_.start_ = start;
+                reset_data_.step_ = step;
+            } 
+            inline void set_reset_seed(long long seed) {
+                reset_data_.seed_ = seed;
+            }
+            inline void set_reset_min(IRISValue min) {
+                reset_data_.p1_ = min;
+            }
+            inline void set_reset_max(IRISValue max) {
+                reset_data_.p2_ = max;
+            }
+            inline void set_reset_mean(IRISValue mean) {
+                reset_data_.p1_ = mean;
+            }
+            inline void set_reset_stddev(IRISValue stddev) {
+                reset_data_.p2_ = stddev;
+            }
             inline void** archs_off() { return archs_off_; }
             inline void** archs() { return archs_; }
             inline void **get_arch_ptr(int devno) { return &archs_[devno]; }
@@ -244,6 +292,7 @@ namespace rt {
         void set_usm_flag(int devno, bool flag=true) { is_usm_[devno] = flag; }
         int element_type() { return element_type_; }
         void set_element_type(int t) { element_type_ = t; }
+        pair<bool, int8_t> IsResetPossibleWithMemset();
         protected:
             int element_type_;
             int recommended_stream_[IRIS_MAX_NDEVS];
@@ -254,7 +303,10 @@ namespace rt {
             size_t size_;
             int ndevs_;
             bool  reset_;
+            bool  enable_reset_;
+            bool host_reset_;
             bool  is_usm_[IRIS_MAX_NDEVS];
+            ResetData reset_data_;
             BaseMemDevice *device_map_;
             int write_dev_;
             void **write_event_;

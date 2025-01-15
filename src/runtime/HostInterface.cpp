@@ -245,7 +245,7 @@ namespace iris {
         void JuliaHostInterfaceLoader::init(int dev) 
         {
             HostInterfaceLoader::init(dev);
-            printf("Initialized Julia init\n");
+            //printf("Initialized Julia init\n");
             //printf("Loading julia library\n");
             if (Load() != IRIS_SUCCESS) {
               _trace("%s", "skipping Julia wrapper calls");
@@ -258,6 +258,12 @@ namespace iris {
         {
             return IRIS_SUCCESS;
         }
+        int JuliaHostInterfaceLoader::set_julia_kernel_type(void *obj, int type)
+        {
+            KernelJulia *julia_data = get_kernel_julia(obj);
+            julia_data->set_julia_kernel_type(type);
+            return IRIS_SUCCESS;
+        }
         int JuliaHostInterfaceLoader::SetKernelPtr(void *obj, const char *kernel_name)
         {
             KernelJulia *julia_data = get_kernel_julia(obj);
@@ -268,7 +274,7 @@ namespace iris {
         {
             KernelJulia *julia_data = get_kernel_julia(param_mem);
             SetKernelPtr(param_mem, kname);
-            launch_julia_kernel(target_, devno, ctx, async, stream_index, stream, nstreams, julia_data->args(), julia_data->values(), julia_data->param_size(), julia_data->param_dim_size(), julia_data->top(), grid, block, dim, kname);
+            launch_julia_kernel(julia_data->julia_kernel_type(), target_, devno, ctx, async, stream_index, stream, nstreams, julia_data->args(), julia_data->values(), julia_data->param_size(), julia_data->param_dim_size(), julia_data->top(), grid, block, dim, kname);
             return IRIS_SUCCESS;
         }
         int JuliaHostInterfaceLoader::setarg(void *param_mem, int kindex, size_t size, void *value)

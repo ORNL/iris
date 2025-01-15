@@ -89,6 +89,7 @@ set(IRIS_RUNTIME_SOURCES
   Kernel.cpp
   Loader.cpp
   LoaderCUDA.cpp
+  LoaderDefaultKernel.cpp
   LoaderHost2OpenCL.cpp
   LoaderHost2HIP.cpp
   LoaderHost2CUDA.cpp
@@ -163,19 +164,20 @@ set(IRIS_RUNTIME_HEADERS
   JSON.h
   Kernel.h
   Loader.h
-  LoaderHost2OpenCL.h
-  LoaderLevelZero.h
-  LoaderHost2HIP.h
-  LoaderHost2CUDA.h
-  AsyncData.h
-  EventExchange.h
   LoaderCUDA.h
+  LoaderDefaultKernel.h
   LoaderHexagon.h
   LoaderHIP.h
   LoaderOpenCL.h
   LoaderOpenMP.h
   LoaderPolicy.h
+  LoaderHost2OpenCL.h
+  LoaderLevelZero.h
+  LoaderHost2HIP.h
+  LoaderHost2CUDA.h
   LoaderQIREE.h
+  AsyncData.h
+  EventExchange.h
   Message.h
   DataMemRegion.h
   DataMem.h

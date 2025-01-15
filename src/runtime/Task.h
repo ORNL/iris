@@ -127,6 +127,8 @@ public:
 
   int type() { return type_; }
   const char* name() { return name_.c_str(); }
+  void set_julia_kernel_type(int type) { julia_kernel_type_ = type; }
+  int julia_kernel_type() { return julia_kernel_type_; }
   void set_name(std::string name);
   void set_name(const char* name);
   bool given_name(){return given_name_;}
@@ -290,6 +292,7 @@ private:
   int nchilds_;
 
 
+  int julia_kernel_type_;
   int recommended_stream_;
   int recommended_dev_;
   int brs_policy_;

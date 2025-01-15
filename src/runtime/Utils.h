@@ -17,6 +17,34 @@ namespace iris {
                 static void Logo(bool color);
                 static int ReadFile(char* path, char** string, size_t* len);
                 static int Mkdir(char* path);
+                template <typename T>
+                static void Fill(T* array_ptr, size_t n_elements, T value);
+                static void Fill(void *array_ptr, size_t n_elements, int element_type, ResetData &value);
+                template <typename T>
+                static void ArithSequence(T* array_ptr, size_t n_elements, T start, T increment);
+                static void ArithSequence(void *array_ptr, size_t n_elements, int element_type, ResetData &value);
+                template <typename T>
+                static void GeometricSequence(T* array_ptr, size_t n_elements, T start, T ratio);
+                static void GeometricSequence(void *array_ptr, size_t n_elements, int element_type, ResetData &value);
+                template <typename T>
+                static void RandomUniformSeq(T *arr, long long seed, size_t size, T p1, T p2);
+                static void RandomUniformSeq(void *array_ptr, size_t size, int element_type, ResetData &reset);
+
+                template <typename T>
+                static void RandomNormalSeq(T *arr, unsigned long long seed, size_t size, T p1, T p2, void *stream);
+
+                template <typename T>
+                static void RandomLogNormalSeq(T *arr, unsigned long long seed, size_t size, T p1, T p2, void *stream);
+
+                template <typename T>
+                static void RandomUniformSobolSeq(T *arr, unsigned long long seed, size_t size, T p1, T p2, void *stream);
+
+                template <typename T>
+                static void RandomNormalSobolSeq(T *arr, unsigned long long seed, size_t size, T p1, T p2, void *stream);
+
+                template <typename T>
+                static void RandomLogNormalSobolSeq(T *arr, unsigned long long seed, size_t size, T p1, T p2, void *stream);
+
                 static bool Exist(char* path);
                 static long Mtime(char* path);
                 static void Datetime(char* str);

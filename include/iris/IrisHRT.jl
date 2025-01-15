@@ -8,26 +8,119 @@
 #import Pkg
 #import Pkg.add("CUDA")
 #import Pkg.add("AMDGPU")
+Base.Experimental.make_io_thread()
+if !haskey(ENV, "IRIS_ARCHS")
+    ENV["IRIS_ARCHS"] = "cuda:hip:openmp"
+end
+const ARRAY_TO_DMEM_MAP = Dict{Any, Any}()
+const __iris_dmem_map = Dict{Any, Any}()
+module DummyAMDGPU
+    macro sync(args...) end
+    macro async(args...) end
+    macro roc(args...) end  # Use a varargs definition instead of keyword arguments
+    # Mocked function to simulate the existence of a GPU
+    function has_rocm_gpu()
+        return false  # Simulate no available GPU
+    end
+    function device!(dev) end
+    function context!(ctx) end
+    function stream!(str) end
+    # Mockup for the status variable
+    const status = "No ROCm GPU available"
+    module HIP
+    struct hipStream_t
+        id::Int64
+    end
+    struct hipContext_t
+        id::Int64
+    end
+    end
+    struct HIPDevice
+        id::Int64
+    end
+    struct HIPContext
+        id::Int64
+    end
+end
+
+module DummyCUDA
+    struct CUctx_st
+        id::Int
+    end
+    struct CuStream
+        id::Int
+    end
+    struct CuArray
+        id::Int
+    end
+    struct CUstream
+        id::Int
+    end
+    struct CuContext
+        id::Int
+    end
+    macro sync() end
+    macro async() end
+    function CuContext(ctx) end
+    function context!(ctx) end
+    function stream!(str) end
+    function device!(dev) end
+    macro cuda(args...) end  # Use a varargs definition instead of keyword arguments
+end
+const cuda_available = try
+    using CUDA
+    const MyCUDA = CUDA
+    true
+catch e
+    println(Core.stdout, "CUDA is not defined")
+    const MyCUDA = DummyCUDA
+    false
+end
+
+#__precompile__(false)
+const hip_available = try
+    using AMDGPU
+    if AMDGPU.has_rocm_gpu()
+        #println(Core.stdout, "AMDGPU is defined and a ROCm GPU is available!")
+        const MyAMDGPU = AMDGPU
+        true  # Assign true if AMDGPU is available
+    else
+        #const AMDGPU = DummyAMDGPU
+        const MyAMDGPU = DummyAMDGPU
+        println(Core.stdout, "AMDGPU is defined but no ROCm GPU available.")
+        false  # Assign false if AMDGPU is defined but no GPU
+    end
+catch e
+    const MyAMDGPU = DummyAMDGPU
+    #const MyAMDGPU = AMDGPU
+    println(Core.stdout, "AMDGPU is not defined!")
+    false  # Assign false if AMDGPU is not available
+end
+mutable struct IRISCuStream
+    handle::MyCUDA.CUstream
+    Base.@atomic valid::Bool
+    ctx::Union{Nothing,MyCUDA.CuContext}
+end
+mutable struct IRISHIPStream
+    stream::MyAMDGPU.HIP.hipStream_t
+    priority::Symbol
+    device::MyAMDGPU.HIPDevice
+    ctx::MyAMDGPU.HIPContext
+end
 module IrisHRT
+
     using Requires
     using Base.Threads: @spawn
     #__precompile__(false)
-    const cuda_available = try
-        using CUDA
-        true
-    catch 
-        false
-    end
-    const hip_available = try
-        using AMDGPU
-        AMDGPU.has_rocm_gpu()
-    catch
-        false
-    end
+
     using Libdl
     cwd = pwd()
+    const cuda_available = Main.cuda_available
+    const MyCUDA = Main.MyCUDA
+    const MyAMDGPU = Main.MyAMDGPU
+    const hip_available = Main.hip_available
     const iris_kernel_jl = cwd * "/kernel.jl"
-    println("Kernel file: $iris_kernel_jl")
+    #println("Kernel file: $iris_kernel_jl")
     include(iris_kernel_jl)
     using .IrisKernelImpl
     libiris = ENV["IRIS"] * "/lib/" * "libiris.so"
@@ -39,9 +132,9 @@ module IrisHRT
         ENV["IRIS_ARCHS"] = "cuda:hip:openmp"
     end
     lib = Libdl.dlopen(libiris)
-    println(Core.stdout, "PWD: $cwd")
-    println(Core.stdout, "CUDA availability: $cuda_available")
-    println(Core.stdout, "HIP availability: $hip_available")
+    #println(Core.stdout, "PWD: $cwd")
+    #println(Core.stdout, "CUDA availability: $cuda_available")
+    #println(Core.stdout, "HIP availability: $hip_available")
 
     # Define enums
     @enum StreamPolicy STREAM_POLICY_DEFAULT=0 STREAM_POLICY_SAME_FOR_TASK=1 STREAM_POLICY_GIVE_ALL_STREAMS_TO_KERNEL=2
@@ -54,6 +147,12 @@ module IrisHRT
     const iris_xr::Int32 = -4
     const iris_xw::Int32 = -5
     const iris_xrw::Int32 = -6
+
+    const julia_native              = 0
+    const core_native               = 1
+    const julia_kernel_abstraction  = 2
+    const julia_jacc                = 3
+
 
     const iris_default = 1 << 5
     const iris_cpu = 1 << 6
@@ -102,6 +201,12 @@ module IrisHRT
     const iris_max = (1 << 13) | iris_reduction
     const iris_min = (1 << 14) | iris_reduction
 
+    const iris_reset_memset       = 0
+    const iris_reset_assign       = 1 
+    const iris_reset_arith_seq    = 2
+    const iris_reset_geom_seq     = 3
+
+
     # Define structs (adjust as necessary based on iris.h definitions)
     struct IrisTask
         class_obj::Ptr{Cvoid}
@@ -111,6 +216,10 @@ module IrisHRT
     struct IrisKernel
         class_obj::Ptr{Cvoid}
         uid::Culong
+    end
+
+    struct IRISValue
+        value_buffer::NTuple{8, UInt8} 
     end
 
     struct IrisMem
@@ -123,7 +232,14 @@ module IrisHRT
         uid::Culong
     end
 
+    # Define the struct for IRISBackend
+    struct IRISBackend
+        backend_name::String
+    end
+
     macro maybethreads(ex)
+       nthreads = Threads.nthreads()
+       #println(Core.stdout, "Nthreads: $nthreads") 
        if Threads.nthreads() > 1
             esc(:(Threads.@threads $ex))
        else
@@ -148,22 +264,59 @@ module IrisHRT
     end 
     function iris_print_array_size_t(data::Ptr{Csize_t}, index::Int)::Cvoid
         ldata = UInt64(unsafe_load(data + index*sizeof(Cint)))
-        iris_println("Array:$index Data:$ldata")
+        #iris_println("Array:$index Data:$ldata")
     end
     function iris_print_array_int(data::Ptr{Cint}, index::Int)::Cvoid
         ldata = Int(unsafe_load(data + index*sizeof(Cint)))
-        iris_println("Array:$index Data:$ldata")
+        #iris_println("Array:$index Data:$ldata")
     end
-    function kernel_julia_wrapper(target::Cint, devno::Cint, ctx::Ptr{Cvoid}, async_flag::Cchar, stream_index::Cint, stream::Ptr{Ptr{Cvoid}}, nstreams::Cint, args_type::Ptr{Cint}, args::Ptr{Ptr{Cvoid}}, param_size::Ptr{Csize_t}, param_dim_size::Ptr{Csize_t}, nparams::Cint, c_threads::Ptr{Csize_t}, c_blocks::Ptr{Csize_t}, dim::Cint, kernel_name::Ptr{Cchar})::Cint
+    function set_cuda_context!(c_ctx::Ptr{Cvoid})
+        # Load the pointer to CUcontext
+        cu_ctx_ptr = unsafe_load(reinterpret(Ptr{Ptr{MyCUDA.CUctx_st}}, c_ctx))
+
+        # Convert the pointer to CuContext
+        cu_ctx_conv = MyCUDA.CuContext(cu_ctx_ptr)
+
+        # Set the CUDA context
+        MyCUDA.context!(cu_ctx_conv)
+        return cu_ctx_conv
+    end
+
+    function set_hip_context!(c_ctx::Ptr{Cvoid})
+        # Load the pointer to CUcontext
+        hip_ctx_ptr = unsafe_load(reinterpret(Ptr{Ptr{MyAMDGPU.HIP.hipContext_t}}, c_ctx))
+
+        # Convert the pointer to CuContext
+        hip_ctx_conv = MyAMDGPU.HIPContext(hip_ctx_ptr, true)
+
+        # Set the CUDA context
+        MyAMDGPU.context!(hip_ctx_conv)
+        return hip_ctx_conv
+    end
+
+    function kernel_julia_wrapper(julia_kernel_type::Cint, target::Cint, devno::Cint, ctx::Ptr{Cvoid}, async_flag::Cchar, stream_index::Cint, stream::Ptr{Ptr{Cvoid}}, nstreams::Cint, args_type::Ptr{Cint}, args::Ptr{Ptr{Cvoid}}, param_size::Ptr{Csize_t}, param_dim_size::Ptr{Csize_t}, nparams::Cint, c_blocks::Ptr{Csize_t}, c_threads::Ptr{Csize_t}, dim::Cint, kernel_name::Ptr{Cchar})::Cint
         # Array to hold the converted Julia values
         #julia_args = convert_args(args_type, args, nparams, 2)
         #iris_println("nstreams: $nstreams, steram:$stream ctx:$ctx stream_index:$stream_index")
+        #println("Kernel type:", julia_kernel_type)
         b_async_flag = Bool(async_flag)
         julia_args = []
         julia_sizes = []
         julia_dims = []
         start_index = 2
         DMEM_MAX_DIM = 6
+        cu_ctx = nothing
+        hip_ctx = nothing
+        if Int(target) == Int(iris_cuda)
+            MyCUDA.device!(Int(devno))
+            cu_ctx = set_cuda_context!(ctx)
+            MyCUDA.context!(cu_ctx)
+        elseif Int(target) == Int(iris_hip)
+            MyAMDGPU.device!(MyAMDGPU.devices()[devno+1])
+            hip_ctx = set_hip_context!(ctx)
+            MyAMDGPU.context!(hip_ctx)
+            #GC.gc()
+        end
         #iris_println("args_type:$args_type args:$args nparams:$nparams")
         #iris_print_array(param_size, Int(nparams))
         # Iterate through each argument
@@ -245,43 +398,29 @@ module IrisHRT
                     #jptr = unsafe_wrap(CuDeviceArray{Float32, 1}, arg_ptr, size_dims, own=false)
                     #iris_println("After Pointer $arg_ptr $jptr")
                     #push!(julia_args, jptr)
-                    push!(julia_args, (arg_ptr, size_dims, current_type, full_size, element_size))
+                    if Int(target) == Int(iris_cuda)
+                        arg_ptr = cuda_reinterpret(arg_ptr, current_type)
+                        #iris_println("Index: $i target arg:$arg_ptr size:$size_dims")
+                        arg_ptr = unsafe_wrap(MyCUDA.CuArray, arg_ptr, size_dims, own=false)
+                        #iris_println("After Pointer $arg_ptr")
+                    elseif Int(target) == Int(iris_hip)
+                        arg_ptr = ptr_reinterpret(arg_ptr, current_type)
+                        #iris_println("Index: $i target arg:$arg_ptr size:$size_dims")
+                        arg_ptr = unsafe_wrap(MyAMDGPU.ROCArray, arg_ptr, size_dims, lock=false)
+                        #iris_println("After Pointer $arg_ptr")
+                    elseif Int(target) == Int(iris_openmp)
+                        arg_ptr = ptr_reinterpret(arg_ptr, current_type)
+                        #iris_println("Index: $i target arg:$arg_ptr size:$size_dims")
+                        arg_ptr = unsafe_wrap(Array, arg_ptr, size_dims, own=false)
+                        #iris_println("After Pointer $arg_ptr")
+                    else
+                        iris_println("[Julia-IrisHRT-Error] Unknown target to handle arguments")
+                    end
+                    push!(julia_args, arg_ptr)
                 catch e 
                     iris_println("[Julia-IrisHRT-Error] exception raised during push of arguments to julia_args")
                     rethrow(e)
                 end
-            end
-        end
-        #iris_println("-----Hello:$target Devno:$devno nparams:$nparams" * vec_string(julia_args))
-        for i in dev_ptr_index
-            (arg_ptr, size_dims, current_type, full_size, element_size)  = julia_args[i]
-            #iris_println("Index: $i arg:$arg_ptr ---")
-            try 
-                #type_name = CuPtr{Float32}
-                #cu_arg_ptr = reinterpret(type_name, arg_ptr)
-                if Int(target) == Int(iris_cuda)
-                    arg_ptr = cuda_reinterpret(arg_ptr, current_type)
-                    #iris_println("Index: $i target arg:$arg_ptr size:$size_dims")
-                    arg_ptr = unsafe_wrap(CuArray, arg_ptr, size_dims, own=false)
-                    #iris_println("After Pointer $arg_ptr")
-                elseif Int(target) == Int(iris_hip)
-                    arg_ptr = ptr_reinterpret(arg_ptr, current_type)
-                    #iris_println("Index: $i target arg:$arg_ptr size:$size_dims")
-                    arg_ptr = unsafe_wrap(ROCArray, arg_ptr, size_dims, lock=false)
-                    #iris_println("After Pointer $arg_ptr")
-                elseif Int(target) == Int(iris_openmp)
-                    arg_ptr = ptr_reinterpret(arg_ptr, current_type)
-                    #iris_println("Index: $i target arg:$arg_ptr size:$size_dims")
-                    arg_ptr = unsafe_wrap(Array, arg_ptr, size_dims, own=false)
-                    #iris_println("After Pointer $arg_ptr")
-                else
-                    iris_println("[Julia-IrisHRT-Error] Unknown target to handle arguments")
-                end
-                julia_args[i] = arg_ptr
-                #push!(julia_args, arg_ptr)
-            catch e 
-                iris_println("[Julia-IrisHRT-Error] exception raised during conversion to device specific type")
-                rethrow(e)
             end
         end
         #iris_println("Hello:$target Devno:$devno nparams:$nparams" * vec_string(julia_args))
@@ -299,37 +438,62 @@ module IrisHRT
         if Int(target) == Int(iris_cuda)
             #cu_ctx = unsafe_load(Ref{CuContext}(ctx))
             #GC.gc()
-            cu_ctx = unsafe_load(reinterpret(Ptr{CuContext}, ctx))
-            cu_stream = nothing
-            if b_async_flag 
-                cu_stream = unsafe_load(reinterpret(Ptr{CuStream}, stream))
-            end
-            #iris_println("Stream: $cu_stream dev:$devno")
-            #iris_println("Ctx: $cu_ctx dev:$devno")
             func_name = unsafe_string(kernel_name)
-            CUDA.device!(Int(devno))
-            CUDA.context!(cu_ctx)
-            iris_println("Calling CUDA kernel")
-            call_cuda_kernel(func_name, j_threads, j_blocks, cu_stream, julia_args, b_async_flag)
+            cu_stream = nothing
+            if !b_async_flag
+                cu_stream = nothing
+                #iris_println("Ctx: $cu_ctx dev:$devno")
+            else
+                cu_stream_ptr = unsafe_load(reinterpret(Ptr{MyCUDA.CUstream}, stream))
+                iris_stream = Main.IRISCuStream(cu_stream_ptr, true, cu_ctx)
+                cu_stream = unsafe_load(reinterpret(Ptr{MyCUDA.CuStream}, Base.unsafe_convert(Ptr{Main.IRISCuStream}, Ref(iris_stream))))
+                #cu_ctx = unsafe_load(ctx)  # CUcontext
+                #iris_println("Stream: $cu_stream dev:$devno")
+                #iris_println("Ctx: $cu_ctx dev:$devno")
+                #println(Core.stdout, "IRIS Stream: $iris_stream")
+                #println(Core.stdout, "CU Stream: $cu_stream")
+                #println("Size of CuContext type: ", sizeof(CuContext), " bytes")
+                #println("Size of CuStream type: ", sizeof(CuStream), " bytes")
+                #println("Size of CUstream type: ", sizeof(Main.CUDA.CUstream), " bytes")
+                #println("Size of IRISCuStream type: ", sizeof(Main.IRISCuStream), " bytes")
+            end
+            #iris_println("Calling CUDA kernel")
+            if julia_kernel_type == julia_kernel_abstraction 
+                call_cuda_kernel_ka(julia_kernel_type, devno, func_name, j_threads, j_blocks, cu_ctx, cu_stream, julia_args, b_async_flag)
+            else
+                call_cuda_kernel(julia_kernel_type, devno, func_name, j_threads, j_blocks, cu_ctx, cu_stream, julia_args, b_async_flag)
+            end
             #CUDA.@sync @cuda threads=j_threads blocks=j_blocks Main.saxpy_cuda(julia_args[1], julia_args[2], julia_args[3], julia_args[4])
             ##############################################################
-            iris_println("Completed CUDA")
+            #iris_println("Completed CUDA")
             return target*11
         elseif Int(target) == Int(iris_hip)
             #GC.gc()
-            hip_ctx = unsafe_load(reinterpret(Ptr{HIPContext}, ctx))
+            hip_ctx = unsafe_load(reinterpret(Ptr{MyAMDGPU.HIPContext}, ctx))
             hip_stream = nothing
             if b_async_flag 
-                hip_stream = unsafe_load(reinterpret(Ptr{HIPStream}, stream))
+                hip_dev = MyAMDGPU.device!(MyAMDGPU.devices()[devno+1])
+                #hip_stream = unsafe_load(reinterpret(Ptr{HIPStream}, stream))
+                hip_stream_ptr = unsafe_load(reinterpret(Ptr{MyAMDGPU.HIP.hipStream_t}, stream))
+                #println(Core.stdout, "HIP stream ptr", hip_stream_ptr, " type:", typeof(hip_stream_ptr))
+                #println(Core.stdout, "HIP dev", hip_dev, " type:", typeof(hip_dev))
+                #println(Core.stdout, "HIP ctx", hip_ctx, " type:", typeof(hip_ctx))
+                iris_stream = Main.IRISHIPStream(hip_stream_ptr, Symbol(0), hip_dev, hip_ctx)
+                hip_stream = unsafe_load(reinterpret(Ptr{MyAMDGPU.HIP.HIPStream}, Base.unsafe_convert(Ptr{Main.IRISHIPStream}, Ref(iris_stream))))
+                #println(Core.stdout, "HIP stream", hip_stream, " type:", typeof(hip_stream))
             end
             #iris_println("----Ctx: $hip_ctx dev:$devno")
             func_name = unsafe_string(kernel_name)
-            AMDGPU.device!(AMDGPU.devices()[devno+1])
-            AMDGPU.context!(hip_ctx)
-            iris_println("Calling HIP kernel")
-            call_hip_kernel(func_name, j_threads, j_blocks, hip_stream, julia_args, b_async_flag)
+            #Main.AMDGPU.device!(Main.AMDGPU.devices()[devno+1])
+            #Main.AMDGPU.context!(hip_ctx)
+            #iris_println("Calling HIP kernel")
+            if julia_kernel_type == julia_kernel_abstraction 
+                call_hip_kernel_ka(julia_kernel_type, devno, func_name, j_threads, j_blocks, hip_ctx, hip_stream, julia_args, b_async_flag)
+            else
+                call_hip_kernel(julia_kernel_type, devno, func_name, j_threads, j_blocks, hip_ctx, hip_stream, julia_args, b_async_flag)
+            end
             ##############################################################
-            iris_println("Completed HIP")
+            #iris_println("Completed HIP")
             return target*12
         elseif Int(target) == Int(iris_openmp)
             #cu_ctx = unsafe_load(Ref{CuContext}(ctx))
@@ -337,7 +501,11 @@ module IrisHRT
             #iris_println("dev:$devno")
             func_name = unsafe_string(kernel_name)
             #iris_println("Calling OpenMP kernel")
-            call_openmp_kernel(func_name, j_threads, j_blocks, julia_args, b_async_flag)
+            if julia_kernel_type == julia_kernel_abstraction 
+                call_openmp_kernel_ka(julia_kernel_type, func_name, j_threads, j_blocks, julia_args, b_async_flag)
+            else
+                call_openmp_kernel(julia_kernel_type, func_name, j_threads, j_blocks, julia_args, b_async_flag)
+            end
             ##############################################################
             #iris_println("Completed OpenMP")
             return target*13
@@ -348,27 +516,27 @@ module IrisHRT
 
     function cuda_reinterpret(arg_ptr::Any, current_type::Any)
         if current_type == Int(iris_float)
-            arg_ptr = reinterpret(CuPtr{Float32}, arg_ptr)
+            arg_ptr = reinterpret(MyCUDA.CuPtr{Float32}, arg_ptr)
         elseif current_type == Int(iris_double)
-            arg_ptr = reinterpret(CuPtr{Float64}, arg_ptr)
+            arg_ptr = reinterpret(MyCUDA.CuPtr{Float64}, arg_ptr)
         elseif current_type == Int(iris_int64)
-            arg_ptr = reinterpret(CuPtr{Int64}, arg_ptr)
+            arg_ptr = reinterpret(MyCUDA.CuPtr{Int64}, arg_ptr)
         elseif current_type == Int(iris_int32)
-            arg_ptr = reinterpret(CuPtr{Int32}, arg_ptr)
+            arg_ptr = reinterpret(MyCUDA.CuPtr{Int32}, arg_ptr)
         elseif current_type == Int(iris_int16)
-            arg_ptr = reinterpret(CuPtr{Int16}, arg_ptr)
+            arg_ptr = reinterpret(MyCUDA.CuPtr{Int16}, arg_ptr)
         elseif current_type == Int(iris_int8)
-            arg_ptr = reinterpret(CuPtr{Int8}, arg_ptr)
+            arg_ptr = reinterpret(MyCUDA.CuPtr{Int8}, arg_ptr)
         elseif current_type == Int(iris_char)
-            arg_ptr = reinterpret(CuPtr{Char}, arg_ptr)
+            arg_ptr = reinterpret(MyCUDA.CuPtr{Char}, arg_ptr)
         elseif current_type == Int(iris_uint64)
-            arg_ptr = reinterpret(CuPtr{UInt64}, arg_ptr)
+            arg_ptr = reinterpret(MyCUDA.CuPtr{UInt64}, arg_ptr)
         elseif current_type == Int(iris_uint32)
-            arg_ptr = reinterpret(CuPtr{UInt32}, arg_ptr)
+            arg_ptr = reinterpret(MyCUDA.CuPtr{UInt32}, arg_ptr)
         elseif current_type == Int(iris_uint16)
-            arg_ptr = reinterpret(CuPtr{UInt16}, arg_ptr)
+            arg_ptr = reinterpret(MyCUDA.CuPtr{UInt16}, arg_ptr)
         elseif current_type == Int(iris_uint8)
-            arg_ptr = reinterpret(CuPtr{UInt8}, arg_ptr)
+            arg_ptr = reinterpret(MyCUDA.CuPtr{UInt8}, arg_ptr)
         else
             iris_println("[Julia-IrisHRT-Error][cuda_reinterpret] Unknown type")
         end
@@ -421,7 +589,7 @@ module IrisHRT
 
     # Bind functions from the IRIS library using ccall
     function iris_init(sync)::Int32
-        func_ptr = @cfunction(kernel_julia_wrapper, Cint, (Cint,        Cint,        Ptr{Cvoid}, Cchar, Cint,               Ptr{Ptr{Cvoid}},         Cint,           Ptr{Cint},       Ptr{Ptr{Cvoid}},         Ptr{Csize_t},  Ptr{Csize_t}, Cint,          Ptr{Csize_t},          Ptr{Csize_t},         Cint,      Ptr{Cchar}))
+        func_ptr = @cfunction(kernel_julia_wrapper, Cint, (Cint, Cint,        Cint,        Ptr{Cvoid}, Cchar, Cint,               Ptr{Ptr{Cvoid}},         Cint,           Ptr{Cint},       Ptr{Ptr{Cvoid}},         Ptr{Csize_t},  Ptr{Csize_t}, Cint,          Ptr{Csize_t},          Ptr{Csize_t},         Cint,      Ptr{Cchar}))
         global stored_func_ptr = func_ptr
         use_julia_threads = false
         if use_julia_threads
@@ -433,31 +601,39 @@ module IrisHRT
             end
             println(Core.stdout, "Julia: N devices $ndevs")
             for i in 0:(ndevs- 1)
-                println(Core.stdout, "Julia: Initializing Worker $i")
+                #println(Core.stdout, "Julia: Initializing Worker $i")
                 flag = flag & iris_init_worker(i)
             end
             t = nothing
             for i in 0:(ndevs- 1)
-                println(Core.stdout, "Julia: Starting Worker $i")
+                #println(Core.stdout, "Julia: Starting Worker $i")
                 t = @spawn begin
                     iris_start_worker(i, 0)
                 end
-                println(Core.stdout, t)
+                #println(Core.stdout, t)
             end
             for i in 0:(ndevs- 1)
-                println(Core.stdout, "Julia: Initializing device $i")
+                #println(Core.stdout, "Julia: Initializing device $i")
                 flag = flag & iris_init_device(i)
             end
-            println(Core.stdout, "Julia: Doing device synchronize")
-            println(Core.stdout, t)
+            #println(Core.stdout, "Julia: Doing device synchronize")
+            #println(Core.stdout, t)
             flush(stdout)
             flag = flag & iris_init_devices_synchronize(1)
-            println(Core.stdout, "Julia: Completed device synchronize")
+            #println(Core.stdout, "Julia: Completed device synchronize")
         else
             flag = ccall(Libdl.dlsym(lib, :iris_julia_init), Int32, (Ptr{Cvoid}, Int32), func_ptr, Int32(0))
             flag = ccall(Libdl.dlsym(lib, :iris_init), Int32, (Ref{Int32}, Ref{Ptr{Ptr{Cchar}}}, Int32), Int32(1), C_NULL, Int32(sync))
         end
         return flag
+    end
+
+    function init(sync)::Int32
+        return iris_init(sync)
+    end
+
+    function init()::Int32
+        return iris_init(1)
     end
 
     function iris_init_scheduler(use_pthread::Int)::Int32
@@ -479,29 +655,67 @@ module IrisHRT
         return ccall(Libdl.dlsym(lib, :iris_init_devices_synchronize), Int32, (Int32,), Int32(sync))
     end
     # Call Julia kernel 
-    # CUDA kernel wrapper
-    function call_cuda_kernel(func_name::String, threads::Any, blocks::Any, stream::Any, args::Any, async_flag::Bool=false)
-        if !cuda_available
+    # CUDA kernel wrapper (KernelAbstraction kernels)
+    using KernelAbstractions
+    function call_cuda_kernel_ka(julia_kernel_type::Any, devno::Any, func_name::String, threads::Any, blocks::Any, ctx::Any, stream::Any, args::Any, async_flag::Bool=false)
+        if !Main.cuda_available
             error("CUDA device not available.")
         end
 
-        func_name_target = func_name * "_cuda"
-        iris_println("CUDA func name: $func_name_target")
+        #iris_println("Func $func_name")
+        func_name_target = func_name
         # Initialize CUDA
         #CUDA.allowscalar(false)  # Disable scalar operations on the GPU
         func = getfield(Main, Symbol(func_name_target))
+        #func = getfield(IrisKernelImpl, Symbol(func_name_target))
         # Convert the array of arguments to a tuple
         args_tuple = Tuple(args)
         # Call the function with arguments
         #println(Core.stdout, "Args_tuple: $args_tuple")
-        println(Core.stdout, "Async $async_flag")
+        #println(Core.stdout, "Async $async_flag")
+        gws = map(*, threads, blocks)
         if async_flag
-            iris_println("Asynchronous CUDA execution")
-            CUDA.@async @cuda threads=threads blocks=blocks stream=stream func(args_tuple...)
+            #iris_println("---------ASynchronous CUDA execution $blocks $threads func:$func stream:$stream----------")
+            MyCUDA.stream!(stream)
+            backend = MyCUDA.CUDAKernels.CUDABackend(false, false)
+            func(backend)(args_tuple...; ndrange=gws, workgroupsize=threads)
         else
-            iris_println("---------Synchronous CUDA execution $blocks $threads func:$func----------")
-            CUDA.@sync begin
-                @cuda threads=threads blocks=blocks saxpy_cuda(args_tuple...)
+            #iris_println("---------Synchronous CUDA execution $blocks $threads func:$func----------")
+            backend = MyCUDA.CUDAKernels.CUDABackend(false, false)
+            func(backend)(args_tuple...; ndrange=gws, workgroupsize=threads)
+            KernelAbstractions.synchronize(backend)
+        end
+        #synchronize(blocking = true)
+    end
+
+    function call_cuda_kernel(julia_kernel_type::Any, devno::Any, func_name::String, threads::Any, blocks::Any, ctx::Any, stream::Any, args::Any, async_flag::Bool=false)
+        if !Main.cuda_available
+            error("CUDA device not available.")
+        end
+
+        #iris_println("Func $func_name")
+        func_name_target = func_name * "_cuda"
+        # Initialize CUDA
+        #CUDA.allowscalar(false)  # Disable scalar operations on the GPU
+        func = getfield(Main, Symbol(func_name_target))
+        #func = getfield(IrisKernelImpl, Symbol(func_name_target))
+        # Convert the array of arguments to a tuple
+        args_tuple = Tuple(args)
+        # Call the function with arguments
+        #println(Core.stdout, "Args_tuple: $args_tuple")
+        #println(Core.stdout, "Async $async_flag")
+        if async_flag
+            #iris_println("---------ASynchronous CUDA execution $blocks $threads func:$func stream:$stream----------")
+            #Main.CUDA.@async begin
+                #Main.CUDA.context!(ctx)
+                MyCUDA.@cuda threads=threads blocks=blocks stream=stream func(args_tuple...)
+            #end
+            # Ensure all tasks and CUDA operations complete
+        else
+            #iris_println("---------Synchronous CUDA execution $blocks $threads func:$func----------")
+            MyCUDA.@sync begin
+                MyCUDA.context!(ctx)
+                MyCUDA.@cuda threads=threads blocks=blocks func(args_tuple...)
             end
 
             #CUDA.@sync @cuda threads=threads blocks=blocks func(args_tuple...)
@@ -509,22 +723,17 @@ module IrisHRT
         end
         #synchronize(blocking = true)
     end
-    function saxpy_cuda(Z, A, X, Y)
-        # Calculate global index
-        i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
-        @inbounds Z[i] = A * X[i] + Y[i]
-        return nothing
-    end
 
-    # HIP kernel wrapper
-    function call_hip_kernel(func_name::String, threads::Any, blocks::Any, stream::Any, args::Any, async_flag::Bool=false)
-        if !hip_available
+    function call_hip_kernel_ka(julia_kernel_type::Any, devno::Any, func_name::String, threads::Any, blocks::Any, ctx::Any, stream::Any, args::Any, async_flag::Bool=false)
+        if !Main.hip_available
             error("HIP device not available.")
         end
 
-        func_name_target = func_name * "_hip"
+        #iris_println("Func $func_name")
+        func_name_target = func_name 
         # Initialize CUDA
         #AMDGPU.allowscalar(false)  # Disable scalar operations on the GPU
+        #func = getfield(IrisKernelImpl, Symbol(func_name_target))
         func = getfield(Main, Symbol(func_name_target))
         # Convert the array of arguments to a tuple
         args_tuple = Tuple(args)
@@ -532,17 +741,62 @@ module IrisHRT
         #@hip threads=threads blocks=blocks add_kernel(a,b,c,N)
         #println(Core.stdout, "Args_tuple: $args_tuple")
         #println(Core.stdout, "Threads: $threads blocks:$blocks")
+        #iris_println("Async $async_flag")
+        gws = map(*, threads, blocks)
         if async_flag
-            AMDGPU.@async @roc groupsize=threads gridsize=blocks stream=stream func(args_tuple...)
+            #Main.AMDGPU.@async begin
+                #MyAMDGPU.@roc groupsize=threads gridsize=blocks stream=stream func(args_tuple...)
+                MyAMDGPU.context!(ctx)
+                MyAMDGPU.stream!(stream)
+                backend = MyAMDGPU.ROCKernels.ROCBackend()
+                func(backend)(args_tuple...; ndrange=gws, workgroupsize=threads)
+            #end
         else
-            AMDGPU.@sync @roc groupsize=threads gridsize=blocks func(args_tuple...)
+            #iris_println("---------Synchronous HIP execution $blocks $threads func:$func----------")
+            backend = MyAMDGPU.ROCKernels.ROCBackend()
+            func(backend)(args_tuple...; ndrange=gws, workgroupsize=threads)
+            KernelAbstractions.synchronize(backend)
+        end
+        #AMDGPU.synchronize()
+    end
+
+    # HIP kernel wrapper
+    function call_hip_kernel(julia_kernel_type::Any, devno::Any, func_name::String, threads::Any, blocks::Any, ctx::Any, stream::Any, args::Any, async_flag::Bool=false)
+        if !Main.hip_available
+            error("HIP device not available.")
+        end
+
+        #iris_println("Func $func_name")
+        func_name_target = func_name * "_hip"
+        # Initialize CUDA
+        #AMDGPU.allowscalar(false)  # Disable scalar operations on the GPU
+        #func = getfield(IrisKernelImpl, Symbol(func_name_target))
+        func = getfield(Main, Symbol(func_name_target))
+        # Convert the array of arguments to a tuple
+        args_tuple = Tuple(args)
+        # Call the function with arguments
+        #@hip threads=threads blocks=blocks add_kernel(a,b,c,N)
+        #println(Core.stdout, "Args_tuple: $args_tuple")
+        #println(Core.stdout, "Threads: $threads blocks:$blocks")
+        #iris_println("Async $async_flag")
+        if async_flag
+            #Main.AMDGPU.@async begin
+                MyAMDGPU.@roc groupsize=threads gridsize=blocks stream=stream func(args_tuple...)
+            #end
+        else
+            #iris_println("---------Synchronous HIP execution $blocks $threads func:$func----------")
+            MyAMDGPU.@sync begin
+                MyAMDGPU.context!(ctx)
+                MyAMDGPU.@roc groupsize=threads gridsize=blocks func(args_tuple...)
+            end
         end
         #AMDGPU.synchronize()
     end
 
     # OpenMP kernel wrapper
-    function call_openmp_kernel(func_name::String, threads::Any, blocks::Any, args::Any, async_flag::Bool=false)
+    function call_openmp_kernel(julia_kernel_type::Any, func_name::String, threads::Any, blocks::Any, args::Any, async_flag::Bool=false)
         func_name_target = func_name * "_openmp"
+        #func = getfield(IrisKernelImpl, Symbol(func_name_target))
         func = getfield(Main, Symbol(func_name_target))
         # Convert the array of arguments to a tuple
         args_tuple = Tuple(args)
@@ -551,12 +805,39 @@ module IrisHRT
         #AMDGPU.synchronize()
     end
 
+    function call_openmp_kernel_ka(julia_kernel_type::Any, func_name::String, threads::Any, blocks::Any, args::Any, async_flag::Bool=false)
+        func_name_target = func_name
+        #func = getfield(IrisKernelImpl, Symbol(func_name_target))
+        func = getfield(Main, Symbol(func_name_target))
+        # Convert the array of arguments to a tuple
+        args_tuple = Tuple(args)
+        # Call the function with arguments
+        gws = threads
+        backend = CPU()
+        func(backend)(args_tuple...; ndrange=gws)
+        KernelAbstractions.synchronize(backend)
+        #AMDGPU.synchronize()
+    end
+
+    function iris_vendor_kernel_launch(dev::Any, kernel::Ptr{Cvoid}, gridx::Any, gridy::Any, gridz::Any, blockx::Any, blocky::Any, blockz::Any, shared_mem_bytes::Any, stream::Ptr{Cvoid}, params::Ptr{Ptr{Cvoid}})::Int32
+        return ccall(Libdl.dlsym(lib, :iris_vendor_kernel_launch), Int32, (Int32, Ptr{Cvoid}, Int32, Int32, Int32, Int32, Int32, Int32, Int32, Ptr{Cvoid}, Ptr{Ptr{Cvoid}}), Int32(dev), kernel, Int32(gridx), Int32(gridy), Int32(gridz), Int32(blockx), Int32(blocky), Int32(blockz), Int32(shared_mem_bytes), stream, params)
+    end
+
+
     function iris_error_count()::Int32
         return ccall(Libdl.dlsym(lib, :iris_error_count), Int32, ())
     end
 
     function iris_finalize()::Int32
         return ccall(Libdl.dlsym(lib, :iris_finalize), Int32, ())
+    end
+
+    function finalize()::Int32
+        return iris_finalize()
+    end
+
+    function synchronize()::Int32
+        return ccall(Libdl.dlsym(lib, :iris_synchronize), Int32, ())
     end
 
     function iris_synchronize()::Int32
@@ -719,6 +1000,10 @@ module IrisHRT
         return ccall(Libdl.dlsym(lib, :iris_task_depend), Int32, (IrisTask, Int32, Ptr{IrisTask}), task, ntasks, tasks)
     end
 
+    function iris_task_depend(task::IrisTask, tasks::Vector{IrisTask})::Int32
+        return iris_task_depend(task, Int32(length(tasks)), pointer(tasks)) 
+    end
+
     function iris_task_malloc(task::IrisTask, mem::IrisMem)::Int32
         return ccall(Libdl.dlsym(lib, :iris_task_malloc), Int32, (IrisTask, IrisMem), task, mem)
     end
@@ -791,6 +1076,10 @@ module IrisHRT
         return ccall(Libdl.dlsym(lib, :iris_task_dmem_flush_out), Int32, (IrisTask, IrisMem), task, mem)
     end
 
+    function flush(task::IrisTask, mem::IrisMem)::Int32
+        return iris_task_dmem_flush_out(task, mem)
+    end
+
     function iris_task_h2d_full(task::IrisTask, mem::IrisMem, host::Ptr{Cvoid})::Int32
         return ccall(Libdl.dlsym(lib, :iris_task_h2d_full), Int32, (IrisTask, IrisMem, Ptr{Cvoid}), task, mem, host)
     end
@@ -807,14 +1096,14 @@ module IrisHRT
         for element in vec
             println("Type: ", typeof(element), " Value:", element)
             if !isa(element, Base.RefValue{IrisHRT.IrisMem})
-                println("Size1: ", sizeof(element))
+                println("Size: ", sizeof(element))
             else
-                println("Size2: ", sizeof(element))
+                println("Size: ", sizeof(element))
             end
         end
     end
 
-    function iris_task_julia(kernel::String, dim::Int64, off::Vector{Int64}, gws::Vector{Int64}, lws::Vector{Int64}, jparams::Any)::IrisTask
+    function iris_task_julia(kernel::String, dim::Int64, off::Any, gws::Any, lws::Any, jparams::Any)::IrisTask
         params_info = Int32[]
         params = []
         for (index,element) in enumerate(jparams)
@@ -844,30 +1133,7 @@ module IrisHRT
                 jparams[index] = (element[0], mem_X)
                 # TODO: Release this memory object 
             else
-                type_data = iris_unknown
-                if typeof(element) == Float32
-                    type_data = iris_float
-                elseif typeof(element) == Float64
-                    type_data = iris_double
-                elseif typeof(element) == Int64
-                    type_data = iris_int64
-                elseif typeof(element) == Int32
-                    type_data = iris_int32
-                elseif typeof(element) == Int16
-                    type_data = iris_int16
-                elseif typeof(element) == Int8
-                    type_data = iris_int8
-                elseif typeof(element) == UInt64
-                    type_data = iris_uint64
-                elseif typeof(element) == UInt32
-                    type_data = iris_uint32
-                elseif typeof(element) == UInt16
-                    type_data = iris_uint16
-                elseif typeof(element) == UInt8
-                    type_data = iris_uint8
-                elseif typeof(element) == Char
-                    type_data = iris_char
-                end
+                type_data = get_iris_type(typeof(element))
                 push!(params_info, type_data | sizeof(element))
                 push!(params, Ref(element))
             end
@@ -876,7 +1142,7 @@ module IrisHRT
         #println("Params: ", params)
         #println("NParams : $nparams")
         task = iris_task_create_struct()
-        ccall(Libdl.dlsym(lib, :iris_task_enable_julia_interface), Int32, (IrisTask,), task)
+        ccall(Libdl.dlsym(lib, :iris_task_enable_julia_interface), Int32, (IrisTask, Int32), task, Int32(IrisHRT.julia_native))
         off_c = Ptr{UInt64}(C_NULL)
         if length(off) != 0
             off_c = reinterpret(Ptr{UInt64}, pointer(off))
@@ -945,8 +1211,23 @@ module IrisHRT
         return ccall(Libdl.dlsym(lib, :iris_task_custom), Int32, (IrisTask, Int32, Ptr{Cvoid}, Csize_t), task, tag, params, params_size)
     end
 
-    function iris_task_submit(task::IrisTask, device::Int64, opt::Ptr{Int8}, sync::Int64)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_task_submit), Int32, (IrisTask, Int32, Ptr{Int8}, Int32), task, Int32(device), opt, Int32(sync))
+    function iris_task_submit(task::IrisTask, device_policy::Int64, opt::Ptr{Int8}, sync::Int64)::Int32
+        #gc_state = @ccall(jl_gc_safe_enter()::Int8)
+        status = ccall(Libdl.dlsym(lib, :iris_task_submit), Int32, (IrisTask, Int32, Ptr{Int8}, Int32), task, Int32(device_policy), opt, Int32(sync))
+        #@ccall(jl_gc_safe_leave(gc_state::Int8)::Cvoid)
+        return status
+    end
+
+    function submit(task::IrisTask, device_policy::Int64, opt::Ptr{Int8}, sync::Int64)::Int32
+        return iris_task_submit(task, device_policy, opt, sync)
+    end
+
+    function submit(task::IrisTask, device_policy::Int64, sync::Int64)::Int32
+        return iris_task_submit(task, device_policy, Ptr{Int8}(C_NULL), sync)
+    end
+
+    function submit(task::IrisTask, device_policy::Int64)::Int32
+        return iris_task_submit(task, device_policy, Ptr{Int8}(C_NULL), 1)
     end
 
     function iris_task_set_policy(task::IrisTask, device::Int32)::Int32
@@ -965,6 +1246,15 @@ module IrisHRT
         return ccall(Libdl.dlsym(lib, :iris_task_wait_all), Int32, (Int32, Ptr{IrisTask}), ntasks, tasks)
     end
 
+    function wait(task::IrisTask)::Int32
+        return iris_task_wait(task)
+    end
+
+    function wait(tasks::Vector{IrisTask})::Int32
+        return iris_task_wait_all(Int32(length(tasks)), pointer(tasks))
+    end
+
+
     #function iris_task_add_subtask(task::IrisTask, subtask::IrisTask)::Int32
     #    return ccall(Libdl.dlsym(lib, :iris_task_add_subtask), Int32, (IrisTask, IrisTask), task, subtask)
     #end
@@ -975,6 +1265,10 @@ module IrisHRT
 
     function iris_task_release(task::IrisTask)::Int32
         return ccall(Libdl.dlsym(lib, :iris_task_release), Int32, (IrisTask,), task)
+    end
+
+    function release(task::IrisTask)::Int32
+        return iris_task_release(task)
     end
 
     function iris_task_release_mem(task::IrisTask, mem::IrisMem)::Int32
@@ -997,8 +1291,141 @@ module IrisHRT
         return ccall(Libdl.dlsym(lib, :iris_mem_create), Int32, (Csize_t, Ptr{IrisMem}), size, mem)
     end
 
+    function iris_mem_init_reset(mem::IrisMem, reset::Int32)::Int32
+        return ccall(Libdl.dlsym(lib, :iris_mem_init_reset), Int32, (IrisMem, Int32), mem, reset)
+    end
+
+    const VALUE_SIZE = 8
+    function iris_mem_init_reset_assign(mem::IrisMem, element::Any)::Int32
+        value_buffer = Base.zeros(UInt8, VALUE_SIZE)
+        if typeof(element) == Float32
+            value_bytes = reinterpret(UInt8, [element])
+            value_buffer[1:4] .= value_bytes
+        elseif typeof(element) == Float64
+            value_bytes = reinterpret(UInt8, [element])
+            value_buffer[1:8] .= value_bytes
+        elseif typeof(element) == Int64
+            value_bytes = reinterpret(UInt8, [element])
+            value_buffer[1:8] .= value_bytes
+        elseif typeof(element) == Int32
+            value_bytes = reinterpret(UInt8, [element])
+            value_buffer[1:4] .= value_bytes
+        elseif typeof(element) == Int16
+            value_bytes = reinterpret(UInt8, [element])
+            value_buffer[1:2] .= value_bytes
+        elseif typeof(element) == Int8
+            value_bytes = reinterpret(UInt8, [element])
+            value_buffer[1:1] .= value_bytes
+        elseif typeof(element) == UInt64
+            value_bytes = reinterpret(UInt8, [element])
+            value_buffer[1:8] .= value_bytes
+        elseif typeof(element) == UInt32
+            value_bytes = reinterpret(UInt8, [element])
+            value_buffer[1:4] .= value_bytes
+        elseif typeof(element) == UInt16
+            value_bytes = reinterpret(UInt8, [element])
+            value_buffer[1:2] .= value_bytes
+        elseif typeof(element) == UInt8
+            value_bytes = reinterpret(UInt8, [element])
+            value_buffer[1:1] .= value_bytes
+        else
+            println(Core.stdout, "Unknown type of $element")
+        end
+        #println("Element: ", element, " value_buffer:", value_buffer)
+        ivalue = IRISValue(Tuple(value_buffer))
+        #println("Element: ", element, " buffer:", ivalue)
+        return ccall(Libdl.dlsym(lib, :iris_mem_init_reset_assign), Int32, (IrisMem, IRISValue), mem, ivalue)
+    end
+
+    function flat_in_buffer(value::Any)::IRISValue
+        value_buffer = Base.zeros(UInt8, VALUE_SIZE)
+        if typeof(value) == Float32
+            value_buffer[1:4] .= reinterpret(UInt8, [value])
+        elseif typeof(value) == Float64
+            value_buffer[1:8] .= reinterpret(UInt8, [value])
+        elseif typeof(value) == Int64
+            value_buffer[1:8] .= reinterpret(UInt8, [value])
+        elseif typeof(value) == Int32
+            value_buffer[1:4] .= reinterpret(UInt8, [value])
+        elseif typeof(value) == Int16
+            value_buffer[1:2] .= reinterpret(UInt8, [value])
+        elseif typeof(value) == Int8
+            value_buffer[1:1] .= reinterpret(UInt8, [value])
+        elseif typeof(value) == UInt64
+            value_buffer[1:8] .= reinterpret(UInt8, [value])
+        elseif typeof(value) == UInt32
+            value_buffer[1:4] .= reinterpret(UInt8, [value])
+        elseif typeof(value) == UInt16
+            value_buffer[1:2] .= reinterpret(UInt8, [value])
+        elseif typeof(value) == UInt8
+            value_buffer[1:1] .= reinterpret(UInt8, [value])
+        else
+            println(Core.stdout, "Unknown type of $value")
+        end
+        ivalue = IRISValue(Tuple(value_buffer))
+        #println("Element: ", value, " buffer:", ivalue)
+        return ivalue 
+    end
+
+    function iris_mem_init_reset_random_uniform_seq(mem::IrisMem, seed::Int, min::Any, max::Any)::Int32
+        imin = flat_in_buffer(min)
+        imax = flat_in_buffer(max)
+        #println("Element: ", element, " buffer:", ivalue)
+        return ccall(Libdl.dlsym(lib, :iris_mem_init_reset_random_uniform_seq), Int32, (IrisMem, Clonglong, IRISValue, IRISValue), mem, seed, imin, imax)
+    end
+
+    function iris_mem_init_reset_arith_seq(mem::IrisMem, element::Any, step::Any)::Int32
+        ivalue = flat_in_buffer(element)
+        istep = flat_in_buffer(step)
+        #println("Element: ", element, " buffer:", ivalue)
+        return ccall(Libdl.dlsym(lib, :iris_mem_init_reset_arith_seq), Int32, (IrisMem, IRISValue, IRISValue), mem, ivalue, istep)
+    end
+
+    function iris_mem_init_reset_geom_seq(mem::IrisMem, element::Any, step::Any)::Int32
+        ivalue = flat_in_buffer(element)
+        istep = flat_in_buffer(step)
+        #println("Element: ", element, " buffer:", ivalue)
+        return ccall(Libdl.dlsym(lib, :iris_mem_init_reset_geom_seq), Int32, (IrisMem, IRISValue, IRISValue), mem, ivalue, istep)
+    end
+
     function iris_data_mem_init_reset(mem::IrisMem, reset::Int32)::Int32
         return ccall(Libdl.dlsym(lib, :iris_data_mem_init_reset), Int32, (IrisMem, Int32), mem, reset)
+    end
+
+    function rand(T, seed, dims...)
+        dmem = iris_data_mem(T, dims...)
+        iris_mem_init_reset_random_uniform_seq(dmem, seed, T(0), T(1))
+        return dmem
+    end
+
+    function zeros(T, dims...)
+        dmem = iris_data_mem(T, dims...)
+        iris_mem_init_reset_assign(dmem, T(0))
+        return dmem
+    end
+
+    function ones(T, dims...)
+        dmem = iris_data_mem(T, dims...)
+        iris_mem_init_reset_assign(dmem, T(1))
+        return dmem
+    end
+
+    function arange(T, dims...)
+        dmem = iris_data_mem(T, dims...)
+        iris_mem_init_reset_arith_seq(dmem, T(0), T(1))
+        return dmem
+    end
+
+    function linspace(T, start, step, dims...)
+        dmem = iris_data_mem(T, dims...)
+        iris_mem_init_reset_arith_seq(dmem, T(start), T(step))
+        return dmem
+    end
+
+    function geomspace(T, start, step, dims...)
+        dmem = iris_data_mem(T, dims...)
+        iris_mem_init_reset_geom_seq(dmem, T(start), T(step))
+        return dmem
     end
 
     function iris_data_mem_create(mem::Ptr{IrisMem}, host::Ptr{Cvoid}, size::Csize_t)::Int32
@@ -1009,14 +1436,8 @@ module IrisHRT
         return ccall(Libdl.dlsym(lib, :iris_data_mem_create_ptr), Ptr{IrisMem}, (Ptr{Cvoid}, Csize_t), host, size)
     end
 
-    function iris_data_mem(T, dims...) 
-        #size = Csize_t(length(host) * sizeof(T))
-        host_size = prod(dims) * sizeof(T)
-        dim = length(dims)
-        element_size = Int32(sizeof(T))
-        host_cptr = C_NULL
-        #println("Type of element: ", T, " Size:", size(host), " Element size:", element_size)
-        element_type = iris_pointer
+    function get_iris_type(T)
+        element_type = iris_unknown
         if T == Float32
             element_type = iris_float 
         elseif T == Float64
@@ -1039,10 +1460,25 @@ module IrisHRT
             element_type = iris_uint8
         elseif T == Char
             element_type = iris_char
-        else
-            element_type = iris_unknown
         end
-        return ccall(Libdl.dlsym(lib, :iris_data_mem_create_struct_nd), IrisMem, (Ptr{Cvoid}, Ptr{Cvoid}, Int32, Csize_t, Int32), host_cptr, host_size, dim, element_size, Int32(element_type))
+        return element_type
+    end
+
+    function iris_data_mem(T, dims...) 
+        #size = Csize_t(length(host) * sizeof(T))
+        dim_size = dims
+        #println("Type of element: ", T, " dim:", dims)
+        if length(dims) == 1 && isa(dims[1], Tuple)
+            dim_size = dims[1]
+        end
+        host_size = prod(dim_size) * sizeof(T)
+        dim = length(dim_size)
+        dim_size_v = collect(dim_size)
+        element_size = Int32(sizeof(T))
+        host_cptr = C_NULL
+        #println("Type of element: ", T, " dim:", dim, " Size:", host_size, " Element size:", element_size)
+        element_type = get_iris_type(T)
+        return ccall(Libdl.dlsym(lib, :iris_data_mem_create_struct_nd), IrisMem, (Ptr{Cvoid}, Ptr{Cvoid}, Int32, Csize_t, Int32), host_cptr, pointer(dim_size_v), dim, element_size, Int32(element_type))
     end
 
     function iris_data_mem(host::Array{T}) where T 
@@ -1079,6 +1515,100 @@ module IrisHRT
             element_type = iris_unknown
         end
         return ccall(Libdl.dlsym(lib, :iris_data_mem_create_struct_nd), IrisMem, (Ptr{Cvoid}, Ptr{Cvoid}, Int32, Csize_t, Int32), host_cptr, host_size, dim, element_size, Int32(element_type))
+    end
+
+    function dmem(T, dims...)
+        return iris_data_mem(T, dims...)
+    end
+
+    function dmem(host::Array{T}) where T 
+        return iris_data_mem(host)
+    end
+
+    # Function: void* iris_get_dmem_host(iris_mem brs_mem);
+    function iris_get_dmem_host(brs_mem::IrisMem)::Ptr{Cvoid}
+        func = Libdl.dlsym(lib, :iris_get_dmem_host)
+        return ccall(func, Ptr{Cvoid}, (IrisMem,), brs_mem)
+    end
+
+    function host(mem::IrisMem)
+        arg_ptr = iris_get_dmem_host(mem)
+        if arg_ptr == C_NULL
+            return nothing
+        end
+        size = host_size(mem)
+        j_ptr = ptr_reinterpret(arg_ptr, get_type(mem))
+        return unsafe_wrap(Array, j_ptr, size, own=false)
+    end
+
+    function valid_host(mem::IrisMem)
+        arg_ptr = iris_get_dmem_valid_host(mem)
+        if arg_ptr == C_NULL
+            return nothing
+        end
+        size = host_size(mem)
+        j_ptr = ptr_reinterpret(arg_ptr, get_type(mem))
+        return unsafe_wrap(Array, j_ptr, size, own=false)
+    end
+
+    function get_type(mem::IrisMem)
+        return iris_get_mem_element_type(mem)
+    end
+
+    function ndim(mem::IrisMem)
+        return iris_dmem_get_dim(mem)
+    end
+
+    function host_size(mem::IrisMem)
+        size_ptr = iris_dmem_get_host_size(mem)
+        dim = iris_dmem_get_dim(mem)
+        dims_array = unsafe_wrap(Array, size_ptr, dim)
+        return Tuple(dims_array)
+    end
+
+    function iris_dmem_get_dim(brs_mem::IrisMem)::Cint
+        func = Libdl.dlsym(lib, :iris_dmem_get_dim)
+        return ccall(func, Cint, (IrisMem,), brs_mem)
+    end
+
+    function iris_dmem_get_host_size(brs_mem::IrisMem)::Ptr{Csize_t}
+        func = Libdl.dlsym(lib, :iris_dmem_get_host_size)
+        return ccall(func, Ptr{Csize_t}, (IrisMem,), brs_mem)
+    end
+
+    function iris_get_mem_element_type(brs_mem::IrisMem)::Cint
+        func = Libdl.dlsym(lib, :iris_get_mem_element_type)
+        return ccall(func, Cint, (IrisMem,), brs_mem)
+    end
+
+    # Function: void* iris_get_dmem_valid_host(iris_mem brs_mem);
+    function iris_get_dmem_valid_host(brs_mem::IrisMem)::Ptr{Cvoid}
+        func = Libdl.dlsym(lib, :iris_get_dmem_valid_host)
+        return ccall(func, Ptr{Cvoid}, (IrisMem,), brs_mem)
+    end
+
+    # Function: void* iris_get_dmem_host_fetch(iris_mem brs_mem);
+    function iris_get_dmem_host_fetch(brs_mem::IrisMem)::Ptr{Cvoid}
+        func = Libdl.dlsym(lib, :iris_get_dmem_host_fetch)
+        return ccall(func, Ptr{Cvoid}, (IrisMem,), brs_mem)
+    end
+
+    # Function: void* iris_get_dmem_host_fetch_with_size(iris_mem brs_mem, size_t size);
+    function iris_get_dmem_host_fetch_with_size(brs_mem::IrisMem, size::Csize_t)::Ptr{Cvoid}
+        func = Libdl.dlsym(lib, :iris_get_dmem_host_fetch_with_size)
+        return ccall(func, Ptr{Cvoid}, (IrisMem, Csize_t), brs_mem, size)
+    end
+
+    # Function: int iris_fetch_dmem_data(iris_mem brs_mem, void* host_ptr);
+    function iris_fetch_dmem_data(brs_mem::IrisMem, host_ptr::Ptr{Cvoid})::Cint
+        func = Libdl.dlsym(lib, :iris_fetch_dmem_data)
+        return ccall(func, Cint, (IrisMem, Ptr{Cvoid}), brs_mem, host_ptr)
+    end
+
+    # Function: int iris_fetch_dmem_data_with_size(iris_mem brs_mem, void* host_ptr, size_t size);
+    function iris_fetch_dmem_data_with_size(brs_mem::IrisMem, host_ptr::Ptr{Cvoid}, size::Csize_t)::Cint
+        func = Libdl.dlsym(lib, :iris_fetch_dmem_data_with_size)
+        return ccall(func, Cint, (IrisMem, Ptr{Cvoid}, Csize_t), brs_mem, host_ptr, size)
     end
 
     function iris_data_mem_create_struct(host::Ptr{Cvoid}, size::Csize_t)::IrisMem
@@ -1157,6 +1687,10 @@ module IrisHRT
         return ccall(Libdl.dlsym(lib, :iris_dev_get_ctx), Ptr{Cvoid}, (Int32, ), Int32(device))
     end
 
+    function iris_dev_get_stream(device::Int, index::Int)::Ptr{Cvoid}
+        return ccall(Libdl.dlsym(lib, :iris_dev_get_stream), Ptr{Cvoid}, (Int32, Int32), Int32(device), Int32(index))
+    end
+
     function iris_mem_arch_ptr(mem::IrisMem, device::Int)::Ptr{Cvoid}
         return ccall(Libdl.dlsym(lib, :iris_mem_arch_ptr), Ptr{Cvoid}, (IrisMem, Int32), mem, Int32(device))
     end
@@ -1167,6 +1701,10 @@ module IrisHRT
 
     function iris_mem_release(mem::IrisMem)::Int32
         return ccall(Libdl.dlsym(lib, :iris_mem_release), Int32, (IrisMem,), mem)
+    end
+
+    function release(mem::IrisMem)::Int32
+        return iris_mem_release(mem)
     end
 
     function iris_graph_create(graph::Ptr{IrisGraph})::Int32
@@ -1205,6 +1743,10 @@ module IrisHRT
         return ccall(Libdl.dlsym(lib, :iris_graph_release), Int32, (IrisGraph,), graph)
     end
 
+    function release(graph::IrisGraph)::Int32
+        return iris_graph_release(graph)
+    end
+
     function iris_graph_submit(graph::IrisGraph, device::Int32, sync::Int32)::Int32
         return ccall(Libdl.dlsym(lib, :iris_graph_submit), Int32, (IrisGraph, Int32, Int32), graph, device, sync)
     end
@@ -1227,6 +1769,14 @@ module IrisHRT
 
     function iris_graph_wait_all(ngraphs::Int32, graphs::Ptr{IrisGraph})::Int32
         return ccall(Libdl.dlsym(lib, :iris_graph_wait_all), Int32, (Int32, Ptr{IrisGraph}), ngraphs, graphs)
+    end
+
+    function wait(graph::IrisGraph)::Int32
+        return iris_graph_wait(graph)
+    end
+
+    function wait(graphs::Vector{IrisGraph})::Int32
+        return iris_graph_wait_all(Int32(length(graphs)), pointer(graphs))
     end
 
     function iris_record_start()::Int32
@@ -1560,5 +2110,158 @@ module IrisHRT
     function iris_read_int_env(env_name::String)::Int32
         return ccall(Libdl.dlsym(lib, :iris_read_int_env), Int32, (Ptr{Cchar},), pointer(env_name))
     end
-end  # module Iris
 
+    function gc_safe_enter()
+        gc_state = @ccall(jl_gc_safe_enter()::Int8)
+        return gc_state
+    end
+
+    function gc_leave(gc_state)
+        clear_map()
+        @ccall(jl_gc_safe_leave(gc_state::Int8)::Cvoid)
+        return gc_state
+    end
+
+    function clear_map() 
+        for (key, value) in Main.__iris_dmem_map 
+            IrisHRT.iris_mem_release(value)
+        end
+        # Clear all elements in the dictionary
+        empty!(Main.__iris_dmem_map)
+    end
+
+    function task(; in=[], out=[], flush=[], lws=Int64[], gws=Int64[], off=Int64[], policy=IrisHRT.iris_roundrobin, wait=true, core=false, ka=false, jacc=false, kernel="kernel", args=[], dependencies=[])
+        call_args = args
+        mem_params = Dict{Any, Any}()
+        for array in vcat(out, flush)
+            p_array = array
+            if !isa(array, IrisMem) 
+                #println("Array is not IrisMem")
+                p_array = pointer(array)
+                #println(Core.stdout, "Out ---- ", array, " typeof:", typeof(array))
+                if !haskey(Main.__iris_dmem_map, p_array)
+                    # Generate DMEM object if not found
+                    #println("Array not found in global map. Out/Flush Creating DMEM object for: ", pointer(array))
+                    Main.__iris_dmem_map[p_array] = IrisHRT.iris_data_mem(array)
+                else
+                    #println("Array already mapped to Output DMEM object: ", array)
+                end
+            end
+            mem_params[p_array] = IrisHRT.iris_w
+        end
+        for array in in
+            p_array = array
+            if !isa(array, IrisMem) 
+                p_array = pointer(array)
+                #println(Core.stdout, "In ---- ", array, " typeof:", typeof(array))
+                #println("DMEM object t: ", array)
+                if !haskey(Main.__iris_dmem_map, p_array)
+                    # Generate DMEM object if not found
+                    #println("Array not found in global map. In Creating DMEM object for: ", pointer(array))
+                    #println("Array is not IrisMem")
+                    Main.__iris_dmem_map[p_array] = IrisHRT.iris_data_mem(array)
+                else
+                    #println("Array already mapped to Input DMEM object: ", array)
+                end
+            end
+            if !haskey(mem_params, p_array)
+                mem_params[p_array] = IrisHRT.iris_r
+            else
+                mem_params[p_array] = IrisHRT.iris_rw
+            end
+        end
+        params_info = Int32[]
+        params = []
+        kernel_params = []
+        for arg in call_args
+            #println(Core.stdout, "- s - s - s - : ", arg, " type:", typeof(arg))
+            if isa(arg, Array)
+                p_arg = pointer(arg)
+                if haskey(Main.__iris_dmem_map, p_arg)
+                    #push!(kernel_params, (Main.__iris_dmem_map[p_arg], mem_params[p_arg]))
+                    push!(params, Ref(Main.__iris_dmem_map[p_arg]))
+                    push!(params_info, Int32(mem_params[p_arg]))
+                else
+                    Main.__iris_dmem_map[p_arg] = IrisHRT.iris_data_mem(arg)
+                    #push!(kernel_params, (Main.__iris_dmem_map[p_arg], IrisHRT.iris_r))
+                    push!(params, Ref(Main.__iris_dmem_map[p_arg]))
+                    push!(params_info, Int32(IrisHRT.iris_rw))
+                end
+            elseif isa(arg, IrisMem)
+                #p_arg = pointer(arg)
+                #push!(kernel_params, (arg, mem_params[arg])) 
+                push!(params, Ref(arg))
+                push!(params_info, Int32(mem_params[arg]))
+            else
+                # Scalar element
+                #push!(kernel_params, arg)
+                type_data = get_iris_type(typeof(arg))
+                push!(params_info, type_data | sizeof(arg))
+                push!(params, Ref(arg))
+            end
+        end
+        nparams = Int64(length(params))
+        #println(Core.stdout, "kernel_params: ", kernel_params)
+        #println(Core.stdout, "kernel name:", kernel)
+        #println(Core.stdout, "off:", off)
+        #println(Core.stdout, "gws:", gws)
+        #println(Core.stdout, "lws:", lws)
+        #println(Core.stdout, "kernel_params     :", kernel_params)
+        julia_kernel_type = IrisHRT.julia_native
+        if core
+            julia_kernel_type = IrisHRT.core_native
+        elseif ka
+            julia_kernel_type = IrisHRT.julia_kernel_abstraction
+        elseif jacc
+            julia_kernel_type = IrisHRT.julia_jacc
+        end
+
+        # create task structure
+        task0 = iris_task_create_struct()
+        
+        # Set kernel type
+        if julia_kernel_type == IrisHRT.julia_native 
+            ccall(Libdl.dlsym(lib, :iris_task_enable_julia_interface), Int32, (IrisTask, Int32), task0, Int32(julia_kernel_type))
+        elseif julia_kernel_type == IrisHRT.julia_kernel_abstraction
+            ccall(Libdl.dlsym(lib, :iris_task_enable_julia_interface), Int32, (IrisTask, Int32), task0, Int32(julia_kernel_type))
+        elseif julia_kernel_type == IrisHRT.julia_jacc
+            ccall(Libdl.dlsym(lib, :iris_task_enable_julia_interface), Int32, (IrisTask, Int32), task0, Int32(julia_kernel_type))
+        elseif julia_kernel_type == IrisHRT.core_native
+            # Do nothing here
+        end
+        
+        #task0=IrisHRT.iris_task_julia(kernel, length(gws), off, gws, lws, kernel_params)
+        off_c = Ptr{UInt64}(C_NULL)
+        if length(off) != 0
+            off_c = reinterpret(Ptr{UInt64}, pointer(off))
+        end
+        gws_c = Ptr{UInt64}(C_NULL)
+        if length(gws) != 0
+            gws_c = reinterpret(Ptr{UInt64}, pointer(gws))
+        end
+        lws_c = Ptr{UInt64}(C_NULL)
+        if length(lws) != 0
+            lws_c = reinterpret(Ptr{UInt64}, pointer(lws))
+        end
+        c_params = reinterpret(Ptr{Ptr{Cvoid}}, pointer(params))
+        # Create kernel with task
+        ccall(Libdl.dlsym(lib, :iris_task_kernel), Int32, (IrisTask, Ptr{Cchar}, Int32, Ptr{Csize_t}, Ptr{Csize_t}, Ptr{Csize_t}, Int32, Ptr{Ptr{Cvoid}}, Ptr{Int32}), task0, pointer(kernel), Int32(length(gws)), off_c, gws_c, lws_c, Int32(nparams), c_params, pointer(params_info))
+        for mem in flush 
+            if isa(mem, IrisMem)
+                IrisHRT.iris_task_dmem_flush_out(task0, mem)
+            else
+                p_mem = pointer(mem)
+                IrisHRT.iris_task_dmem_flush_out(task0, Main.__iris_dmem_map[p_mem])
+            end
+        end
+        if length(dependencies) > 0
+            iris_task_depend(task0, dependencies)
+        end
+        IrisHRT.iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
+        return task0
+    end
+    function describe_backend(backend::IRISBackend)
+        println("Backend Name: ", backend.backend_name)
+    end
+
+end  # module Iris
