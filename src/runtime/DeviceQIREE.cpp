@@ -27,6 +27,35 @@ DeviceQIREE::~DeviceQIREE() {
   //return IRIS_SUCCESS;
 }
 
+int DeviceQIREE::Init() {
+  //ld_->iris_hexagon_init();
+  return IRIS_SUCCESS;
+}
+
+
+int DeviceQIREE::ResetMemory(Task *task, BaseMem *mem, uint8_t reset_value) {
+    _error("Reset memory is not implemented yet !");
+    return IRIS_ERROR;
+}
+
+int DeviceQIREE::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset) {
+  return IRIS_SUCCESS;
+}
+
+int DeviceQIREE::MemFree(BaseMem *mem, void* mem_addr) {
+  return IRIS_SUCCESS;
+}
+
+int DeviceQIREE::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag) {
+  return IRIS_SUCCESS;
+}
+
+int DeviceQIREE::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag) {
+  return IRIS_SUCCESS;
+}
+
+
+
 int DeviceQIREE::KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bool report_error) {
   return IRIS_SUCCESS;
 }
