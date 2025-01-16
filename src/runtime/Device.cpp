@@ -1301,7 +1301,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
             WaitForEvent(event, parent_mem_stream, iris_event_wait_default);
         }
     }
-    else if (!Platform::GetPlatform()->is_d2d_disabled() && this->type() == iris_cpu && non_cpu_dev >= 0) {
+    else if (!Platform::GetPlatform()->is_d2d_disabled() && this->model() != iris_opencl && this->type() == iris_cpu && non_cpu_dev >= 0) {
         //D2O Data transfer 
         // You found data in non-CPU/OpenMP device, but this device is CPU/OpenMP
         // Use target D2H transfer 
