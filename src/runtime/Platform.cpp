@@ -79,6 +79,7 @@ void Platform::Reset() {
   ndevs_enabled_ = 0;
   disable_init_devices_ = false;
   disable_init_workers_ = false;
+  enable_default_kernels_load_ = false;
   disable_init_scheduler_ = false;
   dev_default_ = 0;
   nfailures_ = 0;
@@ -187,6 +188,7 @@ int Platform::JuliaInit(bool decoupled_init) {
     disable_init_scheduler_ = true;
   }
 #endif
+  enable_default_kernels_load_ = true;
   return IRIS_SUCCESS;
 }
 

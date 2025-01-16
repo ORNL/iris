@@ -294,12 +294,12 @@ module IrisHRT
         return hip_ctx_conv
     end
 
-    function kernel_julia_wrapper(julia_kernel_type::Cint, target::Cint, devno::Cint, ctx::Ptr{Cvoid}, async_flag::Cchar, stream_index::Cint, stream::Ptr{Ptr{Cvoid}}, nstreams::Cint, args_type::Ptr{Cint}, args::Ptr{Ptr{Cvoid}}, param_size::Ptr{Csize_t}, param_dim_size::Ptr{Csize_t}, nparams::Cint, c_blocks::Ptr{Csize_t}, c_threads::Ptr{Csize_t}, dim::Cint, kernel_name::Ptr{Cchar})::Cint
+    function kernel_julia_wrapper(julia_kernel_type::Cint, target::Cint, devno::Cint, ctx::Ptr{Cvoid}, async_flag_int::Cint, stream_index::Cint, stream::Ptr{Ptr{Cvoid}}, nstreams::Cint, args_type::Ptr{Cint}, args::Ptr{Ptr{Cvoid}}, param_size::Ptr{Csize_t}, param_dim_size::Ptr{Csize_t}, nparams::Cint, c_blocks::Ptr{Csize_t}, c_threads::Ptr{Csize_t}, dim::Cint, kernel_name::Ptr{Cchar})::Cint
         # Array to hold the converted Julia values
         #julia_args = convert_args(args_type, args, nparams, 2)
         #iris_println("nstreams: $nstreams, steram:$stream ctx:$ctx stream_index:$stream_index")
         #println("Kernel type:", julia_kernel_type)
-        b_async_flag = Bool(async_flag)
+        b_async_flag = Bool(async_flag_int)
         julia_args = []
         julia_sizes = []
         julia_dims = []
@@ -589,7 +589,7 @@ module IrisHRT
 
     # Bind functions from the IRIS library using ccall
     function iris_init(sync)::Int32
-        func_ptr = @cfunction(kernel_julia_wrapper, Cint, (Cint, Cint,        Cint,        Ptr{Cvoid}, Cchar, Cint,               Ptr{Ptr{Cvoid}},         Cint,           Ptr{Cint},       Ptr{Ptr{Cvoid}},         Ptr{Csize_t},  Ptr{Csize_t}, Cint,          Ptr{Csize_t},          Ptr{Csize_t},         Cint,      Ptr{Cchar}))
+        func_ptr = @cfunction(kernel_julia_wrapper, Cint, (Cint, Cint,        Cint,        Ptr{Cvoid}, Cint, Cint,               Ptr{Ptr{Cvoid}},         Cint,           Ptr{Cint},       Ptr{Ptr{Cvoid}},         Ptr{Csize_t},  Ptr{Csize_t}, Cint,          Ptr{Csize_t},          Ptr{Csize_t},         Cint,      Ptr{Cchar}))
         global stored_func_ptr = func_ptr
         use_julia_threads = false
         if use_julia_threads
@@ -844,8 +844,8 @@ module IrisHRT
         return ccall(Libdl.dlsym(lib, :iris_synchronize), Int32, ())
     end
 
-    function iris_task_retain(task::IrisTask, flag::Int8)::Cvoid
-        ccall(Libdl.dlsym(lib, :iris_task_retain), Cvoid, (IrisTask, Int8), task, flag)
+    function iris_task_retain(task::IrisTask, flag::Int32)::Cvoid
+        ccall(Libdl.dlsym(lib, :iris_task_retain), Cvoid, (IrisTask, Int32), task, flag)
     end
 
     function iris_println(data::String)::Cvoid
@@ -1663,8 +1663,8 @@ module IrisHRT
         return ccall(Libdl.dlsym(lib, :iris_data_mem_create_tile_ptr), Ptr{IrisMem}, (Ptr{Cvoid}, Ptr{Csize_t}, Ptr{Csize_t}, Ptr{Csize_t}, Csize_t, Int32), host, off, host_size, dev_size, elem_size, dim)
     end
 
-    function iris_data_mem_update_bc(mem::IrisMem, bc::Int8, row::Int32, col::Int32)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_data_mem_update_bc), Int32, (IrisMem, Int8, Int32, Int32), mem, bc, row, col)
+    function iris_data_mem_update_bc(mem::IrisMem, bc::Int32, row::Int32, col::Int32)::Int32
+        return ccall(Libdl.dlsym(lib, :iris_data_mem_update_bc), Int32, (IrisMem, Int32, Int32, Int32), mem, bc, row, col)
     end
 
     function iris_data_mem_get_rr_bc_dev(mem::IrisMem)::Int32
@@ -1715,8 +1715,8 @@ module IrisHRT
         return ccall(Libdl.dlsym(lib, :iris_graph_create_null), Int32, (Ptr{IrisGraph},), graph)
     end
 
-    function iris_is_graph_null(graph::IrisGraph)::Int8
-        return ccall(Libdl.dlsym(lib, :iris_is_graph_null), Int8, (IrisGraph,), graph)
+    function iris_is_graph_null(graph::IrisGraph)::Int32
+        return ccall(Libdl.dlsym(lib, :iris_is_graph_null), Int32, (IrisGraph,), graph)
     end
 
     function iris_graph_free(graph::IrisGraph)::Int32
@@ -1735,8 +1735,8 @@ module IrisHRT
         return ccall(Libdl.dlsym(lib, :iris_graph_task), Int32, (IrisGraph, IrisTask, Int32, Ptr{Cchar}), graph, task, device, opt)
     end
 
-    function iris_graph_retain(graph::IrisGraph, flag::Int8)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_graph_retain), Int32, (IrisGraph, Int8), graph, flag)
+    function iris_graph_retain(graph::IrisGraph, flag::Int32)::Int32
+        return ccall(Libdl.dlsym(lib, :iris_graph_retain), Int32, (IrisGraph, Int32), graph, flag)
     end
 
     function iris_graph_release(graph::IrisGraph)::Int32

@@ -298,6 +298,8 @@ public:
   bool disable_init_scheduler() { return disable_init_scheduler_; }
   bool disable_init_devices() { return disable_init_devices_; }
   bool disable_init_workers() { return disable_init_workers_; }
+  bool is_default_kernels_load() { return enable_default_kernels_load_; }
+  void enable_default_kernels_load(bool flag) { enable_default_kernels_load_ = flag; }
 
 #ifdef AUTO_PAR
   AutoDAG* get_auto_dag(){return auto_dag_;}
@@ -419,6 +421,7 @@ private:
   bool disable_init_devices_;
   bool disable_init_scheduler_;
   bool disable_init_workers_;
+  bool enable_default_kernels_load_;
   StreamPolicy stream_policy_;
 private:
   iris_task init_tasks_[IRIS_MAX_NDEVS];

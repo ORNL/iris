@@ -230,6 +230,7 @@ void Device::CallMemReset(BaseMem *mem, size_t size, void *stream)
 
 void Device::LoadDefaultKernelLibrary(const char *key, const char *flags)
 {
+    if (!platform_obj_->is_default_kernels_load()) return;
     char *src = NULL;
     char *iris = NULL;
     char *filename = NULL;

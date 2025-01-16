@@ -281,6 +281,12 @@ extern int iris_finalize();
  */
 extern int iris_synchronize();
 
+/**@brief Enable default kernels compilation and loading
+  *
+  * This function enables the runtime compilation of default kernels and loading the shared library for OpenMP, CUDA and HIP.
+  * @return Nothing
+  */
+extern void iris_enable_default_kernels(int flag);
 
 /**@brief Makes sure a can be submitted again and again.
  *
@@ -288,7 +294,7 @@ extern int iris_synchronize();
  *
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
-extern void iris_task_retain(iris_task task, bool flag);
+extern void iris_task_retain(iris_task task, int flag);
 
 
 /**@brief Sets an IRIS environment variable.
@@ -1454,7 +1460,7 @@ extern iris_mem iris_data_mem_create_tile_struct_with_type(void *host, size_t *o
  * @return This function returns a pointer to the IRIS memory object
  */
 extern iris_mem *iris_data_mem_create_tile_ptr(void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim);
-extern int iris_data_mem_update_bc(iris_mem mem, bool bc, int row, int col);
+extern int iris_data_mem_update_bc(iris_mem mem, int bc, int row, int col);
 extern int iris_data_mem_get_rr_bc_dev(iris_mem mem);
 
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
@@ -1510,7 +1516,7 @@ extern int iris_graph_create_null(iris_graph* graph);
  * @param graph data structure
  * @return This function returns a boolean flag indicating whether graph is null or not 
  */
-extern bool iris_is_graph_null(iris_graph graph);
+extern int iris_is_graph_null(iris_graph graph);
 
 /**@brief Frees a graph
  *
@@ -1552,7 +1558,7 @@ extern int iris_graph_task(iris_graph graph, iris_task task, int device, const c
  * @param flag 0: not retain, 1:retain
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
-extern int iris_graph_retain(iris_graph graph, bool flag);
+extern int iris_graph_retain(iris_graph graph, int flag);
 
 /**@brief Releases a graph object
  *
@@ -2240,7 +2246,7 @@ extern int iris_read_bool_env(const char *env_name);
 extern int iris_read_int_env(const char *env_name);
 
 // Define a type for the Julia kernel launch function call pointer
-typedef int32_t (*julia_kernel_t)(int32_t julia_kernel_type, int32_t target, int32_t devno, void *ctx, bool async, int32_t stream_index, void **stream, int32_t nstreams, int32_t *args, void **values, size_t *param_size, size_t *param_dim_size, int32_t nparams, size_t *threads, size_t *blocks, int dim, const char *kernel_name);
+typedef int32_t (*julia_kernel_t)(int32_t julia_kernel_type, int32_t target, int32_t devno, void *ctx, int async, int32_t stream_index, void **stream, int32_t nstreams, int32_t *args, void **values, size_t *param_size, size_t *param_dim_size, int32_t nparams, size_t *threads, size_t *blocks, int dim, const char *kernel_name);
 
 /* API to initialize Julia interfacea
  * @param kernel_launch_func Kernel launch Julia function 
@@ -2257,7 +2263,7 @@ extern julia_kernel_t iris_get_julia_launch_func();
 /* API to return the the status of whether auto parallel macro is on
  * @return This function returns whether AUTO_PAR macro is set or not
  */
-extern bool iris_is_enabled_auto_par();
+extern int iris_is_enabled_auto_par();
 
 extern int iris_vendor_kernel_launch(int dev, void *kernel, int gridx, int gridy, int gridz, int blockx, int blocky, int blockz, int shared_mem_bytes, void *stream, void **params);
 
