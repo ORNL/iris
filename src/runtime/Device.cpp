@@ -1250,7 +1250,8 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
             WaitForEvent(event, parent_mem_stream, iris_event_wait_default);
         }
     }
-    else if (!Platform::GetPlatform()->is_d2d_disabled() && cpu_dev >= 0) {
+    else if (!Platform::GetPlatform()->is_d2d_disabled() && cpu_dev >= 0 &&
+            Platform::GetPlatform()->device(cpu_dev)->model() != iris_opencl) {
         // Handling O2D data transfer
         // You didn't find data in peer device, 
         // but you found it in neighbouring CPU (OpenMP) device.

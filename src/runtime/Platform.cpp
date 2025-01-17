@@ -1005,6 +1005,7 @@ void Platform::ShowOverview() {
       case (iris_hip):      backend = "hip";        break;
       case (iris_levelzero):backend = "levelzero";  break;
       case (iris_opencl):   backend = "opencl";     break;
+      case (iris_openmp):   backend = "cpu";        break;
     }
     switch(type_id){
       case (iris_cpu):      type = "CPU";         break;
