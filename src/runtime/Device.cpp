@@ -574,6 +574,9 @@ void Device::ResolveInputWriteDependency(Task *task, BaseMem *mem, bool async, D
             else //if (input_devno != -1) 
 #endif 
             {
+                // Threre could be scenario where another explicit D2H is already completed. 
+                if (input_dev == NULL) return;
+                if (input_event == NULL) return;
                 ASSERT(input_dev != NULL);
                 ASSERT(input_event != NULL);
                 _event_debug(" EventSynchronize ASYNC_UNKNOWN_H2D_RESOLVE H2D mem:%lu dev:[%d][%s] src_dev:[%d][%s] Wait for event:%p mem_stream:%d input_stream:%d", mem->uid(), devno(), name(), input_devno, input_dev->name(), input_event, mem_stream, input_stream); 
