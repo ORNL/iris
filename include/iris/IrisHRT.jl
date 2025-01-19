@@ -14,6 +14,8 @@ if !haskey(ENV, "IRIS_ARCHS")
 end
 const ARRAY_TO_DMEM_MAP = Dict{Any, Any}()
 const __iris_dmem_map = Dict{Any, Any}()
+const __iris_cuda_devno_stream = Dict{Any, Any}()
+const __iris_hip_devno_stream = Dict{Any, Any}()
 module DummyAMDGPU
     macro sync(args...) end
     macro async(args...) end
@@ -294,6 +296,22 @@ module IrisHRT
         return hip_ctx_conv
     end
 
+    function preserve_cuda_iris_stream(devno, cu_stream_ptr, cu_ctx)
+        iris_stream_cuda = Main.IRISCuStream(cu_stream_ptr, true, cu_ctx)
+        Main.__iris_cuda_devno_stream[devno] = iris_stream_cuda
+        cu_stream = unsafe_load(reinterpret(Ptr{MyCUDA.CuStream}, Base.unsafe_convert(Ptr{Main.IRISCuStream}, Ref(iris_stream_cuda))))
+        #println(Core.stdout, "CUDA Stream: $cu_stream ctx: $cu_ctx")
+        return cu_stream
+    end
+
+    function preserve_hip_iris_stream(devno, hip_dev, hip_stream_ptr, hip_ctx)
+        iris_stream = Main.IRISHIPStream(hip_stream_ptr, Symbol(0), hip_dev, hip_ctx)
+        Main.__iris_hip_devno_stream[devno] = iris_stream
+        hip_stream = unsafe_load(reinterpret(Ptr{MyAMDGPU.HIP.HIPStream}, Base.unsafe_convert(Ptr{Main.IRISHIPStream}, Ref(iris_stream))))
+        #println(Core.stdout, "CUDA Stream: $cu_stream ctx: $cu_ctx")
+        return hip_stream
+    end
+
     function kernel_julia_wrapper(julia_kernel_type::Cint, target::Cint, devno::Cint, ctx::Ptr{Cvoid}, async_flag_int::Cint, stream_index::Cint, stream::Ptr{Ptr{Cvoid}}, nstreams::Cint, args_type::Ptr{Cint}, args::Ptr{Ptr{Cvoid}}, param_size::Ptr{Csize_t}, param_dim_size::Ptr{Csize_t}, nparams::Cint, c_blocks::Ptr{Csize_t}, c_threads::Ptr{Csize_t}, dim::Cint, kernel_name::Ptr{Cchar})::Cint
         # Array to hold the converted Julia values
         #julia_args = convert_args(args_type, args, nparams, 2)
@@ -435,6 +453,7 @@ module IrisHRT
         end
         j_threads = Tuple(j_threads)
         j_blocks = Tuple(j_blocks)
+
         if Int(target) == Int(iris_cuda)
             #cu_ctx = unsafe_load(Ref{CuContext}(ctx))
             #GC.gc()
@@ -445,15 +464,17 @@ module IrisHRT
                 #iris_println("Ctx: $cu_ctx dev:$devno")
             else
                 cu_stream_ptr = unsafe_load(reinterpret(Ptr{MyCUDA.CUstream}, stream))
-                iris_stream = Main.IRISCuStream(cu_stream_ptr, true, cu_ctx)
-                cu_stream = unsafe_load(reinterpret(Ptr{MyCUDA.CuStream}, Base.unsafe_convert(Ptr{Main.IRISCuStream}, Ref(iris_stream))))
+                cu_stream = preserve_cuda_iris_stream(devno, cu_stream_ptr, cu_ctx)
+                #iris_stream = Main.IRISCuStream(cu_stream_ptr, true, cu_ctx)
+                #cu_stream = unsafe_load(reinterpret(Ptr{MyCUDA.CuStream}, Base.unsafe_convert(Ptr{Main.IRISCuStream}, Ref(iris_stream))))
+                # Explicitly keep a reference
                 #cu_ctx = unsafe_load(ctx)  # CUcontext
                 #iris_println("Stream: $cu_stream dev:$devno")
                 #iris_println("Ctx: $cu_ctx dev:$devno")
                 #println(Core.stdout, "IRIS Stream: $iris_stream")
-                #println(Core.stdout, "CU Stream: $cu_stream")
+                #println(Core.stdout, "CU Stream: $cu_stream ctx:$cu_ctx")
                 #println("Size of CuContext type: ", sizeof(CuContext), " bytes")
-                #println("Size of CuStream type: ", sizeof(CuStream), " bytes")
+                #println("Size of CuStream type: ", sizeof(MyCUDA.CuStream), " bytes")
                 #println("Size of CUstream type: ", sizeof(Main.CUDA.CUstream), " bytes")
                 #println("Size of IRISCuStream type: ", sizeof(Main.IRISCuStream), " bytes")
             end
@@ -478,8 +499,7 @@ module IrisHRT
                 #println(Core.stdout, "HIP stream ptr", hip_stream_ptr, " type:", typeof(hip_stream_ptr))
                 #println(Core.stdout, "HIP dev", hip_dev, " type:", typeof(hip_dev))
                 #println(Core.stdout, "HIP ctx", hip_ctx, " type:", typeof(hip_ctx))
-                iris_stream = Main.IRISHIPStream(hip_stream_ptr, Symbol(0), hip_dev, hip_ctx)
-                hip_stream = unsafe_load(reinterpret(Ptr{MyAMDGPU.HIP.HIPStream}, Base.unsafe_convert(Ptr{Main.IRISHIPStream}, Ref(iris_stream))))
+                hip_stream = preserve_hip_iris_stream(devno, hip_dev, hip_stream_ptr, hip_ctx)
                 #println(Core.stdout, "HIP stream", hip_stream, " type:", typeof(hip_stream))
             end
             #iris_println("----Ctx: $hip_ctx dev:$devno")
@@ -675,7 +695,8 @@ module IrisHRT
         #println(Core.stdout, "Async $async_flag")
         gws = map(*, threads, blocks)
         if async_flag
-            #iris_println("---------ASynchronous CUDA execution $blocks $threads func:$func stream:$stream----------")
+            #iris_println("---------ASynchronous CUDA:$devno execution $blocks $threads func:$func stream:$stream ctx:$ctx----------")
+            MyCUDA.context!(ctx)
             MyCUDA.stream!(stream)
             backend = MyCUDA.CUDAKernels.CUDABackend(false, false)
             func(backend)(args_tuple...; ndrange=gws, workgroupsize=threads)
@@ -745,6 +766,7 @@ module IrisHRT
         gws = map(*, threads, blocks)
         if async_flag
             #Main.AMDGPU.@async begin
+                #iris_println("---------ASynchronous HIP:$devno execution $blocks $threads func:$func stream:$stream ctx:$ctx----------")
                 #MyAMDGPU.@roc groupsize=threads gridsize=blocks stream=stream func(args_tuple...)
                 MyAMDGPU.context!(ctx)
                 MyAMDGPU.stream!(stream)

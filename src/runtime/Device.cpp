@@ -604,6 +604,8 @@ void Device::ResolveInputWriteDependency(Task *task, BaseMem *mem, bool async, D
 #endif 
             {
                 _event_debug(" EventSynchronize ASYNC_KNOWN_H2D_RESOLVE H2D mem:%lu dev:[%d][%s] src_dev:[%d][%s] Wait for event:%p mem_stream:%d input_stream:%d", mem->uid(), devno(), name(), input_devno, input_dev->name(), input_event, mem_stream, input_stream); 
+                if (input_dev == NULL) return;
+                if (input_event == NULL) return;
                 ASSERT(input_dev != NULL);
                 ASSERT(input_event != NULL);
                 DeviceEventExchange(task, mem, input_event, input_stream, input_dev);

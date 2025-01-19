@@ -1167,7 +1167,7 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
       size_t block_s[3] = { (size_t)block[0], (size_t)block[1], (size_t)block[2] };
       julia_if_->host_launch((void **)kstream, stream_index, (void *)&ctx_, async,
                   nstreams, kernel->name(), 
-                  kernel->GetParamWrapperMemory(), devno(),
+                  kernel->GetParamWrapperMemory(), ordinal_,
                   dim, grid_s, block_s);
       return IRIS_SUCCESS;
   }
