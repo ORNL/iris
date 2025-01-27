@@ -298,16 +298,18 @@ module IrisHRT
 
     function preserve_cuda_iris_stream(devno, cu_stream_ptr, cu_ctx)
         iris_stream_cuda = Main.IRISCuStream(cu_stream_ptr, true, cu_ctx)
-        Main.__iris_cuda_devno_stream[devno] = iris_stream_cuda
+        #println(Core.stdout, "CUDA devno: ", devno)
         cu_stream = unsafe_load(reinterpret(Ptr{MyCUDA.CuStream}, Base.unsafe_convert(Ptr{Main.IRISCuStream}, Ref(iris_stream_cuda))))
+        Main.__iris_cuda_devno_stream[devno] = iris_stream_cuda
         #println(Core.stdout, "CUDA Stream: $cu_stream ctx: $cu_ctx")
         return cu_stream
     end
 
     function preserve_hip_iris_stream(devno, hip_dev, hip_stream_ptr, hip_ctx)
         iris_stream = Main.IRISHIPStream(hip_stream_ptr, Symbol(0), hip_dev, hip_ctx)
-        Main.__iris_hip_devno_stream[devno] = iris_stream
+        #println(Core.stdout, "HIP devno: ", devno)
         hip_stream = unsafe_load(reinterpret(Ptr{MyAMDGPU.HIP.HIPStream}, Base.unsafe_convert(Ptr{Main.IRISHIPStream}, Ref(iris_stream))))
+        Main.__iris_hip_devno_stream[devno] = iris_stream
         #println(Core.stdout, "CUDA Stream: $cu_stream ctx: $cu_ctx")
         return hip_stream
     end
@@ -645,6 +647,11 @@ module IrisHRT
             flag = ccall(Libdl.dlsym(lib, :iris_julia_init), Int32, (Ptr{Cvoid}, Int32), func_ptr, Int32(0))
             flag = ccall(Libdl.dlsym(lib, :iris_init), Int32, (Ref{Int32}, Ref{Ptr{Ptr{Cchar}}}, Int32), Int32(1), C_NULL, Int32(sync))
         end
+        ndevs = iris_ndevices()
+        for i in 1:ndevs
+            Main.__iris_cuda_devno_stream[i] = nothing
+            Main.__iris_hip_devno_stream[i] = nothing
+        end
         return flag
     end
 
@@ -687,6 +694,7 @@ module IrisHRT
         # Initialize CUDA
         #CUDA.allowscalar(false)  # Disable scalar operations on the GPU
         func = getfield(Main, Symbol(func_name_target))
+        #func = getfield(Main, Symbol(func_name_target, "_ka_cuda"))
         #func = getfield(IrisKernelImpl, Symbol(func_name_target))
         # Convert the array of arguments to a tuple
         args_tuple = Tuple(args)
@@ -696,9 +704,14 @@ module IrisHRT
         gws = map(*, threads, blocks)
         if async_flag
             #iris_println("---------ASynchronous CUDA:$devno execution $blocks $threads func:$func stream:$stream ctx:$ctx----------")
+            MyCUDA.device!(Int(devno))
             MyCUDA.context!(ctx)
             MyCUDA.stream!(stream)
             backend = MyCUDA.CUDAKernels.CUDABackend(false, false)
+            #println(Core.stdout, "func:$func_name")
+            #new_func = assign_cuda_ka_kernel(Symbol(func_name), func)
+            #println(Core.stdout, "cuda_func: $new_func")
+            #new_func(backend)(args_tuple...; ndrange=gws, workgroupsize=threads)
             func(backend)(args_tuple...; ndrange=gws, workgroupsize=threads)
         else
             #iris_println("---------Synchronous CUDA execution $blocks $threads func:$func----------")
@@ -708,6 +721,25 @@ module IrisHRT
         end
         #synchronize(blocking = true)
     end
+    
+    function assign_cuda_ka_kernel(base_name::Symbol, kernel_function)
+        new_name = Symbol(base_name, "____cuda")  
+        @eval const $(new_name) = $kernel_function
+        return getfield(@__MODULE__, new_name) 
+    end
+
+    function assign_hip_ka_kernel(base_name::Symbol, kernel_function)
+        new_name = Symbol(base_name, "____hip")  
+        @eval const $(new_name) = $kernel_function
+        return getfield(@__MODULE__, new_name) 
+    end
+
+    function create_and_return_kernel(base_name::Symbol, kernel_function)
+        new_name = Symbol(base_name, "_obj")  
+        @eval const $(new_name) = $kernel_function
+        return getfield(Main, new_name)  
+    end
+
 
     function call_cuda_kernel(julia_kernel_type::Any, devno::Any, func_name::String, threads::Any, blocks::Any, ctx::Any, stream::Any, args::Any, async_flag::Bool=false)
         if !Main.cuda_available
@@ -756,6 +788,7 @@ module IrisHRT
         #AMDGPU.allowscalar(false)  # Disable scalar operations on the GPU
         #func = getfield(IrisKernelImpl, Symbol(func_name_target))
         func = getfield(Main, Symbol(func_name_target))
+        #func = getfield(Main, Symbol(func_name_target, "_ka_hip"))
         # Convert the array of arguments to a tuple
         args_tuple = Tuple(args)
         # Call the function with arguments
@@ -765,14 +798,13 @@ module IrisHRT
         #iris_println("Async $async_flag")
         gws = map(*, threads, blocks)
         if async_flag
-            #Main.AMDGPU.@async begin
                 #iris_println("---------ASynchronous HIP:$devno execution $blocks $threads func:$func stream:$stream ctx:$ctx----------")
-                #MyAMDGPU.@roc groupsize=threads gridsize=blocks stream=stream func(args_tuple...)
                 MyAMDGPU.context!(ctx)
                 MyAMDGPU.stream!(stream)
-                backend = MyAMDGPU.ROCKernels.ROCBackend()
+                backend = MyAMDGPU.ROCKernels.ROCBackend(target="gfx908")
+                #new_func = assign_hip_ka_kernel(Symbol(func_name), func)
+                #new_func(backend)(args_tuple...; ndrange=gws, workgroupsize=threads)
                 func(backend)(args_tuple...; ndrange=gws, workgroupsize=threads)
-            #end
         else
             #iris_println("---------Synchronous HIP execution $blocks $threads func:$func----------")
             backend = MyAMDGPU.ROCKernels.ROCBackend()
