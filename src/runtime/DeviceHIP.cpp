@@ -58,7 +58,7 @@ DeviceHIP::DeviceHIP(LoaderHIP* ld, LoaderHost2HIP *host2hip_ld, hipDevice_t dev
   err = ld_->hipDriverGetVersion(&driver_version_);
   _hiperror(err);
   sprintf(version_, "AMD HIP %d", driver_version_);
-  _info("device[%d] platform[%d] vendor[%s] device[%s] ordinal[%d] type[%d] version[%s] async_engines[%d] copy_engines[%d]", devno_, platform_, vendor_, name_, ordinal_, type_, version_, ae, n_copy_engines_);
+  _trace("device[%d] platform[%d] vendor[%s] device[%s] ordinal[%d] type[%d] version[%s] async_engines[%d] copy_engines[%d]", devno_, platform_, vendor_, name_, ordinal_, type_, version_, ae, n_copy_engines_);
 }
 
 DeviceHIP::~DeviceHIP() {
@@ -199,7 +199,7 @@ int DeviceHIP::Init() {
   max_work_item_sizes_[1] = (size_t) by * (size_t) dy;
   max_work_item_sizes_[2] = (size_t) bz * (size_t) dz;
 
-  _info("devid[%d] max_compute_units[%zu] max_work_group_size_[%zu] max_work_item_sizes[%zu,%zu,%zu] max_block_dims[%d,%d,%d] concurrent_kernels[%d]", devid_, max_compute_units_, max_work_group_size_, max_work_item_sizes_[0], max_work_item_sizes_[1], max_work_item_sizes_[2], max_block_dims_[0], max_block_dims_[1], max_block_dims_[2], ck);
+  _info("devid[%d] platform[%d] vendor[%s] device[%s] ordinal[%d] type[%d] version[%s] async_engines[%d] copy_engines[%d] max_compute_units[%zu] max_work_group_size_[%zu] max_work_item_sizes[%zu,%zu,%zu] max_block_dims[%d,%d,%d] concurrent_kernels[%d]", devid_, platform_, vendor_, name_, ordinal_, type_, version_, nqueues_, n_copy_engines_, max_compute_units_, max_work_group_size_, max_work_item_sizes_[0], max_work_item_sizes_[1], max_work_item_sizes_[2], max_block_dims_[0], max_block_dims_[1], max_block_dims_[2], ck);
 
   if (julia_if_ != NULL) julia_if_->init(devno());
   char* path = (char *)kernel_path();
