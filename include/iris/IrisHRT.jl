@@ -123,8 +123,8 @@ module IrisHRT
     const hip_available = Main.hip_available
     const iris_kernel_jl = cwd * "/kernel.jl"
     #println("Kernel file: $iris_kernel_jl")
-    include(iris_kernel_jl)
-    using .IrisKernelImpl
+    #include(iris_kernel_jl)
+    #using .IrisKernelImpl
     libiris = ENV["IRIS"] * "/lib/" * "libiris.so"
     if !isfile(libiris)
         libiris = "libiris.so"
@@ -327,6 +327,7 @@ module IrisHRT
         DMEM_MAX_DIM = 6
         cu_ctx = nothing
         hip_ctx = nothing
+        #println(Core.stdout, " dim--:", dim)
         if Int(target) == Int(iris_cuda)
             MyCUDA.device!(Int(devno))
             cu_ctx = set_cuda_context!(ctx)
@@ -347,10 +348,10 @@ module IrisHRT
             current_type = Int(single_arg_type & 0x3FFF0000)
             is_pointer = Int(single_arg_type & 0x40000000)
             element_size = Int((single_arg_type >> 8) & 0xFF)
-            dim = Int(single_arg_type & 0xFF)
+            param_dim = Int(single_arg_type & 0xFF)
             full_size = UInt64(unsafe_load(param_size + i*sizeof(Csize_t)))
             size_dims = [] 
-            for d in 0:(dim - 1)
+            for d in 0:(param_dim - 1)
                 value = unsafe_load(param_dim_size + i*sizeof(Csize_t)*DMEM_MAX_DIM + d * sizeof(Csize_t)) + 0
                 push!(size_dims, Int64(value))
             end
@@ -448,6 +449,7 @@ module IrisHRT
         j_threads = []
         j_blocks = []
         # Iterate through each argument
+        #println(Core.stdout, " dim:", dim)
         for i in 0:(dim - 1)
             # Load the type of the current argument
             push!(j_threads, UInt64(unsafe_load(c_threads+i*sizeof(Csize_t)))+0)
@@ -456,6 +458,8 @@ module IrisHRT
         j_threads = Tuple(j_threads)
         j_blocks = Tuple(j_blocks)
 
+        #println(Core.stdout, " j_threads: ", j_threads)
+        #println(Core.stdout, " j_blocks: ", j_blocks)
         if Int(target) == Int(iris_cuda)
             #cu_ctx = unsafe_load(Ref{CuContext}(ctx))
             #GC.gc()
@@ -765,7 +769,7 @@ module IrisHRT
             #end
             # Ensure all tasks and CUDA operations complete
         else
-            #iris_println("---------Synchronous CUDA execution $blocks $threads func:$func----------")
+            #println(Core.stdout, "---------Synchronous CUDA execution blocks=$blocks threads=$threads func:$func----------")
             MyCUDA.@sync begin
                 MyCUDA.context!(ctx)
                 MyCUDA.@cuda threads=threads blocks=blocks func(args_tuple...)
@@ -2285,6 +2289,18 @@ module IrisHRT
         end
         
         #task0=IrisHRT.iris_task_julia(kernel, length(gws), off, gws, lws, kernel_params)
+        if isa(gws, Tuple)
+            gws = collect(gws)
+        end
+        if isa(lws, Tuple)
+            lws = collect(lws)
+        end
+        if isa(off, Tuple)
+            off = collect(off)
+        end
+        #println(Core.stdout, "--- gws:", gws, " typeof:", typeof(gws), " length:", length(gws))
+        #println(Core.stdout, "--- lws:", lws, " typeof:", typeof(lws))
+        #println(Core.stdout, "--- off:", off)
         off_c = Ptr{UInt64}(C_NULL)
         if length(off) != 0
             off_c = reinterpret(Ptr{UInt64}, pointer(off))
