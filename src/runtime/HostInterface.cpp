@@ -282,16 +282,24 @@ namespace iris {
             KernelJulia *julia_data = get_kernel_julia(param_mem);
             KernelArg *arg = julia_data->get_iris_arg(kindex);
             //printf("setarg julia_data:%p kindex:%d arg_index:%d size:%lu value:%p\n", julia_data, kindex, julia_data->top(), size, value);
-            if (size == 1) 
+            if (size == 1 && arg->data_type == iris_int8)  // Special case to handle for double
+                julia_data->set_arg_type(iris_int8);
+            else if (size == 1) 
                 julia_data->set_arg_type(iris_uint8);
+            else if (size == 2 && arg->data_type == iris_int16)  // Special case to handle for double
+                julia_data->set_arg_type(iris_int16);
             else if (size == 2) 
                 julia_data->set_arg_type(iris_uint16);
             else if (size == 4 && arg->data_type == iris_float)  // Special case to handle for double
                 julia_data->set_arg_type(iris_float);
+            else if (size == 4 && arg->data_type == iris_int32)  // Special case to handle for double
+                julia_data->set_arg_type(iris_int32);
             else if (size == 4) 
                 julia_data->set_arg_type(iris_uint32);
             else if (size == 8 && arg->data_type == iris_double)  // Special case to handle for double
                 julia_data->set_arg_type(iris_double);
+            else if (size == 8 && arg->data_type == iris_int64)  // Special case to handle for double
+                julia_data->set_arg_type(iris_int64);
             else if (size == 8) 
                 julia_data->set_arg_type(iris_uint64);
             else {

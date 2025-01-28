@@ -361,7 +361,7 @@ module IrisHRT
             #iris_println("I:$i type:$current_type ptr:$arg_ptr is_pointer:$is_pointer element_size:$element_size dim:$dim Size:$full_size SizeDim:$size_dims")
             # Convert based on the type
             if is_pointer != Int(iris_pointer)
-                #iris_println("I is not pointer")
+                #println(Core.stdout, "I is not pointer:", i, " current_type:", current_type)
                 if current_type == Int(iris_int64)  # Assuming 1 is for Int
                     push!(julia_args, Int64(unsafe_load(Ptr{Clonglong}(arg_ptr))))
                 elseif current_type == Int(iris_int32)  # Assuming 1 is for Int
@@ -388,6 +388,7 @@ module IrisHRT
                     error("Unsupported type")
                 end
             else # Assuming 3 is for Char
+                #println(Core.stdout, "I is a pointer:", i)
                 push!(dev_ptr_index, i+1-start_index)
                 if current_type == Int(iris_float)
                     arg_ptr = Ptr{Cfloat}(arg_ptr)
@@ -1525,7 +1526,7 @@ module IrisHRT
     function iris_data_mem(T, dims...) 
         #size = Csize_t(length(host) * sizeof(T))
         dim_size = dims
-        #println("Type of element: ", T, " dim:", dims)
+        #println(Core.stdout, "Type of element: ", T, " dim:", dims)
         if length(dims) == 1 && isa(dims[1], Tuple)
             dim_size = dims[1]
         end
@@ -1534,7 +1535,7 @@ module IrisHRT
         dim_size_v = collect(dim_size)
         element_size = Int32(sizeof(T))
         host_cptr = C_NULL
-        #println("Type of element: ", T, " dim:", dim, " Size:", host_size, " Element size:", element_size)
+        #println(Core.stdout, "Type of element: ", T, " dim:", dim, " Size:", host_size, " Element size:", element_size)
         element_type = get_iris_type(T)
         return ccall(Libdl.dlsym(lib, :iris_data_mem_create_struct_nd), IrisMem, (Ptr{Cvoid}, Ptr{Cvoid}, Int32, Csize_t, Int32), host_cptr, pointer(dim_size_v), dim, element_size, Int32(element_type))
     end
@@ -1545,7 +1546,7 @@ module IrisHRT
         dim = length(host_size)
         element_size = Int32(sizeof(T))
         host_cptr = reinterpret(Ptr{Cvoid}, pointer(host))
-        #println("Type of element: ", T, " Size:", size(host), " Element size:", element_size)
+        #println(Core.stdout, "Type of element: ", T, " Size:", size(host), " Element size:", element_size)
         element_type = iris_pointer
         if T == Float32
             element_type = iris_float 
@@ -2254,6 +2255,7 @@ module IrisHRT
                 # Scalar element
                 #push!(kernel_params, arg)
                 type_data = get_iris_type(typeof(arg))
+                #println(Core.stdout, " type_data: ", type_data, " arg:", arg, " type of arg: ", typeof(arg))
                 push!(params_info, type_data | sizeof(arg))
                 push!(params, Ref(arg))
             end
@@ -2315,7 +2317,9 @@ module IrisHRT
         end
         c_params = reinterpret(Ptr{Ptr{Cvoid}}, pointer(params))
         # Create kernel with task
-        ccall(Libdl.dlsym(lib, :iris_task_kernel), Int32, (IrisTask, Ptr{Cchar}, Int32, Ptr{Csize_t}, Ptr{Csize_t}, Ptr{Csize_t}, Int32, Ptr{Ptr{Cvoid}}, Ptr{Int32}), task0, pointer(kernel), Int32(length(gws)), off_c, gws_c, lws_c, Int32(nparams), c_params, pointer(params_info))
+        GC.@preserve gws lws off begin
+            ccall(Libdl.dlsym(lib, :iris_task_kernel), Int32, (IrisTask, Ptr{Cchar}, Int32, Ptr{Csize_t}, Ptr{Csize_t}, Ptr{Csize_t}, Int32, Ptr{Ptr{Cvoid}}, Ptr{Int32}), task0, pointer(kernel), Int32(length(gws)), off_c, gws_c, lws_c, Int32(nparams), c_params, pointer(params_info))
+        end
         for mem in flush 
             if isa(mem, IrisMem)
                 IrisHRT.iris_task_dmem_flush_out(task0, mem)
