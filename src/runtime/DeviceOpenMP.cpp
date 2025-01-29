@@ -332,7 +332,7 @@ int DeviceOpenMP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws
   //printf(" Task %s\n", kernel->get_task_name());
   _trace("dev[%d] kernel[%s:%s] dim[%d] off[%lu] gws[%lu]", devno_, kernel->name(), kernel->get_task_name(), dim, off[0], gws[0]);
   if (julia_if_ != NULL && kernel->task()->enable_julia_if()) {
-      julia_if_->host_launch((void **)NULL, 0, NULL, false,
+      julia_if_->host_launch(kernel->task()->uid(), (void **)NULL, 0, NULL, false,
                   0, kernel->name(), 
                   kernel->GetParamWrapperMemory(), devno(),
                   dim, off, gws);
