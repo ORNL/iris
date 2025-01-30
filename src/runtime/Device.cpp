@@ -27,6 +27,7 @@ Device::Device(int devno, int platform) {
   root_dev_ = NULL;
   current_queue_ = 0;
   current_copy_queue_ = 0;
+  type_ = iris_cpu;
   first_event_cpu_end_time_ = 0.0f;
   first_event_cpu_begin_time_ = 0.0f;
   platform_ = platform;
