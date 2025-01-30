@@ -557,6 +557,8 @@ def python_task_host(task, handle, func, params):
     CWRAPPER = CFUNCTYPE(c_int, POINTER(c_int64), POINTER(c_int))
     wrapped_py_func = CWRAPPER(func)
     task.params = params
+    task.func = func
+    task.wrapped_py_func = wrapped_py_func
     cparams = id(task.params) #(c_void_p * nparams)(*params)
     return dll.iris_task_python_host(handle, cast(wrapped_py_func, c_void_p), c_int64(cparams))
 
@@ -938,8 +940,10 @@ class cmd_kernel:
 task_handle_2_pobj = {}
 class task:
     def __init__(self, *args):
+        self.params = []
+        self.func = None 
+        self.wrapped_py_func = None 
         if len(args) == 0:
-            self.params = []
             self.handle = task_create()
             task_handle_2_pobj[self.handle.uid] = self
             return
