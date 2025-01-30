@@ -6,7 +6,7 @@
 #SBATCH --output=slurm-test-out.txt
 #SBATCH --error=slurm-test-err.txt
 #SBATCH --exclusive
-#SBATCH --time="1:01:00"
+#SBATCH --time="2:01:00"
 
 set -x;
 GIT_ROOT=$(git rev-parse --show-toplevel)

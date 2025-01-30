@@ -270,11 +270,11 @@ namespace iris {
             //julia_data->set_kernel_name(kernel_name);
             return IRIS_SUCCESS;
         }
-        int JuliaHostInterfaceLoader::host_launch(void **stream, int stream_index, void *ctx, bool async, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *grid, size_t *block)
+        int JuliaHostInterfaceLoader::host_launch(unsigned long task_id, void **stream, int stream_index, void *ctx, bool async, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *grid, size_t *block)
         {
             KernelJulia *julia_data = get_kernel_julia(param_mem);
             SetKernelPtr(param_mem, kname);
-            launch_julia_kernel(julia_data->julia_kernel_type(), target_, devno, ctx, async, stream_index, stream, nstreams, julia_data->args(), julia_data->values(), julia_data->param_size(), julia_data->param_dim_size(), julia_data->top(), grid, block, dim, kname);
+            launch_julia_kernel(task_id, julia_data->julia_kernel_type(), target_, devno, ctx, async, stream_index, stream, nstreams, julia_data->args(), julia_data->values(), julia_data->param_size(), julia_data->param_dim_size(), julia_data->top(), grid, block, dim, kname);
             return IRIS_SUCCESS;
         }
         int JuliaHostInterfaceLoader::setarg(void *param_mem, int kindex, size_t size, void *value)
@@ -282,16 +282,14 @@ namespace iris {
             KernelJulia *julia_data = get_kernel_julia(param_mem);
             KernelArg *arg = julia_data->get_iris_arg(kindex);
             //printf("setarg julia_data:%p kindex:%d arg_index:%d size:%lu value:%p\n", julia_data, kindex, julia_data->top(), size, value);
-            if (size == 1) 
+            if (arg->data_type != iris_unknown) 
+                julia_data->set_arg_type(arg->data_type);
+            else if (size == 1) 
                 julia_data->set_arg_type(iris_uint8);
             else if (size == 2) 
                 julia_data->set_arg_type(iris_uint16);
-            else if (size == 4 && arg->data_type == iris_float)  // Special case to handle for double
-                julia_data->set_arg_type(iris_float);
             else if (size == 4) 
                 julia_data->set_arg_type(iris_uint32);
-            else if (size == 8 && arg->data_type == iris_double)  // Special case to handle for double
-                julia_data->set_arg_type(iris_double);
             else if (size == 8) 
                 julia_data->set_arg_type(iris_uint64);
             else {

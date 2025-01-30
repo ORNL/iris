@@ -553,12 +553,12 @@ def iris2py_dev(dev):
 def iris2py(params):
     return ctypes.cast(params.contents.value, ctypes.py_object).value
 
-def python_task_host(task, func, params):
+def python_task_host(task, handle, func, params):
     CWRAPPER = CFUNCTYPE(c_int, POINTER(c_int64), POINTER(c_int))
     wrapped_py_func = CWRAPPER(func)
     task.params = params
     cparams = id(task.params) #(c_void_p * nparams)(*params)
-    return dll.iris_task_python_host(task, cast(wrapped_py_func, c_void_p), c_int64(cparams))
+    return dll.iris_task_python_host(handle, cast(wrapped_py_func, c_void_p), c_int64(cparams))
 
 def task_host(task, func, params):
     CWRAPPER = CFUNCTYPE(c_int, c_void_p, POINTER(c_int))
@@ -1103,7 +1103,7 @@ class task:
     def d2h_full(self, mem, host):
         task_d2h_full(self.handle, mem.handle, host)
     def pyhost(self, func, params):
-        python_task_host(self.handle, func, params)
+        python_task_host(self, self.handle, func, params)
     def host(self, func, params):
         task_host(self.handle, func, params)
     def submit(self, device, sync = 1):

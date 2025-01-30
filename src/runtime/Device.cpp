@@ -27,6 +27,7 @@ Device::Device(int devno, int platform) {
   root_dev_ = NULL;
   current_queue_ = 0;
   current_copy_queue_ = 0;
+  type_ = iris_cpu;
   first_event_cpu_end_time_ = 0.0f;
   first_event_cpu_begin_time_ = 0.0f;
   platform_ = platform;
@@ -230,6 +231,7 @@ void Device::CallMemReset(BaseMem *mem, size_t size, void *stream)
 
 void Device::LoadDefaultKernelLibrary(const char *key, const char *flags)
 {
+    if (!platform_obj_->is_default_kernels_load()) return;
     char *src = NULL;
     char *iris = NULL;
     char *filename = NULL;
@@ -573,6 +575,9 @@ void Device::ResolveInputWriteDependency(Task *task, BaseMem *mem, bool async, D
             else //if (input_devno != -1) 
 #endif 
             {
+                // Threre could be scenario where another explicit D2H is already completed. 
+                if (input_dev == NULL) return;
+                if (input_event == NULL) return;
                 ASSERT(input_dev != NULL);
                 ASSERT(input_event != NULL);
                 _event_debug(" EventSynchronize ASYNC_UNKNOWN_H2D_RESOLVE H2D mem:%lu dev:[%d][%s] src_dev:[%d][%s] Wait for event:%p mem_stream:%d input_stream:%d", mem->uid(), devno(), name(), input_devno, input_dev->name(), input_event, mem_stream, input_stream); 
@@ -600,6 +605,8 @@ void Device::ResolveInputWriteDependency(Task *task, BaseMem *mem, bool async, D
 #endif 
             {
                 _event_debug(" EventSynchronize ASYNC_KNOWN_H2D_RESOLVE H2D mem:%lu dev:[%d][%s] src_dev:[%d][%s] Wait for event:%p mem_stream:%d input_stream:%d", mem->uid(), devno(), name(), input_devno, input_dev->name(), input_event, mem_stream, input_stream); 
+                if (input_dev == NULL) return;
+                if (input_event == NULL) return;
                 ASSERT(input_dev != NULL);
                 ASSERT(input_event != NULL);
                 DeviceEventExchange(task, mem, input_event, input_stream, input_dev);
@@ -1249,7 +1256,8 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
             WaitForEvent(event, parent_mem_stream, iris_event_wait_default);
         }
     }
-    else if (!Platform::GetPlatform()->is_d2d_disabled() && cpu_dev >= 0) {
+    else if (!Platform::GetPlatform()->is_d2d_disabled() && cpu_dev >= 0 &&
+            Platform::GetPlatform()->device(cpu_dev)->model() != iris_opencl) {
         // Handling O2D data transfer
         // You didn't find data in peer device, 
         // but you found it in neighbouring CPU (OpenMP) device.
@@ -1300,7 +1308,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
             WaitForEvent(event, parent_mem_stream, iris_event_wait_default);
         }
     }
-    else if (!Platform::GetPlatform()->is_d2d_disabled() && this->type() == iris_cpu && non_cpu_dev >= 0) {
+    else if (!Platform::GetPlatform()->is_d2d_disabled() && this->model() != iris_opencl && this->type() == iris_cpu && non_cpu_dev >= 0) {
         //D2O Data transfer 
         // You found data in non-CPU/OpenMP device, but this device is CPU/OpenMP
         // Use target D2H transfer 

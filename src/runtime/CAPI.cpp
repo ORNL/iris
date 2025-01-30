@@ -29,9 +29,14 @@ void iris_overview() {
   return;
 }
 
-void iris_task_retain(iris_task task, bool flag) {
+void iris_task_retain(iris_task task, int flag) {
   Platform *platform = Platform::GetPlatform(); 
-  platform->set_release_task_flag(!flag, task);
+  platform->set_release_task_flag(!((bool)flag), task);
+}
+
+void iris_enable_default_kernels(int flag) {
+    Platform *platform = Platform::GetPlatform(); 
+    platform->enable_default_kernels_load((bool) flag);
 }
 
 int iris_finalize() {
@@ -660,6 +665,10 @@ int iris_data_mem_clear(iris_mem brs_mem) {
 int iris_data_mem_update(iris_mem mem, void *host) {
   return Platform::GetPlatform()->DataMemUpdate(mem, host);
 }
+int iris_data_mem_update_host_size(iris_mem brs_mem, size_t *host_size) {
+  DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  return mem->update_host_size(host_size);
+}
 int iris_unregister_pin_memory(void *host) {
   return Platform::GetPlatform()->UnRegisterPin(host);
 }
@@ -687,9 +696,9 @@ int iris_data_mem_n_regions(iris_mem brs_mem) {
   DataMem *mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
   return mem->get_n_regions();
 }
-int iris_data_mem_update_bc(iris_mem brs_mem, bool bc, int row, int col) {
+int iris_data_mem_update_bc(iris_mem brs_mem, int bc, int row, int col) {
   DataMem *mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
-  mem->update_bc_row_col(bc, row, col);
+  mem->update_bc_row_col((bool)bc, row, col);
   return IRIS_SUCCESS;
 }
 int iris_data_mem_get_rr_bc_dev(iris_mem brs_mem){
@@ -776,9 +785,9 @@ int iris_graph_create_null(iris_graph* graph) {
   return IRIS_SUCCESS;
 }
 
-bool iris_is_graph_null(iris_graph graph) {
-  if (graph.uid == (unsigned long) -1) return true;
-  return false;
+int iris_is_graph_null(iris_graph graph) {
+  if (graph.uid == (unsigned long) -1) return (int)true;
+  return (int)false;
 }
 
 int iris_graph_create_json(const char* json, void** params, iris_graph* graph) {
@@ -799,8 +808,8 @@ int iris_graph_reset_memories(iris_graph brs_graph) {
   graph->ResetMemories();
   return IRIS_SUCCESS;
 }
-int iris_graph_retain(iris_graph graph, bool flag) {
-  return Platform::GetPlatform()->GraphRetain(graph, flag);
+int iris_graph_retain(iris_graph graph, int flag) {
+  return Platform::GetPlatform()->GraphRetain(graph, (bool)flag);
 }
 
 int iris_graph_release(iris_graph graph) {
@@ -1250,6 +1259,6 @@ int iris_vendor_kernel_launch(int dev, void *kernel, int gridx, int gridy, int g
 {
     return Platform::GetPlatform()->VendorKernelLaunch(dev, kernel, gridx, gridy, gridz, blockx, blocky, blockz, shared_mem_bytes, stream, params);
 }
-bool iris_is_enabled_auto_par() {
-  return Platform::GetPlatform()->GetAutoPar();
+int iris_is_enabled_auto_par() {
+  return (int) Platform::GetPlatform()->GetAutoPar();
 }

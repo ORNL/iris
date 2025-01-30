@@ -42,6 +42,7 @@ DataMem::DataMem(Platform* platform, void *host_ptr, size_t *host_size, int dim,
 DataMem::DataMem(Platform *platform, void *host_ptr, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim, int element_type) : BaseMem(IRIS_DMEM, platform->ndevs()) 
 {
     size_t size = elem_size;
+    tile_enabled_ = true;
     set_element_type(element_type);
     for(int i=0; i<dim; i++) {
         size = size * dev_size[i];
@@ -62,6 +63,19 @@ DataMem::DataMem(Platform *platform, void *host_ptr, size_t *off, size_t *host_s
     memcpy(dev_size_, dev_size, sizeof(size_t)*dim_);
     memcpy(host_size_, host_size, sizeof(size_t)*dim_);
     elem_size_ = elem_size;
+}
+int DataMem::update_host_size(size_t *host_size) 
+{
+    memcpy(host_size_, host_size, sizeof(size_t)*dim_);
+    if (!tile_enabled_) {
+        memcpy(dev_size_, host_size, sizeof(size_t)*dim_);
+        size_t size = elem_size_;
+        for(int i=0; i<dim_; i++) {
+            size = size * host_size[i];
+        }
+        size_ = size;
+    }
+    return IRIS_SUCCESS;
 }
 void DataMem::FetchDataFromDevice(void *dst_host_ptr)
 {   
@@ -125,6 +139,7 @@ void DataMem::FetchDataFromDevice(void *dst_host_ptr, size_t size)
 }
 void DataMem::Init(Platform *platform, void *host_ptr, size_t size)
 {
+    tile_enabled_ = false;
     is_symbol_ = false;
     platform_ = platform;
     host_ptr_owner_ = false;
