@@ -79,7 +79,7 @@ typedef enum StreamPolicy StreamPolicy;
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 #ifndef UNDEF_IRIS_MACROS
 #define IRIS_MAX_NPLATFORMS     32
-#define IRIS_MAX_NDEVS          (1 << 5) - 1
+#define IRIS_MAX_NDEVS          (1 << 8) - 1
 #define IRIS_MAX_KERNEL_NARGS     64
 #define IRIS_MAX_DEVICE_NSTREAMS   11
 #define IRIS_MAX_DEVICE_NCOPY_STREAMS   3

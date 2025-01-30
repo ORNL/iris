@@ -593,6 +593,10 @@ int Platform::InitCUDA() {
   int mdevs =0;
   int *cudevs = new int[ndevs*cuda_device_factor_];
   for (int i = 0; i < ndevs*cuda_device_factor_; i++) {
+    if (ndevs_ > IRIS_MAX_NDEVS) {
+        _error("This platform has more than max devices: %d ! Hence ignoring further CUDA devices\n", IRIS_MAX_NDEVS);
+        break;
+    }
     CUdevice dev;
     err = loaderCUDA_->cuDeviceGet(&dev, i%ndevs);
     _cuerror(err);
@@ -666,6 +670,10 @@ int Platform::InitHIP() {
   int mdevs =0;
   int *hipdevs= new int[ndevs*hip_device_factor_];
   for (int i = 0; i < ndevs*hip_device_factor_; i++) {
+    if (ndevs_ > IRIS_MAX_NDEVS) {
+        _error("This platform has more than max devices: %d ! Hence ignoring further HIP devices\n", IRIS_MAX_NDEVS);
+        break;
+    }
     hipDevice_t dev;
     err = loaderHIP_->hipDeviceGet(&dev, i%ndevs);
     _hiperror(err);
@@ -748,6 +756,10 @@ int Platform::InitLevelZero() {
 
   int mdevs = 0;
   for (uint32_t i = 0; i < ndevs; i++) {
+    if (ndevs_ > IRIS_MAX_NDEVS) {
+        _error("This platform has more than max devices: %d ! Hence ignoring further LevelZero devices\n", IRIS_MAX_NDEVS);
+        break;
+    }
     devs_[ndevs_] = new DeviceLevelZero(loaderLevelZero_, devs[i], zectx, driver, ndevs_, nplatforms_);
     arch_available_ |= devs_[ndevs_]->type();
     ndevs_++; mdevs++;
@@ -774,7 +786,12 @@ int Platform::InitOpenMP() {
   }
   int mdevs = 0;
   for(int i=0; i<openmp_device_factor_; i++) {
+      if (ndevs_ > IRIS_MAX_NDEVS) {
+          _error("This platform has more than max devices: %d ! Hence ignoring further OpenMP devices\n", IRIS_MAX_NDEVS);
+          break;
+      }
       _trace("OpenMP platform[%d] dev[%d] ndevs[%d]", nplatforms_, ndevs_, ndevs_+1);
+      _printf("OpenMP platform[%d] dev[%d] ndevs[%d]", nplatforms_, ndevs_, ndevs_+1);
       devs_[ndevs_] = new DeviceOpenMP(loaderOpenMP_, ndevs_, nplatforms_);
       if (is_julia_enabled()) 
           devs_[ndevs_]->EnableJuliaInterface();
@@ -877,6 +894,10 @@ int Platform::InitOpenCL() {
     }
     int mdevs = 0;
     for (cl_uint j = 0; j < ndevs; j++) {
+      if (ndevs_ > IRIS_MAX_NDEVS) {
+          _error("This platform has more than max devices: %d ! Hence ignoring further OpenCL devices\n", IRIS_MAX_NDEVS);
+          break;
+      }
       cl_device_type dev_type;
       err = loaderOpenCL_->clGetDeviceInfo(cl_devices[j], CL_DEVICE_TYPE, sizeof(dev_type), &dev_type, NULL);
       _clerror(err);
