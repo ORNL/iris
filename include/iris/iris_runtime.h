@@ -160,7 +160,8 @@ typedef enum DeviceModel DeviceModel;
 #define iris_uint64             (13 << 16)
 #define iris_long               (14 << 16)
 #define iris_unsigned_long      (15 << 16)
-#define iris_custom_type        (16 << 16)
+#define iris_bool               (16 << 16)
+#define iris_custom_type        (17 << 16)
 #define iris_pointer            (0x4000 << 16)
 
 #define iris_reset_memset                      0
@@ -1378,6 +1379,14 @@ extern int iris_data_mem_pin(iris_mem mem);
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_data_mem_update(iris_mem mem, void *host);
+
+/**@brief data memory object update for a task
+ *
+ * @param mem memory object
+ * @param host_size host size pointer to the array
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_data_mem_update_host_size(iris_mem mem, size_t *host_size);
 
 /**@brief creates data memory region
  *

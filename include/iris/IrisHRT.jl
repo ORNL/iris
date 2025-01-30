@@ -197,7 +197,8 @@ module IrisHRT
     const iris_uint64        = 13 << 16
     const iris_long          = 14 << 16
     const iris_unsigned_long = 15 << 16
-    const iris_custom_type   = 16 << 16
+    const iris_bool          = 16 << 16
+    const iris_custom_type   = 17 << 16
     const iris_pointer       = 16384 << 16
 
     const iris_normal = 1 << 10
@@ -434,11 +435,13 @@ module IrisHRT
                     arg_ptr = Ptr{Cushort}(arg_ptr)
                 elseif current_type == Int(iris_uint8)
                     arg_ptr = Ptr{Cuchar}(arg_ptr)
+                elseif current_type == Int(iris_bool)
+                    arg_ptr = Ptr{Cuchar}(arg_ptr)
                 elseif current_type == Int(iris_custom_type)
                     cust_type = get_custom_type(task_id, i-start_index+1)
                     arg_ptr = Ptr{cust_type}(arg_ptr)
                 else
-                    println(Core.stdout, "I is not pointer:", i, " current_type:", current_type)
+                    println(Core.stdout, "I is not pointer index:", i-start_index+1, " current_type:", current_type)
                     iris_println("[Julia-IrisHRT-Error] No type present")
                 end
                 try 
@@ -590,6 +593,8 @@ module IrisHRT
             arg_ptr = reinterpret(MyCUDA.CuPtr{UInt16}, arg_ptr)
         elseif current_type == Int(iris_uint8)
             arg_ptr = reinterpret(MyCUDA.CuPtr{UInt8}, arg_ptr)
+        elseif current_type == Int(iris_bool)
+            arg_ptr = reinterpret(MyCUDA.CuPtr{Bool}, arg_ptr)
         elseif current_type == Int(iris_custom_type)
             data_type = get_custom_type(task_id, param_id)
             #println(Core.stdout, "dtype2: ", data_type)
@@ -623,6 +628,8 @@ module IrisHRT
             arg_ptr = reinterpret(Ptr{UInt16}, arg_ptr)
         elseif current_type == Int(iris_uint8)
             arg_ptr = reinterpret(Ptr{UInt8}, arg_ptr)
+        elseif current_type == Int(iris_bool)
+            arg_ptr = reinterpret(Ptr{Bool}, arg_ptr)
         elseif current_type == Int(iris_custom_type) && mem_custom == 0
             data_type = get_custom_type(task_id, param_id)
             #println(Core.stdout, "dtype: ", data_type)
@@ -1177,6 +1184,12 @@ module IrisHRT
         return iris_task_dmem_flush_out(task, mem)
     end
 
+    function flush(task::IrisTask, host::Array{T})::Int32 where T
+        p_host = pointer(host)
+        mem = Main.__iris_dmem_map[p_host]
+        return iris_task_dmem_flush_out(task, mem)
+    end
+
     function iris_task_h2d_full(task::IrisTask, mem::IrisMem, host::Ptr{Cvoid})::Int32
         return ccall(Libdl.dlsym(lib, :iris_task_h2d_full), Int32, (IrisTask, IrisMem, Ptr{Cvoid}), task, mem, host)
     end
@@ -1325,6 +1338,10 @@ module IrisHRT
 
     function submit(task::IrisTask, device_policy::Int64)::Int32
         return iris_task_submit(task, device_policy, Ptr{Int8}(C_NULL), 1)
+    end
+
+    function submit(task::IrisTask)::Int32
+        return iris_task_submit(task, iris_default, Ptr{Int8}(C_NULL), 1)
     end
 
     function iris_task_set_policy(task::IrisTask, device::Int32)::Int32
@@ -1557,6 +1574,8 @@ module IrisHRT
             element_type = iris_uint8
         elseif T == Char
             element_type = iris_char
+        elseif T == Bool
+            element_type = iris_bool
         elseif isstructtype(T) 
             element_type = iris_custom_type
         elseif default == iris_pointer
@@ -1717,6 +1736,15 @@ module IrisHRT
 
     function iris_data_mem_update(mem::IrisMem, host::Ptr{Cvoid})::Int32
         return ccall(Libdl.dlsym(lib, :iris_data_mem_update), Int32, (IrisMem, Ptr{Cvoid}), mem, host)
+    end
+
+    function iris_data_mem_update_host_size(mem::IrisMem, host::Ptr{Csize_t})::Int32
+        return ccall(Libdl.dlsym(lib, :iris_data_mem_update_host_size), Int32, (IrisMem, Ptr{Csize_t}), mem, host)
+    end
+
+    function dmem_update_host_size(mem::IrisMem, host_size)
+        dims = collect(Csize_t, host_size)
+        iris_data_mem_update_host_size(mem, pointer(dims))
     end
 
     function iris_data_mem_create_region(mem::Ptr{IrisMem}, root_mem::IrisMem, region::Int32)::Int32
@@ -2212,46 +2240,66 @@ module IrisHRT
         end
         # Clear all elements in the dictionary
         empty!(Main.__iris_dmem_map)
+        empty!(Main.__iris_dmem_custom_type)
+        empty!(Main.__iris_taskid_paramid_custom_type)
+        empty!(Main.__iris_cuda_devno_stream)
+        empty!(Main.__iris_hip_devno_stream)
     end
 
-    function task(; in=[], out=[], flush=[], lws=Int64[], gws=Int64[], off=Int64[], policy=IrisHRT.iris_roundrobin, wait=true, core=false, ka=false, jacc=false, kernel="kernel", args=[], dependencies=[])
+    function check_update_dmem_host_size(mem, larray)
+        hsize = host_size(mem)
+        total_elements = prod(hsize) 
+        array_elements = length(larray)
+        #println(Core.stdout, " hsize", hsize)
+        #println(Core.stdout, " prev elems: ", total_elements)
+        #println(Core.stdout, " current elems: ", array_elements)
+        if total_elements != array_elements
+            dmem_update_host_size(mem, size(larray))
+        end
+    end
+
+    function task(; in=Any[], input=Any[], out=Any[], output=Any[], flush=Any[], lws=Int64[], gws=Int64[], off=Int64[], policy=IrisHRT.iris_roundrobin, wait=true, core=false, ka=false, jacc=false, kernel="kernel", args=[], submit=true, dependencies=[])
         call_args = args
         mem_params = Dict{Any, Any}()
-        for array in vcat(out, flush)
-            p_array = array
-            if !isa(array, IrisMem) 
+        for larray in vcat(out, output, flush)
+            p_array = larray
+            if !isa(larray, IrisMem) 
                 #println("Array is not IrisMem")
-                p_array = pointer(array)
-                #println(Core.stdout, "Out ---- ", array, " typeof:", typeof(array))
+                p_array = pointer(larray)
+                #println(Core.stdout, "Out ---- ", larray, " typeof:", typeof(larray))
                 if !haskey(Main.__iris_dmem_map, p_array)
                     # Generate DMEM object if not found
-                    #println("Array not found in global map. Out/Flush Creating DMEM object for: ", pointer(array))
-                    Main.__iris_dmem_map[p_array] = IrisHRT.iris_data_mem(array)
+                    #println("Array not found in global map. Out/Flush Creating DMEM object for: ", pointer(larray))
+                    Main.__iris_dmem_map[p_array] = IrisHRT.iris_data_mem(larray)
                 else
-                    #println("Array already mapped to Output DMEM object: ", array)
+                    #println("Array already mapped to Output DMEM object: ", larray)
                 end
             end
+            #println(Core.stdout, " out inserting p_array: ", p_array)
             mem_params[p_array] = IrisHRT.iris_w
         end
-        for array in in
-            p_array = array
-            if !isa(array, IrisMem) 
-                p_array = pointer(array)
-                #println(Core.stdout, "In ---- ", array, " typeof:", typeof(array))
-                #println(Core.stdout, "In ----  typeof:", typeof(array))
-                #println("DMEM object t: ", array)
+        for larray in vcat(input, in)
+            p_array = larray
+            if !isa(larray, IrisMem) 
+                p_array = pointer(larray)
+                #println(Core.stdout, "------in inserting iris_r p_array: ", p_array)
+                #println(Core.stdout, "In ---- ", larray, " typeof:", typeof(larray))
+                #println(Core.stdout, "In ----  typeof:", typeof(larray))
+                #println("DMEM object t: ", larray)
                 if !haskey(Main.__iris_dmem_map, p_array)
                     # Generate DMEM object if not found
-                    #println("Array not found in global map. In Creating DMEM object for: ", pointer(array))
+                    #println("Array not found in global map. In Creating DMEM object for: ", pointer(larray))
                     #println("Array is not IrisMem")
-                    Main.__iris_dmem_map[p_array] = IrisHRT.iris_data_mem(array)
+                    Main.__iris_dmem_map[p_array] = IrisHRT.iris_data_mem(larray)
                 else
-                    #println("Array already mapped to Input DMEM object: ", array)
+                    #println("Array already mapped to Input DMEM object: ", larray)
                 end
             end
             if !haskey(mem_params, p_array)
+                #println(Core.stdout, "---- in inserting iris_r p_array: ", p_array, " type:", typeof(larray))
                 mem_params[p_array] = IrisHRT.iris_r
             else
+                #println(Core.stdout, " in inserting iris_rw p_array: ", p_array, " type:", typeof(larray))
                 mem_params[p_array] = IrisHRT.iris_rw
             end
         end
@@ -2261,10 +2309,14 @@ module IrisHRT
         params_info = Int32[]
         params = []
         kernel_params = []
+        #println(Core.stdout, "--------------")
+        #println(Core.stdout, "content: ", mem_params)
+        #println(Core.stdout, "--------------")
         for (index, arg) in enumerate(call_args)
-            #println(Core.stdout, "- s - s - s - : ", arg, " type:", typeof(arg))
+            #println(Core.stdout, "- s - s - s - : ", index, " type:", typeof(arg))
             if isa(arg, Array)
                 p_arg = pointer(arg)
+                #println(Core.stdout, "- s - s - s - : ", index, " type:", typeof(arg), " pointer:", p_arg, " length:", length(arg), " size:", size(arg))
                 if haskey(Main.__iris_dmem_map, p_arg)
                     #push!(kernel_params, (Main.__iris_dmem_map[p_arg], mem_params[p_arg]))
                     push!(params, Ref(Main.__iris_dmem_map[p_arg]))
@@ -2272,6 +2324,8 @@ module IrisHRT
                     if get_type(Main.__iris_dmem_map[p_arg]) == iris_custom_type
                         push_custom_type(task0.uid, index, get_dmem_custom_type(Main.__iris_dmem_map[p_arg]))
                     end
+                    mem = Main.__iris_dmem_map[p_arg]
+                    check_update_dmem_host_size(mem, arg)
                 else
                     Main.__iris_dmem_map[p_arg] = IrisHRT.iris_data_mem(arg)
                     #push!(kernel_params, (Main.__iris_dmem_map[p_arg], IrisHRT.iris_r))
@@ -2326,6 +2380,15 @@ module IrisHRT
         end
         
         #task0=IrisHRT.iris_task_julia(kernel, length(gws), off, gws, lws, kernel_params)
+        if isa(gws, Number)
+            gws = [gws]
+        end
+        if isa(lws, Number)
+            lws = [lws]
+        end
+        if isa(off, Number)
+            off = [off]
+        end
         if length(gws) > 0 && isa(gws, Tuple)
             gws = collect(gws)
         end
@@ -2367,7 +2430,9 @@ module IrisHRT
         if length(dependencies) > 0
             iris_task_depend(task0, dependencies)
         end
-        IrisHRT.iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
+        if submit
+            IrisHRT.iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
+        end
         return task0
     end
     function describe_backend(backend::IRISBackend)

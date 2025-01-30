@@ -124,6 +124,7 @@ public:
   virtual void* arch(Device* dev, void *host=NULL);
   virtual void** arch_ptr(int devno, void *host=NULL);
   virtual void** arch_ptr(Device *dev, void *host=NULL);
+  int update_host_size(size_t *host_size);
   inline void create_dev_mem(Device *dev, int devno, void *host);
   Platform *platform() { return platform_; }
   bool is_pin_memory() { return is_pin_memory_; }
@@ -143,6 +144,7 @@ protected:
   bool host_ptr_owner_;
   Platform *platform_;
   DataMemRegion **regions_;
+  bool tile_enabled_;
 #ifdef AUTO_PAR
 #ifdef AUTO_SHADOW
   void *host_ptr_shadow_;
