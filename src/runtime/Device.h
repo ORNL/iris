@@ -147,7 +147,7 @@ public:
   int RegisterHooks();
   void ExecuteDMEM2DMEM(Task *task, Command *cmd);
 
-  virtual int ResetMemory(Task *task, BaseMem *mem, uint8_t reset_value)=0;
+  virtual int ResetMemory(Task *task, Command *cmd, BaseMem *mem)=0;
   virtual void ResetContext() { }
   virtual void SetContextToCurrentThread() { }
   virtual bool IsContextChangeRequired() { return false; }
@@ -234,7 +234,7 @@ public:
   const char *kernel_path() { return kernel_path_.c_str(); }
 protected:
   LoaderDefaultKernel* ld_default() { return ld_default_; }
-  void CallMemReset(BaseMem *mem, size_t size, void *stream);
+  void CallMemReset(BaseMem *mem, size_t size, ResetData & data, void *stream);
   void LoadDefaultKernelLibrary(const char *key, const char *flags);
 private:
   LoaderDefaultKernel *ld_default_;

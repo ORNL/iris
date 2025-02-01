@@ -224,7 +224,7 @@ int DeviceHIP::Init() {
   return IRIS_SUCCESS;
 }
 
-int DeviceHIP::ResetMemory(Task *task, BaseMem *mem, uint8_t reset_value) {
+int DeviceHIP::ResetMemory(Task *task, Command *cmd, BaseMem *mem) {
     int stream_index = 0;
     hipError_t err;
     bool async = false;
@@ -237,7 +237,9 @@ int DeviceHIP::ResetMemory(Task *task, BaseMem *mem, uint8_t reset_value) {
         ld_->hipCtxSetCurrent(ctx_);
     }
 
-    if (mem->reset_data().reset_type_ == iris_reset_memset) {
+    ResetData & reset_data = cmd->reset_data();
+    if (cmd->reset_data().reset_type_ == iris_reset_memset) {
+        uint8_t reset_value = reset_data.value_.u8;
         if (async)
             err = ld_->hipMemsetAsync(mem->arch(this), reset_value, mem->size(), streams_[stream_index]);
         else
@@ -249,12 +251,12 @@ int DeviceHIP::ResetMemory(Task *task, BaseMem *mem, uint8_t reset_value) {
         }
     }
     else if (ld_default() != NULL) {
-        pair<bool, int8_t> out = mem->IsResetPossibleWithMemset();
+        pair<bool, int8_t> out = mem->IsResetPossibleWithMemset(reset_data);
         if (out.first) {
             if (async)
-                err = ld_->hipMemsetAsync(mem->arch(this), reset_value, mem->size(), streams_[stream_index]);
+                err = ld_->hipMemsetAsync(mem->arch(this), out.second, mem->size(), streams_[stream_index]);
             else
-                err = ld_->hipMemset(mem->arch(this), reset_value, mem->size());
+                err = ld_->hipMemset(mem->arch(this), out.second, mem->size());
             _hiperror(err);
             if (err != hipSuccess) {
                 worker_->platform()->IncrementErrorCount();
@@ -265,9 +267,9 @@ int DeviceHIP::ResetMemory(Task *task, BaseMem *mem, uint8_t reset_value) {
                 mem->GetMemHandlerType() == IRIS_DMEM_REGION) {
             size_t elem_size = ((DataMem*)mem)->elem_size();
             if (async)
-                CallMemReset(mem, mem->size()/elem_size, streams_[stream_index]);
+                CallMemReset(mem, mem->size()/elem_size, cmd->reset_data(), streams_[stream_index]);
             else
-                CallMemReset(mem, mem->size()/elem_size, NULL);
+                CallMemReset(mem, mem->size()/elem_size, cmd->reset_data(), NULL);
         }
         else {
             _error("Unknow reset type for memory:%lu\n", mem->uid());
@@ -361,9 +363,9 @@ int DeviceHIP::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset) 
                   mem->GetMemHandlerType() == IRIS_DMEM_REGION) {
               size_t elem_size = ((DataMem*)mem)->elem_size();
               if (l_async)
-                  CallMemReset(mem, size/elem_size, streams_[stream]);
+                  CallMemReset(mem, size/elem_size, mem->reset_data(), streams_[stream]);
               else
-                  CallMemReset(mem, size/elem_size, NULL);
+                  CallMemReset(mem, size/elem_size, mem->reset_data(), NULL);
           }
           else {
               _error("Unknow reset type for memory:%lu\n", mem->uid());

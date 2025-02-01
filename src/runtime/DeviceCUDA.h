@@ -19,7 +19,7 @@ public:
   void set_can_share_host_memory_flag(bool flag=true); 
   int Compile(char* src, const char *out=NULL, const char *flags=NULL);
   int Init();
-  int ResetMemory(Task *task, BaseMem *mem, uint8_t reset_value);
+  int ResetMemory(Task *task, Command *cmd, BaseMem *mem);
   void *GetSharedMemPtr(void* mem, size_t size);
   int MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset=false);
   int MemFree(BaseMem *mem, void* mem_addr);

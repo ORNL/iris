@@ -63,14 +63,18 @@ void BaseMem::DestroyEvent(int devno, void *event) {
     dev->DestroyEvent(event);
 }
 pair<bool, int8_t> BaseMem::IsResetPossibleWithMemset() {
-    if (reset_data_.reset_type_ == iris_reset_memset) return make_pair<bool, int8_t>(true, 0); //It will read value from reset_data->value_.u8
+    return IsResetPossibleWithMemset(reset_data_);
+}
+pair<bool, int8_t> BaseMem::IsResetPossibleWithMemset(ResetData & reset_data) {
+    if (reset_data.reset_type_ == iris_reset_memset) return make_pair<bool, int8_t>(true, 0); //It will read value from reset_data->value_.u8
     auto false_pair = std::make_pair(false, 0);
-    if (reset_data_.reset_type_ != iris_reset_assign) return false_pair;
-    IRISValue *value = &reset_data_.value_;
-    int8_t vi8 = reset_data_.value_.i8;
+    if (reset_data.reset_type_ != iris_reset_assign) return false_pair;
+    IRISValue *value = &reset_data.value_;
+    int8_t vi8 = reset_data.value_.i8;
     auto v_pair = std::make_pair(true, vi8);
     switch(element_type_) {
         case iris_int8: 
+        case iris_bool: 
         case iris_uint8: 
             if (value->i8 == 0 || value->i8 == -1) return v_pair; else break;
         case iris_int16: 

@@ -14,7 +14,7 @@ public:
 
   int Compile(char* src, const char *out=NULL, const char *flags=NULL);
   int Init();
-  int ResetMemory(Task *task, BaseMem *mem, uint8_t reset_value);
+  int ResetMemory(Task *task, Command *cmd, BaseMem *mem);
   int MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset=false);
   int MemFree(BaseMem *mem, void* mem_addr);
   int MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *tile_sizes,  size_t *full_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag="");

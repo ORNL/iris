@@ -102,7 +102,7 @@ public:
   void set_name(std::string name);
   void set_name(const char* name);
   bool given_name(){return given_name_;}
-  uint8_t reset_value() { return reset_value_; }
+  //uint8_t reset_value() { return reset_value_; }
   double SetTime(double t, bool incr=true);
   double time() { return time_; }
   void set_time_start(Timer* d);
@@ -163,9 +163,10 @@ private:
   bool given_name_;
   int access_index_;
   bool internal_memory_transfer_;
-  uint8_t reset_value_;
-
+  //uint8_t reset_value_;
+  ResetData reset_data_;
 public:
+  ResetData & reset_data() { return reset_data_; }
   static Command* Create(Task* task, int type);
   static Command* CreateInit(Task* task);
   static Command* CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws);
@@ -173,6 +174,7 @@ public:
   static Command* CreateKernelPolyMem(Task* task, Command* cmd, size_t* off, size_t* gws, iris_poly_mem* polymems, int npolymems);
   static Command* CreateMalloc(Task* task, Mem* mem);
   static Command* CreateMemResetInput(Task* task, BaseMem *mem, uint8_t reset_value=0);
+  static Command* CreateMemResetInput(Task* task, BaseMem *mem, ResetData & data);
   static Command* CreateMemIn(Task* task, DataMem* mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host);
   static Command* CreateH2Broadcast(Task* task, Mem* mem, size_t off, size_t size, void* host);
   static Command* CreateH2Broadcast(Task* task, Mem* mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host);

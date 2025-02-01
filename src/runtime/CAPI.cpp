@@ -605,6 +605,80 @@ int iris_mem_init_reset_random_log_normal_sobol_seq(iris_mem brs_mem, IRISValue 
   mem->set_reset_stddev(stddev);
   return IRIS_SUCCESS;
 }
+int iris_task_cmd_init_reset_assign(iris_task brs_task, iris_mem brs_mem, IRISValue value) {
+  ResetData reset_data;
+  reset_data.reset_type_ = iris_reset_assign; 
+  reset_data.value_ = value;
+  Platform::GetPlatform()->TaskMemResetInput(brs_task, brs_mem, reset_data);
+  return IRIS_SUCCESS;
+}
+int iris_task_cmd_init_reset_arith_seq(iris_task brs_task, iris_mem brs_mem, IRISValue start, IRISValue increment) {
+  ResetData reset_data;
+  reset_data.reset_type_ = iris_reset_arith_seq; 
+  reset_data.start_ = start;
+  reset_data.step_ = increment;
+  Platform::GetPlatform()->TaskMemResetInput(brs_task, brs_mem, reset_data);
+  return IRIS_SUCCESS;
+}
+int iris_task_cmd_init_reset_geom_seq(iris_task brs_task, iris_mem brs_mem, IRISValue start, IRISValue step) {
+  ResetData reset_data;
+  reset_data.reset_type_ = iris_reset_geom_seq; 
+  reset_data.start_ = start;
+  reset_data.step_ = step;
+  Platform::GetPlatform()->TaskMemResetInput(brs_task, brs_mem, reset_data);
+  return IRIS_SUCCESS;
+}
+int iris_task_cmd_init_reset_random_uniform_seq(iris_task brs_task, iris_mem brs_mem, long long seed, IRISValue min, IRISValue max) {
+  ResetData reset_data;
+  reset_data.reset_type_ = iris_reset_random_uniform_seq; 
+  reset_data.seed_ = seed;
+  reset_data.p1_ = min;
+  reset_data.p2_ = max;
+  Platform::GetPlatform()->TaskMemResetInput(brs_task, brs_mem, reset_data);
+  return IRIS_SUCCESS;
+}
+int iris_task_cmd_init_reset_random_normal_seq(iris_task brs_task, iris_mem brs_mem, long long seed, IRISValue mean, IRISValue stddev) {
+  ResetData reset_data;
+  reset_data.reset_type_ = iris_reset_random_normal_seq; 
+  reset_data.seed_ = seed;
+  reset_data.p1_ = mean;
+  reset_data.p2_ = stddev;
+  Platform::GetPlatform()->TaskMemResetInput(brs_task, brs_mem, reset_data);
+  return IRIS_SUCCESS;
+}
+int iris_task_cmd_init_reset_random_log_normal_seq(iris_task brs_task, iris_mem brs_mem, long long seed, IRISValue mean, IRISValue stddev) {
+  ResetData reset_data;
+  reset_data.reset_type_ = iris_reset_random_log_normal_seq; 
+  reset_data.seed_ = seed;
+  reset_data.p1_ = mean;
+  reset_data.p2_ = stddev;
+  Platform::GetPlatform()->TaskMemResetInput(brs_task, brs_mem, reset_data);
+  return IRIS_SUCCESS;
+}
+int iris_task_cmd_init_reset_random_uniform_sobol_seq(iris_task brs_task, iris_mem brs_mem, IRISValue min, IRISValue max) {
+  ResetData reset_data;
+  reset_data.reset_type_ = iris_reset_random_uniform_sobol_seq; 
+  reset_data.p1_ = min;
+  reset_data.p2_ = max;
+  Platform::GetPlatform()->TaskMemResetInput(brs_task, brs_mem, reset_data);
+  return IRIS_SUCCESS;
+}
+int iris_task_cmd_init_reset_random_normal_sobol_seq(iris_task brs_task, iris_mem brs_mem, IRISValue mean, IRISValue stddev) {
+  ResetData reset_data;
+  reset_data.reset_type_ = iris_reset_random_normal_sobol_seq; 
+  reset_data.p1_ = mean;
+  reset_data.p2_ = stddev;
+  Platform::GetPlatform()->TaskMemResetInput(brs_task, brs_mem, reset_data);
+  return IRIS_SUCCESS;
+}
+int iris_task_cmd_init_reset_random_log_normal_sobol_seq(iris_task brs_task, iris_mem brs_mem, IRISValue mean, IRISValue stddev) {
+  ResetData reset_data;
+  reset_data.reset_type_ = iris_reset_random_log_normal_sobol_seq; 
+  reset_data.p1_ = mean;
+  reset_data.p2_ = stddev;
+  Platform::GetPlatform()->TaskMemResetInput(brs_task, brs_mem, reset_data);
+  return IRIS_SUCCESS;
+}
 int iris_data_mem_init_reset(iris_mem mem, int reset) {
   return Platform::GetPlatform()->DataMemInit(mem, (bool)reset);
 }

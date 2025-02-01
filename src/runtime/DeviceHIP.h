@@ -17,7 +17,7 @@ public:
 
   int Compile(char* src, const char *out=NULL, const char *flags=NULL);
   int Init();
-  int ResetMemory(Task *task, BaseMem *mem, uint8_t reset_value);
+  int ResetMemory(Task *task, Command *cmd, BaseMem *mem);
   void RegisterPin(void *host, size_t size);
   void UnRegisterPin(void *host);
   void set_can_share_host_memory_flag(bool flag);

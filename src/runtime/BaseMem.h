@@ -293,6 +293,7 @@ namespace rt {
         int element_type() { return element_type_; }
         void set_element_type(int t) { element_type_ = t; }
         pair<bool, int8_t> IsResetPossibleWithMemset();
+        pair<bool, int8_t> IsResetPossibleWithMemset(ResetData & reset_data);
         protected:
             int element_type_;
             int recommended_stream_[IRIS_MAX_NDEVS];

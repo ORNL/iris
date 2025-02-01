@@ -342,7 +342,16 @@ Command* Command::CreateMemFlushOutToShadow(Task* task, DataMem* mem) {
 Command* Command::CreateMemResetInput(Task* task, BaseMem *mem, uint8_t reset_value) {
   Command* cmd = Create(task, IRIS_CMD_RESET_INPUT);
   cmd->mem_ = mem;
-  cmd->reset_value_ = reset_value;
+  //cmd->reset_value_ = reset_value;
+  cmd->reset_data_.reset_type_ = iris_reset_memset;
+  cmd->reset_data_.value_.u8 = reset_value;
+  return cmd;
+}
+
+Command* Command::CreateMemResetInput(Task* task, BaseMem *mem, ResetData & data) {
+  Command* cmd = Create(task, IRIS_CMD_RESET_INPUT);
+  cmd->mem_ = mem;
+  cmd->reset_data_ = data;
   return cmd;
 }
 

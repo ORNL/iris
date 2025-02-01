@@ -131,9 +131,27 @@ int DeviceOpenMP::Init() {
   return IRIS_SUCCESS;
 }
 
-int DeviceOpenMP::ResetMemory(Task *task, BaseMem *mem, uint8_t reset_value)
+int DeviceOpenMP::ResetMemory(Task *task, Command *cmd, BaseMem *mem)
 {
-    memset(mem->arch(this), reset_value, mem->size());
+    ResetData & reset_data = cmd->reset_data();
+    if (cmd->reset_data().reset_type_ == iris_reset_memset) {
+        uint8_t reset_value = reset_data.value_.u8;
+        memset(mem->arch(this), reset_value, mem->size());
+    }
+    else {
+        pair<bool, int8_t> out = mem->IsResetPossibleWithMemset(reset_data);
+        if (out.first) {
+            memset(mem->arch(this), out.second, mem->size());
+        }
+        else if (mem->GetMemHandlerType() == IRIS_DMEM || 
+                mem->GetMemHandlerType() == IRIS_DMEM_REGION) {
+            size_t elem_size = ((DataMem*)mem)->elem_size();
+            CallMemReset(mem, mem->size()/elem_size, cmd->reset_data(), NULL);
+        }
+        else {
+            _error("Unknow reset type for memory:%lu\n", mem->uid());
+        }
+    }
     return IRIS_SUCCESS;
 }
 
@@ -157,7 +175,7 @@ int DeviceOpenMP::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool rese
           else if (mem->GetMemHandlerType() == IRIS_DMEM || 
                   mem->GetMemHandlerType() == IRIS_DMEM_REGION) {
               size_t elem_size = ((DataMem*)mem)->elem_size();
-              CallMemReset(mem, size/elem_size, NULL);
+              CallMemReset(mem, size/elem_size, mem->reset_data(), NULL);
           }
           else {
               _error("Unknow reset type for memory:%lu\n", mem->uid());

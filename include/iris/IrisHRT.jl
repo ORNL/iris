@@ -1410,47 +1410,6 @@ module IrisHRT
     end
 
     const VALUE_SIZE = 8
-    function iris_mem_init_reset_assign(mem::IrisMem, element::Any)::Int32
-        value_buffer = Base.zeros(UInt8, VALUE_SIZE)
-        if typeof(element) == Float32
-            value_bytes = reinterpret(UInt8, [element])
-            value_buffer[1:4] .= value_bytes
-        elseif typeof(element) == Float64
-            value_bytes = reinterpret(UInt8, [element])
-            value_buffer[1:8] .= value_bytes
-        elseif typeof(element) == Int64
-            value_bytes = reinterpret(UInt8, [element])
-            value_buffer[1:8] .= value_bytes
-        elseif typeof(element) == Int32
-            value_bytes = reinterpret(UInt8, [element])
-            value_buffer[1:4] .= value_bytes
-        elseif typeof(element) == Int16
-            value_bytes = reinterpret(UInt8, [element])
-            value_buffer[1:2] .= value_bytes
-        elseif typeof(element) == Int8
-            value_bytes = reinterpret(UInt8, [element])
-            value_buffer[1:1] .= value_bytes
-        elseif typeof(element) == UInt64
-            value_bytes = reinterpret(UInt8, [element])
-            value_buffer[1:8] .= value_bytes
-        elseif typeof(element) == UInt32
-            value_bytes = reinterpret(UInt8, [element])
-            value_buffer[1:4] .= value_bytes
-        elseif typeof(element) == UInt16
-            value_bytes = reinterpret(UInt8, [element])
-            value_buffer[1:2] .= value_bytes
-        elseif typeof(element) == UInt8
-            value_bytes = reinterpret(UInt8, [element])
-            value_buffer[1:1] .= value_bytes
-        else
-            println(Core.stdout, "Unknown type of $element")
-        end
-        #println("Element: ", element, " value_buffer:", value_buffer)
-        ivalue = IRISValue(Tuple(value_buffer))
-        #println("Element: ", element, " buffer:", ivalue)
-        return ccall(Libdl.dlsym(lib, :iris_mem_init_reset_assign), Int32, (IrisMem, IRISValue), mem, ivalue)
-    end
-
     function flat_in_buffer(value::Any)::IRISValue
         value_buffer = Base.zeros(UInt8, VALUE_SIZE)
         if typeof(value) == Float32
@@ -1473,12 +1432,19 @@ module IrisHRT
             value_buffer[1:2] .= reinterpret(UInt8, [value])
         elseif typeof(value) == UInt8
             value_buffer[1:1] .= reinterpret(UInt8, [value])
+        elseif typeof(value) == Bool 
+            value_buffer[1:1] .= reinterpret(UInt8, [value])
         else
             println(Core.stdout, "Unknown type of $value")
         end
         ivalue = IRISValue(Tuple(value_buffer))
         #println("Element: ", value, " buffer:", ivalue)
         return ivalue 
+    end
+
+    function iris_mem_init_reset_assign(mem::IrisMem, element::Any)::Int32
+        ivalue = flat_in_buffer(element)
+        return ccall(Libdl.dlsym(lib, :iris_mem_init_reset_assign), Int32, (IrisMem, IRISValue), mem, ivalue)
     end
 
     function iris_mem_init_reset_random_uniform_seq(mem::IrisMem, seed::Int, min::Any, max::Any)::Int32
@@ -1504,6 +1470,32 @@ module IrisHRT
 
     function iris_data_mem_init_reset(mem::IrisMem, reset::Int32)::Int32
         return ccall(Libdl.dlsym(lib, :iris_data_mem_init_reset), Int32, (IrisMem, Int32), mem, reset)
+    end
+    
+    function iris_task_cmd_init_reset_assign(task::IrisTask, mem::IrisMem, element::Any)::Int32
+        ivalue = flat_in_buffer(element)
+        return ccall(Libdl.dlsym(lib, :iris_task_cmd_init_reset_assign), Int32, (IrisTask, IrisMem, IRISValue), task, mem, ivalue)
+    end
+
+    function iris_task_cmd_init_reset_random_uniform_seq(task::IrisTask, mem::IrisMem, seed::Int, min::Any, max::Any)::Int32
+        imin = flat_in_buffer(min)
+        imax = flat_in_buffer(max)
+        #println("Element: ", element, " buffer:", ivalue)
+        return ccall(Libdl.dlsym(lib, :iris_task_cmd_init_reset_random_uniform_seq), Int32, (IrisTask, IrisMem, Clonglong, IRISValue, IRISValue), task, mem, seed, imin, imax)
+    end
+
+    function iris_task_cmd_init_reset_arith_seq(task::IrisTask, mem::IrisMem, element::Any, step::Any)::Int32
+        ivalue = flat_in_buffer(element)
+        istep = flat_in_buffer(step)
+        #println("Element: ", element, " buffer:", ivalue)
+        return ccall(Libdl.dlsym(lib, :iris_task_cmd_init_reset_arith_seq), Int32, (IrisTask, IrisMem, IRISValue, IRISValue), task, mem, ivalue, istep)
+    end
+
+    function iris_task_cmd_init_reset_geom_seq(task::IrisTask, mem::IrisMem, element::Any, step::Any)::Int32
+        ivalue = flat_in_buffer(element)
+        istep = flat_in_buffer(step)
+        #println("Element: ", element, " buffer:", ivalue)
+        return ccall(Libdl.dlsym(lib, :iris_task_cmd_init_reset_geom_seq), Int32, (IrisTask, IrisMem, IRISValue, IRISValue), task, mem, ivalue, istep)
     end
 
     function rand(T, seed, dims...)
@@ -2258,7 +2250,147 @@ module IrisHRT
         end
     end
 
-    function task(; in=Any[], input=Any[], out=Any[], output=Any[], flush=Any[], lws=Int64[], gws=Int64[], off=Int64[], policy=IrisHRT.iris_roundrobin, wait=true, core=false, ka=false, jacc=false, kernel="kernel", args=[], submit=true, dependencies=[])
+    function get_init_task_dmem(::Type{T}, dims...; task=nothing, dmem=nothing) where T
+        task0 = task
+        if task0 == nothing
+            task0 = iris_task_create_struct()
+        end
+        dmem0 = dmem
+        if dmem0 == nothing
+            dmem0 = iris_data_mem(T, dims...)
+        end
+        return (task=task0, dmem=dmem0)
+    end
+    
+    function get_init_task_dmem(host::Array{T}; task=nothing, dmem=nothing) where T
+        task0 = task
+        if task0 == nothing
+            task0 = iris_task_create_struct()
+        end
+        dmem0 = dmem
+        if dmem0 == nothing
+            p_array = pointer(host)
+            if !haskey(Main.__iris_dmem_map, p_array)
+                dmem0 = iris_data_mem(host)
+                Main.__iris_dmem_map[p_array] = dmem0
+            else
+                dmem0 = Main.__iris_dmem_map[p_array]
+            end
+        end
+        return (task=task0, dmem=dmem0)
+    end
+    
+    function rand_task(::Type{T}, seed, dims...; task=nothing, dmem=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true) where T
+        (task0, dmem0) = get_init_task_dmem(T, dims..., task=task, dmem=dmem)
+        iris_task_cmd_init_reset_random_uniform_seq(task0, dmem0, seed, T(0), T(1))
+        if submit
+            iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
+        end
+        return (task=task0, dmem=dmem0)
+    end
+
+    function zeros_task(::Type{T}, dims...; task=nothing, dmem=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true) where T
+        (task0, dmem0) = get_init_task_dmem(T, dims..., task=task, dmem=dmem) 
+        iris_task_cmd_init_reset_assign(task0, dmem0, T(0))
+        if submit
+            iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
+        end
+        return (task=task0, dmem=dmem0)
+    end
+
+    function ones_task(::Type{T}, dims...; task=nothing, dmem=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true) where T
+        (task0, dmem0) = get_init_task_dmem(T, dims..., task=task, dmem=dmem)
+        iris_task_cmd_init_reset_assign(task0, dmem0, T(1))
+        if submit
+            iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
+        end
+        return (task=task0, dmem=dmem0)
+    end
+
+    function arange_task(::Type{T}, dims...; task=nothing, dmem=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true) where T
+        (task0, dmem0) = get_init_task_dmem(T, dims..., task=task, dmem=dmem)
+        iris_task_cmd_init_reset_arith_seq(task0, dmem0, T(0), T(1))
+        if submit
+            iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
+        end
+        return (task=task0, dmem=dmem0)
+    end
+
+    function linspace_task(::Type{T}, start, step, dims...; task=nothing, dmem=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true) where T
+        (task0, dmem0) = get_init_task_dmem(T, dims..., task=task, dmem=dmem)
+        iris_task_cmd_init_reset_arith_seq(task0, dmem0, T(start), T(step))
+        if submit
+            iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
+        end
+        return (task=task0, dmem=dmem0)
+    end
+
+    function geomspace_task(::Type{T}, start, step, dims...; task=nothing, dmem=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true) where T
+        (task0, dmem0) = get_init_task_dmem(T, dims..., task=task, dmem=dmem)
+        iris_task_cmd_init_reset_geom_seq(task0, dmem0, T(start), T(step))
+        if submit
+            iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
+        end
+        return (task=task0, dmem=dmem0)
+    end
+
+
+    function rand_task(host::Array{T}; task=nothing, dmem=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true) where T
+        (task0, dmem0) = get_init_task_dmem(host, dmem=dmem, task=task)
+        iris_task_cmd_init_reset_random_uniform_seq(task0, dmem0, seed, T(0), T(1))
+        if submit
+            iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
+        end
+        return (task=task0, dmem=dmem0)
+    end
+
+    function zeros_task(host::Array{T}; task=nothing, dmem=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true) where T
+        (task0, dmem0) = get_init_task_dmem(host, dmem=dmem, task=task) 
+        iris_task_cmd_init_reset_assign(task0, dmem0, T(0))
+        if submit
+            iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
+        end
+        return (task=task0, dmem=dmem0)
+    end
+
+    function ones_task(host::Array{T}; task=nothing, dmem=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true) where T
+        (task0, dmem0) = get_init_task_dmem(host, dmem=dmem, task=task)
+        iris_task_cmd_init_reset_assign(task0, dmem0, T(1))
+        if submit
+            iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
+        end
+        return (task=task0, dmem=dmem0)
+    end
+
+    function arange_task(host::Array{T}; task=nothing, dmem=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true) where T
+        (task0, dmem0) = get_init_task_dmem(host, dmem=dmem, task=task)
+        iris_task_cmd_init_reset_arith_seq(task0, dmem0, T(0), T(1))
+        if submit
+            iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
+        end
+        return (task=task0, dmem=dmem0)
+    end
+
+    function linspace_task(host::Array{T}; task=nothing, dmem=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true) where T
+        (task0, dmem0) = get_init_task_dmem(host, dmem=dmem, task=task)
+        iris_task_cmd_init_reset_arith_seq(task0, dmem0, T(start), T(step))
+        if submit
+            iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
+        end
+        return (task=task0, dmem=dmem0)
+    end
+
+    function geomspace_task(host::Array{T}; task=nothing, dmem=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true) where T
+        (task0, dmem0) = get_init_task_dmem(host, dmem=dmem, task=task)
+        iris_task_cmd_init_reset_geom_seq(task0, dmem0, T(start), T(step))
+        if submit
+            iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
+        end
+        return (task=task0, dmem=dmem0)
+    end
+
+
+    function task(; in=Any[], input=Any[], out=Any[], output=Any[], flush=Any[], lws=Int64[], gws=Int64[], off=Int64[], policy=IrisHRT.iris_roundrobin, wait=true, core=false, ka=false, jacc=false, task=nothing, kernel="kernel", args=[], submit=true, dependencies=[])
         call_args = args
         mem_params = Dict{Any, Any}()
         for larray in vcat(out, output, flush)
@@ -2304,8 +2436,11 @@ module IrisHRT
             end
         end
         # create task structure
-        task0 = iris_task_create_struct()
-        
+        task0 = task
+        if task0 == nothing
+            task0 = iris_task_create_struct()
+        end
+
         params_info = Int32[]
         params = []
         kernel_params = []

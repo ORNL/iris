@@ -71,12 +71,12 @@ Device::~Device() {
   delete timer_;
 }
 
-void Device::CallMemReset(BaseMem *mem, size_t size, void *stream)
+void Device::CallMemReset(BaseMem *mem, size_t size, ResetData & reset_data, void *stream)
 {
     int elem_type = mem->element_type();
     if (elem_type == iris_unknown) return;
     if (ld_default_ == NULL) return;
-    ResetData & reset_data = mem->reset_data();
+    //ResetData & reset_data = mem->reset_data();
     int reset_type = reset_data.reset_type_;
     void *arch = mem->arch(devno());
     if (reset_type == iris_reset_assign) {
@@ -1006,7 +1006,7 @@ void Device::ExecuteMemResetInput(Task *task, Command* cmd) {
         int mem_stream = GetStream(task); 
         DataMem* mem = (DataMem *)cmd->mem();
         mem->dev_lock(devno_);
-        ResetMemory(task, mem, cmd->reset_value());
+        ResetMemory(task, cmd, mem);
         mem->set_host_dirty();
         mem->set_dirty_except(devno_);
         mem->dev_unlock(devno_);

@@ -112,6 +112,7 @@ public:
   int TaskMalloc(iris_task brs_task, iris_mem brs_mem);
   int TaskMemFlushOut(iris_task brs_task, iris_mem brs_mem);
   int TaskMemResetInput(iris_task brs_task, iris_mem brs_mem, uint8_t reset);
+  int TaskMemResetInput(iris_task brs_task, iris_mem brs_mem, ResetData & data);
   int TaskH2Broadcast(iris_task brs_task, iris_mem brs_mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host);
   int TaskH2Broadcast(iris_task brs_task, iris_mem brs_mem, size_t off, size_t size, void* host);
   int TaskH2BroadcastFull(iris_task brs_task, iris_mem brs_mem, void* host);

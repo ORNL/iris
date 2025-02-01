@@ -661,6 +661,15 @@ extern int iris_task_malloc(iris_task task, iris_mem mem);
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_task_cmd_reset_mem(iris_task task, iris_mem mem, uint8_t reset);
+extern int iris_task_cmd_init_reset_assign(iris_task brs_task, iris_mem brs_mem, IRISValue value);
+extern int iris_task_cmd_init_reset_arith_seq(iris_task brs_task, iris_mem brs_mem, IRISValue start, IRISValue increment);
+extern int iris_task_cmd_init_reset_geom_seq(iris_task brs_task, iris_mem brs_mem, IRISValue start, IRISValue step);
+extern int iris_task_cmd_init_reset_random_uniform_seq(iris_task brs_task, iris_mem brs_mem, long long seed, IRISValue min, IRISValue max);
+extern int iris_task_cmd_init_reset_random_normal_seq(iris_task brs_task, iris_mem brs_mem, long long seed, IRISValue mean, IRISValue stddev);
+extern int iris_task_cmd_init_reset_random_log_normal_seq(iris_task brs_task, iris_mem brs_mem, long long seed, IRISValue mean, IRISValue stddev);
+extern int iris_task_cmd_init_reset_random_uniform_sobol_seq(iris_task brs_task, iris_mem brs_mem, IRISValue min, IRISValue max);
+extern int iris_task_cmd_init_reset_random_normal_sobol_seq(iris_task brs_task, iris_mem brs_mem, IRISValue mean, IRISValue stddev);
+extern int iris_task_cmd_init_reset_random_log_normal_sobol_seq(iris_task brs_task, iris_mem brs_mem, IRISValue mean, IRISValue stddev);
 
 
 /**@brief set task level IRIS stream policy type 

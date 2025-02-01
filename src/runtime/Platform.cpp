@@ -1405,7 +1405,17 @@ int Platform::TaskMemResetInput(iris_task brs_task, iris_mem brs_mem, uint8_t re
     assert(task != NULL);
     BaseMem* mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
     Command *cmd = Command::CreateMemResetInput(task, mem, reset);
-    task->AddMemResetCommand(cmd);
+    task->AddCommand(cmd);
+    return IRIS_SUCCESS;
+}
+
+int Platform::TaskMemResetInput(iris_task brs_task, iris_mem brs_mem, ResetData & reset) 
+{
+    Task *task = get_task_object(brs_task);
+    assert(task != NULL);
+    BaseMem* mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+    Command *cmd = Command::CreateMemResetInput(task, mem, reset);
+    task->AddCommand(cmd);
     return IRIS_SUCCESS;
 }
 
