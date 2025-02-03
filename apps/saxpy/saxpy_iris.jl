@@ -38,23 +38,6 @@ function saxpy_cuda(Z, A, X, Y)
     return nothing
 end
 
-function saxpy_cuda_v1(Z, A, X, Y)
-    # Calculate global index
-    i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
-    #@inbounds Z[i] = A * X[i]*X[i-1]*X[i+1] + Y[i]*Y[i-1]*Y[i+1]
-    # Check if the index is within bounds
-    if i > 1 && i < length(Z)
-        @inbounds Z[i] = A * X[i] * X[i-1] * X[i+1] + Y[i] * Y[i-1] * Y[i+1]
-    elseif i == 1
-        # Handle the first element (no i-1)
-        @inbounds Z[i] = A * X[i] * X[i+1] + Y[i] * Y[i+1]
-    elseif i == length(Z)
-        # Handle the last element (no i+1)
-        @inbounds Z[i] = A * X[i] * X[i-1] + Y[i] * Y[i-1]
-    end
-    return nothing
-end
-
 function saxpy_hip(Z, A, X, Y)
     # Calculate global index
     i = (workgroupIdx().x - 1) * workgroupDim().x + workitemIdx().x

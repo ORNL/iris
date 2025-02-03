@@ -9,6 +9,7 @@
 #import Pkg.add("CUDA")
 #import Pkg.add("AMDGPU")
 Base.Experimental.make_io_thread()
+using InteractiveUtils
 if !haskey(ENV, "IRIS_ARCHS")
     ENV["IRIS_ARCHS"] = "cuda:hip:openmp"
 end
@@ -2390,10 +2391,104 @@ module IrisHRT
     end
 
 
+    function identify_in_out(kernel, args...)
+        f = nothing 
+        if isdefined(Main, Symbol(kernel*"_cuda"))
+            f = getfield(Main, Symbol(kernel*"_cuda"))
+        elseif isdefined(Main, Symbol(kernel*"_hip"))
+            f = getfield(Main, Symbol(kernel*"_hip"))
+        elseif isdefined(Main, Symbol(kernel*"_openmp"))
+            f = getfield(Main, Symbol(kernel*"_openmp"))
+        elseif isdefined(Main, Symbol(kernel))
+            f = getfield(Main, Symbol(kernel))
+        end
+        if f == nothing
+            return (in=[], out=[])
+        end
+        m = @which f(args...)   # Get method instance
+        ast = Base.uncompressed_ast(m)  # Extract AST
+        #println(ast)
+
+        #ci = @code_lowered sample_function(10)
+        ci = ast
+
+        nargs = count(flag -> flag == :argument, ci.slotflags)
+        #println("Slot flags:", ci.slotflags)
+        println("Slot names:", ci.slotnames)
+        #println("Slot ssavalue types:", ci.ssavaluetypes)
+        #println("Slot types:", typeof(ci.slotnames))
+        #println("Number of function arguments: ", nargs)
+        #println()
+
+        vector_in = []
+        vector_out = []
+
+        # Iterate over each expression in the lowered code.
+        for (i, item) in enumerate(ci.code)
+            #println("Expression $(i):")
+            #println("  ", item)
+            expr = item
+            # Process only expressions (Expr objects) that are assignments.
+            if expr isa Expr && expr.head == :call
+                # The called function is usually in expr.args[1]. It might be directly a Symbol
+                # or an expression (e.g. a getfield call) that contains the symbol.
+                f = expr.args[1]
+                fname = nothing
+                
+                if f isa Symbol
+                    fname = f
+                elseif f isa Expr && f.head == :getfield
+                    # For example, this might be something like (getfield Base :getindex)
+                    fname = getfield(f, :args)[2]
+                elseif f isa Core.SSAValue
+                    nothing
+                else
+                    #println("f expr: ", typeof(f))
+                    fname = f.name
+                end
+                #println("------- Call found----- func:", fname == :getindex)
+                # Check if this call is to getindex or setindex!
+                if fname == :getindex || fname == :setindex!
+                    #println("  Found a call to $(fname):")
+                    # Iterate through the call arguments (skipping the first which is the function itself).
+                    for (j, arg) in enumerate(expr.args[2:end])
+                        # If the argument is a Symbol, print it.
+                        if arg isa Symbol
+                            #println("    Argument $(j) is a Symbol: ", arg, " (type: ", typeof(arg), ")")
+                        elseif arg isa Core.SlotNumber
+                            sn = arg.id
+                            slot_index = Int(arg.id)
+                            original_var = ci.slotnames[slot_index]
+                            o_original_var = getfield(ci, :slotnames)[slot_index]
+                            if fname == :getindex
+                                push!(vector_in, slot_index)
+                            end
+                            if fname == :setindex!
+                                push!(vector_out, slot_index)
+                            end
+                        else
+                            #println("    Argument $(j): ", arg)
+                        end
+                    end
+                end
+            else
+                #println("  (Not an assignment expression.)")
+            end
+            #println()  # Blank line for clarity
+        end
+        println("IN: ", vector_in)
+        println("OUT: ", vector_out)
+        return (in=vector_in, out=vector_out)
+    end
+
     function task(; in=Any[], input=Any[], out=Any[], output=Any[], flush=Any[], lws=Int64[], gws=Int64[], off=Int64[], policy=IrisHRT.iris_roundrobin, wait=true, core=false, ka=false, jacc=false, task=nothing, kernel="kernel", args=[], submit=true, dependencies=[])
         call_args = args
         mem_params = Dict{Any, Any}()
-        for larray in vcat(out, output, flush)
+        t_args = Tuple(args)
+        auto_in = Any[]
+        auto_out = Any[]
+        #(auto_in, auto_out) = identify_in_out(kernel, t_args...)
+        for larray in vcat(out, output, flush, auto_out)
             p_array = larray
             if !isa(larray, IrisMem) 
                 #println("Array is not IrisMem")
@@ -2410,7 +2505,7 @@ module IrisHRT
             #println(Core.stdout, " out inserting p_array: ", p_array)
             mem_params[p_array] = IrisHRT.iris_w
         end
-        for larray in vcat(input, in)
+        for larray in vcat(input, in, auto_in)
             p_array = larray
             if !isa(larray, IrisMem) 
                 p_array = pointer(larray)
