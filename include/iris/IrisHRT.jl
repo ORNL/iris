@@ -9,7 +9,6 @@
 #import Pkg.add("CUDA")
 #import Pkg.add("AMDGPU")
 Base.Experimental.make_io_thread()
-using InteractiveUtils
 if !haskey(ENV, "IRIS_ARCHS")
     ENV["IRIS_ARCHS"] = "cuda:hip:openmp"
 end
@@ -114,6 +113,7 @@ mutable struct IRISHIPStream
 end
 module IrisHRT
 
+    using InteractiveUtils
     using Requires
     using Base.Threads: @spawn
     #__precompile__(false)
@@ -2476,18 +2476,29 @@ module IrisHRT
             end
             #println()  # Blank line for clarity
         end
-        println("IN: ", vector_in)
-        println("OUT: ", vector_out)
-        return (in=vector_in, out=vector_out)
+        vector_in = sort!(unique(vector_in))
+        vector_out = sort!(unique(vector_out))
+        a_in = []
+        a_out = []
+        for i in vector_in
+            push!(a_in, args[i-1])
+        end
+        for i in vector_out
+            push!(a_out, args[i-1])
+        end
+        println("Automatic in:", vector_in, " and out:", vector_out)
+        return (in=a_in, out=a_out)
     end
 
-    function task(; in=Any[], input=Any[], out=Any[], output=Any[], flush=Any[], lws=Int64[], gws=Int64[], off=Int64[], policy=IrisHRT.iris_roundrobin, wait=true, core=false, ka=false, jacc=false, task=nothing, kernel="kernel", args=[], submit=true, dependencies=[])
+    function task(; in=Any[], input=Any[], out=Any[], output=Any[], flush=Any[], auto_in_out=false, lws=Int64[], gws=Int64[], off=Int64[], policy=IrisHRT.iris_roundrobin, wait=true, core=false, ka=false, jacc=false, task=nothing, kernel="kernel", args=[], submit=true, dependencies=[])
         call_args = args
         mem_params = Dict{Any, Any}()
         t_args = Tuple(args)
         auto_in = Any[]
         auto_out = Any[]
-        #(auto_in, auto_out) = identify_in_out(kernel, t_args...)
+        if auto_in_out
+            (auto_in, auto_out) = identify_in_out(kernel, t_args...)
+        end
         for larray in vcat(out, output, flush, auto_out)
             p_array = larray
             if !isa(larray, IrisMem) 
