@@ -48,7 +48,8 @@ void ProfileEvent::RecordEndEvent() {
     event_dev_->TrackDestroyEvent(end_event_);
     _event_prof_debug("Recorded id:%lu type:%d End event:%p stream:%d", id_, type_, end_event_, stream_);
 }
-Task::Task(Platform* platform, int type, const char* name, int max_cmds) : cmds_(16) {
+Task::Task(Platform* platform, int type, const char* name, int max_cmds) {
+  cmds_.reserve(16);
   //printf("Creating task:%lu:%s ptr:%p\n", uid(), name, this);
   is_kernel_launch_disabled_ = false;
   enable_julia_if_ = false;
