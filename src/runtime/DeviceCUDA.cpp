@@ -603,7 +603,7 @@ int DeviceCUDA::MemFree(BaseMem *mem, void* mem_addr) {
   if (ngarbage_ >= IRIS_MAX_GABAGES) _error("ngarbage[%d]", ngarbage_);
   else garbage_[ngarbage_++] = cumem;
 #else
-  _trace("dptr[%p]", (void *)cumem);
+  _trace("CUDA Freeing dptr[%p]", (void *)cumem);
   int stream = mem->recommended_stream(devno());
   bool async = (is_async(false) && stream != DEFAULT_STREAM_INDEX && stream >=0);
   CUresult err;

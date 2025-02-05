@@ -387,8 +387,10 @@ module IrisHRT
                 #println(Core.stdout, "I is not pointer:", i, " current_type:", current_type)
                 if current_type == Int(iris_int64)  # Assuming 1 is for Int
                     push!(julia_args, Int64(unsafe_load(Ptr{Clonglong}(arg_ptr))))
+                    #println(Core.stdout, "I is not pointer:", i, " current_type: Int64-", current_type, " value:", julia_args[end])
                 elseif current_type == Int(iris_int32)  # Assuming 1 is for Int
                     push!(julia_args, Int32(unsafe_load(Ptr{Cint}(arg_ptr))))
+                    #println(Core.stdout, "I is not pointer:", i, " current_type: Int32-", current_type, " value:", julia_args[end])
                 elseif current_type == Int(iris_int16)  # Assuming 1 is for Int
                     push!(julia_args, Int16(unsafe_load(Ptr{Cshort}(arg_ptr))))
                 elseif current_type == Int(iris_int8)  # Assuming 1 is for Int
@@ -452,7 +454,7 @@ module IrisHRT
                     #push!(julia_args, jptr)
                     if Int(target) == Int(iris_cuda)
                         arg_ptr = cuda_reinterpret(task_id, i-start_index+1, arg_ptr, current_type)
-                        #iris_println("Index: $i target arg:$arg_ptr size:$size_dims")
+                        #println(Core.stdout, "Index: $i target arg:$arg_ptr size:$size_dims")
                         arg_ptr = unsafe_wrap(MyCUDA.CuArray, arg_ptr, size_dims, own=false)
                         #iris_println("After Pointer $arg_ptr")
                     elseif Int(target) == Int(iris_hip)
@@ -1204,6 +1206,19 @@ module IrisHRT
         p_host = pointer(host)
         mem = Main.__iris_dmem_map[p_host]
         return iris_task_dmem_flush_out(task, mem)
+    end
+
+    function release(array_obj::Array{T}) where T 
+        dmem_finalizer(array_obj)
+    end
+
+    function dmem_finalizer(array_obj)
+        p_array = pointer(array_obj)
+        if haskey(Main.__iris_dmem_map, p_array)
+            println(Core.stdout, ">>>>>>> releasing memory: $p_array <<<<<<<<<<<")
+            IrisHRT.iris_mem_release(Main.__iris_dmem_map[p_array])
+            delete!(Main.__iris_dmem_map, p_array)       
+        end
     end
 
     function iris_task_h2d_full(task::IrisTask, mem::IrisMem, host::Ptr{Cvoid})::Int32
@@ -2258,10 +2273,10 @@ module IrisHRT
         hsize = host_size(mem)
         total_elements = prod(hsize) 
         array_elements = length(larray)
-        #println(Core.stdout, " hsize", hsize)
-        #println(Core.stdout, " prev elems: ", total_elements)
-        #println(Core.stdout, " current elems: ", array_elements)
         if total_elements != array_elements
+            #println(Core.stdout, " hsize", hsize)
+            #println(Core.stdout, " prev elems: ", total_elements)
+            #println(Core.stdout, " current elems: ", array_elements)
             dmem_update_host_size(mem, size(larray))
         end
     end
@@ -2406,16 +2421,21 @@ module IrisHRT
     end
 
 
-    function identify_in_out(kernel, args...)
+    function identify_in_out(julia_kernel_type, kernel, args...)
         f = nothing 
-        if isdefined(Main, Symbol(kernel*"_cuda"))
+        if julia_kernel_type == IrisHRT.julia_native && isdefined(Main, Symbol(kernel*"_cuda"))
             f = getfield(Main, Symbol(kernel*"_cuda"))
-        elseif isdefined(Main, Symbol(kernel*"_hip"))
+        elseif julia_kernel_type == IrisHRT.julia_native && isdefined(Main, Symbol(kernel*"_hip"))
             f = getfield(Main, Symbol(kernel*"_hip"))
-        elseif isdefined(Main, Symbol(kernel*"_openmp"))
+        elseif julia_kernel_type == IrisHRT.julia_native && isdefined(Main, Symbol(kernel*"_openmp"))
             f = getfield(Main, Symbol(kernel*"_openmp"))
-        elseif isdefined(Main, Symbol(kernel))
+        elseif julia_kernel_type == IrisHRT.julia_kernel_abstraction && isdefined(Main, Symbol(kernel))
             f = getfield(Main, Symbol(kernel))
+        elseif julia_kernel_type == IrisHRT.julia_jacc && isdefined(Main, Symbol(kernel))
+            f = getfield(Main, Symbol(kernel))
+        else
+            error("Couldn't find function definition for kernel: ", kernel)
+            return (in=[], out=[])
         end
         if f == nothing
             return (in=[], out=[])
@@ -2534,8 +2554,16 @@ module IrisHRT
         if ! auto_in_out && length(in)==0 && length(out)==0 && length(args)!=0
             auto_in_out = true
         end
+        julia_kernel_type = IrisHRT.julia_native
+        if core
+            julia_kernel_type = IrisHRT.core_native
+        elseif ka
+            julia_kernel_type = IrisHRT.julia_kernel_abstraction
+        elseif jacc
+            julia_kernel_type = IrisHRT.julia_jacc
+        end
         if auto_in_out
-            (auto_in, auto_out) = identify_in_out(kernel, t_args...)
+            (auto_in, auto_out) = identify_in_out(julia_kernel_type, kernel, t_args...)
         end
         for larray in vcat(out, output, flush, auto_out)
             p_array = larray
@@ -2547,6 +2575,7 @@ module IrisHRT
                     # Generate DMEM object if not found
                     #println("Array not found in global map. Out/Flush Creating DMEM object for: ", pointer(larray))
                     Main.__iris_dmem_map[p_array] = IrisHRT.iris_data_mem(larray)
+                    #finalizer(dmem_finalizer, larray)
                 else
                     #println("Array already mapped to Output DMEM object: ", larray)
                 end
@@ -2567,6 +2596,7 @@ module IrisHRT
                     #println("Array not found in global map. In Creating DMEM object for: ", pointer(larray))
                     #println("Array is not IrisMem")
                     Main.__iris_dmem_map[p_array] = IrisHRT.iris_data_mem(larray)
+                    #finalizer(dmem_finalizer, larray)
                 else
                     #println("Array already mapped to Input DMEM object: ", larray)
                 end
@@ -2607,6 +2637,7 @@ module IrisHRT
                     check_update_dmem_host_size(mem, arg)
                 else
                     Main.__iris_dmem_map[p_arg] = IrisHRT.iris_data_mem(arg)
+                    #finalizer(dmem_finalizer, arg)
                     #push!(kernel_params, (Main.__iris_dmem_map[p_arg], IrisHRT.iris_r))
                     push!(params, Ref(Main.__iris_dmem_map[p_arg]))
                     push!(params_info, Int32(IrisHRT.iris_rw))
@@ -2638,14 +2669,6 @@ module IrisHRT
         #println(Core.stdout, "gws:", gws)
         #println(Core.stdout, "lws:", lws)
         #println(Core.stdout, "kernel_params     :", kernel_params)
-        julia_kernel_type = IrisHRT.julia_native
-        if core
-            julia_kernel_type = IrisHRT.core_native
-        elseif ka
-            julia_kernel_type = IrisHRT.julia_kernel_abstraction
-        elseif jacc
-            julia_kernel_type = IrisHRT.julia_jacc
-        end
 
         # Set kernel type
         if julia_kernel_type == IrisHRT.julia_native 
