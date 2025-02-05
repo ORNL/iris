@@ -71,6 +71,7 @@ void Platform::Reset() {
   tmp_dir_[0] = '\0';
   disable_d2d_ = false;
   disable_data_transfers_ = false;
+  dmem_register_pin_flag_ = true;
   finalize_ = false;
   release_task_flag_ = true;
   async_ = false;
@@ -1843,7 +1844,8 @@ int Platform::DataMemCreate(iris_mem* brs_mem, void *host, size_t size, int elem
   DataMem* mem = new DataMem(this, host, size, element_type);
   if (brs_mem) mem->SetStructObject(brs_mem);
 #ifndef DISABLE_PIN_BY_DEFAULT
-  DataMemRegisterPin(*brs_mem);
+  if (dmem_register_pin_flag_)
+      DataMemRegisterPin(*brs_mem);
 #endif
   //if (brs_mem) *brs_mem = mem->struct_obj();
   if (mem->size()==0) return IRIS_ERROR;
@@ -1856,7 +1858,8 @@ int Platform::DataMemCreate(iris_mem* brs_mem, void *host, size_t size, const ch
   DataMem* mem = new DataMem(this, host, size, symbol, element_type);
   if (brs_mem) mem->SetStructObject(brs_mem);
 #ifndef DISABLE_PIN_BY_DEFAULT
-  DataMemRegisterPin(*brs_mem);
+  if (dmem_register_pin_flag_)
+    DataMemRegisterPin(*brs_mem);
 #endif
   //if (brs_mem) *brs_mem = mem->struct_obj();
   if (mem->size()==0) return IRIS_ERROR;
@@ -1869,7 +1872,8 @@ int Platform::DataMemCreate(iris_mem* brs_mem, void *host, size_t *size, int dim
   DataMem* mem = new DataMem(this, host, size, dim, element_size, element_type);
   if (brs_mem) mem->SetStructObject(brs_mem);
 #ifndef DISABLE_PIN_BY_DEFAULT
-  DataMemRegisterPin(*brs_mem);
+  if (dmem_register_pin_flag_)
+    DataMemRegisterPin(*brs_mem);
 #endif
   //if (brs_mem) *brs_mem = mem->struct_obj();
   if (mem->size()==0) return IRIS_ERROR;
@@ -1905,7 +1909,8 @@ iris_mem *Platform::DataMemCreate(void *host, size_t size, int element_type) {
   if (mem->size()==0) return NULL;
   iris_mem *brs_mem = mem->struct_obj();
 #ifndef DISABLE_PIN_BY_DEFAULT
-  DataMemRegisterPin(*brs_mem);
+  if (dmem_register_pin_flag_)
+    DataMemRegisterPin(*brs_mem);
 #endif
   return brs_mem;
 }
@@ -1915,7 +1920,8 @@ iris_mem *Platform::DataMemCreate(void *host, size_t size, const char *symbol, i
   if (mem->size()==0) return NULL;
   iris_mem *brs_mem = mem->struct_obj();
 #ifndef DISABLE_PIN_BY_DEFAULT
-  DataMemRegisterPin(*brs_mem);
+  if (dmem_register_pin_flag_)
+    DataMemRegisterPin(*brs_mem);
 #endif
   return brs_mem;
 }
@@ -1926,7 +1932,8 @@ iris_mem *Platform::DataMemCreate(void *host, size_t *size, int dim, size_t elem
   if (mem->size()==0) return NULL;
   iris_mem *brs_mem = mem->struct_obj();
 #ifndef DISABLE_PIN_BY_DEFAULT
-  DataMemRegisterPin(*brs_mem);
+  if (dmem_register_pin_flag_)
+    DataMemRegisterPin(*brs_mem);
 #endif
   return brs_mem;
 }

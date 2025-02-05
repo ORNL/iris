@@ -749,6 +749,10 @@ int iris_unregister_pin_memory(void *host) {
 int iris_register_pin_memory(void *host, size_t size) {
   return Platform::GetPlatform()->RegisterPin(host, size);
 }
+int iris_data_mem_set_pin_flag(bool flag) {
+  Platform::GetPlatform()->set_dmem_register_pin_flag((bool)flag);
+  return IRIS_SUCCESS;
+}
 int iris_data_mem_pin(iris_mem mem) {
   return Platform::GetPlatform()->DataMemRegisterPin(mem);
 }

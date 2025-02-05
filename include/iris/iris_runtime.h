@@ -1372,6 +1372,8 @@ extern int iris_data_mem_clear(iris_mem mem);
  */
 extern int iris_data_mem_unpin(iris_mem mem);
 
+extern int iris_data_mem_set_pin_flag(bool flag);
+
 /**@brief  Pins a host memory for all the available devices
  *
  * This function pins a host memory for all the available devices

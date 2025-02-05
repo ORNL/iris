@@ -48,7 +48,7 @@ void ProfileEvent::RecordEndEvent() {
     event_dev_->TrackDestroyEvent(end_event_);
     _event_prof_debug("Recorded id:%lu type:%d End event:%p stream:%d", id_, type_, end_event_, stream_);
 }
-Task::Task(Platform* platform, int type, const char* name, int max_cmds) {
+Task::Task(Platform* platform, int type, const char* name, int max_cmds) : cmds_(16) {
   //printf("Creating task:%lu:%s ptr:%p\n", uid(), name, this);
   is_kernel_launch_disabled_ = false;
   enable_julia_if_ = false;
@@ -59,7 +59,7 @@ Task::Task(Platform* platform, int type, const char* name, int max_cmds) {
   max_cmds_ = (max_cmds < IRIS_TASK_MAX_CMDS) ? IRIS_TASK_MAX_CMDS : max_cmds;
   ncmds_ = 0;
   disable_consistency_ = false;
-  cmds_ = new Command *[max_cmds_];
+  //cmds_ = new Command *[max_cmds_];
   cmd_kernel_ = NULL;
   cmd_last_ = NULL;
   stream_policy_ = STREAM_POLICY_DEFAULT;
@@ -131,7 +131,8 @@ Task::~Task() {
   }
   //profile_events_.clear();
   for (int i = 0; i < ncmds_; i++) delete cmds_[i];
-  delete [] cmds_;
+  cmds_.clear();
+  //delete [] cmds_;
   if (depends_uids_) delete [] depends_uids_;
   pthread_mutex_destroy(&stream_mutex_);
   pthread_mutex_destroy(&mutex_pending_);
@@ -238,15 +239,16 @@ int Task::get_device_affinity() {
     return -1;
 }
 void Task::AddCommand(Command* cmd) {
-  if (ncmds_ >= max_cmds_) _error("ncmds[%d]", ncmds_);
-  cmds_[ncmds_++] = cmd;
+  //if (ncmds_ >= max_cmds_) _error("ncmds[%d]", ncmds_);
+  //cmds_[ncmds_++] = cmd;
+  cmds_.push_back(cmd); ncmds_++;
   if (cmd->type() == IRIS_CMD_KERNEL) {
-    if (cmd_kernel_) _error("kernel[%s] is already set", cmd->kernel()->name());
+    //if (cmd_kernel_) _error("kernel[%s] is already set", cmd->kernel()->name());
     if (!given_name_) {
       name_ = cmd->kernel()->name();
       given_name_ = true;
     }
-    cmd_kernel_ = cmd;
+    if (cmd_kernel_==NULL) cmd_kernel_ = cmd;
   }
   if (!system_ &&
      (cmd->type() == IRIS_CMD_KERNEL || cmd->type() == IRIS_CMD_H2D ||
@@ -270,6 +272,7 @@ void Task::print_incomplete_tasks()
 
 void Task::ClearCommands() {
   for (int i = 0; i < ncmds_; i++) delete cmds_[i];
+  cmds_.clear();
   ncmds_ = 0;
 }
 

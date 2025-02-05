@@ -1110,6 +1110,10 @@ module IrisHRT
         return ccall(Libdl.dlsym(lib, :iris_task_create_struct), IrisTask, ())
     end
 
+    function empty_task()
+        return iris_task_create_struct()
+    end
+
     function iris_task_create_perm(task::Ptr{IrisTask})::Int32
         return ccall(Libdl.dlsym(lib, :iris_task_create_perm), Int32, (Ptr{IrisTask},), task)
     end
@@ -1755,6 +1759,18 @@ module IrisHRT
 
     function iris_data_mem_pin(mem::IrisMem)::Int32
         return ccall(Libdl.dlsym(lib, :iris_data_mem_pin), Int32, (IrisMem,), mem)
+    end
+
+    function iris_data_mem_set_pin_flag(flag::Bool)::Int32
+        return ccall(Libdl.dlsym(lib, :iris_data_mem_set_pin_flag), Int32, (Int32,), Int32(flag))
+    end
+
+    function enable_pin()
+        return iris_data_mem_set_pin_flag(true)
+    end
+
+    function disable_pin()
+        return iris_data_mem_set_pin_flag(false)
     end
 
     function iris_data_mem_update(mem::IrisMem, host::Ptr{Cvoid})::Int32

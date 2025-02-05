@@ -256,7 +256,7 @@ private:
   bool parent_exist_;
   int ncmds_;
   int max_cmds_;
-  Command **cmds_;
+  vector<Command *> cmds_;
   Command* cmd_kernel_;
   Command* cmd_last_;
   Device* dev_;

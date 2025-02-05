@@ -300,6 +300,8 @@ public:
   bool disable_init_devices() { return disable_init_devices_; }
   bool disable_init_workers() { return disable_init_workers_; }
   bool is_default_kernels_load() { return enable_default_kernels_load_; }
+  void set_dmem_register_pin_flag(bool flag) { dmem_register_pin_flag_ = flag; }
+  bool dmem_register_pin_flag() { return dmem_register_pin_flag_; }
   void enable_default_kernels_load(bool flag) { enable_default_kernels_load_ = flag; }
 
 #ifdef AUTO_PAR
@@ -347,6 +349,7 @@ private:
   int ndevs_enabled_;
   int nfailures_;
   bool async_;
+  bool dmem_register_pin_flag_;
 
   std::vector<LoaderHost2OpenCL*> loaderHost2OpenCL_;
   LoaderHost2HIP * loaderHost2HIP_;
