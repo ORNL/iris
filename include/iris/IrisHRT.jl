@@ -26,6 +26,7 @@ module DummyAMDGPU
     function has_rocm_gpu()
         return false  # Simulate no available GPU
     end
+    function ROCBackend(args...) return nothing end
     function device!(dev) end
     function context!(ctx) end
     function stream!(str) end
@@ -119,6 +120,7 @@ module IrisHRT
     #__precompile__(false)
 
     using Libdl
+    using JACC
     cwd = pwd()
     const cuda_available = Main.cuda_available
     const MyCUDA = Main.MyCUDA
@@ -153,10 +155,12 @@ module IrisHRT
     const iris_xw::Int32 = -5
     const iris_xrw::Int32 = -6
 
-    const julia_native              = 0
-    const core_native               = 1
-    const julia_kernel_abstraction  = 2
-    const julia_jacc                = 3
+    const iris_julia_native              = 0
+    const iris_core_native               = 1
+    const iris_julia_kernel_abstraction  = 2
+    const iris_julia_jacc                = 3
+    const iris_julia_jacc_parallel_for   = (0 << 16) | 3
+    const iris_julia_jacc_parallel_reduce= (1 << 16) | 3
 
 
     const iris_default = 1 << 5
@@ -518,9 +522,9 @@ module IrisHRT
                 #println("Size of IRISCuStream type: ", sizeof(Main.IRISCuStream), " bytes")
             end
             #iris_println("Calling CUDA kernel")
-            if julia_kernel_type == julia_kernel_abstraction 
+            if julia_kernel_type == iris_julia_kernel_abstraction 
                 call_cuda_kernel_ka(julia_kernel_type, devno, func_name, j_threads, j_blocks, cu_ctx, cu_stream, julia_args, b_async_flag)
-            elseif julia_kernel_type == julia_jacc
+            elseif (julia_kernel_type & 0xFFFF) == iris_julia_jacc
                 call_cuda_kernel_jacc(julia_kernel_type, devno, func_name, j_threads, j_blocks, cu_ctx, cu_stream, julia_args, b_async_flag)
             else
                 call_cuda_kernel(julia_kernel_type, devno, func_name, j_threads, j_blocks, cu_ctx, cu_stream, julia_args, b_async_flag)
@@ -548,9 +552,9 @@ module IrisHRT
             #Main.AMDGPU.device!(Main.AMDGPU.devices()[devno+1])
             #Main.AMDGPU.context!(hip_ctx)
             #iris_println("Calling HIP kernel")
-            if julia_kernel_type == julia_kernel_abstraction 
+            if julia_kernel_type == iris_julia_kernel_abstraction 
                 call_hip_kernel_ka(julia_kernel_type, devno, func_name, j_threads, j_blocks, hip_ctx, hip_stream, julia_args, b_async_flag)
-            elseif julia_kernel_type == julia_jacc
+            elseif (julia_kernel_type & 0xFFFF) == iris_julia_jacc
                 call_hip_kernel_jacc(julia_kernel_type, devno, func_name, j_threads, j_blocks, hip_ctx, hip_stream, julia_args, b_async_flag)
             else
                 call_hip_kernel(julia_kernel_type, devno, func_name, j_threads, j_blocks, hip_ctx, hip_stream, julia_args, b_async_flag)
@@ -564,9 +568,9 @@ module IrisHRT
             #iris_println("dev:$devno")
             func_name = unsafe_string(kernel_name)
             #iris_println("Calling OpenMP kernel")
-            if julia_kernel_type == julia_kernel_abstraction 
+            if julia_kernel_type == iris_julia_kernel_abstraction 
                 call_openmp_kernel_ka(julia_kernel_type, func_name, j_threads, j_blocks, julia_args, b_async_flag)
-            elseif julia_kernel_type == julia_jacc
+            elseif (julia_kernel_type & 0xFFFF) == iris_julia_jacc
                 call_openmp_kernel_jacc(julia_kernel_type, func_name, j_threads, j_blocks, julia_args, b_async_flag)
             else
                 call_openmp_kernel(julia_kernel_type, func_name, j_threads, j_blocks, julia_args, b_async_flag)
@@ -743,7 +747,33 @@ module IrisHRT
     # Call Julia kernel 
     # CUDA kernel wrapper (KernelAbstraction kernels)
     function call_cuda_kernel_jacc(julia_kernel_type::Any, devno::Any, func_name::String, threads::Any, blocks::Any, ctx::Any, stream::Any, args::Any, async_flag::Bool=false)
-        error("CUDA handler for JACC is not yet implemented!")
+        if !Main.cuda_available
+            error("CUDA device not available.")
+        end
+
+        func_name_target = func_name
+        # Initialize CUDA
+        func = getfield(Main, Symbol(func_name_target))
+        # Convert the array of arguments to a tuple
+        args_tuple = Tuple(args)
+        # Call the function with arguments
+        gws = map(*, threads, blocks)
+        if length(gws)==1
+            gws = gws[1]
+        end
+        if async_flag
+            MyCUDA.device!(Int(devno))
+            MyCUDA.context!(ctx)
+            MyCUDA.stream!(stream)
+            backend = MyCUDA.CUDAKernels.CUDABackend(false, false)
+            #println(Core.stdout, "Calling JACC async:")
+            JACC.parallel_for(backend, gws, func, args_tuple...)
+        else
+            backend = MyCUDA.CUDAKernels.CUDABackend(false, false)
+            #println(Core.stdout, "Calling JACC:", gws, " func:", func)
+            JACC.parallel_for(backend, gws, func, args_tuple...)
+        end
+        #synchronize(blocking = true)
     end
     using KernelAbstractions
     function call_cuda_kernel_ka(julia_kernel_type::Any, devno::Any, func_name::String, threads::Any, blocks::Any, ctx::Any, stream::Any, args::Any, async_flag::Bool=false)
@@ -840,7 +870,29 @@ module IrisHRT
     end
 
     function call_hip_kernel_jacc(julia_kernel_type::Any, devno::Any, func_name::String, threads::Any, blocks::Any, ctx::Any, stream::Any, args::Any, async_flag::Bool=false)
-        error("HIP handler for JACC is not yet implemented!")
+        #iris_println("Func $func_name")
+        # Initialize CUDA
+        func = getfield(Main, Symbol(func_name))
+        # Convert the array of arguments to a tuple
+        args_tuple = Tuple(args)
+        # Call the function with arguments
+        gws = map(*, threads, blocks)
+        if length(gws)==1
+            gws = gws[1]
+        end
+        if async_flag
+                #iris_println("---------ASynchronous HIP:$devno execution $blocks $threads func:$func stream:$stream ctx:$ctx gws:$gws----------")
+                MyAMDGPU.context!(ctx)
+                MyAMDGPU.stream!(stream)
+                backend = MyAMDGPU.ROCBackend()
+                JACC.parallel_for(backend, gws, func, args_tuple...)
+        else
+            #println(Core.stdout, "---------Synchronous HIP execution $blocks $threads $gws func:$func----------", ctx)
+            #MyAMDGPU.context!(ctx)
+            backend = MyAMDGPU.ROCBackend()
+            JACC.parallel_for(backend, gws, func, args_tuple...)
+        end
+        #AMDGPU.synchronize()
     end
     function call_hip_kernel_ka(julia_kernel_type::Any, devno::Any, func_name::String, threads::Any, blocks::Any, ctx::Any, stream::Any, args::Any, async_flag::Bool=false)
         if !Main.hip_available
@@ -866,13 +918,13 @@ module IrisHRT
                 #iris_println("---------ASynchronous HIP:$devno execution $blocks $threads func:$func stream:$stream ctx:$ctx----------")
                 MyAMDGPU.context!(ctx)
                 MyAMDGPU.stream!(stream)
-                backend = MyAMDGPU.ROCKernels.ROCBackend(target="gfx908")
+                backend = MyAMDGPU.ROCBackend()
                 #new_func = assign_hip_ka_kernel(Symbol(func_name), func)
                 #new_func(backend)(args_tuple...; ndrange=gws, workgroupsize=threads)
                 func(backend)(args_tuple...; ndrange=gws, workgroupsize=threads)
         else
             #iris_println("---------Synchronous HIP execution $blocks $threads func:$func----------")
-            backend = MyAMDGPU.ROCKernels.ROCBackend()
+            backend = MyAMDGPU.ROCBackend()
             func(backend)(args_tuple...; ndrange=gws, workgroupsize=threads)
             KernelAbstractions.synchronize(backend)
         end
@@ -925,7 +977,20 @@ module IrisHRT
     end
 
     function call_openmp_kernel_jacc(julia_kernel_type::Any, func_name::String, threads::Any, blocks::Any, args::Any, async_flag::Bool=false)
-        error("OpenMP handler for JACC is not yet implemented!")
+        func_name_target = func_name
+        #func = getfield(IrisKernelImpl, Symbol(func_name_target))
+        func = getfield(Main, Symbol(func_name_target))
+        # Convert the array of arguments to a tuple
+        args_tuple = Tuple(args)
+        # Call the function with arguments
+        gws = threads
+        if length(gws)==1
+            gws = gws[1]
+        end
+        backend = JACC.ThreadsBackend()
+        nthreads = Threads.nthreads()
+        num_cpus = Sys.CPU_THREADS
+        JACC.parallel_for(backend, gws, func, args_tuple...)
     end
     function call_openmp_kernel_ka(julia_kernel_type::Any, func_name::String, threads::Any, blocks::Any, args::Any, async_flag::Bool=false)
         func_name_target = func_name
@@ -1287,7 +1352,7 @@ module IrisHRT
         #println("Params: ", params)
         #println("NParams : $nparams")
         task = iris_task_create_struct()
-        ccall(Libdl.dlsym(lib, :iris_task_enable_julia_interface), Int32, (IrisTask, Int32), task, Int32(IrisHRT.julia_native))
+        ccall(Libdl.dlsym(lib, :iris_task_enable_julia_interface), Int32, (IrisTask, Int32), task, Int32(IrisHRT.iris_julia_native))
         off_c = Ptr{UInt64}(C_NULL)
         if length(off) != 0
             off_c = reinterpret(Ptr{UInt64}, pointer(off))
@@ -2437,17 +2502,17 @@ module IrisHRT
     end
 
 
-    function identify_in_out(julia_kernel_type, kernel, args...)
+    function identify_in_out(julia_kernel_type, gws, kernel, args...)
         f = nothing 
-        if julia_kernel_type == IrisHRT.julia_native && isdefined(Main, Symbol(kernel*"_cuda"))
+        if julia_kernel_type == IrisHRT.iris_julia_native && isdefined(Main, Symbol(kernel*"_cuda"))
             f = getfield(Main, Symbol(kernel*"_cuda"))
-        elseif julia_kernel_type == IrisHRT.julia_native && isdefined(Main, Symbol(kernel*"_hip"))
+        elseif julia_kernel_type == IrisHRT.iris_julia_native && isdefined(Main, Symbol(kernel*"_hip"))
             f = getfield(Main, Symbol(kernel*"_hip"))
-        elseif julia_kernel_type == IrisHRT.julia_native && isdefined(Main, Symbol(kernel*"_openmp"))
+        elseif julia_kernel_type == IrisHRT.iris_julia_native && isdefined(Main, Symbol(kernel*"_openmp"))
             f = getfield(Main, Symbol(kernel*"_openmp"))
-        elseif julia_kernel_type == IrisHRT.julia_kernel_abstraction && isdefined(Main, Symbol(kernel))
+        elseif julia_kernel_type == IrisHRT.iris_julia_kernel_abstraction && isdefined(Main, Symbol(kernel))
             f = getfield(Main, Symbol(kernel))
-        elseif julia_kernel_type == IrisHRT.julia_jacc && isdefined(Main, Symbol(kernel))
+        elseif (julia_kernel_type & 0xFFFF) == IrisHRT.iris_julia_jacc && isdefined(Main, Symbol(kernel))
             f = getfield(Main, Symbol(kernel))
         else
             error("Couldn't find function definition for kernel: ", kernel)
@@ -2456,7 +2521,25 @@ module IrisHRT
         if f == nothing
             return (in=[], out=[])
         end
-        m = @which f(args...)   # Get method instance
+        m = nothing
+        offset = 0
+        if (julia_kernel_type & 0xFFFF) == iris_julia_jacc
+            i = 0 
+            j = 0
+            k = 0
+            offset = length(gws)
+            if offset == 1
+                m = @which f(i, args...)   # Get method instance
+            elseif offset == 2
+                m = @which f(i, j, args...)   # Get method instance
+            elseif offset == 3
+                m = @which f(i, j, k, args...)   # Get method instance
+            else
+                error("Couldn't find JACC function for gws:", gws, " for kernel:", kernel)
+            end
+        else
+            m = @which f(args...)   # Get method instance
+        end
         ast = Base.uncompressed_ast(m)  # Extract AST
         #println(ast)
 
@@ -2465,7 +2548,7 @@ module IrisHRT
 
         nargs = count(flag -> flag == :argument, ci.slotflags)
         #println("Slot flags:", ci.slotflags)
-        println("Slot names:", ci.slotnames)
+        #println("Slot names:", ci.slotnames)
         #println("Slot ssavalue types:", ci.ssavaluetypes)
         #println("Slot types:", typeof(ci.slotnames))
         #println("Number of function arguments: ", nargs)
@@ -2500,9 +2583,10 @@ module IrisHRT
                 #println("------- Call found----- func:", fname == :getindex)
                 # Check if this call is to getindex or setindex!
                 if fname == :getindex || fname == :setindex!
+                    #println("Expression $(i):", item)
                     #println("  Found a call to $(fname):")
                     # Iterate through the call arguments (skipping the first which is the function itself).
-                    for (j, arg) in enumerate(expr.args[2:end])
+                    for (j, arg) in enumerate(expr.args[2:2])
                         # If the argument is a Symbol, print it.
                         if arg isa Symbol
                             #println("    Argument $(j) is a Symbol: ", arg, " (type: ", typeof(arg), ")")
@@ -2529,39 +2613,39 @@ module IrisHRT
         end
         vector_in = sort!(unique(vector_in))
         vector_out = sort!(unique(vector_out))
+        #println("Automatic in:", vector_in, " and out:", vector_out)
         a_in = []
         a_out = []
         for i in vector_in
-            push!(a_in, args[i-1])
+            push!(a_in, args[i-1-offset])
         end
         for i in vector_out
-            push!(a_out, args[i-1])
+            push!(a_out, args[i-1-offset])
         end
-        println("Automatic in:", vector_in, " and out:", vector_out)
         return (in=a_in, out=a_out)
     end
 
-    function parallel_for((L, M, N)::Tuple{Int64, Int64, Int64}, f::Function, x... ; task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true)
-        return task(gws=(L,M,N), task=task, jacc=true, submit=submit, policy=policy, wait=wait, kernel=String(Symbol(f)), args=Any[x...])
+    function parallel_for((L, M, N)::Tuple{Int64, Int64, Int64}, f::Function, x... ; task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true, dependencies=[], flush=Any[])
+        return IrisHRT.task(gws=(L,M,N), task=task, parallel_for=true, submit=submit, policy=policy, wait=wait, flush=flush, dependencies=dependencies, kernel=String(Symbol(f)), args=Any[x...])
     end
 
-    function parallel_for((M, N)::Tuple{Int64, Int64}, f::Function, x... ; task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true)
-        return task(gws=(M,N), task=task, jacc=true, submit=submit, policy=policy, wait=wait, kernel=String(Symbol(f)), args=Any[x...])
+    function parallel_for((M, N)::Tuple{Int64, Int64}, f::Function, x... ; task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true, dependencies=[], flush=Any[])
+        return IrisHRT.task(gws=(M,N), task=task, parallel_for=true, submit=submit, policy=policy, wait=wait, flush=flush, dependencies=dependencies, kernel=String(Symbol(f)), args=Any[x...])
     end
 
-    function parallel_for(N::Int64, f::Function, x... ; task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true)
-        return task(gws=N, task=task, jacc=true, submit=submit, policy=policy, wait=wait, kernel=String(Symbol(f)), args=Any[x...])
+    function parallel_for(N::Int64, f::Function, x... ; task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true, dependencies=[], flush=Any[])
+        return IrisHRT.task(gws=N, task=task, parallel_for=true, submit=submit, policy=policy, wait=wait, flush=flush, dependencies=dependencies, kernel=String(Symbol(f)), args=Any[x...])
     end
 
-    function parallel_reduce((M,N)::Tuple{Int64,Int64}, op, f::Function, x... ; init, task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true)
-        return task(gws=(M,N), task=task, jacc=true, submit=submit, policy=policy, wait=wait, kernel=String(Symbol(f)), args=Any[x...])
+    function parallel_reduce((M,N)::Tuple{Int64,Int64}, op, f::Function, x... ; init, task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true, dependencies=[], flush=Any[])
+        return IrisHRT.task(gws=(M,N), task=task, parallel_reduce=true, submit=submit, policy=policy, wait=wait, flush=flush, dependencies=dependencies, kernel=String(Symbol(f)), args=Any[x...])
     end
 
-    function parallel_reduce(N::Int64, op, f::Function, x... ; init, task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true)
-        return task(gws=N, task=task, jacc=true, submit=submit, policy=policy, wait=wait, kernel=String(Symbol(f)), args=Any[x...])
+    function parallel_reduce(N::Int64, op, f::Function, x... ; init, task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true, dependencies=[])
+        return IrisHRT.task(gws=N, task=task, parallel_reduce=true, submit=submit, policy=policy, wait=wait, flush=flush, dependencies=dependencies, kernel=String(Symbol(f)), args=Any[x...])
     end
 
-    function task(; in=Any[], input=Any[], out=Any[], output=Any[], flush=Any[], auto_in_out=false, lws=Int64[], gws=Int64[], off=Int64[], policy=IrisHRT.iris_roundrobin, wait=true, core=false, ka=false, jacc=false, task=nothing, kernel="kernel", args=[], submit=true, dependencies=[])
+    function task(; in=Any[], input=Any[], out=Any[], output=Any[], flush=Any[], auto_in_out=false, lws=Int64[], gws=Int64[], off=Int64[], policy=IrisHRT.iris_roundrobin, wait=true, core=false, ka=false, parallel_reduce=false, parallel_for=false, task=nothing, kernel="kernel", args=[], submit=true, dependencies=[])
         call_args = args
         mem_params = Dict{Any, Any}()
         t_args = Tuple(args)
@@ -2570,16 +2654,18 @@ module IrisHRT
         if ! auto_in_out && length(in)==0 && length(out)==0 && length(args)!=0
             auto_in_out = true
         end
-        julia_kernel_type = IrisHRT.julia_native
+        julia_kernel_type = IrisHRT.iris_julia_native
         if core
-            julia_kernel_type = IrisHRT.core_native
+            julia_kernel_type = IrisHRT.iris_core_native
         elseif ka
-            julia_kernel_type = IrisHRT.julia_kernel_abstraction
-        elseif jacc
-            julia_kernel_type = IrisHRT.julia_jacc
+            julia_kernel_type = IrisHRT.iris_julia_kernel_abstraction
+        elseif parallel_for
+            julia_kernel_type = IrisHRT.iris_julia_jacc_parallel_for
+        elseif parallel_reduce
+            julia_kernel_type = IrisHRT.iris_julia_jacc_parallel_reduce
         end
         if auto_in_out
-            (auto_in, auto_out) = identify_in_out(julia_kernel_type, kernel, t_args...)
+            (auto_in, auto_out) = identify_in_out(julia_kernel_type, gws, kernel, t_args...)
         end
         for larray in vcat(out, output, flush, auto_out)
             p_array = larray
@@ -2687,13 +2773,13 @@ module IrisHRT
         #println(Core.stdout, "kernel_params     :", kernel_params)
 
         # Set kernel type
-        if julia_kernel_type == IrisHRT.julia_native 
+        if julia_kernel_type == IrisHRT.iris_julia_native 
             ccall(Libdl.dlsym(lib, :iris_task_enable_julia_interface), Int32, (IrisTask, Int32), task0, Int32(julia_kernel_type))
-        elseif julia_kernel_type == IrisHRT.julia_kernel_abstraction
+        elseif julia_kernel_type == IrisHRT.iris_julia_kernel_abstraction
             ccall(Libdl.dlsym(lib, :iris_task_enable_julia_interface), Int32, (IrisTask, Int32), task0, Int32(julia_kernel_type))
-        elseif julia_kernel_type == IrisHRT.julia_jacc
+        elseif (julia_kernel_type & 0xFFFF) == IrisHRT.iris_julia_jacc
             ccall(Libdl.dlsym(lib, :iris_task_enable_julia_interface), Int32, (IrisTask, Int32), task0, Int32(julia_kernel_type))
-        elseif julia_kernel_type == IrisHRT.core_native
+        elseif julia_kernel_type == IrisHRT.iris_core_native
             # Do nothing here
         end
         
