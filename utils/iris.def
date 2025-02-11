@@ -1,0 +1,31 @@
+Bootstrap: docker
+#Bootstrap: localimage
+#From: system_only.sif
+#Bootstrap: docker
+From: ubuntu:22.04
+Stage: build
+
+%labels
+    Author Narasinga Rao Miniskar
+    Version v3.0
+
+%setup
+    mkdir -p ${APPTAINER_ROOTFS}/software/iris
+
+%files
+    containers/install_julia.sh /install_julia.sh
+    build.sh /software/iris/.
+    CMakeLists.txt /software/iris/.
+    src   /software/iris/
+    apps  /software/iris/
+    tests /software/iris/
+    utils /software/iris/
+
+
+%environment
+
+%post
+    pwd
+    HOME=/ JULIA_CACHE_NAME=.julia.apptainer  . /install_julia.sh
+    cd /software/iris/ 
+    IRIS_INSTALL_ROOT=$PWD/install bash build.sh  
