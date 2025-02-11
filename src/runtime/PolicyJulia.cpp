@@ -14,7 +14,7 @@ namespace rt {
 PolicyJulia::PolicyJulia(Scheduler* scheduler) {
   out_devs_ = NULL;
   j_devs_ = NULL;
-  if (!scheduler_->platform()->is_julia_enabled()) return;
+  if (!scheduler->platform()->is_julia_enabled()) return;
   SetScheduler(scheduler);
   index_ = 0;
   out_devs_ = new int32_t[ndevs_+1];
