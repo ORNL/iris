@@ -14,6 +14,7 @@ class Kernel;
 class BaseMem;
 class Mem;
 class Task;
+class Device;
 class Graph;
 } /* namespace rt */
 } /* namespace iris */
@@ -46,6 +47,17 @@ struct __attribute__ ((packed)) _iris_mem {
 #endif // DOXYGEN_SHOULD_SKIP_THIS
 #ifdef __cplusplus
   iris::rt::BaseMem* class_obj;
+#else
+  void *class_obj;
+#endif
+  unsigned long uid;
+};
+
+#ifndef DOXYGEN_SHOULD_SKIP_THIS
+struct __attribute__ ((packed)) _iris_device {
+#endif // DOXYGEN_SHOULD_SKIP_THIS
+#ifdef __cplusplus
+  iris::rt::Device* class_obj;
 #else
   void *class_obj;
 #endif
@@ -106,6 +118,7 @@ typedef enum StreamPolicy StreamPolicy;
 #define iris_ocl                (1 << 26)
 #define iris_block_cycle        (1 << 27)
 #define iris_custom             (1 << 28)
+#define iris_julia_policy       (1 << 29)
 
 enum DeviceModel {
 iris_cuda = 1,
@@ -216,6 +229,7 @@ typedef struct _iris_task      iris_task;
 typedef struct _iris_mem       iris_mem;
 typedef struct _iris_kernel    iris_kernel;
 typedef struct _iris_graph     iris_graph;
+typedef struct _iris_device    iris_device;
 
 typedef int (*iris_host_task)(void* params, const int* device);
 typedef int (*iris_host_python_task)(int64_t* params_id, const int* device);
@@ -298,6 +312,7 @@ extern void iris_enable_default_kernels(int flag);
  */
 extern void iris_task_retain(iris_task task, int flag);
 
+extern int iris_task_set_julia_policy(iris_task task, const char *name);
 
 /**@brief Sets an IRIS environment variable.
  *
@@ -689,6 +704,27 @@ extern int iris_task_set_stream_policy(iris_task brs_task, StreamPolicy policy);
  */
 extern void iris_task_disable_asynchronous(iris_task brs_task);
 
+/**@brief Gets task meta data array pointer
+ *
+ * This function used for getting optional task metadata 
+ *
+ * @param brs_task iris task object
+ * @return returns the pointer of metadata array 
+ */
+extern int *iris_task_get_metadata_all(iris_task brs_task);
+
+
+/**@brief Sets task meta data array
+ *
+ * This function used for setting optional task metadata 
+ *
+ * @param brs_task iris task object
+ * @param meta_data the meta data array pointer needs to be saved
+ * @param n count of metadata
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_task_set_metadata_all(iris_task brs_task, int *mdata, int n);
+
 /**@brief Gets task meta data
  *
  * This function used for getting optional task metadata through the specified index
@@ -711,6 +747,14 @@ extern int iris_task_get_metadata(iris_task brs_task, int index);
  */
 extern int iris_task_set_metadata(iris_task brs_task, int index, int metadata);
 
+/**@brief Get task meta count
+ *
+ * This function used to get total metadata count 
+ *
+ * @param brs_task iris task object
+ * @return This function returns an integer indicating count of metadata 
+ */
+extern int iris_task_get_metadata_count(iris_task brs_task);
 
 /**@brief Adds a H2Broadcast command to the target task.
  *
@@ -1055,10 +1099,10 @@ extern int iris_task_submit(iris_task task, int device, const char* opt, int syn
  * This function sets scheduling policy for a task
  *
  * @param task iris task object
- * @param device device or scheduling policy
+ * @param policy either device index or scheduling policy
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
-extern int iris_task_set_policy(iris_task task, int device);
+extern int iris_task_set_policy(iris_task task, int policy);
 
 /**@brief Gets a scheduling policy for a task
  *
@@ -2266,6 +2310,7 @@ extern int iris_read_bool_env(const char *env_name);
  */
 extern int iris_read_int_env(const char *env_name);
 
+typedef int32_t (*julia_policy_t)(iris_task task, const char *policy_name, iris_device *devs, int32_t ndevs, int32_t *out_dev); 
 // Define a type for the Julia kernel launch function call pointer
 typedef int32_t (*julia_kernel_t)(unsigned long task_id, int32_t julia_kernel_type, int32_t target, int32_t devno, void *ctx, int async, int32_t stream_index, void **stream, int32_t nstreams, int32_t *args, void **values, size_t *param_size, size_t *param_dim_size, int32_t nparams, size_t *threads, size_t *blocks, int dim, const char *kernel_name);
 
@@ -2275,11 +2320,17 @@ typedef int32_t (*julia_kernel_t)(unsigned long task_id, int32_t julia_kernel_ty
  * @return This function returns int flag
  */
 extern int iris_julia_init(void *julia_launch_func, int decoupled_init);
+extern int iris_julia_policy_init(void *julia_policy_func);
 
 /* API to return the Julia kernel launch function
  * @return This function returns Julia kernel launch function pointer
  */
 extern julia_kernel_t iris_get_julia_launch_func();
+
+/* API to return the Julia policy launch function
+ * @return This function returns Julia policy launch function pointer
+ */
+extern julia_policy_t iris_get_julia_policy_func();
 
 /* API to return the the status of whether auto parallel macro is on
  * @return This function returns whether AUTO_PAR macro is set or not

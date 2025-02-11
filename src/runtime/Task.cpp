@@ -49,6 +49,8 @@ void ProfileEvent::RecordEndEvent() {
     _event_prof_debug("Recorded id:%lu type:%d End event:%p stream:%d", id_, type_, end_event_, stream_);
 }
 Task::Task(Platform* platform, int type, const char* name, int max_cmds) {
+  j_policy_ = "";
+  j_policy_flag_ = false;
   cmds_.reserve(16);
   //printf("Creating task:%lu:%s ptr:%p\n", uid(), name, this);
   is_kernel_launch_disabled_ = false;
@@ -198,6 +200,7 @@ const char* Task::brs_policy_string() {
     case iris_profile: return ("profile");
     case iris_random: return ("random");
     case iris_roundrobin: return ("roundrobin");
+    case iris_julia_policy: return ("julia_policy");
     default: return("unknown");
   }
 }

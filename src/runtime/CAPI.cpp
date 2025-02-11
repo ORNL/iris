@@ -34,6 +34,12 @@ void iris_task_retain(iris_task task, int flag) {
   platform->set_release_task_flag(!((bool)flag), task);
 }
 
+int iris_task_set_julia_policy(iris_task brs_task, const char *name) {
+  Task *task = Platform::GetPlatform()->get_task_object(brs_task);
+  task->set_julia_policy(name);
+  return IRIS_SUCCESS;
+}
+
 void iris_enable_default_kernels(int flag) {
     Platform *platform = Platform::GetPlatform(); 
     platform->enable_default_kernels_load((bool) flag);
@@ -204,10 +210,23 @@ int iris_task_get_metadata(iris_task brs_task, int index) {
     return task->metadata(index);
 }
 
+int *iris_task_get_metadata_all(iris_task brs_task) {
+    Task *task = Platform::GetPlatform()->get_task_object(brs_task);
+    return task->metadata();
+}
+int iris_task_set_metadata_all(iris_task brs_task, int *mdata, int n) {
+    Task *task = Platform::GetPlatform()->get_task_object(brs_task);
+    return task->set_metadata(mdata, n);
+}
 int iris_task_set_metadata(iris_task brs_task, int index, int metadata) {
     Task *task = Platform::GetPlatform()->get_task_object(brs_task);
     task->set_metadata(index, metadata);
     return IRIS_SUCCESS;
+}
+
+int iris_task_get_metadata_count(iris_task brs_task) {
+    Task *task = Platform::GetPlatform()->get_task_object(brs_task);
+    return task->n_metadata();
 }
 
 int iris_task_h2broadcast(iris_task task, iris_mem mem, size_t off, size_t size, void* host) {
@@ -379,8 +398,8 @@ int iris_task_submit(iris_task task, int device, const char* opt, int sync) {
   return Platform::GetPlatform()->TaskSubmit(task, device, opt, sync);
 }
 
-int iris_task_set_policy(iris_task task, int device) {
-  return Platform::GetPlatform()->SetTaskPolicy(task, device);
+int iris_task_set_policy(iris_task task, int policy) {
+  return Platform::GetPlatform()->SetTaskPolicy(task, policy);
 }
 
 int iris_task_get_policy(iris_task task) {
@@ -1291,6 +1310,7 @@ void iris_run_hpl_mapping(iris_graph graph)
         }
     }
 }
+julia_policy_t julia_policy__ = NULL;
 julia_kernel_t julia_kernel__ = NULL;
 int iris_julia_init(void *julia_launch_func, int decoupled_init)
 {
@@ -1300,6 +1320,11 @@ int iris_julia_init(void *julia_launch_func, int decoupled_init)
     //int32_t result = julia_kernel__(target, devno);
     //printf("Result %d\n", result);
     return Platform::GetPlatform()->JuliaInit((bool)decoupled_init);
+}
+int iris_julia_policy_init(void *julia_policy_func) 
+{
+    julia_policy__ = (julia_policy_t) julia_policy_func;
+    return IRIS_SUCCESS;
 }
 int iris_init_scheduler(int use_pthread)
 {
@@ -1332,6 +1357,10 @@ int iris_init_devices(int sync)
 julia_kernel_t iris_get_julia_launch_func() 
 {
     return julia_kernel__;
+}
+julia_policy_t iris_get_julia_policy_func() 
+{
+    return julia_policy__;
 }
 int iris_vendor_kernel_launch(int dev, void *kernel, int gridx, int gridy, int gridz, int blockx, int blocky, int blockz, int shared_mem_bytes, void *stream, void **params) 
 {

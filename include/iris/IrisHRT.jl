@@ -185,6 +185,7 @@ module IrisHRT
     const iris_ocl = 1 << 26
     const iris_block_cycle = 1 << 27
     const iris_custom = 1 << 28
+    const iris_julia_policy = 1 << 29
 
     const iris_unknown       = 0 << 16
     const iris_int           = 1 << 16
@@ -233,6 +234,11 @@ module IrisHRT
         value_buffer::NTuple{8, UInt8} 
     end
 
+    struct IrisDevice
+        class_obj::Ptr{Cvoid}
+        uid::Culong
+    end
+
     struct IrisMem
         class_obj::Ptr{Cvoid}
         uid::Culong
@@ -267,6 +273,7 @@ module IrisHRT
 
     export iris_init
     export kernel_julia_wrapper
+    export task_policy_handler
     export convert_args
 
     function convert_args(args_type::Ptr{Cint}, args::Ptr{Ptr{Cvoid}}, nparams::Cint, start_index::Cint)
@@ -339,6 +346,16 @@ module IrisHRT
         Main.__iris_hip_devno_stream[devno] = iris_stream
         #println(Core.stdout, "CUDA Stream: $cu_stream ctx: $cu_ctx")
         return hip_stream
+    end
+
+    function task_policy_handler(brs_task::IrisTask, policy_name::Ptr{Cchar}, devs::Ptr{IrisDevice}, ndevs::Int32, out_devs::Ptr{Int32})::Cint
+        func_name = unsafe_string(policy_name)
+        policy_fn = getfield(Main, Symbol(func_name))
+        j_devs = unsafe_wrap(Array, devs, Int(ndevs), own=false)
+        j_out_devs = unsafe_wrap(Array, out_devs, Int(ndevs), own=false)
+        out = policy_fn(brs_task, j_devs, Int(ndevs), j_out_devs)
+        #println(" JPolicy Fn: ", policy_fn, " out:", out)
+        return Int32(out)
     end
 
     function kernel_julia_wrapper(task_id::Culong, julia_kernel_type::Cint, target::Cint, devno::Cint, ctx::Ptr{Cvoid}, async_flag_int::Cint, stream_index::Cint, stream::Ptr{Ptr{Cvoid}}, nstreams::Cint, args_type::Ptr{Cint}, args::Ptr{Ptr{Cvoid}}, param_size::Ptr{Csize_t}, param_dim_size::Ptr{Csize_t}, nparams::Cint, c_blocks::Ptr{Csize_t}, c_threads::Ptr{Csize_t}, dim::Cint, kernel_name::Ptr{Cchar})::Cint
@@ -674,12 +691,15 @@ module IrisHRT
 
     # Bind functions from the IRIS library using ccall
     function iris_init(sync)::Int32
+        policy_ptr = @cfunction(task_policy_handler, Cint, (IrisTask, Ptr{Cchar}, Ptr{IrisDevice}, Int32, Ptr{Int32}))
+        global stored_policy_ptr = policy_ptr
         func_ptr = @cfunction(kernel_julia_wrapper, Cint, (Culong, Cint, Cint,        Cint,        Ptr{Cvoid}, Cint, Cint,               Ptr{Ptr{Cvoid}},         Cint,           Ptr{Cint},       Ptr{Ptr{Cvoid}},         Ptr{Csize_t},  Ptr{Csize_t}, Cint,          Ptr{Csize_t},          Ptr{Csize_t},         Cint,      Ptr{Cchar}))
         global stored_func_ptr = func_ptr
         use_julia_threads = false
         if use_julia_threads
             flag = ccall(Libdl.dlsym(lib, :iris_julia_init), Int32, (Ptr{Cvoid}, Int32), func_ptr, Int32(1))
             flag = flag & ccall(Libdl.dlsym(lib, :iris_init), Int32, (Ref{Int32}, Ref{Ptr{Ptr{Cchar}}}, Int32), Int32(1), C_NULL, Int32(sync))
+            flag = flag & ccall(Libdl.dlsym(lib, :iris_julia_policy_init), Int32, (Ptr{Cvoid},), policy_ptr)
             ndevs = iris_ndevices()
             t = @spawn begin 
                 iris_init_scheduler(0)
@@ -708,7 +728,8 @@ module IrisHRT
             #println(Core.stdout, "Julia: Completed device synchronize")
         else
             flag = ccall(Libdl.dlsym(lib, :iris_julia_init), Int32, (Ptr{Cvoid}, Int32), func_ptr, Int32(0))
-            flag = ccall(Libdl.dlsym(lib, :iris_init), Int32, (Ref{Int32}, Ref{Ptr{Ptr{Cchar}}}, Int32), Int32(1), C_NULL, Int32(sync))
+            flag = flag & ccall(Libdl.dlsym(lib, :iris_init), Int32, (Ref{Int32}, Ref{Ptr{Ptr{Cchar}}}, Int32), Int32(1), C_NULL, Int32(sync))
+            flag = flag & ccall(Libdl.dlsym(lib, :iris_julia_policy_init), Int32, (Ptr{Cvoid},), policy_ptr)
         end
         ndevs = iris_ndevices()
         for i in 1:ndevs
@@ -1035,6 +1056,10 @@ module IrisHRT
         ccall(Libdl.dlsym(lib, :iris_task_retain), Cvoid, (IrisTask, Int32), task, flag)
     end
 
+    function iris_task_set_julia_policy(task::IrisTask, name::String)::Int32
+        return ccall(Libdl.dlsym(lib, :iris_task_set_julia_policy), Int32, (IrisTask, Ptr{Cchar}), task, pointer(name))
+    end
+
     function iris_println(data::String)::Cvoid
         return ccall(Libdl.dlsym(lib, :iris_println), Cvoid , (Ptr{Cchar},), pointer(data))
     end
@@ -1211,12 +1236,54 @@ module IrisHRT
         ccall(Libdl.dlsym(lib, :iris_task_disable_asynchronous), Cvoid, (IrisTask,), task)
     end
 
-    function iris_task_get_metadata(task::IrisTask, index::Int32)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_task_get_metadata), Int32, (IrisTask, Int32), task, index)
+    function iris_task_get_metadata_all(task::IrisTask)::Ptr{Int32}
+        return ccall(Libdl.dlsym(lib, :iris_task_get_metadata_all), Ptr{Int32}, (IrisTask, ), task)
     end
 
-    function iris_task_set_metadata(task::IrisTask, index::Int32, metadata::Int32)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_task_set_metadata), Int32, (IrisTask, Int32, Int32), task, index, metadata)
+    function iris_task_set_metadata_all(task::IrisTask, metadata::Ptr{Int32}, n)::Int32
+        return ccall(Libdl.dlsym(lib, :iris_task_set_metadata_all), Int32, (IrisTask, Ptr{Int32}, Int32), task, metadata, Int32(n))
+    end
+
+    function iris_task_get_metadata(task::IrisTask, index::Int)::Int32
+        return ccall(Libdl.dlsym(lib, :iris_task_get_metadata), Int32, (IrisTask, Int32), task, Int32(index))
+    end
+
+    function iris_task_set_metadata(task::IrisTask, index::Int, metadata::Int)::Int32
+        return ccall(Libdl.dlsym(lib, :iris_task_set_metadata), Int32, (IrisTask, Int32, Int32), task, Int32(index), Int32(metadata))
+    end
+
+    function iris_task_get_metadata_count(task::IrisTask)::Int32
+        return ccall(Libdl.dlsym(lib, :iris_task_get_metadata_count), Int32, (IrisTask, ), task)
+    end
+
+    function metadata(task::IrisTask, index=nothing)
+        if index != nothing
+            return iris_task_get_metadata(task, index)
+        end
+        n = iris_task_get_metadata_count(task)
+        out = iris_task_get_metadata_all(task)
+        j_out = unsafe_wrap(Array, out, Int(n), own=false)
+        j_out64 = map(Int64, j_out)
+        return j_out64
+    end
+
+    function set_metadata(task::IrisTask, metadata, index=nothing)
+        if index != nothing
+            return iris_task_set_metadata(task, index, metadata)
+        end
+        if isa(metadata, Tuple)
+            metadata = collect(metadata)
+            metadata32 = map(Int32, metadata)
+            return iris_task_set_metadata_all(task, pointer(metadata32), Int32(length(metadata)))
+        elseif isa(metadata, Array)
+            metadata32 = map(Int32, metadata)
+            return iris_task_set_metadata_all(task, pointer(metadata32), Int32(length(metadata)))
+        elseif isa(metadata, Number)
+            return iris_task_set_metadata(task, 0, metadata)
+        else
+            error("Unknown metadata type for task: ", task, " metadata:", metadata, " metadata type: ", typeof(metadata))
+            return IrisHRT.IRIS_ERROR
+        end
     end
 
     function iris_task_h2broadcast(task::IrisTask, mem::IrisMem, off::Csize_t, size::Csize_t, host::Ptr{Cvoid})::Int32
@@ -1444,8 +1511,8 @@ module IrisHRT
         return iris_task_submit(task, iris_default, Ptr{Int8}(C_NULL), 1)
     end
 
-    function iris_task_set_policy(task::IrisTask, device::Int32)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_task_set_policy), Int32, (IrisTask, Int32), task, device)
+    function iris_task_set_policy(task::IrisTask, policy::Int32)::Int32
+        return ccall(Libdl.dlsym(lib, :iris_task_set_policy), Int32, (IrisTask, Int32), task, policy)
     end
 
     function iris_task_get_policy(task::IrisTask)::Int32
@@ -2625,27 +2692,27 @@ module IrisHRT
         return (in=a_in, out=a_out)
     end
 
-    function parallel_for((L, M, N)::Tuple{Int64, Int64, Int64}, f::Function, x... ; task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true, dependencies=[], flush=Any[])
-        return IrisHRT.task(gws=(L,M,N), task=task, parallel_for=true, submit=submit, policy=policy, wait=wait, flush=flush, dependencies=dependencies, kernel=String(Symbol(f)), args=Any[x...])
+    function parallel_for((L, M, N)::Tuple{Int64, Int64, Int64}, f::Function, x... ; task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true, dependencies=[], flush=Any[], metadata=nothing)
+        return IrisHRT.task(gws=(L,M,N), task=task, parallel_for=true, submit=submit, policy=policy, wait=wait, flush=flush, dependencies=dependencies, metadata=metadata, kernel=String(Symbol(f)), args=Any[x...])
     end
 
-    function parallel_for((M, N)::Tuple{Int64, Int64}, f::Function, x... ; task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true, dependencies=[], flush=Any[])
-        return IrisHRT.task(gws=(M,N), task=task, parallel_for=true, submit=submit, policy=policy, wait=wait, flush=flush, dependencies=dependencies, kernel=String(Symbol(f)), args=Any[x...])
+    function parallel_for((M, N)::Tuple{Int64, Int64}, f::Function, x... ; task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true, dependencies=[], flush=Any[], metadata=nothing)
+        return IrisHRT.task(gws=(M,N), task=task, parallel_for=true, submit=submit, policy=policy, wait=wait, flush=flush, dependencies=dependencies, metadata=metadata, kernel=String(Symbol(f)), args=Any[x...])
     end
 
-    function parallel_for(N::Int64, f::Function, x... ; task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true, dependencies=[], flush=Any[])
-        return IrisHRT.task(gws=N, task=task, parallel_for=true, submit=submit, policy=policy, wait=wait, flush=flush, dependencies=dependencies, kernel=String(Symbol(f)), args=Any[x...])
+    function parallel_for(N::Int64, f::Function, x... ; task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true, dependencies=[], flush=Any[], metadata=nothing)
+        return IrisHRT.task(gws=N, task=task, parallel_for=true, submit=submit, policy=policy, wait=wait, flush=flush, dependencies=dependencies, metadata=metadata, kernel=String(Symbol(f)), args=Any[x...])
     end
 
-    function parallel_reduce((M,N)::Tuple{Int64,Int64}, op, f::Function, x... ; init, task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true, dependencies=[], flush=Any[])
-        return IrisHRT.task(gws=(M,N), task=task, parallel_reduce=true, submit=submit, policy=policy, wait=wait, flush=flush, dependencies=dependencies, kernel=String(Symbol(f)), args=Any[x...])
+    function parallel_reduce((M,N)::Tuple{Int64,Int64}, op, f::Function, x... ; init, task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true, dependencies=[], flush=Any[], metadata=nothing)
+        return IrisHRT.task(gws=(M,N), task=task, parallel_reduce=true, submit=submit, policy=policy, wait=wait, flush=flush, dependencies=dependencies, metadata=metadata, kernel=String(Symbol(f)), args=Any[x...])
     end
 
-    function parallel_reduce(N::Int64, op, f::Function, x... ; init, task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true, dependencies=[])
-        return IrisHRT.task(gws=N, task=task, parallel_reduce=true, submit=submit, policy=policy, wait=wait, flush=flush, dependencies=dependencies, kernel=String(Symbol(f)), args=Any[x...])
+    function parallel_reduce(N::Int64, op, f::Function, x... ; init, task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true, dependencies=[], metadata=nothing)
+        return IrisHRT.task(gws=N, task=task, parallel_reduce=true, submit=submit, policy=policy, wait=wait, flush=flush, dependencies=dependencies, metadata=metadata, kernel=String(Symbol(f)), args=Any[x...])
     end
 
-    function task(; in=Any[], input=Any[], out=Any[], output=Any[], flush=Any[], auto_in_out=false, lws=Int64[], gws=Int64[], off=Int64[], policy=IrisHRT.iris_roundrobin, wait=true, core=false, ka=false, parallel_reduce=false, parallel_for=false, task=nothing, kernel="kernel", args=[], submit=true, dependencies=[])
+    function task(; in=Any[], input=Any[], out=Any[], output=Any[], flush=Any[], auto_in_out=false, lws=Int64[], gws=Int64[], off=Int64[], policy=IrisHRT.iris_roundrobin, wait=true, core=false, ka=false, parallel_reduce=false, parallel_for=false, task=nothing, metadata=nothing, kernel="kernel", args=[], submit=true, dependencies=[])
         call_args = args
         mem_params = Dict{Any, Any}()
         t_args = Tuple(args)
@@ -2823,6 +2890,9 @@ module IrisHRT
         GC.@preserve gws lws off begin
             ccall(Libdl.dlsym(lib, :iris_task_kernel), Int32, (IrisTask, Ptr{Cchar}, Int32, Ptr{Csize_t}, Ptr{Csize_t}, Ptr{Csize_t}, Int32, Ptr{Ptr{Cvoid}}, Ptr{Int32}), task0, pointer(kernel), Int32(length(gws)), off_c, gws_c, lws_c, Int32(nparams), c_params, pointer(params_info))
         end
+        if metadata != nothing
+            IrisHRT.set_metadata(task0, metadata)
+        end
         for mem in flush 
             if isa(mem, IrisMem)
                 IrisHRT.iris_task_dmem_flush_out(task0, mem)
@@ -2834,8 +2904,16 @@ module IrisHRT
         if length(dependencies) > 0
             iris_task_depend(task0, dependencies)
         end
+        if isa(policy, Function)
+            policy_ptr = String(Symbol(policy))
+            #println("Julia Policy name>>>", policy_ptr)
+            IrisHRT.iris_task_set_julia_policy(task0, policy_ptr)
+            policy = IrisHRT.iris_julia_policy
+        end
         if submit
             IrisHRT.iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
+        else
+            IrisHRT.iris_task_set_policy(task0, Int32(policy))
         end
         return task0
     end
