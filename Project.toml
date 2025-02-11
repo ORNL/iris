@@ -3,9 +3,17 @@ uuid = "0979c8fe-16a4-4796-9b82-89a9f10403eb"
 authors = ["Narasigna Rao Miniskar <miniskarnr@ornl.gov>"]
 version = "3.0.0"
 
+[package]
+name = "IrisCPP"
+uuid = "d3a86b7d-01f2-487c-a6af-b3d5ea6d5079"  # replace with your package's UUID
+version = "3.0.0"
+# This tells the package manager to run deps/build.jl when building the package.
+build = "build.jl"
+
 [deps]
 Atomix = "a9b6321e-bd34-4604-b9c9-b65b8de01458"
 Preferences = "21216c6a-2e73-6563-6e65-726566657250"
+CxxWrap = "a94ce194-2bd1-5a46-8b9a-64e5d7f0e3f9"
 
 [weakdeps]
 AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
