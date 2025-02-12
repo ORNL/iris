@@ -2,6 +2,8 @@ name = "IrisHRT"
 uuid = "24efd7ac-9fee-46ff-a976-1a4721440d7c" 
 authors = ["Narasigna Rao Miniskar <miniskarnr@ornl.gov>"]
 version = "3.0.0" # This tells the package manager to run deps/build.jl when building the package.
+
+[build]
 build = "build.jl"
 
 [deps]
