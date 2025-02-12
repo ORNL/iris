@@ -4,7 +4,7 @@ authors = ["Narasigna Rao Miniskar <miniskarnr@ornl.gov>"]
 version = "3.0.0" # This tells the package manager to run deps/build.jl when building the package.
 
 [build]
-build = "build.jl"
+script = "build.jl"
 
 [deps]
 Atomix = "a9b6321e-bd34-4604-b9c9-b65b8de01458"
