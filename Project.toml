@@ -6,8 +6,7 @@ version = "3.0.0"
 [package]
 name = "IrisCPP"
 uuid = "d3a86b7d-01f2-487c-a6af-b3d5ea6d5079"  # replace with your package's UUID
-version = "3.0.0"
-# This tells the package manager to run deps/build.jl when building the package.
+version = "3.0.0" # This tells the package manager to run deps/build.jl when building the package.
 build = "build.jl"
 
 [deps]
@@ -26,8 +25,8 @@ JACCCUDA = ["CUDA"]
 JACCONEAPI = ["oneAPI"]
 
 [compat]
-AMDGPU = "0.8"
+AMDGPU = "1.1.3"
 Atomix = "0.1"
-CUDA = "5"
+CUDA = "5.6.1"
 Preferences = "1.4.0"
 julia = "1.10.3"
