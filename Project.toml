@@ -1,12 +1,8 @@
+[package]
 name = "IrisHRT"
 uuid = "0979c8fe-16a4-4796-9b82-89a9f10403eb"
 authors = ["Narasigna Rao Miniskar <miniskarnr@ornl.gov>"]
 version = "3.0.0"
-
-[package]
-name = "IrisCPP"
-uuid = "d3a86b7d-01f2-487c-a6af-b3d5ea6d5079"  # replace with your package's UUID
-version = "3.0.0" # This tells the package manager to run deps/build.jl when building the package.
 build = "build.jl"
 
 [deps]
