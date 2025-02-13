@@ -32,7 +32,6 @@ function main(SIZE)
     #SIZE=8
     A=2.0f0
     IrisHRT.init()
-    gc_state = IrisHRT.gc_safe_enter()
     X = IrisHRT.ones(Float32, SIZE)
     Y = IrisHRT.ones(Float32, SIZE)
     Z = IrisHRT.dmem(Float32, SIZE)
@@ -47,7 +46,6 @@ function main(SIZE)
     println(Core.stdout, "Z    :", Z_host)
     println(Core.stdout, "Z    :", Z_host[1:min(SIZE, 9)])
 
-    IrisHRT.gc_leave(gc_state)
     IrisHRT.finalize()
 end
 

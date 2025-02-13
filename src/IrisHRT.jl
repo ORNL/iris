@@ -156,6 +156,7 @@ module IrisHRT
     const iris_xrw::Int32 = -6
 
     const iris_julia_native              = 0
+    const iris_julia_native_host         = (1 << 16) | 0
     const iris_core_native               = 1
     const iris_julia_kernel_abstraction  = 2
     const iris_julia_jacc                = 3
@@ -356,6 +357,49 @@ module IrisHRT
         out = policy_fn(brs_task, j_devs, Int(ndevs), j_out_devs)
         #println(" JPolicy Fn: ", policy_fn, " out:", out)
         return Int32(out)
+    end
+
+    function parse_function(s::AbstractString)
+        parts = split(s, ".")
+        if length(parts) == 3
+            include_file, mod, func = parts
+            if mod == ""
+                mod = nothing
+            end
+        elseif length(parts) == 2
+            # Assume missing include-file; first part is the module
+            include_file = nothing
+            mod, func = parts
+        elseif length(parts) == 1
+            include_file = nothing
+            mod = nothing
+            func = parts[1]
+        else
+            error("Unexpected format: too many dots")
+        end
+        return (include_file, mod, func)
+    end
+    function getFunction(func_name)
+        (include_file, mod, func) = parse_function(func_name)
+        func_s = nothing
+        if include_file != nothing
+            #println(Core.stdout, "Including file:", include_file)
+            include(include_file * ".jl")
+            if mod != nothing
+                mod_s = getfield(@__MODULE__, Symbol(mod))
+                func_s = getfield(mod_s, Symbol(func))
+            else
+                #println(Core.stdout, "Get symbol: ", func)
+                func_s = getfield(@__MODULE__, Symbol(func))
+                #println(Core.stdout, "Get symbol: ", func_s)
+            end
+        elseif mod != nothing
+            mod_s = getfield(Main, Symbol(mod))
+            func_s = getfield(mod_s, Symbol(func))
+        else
+            func_s = getfield(Main, Symbol(func))
+        end
+        return func_s
     end
 
     function kernel_julia_wrapper(task_id::Culong, julia_kernel_type::Cint, target::Cint, devno::Cint, ctx::Ptr{Cvoid}, async_flag_int::Cint, stream_index::Cint, stream::Ptr{Ptr{Cvoid}}, nstreams::Cint, args_type::Ptr{Cint}, args::Ptr{Ptr{Cvoid}}, param_size::Ptr{Csize_t}, param_dim_size::Ptr{Csize_t}, nparams::Cint, c_blocks::Ptr{Csize_t}, c_threads::Ptr{Csize_t}, dim::Cint, kernel_name::Ptr{Cchar})::Cint
@@ -739,12 +783,20 @@ module IrisHRT
         return flag
     end
 
-    function init(sync)::Int32
-        return iris_init(sync)
+    function init(sync; gc_enter=true)::Int32
+        status = iris_init(sync)
+        if gc_enter
+            global gc_state = gc_safe_enter()
+        end
+        return status
     end
 
-    function init()::Int32
-        return iris_init(1)
+    function init(; gc_enter=true)::Int32
+        status = iris_init(1)
+        if gc_enter
+            global gc_state = gc_safe_enter()
+        end
+        return status
     end
 
     function iris_init_scheduler(use_pthread::Int)::Int32
@@ -774,7 +826,7 @@ module IrisHRT
 
         func_name_target = func_name
         # Initialize CUDA
-        func = getfield(Main, Symbol(func_name_target))
+        func = getFunction(func_name_target)
         # Convert the array of arguments to a tuple
         args_tuple = Tuple(args)
         # Call the function with arguments
@@ -806,9 +858,8 @@ module IrisHRT
         func_name_target = func_name
         # Initialize CUDA
         #CUDA.allowscalar(false)  # Disable scalar operations on the GPU
-        func = getfield(Main, Symbol(func_name_target))
-        #func = getfield(Main, Symbol(func_name_target, "_ka_cuda"))
-        #func = getfield(IrisKernelImpl, Symbol(func_name_target))
+        func = getFunction(func_name_target)
+        #func = getfield(Main, Symbol(func_name_target))
         # Convert the array of arguments to a tuple
         args_tuple = Tuple(args)
         # Call the function with arguments
@@ -863,8 +914,8 @@ module IrisHRT
         func_name_target = func_name * "_cuda"
         # Initialize CUDA
         #CUDA.allowscalar(false)  # Disable scalar operations on the GPU
-        func = getfield(Main, Symbol(func_name_target))
-        #func = getfield(IrisKernelImpl, Symbol(func_name_target))
+        func = getFunction(func_name_target)
+        #func = getfield(Main, Symbol(func_name_target))
         # Convert the array of arguments to a tuple
         args_tuple = Tuple(args)
         # Call the function with arguments
@@ -874,14 +925,22 @@ module IrisHRT
             #iris_println("---------ASynchronous CUDA execution $blocks $threads func:$func stream:$stream----------")
             #Main.CUDA.@async begin
                 #Main.CUDA.context!(ctx)
-                MyCUDA.@cuda threads=threads blocks=blocks stream=stream func(args_tuple...)
+                if (julia_kernel_type >> 16) == 0
+                    MyCUDA.@cuda threads=threads blocks=blocks stream=stream func(args_tuple...)
+                else
+                    invokelatest(func, args_tuple...)
+                end
             #end
             # Ensure all tasks and CUDA operations complete
         else
             #println(Core.stdout, "---------Synchronous CUDA execution blocks=$blocks threads=$threads func:$func----------")
+            if (julia_kernel_type >> 16) == 0
             MyCUDA.@sync begin
                 MyCUDA.context!(ctx)
                 MyCUDA.@cuda threads=threads blocks=blocks func(args_tuple...)
+            end
+            else
+                invokelatest(func, args_tuple...)
             end
 
             #CUDA.@sync @cuda threads=threads blocks=blocks func(args_tuple...)
@@ -893,7 +952,8 @@ module IrisHRT
     function call_hip_kernel_jacc(julia_kernel_type::Any, devno::Any, func_name::String, threads::Any, blocks::Any, ctx::Any, stream::Any, args::Any, async_flag::Bool=false)
         #iris_println("Func $func_name")
         # Initialize CUDA
-        func = getfield(Main, Symbol(func_name))
+        #func = getfield(Main, Symbol(func_name))
+        func = getFunction(func_name)
         # Convert the array of arguments to a tuple
         args_tuple = Tuple(args)
         # Call the function with arguments
@@ -925,7 +985,8 @@ module IrisHRT
         # Initialize CUDA
         #AMDGPU.allowscalar(false)  # Disable scalar operations on the GPU
         #func = getfield(IrisKernelImpl, Symbol(func_name_target))
-        func = getfield(Main, Symbol(func_name_target))
+        #func = getfield(Main, Symbol(func_name_target))
+        func = getFunction(func_name_target)
         #func = getfield(Main, Symbol(func_name_target, "_ka_hip"))
         # Convert the array of arguments to a tuple
         args_tuple = Tuple(args)
@@ -963,7 +1024,8 @@ module IrisHRT
         # Initialize CUDA
         #AMDGPU.allowscalar(false)  # Disable scalar operations on the GPU
         #func = getfield(IrisKernelImpl, Symbol(func_name_target))
-        func = getfield(Main, Symbol(func_name_target))
+        #func = getfield(Main, Symbol(func_name_target))
+        func = getFunction(func_name_target)
         # Convert the array of arguments to a tuple
         args_tuple = Tuple(args)
         # Call the function with arguments
@@ -973,13 +1035,21 @@ module IrisHRT
         #iris_println("Async $async_flag")
         if async_flag
             #Main.AMDGPU.@async begin
-                MyAMDGPU.@roc groupsize=threads gridsize=blocks stream=stream func(args_tuple...)
+                if (julia_kernel_type >> 16) == 0
+                    MyAMDGPU.@roc groupsize=threads gridsize=blocks stream=stream func(args_tuple...)
+                else
+                    invokelatest(func, args_tuple...)
+                end
             #end
         else
             #iris_println("---------Synchronous HIP execution $blocks $threads func:$func----------")
+            if (julia_kernel_type >> 16) == 0
             MyAMDGPU.@sync begin
                 MyAMDGPU.context!(ctx)
                 MyAMDGPU.@roc groupsize=threads gridsize=blocks func(args_tuple...)
+            end
+            else
+                invokelatest(func, args_tuple...)
             end
         end
         #AMDGPU.synchronize()
@@ -989,7 +1059,8 @@ module IrisHRT
     function call_openmp_kernel(julia_kernel_type::Any, func_name::String, threads::Any, blocks::Any, args::Any, async_flag::Bool=false)
         func_name_target = func_name * "_openmp"
         #func = getfield(IrisKernelImpl, Symbol(func_name_target))
-        func = getfield(Main, Symbol(func_name_target))
+        #func = getfield(Main, Symbol(func_name_target))
+        func = getFunction(func_name_target)
         # Convert the array of arguments to a tuple
         args_tuple = Tuple(args)
         # Call the function with arguments
@@ -1000,7 +1071,8 @@ module IrisHRT
     function call_openmp_kernel_jacc(julia_kernel_type::Any, func_name::String, threads::Any, blocks::Any, args::Any, async_flag::Bool=false)
         func_name_target = func_name
         #func = getfield(IrisKernelImpl, Symbol(func_name_target))
-        func = getfield(Main, Symbol(func_name_target))
+        #func = getfield(Main, Symbol(func_name_target))
+        func = getFunction(func_name_target)
         # Convert the array of arguments to a tuple
         args_tuple = Tuple(args)
         # Call the function with arguments
@@ -1016,7 +1088,8 @@ module IrisHRT
     function call_openmp_kernel_ka(julia_kernel_type::Any, func_name::String, threads::Any, blocks::Any, args::Any, async_flag::Bool=false)
         func_name_target = func_name
         #func = getfield(IrisKernelImpl, Symbol(func_name_target))
-        func = getfield(Main, Symbol(func_name_target))
+        #func = getfield(Main, Symbol(func_name_target))
+        func = getFunction(func_name_target)
         # Convert the array of arguments to a tuple
         args_tuple = Tuple(args)
         # Call the function with arguments
@@ -1040,7 +1113,10 @@ module IrisHRT
         return ccall(Libdl.dlsym(lib, :iris_finalize), Int32, ())
     end
 
-    function finalize()::Int32
+    function finalize(;gc_leave=true)::Int32
+        if gc_leave
+            IrisHRT.gc_leave(gc_state)
+        end
         return iris_finalize()
     end
 
@@ -2571,11 +2647,11 @@ module IrisHRT
 
     function identify_in_out(julia_kernel_type, gws, kernel, args...)
         f = nothing 
-        if julia_kernel_type == IrisHRT.iris_julia_native && isdefined(Main, Symbol(kernel*"_cuda"))
+        if (julia_kernel_type & 0xFFFF) == IrisHRT.iris_julia_native && isdefined(Main, Symbol(kernel*"_cuda"))
             f = getfield(Main, Symbol(kernel*"_cuda"))
-        elseif julia_kernel_type == IrisHRT.iris_julia_native && isdefined(Main, Symbol(kernel*"_hip"))
+        elseif (julia_kernel_type & 0xFFFF) == IrisHRT.iris_julia_native && isdefined(Main, Symbol(kernel*"_hip"))
             f = getfield(Main, Symbol(kernel*"_hip"))
-        elseif julia_kernel_type == IrisHRT.iris_julia_native && isdefined(Main, Symbol(kernel*"_openmp"))
+        elseif (julia_kernel_type & 0xFFFF) == IrisHRT.iris_julia_native && isdefined(Main, Symbol(kernel*"_openmp"))
             f = getfield(Main, Symbol(kernel*"_openmp"))
         elseif julia_kernel_type == IrisHRT.iris_julia_kernel_abstraction && isdefined(Main, Symbol(kernel))
             f = getfield(Main, Symbol(kernel))
@@ -2712,7 +2788,7 @@ module IrisHRT
         return IrisHRT.task(gws=N, task=task, parallel_reduce=true, submit=submit, policy=policy, wait=wait, flush=flush, dependencies=dependencies, metadata=metadata, kernel=String(Symbol(f)), args=Any[x...])
     end
 
-    function task(; in=Any[], input=Any[], out=Any[], output=Any[], flush=Any[], auto_in_out=false, lws=Int64[], gws=Int64[], off=Int64[], policy=IrisHRT.iris_roundrobin, wait=true, core=false, ka=false, parallel_reduce=false, parallel_for=false, task=nothing, metadata=nothing, kernel="kernel", args=[], submit=true, dependencies=[])
+    function task(; in=Any[], input=Any[], out=Any[], output=Any[], flush=Any[], auto_in_out=false, lws=Int64[], gws=Int64[], off=Int64[], policy=IrisHRT.iris_roundrobin, wait=true, core=false, ka=false, parallel_reduce=false, parallel_for=false, host=false, task=nothing, metadata=nothing, kernel="kernel", args=[], submit=true, dependencies=[])
         call_args = args
         mem_params = Dict{Any, Any}()
         t_args = Tuple(args)
@@ -2730,6 +2806,8 @@ module IrisHRT
             julia_kernel_type = IrisHRT.iris_julia_jacc_parallel_for
         elseif parallel_reduce
             julia_kernel_type = IrisHRT.iris_julia_jacc_parallel_reduce
+        elseif host
+            julia_kernel_type = IrisHRT.iris_julia_native_host
         end
         if auto_in_out
             (auto_in, auto_out) = identify_in_out(julia_kernel_type, gws, kernel, t_args...)
@@ -2840,13 +2918,13 @@ module IrisHRT
         #println(Core.stdout, "kernel_params     :", kernel_params)
 
         # Set kernel type
-        if julia_kernel_type == IrisHRT.iris_julia_native 
+        if (julia_kernel_type & 0xFFFF) == IrisHRT.iris_julia_native 
             ccall(Libdl.dlsym(lib, :iris_task_enable_julia_interface), Int32, (IrisTask, Int32), task0, Int32(julia_kernel_type))
-        elseif julia_kernel_type == IrisHRT.iris_julia_kernel_abstraction
+        elseif (julia_kernel_type & 0xFFFF) == IrisHRT.iris_julia_kernel_abstraction
             ccall(Libdl.dlsym(lib, :iris_task_enable_julia_interface), Int32, (IrisTask, Int32), task0, Int32(julia_kernel_type))
         elseif (julia_kernel_type & 0xFFFF) == IrisHRT.iris_julia_jacc
             ccall(Libdl.dlsym(lib, :iris_task_enable_julia_interface), Int32, (IrisTask, Int32), task0, Int32(julia_kernel_type))
-        elseif julia_kernel_type == IrisHRT.iris_core_native
+        elseif (julia_kernel_type & 0xFFFF) == IrisHRT.iris_core_native
             # Do nothing here
         end
         

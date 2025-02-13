@@ -49,7 +49,6 @@ function main(SIZE)
     #SIZE=8
     A=2.0f0
     IrisHRT.init()
-    gc_state = IrisHRT.gc_safe_enter()
     X = ones(Float32, SIZE)
     Y = ones(Float32, SIZE)
     Z = zeros(Float32, SIZE)
@@ -63,9 +62,6 @@ function main(SIZE)
     julia_time = time() - julia_start
     println("Total Julia time: ", julia_time)
     println("Avg saxpy time: ", julia_time/ntimes)
-    IrisHRT.clear_map()
-
-    IrisHRT.gc_leave(gc_state)
     IrisHRT.finalize()
 end
 
