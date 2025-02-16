@@ -641,7 +641,7 @@ module IrisHRT
             elseif (julia_kernel_type & 0xFFFF) == iris_julia_jacc
                 call_openmp_kernel_jacc(julia_kernel_type, func_name, j_threads, j_blocks, julia_args, b_async_flag)
             else
-                call_openmp_kernel(julia_kernel_type, func_name, j_threads, j_blocks, julia_args, b_async_flag)
+                call_openmp_kernel(julia_kernel_type, devno, func_name, j_threads, j_blocks, julia_args, b_async_flag)
             end
             ##############################################################
             #iris_println("Completed OpenMP")
@@ -1063,7 +1063,7 @@ module IrisHRT
     end
 
     # OpenMP kernel wrapper
-    function call_openmp_kernel(julia_kernel_type::Any, func_name::String, threads::Any, blocks::Any, args::Any, async_flag::Bool=false)
+    function call_openmp_kernel(julia_kernel_type::Any, devno::Any, func_name::String, threads::Any, blocks::Any, args::Any, async_flag::Bool=false)
         func_name_target = func_name * "_openmp"
         #func = getfield(IrisKernelImpl, Symbol(func_name_target))
         #func = getfield(Main, Symbol(func_name_target))
@@ -1071,8 +1071,11 @@ module IrisHRT
         # Convert the array of arguments to a tuple
         args_tuple = Tuple(args)
         # Call the function with arguments
-        func(args_tuple...)
-        #AMDGPU.synchronize()
+        if (julia_kernel_type >> 16) == 0
+            func(args_tuple...)
+        else
+            invokelatest(func, devno, args_tuple...)
+        end
     end
 
     function call_openmp_kernel_jacc(julia_kernel_type::Any, func_name::String, threads::Any, blocks::Any, args::Any, async_flag::Bool=false)
