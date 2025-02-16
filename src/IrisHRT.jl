@@ -64,6 +64,7 @@ module DummyCUDA
     struct CuContext
         id::Int
     end
+    const cudaStream_t = Ptr{CUstream}
     macro sync() end
     macro async() end
     function CuContext(ctx) end
@@ -318,7 +319,6 @@ module IrisHRT
         #println(Core.stdout, "CUDA devno: ", devno)
         cu_stream = unsafe_load(reinterpret(Ptr{MyCUDA.CuStream}, Base.unsafe_convert(Ptr{Main.IRISCuStream}, Ref(iris_stream_cuda))))
         Main.__iris_cuda_devno_stream[devno] = iris_stream_cuda
-        #println(Core.stdout, "CUDA Stream: $cu_stream ctx: $cu_ctx")
         return cu_stream
     end
 
@@ -360,7 +360,7 @@ module IrisHRT
     end
 
     function parse_function(s::AbstractString)
-        parts = split(s, ".")
+        parts = split(s, ":")
         if length(parts) == 3
             include_file, mod, func = parts
             if mod == ""
@@ -558,6 +558,7 @@ module IrisHRT
 
         #println(Core.stdout, " j_threads: ", j_threads)
         #println(Core.stdout, " j_blocks: ", j_blocks)
+        all_streams = nothing
         if Int(target) == Int(iris_cuda)
             #cu_ctx = unsafe_load(Ref{CuContext}(ctx))
             #GC.gc()
@@ -567,7 +568,10 @@ module IrisHRT
                 cu_stream = nothing
                 #iris_println("Ctx: $cu_ctx dev:$devno")
             else
+                #println(Core.stdout, "CUDA stream: ", stream, " type: ", typeof(stream))
                 cu_stream_ptr = unsafe_load(reinterpret(Ptr{MyCUDA.CUstream}, stream))
+                cus_ptr = reinterpret(Ptr{MyCUDA.cudaStream_t}, stream)
+                all_streams = unsafe_wrap(Vector{MyCUDA.cudaStream_t}, cus_ptr, nstreams)
                 cu_stream = preserve_cuda_iris_stream(devno, cu_stream_ptr, cu_ctx)
                 #iris_stream = Main.IRISCuStream(cu_stream_ptr, true, cu_ctx)
                 #cu_stream = unsafe_load(reinterpret(Ptr{MyCUDA.CuStream}, Base.unsafe_convert(Ptr{Main.IRISCuStream}, Ref(iris_stream))))
@@ -588,7 +592,7 @@ module IrisHRT
             elseif (julia_kernel_type & 0xFFFF) == iris_julia_jacc
                 call_cuda_kernel_jacc(julia_kernel_type, devno, func_name, j_threads, j_blocks, cu_ctx, cu_stream, julia_args, b_async_flag)
             else
-                call_cuda_kernel(julia_kernel_type, devno, func_name, j_threads, j_blocks, cu_ctx, cu_stream, julia_args, b_async_flag)
+                call_cuda_kernel(julia_kernel_type, devno, func_name, j_threads, j_blocks, cu_ctx, cu_stream, all_streams, julia_args, b_async_flag)
             end
             #CUDA.@sync @cuda threads=j_threads blocks=j_blocks Main.saxpy_cuda(julia_args[1], julia_args[2], julia_args[3], julia_args[4])
             ##############################################################
@@ -598,10 +602,13 @@ module IrisHRT
             #GC.gc()
             hip_ctx = unsafe_load(reinterpret(Ptr{MyAMDGPU.HIPContext}, ctx))
             hip_stream = nothing
+            all_streams = nothing
             if b_async_flag 
                 hip_dev = MyAMDGPU.device!(MyAMDGPU.devices()[devno+1])
                 #hip_stream = unsafe_load(reinterpret(Ptr{HIPStream}, stream))
-                hip_stream_ptr = unsafe_load(reinterpret(Ptr{MyAMDGPU.HIP.hipStream_t}, stream))
+                hip_stream_ptr = unsafe_load(reinterpret(Ptr{MyAMDGPU.HIP.HIP.hipStream_t}, stream))
+                hip_ptr = reinterpret(Ptr{MyAMDGPU.HIP.hipStream_t}, stream)
+                all_streams = unsafe_wrap(Vector{MyAMDGPU.HIP.hipStream_t}, hip_ptr, nstreams)
                 #println(Core.stdout, "HIP stream ptr", hip_stream_ptr, " type:", typeof(hip_stream_ptr))
                 #println(Core.stdout, "HIP dev", hip_dev, " type:", typeof(hip_dev))
                 #println(Core.stdout, "HIP ctx", hip_ctx, " type:", typeof(hip_ctx))
@@ -618,7 +625,7 @@ module IrisHRT
             elseif (julia_kernel_type & 0xFFFF) == iris_julia_jacc
                 call_hip_kernel_jacc(julia_kernel_type, devno, func_name, j_threads, j_blocks, hip_ctx, hip_stream, julia_args, b_async_flag)
             else
-                call_hip_kernel(julia_kernel_type, devno, func_name, j_threads, j_blocks, hip_ctx, hip_stream, julia_args, b_async_flag)
+                call_hip_kernel(julia_kernel_type, devno, func_name, j_threads, j_blocks, hip_ctx, hip_stream, all_streams, julia_args, b_async_flag)
             end
             ##############################################################
             #iris_println("Completed HIP")
@@ -905,7 +912,7 @@ module IrisHRT
     end
 
 
-    function call_cuda_kernel(julia_kernel_type::Any, devno::Any, func_name::String, threads::Any, blocks::Any, ctx::Any, stream::Any, args::Any, async_flag::Bool=false)
+    function call_cuda_kernel(julia_kernel_type::Any, devno::Any, func_name::String, threads::Any, blocks::Any, ctx::Any, stream::Any, all_streams::Any, args::Any, async_flag::Bool=false)
         if !Main.cuda_available
             error("CUDA device not available.")
         end
@@ -928,7 +935,7 @@ module IrisHRT
                 if (julia_kernel_type >> 16) == 0
                     MyCUDA.@cuda threads=threads blocks=blocks stream=stream func(args_tuple...)
                 else
-                    invokelatest(func, args_tuple...)
+                    invokelatest(func, devno, all_streams, args_tuple...)
                 end
             #end
             # Ensure all tasks and CUDA operations complete
@@ -940,7 +947,7 @@ module IrisHRT
                 MyCUDA.@cuda threads=threads blocks=blocks func(args_tuple...)
             end
             else
-                invokelatest(func, args_tuple...)
+                invokelatest(func, devno, all_streams, args_tuple...)
             end
 
             #CUDA.@sync @cuda threads=threads blocks=blocks func(args_tuple...)
@@ -1014,7 +1021,7 @@ module IrisHRT
     end
 
     # HIP kernel wrapper
-    function call_hip_kernel(julia_kernel_type::Any, devno::Any, func_name::String, threads::Any, blocks::Any, ctx::Any, stream::Any, args::Any, async_flag::Bool=false)
+    function call_hip_kernel(julia_kernel_type::Any, devno::Any, func_name::String, threads::Any, blocks::Any, ctx::Any, stream::Any, all_streams::Any, args::Any, async_flag::Bool=false)
         if !Main.hip_available
             error("HIP device not available.")
         end
@@ -1038,7 +1045,7 @@ module IrisHRT
                 if (julia_kernel_type >> 16) == 0
                     MyAMDGPU.@roc groupsize=threads gridsize=blocks stream=stream func(args_tuple...)
                 else
-                    invokelatest(func, args_tuple...)
+                    invokelatest(func, devno, all_streams, args_tuple...)
                 end
             #end
         else
@@ -1049,7 +1056,7 @@ module IrisHRT
                 MyAMDGPU.@roc groupsize=threads gridsize=blocks func(args_tuple...)
             end
             else
-                invokelatest(func, args_tuple...)
+                invokelatest(func, devno, all_streams, args_tuple...)
             end
         end
         #AMDGPU.synchronize()
@@ -1190,6 +1197,10 @@ module IrisHRT
 
     function iris_ndevices()::Int32
         return ccall(Libdl.dlsym(lib, :iris_ndevices), Int32, ())
+    end
+
+    function ndevs()::Int
+        return Int(iris_ndevices())
     end
 
     function iris_set_nstreams(n::Int32)::Int32
