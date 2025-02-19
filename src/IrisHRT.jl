@@ -1833,7 +1833,7 @@ module IrisHRT
         return element_type
     end
 
-    function iris_data_mem(T, dims...) 
+    function iris_data_mem(T, dims...; dev_size=nothing, offset=[]) 
         #size = Csize_t(length(host) * sizeof(T))
         dim_size = dims
         #println(Core.stdout, "Type of element: ", T, " dim:", dims)
@@ -1847,7 +1847,15 @@ module IrisHRT
         host_cptr = C_NULL
         #println(Core.stdout, "Type of element: ", T, " dim:", dim, " Size:", host_size, " Element size:", element_size)
         element_type = get_iris_type(T)
-        iris_mem = ccall(Libdl.dlsym(lib, :iris_data_mem_create_struct_nd), IrisMem, (Ptr{Cvoid}, Ptr{Cvoid}, Int32, Csize_t, Int32), host_cptr, pointer(dim_size_v), dim, element_size, Int32(element_type))
+        iris_mem = nothing
+        if dev_size != nothing 
+            if length(off) = 0
+                off = zeros(Csize_t, dim)
+            end
+            iris_mem = ccall(Libdl.dlsym(lib, :iris_data_mem_create_struct_with_type), IrisMem, (Ptr{Cvoid}, Ptr{Csize_t}, Ptr{Csize_t}, Ptr{Csize_t}, Csize_t, Int32, Int32), host_cptr, pointer(off), pointer(dim_size_v), pointer(dev_size), element_size, dim, Int32(element_type))
+        else
+            iris_mem = ccall(Libdl.dlsym(lib, :iris_data_mem_create_struct_nd), IrisMem, (Ptr{Cvoid}, Ptr{Cvoid}, Int32, Csize_t, Int32), host_cptr, pointer(dim_size_v), dim, element_size, Int32(element_type))
+        end
         if isstructtype(T) 
             push_dmem_custom_type(iris_mem.uid, T)
         end
@@ -1869,12 +1877,35 @@ module IrisHRT
         return iris_mem
     end
 
+    function iris_data_mem(host::Array{T}, dev_size_array, offset=[]) where T 
+        #size = Csize_t(length(host) * sizeof(T))
+        host_size = collect(size(host))
+        dev_size = pointer(dev_size_array)
+        dim = length(host_size)
+        element_size = Int32(sizeof(T))
+        host_cptr = reinterpret(Ptr{Cvoid}, pointer(host))
+        #println(Core.stdout, "Type of element: ", T, " Size:", size(host), " Element size:", element_size)
+        element_type = get_iris_type(T, iris_pointer)
+        if length(offset) == 0
+            offset = zeros(Csize_t, dim)
+        end
+        iris_mem = ccall(Libdl.dlsym(lib, :iris_data_mem_create_struct_with_type), IrisMem, (Ptr{Cvoid}, Ptr{Csize_t}, Ptr{Csize_t}, Ptr{Csize_t}, Csize_t, Int32, Int32), host_cptr, pointer(offset), host_size, dev_size, element_size, dim, Int32(element_type))
+        if isstructtype(T) 
+            push_dmem_custom_type(iris_mem.uid, T)
+        end
+        return iris_mem
+    end
+
     function dmem(T, dims...)
         return iris_data_mem(T, dims...)
     end
 
     function dmem(host::Array{T}) where T 
         return iris_data_mem(host)
+    end
+
+    function dmem(host::Array{T}, dev_size, offset=[]) where T 
+        return iris_data_mem(host, dev_size, offset)
     end
 
     # Function: void* iris_get_dmem_host(iris_mem brs_mem);
@@ -2030,6 +2061,10 @@ module IrisHRT
 
     function iris_data_mem_create_tile_struct(host::Ptr{Cvoid}, off::Ptr{Csize_t}, host_size::Ptr{Csize_t}, dev_size::Ptr{Csize_t}, elem_size::Csize_t, dim::Int32)::IrisMem
         return ccall(Libdl.dlsym(lib, :iris_data_mem_create_tile_struct), IrisMem, (Ptr{Cvoid}, Ptr{Csize_t}, Ptr{Csize_t}, Ptr{Csize_t}, Csize_t, Int32), host, off, host_size, dev_size, elem_size, dim)
+    end
+
+    function iris_data_mem_create_tile_struct_with_type(host::Ptr{Cvoid}, off::Ptr{Csize_t}, host_size::Ptr{Csize_t}, dev_size::Ptr{Csize_t}, elem_size::Csize_t, dim::Int32, element_type::Int32)::IrisMem
+        return ccall(Libdl.dlsym(lib, :iris_data_mem_create_tile_struct_with_type), IrisMem, (Ptr{Cvoid}, Ptr{Csize_t}, Ptr{Csize_t}, Ptr{Csize_t}, Csize_t, Int32, Int32), host, off, host_size, dev_size, elem_size, dim, element_type)
     end
 
     function iris_data_mem_create_tile_ptr(host::Ptr{Cvoid}, off::Ptr{Csize_t}, host_size::Ptr{Csize_t}, dev_size::Ptr{Csize_t}, elem_size::Csize_t, dim::Int32)::Ptr{IrisMem}
@@ -3014,3 +3049,6 @@ module IrisHRT
     end
 
 end  # module Iris
+
+include("Tiling2D.jl")
+include("Tiling3D.jl")
