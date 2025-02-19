@@ -347,6 +347,7 @@ def register_pin_memory(cptr, size):
     dll.iris_register_pin_memory(convert_obj_ctype(cptr)[0], convert_obj_ctype(size_t(size))[0])
 
 def finalize():
+    mem_handle_2_pobj.clear()
     return dll.iris_finalize()
 
 def synchronize():
@@ -637,8 +638,8 @@ class dmem_null:
 class dmem_base:
   track_host2dmems = {}
   def __init__(self, reuse, *args):
+    self.str_data = None
     self.handle, self.type = self.dmem_create(reuse, args)
-    self.str_data = ''
     if self.handle.uid not in mem_handle_2_pobj:
         mem_handle_2_pobj[self.handle.uid] = []
     mem_handle_2_pobj[self.handle.uid].append(self)
@@ -650,16 +651,13 @@ class dmem_base:
       host_size = 0
       dim = 0
       if isinstance(host, str):
-        self.str_data = host
-        c_host = ctypes.c_char_p(self.str_data.encode('utf-8'))
-        host_size = len(host)+1
-        size = host_size
-        dim = 1
-      else:
-        c_host = host.ctypes.data_as(c_void_p)
-        host_size = np.array(host.shape)
-        dim = len(host_size)
-        size = host.nbytes
+        str_np = np.frombuffer(host.encode('utf-8') + b'\0', dtype=np.uint8)
+        self.str_data = str_np.copy()
+        host = self.str_data
+      c_host = host.ctypes.data_as(c_void_p)
+      host_size = np.array(host.shape)
+      dim = len(host_size)
+      size = host.nbytes
       if reuse and c_host.value in dmem_base.track_host2dmems:
         return dmem_base.track_host2dmems[c_host.value], IRIS_DMEM
       m = iris_mem()
@@ -718,6 +716,8 @@ class dmem_base:
 class dmem(dmem_base):
   def __init__(self, *args):
     super().__init__(True, *args)
+  def __del__(self):
+    print(f"Object with value {self} destroyed.")
   def get_region_uids(self):
     n_regions = dll.call_ret(dll.iris_data_mem_n_regions(self.handle), np.int32)
     output = []

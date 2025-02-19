@@ -202,6 +202,7 @@ int DeviceQIREE::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem,
       int status = IRIS_SUCCESS;
       qiree_params_[kindex+1] = mpmem;
       qiree_nparams_ = (kindex+1 >= qiree_nparams_) ? kindex+2 : qiree_nparams_;
+      //printf("p%d: %p (%s) n:%d\n", kindex+1, mpmem, (char *)mpmem, qiree_nparams_);
       //int status = ld_->setmem(kernel->GetParamWrapperMemory(), kindex, mpmem, size);
       /*
          if (ld_->iris_openmp_setmem_with_obj)
@@ -230,7 +231,7 @@ int DeviceQIREE::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws,
 #endif
   // Call the function with an argument
   //parse_input_c(4, (char**)argv);
-  printf("nparams: %d", qiree_nparams_);
+  //printf("nparams: %d\n", qiree_nparams_);
   ld_->parse_input_c(qiree_nparams_, (char**)qiree_params_);
   //return ld_->parse_input_c(4, (char**)argv);
   return IRIS_SUCCESS;
