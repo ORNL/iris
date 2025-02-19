@@ -5,7 +5,7 @@
 namespace iris {
 namespace rt {
 
-LoaderQIREE::LoaderQIREE() {
+LoaderQIREE::LoaderQIREE() : HostInterfaceClass("LIB_QIREE") {
 }
 
 LoaderQIREE::~LoaderQIREE() {

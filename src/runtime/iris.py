@@ -638,20 +638,31 @@ class dmem_base:
   track_host2dmems = {}
   def __init__(self, reuse, *args):
     self.handle, self.type = self.dmem_create(reuse, args)
+    self.str_data = ''
     if self.handle.uid not in mem_handle_2_pobj:
         mem_handle_2_pobj[self.handle.uid] = []
     mem_handle_2_pobj[self.handle.uid].append(self)
 
   def dmem_create(self, reuse, *args):
     if len(args) == 1:
+      c_host = None
       host = args[0][0]
-      c_host = host.ctypes.data_as(c_void_p)
+      host_size = 0
+      dim = 0
+      if isinstance(host, str):
+        self.str_data = host
+        c_host = ctypes.c_char_p(self.str_data.encode('utf-8'))
+        host_size = len(host)+1
+        size = host_size
+        dim = 1
+      else:
+        c_host = host.ctypes.data_as(c_void_p)
+        host_size = np.array(host.shape)
+        dim = len(host_size)
+        size = host.nbytes
       if reuse and c_host.value in dmem_base.track_host2dmems:
         return dmem_base.track_host2dmems[c_host.value], IRIS_DMEM
       m = iris_mem()
-      host_size = np.array(host.shape)
-      dim = len(host_size)
-      size = host.nbytes
       if dim == 1:
         dll.iris_data_mem_create(byref(m), c_host, c_size_t(size))
       elif dim > 1:

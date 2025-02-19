@@ -12,7 +12,7 @@ public:
   DeviceQIREE(LoaderQIREE* ld, int devno, int platform);
   ~DeviceQIREE();
   int Init();
-  int ResetMemory(Task *task, BaseMem *mem, uint8_t reset_value);
+  int ResetMemory(Task *task, Command *cmd, BaseMem *mem);
   int MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset=false);
   int MemFree(BaseMem *mem, void* mem_addr);
   int MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag="");
@@ -28,6 +28,8 @@ public:
 
 private:
   LoaderQIREE* ld_;
+  void *qiree_params_[56];
+  int qiree_nparams_;
 
   //float* Z;
   //float* X;

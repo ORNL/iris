@@ -2,12 +2,13 @@
 #define IRIS_SRC_RT_LOADER_QIREE_H
 
 #include "Loader.h"
+#include "HostInterface.h"
 //#include <iris/qiree/qiree.h>
 
 namespace iris {
 namespace rt {
 
-class LoaderQIREE : public Loader {
+class LoaderQIREE : public HostInterfaceClass {
 public:
   LoaderQIREE();
   ~LoaderQIREE();
