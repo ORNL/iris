@@ -717,7 +717,7 @@ class dmem(dmem_base):
   def __init__(self, *args):
     super().__init__(True, *args)
   def __del__(self):
-    print(f"Object with value {self} destroyed.")
+    None
   def get_region_uids(self):
     n_regions = dll.call_ret(dll.iris_data_mem_n_regions(self.handle), np.int32)
     output = []
