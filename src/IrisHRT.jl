@@ -1434,6 +1434,25 @@ module IrisHRT
         return iris_task_dmem_flush_out(task, mem)
     end
 
+    function flush(mem; submit=true, wait=true, dependencies=[], policy=IrisHRT.iris_roundrobin)::IrisTask
+        task0 = iris_task_create_struct()
+        if isa(mem, IrisMem)
+            IrisHRT.iris_task_dmem_flush_out(task0, mem)
+        else
+            p_mem = pointer(mem)
+            IrisHRT.iris_task_dmem_flush_out(task0, Main.__iris_dmem_map[p_mem])
+        end
+        dependencies = [x for x in dependencies if x !== nothing]
+        if length(dependencies) > 0
+            iris_task_depend(task0, dependencies)
+        end
+        if submit
+            IrisHRT.iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
+        else
+            IrisHRT.iris_task_set_policy(task0, Int32(policy))
+        end
+        return task0
+    end
     function release(array_obj::Array{T}) where T 
         dmem_finalizer(array_obj)
     end
@@ -1833,7 +1852,7 @@ module IrisHRT
         return element_type
     end
 
-    function iris_data_mem(T, dims...; dev_size=nothing, offset=[]) 
+    function iris_data_mem(::Type{T}, dims...; dev_size=nothing, offset=[])  where T
         #size = Csize_t(length(host) * sizeof(T))
         dim_size = dims
         #println(Core.stdout, "Type of element: ", T, " dim:", dims)
@@ -1849,10 +1868,10 @@ module IrisHRT
         element_type = get_iris_type(T)
         iris_mem = nothing
         if dev_size != nothing 
-            if length(off) = 0
-                off = zeros(Csize_t, dim)
+            if length(offset) == 0
+                offset = Base.zeros(Csize_t, dim)
             end
-            iris_mem = ccall(Libdl.dlsym(lib, :iris_data_mem_create_struct_with_type), IrisMem, (Ptr{Cvoid}, Ptr{Csize_t}, Ptr{Csize_t}, Ptr{Csize_t}, Csize_t, Int32, Int32), host_cptr, pointer(off), pointer(dim_size_v), pointer(dev_size), element_size, dim, Int32(element_type))
+            iris_mem = ccall(Libdl.dlsym(lib, :iris_data_mem_create_tile_struct_with_type), IrisMem, (Ptr{Cvoid}, Ptr{Csize_t}, Ptr{Csize_t}, Ptr{Csize_t}, Csize_t, Int32, Int32), host_cptr, pointer(offset), pointer(dim_size_v), pointer(dev_size), element_size, dim, Int32(element_type))
         else
             iris_mem = ccall(Libdl.dlsym(lib, :iris_data_mem_create_struct_nd), IrisMem, (Ptr{Cvoid}, Ptr{Cvoid}, Int32, Csize_t, Int32), host_cptr, pointer(dim_size_v), dim, element_size, Int32(element_type))
         end
@@ -1877,34 +1896,35 @@ module IrisHRT
         return iris_mem
     end
 
-    function iris_data_mem(host::Array{T}, dev_size_array, offset=[]) where T 
+    function iris_data_mem(host::AbstractArray{T,N}, dev_size_array, offset) where {T,N} 
         #size = Csize_t(length(host) * sizeof(T))
         host_size = collect(size(host))
         dev_size = pointer(dev_size_array)
         dim = length(host_size)
         element_size = Int32(sizeof(T))
-        host_cptr = reinterpret(Ptr{Cvoid}, pointer(host))
+        ptr = pointer(host)
+        host_cptr = reinterpret(Ptr{Cvoid}, ptr)
         #println(Core.stdout, "Type of element: ", T, " Size:", size(host), " Element size:", element_size)
         element_type = get_iris_type(T, iris_pointer)
         if length(offset) == 0
-            offset = zeros(Csize_t, dim)
+            offset = Base.zeros(Csize_t, dim)
         end
-        iris_mem = ccall(Libdl.dlsym(lib, :iris_data_mem_create_struct_with_type), IrisMem, (Ptr{Cvoid}, Ptr{Csize_t}, Ptr{Csize_t}, Ptr{Csize_t}, Csize_t, Int32, Int32), host_cptr, pointer(offset), host_size, dev_size, element_size, dim, Int32(element_type))
+        iris_mem = ccall(Libdl.dlsym(lib, :iris_data_mem_create_tile_struct_with_type), IrisMem, (Ptr{Cvoid}, Ptr{Csize_t}, Ptr{Csize_t}, Ptr{Csize_t}, Csize_t, Int32, Int32), host_cptr, pointer(offset), host_size, dev_size, element_size, dim, Int32(element_type))
         if isstructtype(T) 
             push_dmem_custom_type(iris_mem.uid, T)
         end
         return iris_mem
     end
 
-    function dmem(T, dims...)
+    function dmem(::Type{T}, dims...) where T
         return iris_data_mem(T, dims...)
     end
 
-    function dmem(host::Array{T}) where T 
+    function dmem(host::Array{T}) where T
         return iris_data_mem(host)
     end
 
-    function dmem(host::Array{T}, dev_size, offset=[]) where T 
+    function dmem_offset(host, dev_size, offset=[]) 
         return iris_data_mem(host, dev_size, offset)
     end
 
@@ -3028,6 +3048,7 @@ module IrisHRT
                 IrisHRT.iris_task_dmem_flush_out(task0, Main.__iris_dmem_map[p_mem])
             end
         end
+        dependencies = [x for x in dependencies if x !== nothing]
         if length(dependencies) > 0
             iris_task_depend(task0, dependencies)
         end

@@ -1,19 +1,12 @@
 module Tiling2D
 
-export tile_array, tile_row_iterator, tile_col_iterator, dmem, Tiling, row_tiles, col_tiles, tile_pointer
-
-# Dummy dmem function for demonstration.
-# In your actual code, this would create an IRIS DMEM object from a pointer.
-function dmem(ptr::Ptr{T}, dims::Tuple{Int,Int}) where T
-    println("Creating DMEM with pointer: ", ptr, " and dimensions: ", dims)
-    # Replace the println above with the actual DMEM object creation.
-    return nothing
-end
+export tile_array, tile_row_iterator, tile_col_iterator, Tiling, row_tiles, col_tiles, tile_pointer
 
 struct Tile2D{T, M<:AbstractMatrix{T}}
     view::SubArray{T,2,M,Tuple{UnitRange{Int},UnitRange{Int}},false}
-    tile_row::Int
-    tile_col::Int
+    dmem::Any
+    row_index::Int
+    col_index::Int
 end
 
 # Function to split a 2D array into tiles.
@@ -25,24 +18,30 @@ function tile_array(A::AbstractMatrix, tile_rows::Int, tile_cols::Int, vector=tr
     nrows, ncols = size(A)
     tiles = Vector{Tile2D{eltype(A), typeof(A)}}()
     #tiles = Vector{SubArray{eltype(A),2,typeof(A),Tuple{UnitRange{Int},UnitRange{Int}},false}}()
-    tile_row = 0
-    tile_col = 0
+    row_index = 0
+    col_index = 0
     for i in 1:tile_rows:nrows
-        tile_row += 1
-        tile_col = 0
+        row_index += 1
+        col_index = 0
         for j in 1:tile_cols:ncols
-            tile_col += 1
+            col_index += 1
             row_end = min(i + tile_rows - 1, nrows)
             col_end = min(j + tile_cols - 1, ncols)
             view_tile = @view A[i:row_end, j:col_end]
-            ptr = pointer(view_tile)
-            push!(tiles, Tile2D(view_tile, tile_row, tile_col))
+            dev_size = [tile_cols, tile_rows]
+            offset = [j-1, i-1]
+            #ptr = pointer(view_tile)
+            mem = nothing
+            if isdefined(Main, :IrisHRT)
+                mem = Main.IrisHRT.dmem_offset(A, dev_size, offset)
+            end
+            push!(tiles, Tile2D(view_tile, mem, row_index, col_index))
         end
     end
     if vector
         return tiles
     else
-        return reshape(tiles, tile_row, tile_col)
+        return reshape(tiles, row_index, col_index)
     end
 end
 
@@ -157,6 +156,7 @@ macro tiling2d(args...)
     local tile_cols_expr = :(2)
     local mode_expr      = :(iterate)  # default mode is iteration
     local block_expr     = nothing
+    local name_expr      = :(tile)
 
     # Process each argument.
     for arg in args
@@ -172,6 +172,8 @@ macro tiling2d(args...)
                 tile_cols_expr = arg.args[2]
             elseif arg.args[1] == :mode
                 mode_expr = arg.args[2]
+            elseif arg.args[1] == :name
+                name_expr = arg.args[2]
             else
                 error("Unknown keyword: ", arg.args[1])
             end
@@ -223,7 +225,7 @@ macro tiling2d(args...)
             # In iteration mode, zip the iterators and run the block.
             for __rows in zip(__iters...)
                 for __tile in zip(__rows...)
-                    let tile = __tile
+                    let $name_expr = __tile
                         $block_expr
                     end
                 end
@@ -231,5 +233,78 @@ macro tiling2d(args...)
        end)
     end
 end
-    
+ 
+macro tiling2d_group(args...)
+    # Parse macro arguments
+    local data_expr      = nothing
+    local tile_rows_expr = :(2)
+    local tile_cols_expr = :(2)
+    local block_expr     = nothing
+    local group_expr     = nothing
+    local group_name_expr = :(group)
+    for arg in args
+        if arg isa Expr && arg.head == :(=)
+            if arg.args[1] == :data
+                data_expr = arg.args[2]
+            elseif arg.args[1] == :group
+                group_expr = arg.args[2]
+            elseif arg.args[1] == :tile_rows
+                tile_rows_expr = arg.args[2]
+            elseif arg.args[1] == :tile_cols
+                tile_cols_expr = arg.args[2]
+            elseif arg.args[1] == :group_name
+                group_name_expr = arg.args[2]
+            else
+                error("Unknown keyword: ", arg.args[1])
+            end
+        else
+            block_expr = arg
+        end
+    end
 
+    if data_expr === nothing
+        error("Missing keyword argument: data")
+    end
+    if group_expr === nothing
+        error("Missing keyword argument: group")
+    end
+
+    # If no block is provided, return the groups as an array.
+    if block_expr === nothing
+        return esc(quote
+            local __data = $data_expr
+            local __tiling = Tiling2D.Tiling(__data, $tile_rows_expr, $tile_cols_expr)
+            local __tile_matrix = reshape(__tiling.tiles, __tiling.n_tile_rows, __tiling.n_tile_cols)
+            if $group_expr == :row
+                collect(eachrow(__tile_matrix))
+            elseif $group_expr == :col
+                collect(eachcol(__tile_matrix))
+            else
+                error("Invalid group type: ", $group_expr)
+            end
+        end)
+    else
+        # In iteration mode, bind the group to the given name in the block.
+        return esc(quote
+            local __data = $data_expr
+            local __tiling = Tiling2D.Tiling(__data, $tile_rows_expr, $tile_cols_expr)
+            local __tile_matrix = reshape(__tiling.tiles, __tiling.n_tile_rows, __tiling.n_tile_cols)
+
+            if $group_expr == :row
+                for (__index, __group) in enumerate(eachrow(__tile_matrix))
+                    let $group_name_expr = (index=__index, tiles=__group)
+                        $block_expr
+                    end
+                end
+            elseif $group_expr == :col
+                for (__index, __group) in enumerate(eachcol(__tile_matrix))
+                    let $group_name_expr = (index=__index, tiles=__group)
+                        $block_expr
+                    end
+                end
+            else
+                error("Invalid group type: ", $group_expr)
+            end
+        end)
+    end
+end

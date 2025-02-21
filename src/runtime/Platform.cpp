@@ -1427,10 +1427,20 @@ int Platform::TaskMalloc(iris_task brs_task, iris_mem brs_mem) {
 
 int Platform::TaskMemFlushOut(iris_task brs_task, iris_mem brs_mem) {
   Task *task = get_task_object(brs_task);
+  bool submit = false;
+  if (task == NULL) {
+    // It is possible that the task submitted earlier is completed.
+    // Lets handle this scenario
+    brs_task = iris_task_create_struct();
+    task = get_task_object(brs_task);
+    submit = true;
+  }
   assert(task != NULL);
   DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
   Command* cmd = Command::CreateMemFlushOut(task, mem);
   task->AddCommand(cmd);
+  // Submit the task and wait for flush completion
+  if (submit) TaskSubmit(brs_task, iris_default, NULL, 1);
   return IRIS_SUCCESS;
 }
 

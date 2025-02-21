@@ -1,18 +1,11 @@
 module Tiling3D
 
-export tile_array, dmem, Tiling, tile_pointer, tiles_array
-
-# Dummy dmem function for demonstration.
-# For a 3D tile, dims is a tuple of three integers.
-function dmem(ptr::Ptr{T}, dims::NTuple{3,Int}) where T
-    println("Creating DMEM with pointer: ", ptr, " and dimensions: ", dims)
-    # Replace the println above with the actual DMEM object creation.
-    return nothing
-end
+export tile_array, Tiling, tile_pointer, tiles_array
 
 struct Tile3D{T, M<:AbstractArray{T,3}}
     #view::SubArray{T,3,M,NTuple{3,UnitRange{Int}},false}
     view::SubArray{T,3,M,Tuple{UnitRange{Int},UnitRange{Int},UnitRange{Int}},false}
+    dmem::Any
     tile_i::Int
     tile_j::Int
     tile_k::Int
@@ -41,9 +34,15 @@ function tile_array(A::AbstractArray{T,3}, tile_dim1::Int, tile_dim2::Int, tile_
                 i_end = min(i + tile_dim1 - 1, n1)
                 j_end = min(j + tile_dim2 - 1, n2)
                 k_end = min(k + tile_dim3 - 1, n3)
+                dev_size = [tile_dim3, tile_dim2, tile_dim1]
+                offset = [k-1, j-1, i-1]
                 view_tile = @view A[i:i_end, j:j_end, k:k_end]
-                ptr = pointer(view_tile)
-                push!(tiles, Tile3D(view_tile, tile_i, tile_j, tile_k))
+                #ptr = pointer(view_tile)
+                mem = nothing
+                if isdefined(Main, :IrisHRT) 
+                    mem = IrisHRT.dmem_offset(A, dev_size, offset)
+                end
+                push!(tiles, Tile3D(view_tile, mem, tile_i, tile_j, tile_k))
             end
         end
     end
