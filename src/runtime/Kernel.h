@@ -61,6 +61,8 @@ public:
   void set_vendor_specific_kernel_check(int devno, bool flag=true) { vendor_specific_kernel_check_flag_[devno] = flag; }
   bool is_vendor_specific_kernel(int devno) { return is_vendor_specific_kernel_[devno]; }
   void set_vendor_specific_kernel(int devno, bool flag=true) { is_vendor_specific_kernel_[devno] = flag; }
+  bool is_default_kernel(int devno) { return is_default_kernel_[devno]; }
+  void set_default_kernel(int devno, bool flag=true) { is_default_kernel_[devno] = flag; }
   void set_task_name(const char *name) { task_name_= string(name); }
   void set_task(Task *task) { task_ = task; }
   Task *task() { return task_; }
@@ -120,6 +122,7 @@ private:
   Platform* platform_;
   shared_ptr<History> history_;
   bool is_vendor_specific_kernel_[IRIS_MAX_NDEVS];
+  bool is_default_kernel_[IRIS_MAX_NDEVS];
   bool vendor_specific_kernel_check_flag_[IRIS_MAX_NDEVS];
   bool profile_data_transfers_;
   vector<DataObjectProfile>       in_dataobject_profiles;

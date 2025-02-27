@@ -10,12 +10,12 @@ using KernelAbstractions
 # Opportunities
 ## Can we identify in and outs automatically?
 ## PIM specific intrinsics identification
+
 function saxpy(i, Z, A, X, Y)
     if i <= length(Z)
         @inbounds Z[i] = A*X[i] + Y[i]
     end
 end
-
 function call(SIZE, A, X, Y, Z)
     julia_start = time()
     task0 = IrisHRT.parallel_for(SIZE, saxpy, Z, A, X, Y, flush=[Z])

@@ -1,5 +1,7 @@
 module Tiling2D
 
+const __iris_dmem_map = Dict{Any, Any}()
+const __pin_map = Dict{Any, Any}()
 export tile_array, tile_row_iterator, tile_col_iterator, Tiling, row_tiles, col_tiles, tile_pointer
 
 struct Tile2D{T, M<:AbstractMatrix{T}}
@@ -14,10 +16,9 @@ end
 #   - A: 2D array (matrix)
 #   - tile_rows, tile_cols: dimensions of each tile.
 # Returns a vector of views (subarrays) into A.
-function tile_array(A::AbstractMatrix, tile_rows::Int, tile_cols::Int, vector=true)
+function tile_array(A::AbstractMatrix, tile_rows::Int, tile_cols::Int, flattened=true::Bool)
     nrows, ncols = size(A)
     tiles = Vector{Tile2D{eltype(A), typeof(A)}}()
-    #tiles = Vector{SubArray{eltype(A),2,typeof(A),Tuple{UnitRange{Int},UnitRange{Int}},false}}()
     row_index = 0
     col_index = 0
     for i in 1:tile_rows:nrows
@@ -30,15 +31,21 @@ function tile_array(A::AbstractMatrix, tile_rows::Int, tile_cols::Int, vector=tr
             view_tile = @view A[i:row_end, j:col_end]
             dev_size = [tile_cols, tile_rows]
             offset = [j-1, i-1]
-            #ptr = pointer(view_tile)
+            ptr = pointer(view_tile)
             mem = nothing
             if isdefined(Main, :IrisHRT)
-                mem = Main.IrisHRT.dmem_offset(A, dev_size, offset)
+                key = (pointer(A), offset, dev_size)
+                if ! haskey(__iris_dmem_map, key)
+                    mem = Main.IrisHRT.dmem_offset(A, dev_size, offset)
+                    __iris_dmem_map[key] = mem
+                else
+                    mem = __iris_dmem_map[key]
+                end
             end
             push!(tiles, Tile2D(view_tile, mem, row_index, col_index))
         end
     end
-    if vector
+    if flattened
         return tiles
     else
         return reshape(tiles, row_index, col_index)
@@ -68,23 +75,47 @@ struct Tiling{T, M<:AbstractMatrix{T}}
     A::M
     tile_rows::Int
     tile_cols::Int
-    tiles::Vector{Tile2D{T, M}}
+    tiles::Any
     n_tile_rows::Int
     n_tile_cols::Int
+    flattened::Any
+    order::Any
 end
 
 # Tiling(A, tile_rows, tile_cols)
 #    Create a Tiling object from a 2D array `A` by splitting it into tiles of size
 #    `tile_rows`×`tile_cols`. The last tiles in a row or column may be smaller if A’s
 #    dimensions are not multiples of the tile size.
-function Tiling(A::AbstractMatrix, tile_rows::Int, tile_cols::Int)
-    tiles = tile_array(A, tile_rows, tile_cols)
+function Tiling(A::AbstractMatrix, tile_rows::Int, tile_cols::Int, flattened=true::Bool, order=:row_major::Any)
     nrows, ncols = size(A)
     n_tile_rows = cld(nrows, tile_rows)
     n_tile_cols = cld(ncols, tile_cols)
-    return Tiling{eltype(A), typeof(A)}(A, tile_rows, tile_cols, tiles, n_tile_rows, n_tile_cols)
+    tiles = tile_array(A, tile_rows, tile_cols, false)
+    if ! haskey(__pin_map, pointer(A))
+        if isdefined(Main, :IrisHRT)
+            Main.IrisHRT.register_pin(A)
+            __pin_map[pointer(A)] = true
+        end
+    end
+    if flattened
+        if order == :row_major
+            tiles = vcat(collect(eachcol(tiles))...)
+            return Tiling{eltype(A), typeof(A)}(A, tile_rows, tile_cols, tiles, n_tile_rows, n_tile_cols, flattened, order)
+        elseif order == :col_major
+            tiles = vcat(collect(eachrow(tiles))...)
+            return Tiling{eltype(A), typeof(A)}(A, tile_rows, tile_cols, tiles, n_tile_rows, n_tile_cols, flattened, order)
+        end
+    else
+        if order == :row_major
+            tiles = hcat(collect(eachrow(tiles))...)
+            return Tiling{eltype(A), typeof(A)}(A, tile_rows, tile_cols, tiles, n_tile_rows, n_tile_cols, flattened, order)
+        elseif order == :col_major
+            tiles = hcat(collect(eachcol(tiles))...)
+            return Tiling{eltype(A), typeof(A)}(A, tile_rows, tile_cols, tiles, n_tile_rows, n_tile_cols, flattened, order)
+        end
+    end
+    return Tiling{eltype(A), typeof(A)}(A, tile_rows, tile_cols, tiles, n_tile_rows, n_tile_cols, flattened, order)
 end
-
 
 #    row_tiles(t::Tiling)
 # Return an iterator over the rows of tiles. Each element is a vector containing
@@ -151,10 +182,11 @@ Inside the loop (in iteration mode), the variable `tile` is bound to:
 macro tiling2d(args...)
     # Parse the arguments: expect keyword arguments and optionally a block.
     local data_expr      = nothing
-    local iterator_expr  = nothing
+    local order_expr  = nothing
+    local flattened = true
+    local grouped = false
     local tile_rows_expr = :(2)
     local tile_cols_expr = :(2)
-    local mode_expr      = :(iterate)  # default mode is iteration
     local block_expr     = nothing
     local name_expr      = :(tile)
 
@@ -164,14 +196,16 @@ macro tiling2d(args...)
             # Keyword argument of the form key = value.
             if arg.args[1] == :data
                 data_expr = arg.args[2]
-            elseif arg.args[1] == :iterator
-                iterator_expr = arg.args[2]
+            elseif arg.args[1] == :order
+                order_expr = arg.args[2]
             elseif arg.args[1] == :tile_rows
                 tile_rows_expr = arg.args[2]
             elseif arg.args[1] == :tile_cols
                 tile_cols_expr = arg.args[2]
-            elseif arg.args[1] == :mode
-                mode_expr = arg.args[2]
+            elseif arg.args[1] == :flattened
+                flattened = arg.args[2]
+            elseif arg.args[1] == :grouped
+                grouped = arg.args[2]
             elseif arg.args[1] == :name
                 name_expr = arg.args[2]
             else
@@ -182,129 +216,92 @@ macro tiling2d(args...)
             block_expr = arg
         end
     end
-
-    if data_expr === nothing
-        error("Missing keyword argument: data")
-    end
-    if iterator_expr === nothing
-        error("Missing keyword argument: iterator")
+    if (grouped)
+        flattened = false
     end
 
     if block_expr === nothing
         return esc(quote
             local __data = $data_expr
-            local __tilings = if __data isa Tuple
-                map(x -> Tiling2D.Tiling(x, $tile_rows_expr, $tile_cols_expr), __data)
+            if __data isa Tuple
+                local __all_tiling = 
+                    if $order_expr isa Tuple
+                        [ Tiling2D.Tiling(x, $tile_rows_expr, $tile_cols_expr, $flattened, order_x).tiles for (x, order_x) in zip(__data, $order_expr)  ]
+                    else
+                        [ Tiling2D.Tiling(x, $tile_rows_expr, $tile_cols_expr, $flattened, $order_expr).tiles  for x in __data ]
+                    end
+                if $flattened
+                    local __d = [ Tuple([__all_tiling[k][j] for k in 1:length(__all_tiling)]) for j in 1:length(__all_tiling[1]) ]
+                    __d
+                else
+                    local __d = [[ Tuple([__all_tiling[k][j,i] for k in 1:length(__all_tiling)]) for j in 1:size(__all_tiling[1],2) ] for i in 1:size(__all_tiling[1],1)]
+                    cat(__d..., dims=2)
+                end
             else
-                (Tiling2D.Tiling(__data, $tile_rows_expr, $tile_cols_expr),)
+                local __tiling = Tiling2D.Tiling(__data, $tile_rows_expr, $tile_cols_expr, $flattened, $order_expr)
+                __tiling.tiles
             end
-            # Allow the iterator argument to be either a symbol or a tuple.
-            local _it = $iterator_expr
-            local __iters = _it isa Tuple ?
-                map((tiling, order) ->
-                                order == :row_major ? Tiling2D.row_tiles(tiling) : Tiling2D.col_tiles(tiling),
-                                __tilings, _it) :
-                map(t -> (_it == :row_major ? Tiling2D.row_tiles(t) : Tiling2D.col_tiles(t)), __tilings)
-            __iters
         end)
     else
         return esc(quote
             # (Optional) Debug print.
             local __data = $data_expr
-            local __tilings = if __data isa Tuple
-                map(x -> Tiling2D.Tiling(x, $tile_rows_expr, $tile_cols_expr), __data)
+            if __data isa Tuple
+                local __all_tiling = 
+                    if $order_expr isa Tuple
+                        [ Tiling2D.Tiling(x, $tile_rows_expr, $tile_cols_expr, $flattened, order_x).tiles for (x, order_x) in zip(__data, $order_expr)  ]
+                    else
+                        [ Tiling2D.Tiling(x, $tile_rows_expr, $tile_cols_expr, $flattened, $order_expr).tiles for x in __data ]
+                    end  
+                if $flattened
+                    local __d = [ Tuple([__all_tiling[k][j] for k in 1:length(__all_tiling)]) for j in 1:length(__all_tiling[1]) ]
+                    for (__index, __tile) in enumerate(__d)
+                        let $name_expr = (index=__index, data=__tile)
+                            $block_expr
+                        end
+                    end
+                else
+                    local __d = [[ Tuple([__all_tiling[k][j,i] for k in 1:length(__all_tiling)]) for j in 1:size(__all_tiling[1],2) ] for i in 1:size(__all_tiling[1],1)]
+                    local __d2 = cat(__d..., dims=2)
+                    if $grouped
+                        for (__index, __group) in enumerate(eachrow(__d2))
+                            let $name_expr = (index=__index, data=__group)
+                                $block_expr
+                            end
+                        end
+                    else
+                        local __d3 = collect(eachrow(__d2))
+                        for (__index, __rows) in enumerate(__d3)
+                            let $name_expr = (index=__index, data=__rows)
+                                $block_expr
+                            end
+                        end
+                    end
+                end
             else
-                (Tiling2D.Tiling(__data, $tile_rows_expr, $tile_cols_expr),)
-            end
-            local _it = $iterator_expr
-            local __iters = _it isa Tuple ?
-                map((tiling, order) ->
-                                order == :row_major ? Tiling2D.row_tiles(tiling) : Tiling2D.col_tiles(tiling),
-                                __tilings, _it) :
-                map(t -> (_it == :row_major ? Tiling2D.row_tiles(t) : Tiling2D.col_tiles(t)), __tilings)
-            # In iteration mode, zip the iterators and run the block.
-            for __rows in zip(__iters...)
-                for __tile in zip(__rows...)
-                    let $name_expr = __tile
-                        $block_expr
+                local __d = Tiling2D.Tiling(__data, $tile_rows_expr, $tile_cols_expr, $flattened, $order_expr)
+                if $flattened
+                    for (__index, __tile) in enumerate(__d.tiles)
+                        let $name_expr = (index=__index, data=__tile)
+                            $block_expr
+                        end
+                    end
+                else
+                    if $grouped
+                        for (__index, __group) in enumerate(eachcol(__d.tiles))
+                            let $name_expr = (index=__index, data=__group)
+                                $block_expr
+                            end
+                        end
+                    else
+                        for (__index, __rows) in enumerate(__d.tiles)
+                            let $name_expr = (index=__index, data=__rows)
+                                $block_expr
+                            end
+                        end
                     end
                 end
             end
        end)
-    end
-end
- 
-macro tiling2d_group(args...)
-    # Parse macro arguments
-    local data_expr      = nothing
-    local tile_rows_expr = :(2)
-    local tile_cols_expr = :(2)
-    local block_expr     = nothing
-    local group_expr     = nothing
-    local group_name_expr = :(group)
-    for arg in args
-        if arg isa Expr && arg.head == :(=)
-            if arg.args[1] == :data
-                data_expr = arg.args[2]
-            elseif arg.args[1] == :group
-                group_expr = arg.args[2]
-            elseif arg.args[1] == :tile_rows
-                tile_rows_expr = arg.args[2]
-            elseif arg.args[1] == :tile_cols
-                tile_cols_expr = arg.args[2]
-            elseif arg.args[1] == :group_name
-                group_name_expr = arg.args[2]
-            else
-                error("Unknown keyword: ", arg.args[1])
-            end
-        else
-            block_expr = arg
-        end
-    end
-
-    if data_expr === nothing
-        error("Missing keyword argument: data")
-    end
-    if group_expr === nothing
-        error("Missing keyword argument: group")
-    end
-
-    # If no block is provided, return the groups as an array.
-    if block_expr === nothing
-        return esc(quote
-            local __data = $data_expr
-            local __tiling = Tiling2D.Tiling(__data, $tile_rows_expr, $tile_cols_expr)
-            local __tile_matrix = reshape(__tiling.tiles, __tiling.n_tile_rows, __tiling.n_tile_cols)
-            if $group_expr == :row
-                collect(eachrow(__tile_matrix))
-            elseif $group_expr == :col
-                collect(eachcol(__tile_matrix))
-            else
-                error("Invalid group type: ", $group_expr)
-            end
-        end)
-    else
-        # In iteration mode, bind the group to the given name in the block.
-        return esc(quote
-            local __data = $data_expr
-            local __tiling = Tiling2D.Tiling(__data, $tile_rows_expr, $tile_cols_expr)
-            local __tile_matrix = reshape(__tiling.tiles, __tiling.n_tile_rows, __tiling.n_tile_cols)
-
-            if $group_expr == :row
-                for (__index, __group) in enumerate(eachrow(__tile_matrix))
-                    let $group_name_expr = (index=__index, tiles=__group)
-                        $block_expr
-                    end
-                end
-            elseif $group_expr == :col
-                for (__index, __group) in enumerate(eachcol(__tile_matrix))
-                    let $group_name_expr = (index=__index, tiles=__group)
-                        $block_expr
-                    end
-                end
-            else
-                error("Invalid group type: ", $group_expr)
-            end
-        end)
     end
 end

@@ -38,6 +38,7 @@ DataMem::DataMem(Platform* platform, void *host_ptr, size_t *host_size, int dim,
     memcpy(host_size_, host_size, sizeof(size_t)*dim_);
     elem_size_ = elem_size;
     set_element_type(element_type);
+    //_printf("2DataMem uid:%lu ptr:%p host_ptr:%p host_size:%ld elem_size:%ld dim:%d size:%ld", uid(), this, host_ptr, host_size[0], elem_size, dim, size);
 }
 DataMem::DataMem(Platform *platform, void *host_ptr, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim, int element_type) : BaseMem(IRIS_DMEM, platform->ndevs()) 
 {

@@ -17,7 +17,10 @@ const __iris_dmem_map = Dict{Any, Any}()
 const __iris_cuda_devno_stream = Dict{Any, Any}()
 const __iris_hip_devno_stream = Dict{Any, Any}()
 const __iris_dmem_custom_type = Dict{Any, Any}()
-const __iris_taskid_paramid_custom_type = Dict{Any, Any}()
+const __iris_dmem_2_task = Dict{Any, Any}()
+const IRIS_SUCCESS          =  0
+const IRIS_ERROR            = -1
+const IRIS_WARNING          = -2
 module DummyAMDGPU
     macro sync(args...) end
     macro async(args...) end
@@ -114,6 +117,7 @@ mutable struct IRISHIPStream
     ctx::MyAMDGPU.HIPContext
 end
 module IrisHRT
+    import Base: show
 
     using InteractiveUtils
     using Requires
@@ -845,9 +849,15 @@ module IrisHRT
             MyCUDA.device!(Int(devno))
             MyCUDA.context!(ctx)
             MyCUDA.stream!(stream)
+            shmem=0
             backend = MyCUDA.CUDAKernels.CUDABackend(false, false)
+            spec = JACC.LaunchSpec{MyCUDA.CUDAKernels.CUDABackend}(stream, threads, blocks, shmem, false)
             #println(Core.stdout, "Calling JACC async:")
-            JACC.parallel_for(backend, gws, func, args_tuple...)
+            if julia_kernel_type == iris_julia_jacc_parallel_for
+                JACC.parallel_for(spec, gws, func, args_tuple...)
+            elseif julia_kernel_type == iris_julia_jacc_parallel_reduce
+                JACC.parallel_reduce(spec, gws, func, args_tuple...)
+            end
         else
             backend = MyCUDA.CUDAKernels.CUDABackend(false, false)
             #println(Core.stdout, "Calling JACC:", gws, " func:", func)
@@ -1444,7 +1454,7 @@ module IrisHRT
         end
         dependencies = [x for x in dependencies if x !== nothing]
         if length(dependencies) > 0
-            iris_task_depend(task0, dependencies)
+            IrisHRT.iris_task_depend(task0, dependencies)
         end
         if submit
             IrisHRT.iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
@@ -1643,7 +1653,14 @@ module IrisHRT
     function wait(tasks::Vector{IrisTask})::Int32
         return iris_task_wait_all(Int32(length(tasks)), pointer(tasks))
     end
-
+    
+    function wait(mem::IrisMem)::Int32
+        if haskey(Main.__iris_dmem_2_task, mem)
+            task = Main.__iris_dmem_2_task[mem]
+            return wait(task)
+        end
+        return IRIS_SUCCESS
+    end
 
     #function iris_task_add_subtask(task::IrisTask, subtask::IrisTask)::Int32
     #    return ccall(Libdl.dlsym(lib, :iris_task_add_subtask), Int32, (IrisTask, IrisTask), task, subtask)
@@ -1675,6 +1692,11 @@ module IrisHRT
 
     function iris_register_pin_memory(host::Ptr{Cvoid}, size::Csize_t)::Int32
         return ccall(Libdl.dlsym(lib, :iris_register_pin_memory), Int32, (Ptr{Cvoid}, Csize_t), host, size)
+    end
+
+    function register_pin(host::Array{T}) where T
+        ptr = reinterpret(Ptr{Cvoid}, pointer(host))
+        return iris_register_pin_memory(ptr, Csize_t(sizeof(host)))
     end
 
     function iris_mem_create(size::Csize_t, mem::Ptr{IrisMem})::Int32
@@ -1786,6 +1808,12 @@ module IrisHRT
         return dmem
     end
 
+    function fill(::Type{T}, data, dims...) where T
+        dmem = iris_data_mem(T, dims...)
+        iris_mem_init_reset_assign(dmem, T(data))
+        return dmem
+    end
+
     function ones(T, dims...)
         dmem = iris_data_mem(T, dims...)
         iris_mem_init_reset_assign(dmem, T(1))
@@ -1850,6 +1878,72 @@ module IrisHRT
             element_type = iris_unknown
         end
         return element_type
+    end
+
+    function iris_get_type_string(mem)
+        element_type = iris_get_mem_element_type(mem)
+        if element_type == iris_float 
+            return "float"
+        elseif element_type == iris_double
+            return "double"
+        elseif element_type == iris_int64
+            return "int64_t" 
+        elseif element_type == iris_int32
+            return "int32_t"
+        elseif element_type == iris_int16
+            return "int16_t"
+        elseif element_type == iris_int8
+            return "int8_t"
+        elseif element_type == iris_uint64
+            return "uint64_t"
+        elseif element_type == iris_uint32
+            return "uint32_t"
+        elseif element_type == iris_uint16
+            return "uint16_t"
+        elseif element_type == iris_uint8
+            return "uint8_t"
+        elseif element_type == iris_char
+            return "char"
+        elseif element_type == iris_bool
+            return "bool"
+        else
+            error_("Unknown iris type handler: ", element_type)
+        end
+        return "__unknown"
+    end
+
+    function iris_get_julia_type(mem::IrisMem)
+        element_type = iris_get_mem_element_type(mem)
+        if element_type == iris_float 
+            return Float32
+        elseif element_type == iris_double
+            return Float64
+        elseif element_type == iris_int64
+            return Int64
+        elseif element_type == iris_int32
+            return Int32
+        elseif element_type == iris_int16
+            return Int16
+        elseif element_type == iris_int8
+            return Int8
+        elseif element_type == iris_uint64
+            return UInt64
+        elseif element_type == iris_uint32
+            return UInt32
+        elseif element_type == iris_uint16
+            return UInt16
+        elseif element_type == iris_uint8
+            return UInt8
+        elseif element_type == iris_char
+            return Char
+        elseif element_type == iris_bool
+            return Bool
+        elseif element_type == iris_custom_type
+            return get_dmem_custom_type(mem)
+        else
+            error_("Unknown iris type for julia type: ", element_type)
+        end
+        return Ptr{Cvoid}
     end
 
     function iris_data_mem(::Type{T}, dims...; dev_size=nothing, offset=[])  where T
@@ -1956,6 +2050,10 @@ module IrisHRT
 
     function get_type(mem::IrisMem)
         return iris_get_mem_element_type(mem)
+    end
+
+    function get_julia_type(mem::IrisMem)
+        element_type = iris_get_julia_type(mem)
     end
 
     function ndim(mem::IrisMem)
@@ -2139,6 +2237,14 @@ module IrisHRT
         return ccall(Libdl.dlsym(lib, :iris_graph_create), Int32, (Ptr{IrisGraph},), graph)
     end
 
+    function iris_graph_create_empty()::IrisGraph
+        return ccall(Libdl.dlsym(lib, :iris_graph_create_empty), IrisGraph, ())
+    end
+
+    function graph()
+        return iris_graph_create_empty()
+    end
+
     function iris_graph_create_null(graph::Ptr{IrisGraph})::Int32
         return ccall(Libdl.dlsym(lib, :iris_graph_create_null), Int32, (Ptr{IrisGraph},), graph)
     end
@@ -2161,6 +2267,10 @@ module IrisHRT
 
     function iris_graph_task(graph::IrisGraph, task::IrisTask, device::Int32, opt::Ptr{Cchar})::Int32
         return ccall(Libdl.dlsym(lib, :iris_graph_task), Int32, (IrisGraph, IrisTask, Int32, Ptr{Cchar}), graph, task, device, opt)
+    end
+
+    function add_task(graph::IrisGraph, task::IrisTask, policy=IrisHRT.iris_roundrobin)
+        return iris_graph_task(graph, task, policy, C_NULL)
     end
 
     function iris_graph_retain(graph::IrisGraph, flag::Int32)::Int32
@@ -2555,9 +2665,9 @@ module IrisHRT
             IrisHRT.iris_mem_release(value)
         end
         # Clear all elements in the dictionary
+        empty!(Main.__iris_dmem_2_task)
         empty!(Main.__iris_dmem_map)
         empty!(Main.__iris_dmem_custom_type)
-        empty!(Main.__iris_taskid_paramid_custom_type)
         empty!(Main.__iris_cuda_devno_stream)
         empty!(Main.__iris_hip_devno_stream)
     end
@@ -2622,6 +2732,15 @@ module IrisHRT
         return (task=task0, dmem=dmem0)
     end
 
+    function fill_task(::Type{T}, data, dims...; task=nothing, dmem=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true) where T
+        (task0, dmem0) = get_init_task_dmem(T, dims..., task=task, dmem=dmem) 
+        iris_task_cmd_init_reset_assign(task0, dmem0, T(data))
+        if submit
+            iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
+        end
+        return (task=task0, dmem=dmem0)
+    end
+
     function ones_task(::Type{T}, dims...; task=nothing, dmem=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true) where T
         (task0, dmem0) = get_init_task_dmem(T, dims..., task=task, dmem=dmem)
         iris_task_cmd_init_reset_assign(task0, dmem0, T(1))
@@ -2671,6 +2790,15 @@ module IrisHRT
     function zeros_task(host::Array{T}; task=nothing, dmem=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true) where T
         (task0, dmem0) = get_init_task_dmem(host, dmem=dmem, task=task) 
         iris_task_cmd_init_reset_assign(task0, dmem0, T(0))
+        if submit
+            iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
+        end
+        return (task=task0, dmem=dmem0)
+    end
+
+    function fill_task(host::Array{T}, data; task=nothing, dmem=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true) where T
+        (task0, dmem0) = get_init_task_dmem(host, dmem=dmem, task=task) 
+        iris_task_cmd_init_reset_assign(task0, dmem0, T(data))
         if submit
             iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
         end
@@ -2837,27 +2965,37 @@ module IrisHRT
         return (in=a_in, out=a_out)
     end
 
-    function parallel_for((L, M, N)::Tuple{Int64, Int64, Int64}, f::Function, x... ; task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true, dependencies=[], flush=Any[], metadata=nothing)
-        return IrisHRT.task(gws=(L,M,N), task=task, parallel_for=true, submit=submit, policy=policy, wait=wait, flush=flush, dependencies=dependencies, metadata=metadata, kernel=String(Symbol(f)), args=Any[x...])
+    function parallel_for((L, M, N)::Tuple{Int64, Int64, Int64}, f::Function, x... ; in=Any[], out=Any[], task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true, auto_dependency=true, dependencies=[], flush=Any[], metadata=nothing)
+        return IrisHRT.task(gws=(L,M,N), in=in, out=out, task=task, parallel_for=true, submit=submit, policy=policy, wait=wait, flush=flush, auto_dependency=auto_dependency, dependencies=dependencies, metadata=metadata, kernel=String(Symbol(f)), args=Any[x...])
     end
 
-    function parallel_for((M, N)::Tuple{Int64, Int64}, f::Function, x... ; task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true, dependencies=[], flush=Any[], metadata=nothing)
-        return IrisHRT.task(gws=(M,N), task=task, parallel_for=true, submit=submit, policy=policy, wait=wait, flush=flush, dependencies=dependencies, metadata=metadata, kernel=String(Symbol(f)), args=Any[x...])
+    function parallel_for((M, N)::Tuple{Int64, Int64}, f::Function, x... ; in=Any[], out=Any[], task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true, auto_dependency=true, dependencies=[], flush=Any[], metadata=nothing)
+        return IrisHRT.task(gws=(M,N), in=in, out=out, task=task, parallel_for=true, submit=submit, policy=policy, wait=wait, flush=flush, auto_dependency=auto_dependency, dependencies=dependencies, metadata=metadata, kernel=String(Symbol(f)), args=Any[x...])
     end
 
-    function parallel_for(N::Int64, f::Function, x... ; task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true, dependencies=[], flush=Any[], metadata=nothing)
-        return IrisHRT.task(gws=N, task=task, parallel_for=true, submit=submit, policy=policy, wait=wait, flush=flush, dependencies=dependencies, metadata=metadata, kernel=String(Symbol(f)), args=Any[x...])
+    function parallel_for(N::Union{Int64,UInt64}, f::Function, x... ; in=Any[], out=Any[], task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true, auto_dependency=true, dependencies=[], flush=Any[], metadata=nothing)
+        return IrisHRT.task(gws=N, in=in, out=out, task=task, parallel_for=true, submit=submit, policy=policy, wait=wait, flush=flush, auto_dependency=auto_dependency, dependencies=dependencies, metadata=metadata, kernel=String(Symbol(f)), args=Any[x...])
     end
 
-    function parallel_reduce((M,N)::Tuple{Int64,Int64}, op, f::Function, x... ; init, task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true, dependencies=[], flush=Any[], metadata=nothing)
-        return IrisHRT.task(gws=(M,N), task=task, parallel_reduce=true, submit=submit, policy=policy, wait=wait, flush=flush, dependencies=dependencies, metadata=metadata, kernel=String(Symbol(f)), args=Any[x...])
+    function parallel_reduce((M,N)::Tuple{Int64,Int64}, op, f::Function, x... ; init, task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true, auto_dependency=true, dependencies=[], flush=Any[], metadata=nothing)
+        return IrisHRT.task(gws=(M,N), task=task, parallel_reduce=true, submit=submit, policy=policy, wait=wait, flush=flush, auto_dependency=auto_dependency, dependencies=dependencies, metadata=metadata, kernel=String(Symbol(f)), args=Any[x...])
     end
 
-    function parallel_reduce(N::Int64, op, f::Function, x... ; init, task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true, dependencies=[], metadata=nothing)
-        return IrisHRT.task(gws=N, task=task, parallel_reduce=true, submit=submit, policy=policy, wait=wait, flush=flush, dependencies=dependencies, metadata=metadata, kernel=String(Symbol(f)), args=Any[x...])
+    function parallel_reduce(N::Int64, op, f::Function, x... ; init, task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true, auto_dependency=true, dependencies=[], metadata=nothing)
+        return IrisHRT.task(gws=N, task=task, parallel_reduce=true, submit=submit, policy=policy, wait=wait, flush=flush, auto_dependency=auto_dependency, dependencies=dependencies, metadata=metadata, kernel=String(Symbol(f)), args=Any[x...])
     end
 
-    function task(; in=Any[], input=Any[], out=Any[], output=Any[], flush=Any[], auto_in_out=false, lws=Int64[], gws=Int64[], off=Int64[], policy=IrisHRT.iris_roundrobin, wait=true, core=false, ka=false, parallel_reduce=false, parallel_for=false, host=false, task=nothing, metadata=nothing, kernel="kernel", args=[], submit=true, dependencies=[])
+    function custom_print(im::IrisMem)
+        host = valid_host(im)
+        return host #"IrisMem with data: " * join(host, ", ")
+    end
+
+    # Overriding show so that println calls custom_print.
+    function show(io::IO, im::IrisMem)
+        print(io, custom_print(im))
+    end
+
+    function task(; in=Any[], out=Any[], flush=Any[], auto_in_out=false, lws=Int64[], gws=Int64[], off=Int64[], policy=IrisHRT.iris_roundrobin, wait=true, core=false, ka=false, parallel_reduce=false, parallel_for=false, host=false, auto_dependency=true, task=nothing, metadata=nothing, kernel="kernel", args=[], submit=true, dependencies=[])
         call_args = args
         mem_params = Dict{Any, Any}()
         t_args = Tuple(args)
@@ -2881,7 +3019,7 @@ module IrisHRT
         if auto_in_out
             (auto_in, auto_out) = identify_in_out(julia_kernel_type, gws, kernel, t_args...)
         end
-        for larray in vcat(out, output, flush, auto_out)
+        for larray in vcat(out, flush, auto_out)
             p_array = larray
             if !isa(larray, IrisMem) 
                 #println("Array is not IrisMem")
@@ -2899,7 +3037,7 @@ module IrisHRT
             #println(Core.stdout, " out inserting p_array: ", p_array)
             mem_params[p_array] = IrisHRT.iris_w
         end
-        for larray in vcat(input, in, auto_in)
+        for larray in vcat(in, auto_in)
             p_array = larray
             if !isa(larray, IrisMem) 
                 p_array = pointer(larray)
@@ -3048,9 +3186,33 @@ module IrisHRT
                 IrisHRT.iris_task_dmem_flush_out(task0, Main.__iris_dmem_map[p_mem])
             end
         end
-        dependencies = [x for x in dependencies if x !== nothing]
-        if length(dependencies) > 0
-            iris_task_depend(task0, dependencies)
+        n_dependencies = IrisHRT.IrisTask[x for x in dependencies if x !== nothing]
+        if auto_dependency
+            for mem in vcat(in, auto_in)
+                if isa(mem, IrisMem)
+                    if haskey(Main.__iris_dmem_2_task, mem)
+                        push!(n_dependencies, Main.__iris_dmem_2_task[mem])               
+                    end
+                else
+                    p_mem = pointer(mem)
+                    mem_obj = Main.__iris_dmem_map[p_mem]
+                    if haskey(Main.__iris_dmem_2_task, mem_obj)
+                        push!(n_dependencies, Main.__iris_dmem_2_task[mem_obj])               
+                    end
+                end
+            end
+            for mem in vcat(out, flush, auto_out)
+                if isa(mem, IrisMem)
+                   Main.__iris_dmem_2_task[mem] = task0
+                else
+                   p_mem = pointer(mem)
+                   mem_obj = Main.__iris_dmem_map[p_mem]
+                   Main.__iris_dmem_2_task[mem_obj] = task0
+                end
+            end
+        end
+        if length(n_dependencies) > 0
+            IrisHRT.iris_task_depend(task0, n_dependencies)
         end
         if isa(policy, Function)
             policy_ptr = String(Symbol(policy))
@@ -3071,5 +3233,7 @@ module IrisHRT
 
 end  # module Iris
 
+include("Tiling1D.jl")
 include("Tiling2D.jl")
 include("Tiling3D.jl")
+include("Kernels.jl")

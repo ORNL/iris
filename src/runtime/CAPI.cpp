@@ -874,6 +874,12 @@ int iris_graph_create(iris_graph* graph) {
   return Platform::GetPlatform()->GraphCreate(graph);
 }
 
+iris_graph iris_graph_create_empty() {
+  iris_graph graph;
+  Platform::GetPlatform()->GraphCreate(&graph);
+  return graph;
+}
+
 int iris_graph_create_null(iris_graph* graph) {
   iris_graph null_graph;
   null_graph.uid = (unsigned long) -1;

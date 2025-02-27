@@ -47,7 +47,87 @@ __global__ void iris_reset_core(T *arr, T value, size_t size) {
         arr[idx] = value;
     }
 }
-
+template <typename T> 
+__global__ void iris_add_core(T *out, T *a, T *b, size_t size) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < size) {
+        out[idx] = a[idx] + b[idx];
+    }
+}
+template <typename T> 
+__global__ void iris_sub_core(T *out, T *a, T *b, size_t size) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < size) {
+        out[idx] = a[idx] - b[idx];
+    }
+}
+template <typename T> 
+__global__ void iris_mul_core(T *out, T *a, T *b, size_t size) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < size) {
+        out[idx] = a[idx] * b[idx];
+    }
+}
+template <typename T> 
+__global__ void iris_div_core(T *out, T *a, T *b, size_t size) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < size) {
+        out[idx] = a[idx] / b[idx];
+    }
+}
+#define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
+template <typename T>
+void iris_add(T *out, T *a, T *b, size_t size, void *stream) {
+    int threadsPerBlock = MAX(256, size);
+    int blocksPerGrid = static_cast<int>((size + threadsPerBlock - 1) / threadsPerBlock);
+    //printf("Size: %lu seed:%ld p1:%f p2:%f stream:%p\n", size, seed, (float)p1, (float)p2, stream);
+    if (stream != NULL) {
+        gpuStream_t gpu_stream = reinterpret_cast<gpuStream_t>(stream);
+        iris_add_core<T><<<blocksPerGrid, threadsPerBlock, 0, gpu_stream>>>(out, a, b, size);
+    }
+    else {
+        iris_add_core<T><<<blocksPerGrid, threadsPerBlock>>>(out, a, b, size);
+    }
+}
+template <typename T>
+void iris_sub(T *out, T *a, T *b, size_t size, void *stream) {
+    int threadsPerBlock = MAX(256, size);
+    int blocksPerGrid = static_cast<int>((size + threadsPerBlock - 1) / threadsPerBlock);
+    //printf("Size: %lu seed:%ld p1:%f p2:%f stream:%p\n", size, seed, (float)p1, (float)p2, stream);
+    if (stream != NULL) {
+        gpuStream_t gpu_stream = reinterpret_cast<gpuStream_t>(stream);
+        iris_sub_core<T><<<blocksPerGrid, threadsPerBlock, 0, gpu_stream>>>(out, a, b, size);
+    }
+    else {
+        iris_sub_core<T><<<blocksPerGrid, threadsPerBlock>>>(out, a, b, size);
+    }
+}
+template <typename T>
+void iris_mul(T *out, T *a, T *b, size_t size, void *stream) {
+    int threadsPerBlock = MAX(256, size);
+    int blocksPerGrid = static_cast<int>((size + threadsPerBlock - 1) / threadsPerBlock);
+    //printf("Size: %lu seed:%ld p1:%f p2:%f stream:%p\n", size, seed, (float)p1, (float)p2, stream);
+    if (stream != NULL) {
+        gpuStream_t gpu_stream = reinterpret_cast<gpuStream_t>(stream);
+        iris_mul_core<T><<<blocksPerGrid, threadsPerBlock, 0, gpu_stream>>>(out, a, b, size);
+    }
+    else {
+        iris_mul_core<T><<<blocksPerGrid, threadsPerBlock>>>(out, a, b, size);
+    }
+}
+template <typename T>
+void iris_div(T *out, T *a, T *b, size_t size, void *stream) {
+    int threadsPerBlock = MAX(256, size);
+    int blocksPerGrid = static_cast<int>((size + threadsPerBlock - 1) / threadsPerBlock);
+    //printf("Size: %lu seed:%ld p1:%f p2:%f stream:%p\n", size, seed, (float)p1, (float)p2, stream);
+    if (stream != NULL) {
+        gpuStream_t gpu_stream = reinterpret_cast<gpuStream_t>(stream);
+        iris_div_core<T><<<blocksPerGrid, threadsPerBlock, 0, gpu_stream>>>(out, a, b, size);
+    }
+    else {
+        iris_div_core<T><<<blocksPerGrid, threadsPerBlock>>>(out, a, b, size);
+    }
+}
 // Generic random number generation function template
 template <typename T, typename RNGState>
 __device__ T generate_uniform_random(RNGState* state, T min, T max) {
@@ -273,6 +353,34 @@ void iris_random_log_normal_seq(T *arr, unsigned long long seed, size_t size, T 
 }
 #else // IS_DEFAULT_GPU
 // CPU Implementation
+template <typename T> 
+void iris_add(T *out, T *a, T *b, size_t size, void *stream) {
+    #pragma omp parallel for
+    for(int idx=0; idx<size; idx++) {
+        out[idx] = a[idx] + b[idx];
+    }
+}
+template <typename T> 
+void iris_sub(T *out, T *a, T *b, size_t size, void *stream) {
+    #pragma omp parallel for
+    for(int idx=0; idx<size; idx++) {
+        out[idx] = a[idx] - b[idx];
+    }
+}
+template <typename T> 
+void iris_mul(T *out, T *a, T *b, size_t size, void *stream) {
+    #pragma omp parallel for
+    for(int idx=0; idx<size; idx++) {
+        out[idx] = a[idx] * b[idx];
+    }
+}
+template <typename T> 
+void iris_div(T *out, T *a, T *b, size_t size, void *stream) {
+    #pragma omp parallel for
+    for(int idx=0; idx<size; idx++) {
+        out[idx] = a[idx] / b[idx];
+    }
+}
 template <typename T>
 void iris_reset(T *arr, T value, size_t size, void *stream) {
     #pragma omp parallel for
@@ -360,6 +468,55 @@ void  iris_geometric_seq(double *arr, double start, double ratio, size_t size, v
     }
 }
 #endif // IS_DEFAULT_GPU
+
+#define IRIS_ARITHMATIC(OP, T)   \
+extern "C" void iris_ ## OP ## _ ## T(T *out, T *a, T *b, size_t size, void *stream) { \
+    iris_ ## OP <T>(out, a, b, size, stream); \
+}
+
+IRIS_ARITHMATIC(add, float)
+IRIS_ARITHMATIC(add, double)
+IRIS_ARITHMATIC(add, int64_t)
+IRIS_ARITHMATIC(add, int32_t)
+IRIS_ARITHMATIC(add, int16_t)
+IRIS_ARITHMATIC(add, int8_t)
+IRIS_ARITHMATIC(add, uint64_t)
+IRIS_ARITHMATIC(add, uint32_t)
+IRIS_ARITHMATIC(add, uint16_t)
+IRIS_ARITHMATIC(add, uint8_t)
+
+IRIS_ARITHMATIC(sub, float)
+IRIS_ARITHMATIC(sub, double)
+IRIS_ARITHMATIC(sub, int64_t)
+IRIS_ARITHMATIC(sub, int32_t)
+IRIS_ARITHMATIC(sub, int16_t)
+IRIS_ARITHMATIC(sub, int8_t)
+IRIS_ARITHMATIC(sub, uint64_t)
+IRIS_ARITHMATIC(sub, uint32_t)
+IRIS_ARITHMATIC(sub, uint16_t)
+IRIS_ARITHMATIC(sub, uint8_t)
+
+IRIS_ARITHMATIC(mul, float)
+IRIS_ARITHMATIC(mul, double)
+IRIS_ARITHMATIC(mul, int64_t)
+IRIS_ARITHMATIC(mul, int32_t)
+IRIS_ARITHMATIC(mul, int16_t)
+IRIS_ARITHMATIC(mul, int8_t)
+IRIS_ARITHMATIC(mul, uint64_t)
+IRIS_ARITHMATIC(mul, uint32_t)
+IRIS_ARITHMATIC(mul, uint16_t)
+IRIS_ARITHMATIC(mul, uint8_t)
+
+IRIS_ARITHMATIC(div, float)
+IRIS_ARITHMATIC(div, double)
+IRIS_ARITHMATIC(div, int64_t)
+IRIS_ARITHMATIC(div, int32_t)
+IRIS_ARITHMATIC(div, int16_t)
+IRIS_ARITHMATIC(div, int8_t)
+IRIS_ARITHMATIC(div, uint64_t)
+IRIS_ARITHMATIC(div, uint32_t)
+IRIS_ARITHMATIC(div, uint16_t)
+IRIS_ARITHMATIC(div, uint8_t)
 
 #define IRIS_RANDOM_SEQ(RTYPE, T, M)   \
 extern "C" void iris_random_ ## RTYPE ## _seq_ ## M(T *arr, unsigned long long seed, T p1, T p2, size_t size, void *stream) { \
