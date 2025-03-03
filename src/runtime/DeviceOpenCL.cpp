@@ -98,6 +98,7 @@ DeviceOpenCL::~DeviceOpenCL() {
           _clerror(err);
       }
     }
+    delete timer_;
     delete [] clcmdq_;
     if (default_queue_) {
         cl_int err = ld_->clReleaseCommandQueue(default_queue_);
@@ -105,6 +106,16 @@ DeviceOpenCL::~DeviceOpenCL() {
     }
     if (is_async(false) && platform_obj_->is_event_profile_enabled()) 
         DestroyEvent(single_start_time_event_);
+    cl_int err;
+    if (clprog_) {
+        err = ld_->clReleaseProgram(clprog_);
+        _clerror(err);
+    }
+    if (this == root_device()) {
+        // Context is shared across different opencl devices
+        err = ld_->clReleaseContext(clctx_);
+        _clerror(err);
+    }
 }
 
 int DeviceOpenCL::Init() {
