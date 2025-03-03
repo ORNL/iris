@@ -173,6 +173,7 @@ DeviceCUDA::DeviceCUDA(LoaderCUDA* ld, LoaderHost2CUDA *host2cuda_ld, CUdevice c
   ngarbage_ = 0;
   shared_mem_bytes_ = 0;
   dev_ = cudev;
+  module_ = (CUmodule)NULL;
   strcpy(vendor_, "NVIDIA Corporation");
 #ifndef DISABLE_D2D
   enableD2D();
@@ -271,6 +272,11 @@ DeviceCUDA::~DeviceCUDA() {
     delete [] streams_;
     if (is_async(false) && platform_obj_->is_event_profile_enabled()) 
         DestroyEvent(single_start_time_event_);
+    CUresult err;
+    err = ld_->cudaDeviceReset();
+    _cuerror(err);
+    err = ld_->cuCtxDestroy(ctx_);
+    _cuerror(err);
     _trace("CUDA device:%d is destroyed", devno());
 }
 

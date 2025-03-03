@@ -28,9 +28,11 @@ int LoaderCUDA::LoadFunctions() {
   LOADFUNC(cuDeviceCanAccessPeer);
   //LOADFUNC(cuDeviceEnablePeerAccess);
   LOADFUNCEXT(cudaSetDevice);
+  LOADFUNCEXT(cudaDeviceReset);
   LOADFUNCEXT(cudaDeviceCanAccessPeer);
   LOADFUNCEXT(cudaDeviceEnablePeerAccess);
   LOADFUNCSYM(cuCtxCreate, cuCtxCreate_v2);
+  LOADFUNCSYM(cuCtxDestroy, cuCtxDestroy_v2);
   LOADFUNC(cuCtxSynchronize);
   LOADFUNC(cuStreamAddCallback);
   LOADFUNC(cuStreamCreate);
@@ -39,6 +41,7 @@ int LoaderCUDA::LoadFunctions() {
   LOADFUNC(cuStreamSynchronize);
   LOADFUNC(cuModuleGetFunction);
   LOADFUNC(cuModuleLoad);
+  LOADFUNC(cuModuleUnload);
   LOADFUNC(cuModuleGetTexRef);
   LOADFUNCSYM(cuTexRefSetAddress, cuTexRefSetAddress_v2);
   LOADFUNC(cuTexRefSetAddressMode);

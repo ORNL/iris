@@ -29,6 +29,8 @@ public:
   hipError_t (*hipDeviceGet)(hipDevice_t* device, int ordinal);
   hipError_t (*hipDeviceGetName)(char* name, int len, hipDevice_t device);
   hipError_t (*hipCtxCreate)(hipCtx_t* ctx, unsigned int flags, hipDevice_t device);
+  hipError_t (*hipDeviceReset)(void);
+  hipError_t (*hipCtxDestroy)(hipCtx_t ctx);
   hipError_t (*hipCtxGetCurrent)(hipCtx_t* ctx);
   hipError_t (*hipCtxSetCurrent)(hipCtx_t ctx);
   hipError_t (*hipCtxSynchronize)(void);

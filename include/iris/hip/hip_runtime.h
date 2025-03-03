@@ -255,6 +255,8 @@ hipError_t hipCtxEnablePeerAccess(hipCtx_t peerCtx, unsigned int flags);
 hipError_t hipDeviceGet(hipDevice_t* device, int ordinal);
 hipError_t hipDeviceGetName(char* name, int len, hipDevice_t device);
 hipError_t hipCtxCreate(hipCtx_t* ctx, unsigned int flags, hipDevice_t device);
+hipError_t hipCtxDestroy(hipCtx_t ctx);
+hipError_t hipDeviceReset(void);
 hipError_t hipCtxGetCurrent(hipCtx_t *pctx);
 hipError_t hipCtxSetCurrent(hipCtx_t ctx);
 hipError_t hipModuleLoad(hipModule_t* module, const char* fname);

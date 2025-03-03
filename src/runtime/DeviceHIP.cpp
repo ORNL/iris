@@ -76,6 +76,11 @@ DeviceHIP::~DeviceHIP() {
     if (is_async(false) && platform_obj_->is_event_profile_enabled()) 
         DestroyEvent(single_start_time_event_);
     _trace("HIP device:%d is destroyed", devno());
+    hipError_t err; 
+    err = ld_->hipDeviceReset();
+    _hiperror(err);
+    err = ld_->hipCtxDestroy(ctx_);
+    _hiperror(err);
 }
 bool DeviceHIP::IsAddrValidForD2D(BaseMem *mem, void *ptr)
 {
