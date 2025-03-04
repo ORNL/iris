@@ -758,6 +758,11 @@ int iris_data_mem_clear(iris_mem brs_mem) {
 int iris_data_mem_update(iris_mem mem, void *host) {
   return Platform::GetPlatform()->DataMemUpdate(mem, host);
 }
+int iris_data_mem_refresh(iris_mem brs_mem) {
+  DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  mem->RefreshHost();
+  return IRIS_SUCCESS;
+}
 int iris_data_mem_update_host_size(iris_mem brs_mem, size_t *host_size) {
   DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
   return mem->update_host_size(host_size);

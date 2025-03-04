@@ -21,6 +21,7 @@ const __iris_dmem_2_task = Dict{Any, Any}()
 const IRIS_SUCCESS          =  0
 const IRIS_ERROR            = -1
 const IRIS_WARNING          = -2
+const iris_path = ENV["IRIS"]
 module DummyAMDGPU
     macro sync(args...) end
     macro async(args...) end
@@ -479,7 +480,7 @@ module IrisHRT
                 elseif current_type == Int(iris_char)  # Assuming 3 is for Char
                     push!(julia_args, Char(unsafe_load(Ptr{Cchar}(arg_ptr))))
                 else
-                    println(Core.stdout, "I is not pointer:", i, " current_type:", current_type)
+                    println(Core.stdout, "[Error-1] I is not pointer:", i, " current_type:", current_type)
                     error("Unsupported type")
                 end
             else # Assuming 3 is for Char
@@ -513,7 +514,7 @@ module IrisHRT
                     cust_type = get_custom_type(task_id, i-start_index+1)
                     arg_ptr = Ptr{cust_type}(arg_ptr)
                 else
-                    println(Core.stdout, "I is not pointer index:", i-start_index+1, " current_type:", current_type)
+                    println(Core.stdout, "[Error-2] I is not pointer index:", i-start_index+1, " current_type:", current_type)
                     iris_println("[Julia-IrisHRT-Error] No type present")
                 end
                 try 
@@ -746,6 +747,7 @@ module IrisHRT
 
     # Bind functions from the IRIS library using ccall
     function iris_init(sync)::Int32
+        ENV["LD_LIBRARY_PATH"] =  Main.iris_path * "/lib64:" * Main.iris_path * "/lib:" * ENV["LD_LIBRARY_PATH"]
         policy_ptr = @cfunction(task_policy_handler, Cint, (IrisTask, Ptr{Cchar}, Ptr{IrisDevice}, Int32, Ptr{Int32}))
         global stored_policy_ptr = policy_ptr
         func_ptr = @cfunction(kernel_julia_wrapper, Cint, (Culong, Cint, Cint,        Cint,        Ptr{Cvoid}, Cint, Cint,               Ptr{Ptr{Cvoid}},         Cint,           Ptr{Cint},       Ptr{Ptr{Cvoid}},         Ptr{Csize_t},  Ptr{Csize_t}, Cint,          Ptr{Csize_t},          Ptr{Csize_t},         Cint,      Ptr{Cchar}))
@@ -1975,7 +1977,7 @@ module IrisHRT
         return iris_mem
     end
 
-    function iris_data_mem(host::Array{T}) where T 
+    function iris_data_mem(host::AbstractArray{T}) where T 
         #size = Csize_t(length(host) * sizeof(T))
         host_size = collect(size(host))
         dim = length(host_size)
@@ -2014,7 +2016,7 @@ module IrisHRT
         return iris_data_mem(T, dims...)
     end
 
-    function dmem(host::Array{T}) where T
+    function dmem(host::AbstractArray{T}) where T
         return iris_data_mem(host)
     end
 
@@ -2146,6 +2148,14 @@ module IrisHRT
 
     function iris_data_mem_update(mem::IrisMem, host::Ptr{Cvoid})::Int32
         return ccall(Libdl.dlsym(lib, :iris_data_mem_update), Int32, (IrisMem, Ptr{Cvoid}), mem, host)
+    end
+
+    function iris_data_mem_refresh(mem::IrisMem)::Int32
+        return ccall(Libdl.dlsym(lib, :iris_data_mem_refresh), Int32, (IrisMem, ), mem)
+    end
+
+    function refresh(mem::IrisMem)
+        return iris_data_mem_refresh(mem)
     end
 
     function iris_data_mem_update_host_size(mem::IrisMem, host::Ptr{Csize_t})::Int32
@@ -2995,7 +3005,7 @@ module IrisHRT
         print(io, custom_print(im))
     end
 
-    function task(; in=Any[], out=Any[], flush=Any[], auto_in_out=false, lws=Int64[], gws=Int64[], off=Int64[], policy=IrisHRT.iris_roundrobin, wait=true, core=false, ka=false, parallel_reduce=false, parallel_for=false, host=false, auto_dependency=true, task=nothing, metadata=nothing, kernel="kernel", args=[], submit=true, dependencies=[])
+    function task(; in=Any[], out=Any[], flush=Any[], refresh=[], auto_in_out=false, lws=Int64[], gws=Int64[], off=Int64[], policy=IrisHRT.iris_roundrobin, wait=true, core=false, ka=false, parallel_reduce=false, parallel_for=false, host=false, auto_dependency=true, task=nothing, metadata=nothing, kernel="kernel", args=[], submit=true, dependencies=[])
         call_args = args
         mem_params = Dict{Any, Any}()
         t_args = Tuple(args)
@@ -3116,6 +3126,15 @@ module IrisHRT
                 push!(params, Ref(arg))
             end
         end
+        for mem in refresh
+            if isa(mem, IrisMem)
+                IrisHRT.refresh(mem)
+            else
+                p_mem = pointer(mem)
+                mem_obj = Main.__iris_dmem_map[p_mem]
+                IrisHRT.refresh(mem_obj)
+            end
+        end
         nparams = Int64(length(params))
         #println(Core.stdout, "kernel_params: ", kernel_params)
         #println(Core.stdout, "kernel name:", kernel)
@@ -3172,9 +3191,11 @@ module IrisHRT
         end
         c_params = reinterpret(Ptr{Ptr{Cvoid}}, pointer(params))
         # Create kernel with task
+        #println(Core.stdout, "Before IRIS task creation")
         GC.@preserve gws lws off begin
             ccall(Libdl.dlsym(lib, :iris_task_kernel), Int32, (IrisTask, Ptr{Cchar}, Int32, Ptr{Csize_t}, Ptr{Csize_t}, Ptr{Csize_t}, Int32, Ptr{Ptr{Cvoid}}, Ptr{Int32}), task0, pointer(kernel), Int32(length(gws)), off_c, gws_c, lws_c, Int32(nparams), c_params, pointer(params_info))
         end
+        #println(Core.stdout, "After IRIS task creation")
         if metadata != nothing
             IrisHRT.set_metadata(task0, metadata)
         end
@@ -3186,6 +3207,7 @@ module IrisHRT
                 IrisHRT.iris_task_dmem_flush_out(task0, Main.__iris_dmem_map[p_mem])
             end
         end
+        #println(Core.stdout, "IRIS task dependencies")
         n_dependencies = IrisHRT.IrisTask[x for x in dependencies if x !== nothing]
         if auto_dependency
             for mem in vcat(in, auto_in)
@@ -3220,6 +3242,7 @@ module IrisHRT
             IrisHRT.iris_task_set_julia_policy(task0, policy_ptr)
             policy = IrisHRT.iris_julia_policy
         end
+        #println(Core.stdout, "IRIS task submit")
         if submit
             IrisHRT.iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
         else
@@ -3228,7 +3251,7 @@ module IrisHRT
         return task0
     end
     function describe_backend(backend::IRISBackend)
-        println("Backend Name: ", backend.backend_name)
+        println(Core.stdout, "Backend Name: ", backend.backend_name)
     end
 
 end  # module Iris

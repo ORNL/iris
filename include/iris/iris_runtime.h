@@ -1435,6 +1435,13 @@ extern int iris_data_mem_pin(iris_mem mem);
  */
 extern int iris_data_mem_update(iris_mem mem, void *host);
 
+/**@brief data memory object refresh for a task. It will make host copy valid and device copies invalid
+ *
+ * @param mem memory object
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_data_mem_refresh(iris_mem mem);
+
 /**@brief data memory object update for a task
  *
  * @param mem memory object

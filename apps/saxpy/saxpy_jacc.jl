@@ -1,7 +1,4 @@
-const iris_path = ENV["IRIS"]
-ENV["LD_LIBRARY_PATH"] =  iris_path * "/lib64:" * iris_path * "/lib:" * ENV["LD_LIBRARY_PATH"]
-const iris_jl = iris_path * "/include/iris/IrisHRT.jl"
-include(iris_jl)
+include(ENV["IRIS"]*"/include/iris/IrisHRT.jl")
 
 using .IrisHRT
 using Base.Threads

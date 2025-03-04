@@ -207,10 +207,13 @@ DataMem::~DataMem() {
 }
 void DataMem::UpdateHost(void *host_ptr)
 {
-    if (host_ptr_owner_ && host_ptr_ != NULL) {
-        if (is_pin_memory_) platform_->DataMemUnRegisterPin(this);
+    if (is_pin_memory_ && host_ptr_ != NULL && host_ptr_ != host_ptr) {
+        platform_->DataMemUnRegisterPin(this);
+    }
+    if (host_ptr_owner_ && host_ptr_ != NULL && host_ptr_ != host_ptr) {
         free(host_ptr_);
     }
+    void *old_host_ptr = host_ptr_;
     host_ptr_ = host_ptr;
     host_ptr_owner_ = false;
     host_dirty_flag_ = false;
@@ -219,7 +222,14 @@ void DataMem::UpdateHost(void *host_ptr)
     for(int i=0; i<ndevs_; i++) {
         dirty_flag_[i] = true;
     }
-    if (is_pin_memory_) platform_->DataMemRegisterPin(this);
+    if (is_pin_memory_ && old_host_ptr != host_ptr) platform_->DataMemRegisterPin(this);
+}
+void DataMem::RefreshHost()
+{
+    host_dirty_flag_ = false;
+    for(int i=0; i<ndevs_; i++) {
+        dirty_flag_[i] = true;
+    }
 }
 void DataMem::init_reset(bool reset)
 {

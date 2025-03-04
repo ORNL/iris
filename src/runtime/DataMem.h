@@ -33,6 +33,7 @@ public:
   void FetchDataFromDevice(void *dst_host_ptr);
   void FetchDataFromDevice(void *dst_host_ptr, size_t size);
   void UpdateHost(void *host);
+  void RefreshHost();
   void EnableOuterDimensionRegions();
   vector<pair<DataMem *, size_t>> & child() { return child_; }
   void init_reset(bool reset=true);
