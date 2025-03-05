@@ -1874,11 +1874,16 @@ module IrisHRT
             element_type = iris_char
         elseif T == Bool
             element_type = iris_bool
+        elseif T <: SubArray
+            #println(Core.stdout, " calling param: ", T.parameters[1])
+            element_type = get_iris_type(T.parameters[1])
         elseif isstructtype(T) 
             element_type = iris_custom_type
         elseif default == iris_pointer
+            println(Core.stdout, "[Error] get_iris_type type is not found")
             element_type = iris_unknown
         end
+        #println(Core.stdout, " get_iris_type returning element type: ", element_type, " ifloat:", iris_float, " custom_type:", iris_custom_type, " type:", T)
         return element_type
     end
 
@@ -3087,7 +3092,7 @@ module IrisHRT
         #println(Core.stdout, "--------------")
         for (index, arg) in enumerate(call_args)
             #println(Core.stdout, "- s - s - s - : ", index, " type:", typeof(arg))
-            if isa(arg, Array)
+            if isa(arg, AbstractArray)
                 p_arg = pointer(arg)
                 #println(Core.stdout, "- s - s - s - : ", index, " type:", typeof(arg), " pointer:", p_arg, " length:", length(arg), " size:", size(arg))
                 if haskey(Main.__iris_dmem_map, p_arg)
