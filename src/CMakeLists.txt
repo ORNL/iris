@@ -1,18 +1,25 @@
 add_subdirectory(runtime)
 
-install(FILES
-  IrisHRT.jl
-  Kernels.jl
-  Tiling1D.jl
-  Tiling2D.jl
-  Tiling3D.jl
-  DESTINATION ${CMAKE_INSTALL_PREFIX}/src)
+set(JULIA_SRC_FILES
+        IrisHRT.jl
+        Kernels.jl
+        Tiling1D.jl
+        Tiling2D.jl
+        Tiling3D.jl
+   )
 
-install(FILES
-  IrisHRT.jl
-  Kernels.jl
-  Tiling1D.jl
-  Tiling2D.jl
-  Tiling3D.jl
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/iris)
+foreach(file ${SRC_FILES})
+   if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${file}")
+          install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/${file}"
+                              DESTINATION "${CMAKE_INSTALL_PREFIX}/src")
+   endif()
+endforeach()
+
+foreach(file ${SRC_FILES})
+   if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${file}")
+          install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/${file}"
+                              DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/iris")
+   endif()
+endforeach()
+
 
