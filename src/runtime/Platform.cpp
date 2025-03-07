@@ -437,7 +437,8 @@ int Platform::EnvironmentInit() {
 #ifdef ENABLE_RISCV
   EnvironmentSet("ARCHS",  "openmp",  false);
 #else
-  EnvironmentSet("ARCHS",  "openmp:cuda:hip:levelzero:hexagon:opencl:qiree",  false);
+  // Removed qiree 
+  EnvironmentSet("ARCHS",  "openmp:cuda:hip:levelzero:hexagon:opencl",  false);
 #endif
   EnvironmentSet("DEFAULT_OMP_KERNELS",  "default_cpu_gpu_kernels.cpp", false);
   EnvironmentSet("DEFAULT_CUDA_KERNELS", "default_cpu_gpu_kernels.cpp", false);

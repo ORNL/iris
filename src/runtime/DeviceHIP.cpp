@@ -290,6 +290,7 @@ int DeviceHIP::ResetMemory(Task *task, Command *cmd, BaseMem *mem) {
 void DeviceHIP::RegisterPin(void *host, size_t size)
 {
     hipError_t err = ld_->hipHostRegister(host, size, hipHostRegisterDefault);
+    //_printf("Registering mem:%p size:%lu err:%d\n", host, size, err);
     _hipwarning(err);
     //ld_->hipHostRegister(host, size, hipHostRegisterMapped);
 }
@@ -297,6 +298,7 @@ void DeviceHIP::RegisterPin(void *host, size_t size)
 void DeviceHIP::UnRegisterPin(void *host)
 {
     hipError_t err = ld_->hipHostUnregister(host);
+    //_printf("Registering mem:%p err:%d\n", host, err);
     _hipwarning(err);
     //ld_->hipHostRegister(host, size, hipHostRegisterMapped);
 }

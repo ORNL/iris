@@ -37,30 +37,59 @@ public:
   void EnableOuterDimensionRegions();
   vector<pair<DataMem *, size_t>> & child() { return child_; }
   void init_reset(bool reset=true);
-  bool is_host_dirty() { return host_dirty_flag_; }
-  void clear_host_dirty() { host_dirty_flag_ = false; }
-  void set_host_dirty(bool flag=true) { host_dirty_flag_ = flag; host_reset_ = false; }
-  bool is_dev_dirty(int devno) { return dirty_flag_[devno]; }
-  void set_dev_dirty(int devno, bool flag=true) { dirty_flag_[devno] = flag; }
+  bool is_host_dirty() { 
+      if (source_mem_ == NULL) return host_dirty_flag_; 
+      else return source_mem_->host_dirty_flag_;
+  }
+  void clear_host_dirty() { 
+      if (source_mem_ == NULL) host_dirty_flag_ = false; 
+      else source_mem_->host_dirty_flag_ = false;
+  }
+  void set_host_dirty(bool flag=true) { 
+      if (source_mem_ == NULL) host_dirty_flag_ = flag; 
+      else source_mem_->host_reset_ = false; 
+  }
+  bool is_dev_dirty(int devno) { 
+      if (source_mem_ == NULL) return dirty_flag_[devno]; 
+      else return source_mem_->dirty_flag_[devno];
+  }
+  void set_dev_dirty(int devno, bool flag=true) { 
+      if (source_mem_ == NULL) dirty_flag_[devno] = flag; 
+      else source_mem_->dirty_flag_[devno] = flag;
+  }
   int  get_dev_affinity() { 
+      if (source_mem_ != NULL) return source_mem_->get_dev_affinity();
       for(int i=0; i<ndevs_; i++) 
           if (!dirty_flag_[i]) 
               return i; 
       return -1;
   }
-  void clear_dev_dirty(int devno) { dirty_flag_[devno] = false; }
+  void clear_dev_dirty(int devno) { 
+      if (source_mem_ == NULL) dirty_flag_[devno] = false; 
+      else source_mem_->dirty_flag_[devno] = false; 
+  }
   void set_dirty_except(int devno) {
+    if (source_mem_ != NULL) {
+        source_mem_->set_dirty_except(devno);
+        return;
+    }
     for(int i=0; i<ndevs_; i++) {
         if (i != devno) dirty_flag_[i] = true;
     }
     dirty_flag_[devno] = false;
   }
   void set_dirty_all(bool flag=true) {
+    if (source_mem_ != NULL) {
+        source_mem_->set_dirty_all(flag);
+        return;
+    }
     for(int i=0; i<ndevs_; i++) {
         dirty_flag_[i] = flag;
     }
   }
   int *get_non_dirty_devices(int *dev) {
+    if (source_mem_ != NULL) 
+        return source_mem_->get_non_dirty_devices(dev);
     int i=0,j=0;
     for(i=0, j=0; i<ndevs_; i++) {
         if (!dirty_flag_[i]) dev[j++] = i;
@@ -69,6 +98,7 @@ public:
     return dev;
   }
   bool is_dirty_all() {
+    if (source_mem_ != NULL) return source_mem_->is_dirty_all();
     bool all=true;
     for(int i=0; i<ndevs_; i++) {
         all = all & dirty_flag_[i];
@@ -82,7 +112,10 @@ public:
   size_t *dev_size() { return dev_size_; }
   size_t elem_size() { return elem_size_; }
   int dim() { return dim_; }
-  void *host_ptr() { return host_ptr_; }
+  void *host_ptr() { 
+      if (source_mem_ == NULL) return host_ptr_; 
+      else return source_mem_->host_ptr_; 
+  }
   void *tmp_host_ptr() { return tmp_host_ptr_; }
 #ifdef AUTO_PAR
 #ifdef AUTO_SHADOW

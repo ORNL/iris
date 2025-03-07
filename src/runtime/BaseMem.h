@@ -29,6 +29,7 @@ namespace rt {
     class BaseMem : public Retainable<struct _iris_mem, BaseMem> {
         public:
             BaseMem(MemHandlerType type, int ndevs) {
+                source_mem_ = NULL;
                 handler_type_ = type;
                 reset_ = false;
                 enable_reset_ = false;
@@ -294,7 +295,10 @@ namespace rt {
         void set_element_type(int t) { element_type_ = t; }
         pair<bool, int8_t> IsResetPossibleWithMemset();
         pair<bool, int8_t> IsResetPossibleWithMemset(ResetData & reset_data);
+        void set_source_mem(BaseMem *mem) { source_mem_ = (DataMem *)mem; }
+        DataMem *get_source_mem() { return source_mem_; }
         protected:
+            DataMem *source_mem_;
             int element_type_;
             int recommended_stream_[IRIS_MAX_NDEVS];
             MemHandlerType handler_type_;

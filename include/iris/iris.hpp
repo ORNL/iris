@@ -269,6 +269,8 @@ namespace iris {
             void *fetch_host();
             void *fetch_host(size_t size);
             void add_child(DMem **tmem) {
+                // This is required for DMEM of structure where structure 
+                // members have arrays which are DMEM objects.
                 void *base = host(); 
                 DMem **dmem = (DMem **)tmem;
                 uintptr_t address1 = reinterpret_cast<uintptr_t>(base);

@@ -14,6 +14,7 @@ if !haskey(ENV, "IRIS_ARCHS")
 end
 const ARRAY_TO_DMEM_MAP = Dict{Any, Any}()
 const __iris_dmem_map = Dict{Any, Any}()
+const __iris_dmem_mirrors_map = Dict{Any, Any}()
 const __iris_cuda_devno_stream = Dict{Any, Any}()
 const __iris_hip_devno_stream = Dict{Any, Any}()
 const __iris_dmem_custom_type = Dict{Any, Any}()
@@ -117,6 +118,7 @@ mutable struct IRISHIPStream
     device::MyAMDGPU.HIPDevice
     ctx::MyAMDGPU.HIPContext
 end
+import Base: reshape
 module IrisHRT
     import Base: show
 
@@ -1988,9 +1990,9 @@ module IrisHRT
         dim = length(host_size)
         element_size = Int32(sizeof(T))
         host_cptr = reinterpret(Ptr{Cvoid}, pointer(host))
-        #println(Core.stdout, "Type of element: ", T, " Size:", size(host), " Element size:", element_size)
+        #println(Core.stdout, "Type of element: ", T, " Size:", size(host), " host size:", host_size, " host size type:", typeof(host_size), " Element size:", element_size, " pointer:", pointer(host))
         element_type = get_iris_type(T, iris_pointer)
-        iris_mem = ccall(Libdl.dlsym(lib, :iris_data_mem_create_struct_nd), IrisMem, (Ptr{Cvoid}, Ptr{Cvoid}, Int32, Csize_t, Int32), host_cptr, host_size, dim, element_size, Int32(element_type))
+        iris_mem = ccall(Libdl.dlsym(lib, :iris_data_mem_create_struct_nd), IrisMem, (Ptr{Cvoid}, Ptr{Csize_t}, Int32, Csize_t, Int32), host_cptr, host_size, dim, element_size, Int32(element_type))
         if isstructtype(T) 
             push_dmem_custom_type(iris_mem.uid, T)
         end
@@ -2022,11 +2024,55 @@ module IrisHRT
     end
 
     function dmem(host::AbstractArray{T}) where T
+        p_array = pointer(host)
+        if haskey(Main.__iris_dmem_map, p_array)
+            return Main.__iris_dmem_map[p_array]
+        end
         return iris_data_mem(host)
     end
 
     function dmem_offset(host, dev_size, offset=[]) 
         return iris_data_mem(host, dev_size, offset)
+    end
+
+    function reshape(mem::IrisMem, dims...) 
+        host_cptr = iris_get_dmem_host(mem)
+        host_cptr = reinterpret(Ptr{Cvoid}, host_cptr)
+        elem_size = element_size(mem) 
+        elem_type = element_type(mem)
+        dim_size = dims
+        #println(Core.stdout, "Type of element: ", " dim:", dims)
+        if length(dims) == 1 && isa(dims[1], Tuple)
+            dim_size = dims[1]
+        end
+        host_size = prod(dim_size) * elem_size
+        dim_size_v = collect(dim_size)
+        dim = length(dim_size)
+        #println(Core.stdout, "Type of element: ", " HostSize:", host_size, " Dims:", dim_size_v, " N-dims:", dim, " Element size:", elem_size, " pointer:", host_cptr)
+        iris_mem = ccall(Libdl.dlsym(lib, :iris_data_mem_create_struct_nd), IrisMem, (Ptr{Cvoid}, Ptr{Cvoid}, Int32, Csize_t, Int32), host_cptr, pointer(dim_size_v), dim, elem_size, elem_type)
+        if elem_type == iris_custom_type 
+            T = get_dmem_custom_type(mem)
+            push_dmem_custom_type(iris_mem.uid, T)
+        end
+        iris_dmem_set_source(iris_mem, mem)
+        Main.__iris_dmem_mirrors_map[iris_mem.uid] = iris_mem
+        return iris_mem
+    end
+
+    function reshape(host::AbstractArray{T}, dims...) where T
+        p_array = pointer(host)
+        if !haskey(Main.__iris_dmem_map, p_array)
+            d_mem = dmem(host)
+            Main.__iris_dmem_map[p_array] = d_mem
+        end
+        source_mem = Main.__iris_dmem_map[p_array]
+        return reshape(source_mem, dims...)
+    end
+
+    function iris_dmem_set_source(brs_mem::IrisMem, source::IrisMem)::Ptr{Cint}
+        jfunc = Libdl.dlsym(lib, :iris_dmem_set_source)
+        return ccall(jfunc, Ptr{Cint}, (IrisMem,IrisMem), brs_mem, source)
+
     end
 
     # Function: void* iris_get_dmem_host(iris_mem brs_mem);
@@ -2072,6 +2118,24 @@ module IrisHRT
         dim = iris_dmem_get_dim(mem)
         dims_array = unsafe_wrap(Array, size_ptr, dim)
         return Tuple(dims_array)
+    end
+
+    function element_type(mem::IrisMem)
+        return iris_dmem_get_elem_type(mem)
+    end
+
+    function element_size(mem::IrisMem)
+        return iris_dmem_get_elem_size(mem)
+    end
+
+    function iris_dmem_get_elem_size(brs_mem::IrisMem)::Cint
+        func = Libdl.dlsym(lib, :iris_dmem_get_elem_size)
+        return ccall(func, Cint, (IrisMem,), brs_mem)
+    end
+
+    function iris_dmem_get_elem_type(brs_mem::IrisMem)::Cint
+        func = Libdl.dlsym(lib, :iris_dmem_get_elem_type)
+        return ccall(func, Cint, (IrisMem,), brs_mem)
     end
 
     function iris_dmem_get_dim(brs_mem::IrisMem)::Cint
@@ -2679,6 +2743,9 @@ module IrisHRT
         for (key, value) in Main.__iris_dmem_map 
             IrisHRT.iris_mem_release(value)
         end
+        for (key, value) in Main.__iris_dmem_mirrors_map
+            IrisHRT.iris_mem_release(value)
+        end
         # Clear all elements in the dictionary
         empty!(Main.__iris_dmem_2_task)
         empty!(Main.__iris_dmem_map)
@@ -3010,6 +3077,61 @@ module IrisHRT
         print(io, custom_print(im))
     end
 
+    function set_julia_policy(task0, policy)
+        if isa(policy, Function)
+            policy_ptr = String(Symbol(policy))
+            #println("Julia Policy name>>>", policy_ptr)
+            IrisHRT.iris_task_set_julia_policy(task0, policy_ptr)
+            policy = IrisHRT.iris_julia_policy
+        end
+        return policy
+    end
+
+    function copyto(dst, src; task=nothing, flush=true, wait=true, submit=true, policy=IrisHRT.iris_roundrobin, auto_dependency=true, dependencies=[])
+        task0 = task
+        if task0 == nothing
+            task0 = iris_task_create_struct()
+        end
+        n_dependencies = IrisHRT.IrisTask[x for x in dependencies if x !== nothing]
+        if isa(src, IrisMem)
+            if haskey(Main.__iris_dmem_2_task, src)
+                push!(n_dependencies, Main.__iris_dmem_2_task[src])               
+            end
+        else
+            src_ptr = pointer(src)
+            if !haskey(Main.__iris_dmem_map, src_ptr)
+                Main.__iris_dmem_map[src_ptr] = IrisHRT.iris_data_mem(src)
+            end
+            src = Main.__iris_dmem_map[src_ptr]
+        end
+        if isa(dst, IrisMem)
+            if haskey(Main.__iris_dmem_2_task, dst)
+                push!(n_dependencies, Main.__iris_dmem_2_task[dst])               
+            end
+        else
+            dst_ptr = pointer(dst)
+            if !haskey(Main.__iris_dmem_map, dst_ptr)
+                Main.__iris_dmem_map[dst_ptr] = IrisHRT.iris_data_mem(dst)
+            end
+            dst = Main.__iris_dmem_map[dst_ptr]
+        end
+        if length(n_dependencies) > 0
+            IrisHRT.iris_task_depend(task0, n_dependencies)
+        end
+        IrisHRT.iris_task_dmem2dmem(task0, src, dst)
+        if flush
+            IrisHRT.iris_task_dmem_flush_out(task0, dst)
+        end
+        policy = IrisHRT.set_julia_policy(task0, policy)
+        if submit
+            println(Core.stdout, "IRIS task submit")
+            IrisHRT.iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
+        else
+            IrisHRT.iris_task_set_policy(task0, Int32(policy))
+        end
+        return task0
+    end
+
     function task(; in=Any[], out=Any[], flush=Any[], refresh=[], auto_in_out=false, lws=Int64[], gws=Int64[], off=Int64[], policy=IrisHRT.iris_roundrobin, wait=true, core=false, ka=false, parallel_reduce=false, parallel_for=false, host=false, auto_dependency=true, task=nothing, metadata=nothing, kernel="kernel", args=[], submit=true, dependencies=[])
         call_args = args
         mem_params = Dict{Any, Any}()
@@ -3241,12 +3363,7 @@ module IrisHRT
         if length(n_dependencies) > 0
             IrisHRT.iris_task_depend(task0, n_dependencies)
         end
-        if isa(policy, Function)
-            policy_ptr = String(Symbol(policy))
-            #println("Julia Policy name>>>", policy_ptr)
-            IrisHRT.iris_task_set_julia_policy(task0, policy_ptr)
-            policy = IrisHRT.iris_julia_policy
-        end
+        policy = IrisHRT.set_julia_policy(task0, policy)
         #println(Core.stdout, "IRIS task submit")
         if submit
             IrisHRT.iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
