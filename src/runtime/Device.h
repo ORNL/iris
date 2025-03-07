@@ -32,6 +32,7 @@ class Timer;
 class Worker;
 class Platform;
 class JuliaHostInterfaceLoader;
+class LoaderDefaultKernel;
 
 enum AsyncResolveType
 {
@@ -146,12 +147,12 @@ public:
   int RegisterHooks();
   void ExecuteDMEM2DMEM(Task *task, Command *cmd);
 
-  virtual int ResetMemory(Task *task, BaseMem *mem, uint8_t reset_value)=0;
+  virtual int ResetMemory(Task *task, Command *cmd, BaseMem *mem)=0;
   virtual void ResetContext() { }
   virtual void SetContextToCurrentThread() { }
   virtual bool IsContextChangeRequired() { return false; }
   virtual bool IsDeviceValid() { return true; }
-  virtual int Compile(char* src) { return IRIS_SUCCESS; }
+  virtual int Compile(char* src, const char *out=NULL, const char *flags=NULL) { return IRIS_SUCCESS; }
   virtual int Init() = 0;
   virtual int BuildProgram(char* path) { return IRIS_SUCCESS; }
   virtual void *GetSharedMemPtr(void* mem, size_t size) { return mem; }
@@ -166,6 +167,7 @@ public:
   virtual int KernelSetArg(Kernel* kernel, int idx, int kindex, size_t size, void* value) = 0;
   virtual int KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, size_t off) = 0;
   virtual int KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws) = 0;
+  virtual void VendorKernelLaunch(void *kernel, int gridx, int gridy, int gridz, int blockx, int blocky, int blockz, int shared_mem_bytes, void *stream, void **params) { }
   virtual int Synchronize() = 0;
   virtual int AddCallback(Task* task);
   static void Callback(void *stream, int status, void* data);
@@ -218,6 +220,7 @@ public:
   bool enable() { return enable_; }
   bool native_kernel_not_exists() { return native_kernel_not_exists_; }
   virtual void *get_ctx() { return NULL; }
+  virtual void *get_stream(int index) { return NULL; }
   void enableD2D() { is_d2d_possible_ = true; }
   bool isD2DEnabled() { return is_d2d_possible_; }
   int ok() { return errid_; }
@@ -229,7 +232,12 @@ public:
   StreamPolicy stream_policy() { return stream_policy_; }
   double Now() { return timer_->Now(); }
   const char *kernel_path() { return kernel_path_.c_str(); }
+protected:
+  LoaderDefaultKernel* ld_default() { return ld_default_; }
+  void CallMemReset(BaseMem *mem, size_t size, ResetData & data, void *stream);
+  void LoadDefaultKernelLibrary(const char *key, const char *flags);
 private:
+  LoaderDefaultKernel *ld_default_;
   int get_new_stream_queue(int offset=0) {
     int nqs = ((nqueues_-1)-offset);
     if (nqs <= 0) return current_queue_ + offset+1;

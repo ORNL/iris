@@ -3,6 +3,7 @@
 #include "Utils.h"
 #include "Command.h"
 #include "DeviceCUDA.h"
+#include "DeviceQIREE.h"
 #include "DeviceHexagon.h"
 #include "DeviceHIP.h"
 #include "DeviceLevelZero.h"
@@ -14,6 +15,7 @@
 #include "JSON.h"
 #include "Kernel.h"
 #include "LoaderCUDA.h"
+#include "LoaderQIREE.h"
 #include "LoaderHost2HIP.h"
 #include "LoaderHost2CUDA.h"
 #include "LoaderHost2OpenCL.h"
@@ -71,6 +73,7 @@ void Platform::Reset() {
   tmp_dir_[0] = '\0';
   disable_d2d_ = false;
   disable_data_transfers_ = false;
+  dmem_register_pin_flag_ = true;
   finalize_ = false;
   release_task_flag_ = true;
   async_ = false;
@@ -79,6 +82,7 @@ void Platform::Reset() {
   ndevs_enabled_ = 0;
   disable_init_devices_ = false;
   disable_init_workers_ = false;
+  enable_default_kernels_load_ = false;
   disable_init_scheduler_ = false;
   dev_default_ = 0;
   nfailures_ = 0;
@@ -88,7 +92,10 @@ void Platform::Reset() {
   scheduler_ = NULL;
   polyhedral_ = NULL;
   sig_handler_ = NULL;
-  device_factor_ = 1;
+  openmp_device_factor_ = 1;
+  qiree_device_factor_ = 1;
+  cuda_device_factor_ = 1;
+  hip_device_factor_ = 1;
   event_profile_enabled_ = false;
   filter_task_split_ = NULL;
   timer_ = NULL;
@@ -100,6 +107,7 @@ void Platform::Reset() {
   loaderLevelZero_ = NULL;
   loaderOpenCL_ = NULL;
   loaderOpenMP_ = NULL;
+  loaderQIREE_ = NULL;
   loaderHexagon_ = NULL;
   arch_available_ = 0UL;
   present_table_ = NULL;
@@ -129,16 +137,17 @@ void Platform::Reset() {
 }
 
 void Platform::Clean() {
-  if (scheduler_) delete scheduler_;
   for (int i = 0; i < ndevs_; i++) delete workers_[i];
   if (queue_) delete queue_;
   if (tmp_dir_[0] != '\0') {
       char cmd[270];
       //printf("Removing tmp_dir:%s\n", tmp_dir_);
       sprintf(cmd, "rm -rf %s", tmp_dir_);
-      system(cmd);
+      int result = system(cmd);
+      (void)result;
   }
   for (int i = 0; i < ndevs_; i++) delete devs_[i];
+  if (scheduler_) delete scheduler_;
 #ifdef AUTO_PAR
 #ifdef AUTO_SHADOW
   printf("Total Shadow created %d\n", auto_dag_->get_number_of_shadow());
@@ -163,6 +172,7 @@ void Platform::Clean() {
   if (loaderLevelZero_) delete loaderLevelZero_;
   if (loaderOpenCL_) delete loaderOpenCL_;
   if (loaderOpenMP_) delete loaderOpenMP_;
+  if (loaderQIREE_) delete loaderQIREE_;
   if (loaderHexagon_) delete loaderHexagon_;
   if (present_table_) delete present_table_;
   if (polyhedral_) delete polyhedral_;
@@ -184,6 +194,7 @@ int Platform::JuliaInit(bool decoupled_init) {
     disable_init_scheduler_ = true;
   }
 #endif
+  enable_default_kernels_load_ = true;
   return IRIS_SUCCESS;
 }
 
@@ -227,7 +238,10 @@ int Platform::Init(int* argc, char*** argv, int sync) {
   EnvironmentBoolRead("MALLOC_ASYNC", is_malloc_async_);
   EnvironmentBoolRead("DISABLE_D2D", disable_d2d_);
   EnvironmentBoolRead("DISABLE_DATA_TRANSFERS", disable_data_transfers_);
-  EnvironmentIntRead("DEVICE_FACTOR", device_factor_);
+  EnvironmentIntRead("OPENMP_DEVICE_FACTOR", openmp_device_factor_);
+  EnvironmentIntRead("QIREE_DEVICE_FACTOR", qiree_device_factor_);
+  EnvironmentIntRead("CUDA_DEVICE_FACTOR", cuda_device_factor_);
+  EnvironmentIntRead("HIP_DEVICE_FACTOR", hip_device_factor_);
   EnvironmentIntRead("NSTREAMS", nstreams_);
   EnvironmentIntRead("NCOPY_STREAMS", ncopy_streams_);
   int stream_policy = (int) stream_policy_;
@@ -264,6 +278,8 @@ int Platform::Init(int* argc, char*** argv, int sync) {
       if (!loaderOpenCL_) InitOpenCL();
     } else if (strcasecmp(a, "openmp") == 0) {
       if (!loaderOpenMP_) InitOpenMP();
+    } else if (strcasecmp(a, "qiree") == 0) {
+      if (!loaderQIREE_) InitQIREE();
     } else if (strcasecmp(a, "hexagon") == 0) {
       if (!loaderHexagon_) InitHexagon();
     } else _error("not support arch[%s]", a);
@@ -421,27 +437,33 @@ int Platform::EnvironmentInit() {
 #ifdef ENABLE_RISCV
   EnvironmentSet("ARCHS",  "openmp",  false);
 #else
+  // Removed qiree 
   EnvironmentSet("ARCHS",  "openmp:cuda:hip:levelzero:hexagon:opencl",  false);
 #endif
-  EnvironmentSet("TMPDIR", tmp_dir_,                                 false);
-
-  EnvironmentSet("OPENCL_VENDORS",     "all",             false);
-  EnvironmentSet("KERNEL_DIR",      "",                   false);
-  EnvironmentSet("KERNEL_SRC_CUDA",     "kernel.cu",          false);
-  EnvironmentSet("KERNEL_BIN_CUDA",     "kernel.ptx",         false);
-  EnvironmentSet("KERNEL_XILINX_XCLBIN", "kernel.xilinx.xclbin",  false);
-  EnvironmentSet("KERNEL_FPGA_XCLBIN",   "kernel-fpga.xclbin",  false);
-  EnvironmentSet("KERNEL_INTEL_AOCX", "kernel.intel.aocx",  false);
-  EnvironmentSet("KERNEL_SRC_HEXAGON",  "kernel.hexagon.cpp", false);
-  EnvironmentSet("KERNEL_BIN_HEXAGON",  "kernel.hexagon.so",  false);
-  EnvironmentSet("KERNEL_SRC_HIP",      "kernel.hip.cpp",     false);
-  EnvironmentSet("KERNEL_BIN_HIP",      "kernel.hip",         false);
-  EnvironmentSet("KERNEL_SRC_OPENMP",   "kernel.openmp.h",    false);
-  EnvironmentSet("KERNEL_BIN_OPENMP",   "kernel.openmp.so",   false);
-  EnvironmentSet("KERNEL_SRC_SPV",      "kernel.cl",          false);
-  EnvironmentSet("KERNEL_BIN_SPV",      "kernel.spv",         false);
-  EnvironmentSet("KERNEL_JULIA",        "libjulia.so",        false);
-  EnvironmentSet("LIB_CUDA",            "libcuda.so",         false);
+  EnvironmentSet("DEFAULT_OMP_KERNELS",  "default_cpu_gpu_kernels.cpp", false);
+  EnvironmentSet("DEFAULT_CUDA_KERNELS", "default_cpu_gpu_kernels.cpp", false);
+  EnvironmentSet("DEFAULT_HIP_KERNELS",  "default_cpu_gpu_kernels.cpp", false);
+  EnvironmentSet("TMPDIR",               tmp_dir_,               false);
+  EnvironmentSet("OPENCL_VENDORS",       "all",                  false);
+  EnvironmentSet("INCLUDE_DIR",          "include/iris",         false);
+  EnvironmentSet("KERNEL_DIR",           "",                     false);
+  EnvironmentSet("KERNEL_SRC_CUDA",      "kernel.cu",            false);
+  EnvironmentSet("KERNEL_BIN_CUDA",      "kernel.ptx",           false);
+  EnvironmentSet("KERNEL_XILINX_XCLBIN", "kernel.xilinx.xclbin", false);
+  EnvironmentSet("KERNEL_FPGA_XCLBIN",   "kernel-fpga.xclbin",   false);
+  EnvironmentSet("KERNEL_INTEL_AOCX",    "kernel.intel.aocx",    false);
+  EnvironmentSet("KERNEL_SRC_HEXAGON",   "kernel.hexagon.cpp",   false);
+  EnvironmentSet("KERNEL_BIN_HEXAGON",   "kernel.hexagon.so",    false);
+  EnvironmentSet("KERNEL_SRC_HIP",       "kernel.hip.cpp",       false);
+  EnvironmentSet("KERNEL_BIN_HIP",       "kernel.hip",           false);
+  EnvironmentSet("KERNEL_SRC_OPENMP",    "kernel.openmp.h",      false);
+  EnvironmentSet("KERNEL_BIN_OPENMP",    "kernel.openmp.so",     false);
+  EnvironmentSet("KERNEL_QIR",           "kernel.qir.ll",        false);
+  EnvironmentSet("KERNEL_SRC_SPV",       "kernel.cl",            false);
+  EnvironmentSet("KERNEL_BIN_SPV",       "kernel.spv",           false);
+  EnvironmentSet("KERNEL_JULIA",         "libjulia.so",          false);
+  EnvironmentSet("LIB_CUDA",             "libcuda.so",           false);
+  EnvironmentSet("LIB_QIREE",            "libqir.xacc.lib.so",           false);
   EnvironmentSet("KERNEL_HOST2CUDA","kernel.host2cuda.so",false);
   EnvironmentSet("KERNEL_HOST2HIP", "kernel.host2hip.so", false);
   EnvironmentSet("KERNEL_HOST2OPENCL","kernel.host2opencl.so",false);
@@ -495,9 +517,12 @@ int Platform::GetFilePath(const char *key, char **value, size_t* vallen)
     }
     return IRIS_SUCCESS;
 }
-int Platform::EnvironmentGet(const char* key, char** value, size_t* vallen) {
+int Platform::EnvironmentGet(const char* key, char** value, size_t* vallen, char sep) {
   char env_key[128];
-  sprintf(env_key, "IRIS_%s", key);
+  if (sep == '\0')
+      sprintf(env_key, "IRIS%s", key);
+  else
+      sprintf(env_key, "IRIS%c%s", sep, key);
   const char* val = getenv(env_key);
   if (!val) {
     std::string keystr = std::string(key);
@@ -578,8 +603,12 @@ int Platform::InitCUDA() {
 
   _trace("CUDA platform[%d] ndevs[%d]", nplatforms_, ndevs);
   int mdevs =0;
-  int *cudevs = new int[ndevs*device_factor_];
-  for (int i = 0; i < ndevs*device_factor_; i++) {
+  int *cudevs = new int[ndevs*cuda_device_factor_];
+  for (int i = 0; i < ndevs*cuda_device_factor_; i++) {
+    if (ndevs_ > IRIS_MAX_NDEVS) {
+        _error("This platform has more than max devices: %d ! Hence ignoring further CUDA devices\n", IRIS_MAX_NDEVS);
+        break;
+    }
     CUdevice dev;
     err = loaderCUDA_->cuDeviceGet(&dev, i%ndevs);
     _cuerror(err);
@@ -651,8 +680,12 @@ int Platform::InitHIP() {
 
   _trace("HIP platform[%d] ndevs[%d]", nplatforms_, ndevs);
   int mdevs =0;
-  int *hipdevs= new int[ndevs*device_factor_];
-  for (int i = 0; i < ndevs*device_factor_; i++) {
+  int *hipdevs= new int[ndevs*hip_device_factor_];
+  for (int i = 0; i < ndevs*hip_device_factor_; i++) {
+    if (ndevs_ > IRIS_MAX_NDEVS) {
+        _error("This platform has more than max devices: %d ! Hence ignoring further HIP devices\n", IRIS_MAX_NDEVS);
+        break;
+    }
     hipDevice_t dev;
     err = loaderHIP_->hipDeviceGet(&dev, i%ndevs);
     _hiperror(err);
@@ -735,6 +768,10 @@ int Platform::InitLevelZero() {
 
   int mdevs = 0;
   for (uint32_t i = 0; i < ndevs; i++) {
+    if (ndevs_ > IRIS_MAX_NDEVS) {
+        _error("This platform has more than max devices: %d ! Hence ignoring further LevelZero devices\n", IRIS_MAX_NDEVS);
+        break;
+    }
     devs_[ndevs_] = new DeviceLevelZero(loaderLevelZero_, devs[i], zectx, driver, ndevs_, nplatforms_);
     arch_available_ |= devs_[ndevs_]->type();
     ndevs_++; mdevs++;
@@ -759,14 +796,47 @@ int Platform::InitOpenMP() {
       _warning("couldn't find OpenMP architecture kernel library:%s", filename);
       free(filename);
   }
-  _trace("OpenMP platform[%d] ndevs[%d]", nplatforms_, 1);
-  devs_[ndevs_] = new DeviceOpenMP(loaderOpenMP_, ndevs_, nplatforms_);
-  if (is_julia_enabled()) 
-      devs_[ndevs_]->EnableJuliaInterface();
-  arch_available_ |= devs_[ndevs_]->type();
-  ndevs_++;
+  int mdevs = 0;
+  for(int i=0; i<openmp_device_factor_; i++) {
+      if (ndevs_ > IRIS_MAX_NDEVS) {
+          _error("This platform has more than max devices: %d ! Hence ignoring further OpenMP devices\n", IRIS_MAX_NDEVS);
+          break;
+      }
+      _trace("OpenMP platform[%d] dev[%d] ndevs[%d]", nplatforms_, ndevs_, ndevs_+1);
+      _printf("OpenMP platform[%d] dev[%d] ndevs[%d]", nplatforms_, ndevs_, ndevs_+1);
+      devs_[ndevs_] = new DeviceOpenMP(loaderOpenMP_, ndevs_, nplatforms_);
+      if (is_julia_enabled()) 
+          devs_[ndevs_]->EnableJuliaInterface();
+      arch_available_ |= devs_[ndevs_]->type();
+      ndevs_++;
+      mdevs++;
+  }
   strcpy(platform_names_[nplatforms_], "OpenMP");
-  first_dev_of_type_[nplatforms_] = devs_[ndevs_-1];
+  first_dev_of_type_[nplatforms_] = devs_[ndevs_-mdevs];
+  nplatforms_++;
+  return IRIS_SUCCESS;
+}
+
+int Platform::InitQIREE() {
+  loaderQIREE_ = new LoaderQIREE();
+  if (loaderQIREE_->Load() != IRIS_SUCCESS) {
+      char *filename = (char *)malloc(512);
+      EnvironmentGet("KERNEL_QIR", &filename, NULL);
+      _warning("couldn't find QIR architecture kernel library:%s", filename);
+      free(filename);
+  }
+  int mdevs = 0;
+  for(int i=0; i<qiree_device_factor_; i++) {
+      _trace("QIR platform[%d] dev[%d] ndevs[%d]", nplatforms_, ndevs_, ndevs_+1);
+      devs_[ndevs_] = new DeviceQIREE(loaderQIREE_, ndevs_, nplatforms_);
+      if (is_julia_enabled()) 
+          devs_[ndevs_]->EnableJuliaInterface();
+      arch_available_ |= devs_[ndevs_]->type();
+      ndevs_++;
+      mdevs++;
+  }
+  strcpy(platform_names_[nplatforms_], "QIR");
+  first_dev_of_type_[nplatforms_] = devs_[ndevs_-mdevs];
   nplatforms_++;
   return IRIS_SUCCESS;
 }
@@ -860,6 +930,10 @@ int Platform::InitOpenCL() {
     }
     int mdevs = 0;
     for (cl_uint j = 0; j < ndevs; j++) {
+      if (ndevs_ > IRIS_MAX_NDEVS) {
+          _error("This platform has more than max devices: %d ! Hence ignoring further OpenCL devices\n", IRIS_MAX_NDEVS);
+          break;
+      }
       cl_device_type dev_type;
       err = loaderOpenCL_->clGetDeviceInfo(cl_devices[j], CL_DEVICE_TYPE, sizeof(dev_type), &dev_type, NULL);
       _clerror(err);
@@ -988,6 +1062,7 @@ void Platform::ShowOverview() {
       case (iris_hip):      backend = "hip";        break;
       case (iris_levelzero):backend = "levelzero";  break;
       case (iris_opencl):   backend = "opencl";     break;
+      case (iris_openmp):   backend = "cpu";        break;
     }
     switch(type_id){
       case (iris_cpu):      type = "CPU";         break;
@@ -1088,11 +1163,13 @@ int Platform::DeviceSynchronize(int ndevs, int* devices) {
     workers_[0]->Enqueue(task);
   }
   task->Wait();
+  //printf("Task uid:%lu ref_cnt:%u\n", task->uid(), task->ref_cnt());
   task->Release();
   //TaskWait(brs_task);
   // Task::Ok returns only Device::Ok. However, the parent task doesn't map to any 
   // device. It is meaningless to call task->Ok(). Hence, returning  IRIS_SUCCESS.
-  delete task;
+  //printf("1Task uid:%lu ref_cnt:%u\n", task->uid(), task->ref_cnt());
+  task->Release();
   return IRIS_SUCCESS;
 }
 
@@ -1351,10 +1428,20 @@ int Platform::TaskMalloc(iris_task brs_task, iris_mem brs_mem) {
 
 int Platform::TaskMemFlushOut(iris_task brs_task, iris_mem brs_mem) {
   Task *task = get_task_object(brs_task);
+  bool submit = false;
+  if (task == NULL) {
+    // It is possible that the task submitted earlier is completed.
+    // Lets handle this scenario
+    brs_task = iris_task_create_struct();
+    task = get_task_object(brs_task);
+    submit = true;
+  }
   assert(task != NULL);
   DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
   Command* cmd = Command::CreateMemFlushOut(task, mem);
   task->AddCommand(cmd);
+  // Submit the task and wait for flush completion
+  if (submit) TaskSubmit(brs_task, iris_default, NULL, 1);
   return IRIS_SUCCESS;
 }
 
@@ -1364,7 +1451,17 @@ int Platform::TaskMemResetInput(iris_task brs_task, iris_mem brs_mem, uint8_t re
     assert(task != NULL);
     BaseMem* mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
     Command *cmd = Command::CreateMemResetInput(task, mem, reset);
-    task->AddMemResetCommand(cmd);
+    task->AddCommand(cmd);
+    return IRIS_SUCCESS;
+}
+
+int Platform::TaskMemResetInput(iris_task brs_task, iris_mem brs_mem, ResetData & reset) 
+{
+    Task *task = get_task_object(brs_task);
+    assert(task != NULL);
+    BaseMem* mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+    Command *cmd = Command::CreateMemResetInput(task, mem, reset);
+    task->AddCommand(cmd);
     return IRIS_SUCCESS;
 }
 
@@ -1531,6 +1628,11 @@ int Platform::NumErrors(){
 }
 
 int Platform::TaskSubmit(iris_task brs_task, int brs_policy, const char* opt, int sync) {
+  if (ndevs_ == 0) {
+    _error("Cannot submit task:%lu due to no devices found on this system!", brs_task.uid);
+    IncrementErrorCount();
+    return IRIS_ERROR;
+  }
   Task *task = get_task_object(brs_task);
   assert(task != NULL);
   if (recording_) json_->RecordTask(task);
@@ -1548,6 +1650,11 @@ int Platform::TaskSubmit(iris_task brs_task, int brs_policy, const char* opt, in
 }
 
 int Platform::TaskSubmit(Task *task, int brs_policy, const char* opt, int sync) {
+  if (ndevs_ == 0) {
+    _error("Cannot submit task:%lu due to no devices found on this system!", task->uid());
+    IncrementErrorCount();
+    return IRIS_ERROR;
+  }
   iris_task brs_task = *(task->struct_obj());
   if (recording_) json_->RecordTask(task);
   task->Retain();
@@ -1576,7 +1683,8 @@ int Platform::TaskWait(iris_task brs_task) {
   TaskSafeRetain(brs_task);
   Task *task = get_task_object(brs_task);
   if (task != NULL) {
-    unsigned long uid = task->uid(); string lname = task->name(); _debug2("Task wait release:%lu:%s ref_cnt:%d after callback\n", task->uid(), task->name(), task->ref_cnt());
+    unsigned long uid = task->uid(); string lname = task->name(); 
+    _debug2("Task wait release:%lu:%s ref_cnt:%d after callback\n", task->uid(), task->name(), task->ref_cnt());
     task->Wait();
     _debug2("Task wait before release:%lu:%s ref_cnt:%d\n", uid, lname.c_str(), task->ref_cnt());
     int ref_cnt = task->Release();
@@ -1781,7 +1889,8 @@ int Platform::DataMemCreate(iris_mem* brs_mem, void *host, size_t size, int elem
   DataMem* mem = new DataMem(this, host, size, element_type);
   if (brs_mem) mem->SetStructObject(brs_mem);
 #ifndef DISABLE_PIN_BY_DEFAULT
-  DataMemRegisterPin(*brs_mem);
+  if (dmem_register_pin_flag_)
+      DataMemRegisterPin(*brs_mem);
 #endif
   //if (brs_mem) *brs_mem = mem->struct_obj();
   if (mem->size()==0) return IRIS_ERROR;
@@ -1794,7 +1903,8 @@ int Platform::DataMemCreate(iris_mem* brs_mem, void *host, size_t size, const ch
   DataMem* mem = new DataMem(this, host, size, symbol, element_type);
   if (brs_mem) mem->SetStructObject(brs_mem);
 #ifndef DISABLE_PIN_BY_DEFAULT
-  DataMemRegisterPin(*brs_mem);
+  if (dmem_register_pin_flag_)
+    DataMemRegisterPin(*brs_mem);
 #endif
   //if (brs_mem) *brs_mem = mem->struct_obj();
   if (mem->size()==0) return IRIS_ERROR;
@@ -1807,7 +1917,8 @@ int Platform::DataMemCreate(iris_mem* brs_mem, void *host, size_t *size, int dim
   DataMem* mem = new DataMem(this, host, size, dim, element_size, element_type);
   if (brs_mem) mem->SetStructObject(brs_mem);
 #ifndef DISABLE_PIN_BY_DEFAULT
-  DataMemRegisterPin(*brs_mem);
+  if (dmem_register_pin_flag_)
+    DataMemRegisterPin(*brs_mem);
 #endif
   //if (brs_mem) *brs_mem = mem->struct_obj();
   if (mem->size()==0) return IRIS_ERROR;
@@ -1843,7 +1954,8 @@ iris_mem *Platform::DataMemCreate(void *host, size_t size, int element_type) {
   if (mem->size()==0) return NULL;
   iris_mem *brs_mem = mem->struct_obj();
 #ifndef DISABLE_PIN_BY_DEFAULT
-  DataMemRegisterPin(*brs_mem);
+  if (dmem_register_pin_flag_)
+    DataMemRegisterPin(*brs_mem);
 #endif
   return brs_mem;
 }
@@ -1853,7 +1965,8 @@ iris_mem *Platform::DataMemCreate(void *host, size_t size, const char *symbol, i
   if (mem->size()==0) return NULL;
   iris_mem *brs_mem = mem->struct_obj();
 #ifndef DISABLE_PIN_BY_DEFAULT
-  DataMemRegisterPin(*brs_mem);
+  if (dmem_register_pin_flag_)
+    DataMemRegisterPin(*brs_mem);
 #endif
   return brs_mem;
 }
@@ -1864,7 +1977,8 @@ iris_mem *Platform::DataMemCreate(void *host, size_t *size, int dim, size_t elem
   if (mem->size()==0) return NULL;
   iris_mem *brs_mem = mem->struct_obj();
 #ifndef DISABLE_PIN_BY_DEFAULT
-  DataMemRegisterPin(*brs_mem);
+  if (dmem_register_pin_flag_)
+    DataMemRegisterPin(*brs_mem);
 #endif
   return brs_mem;
 }
@@ -1902,6 +2016,11 @@ void *Platform::GetDeviceContext(int device)
 {
     ASSERT(device < ndevs_);
     return devs_[device]->get_ctx();
+}
+void *Platform::GetDeviceStream(int device, int index)
+{
+    ASSERT(device < ndevs_);
+    return devs_[device]->get_stream(index);
 }
 int Platform::MemArch(iris_mem brs_mem, int device, void** arch) {
   if (!arch) return IRIS_ERROR;
@@ -1962,6 +2081,11 @@ int Platform::GraphCreateJSON(const char* path, void** params, iris_graph* brs_g
 }
 
 int Platform::GraphTask(iris_graph brs_graph, iris_task brs_task, int brs_policy, const char* opt) {
+  if (ndevs_ == 0) {
+    _error("Cannot submit task:%lu due to no devices found on this system!", brs_task.uid);
+    IncrementErrorCount();
+    return IRIS_ERROR;
+  }
   Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
   Task *task = get_task_object(brs_task);
   assert(task != NULL);
@@ -2442,6 +2566,13 @@ int Platform::Finalize() {
   pthread_mutex_unlock(&mutex_);
   fflush(stdout);
   return ret_id;
+}
+int Platform::VendorKernelLaunch(int dev_index, void *kernel, int gridx, int gridy, int gridz, int blockx, int blocky, int blockz, int shared_mem_bytes, void *stream, void **params)
+{
+    ASSERT(dev_index < ndevs_);
+    Device *dev = devs_[dev_index];
+    dev->VendorKernelLaunch(kernel, gridx, gridy, gridz, blockx, blocky, blockz, shared_mem_bytes, stream, params);
+    return IRIS_SUCCESS;
 }
 
 } /* namespace rt */

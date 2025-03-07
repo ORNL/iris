@@ -28,6 +28,7 @@ Kernel::Kernel(const char* name, Platform* platform) {
     archs_[i] = NULL;
     archs_devs_[i] = NULL;
     set_vendor_specific_kernel(i, false);
+    set_default_kernel(i, false);
     vendor_specific_kernel_check_flag_[i] = false;
   }
   host_if_data_ = NULL;

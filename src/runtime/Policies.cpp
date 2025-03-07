@@ -9,6 +9,7 @@
 #include "PolicyDefault.h"
 #include "PolicyDepend.h"
 #include "PolicyDevice.h"
+#include "PolicyJulia.h"
 #include "PolicyShortestDeviceQueue.h"
 #include "PolicyProfile.h"
 #include "PolicyRandom.h"
@@ -30,6 +31,7 @@ Policies::Policies(Scheduler* scheduler) {
   policy_profile_     = new PolicyProfile(scheduler_, this);
   policy_random_      = new PolicyRandom(scheduler_);
   policy_roundrobin_  = new PolicyRoundRobin(scheduler_);
+  policy_julia_       = new PolicyJulia(scheduler_);
 }
 
 Policies::~Policies() {
@@ -43,12 +45,14 @@ Policies::~Policies() {
   delete policy_profile_;
   delete policy_random_;
   delete policy_roundrobin_;
+  delete policy_julia_;
   for (std::map<std::string, LoaderPolicy*>::iterator I = policy_customs_.begin(), E = policy_customs_.end(); I != E; ++I)
     delete I->second;
 }
 
 Policy* Policies::GetPolicy(int brs_policy, const char* opt) {
   if (brs_policy &  iris_roundrobin) return policy_roundrobin_;
+  if (brs_policy &  iris_julia_policy) return policy_julia_;
   if (brs_policy &  iris_cpu    ||
       brs_policy &  iris_nvidia ||
       brs_policy &  iris_amd    ||

@@ -29,6 +29,8 @@ int LoaderHIP::LoadFunctions() {
   LOADFUNC(hipDeviceGet);
   LOADFUNC(hipDeviceGetName);
   LOADFUNC(hipCtxCreate);
+  LOADFUNC(hipCtxDestroy);
+  LOADFUNC(hipDeviceReset);
   LOADFUNC(hipCtxGetCurrent);
   LOADFUNC(hipCtxSetCurrent);
   LOADFUNC(hipCtxSynchronize);

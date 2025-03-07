@@ -3,6 +3,7 @@
 #include "Kernel.h"
 #include "LoaderOpenMP.h"
 #include "BaseMem.h"
+#include "DataMem.h"
 #include "Mem.h"
 #include "Task.h"
 #include "Utils.h"
@@ -40,6 +41,31 @@ DeviceOpenMP::~DeviceOpenMP() {
 }
 
 void DeviceOpenMP::TaskPre(Task *task) {
+}
+
+int DeviceOpenMP::Compile(char* src, const char *out, const char *flags) {
+  char default_comp_flags[] = "";
+  char cmd[1024];
+  memset(cmd, 0, 256);
+  if (flags == NULL) 
+      flags = default_comp_flags;
+  if (out == NULL) 
+      out = kernel_path();
+  sprintf(cmd, "g++ %s -o %s %s > /dev/null 2>&1", src, out, flags);
+  //printf("Cmd: %s\n", cmd);
+  if (system(cmd) != EXIT_SUCCESS) {
+    int result = system("g++ --version > /dev/null 2>&1");
+    if (result == 0) {
+        _error("cmd[%s]", cmd);
+        worker_->platform()->IncrementErrorCount();
+        return IRIS_ERROR;
+    }
+    else {
+        _warning("g++ is not available for JIT compilation of cmd [%s]", cmd);
+        return IRIS_WARNING;
+    }
+  }
+  return IRIS_SUCCESS;
 }
 
 int DeviceOpenMP::GetProcessorNameIntel(char* cpuinfo) {
@@ -98,12 +124,34 @@ int DeviceOpenMP::Init() {
   if (julia_if_ != NULL) julia_if_->init(devno());
   set_first_event_cpu_begin_time(timer_->Now());
   set_first_event_cpu_end_time(timer_->Now());
+  char flags[128];
+  sprintf(flags, "-shared -fopenmp -fPIC");
+  LoadDefaultKernelLibrary("DEFAULT_OMP_KERNELS", flags);
+
   return IRIS_SUCCESS;
 }
 
-int DeviceOpenMP::ResetMemory(Task *task, BaseMem *mem, uint8_t reset_value)
+int DeviceOpenMP::ResetMemory(Task *task, Command *cmd, BaseMem *mem)
 {
-    memset(mem->arch(this), reset_value, mem->size());
+    ResetData & reset_data = cmd->reset_data();
+    if (cmd->reset_data().reset_type_ == iris_reset_memset) {
+        uint8_t reset_value = reset_data.value_.u8;
+        memset(mem->arch(this), reset_value, mem->size());
+    }
+    else {
+        pair<bool, int8_t> out = mem->IsResetPossibleWithMemset(reset_data);
+        if (out.first) {
+            memset(mem->arch(this), out.second, mem->size());
+        }
+        else if (mem->GetMemHandlerType() == IRIS_DMEM || 
+                mem->GetMemHandlerType() == IRIS_DMEM_REGION) {
+            size_t elem_size = ((DataMem*)mem)->elem_size();
+            CallMemReset(mem, mem->size()/elem_size, cmd->reset_data(), NULL);
+        }
+        else {
+            _error("Unknow reset type for memory:%lu\n", mem->uid());
+        }
+    }
     return IRIS_SUCCESS;
 }
 
@@ -115,7 +163,25 @@ int DeviceOpenMP::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool rese
     return IRIS_ERROR;
   }
   _trace("Allocated mem:%lu addr:%p, size:%lu reset:%d", mem->uid(), *mem_addr, size, reset);
-  if (reset) memset(*mpmem, 0, size);
+  if (reset) {
+      if (mem->reset_data().reset_type_ == iris_reset_memset) {
+          memset(*mpmem, 0, size);
+      }
+      else if (ld_default() != NULL) {
+          pair<bool, int8_t> out = mem->IsResetPossibleWithMemset();
+          if (out.first) {
+              memset(*mpmem, out.second, size);
+          }
+          else if (mem->GetMemHandlerType() == IRIS_DMEM || 
+                  mem->GetMemHandlerType() == IRIS_DMEM_REGION) {
+              size_t elem_size = ((DataMem*)mem)->elem_size();
+              CallMemReset(mem, size/elem_size, mem->reset_data(), NULL);
+          }
+          else {
+              _error("Unknow reset type for memory:%lu\n", mem->uid());
+          }
+      }
+  }
   return IRIS_SUCCESS;
 }
 
@@ -214,6 +280,7 @@ int DeviceOpenMP::KernelLaunchInit(Command *cmd, Kernel* kernel) {
   int status=IRIS_ERROR;
   if (julia_if_ != NULL && kernel->task()->enable_julia_if()) {
       julia_if_->launch_init(model(), devno_, 0, 0, (void **)NULL, kernel->GetParamWrapperMemory(), cmd);
+      julia_if_->set_julia_kernel_type(kernel->GetParamWrapperMemory(), kernel->task()->julia_kernel_type());
       return IRIS_SUCCESS;
   }
   else {
@@ -283,7 +350,7 @@ int DeviceOpenMP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws
   //printf(" Task %s\n", kernel->get_task_name());
   _trace("dev[%d] kernel[%s:%s] dim[%d] off[%lu] gws[%lu]", devno_, kernel->name(), kernel->get_task_name(), dim, off[0], gws[0]);
   if (julia_if_ != NULL && kernel->task()->enable_julia_if()) {
-      julia_if_->host_launch((void **)NULL, 0, NULL, false,
+      julia_if_->host_launch(kernel->task()->uid(), (void **)NULL, 0, NULL, false,
                   0, kernel->name(), 
                   kernel->GetParamWrapperMemory(), devno(),
                   dim, off, gws);

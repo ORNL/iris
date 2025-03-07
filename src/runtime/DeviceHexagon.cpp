@@ -31,7 +31,7 @@ int DeviceHexagon::Init() {
   return IRIS_SUCCESS;
 }
 
-int DeviceHexagon::ResetMemory(Task *task, BaseMem *mem, uint8_t reset_value) {
+int DeviceHexagon::ResetMemory(Task *task, Command *cmd, BaseMem *mem) {
     _error("Reset memory is not implemented yet !");
     return IRIS_ERROR;
 }

@@ -29,9 +29,20 @@ void iris_overview() {
   return;
 }
 
-void iris_task_retain(iris_task task, bool flag) {
+void iris_task_retain(iris_task task, int flag) {
   Platform *platform = Platform::GetPlatform(); 
-  platform->set_release_task_flag(!flag, task);
+  platform->set_release_task_flag(!((bool)flag), task);
+}
+
+int iris_task_set_julia_policy(iris_task brs_task, const char *name) {
+  Task *task = Platform::GetPlatform()->get_task_object(brs_task);
+  task->set_julia_policy(name);
+  return IRIS_SUCCESS;
+}
+
+void iris_enable_default_kernels(int flag) {
+    Platform *platform = Platform::GetPlatform(); 
+    platform->enable_default_kernels_load((bool) flag);
 }
 
 int iris_finalize() {
@@ -156,9 +167,10 @@ int iris_task_create(iris_task* task) {
   return Platform::GetPlatform()->TaskCreate(NULL, false, task);
 }
 
-int iris_task_enable_julia_interface(iris_task brs_task) {
+int iris_task_enable_julia_interface(iris_task brs_task, int type) {
   Task *task = Platform::GetPlatform()->get_task_object(brs_task);
   task->set_enable_julia_if();
+  task->set_julia_kernel_type(type);
   return IRIS_SUCCESS;
 }
 
@@ -198,10 +210,23 @@ int iris_task_get_metadata(iris_task brs_task, int index) {
     return task->metadata(index);
 }
 
+int *iris_task_get_metadata_all(iris_task brs_task) {
+    Task *task = Platform::GetPlatform()->get_task_object(brs_task);
+    return task->metadata();
+}
+int iris_task_set_metadata_all(iris_task brs_task, int *mdata, int n) {
+    Task *task = Platform::GetPlatform()->get_task_object(brs_task);
+    return task->set_metadata(mdata, n);
+}
 int iris_task_set_metadata(iris_task brs_task, int index, int metadata) {
     Task *task = Platform::GetPlatform()->get_task_object(brs_task);
     task->set_metadata(index, metadata);
     return IRIS_SUCCESS;
+}
+
+int iris_task_get_metadata_count(iris_task brs_task) {
+    Task *task = Platform::GetPlatform()->get_task_object(brs_task);
+    return task->n_metadata();
 }
 
 int iris_task_h2broadcast(iris_task task, iris_mem mem, size_t off, size_t size, void* host) {
@@ -257,6 +282,38 @@ int iris_task_d2h_offsets(iris_task task, iris_mem mem, size_t *off, size_t *hos
 
 int iris_task_dmem_flush_out(iris_task task, iris_mem mem) {
   return Platform::GetPlatform()->TaskMemFlushOut(task, mem);
+}
+
+size_t *iris_dmem_get_host_size(iris_mem brs_mem) {
+    DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (mem != NULL) return mem->host_size();
+    return NULL;
+}
+
+int iris_dmem_set_source(iris_mem brs_mem, iris_mem source_mem)
+{
+    BaseMem* mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+    BaseMem* source = (BaseMem *)Platform::GetPlatform()->get_mem_object(source_mem);
+    mem->set_source_mem(source);
+    return IRIS_SUCCESS;
+}
+
+int iris_dmem_get_elem_type(iris_mem brs_mem) {
+    DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (mem != NULL) return mem->element_type();
+    return 0;
+}
+
+int iris_dmem_get_elem_size(iris_mem brs_mem) {
+    DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (mem != NULL) return mem->elem_size();
+    return 0;
+}
+
+int iris_dmem_get_dim(iris_mem brs_mem) {
+    DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (mem != NULL) return mem->dim();
+    return 0;
 }
 
 void *iris_get_dmem_valid_host(iris_mem brs_mem) {
@@ -361,8 +418,8 @@ int iris_task_submit(iris_task task, int device, const char* opt, int sync) {
   return Platform::GetPlatform()->TaskSubmit(task, device, opt, sync);
 }
 
-int iris_task_set_policy(iris_task task, int device) {
-  return Platform::GetPlatform()->SetTaskPolicy(task, device);
+int iris_task_set_policy(iris_task task, int policy) {
+  return Platform::GetPlatform()->SetTaskPolicy(task, policy);
 }
 
 int iris_task_get_policy(iris_task task) {
@@ -505,10 +562,162 @@ int iris_mem_get_uid(iris_mem mem) {
   return Platform::GetPlatform()->get_mem_object(mem)->uid();
 }
 
+int iris_get_mem_element_type(iris_mem brs_mem) {
+    BaseMem * mem = (BaseMem*)Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (mem != NULL) return mem->element_type();
+    return iris_unknown;
+}
+
 int iris_mem_is_reset(iris_mem mem) {
   return Platform::GetPlatform()->get_mem_object(mem)->is_reset();
 }
 
+int iris_mem_init_reset(iris_mem brs_mem, int memset_value) {
+  BaseMem * mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  mem->set_reset_type(iris_reset_memset);
+  mem->init_reset((bool) memset_value);
+  return IRIS_SUCCESS;
+}
+int iris_mem_init_reset_assign(iris_mem brs_mem, IRISValue value) {
+  BaseMem * mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  mem->set_reset_assign(value);
+  return IRIS_SUCCESS;
+}
+int iris_mem_init_reset_arith_seq(iris_mem brs_mem, IRISValue start, IRISValue increment) {
+  BaseMem * mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  mem->set_reset_arith_seq(start, increment);
+  return IRIS_SUCCESS;
+}
+int iris_mem_init_reset_geom_seq(iris_mem brs_mem, IRISValue start, IRISValue step) {
+  BaseMem * mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  mem->set_reset_geom_seq(start, step);
+  return IRIS_SUCCESS;
+}
+int iris_mem_init_reset_random_uniform_seq(iris_mem brs_mem, long long seed, IRISValue min, IRISValue max) {
+  BaseMem * mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  mem->init_reset(true);
+  mem->set_reset_type(iris_reset_random_uniform_seq);
+  mem->set_reset_seed(seed);
+  mem->set_reset_min(min);
+  mem->set_reset_max(max);
+  return IRIS_SUCCESS;
+}
+int iris_mem_init_reset_random_normal_seq(iris_mem brs_mem, long long seed, IRISValue mean, IRISValue stddev) {
+  BaseMem * mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  mem->init_reset(true);
+  mem->set_reset_type(iris_reset_random_normal_seq);
+  mem->set_reset_seed(seed);
+  mem->set_reset_mean(mean);
+  mem->set_reset_stddev(stddev);
+  return IRIS_SUCCESS;
+}
+int iris_mem_init_reset_random_log_normal_seq(iris_mem brs_mem, long long seed, IRISValue mean, IRISValue stddev) {
+  BaseMem * mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  mem->init_reset(true);
+  mem->set_reset_type(iris_reset_random_log_normal_seq);
+  mem->set_reset_seed(seed);
+  mem->set_reset_mean(mean);
+  mem->set_reset_stddev(stddev);
+  return IRIS_SUCCESS;
+}
+int iris_mem_init_reset_random_uniform_sobol_seq(iris_mem brs_mem, IRISValue min, IRISValue max) {
+  BaseMem * mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  mem->init_reset(true);
+  mem->set_reset_type(iris_reset_random_uniform_sobol_seq);
+  mem->set_reset_min(min);
+  mem->set_reset_max(max);
+  return IRIS_SUCCESS;
+}
+int iris_mem_init_reset_random_normal_sobol_seq(iris_mem brs_mem, IRISValue mean, IRISValue stddev) {
+  BaseMem * mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  mem->init_reset(true);
+  mem->set_reset_type(iris_reset_random_normal_sobol_seq);
+  mem->set_reset_mean(mean);
+  mem->set_reset_stddev(stddev);
+  return IRIS_SUCCESS;
+}
+int iris_mem_init_reset_random_log_normal_sobol_seq(iris_mem brs_mem, IRISValue mean, IRISValue stddev) {
+  BaseMem * mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  mem->init_reset(true);
+  mem->set_reset_type(iris_reset_random_log_normal_sobol_seq);
+  mem->set_reset_mean(mean);
+  mem->set_reset_stddev(stddev);
+  return IRIS_SUCCESS;
+}
+int iris_task_cmd_init_reset_assign(iris_task brs_task, iris_mem brs_mem, IRISValue value) {
+  ResetData reset_data;
+  reset_data.reset_type_ = iris_reset_assign; 
+  reset_data.value_ = value;
+  Platform::GetPlatform()->TaskMemResetInput(brs_task, brs_mem, reset_data);
+  return IRIS_SUCCESS;
+}
+int iris_task_cmd_init_reset_arith_seq(iris_task brs_task, iris_mem brs_mem, IRISValue start, IRISValue increment) {
+  ResetData reset_data;
+  reset_data.reset_type_ = iris_reset_arith_seq; 
+  reset_data.start_ = start;
+  reset_data.step_ = increment;
+  Platform::GetPlatform()->TaskMemResetInput(brs_task, brs_mem, reset_data);
+  return IRIS_SUCCESS;
+}
+int iris_task_cmd_init_reset_geom_seq(iris_task brs_task, iris_mem brs_mem, IRISValue start, IRISValue step) {
+  ResetData reset_data;
+  reset_data.reset_type_ = iris_reset_geom_seq; 
+  reset_data.start_ = start;
+  reset_data.step_ = step;
+  Platform::GetPlatform()->TaskMemResetInput(brs_task, brs_mem, reset_data);
+  return IRIS_SUCCESS;
+}
+int iris_task_cmd_init_reset_random_uniform_seq(iris_task brs_task, iris_mem brs_mem, long long seed, IRISValue min, IRISValue max) {
+  ResetData reset_data;
+  reset_data.reset_type_ = iris_reset_random_uniform_seq; 
+  reset_data.seed_ = seed;
+  reset_data.p1_ = min;
+  reset_data.p2_ = max;
+  Platform::GetPlatform()->TaskMemResetInput(brs_task, brs_mem, reset_data);
+  return IRIS_SUCCESS;
+}
+int iris_task_cmd_init_reset_random_normal_seq(iris_task brs_task, iris_mem brs_mem, long long seed, IRISValue mean, IRISValue stddev) {
+  ResetData reset_data;
+  reset_data.reset_type_ = iris_reset_random_normal_seq; 
+  reset_data.seed_ = seed;
+  reset_data.p1_ = mean;
+  reset_data.p2_ = stddev;
+  Platform::GetPlatform()->TaskMemResetInput(brs_task, brs_mem, reset_data);
+  return IRIS_SUCCESS;
+}
+int iris_task_cmd_init_reset_random_log_normal_seq(iris_task brs_task, iris_mem brs_mem, long long seed, IRISValue mean, IRISValue stddev) {
+  ResetData reset_data;
+  reset_data.reset_type_ = iris_reset_random_log_normal_seq; 
+  reset_data.seed_ = seed;
+  reset_data.p1_ = mean;
+  reset_data.p2_ = stddev;
+  Platform::GetPlatform()->TaskMemResetInput(brs_task, brs_mem, reset_data);
+  return IRIS_SUCCESS;
+}
+int iris_task_cmd_init_reset_random_uniform_sobol_seq(iris_task brs_task, iris_mem brs_mem, IRISValue min, IRISValue max) {
+  ResetData reset_data;
+  reset_data.reset_type_ = iris_reset_random_uniform_sobol_seq; 
+  reset_data.p1_ = min;
+  reset_data.p2_ = max;
+  Platform::GetPlatform()->TaskMemResetInput(brs_task, brs_mem, reset_data);
+  return IRIS_SUCCESS;
+}
+int iris_task_cmd_init_reset_random_normal_sobol_seq(iris_task brs_task, iris_mem brs_mem, IRISValue mean, IRISValue stddev) {
+  ResetData reset_data;
+  reset_data.reset_type_ = iris_reset_random_normal_sobol_seq; 
+  reset_data.p1_ = mean;
+  reset_data.p2_ = stddev;
+  Platform::GetPlatform()->TaskMemResetInput(brs_task, brs_mem, reset_data);
+  return IRIS_SUCCESS;
+}
+int iris_task_cmd_init_reset_random_log_normal_sobol_seq(iris_task brs_task, iris_mem brs_mem, IRISValue mean, IRISValue stddev) {
+  ResetData reset_data;
+  reset_data.reset_type_ = iris_reset_random_log_normal_sobol_seq; 
+  reset_data.p1_ = mean;
+  reset_data.p2_ = stddev;
+  Platform::GetPlatform()->TaskMemResetInput(brs_task, brs_mem, reset_data);
+  return IRIS_SUCCESS;
+}
 int iris_data_mem_init_reset(iris_mem mem, int reset) {
   return Platform::GetPlatform()->DataMemInit(mem, (bool)reset);
 }
@@ -569,11 +778,24 @@ int iris_data_mem_clear(iris_mem brs_mem) {
 int iris_data_mem_update(iris_mem mem, void *host) {
   return Platform::GetPlatform()->DataMemUpdate(mem, host);
 }
+int iris_data_mem_refresh(iris_mem brs_mem) {
+  DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  mem->RefreshHost();
+  return IRIS_SUCCESS;
+}
+int iris_data_mem_update_host_size(iris_mem brs_mem, size_t *host_size) {
+  DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  return mem->update_host_size(host_size);
+}
 int iris_unregister_pin_memory(void *host) {
   return Platform::GetPlatform()->UnRegisterPin(host);
 }
 int iris_register_pin_memory(void *host, size_t size) {
   return Platform::GetPlatform()->RegisterPin(host, size);
+}
+int iris_data_mem_set_pin_flag(bool flag) {
+  Platform::GetPlatform()->set_dmem_register_pin_flag((bool)flag);
+  return IRIS_SUCCESS;
 }
 int iris_data_mem_pin(iris_mem mem) {
   return Platform::GetPlatform()->DataMemRegisterPin(mem);
@@ -596,9 +818,9 @@ int iris_data_mem_n_regions(iris_mem brs_mem) {
   DataMem *mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
   return mem->get_n_regions();
 }
-int iris_data_mem_update_bc(iris_mem brs_mem, bool bc, int row, int col) {
+int iris_data_mem_update_bc(iris_mem brs_mem, int bc, int row, int col) {
   DataMem *mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
-  mem->update_bc_row_col(bc, row, col);
+  mem->update_bc_row_col((bool)bc, row, col);
   return IRIS_SUCCESS;
 }
 int iris_data_mem_get_rr_bc_dev(iris_mem brs_mem){
@@ -677,6 +899,12 @@ int iris_graph_create(iris_graph* graph) {
   return Platform::GetPlatform()->GraphCreate(graph);
 }
 
+iris_graph iris_graph_create_empty() {
+  iris_graph graph;
+  Platform::GetPlatform()->GraphCreate(&graph);
+  return graph;
+}
+
 int iris_graph_create_null(iris_graph* graph) {
   iris_graph null_graph;
   null_graph.uid = (unsigned long) -1;
@@ -685,9 +913,9 @@ int iris_graph_create_null(iris_graph* graph) {
   return IRIS_SUCCESS;
 }
 
-bool iris_is_graph_null(iris_graph graph) {
-  if (graph.uid == (unsigned long) -1) return true;
-  return false;
+int iris_is_graph_null(iris_graph graph) {
+  if (graph.uid == (unsigned long) -1) return (int)true;
+  return (int)false;
 }
 
 int iris_graph_create_json(const char* json, void** params, iris_graph* graph) {
@@ -708,8 +936,8 @@ int iris_graph_reset_memories(iris_graph brs_graph) {
   graph->ResetMemories();
   return IRIS_SUCCESS;
 }
-int iris_graph_retain(iris_graph graph, bool flag) {
-  return Platform::GetPlatform()->GraphRetain(graph, flag);
+int iris_graph_retain(iris_graph graph, int flag) {
+  return Platform::GetPlatform()->GraphRetain(graph, (bool)flag);
 }
 
 int iris_graph_release(iris_graph graph) {
@@ -1033,6 +1261,10 @@ void *iris_dev_get_ctx(int device) {
   return Platform::GetPlatform()->GetDeviceContext(device);
 }
 
+void *iris_dev_get_stream(int device, int stream) {
+  return Platform::GetPlatform()->GetDeviceStream(device, stream);
+}
+
 void iris_run_hpl_mapping(iris_graph graph)
 {
     int ndevices = 0;
@@ -1109,6 +1341,7 @@ void iris_run_hpl_mapping(iris_graph graph)
         }
     }
 }
+julia_policy_t julia_policy__ = NULL;
 julia_kernel_t julia_kernel__ = NULL;
 int iris_julia_init(void *julia_launch_func, int decoupled_init)
 {
@@ -1118,6 +1351,11 @@ int iris_julia_init(void *julia_launch_func, int decoupled_init)
     //int32_t result = julia_kernel__(target, devno);
     //printf("Result %d\n", result);
     return Platform::GetPlatform()->JuliaInit((bool)decoupled_init);
+}
+int iris_julia_policy_init(void *julia_policy_func) 
+{
+    julia_policy__ = (julia_policy_t) julia_policy_func;
+    return IRIS_SUCCESS;
 }
 int iris_init_scheduler(int use_pthread)
 {
@@ -1151,7 +1389,14 @@ julia_kernel_t iris_get_julia_launch_func()
 {
     return julia_kernel__;
 }
-
-bool iris_is_enabled_auto_par() {
-  return Platform::GetPlatform()->GetAutoPar();
+julia_policy_t iris_get_julia_policy_func() 
+{
+    return julia_policy__;
+}
+int iris_vendor_kernel_launch(int dev, void *kernel, int gridx, int gridy, int gridz, int blockx, int blocky, int blockz, int shared_mem_bytes, void *stream, void **params) 
+{
+    return Platform::GetPlatform()->VendorKernelLaunch(dev, kernel, gridx, gridy, gridz, blockx, blocky, blockz, shared_mem_bytes, stream, params);
+}
+int iris_is_enabled_auto_par() {
+  return (int) Platform::GetPlatform()->GetAutoPar();
 }

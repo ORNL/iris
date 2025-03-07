@@ -20,7 +20,7 @@ public:
   int Init();
   bool IsDeviceValid();
   int BuildProgram(char* path);
-  int ResetMemory(Task *task, BaseMem *mem, uint8_t reset_value);
+  int ResetMemory(Task *task, Command *cmd, BaseMem *mem);
   int MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset=false);
   int MemFree(BaseMem *mem, void* mem_addr);
   int MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag="");

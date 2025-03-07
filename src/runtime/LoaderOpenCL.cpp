@@ -85,6 +85,7 @@ int LoaderOpenCL::LoadFunctions() {
   LOADFUNC(clEnqueueWaitForEvents);
   LOADFUNC(clWaitForEvents);
   LOADFUNC(clReleaseCommandQueue);
+  LOADFUNC(clReleaseContext);
   LOADFUNC(clSetEventCallback);
   LOADFUNC(clEnqueueFillBuffer);
   LOADFUNC(clGetEventProfilingInfo);

@@ -5,6 +5,7 @@
 #include "Kernel.h"
 #include "LoaderHIP.h"
 #include "BaseMem.h"
+#include "DataMem.h"
 #include "Worker.h"
 #include "Mem.h"
 #include "Reduction.h"
@@ -57,7 +58,7 @@ DeviceHIP::DeviceHIP(LoaderHIP* ld, LoaderHost2HIP *host2hip_ld, hipDevice_t dev
   err = ld_->hipDriverGetVersion(&driver_version_);
   _hiperror(err);
   sprintf(version_, "AMD HIP %d", driver_version_);
-  _info("device[%d] platform[%d] vendor[%s] device[%s] ordinal[%d] type[%d] version[%s] async_engines[%d] copy_engines[%d]", devno_, platform_, vendor_, name_, ordinal_, type_, version_, ae, n_copy_engines_);
+  _trace("device[%d] platform[%d] vendor[%s] device[%s] ordinal[%d] type[%d] version[%s] async_engines[%d] copy_engines[%d]", devno_, platform_, vendor_, name_, ordinal_, type_, version_, ae, n_copy_engines_);
 }
 
 DeviceHIP::~DeviceHIP() {
@@ -75,6 +76,11 @@ DeviceHIP::~DeviceHIP() {
     if (is_async(false) && platform_obj_->is_event_profile_enabled()) 
         DestroyEvent(single_start_time_event_);
     _trace("HIP device:%d is destroyed", devno());
+    hipError_t err; 
+    err = ld_->hipDeviceReset();
+    _hiperror(err);
+    err = ld_->hipCtxDestroy(ctx_);
+    _hiperror(err);
 }
 bool DeviceHIP::IsAddrValidForD2D(BaseMem *mem, void *ptr)
 {
@@ -122,14 +128,26 @@ void DeviceHIP::EnablePeerAccess()
         }
     }
 }
-int DeviceHIP::Compile(char* src) {
+int DeviceHIP::Compile(char* src, const char *out, const char *flags) {
+  char default_comp_flags[] = "--genco";
   char cmd[1024];
   memset(cmd, 0, 256);
-  sprintf(cmd, "hipcc --genco %s -o %s", src, kernel_path());
+  if (flags == NULL) 
+      flags = default_comp_flags;
+  if (out == NULL) 
+      out = kernel_path();
+  sprintf(cmd, "hipcc %s -o %s %s > /dev/null 2>&1", src, out, flags);
   if (system(cmd) != EXIT_SUCCESS) {
-    _error("cmd[%s]", cmd);
-    worker_->platform()->IncrementErrorCount();
-    return IRIS_ERROR;
+    int result = system("hipcc --version > /dev/null 2>&1");
+    if (result == 0) {
+        _error("cmd[%s]", cmd);
+        worker_->platform()->IncrementErrorCount();
+        return IRIS_ERROR;
+    }
+    else {
+        _warning("hipcc is not available for JIT compilation of cmd [%s]", cmd);
+        return IRIS_WARNING;
+    }
   }
   return IRIS_SUCCESS;
 }
@@ -160,6 +178,10 @@ int DeviceHIP::Init() {
           _event_prof_debug("Event start time of device:%f end time of record:%f", first_event_cpu_begin_time(), first_event_cpu_end_time());
       }
   }
+  char flags[128];
+  sprintf(flags, "-shared -fPIC");
+  LoadDefaultKernelLibrary("DEFAULT_HIP_KERNELS", flags);
+
   err = ld_->hipGetDevice(&devid_);
   _hiperror(err);
   //host2hip_ld_->set_dev(devno(), model());
@@ -182,7 +204,7 @@ int DeviceHIP::Init() {
   max_work_item_sizes_[1] = (size_t) by * (size_t) dy;
   max_work_item_sizes_[2] = (size_t) bz * (size_t) dz;
 
-  _info("devid[%d] max_compute_units[%zu] max_work_group_size_[%zu] max_work_item_sizes[%zu,%zu,%zu] max_block_dims[%d,%d,%d] concurrent_kernels[%d]", devid_, max_compute_units_, max_work_group_size_, max_work_item_sizes_[0], max_work_item_sizes_[1], max_work_item_sizes_[2], max_block_dims_[0], max_block_dims_[1], max_block_dims_[2], ck);
+  _info("devid[%d] platform[%d] vendor[%s] device[%s] ordinal[%d] type[%d] version[%s] async_engines[%d] copy_engines[%d] max_compute_units[%zu] max_work_group_size_[%zu] max_work_item_sizes[%zu,%zu,%zu] max_block_dims[%d,%d,%d] concurrent_kernels[%d]", devid_, platform_, vendor_, name_, ordinal_, type_, version_, nqueues_, n_copy_engines_, max_compute_units_, max_work_group_size_, max_work_item_sizes_[0], max_work_item_sizes_[1], max_work_item_sizes_[2], max_block_dims_[0], max_block_dims_[1], max_block_dims_[2], ck);
 
   if (julia_if_ != NULL) julia_if_->init(devno());
   char* path = (char *)kernel_path();
@@ -207,7 +229,7 @@ int DeviceHIP::Init() {
   return IRIS_SUCCESS;
 }
 
-int DeviceHIP::ResetMemory(Task *task, BaseMem *mem, uint8_t reset_value) {
+int DeviceHIP::ResetMemory(Task *task, Command *cmd, BaseMem *mem) {
     int stream_index = 0;
     hipError_t err;
     bool async = false;
@@ -219,14 +241,48 @@ int DeviceHIP::ResetMemory(Task *task, BaseMem *mem, uint8_t reset_value) {
     if (IsContextChangeRequired()) {
         ld_->hipCtxSetCurrent(ctx_);
     }
-    if (async)
-        err = ld_->hipMemsetAsync(mem->arch(this), reset_value, mem->size(), streams_[stream_index]);
-    else
-        err = ld_->hipMemset(mem->arch(this), reset_value, mem->size());
-    _hiperror(err);
-    if (err != hipSuccess) {
-       worker_->platform()->IncrementErrorCount();
-       return IRIS_ERROR;
+
+    ResetData & reset_data = cmd->reset_data();
+    if (cmd->reset_data().reset_type_ == iris_reset_memset) {
+        uint8_t reset_value = reset_data.value_.u8;
+        if (async)
+            err = ld_->hipMemsetAsync(mem->arch(this), reset_value, mem->size(), streams_[stream_index]);
+        else
+            err = ld_->hipMemset(mem->arch(this), reset_value, mem->size());
+        _hiperror(err);
+        if (err != hipSuccess) {
+           worker_->platform()->IncrementErrorCount();
+           return IRIS_ERROR;
+        }
+    }
+    else if (ld_default() != NULL) {
+        pair<bool, int8_t> out = mem->IsResetPossibleWithMemset(reset_data);
+        if (out.first) {
+            if (async)
+                err = ld_->hipMemsetAsync(mem->arch(this), out.second, mem->size(), streams_[stream_index]);
+            else
+                err = ld_->hipMemset(mem->arch(this), out.second, mem->size());
+            _hiperror(err);
+            if (err != hipSuccess) {
+                worker_->platform()->IncrementErrorCount();
+                return IRIS_ERROR;
+            }
+        }
+        else if (mem->GetMemHandlerType() == IRIS_DMEM || 
+                mem->GetMemHandlerType() == IRIS_DMEM_REGION) {
+            size_t elem_size = ((DataMem*)mem)->elem_size();
+            if (async)
+                CallMemReset(mem, mem->size()/elem_size, cmd->reset_data(), streams_[stream_index]);
+            else
+                CallMemReset(mem, mem->size()/elem_size, cmd->reset_data(), NULL);
+        }
+        else {
+            _error("Unknow reset type for memory:%lu\n", mem->uid());
+        }
+    }
+    else {
+        _error("Couldn't find shared library of HIP dev:%d default kernels with reset APIs", devno()); 
+        return IRIS_ERROR;
     }
     return IRIS_SUCCESS;
 }
@@ -234,6 +290,7 @@ int DeviceHIP::ResetMemory(Task *task, BaseMem *mem, uint8_t reset_value) {
 void DeviceHIP::RegisterPin(void *host, size_t size)
 {
     hipError_t err = ld_->hipHostRegister(host, size, hipHostRegisterDefault);
+    //_printf("Registering mem:%p size:%lu err:%d\n", host, size, err);
     _hipwarning(err);
     //ld_->hipHostRegister(host, size, hipHostRegisterMapped);
 }
@@ -241,6 +298,7 @@ void DeviceHIP::RegisterPin(void *host, size_t size)
 void DeviceHIP::UnRegisterPin(void *host)
 {
     hipError_t err = ld_->hipHostUnregister(host);
+    //_printf("Registering mem:%p err:%d\n", host, err);
     _hipwarning(err);
     //ld_->hipHostRegister(host, size, hipHostRegisterMapped);
 }
@@ -271,8 +329,9 @@ int DeviceHIP::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset) 
   void** hipmem = mem_addr;
   int stream = mem->recommended_stream(devno());
   bool async = (is_async(false) && stream != DEFAULT_STREAM_INDEX && stream >=0);
+  bool l_async = platform_obj_->is_malloc_async() && async && stream >= 0;
   hipError_t err;
-  if (platform_obj_->is_malloc_async() && async && stream >= 0)
+  if (l_async)
      err = ld_->hipMallocAsync(hipmem, size, streams_[stream]);
   else
      err = ld_->hipMalloc(hipmem, size);
@@ -282,12 +341,48 @@ int DeviceHIP::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset) 
      return IRIS_ERROR;
   }
   if (reset)  {
-      if (platform_obj_->is_malloc_async() && async && stream >=0)
-          err = ld_->hipMemsetAsync(*hipmem, 0, size, streams_[stream]);
-      else
-          err = ld_->hipMemset(*hipmem, 0, size);
+      if (mem->reset_data().reset_type_ == iris_reset_memset) {
+          if (l_async)
+              err = ld_->hipMemsetAsync(*hipmem, 0, size, streams_[stream]);
+          else
+              err = ld_->hipMemset(*hipmem, 0, size);
+          _hiperror(err);
+          if (err != hipSuccess) {
+              worker_->platform()->IncrementErrorCount();
+              return IRIS_ERROR;
+          }
+      }
+      else if (ld_default() != NULL) {
+          pair<bool, int8_t> out = mem->IsResetPossibleWithMemset();
+          if (out.first) {
+              if (l_async)
+                  err = ld_->hipMemsetAsync(*hipmem, out.second, size, streams_[stream]);
+              else
+                  err = ld_->hipMemset(*hipmem, out.second, size);
+              _hiperror(err);
+              if (err != hipSuccess) {
+                  worker_->platform()->IncrementErrorCount();
+                  return IRIS_ERROR;
+              }
+
+          }
+          else if (mem->GetMemHandlerType() == IRIS_DMEM || 
+                  mem->GetMemHandlerType() == IRIS_DMEM_REGION) {
+              size_t elem_size = ((DataMem*)mem)->elem_size();
+              if (l_async)
+                  CallMemReset(mem, size/elem_size, mem->reset_data(), streams_[stream]);
+              else
+                  CallMemReset(mem, size/elem_size, mem->reset_data(), NULL);
+          }
+          else {
+              _error("Unknow reset type for memory:%lu\n", mem->uid());
+          }
+      }
+      else {
+          _error("Couldn't find shared library of HIP dev:%d default kernels with reset APIs", devno()); 
+          return IRIS_ERROR;
+      }
   }
-  _hiperror(err);
   return IRIS_SUCCESS;
 }
 
@@ -641,9 +736,22 @@ int DeviceHIP::KernelLaunchInit(Command *cmd, Kernel* kernel) {
     }
     host2hip_ld_->launch_init(model(), devno_, stream_index, nstreams, (void **)kstream, kernel->GetParamWrapperMemory(), cmd);
     //printf(" Is task julia enabled:%d param:%p\n", kernel->task()->enable_julia_if(), kernel->GetParamWrapperMemory());
-    if (julia_if_ != NULL && kernel->task()->enable_julia_if()) 
+    if (julia_if_ != NULL && kernel->task()->enable_julia_if()) {
         julia_if_->launch_init(model(), devno_, stream_index, nstreams, (void **)kstream, kernel->GetParamWrapperMemory(), cmd);
+        julia_if_->set_julia_kernel_type(kernel->GetParamWrapperMemory(), kernel->task()->julia_kernel_type());
+    }
     return IRIS_SUCCESS;
+}
+
+void DeviceHIP::VendorKernelLaunch(void *kernel, int gridx, int gridy, int gridz, int blockx, int blocky, int blockz, int shared_mem_bytes, void *stream, void **params) 
+{ 
+  printf("IRIS Received kernel:%p stream:%p\n", kernel, stream);
+  if (IsContextChangeRequired()) {
+      ld_->hipCtxSetCurrent(ctx_);
+  }
+  hipError_t err = ld_->hipModuleLaunchKernel((hipFunction_t)kernel, gridx, gridy, gridz, blockx, blocky, blockz, shared_mem_bytes, (hipStream_t)stream, params, NULL);
+  _hiperror(err);
+  //ld_->hipStreamSynchronize((CUstream)stream);
 }
 
 
@@ -724,9 +832,9 @@ int DeviceHIP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, s
   if (julia_if_ != NULL && kernel->task()->enable_julia_if()) {
       size_t grid_s[3] =  { (size_t)grid[0],  (size_t)grid[1],  (size_t)grid[2] };
       size_t block_s[3] = { (size_t)block[0], (size_t)block[1], (size_t)block[2] };
-      julia_if_->host_launch((void **)kstream, stream_index, (void *)&ctx_, async,
+      julia_if_->host_launch(kernel->task()->uid(), (void **)kstream, stream_index, (void *)&ctx_, async,
                   nstreams, kernel->name(), 
-                  kernel->GetParamWrapperMemory(), devno(),
+                  kernel->GetParamWrapperMemory(), ordinal_,
                   dim, grid_s, block_s);
       return IRIS_SUCCESS;
   }

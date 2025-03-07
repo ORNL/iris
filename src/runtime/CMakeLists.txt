@@ -81,6 +81,7 @@ set(IRIS_RUNTIME_SOURCES
   DeviceLevelZero.cpp
   DeviceOpenCL.cpp
   DeviceOpenMP.cpp
+  DeviceQIREE.cpp
   FilterTaskSplit.cpp
   Graph.cpp
   History.cpp
@@ -89,6 +90,7 @@ set(IRIS_RUNTIME_SOURCES
   Kernel.cpp
   Loader.cpp
   LoaderCUDA.cpp
+  LoaderDefaultKernel.cpp
   LoaderHost2OpenCL.cpp
   LoaderHost2HIP.cpp
   LoaderHost2CUDA.cpp
@@ -98,6 +100,7 @@ set(IRIS_RUNTIME_SOURCES
   LoaderOpenCL.cpp
   LoaderOpenMP.cpp
   LoaderPolicy.cpp
+  LoaderQIREE.cpp
   Message.cpp
   DataMemRegion.cpp
   DataMem.cpp
@@ -115,6 +118,7 @@ set(IRIS_RUNTIME_SOURCES
   PolicyDefault.cpp
   PolicyDepend.cpp
   PolicyDevice.cpp
+  PolicyJulia.cpp
   PolicyShortestDeviceQueue.cpp
   PolicyProfile.cpp
   PolicyRandom.cpp
@@ -152,6 +156,7 @@ set(IRIS_RUNTIME_HEADERS
   DeviceLevelZero.h
   DeviceOpenCL.h
   DeviceOpenMP.h
+  DeviceQIREE.h
   Filter.h
   FilterTaskSplit.h
   Graph.h
@@ -162,18 +167,20 @@ set(IRIS_RUNTIME_HEADERS
   JSON.h
   Kernel.h
   Loader.h
-  LoaderHost2OpenCL.h
-  LoaderLevelZero.h
-  LoaderHost2HIP.h
-  LoaderHost2CUDA.h
-  AsyncData.h
-  EventExchange.h
   LoaderCUDA.h
+  LoaderDefaultKernel.h
   LoaderHexagon.h
   LoaderHIP.h
   LoaderOpenCL.h
   LoaderOpenMP.h
   LoaderPolicy.h
+  LoaderHost2OpenCL.h
+  LoaderLevelZero.h
+  LoaderHost2HIP.h
+  LoaderHost2CUDA.h
+  LoaderQIREE.h
+  AsyncData.h
+  EventExchange.h
   Message.h
   DataMemRegion.h
   DataMem.h
@@ -191,6 +198,7 @@ set(IRIS_RUNTIME_HEADERS
   PolicyDefault.h
   PolicyDevice.h
   PolicyDepend.h
+  PolicyJulia.h
   PolicyProfile.h
   PolicyRandom.h
   PolicyRoundRobin.h

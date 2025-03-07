@@ -26,11 +26,13 @@ public:
   CUresult (*cuCtxGetCurrent)(CUcontext* pctx);
   CUresult (*cuCtxSetCurrent)(CUcontext ctx);
   CUresult (*cuCtxEnablePeerAccess)(CUcontext ctx, unsigned int flags);
+  CUresult (*cudaDeviceReset)();
   CUresult (*cudaSetDevice)(int device);
   CUresult (*cudaDeviceCanAccessPeer)(int *canaccess, int device, int peerDevice);
   CUresult (*cuDeviceEnablePeerAccess)(int peerDevice, unsigned int flags);
   CUresult (*cudaDeviceEnablePeerAccess)(int peerDevice, unsigned int flags);
   CUresult (*cuCtxCreate)(CUcontext* pctx, unsigned int flags,CUdevice dev);
+  CUresult (*cuCtxDestroy)(CUcontext pctx);
   CUresult (*cuCtxSynchronize)(void);
   CUresult (*cuStreamAddCallback)(CUstream hStream, CUstreamCallback callback, void *userData, unsigned int flags);
   CUresult (*cuStreamCreate)(CUstream* phStream, unsigned int Flags);
@@ -39,6 +41,7 @@ public:
   CUresult (*cuStreamSynchronize)(CUstream hStream);
   CUresult (*cuModuleGetFunction)(CUfunction* hfunc, CUmodule hmod, const char* name);
   CUresult (*cuModuleLoad)(CUmodule* module, const char* fname);
+  CUresult (*cuModuleUnload)(CUmodule module);
   CUresult (*cuModuleGetTexRef)(CUtexref* pTexRef, CUmodule hmod, const char* name);
   CUresult (*cuTexRefSetAddress)(size_t* ByteOffset, CUtexref hTexRef, CUdeviceptr dptr, size_t bytes);
   CUresult (*cuTexRefSetAddressMode)(CUtexref hTexRef, int dim, CUaddress_mode am);
@@ -55,6 +58,8 @@ public:
   CUresult (*cuMemcpyPeerAsync)(CUdeviceptr dstDevice, CUcontext dstContext, CUdeviceptr srcDevice, CUcontext srcContext, size_t ByteCount, CUstream hStream);
   CUresult (*cuMemcpyPeer)(CUdeviceptr dstDevice, CUcontext dstContext, CUdeviceptr srcDevice, CUcontext srcContext, size_t ByteCount);
   CUresult (*cuMemcpy2D)(const CUDA_MEMCPY2D *pCopy);
+  CUresult (*cuMemHostRegister_v2)(void *p, size_t bytesize, unsigned int Flags);
+  CUresult (*cuMemHostUnregister)(void *p);
   CUresult (*cudaHostRegister)(void *ptr, size_t size, unsigned int flags);
   CUresult (*cudaHostUnregister)(void *ptr);
   CUresult (*cudaMemset)(void *devPtr, int value, size_t count);

@@ -127,6 +127,8 @@ public:
 
   int type() { return type_; }
   const char* name() { return name_.c_str(); }
+  void set_julia_kernel_type(int type) { julia_kernel_type_ = type; }
+  int julia_kernel_type() { return julia_kernel_type_; }
   void set_name(std::string name);
   void set_name(const char* name);
   bool given_name(){return given_name_;}
@@ -212,8 +214,19 @@ public:
   void set_internal_memory_transfer() { internal_memory_transfer_ = true;}
   bool is_task_with_single_flush();
   int get_device_affinity();
-  void set_metadata(int index, int data) { meta_data_[index] = data; }
+  void set_metadata(int index, int data) { 
+      meta_data_[index] = data; 
+      n_meta_data_ = (index >= n_meta_data_) ? index + 1 : n_meta_data_;
+  }
+  int set_metadata(int *mdata, int n) { 
+      for (int i=0; i<n; i++)
+          meta_data_[i] = mdata[i];
+      n_meta_data_ = n;
+      return IRIS_SUCCESS;
+  }
+  int *metadata() { return meta_data_; }
   int metadata(int index) { return meta_data_[index]; }
+  int n_metadata( ) { return n_meta_data_; }
   void print_incomplete_tasks();
 
   Task* Child(int i) { return platform_->get_task_object(childs_uids_[i]); }
@@ -254,11 +267,12 @@ private:
   bool parent_exist_;
   int ncmds_;
   int max_cmds_;
-  Command **cmds_;
+  vector<Command *> cmds_;
   Command* cmd_kernel_;
   Command* cmd_last_;
   Device* dev_;
-  int meta_data_[4];
+  int meta_data_[8];
+  int n_meta_data_;
   int devno_;
   Platform* platform_;
   Scheduler* scheduler_;
@@ -290,6 +304,7 @@ private:
   int nchilds_;
 
 
+  int julia_kernel_type_;
   int recommended_stream_;
   int recommended_dev_;
   int brs_policy_;
@@ -353,6 +368,17 @@ public:
   void set_enable_julia_if() { enable_julia_if_ = true; }
   bool enable_julia_if() { return enable_julia_if_; }
   bool enable_julia_if_;
+  void set_julia_policy(const char *name) { 
+      j_policy_ = string(name);
+      //printf("Configuring j_policy: %s --- %s\n", j_policy_.c_str(), name);
+      j_policy_flag_ = true;
+  }
+  const char *julia_policy() { 
+      if (j_policy_flag_) return j_policy_.c_str(); 
+      return NULL;
+  }
+  bool j_policy_flag_;
+  string j_policy_;
 };
 
 } /* namespace rt */

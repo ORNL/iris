@@ -17,6 +17,9 @@ import os
 import struct
 
 path = os.path.dirname(os.path.abspath(__file__))
+if 'IRIS' not in os.environ:
+    os.environ['IRIS'] = path
+
 class CommData3D(Structure):
     _fields_ = [
         ("from_id", c_uint),
@@ -344,6 +347,7 @@ def register_pin_memory(cptr, size):
     dll.iris_register_pin_memory(convert_obj_ctype(cptr)[0], convert_obj_ctype(size_t(size))[0])
 
 def finalize():
+    mem_handle_2_pobj.clear()
     return dll.iris_finalize()
 
 def synchronize():
@@ -550,12 +554,14 @@ def iris2py_dev(dev):
 def iris2py(params):
     return ctypes.cast(params.contents.value, ctypes.py_object).value
 
-def python_task_host(task, func, params):
+def python_task_host(task, handle, func, params):
     CWRAPPER = CFUNCTYPE(c_int, POINTER(c_int64), POINTER(c_int))
     wrapped_py_func = CWRAPPER(func)
     task.params = params
+    task.func = func
+    task.wrapped_py_func = wrapped_py_func
     cparams = id(task.params) #(c_void_p * nparams)(*params)
-    return dll.iris_task_python_host(task, cast(wrapped_py_func, c_void_p), c_int64(cparams))
+    return dll.iris_task_python_host(handle, cast(wrapped_py_func, c_void_p), c_int64(cparams))
 
 def task_host(task, func, params):
     CWRAPPER = CFUNCTYPE(c_int, c_void_p, POINTER(c_int))
@@ -632,6 +638,7 @@ class dmem_null:
 class dmem_base:
   track_host2dmems = {}
   def __init__(self, reuse, *args):
+    self.str_data = None
     self.handle, self.type = self.dmem_create(reuse, args)
     if self.handle.uid not in mem_handle_2_pobj:
         mem_handle_2_pobj[self.handle.uid] = []
@@ -639,14 +646,21 @@ class dmem_base:
 
   def dmem_create(self, reuse, *args):
     if len(args) == 1:
+      c_host = None
       host = args[0][0]
+      host_size = 0
+      dim = 0
+      if isinstance(host, str):
+        str_np = np.frombuffer(host.encode('utf-8') + b'\0', dtype=np.uint8)
+        self.str_data = str_np.copy()
+        host = self.str_data
       c_host = host.ctypes.data_as(c_void_p)
-      if reuse and c_host.value in dmem_base.track_host2dmems:
-        return dmem_base.track_host2dmems[c_host.value], IRIS_DMEM
-      m = iris_mem()
       host_size = np.array(host.shape)
       dim = len(host_size)
       size = host.nbytes
+      if reuse and c_host.value in dmem_base.track_host2dmems:
+        return dmem_base.track_host2dmems[c_host.value], IRIS_DMEM
+      m = iris_mem()
       if dim == 1:
         dll.iris_data_mem_create(byref(m), c_host, c_size_t(size))
       elif dim > 1:
@@ -702,6 +716,8 @@ class dmem_base:
 class dmem(dmem_base):
   def __init__(self, *args):
     super().__init__(True, *args)
+  def __del__(self):
+    None
   def get_region_uids(self):
     n_regions = dll.call_ret(dll.iris_data_mem_n_regions(self.handle), np.int32)
     output = []
@@ -935,8 +951,10 @@ class cmd_kernel:
 task_handle_2_pobj = {}
 class task:
     def __init__(self, *args):
+        self.params = []
+        self.func = None 
+        self.wrapped_py_func = None 
         if len(args) == 0:
-            self.params = []
             self.handle = task_create()
             task_handle_2_pobj[self.handle.uid] = self
             return
@@ -1100,7 +1118,7 @@ class task:
     def d2h_full(self, mem, host):
         task_d2h_full(self.handle, mem.handle, host)
     def pyhost(self, func, params):
-        python_task_host(self.handle, func, params)
+        python_task_host(self, self.handle, func, params)
     def host(self, func, params):
         task_host(self.handle, func, params)
     def submit(self, device, sync = 1):

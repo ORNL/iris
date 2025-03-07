@@ -32,6 +32,12 @@ set(CMAKE_CXX_COMPILER riscv64-unknown-linux-gnu-g++)
 set(DISABLE_DYNAMIC_LINKING  ON)
 endif() # USE_RISCV
 
+set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g")
+set(CMAKE_C_FLAGS_DEBUG "-O0 -g")
+
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -g") 
+set(CMAKE_C_FLAGS_RELEASE "-O3 -g")   
+
 add_subdirectory(include)
 add_subdirectory(src)
 #set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)

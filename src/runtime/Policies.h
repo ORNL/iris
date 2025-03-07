@@ -33,6 +33,7 @@ private:
   Policy* policy_profile_;
   Policy* policy_random_;
   Policy* policy_roundrobin_;
+  Policy* policy_julia_;
 
   std::map<std::string, LoaderPolicy*> policy_customs_;
 };

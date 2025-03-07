@@ -121,6 +121,7 @@ const char* Profiler::policy_str(int policy) {
     case iris_fpga:       return "fpga";
     case iris_dsp:        return "dsp";
     case iris_roundrobin: return "roundrobin";
+    case iris_julia_policy: return "julia policy";
     case iris_depend:     return "depend";
     case iris_data:       return "data";
     case iris_profile:    return "profile";

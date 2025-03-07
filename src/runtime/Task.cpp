@@ -49,16 +49,20 @@ void ProfileEvent::RecordEndEvent() {
     _event_prof_debug("Recorded id:%lu type:%d End event:%p stream:%d", id_, type_, end_event_, stream_);
 }
 Task::Task(Platform* platform, int type, const char* name, int max_cmds) {
+  j_policy_ = "";
+  j_policy_flag_ = false;
+  cmds_.reserve(16);
   //printf("Creating task:%lu:%s ptr:%p\n", uid(), name, this);
   is_kernel_launch_disabled_ = false;
   enable_julia_if_ = false;
+  julia_kernel_type_ = iris_julia_native;
   type_ = type;
   recommended_stream_ = -1;
   recommended_dev_ = -1;
   max_cmds_ = (max_cmds < IRIS_TASK_MAX_CMDS) ? IRIS_TASK_MAX_CMDS : max_cmds;
   ncmds_ = 0;
   disable_consistency_ = false;
-  cmds_ = new Command *[max_cmds_];
+  //cmds_ = new Command *[max_cmds_];
   cmd_kernel_ = NULL;
   cmd_last_ = NULL;
   stream_policy_ = STREAM_POLICY_DEFAULT;
@@ -130,7 +134,8 @@ Task::~Task() {
   }
   //profile_events_.clear();
   for (int i = 0; i < ncmds_; i++) delete cmds_[i];
-  delete [] cmds_;
+  cmds_.clear();
+  //delete [] cmds_;
   if (depends_uids_) delete [] depends_uids_;
   pthread_mutex_destroy(&stream_mutex_);
   pthread_mutex_destroy(&mutex_pending_);
@@ -141,6 +146,7 @@ Task::~Task() {
   subtasks_.clear();
   if (childs_uids_ != NULL) delete [] childs_uids_;
   _trace("released task:%lu:%s released ref_cnt:%d", uid(), name(), ref_cnt());
+  //_printf("released task:%lu:%s released ref_cnt:%d", uid(), name(), ref_cnt());
 }
 bool Task::IsKernelSupported(Device *dev)
 {
@@ -194,6 +200,7 @@ const char* Task::brs_policy_string() {
     case iris_profile: return ("profile");
     case iris_random: return ("random");
     case iris_roundrobin: return ("roundrobin");
+    case iris_julia_policy: return ("julia_policy");
     default: return("unknown");
   }
 }
@@ -236,15 +243,16 @@ int Task::get_device_affinity() {
     return -1;
 }
 void Task::AddCommand(Command* cmd) {
-  if (ncmds_ >= max_cmds_) _error("ncmds[%d]", ncmds_);
-  cmds_[ncmds_++] = cmd;
+  //if (ncmds_ >= max_cmds_) _error("ncmds[%d]", ncmds_);
+  //cmds_[ncmds_++] = cmd;
+  cmds_.push_back(cmd); ncmds_++;
   if (cmd->type() == IRIS_CMD_KERNEL) {
-    if (cmd_kernel_) _error("kernel[%s] is already set", cmd->kernel()->name());
+    //if (cmd_kernel_) _error("kernel[%s] is already set", cmd->kernel()->name());
     if (!given_name_) {
       name_ = cmd->kernel()->name();
       given_name_ = true;
     }
-    cmd_kernel_ = cmd;
+    if (cmd_kernel_==NULL) cmd_kernel_ = cmd;
   }
   if (!system_ &&
      (cmd->type() == IRIS_CMD_KERNEL || cmd->type() == IRIS_CMD_H2D ||
@@ -268,6 +276,7 @@ void Task::print_incomplete_tasks()
 
 void Task::ClearCommands() {
   for (int i = 0; i < ncmds_; i++) delete cmds_[i];
+  cmds_.clear();
   ncmds_ = 0;
 }
 
@@ -369,6 +378,7 @@ void Task::Complete() {
       unsigned long luid = uid(); string lname = name_; _debug2(" task:%lu:%s is completed and trying to release ref_cnt:%d", uid(), name(), ref_cnt());
       int ret_ref_cnt = Release();
       _debug2(" task:%lu:%s is completed and after release ref_cnt:%d", luid, lname.c_str(), ret_ref_cnt);
+      //_printf(" Complete: task:%lu:%s ref_cnt:%d", luid, lname.c_str(), ret_ref_cnt);
   }
 }
 
@@ -387,6 +397,7 @@ void Task::CompleteSub() {
   pthread_mutex_lock(&mutex_subtasks_);
   if (++subtasks_complete_ == subtasks_.size()) Complete();
   pthread_mutex_unlock(&mutex_subtasks_);
+  //_printf(" CompleteSub:: task:%lu:%s is ref_cnt:%d", uid(), name(), ref_cnt());
   Release();
 }
 

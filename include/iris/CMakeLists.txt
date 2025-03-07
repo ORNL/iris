@@ -1,5 +1,5 @@
 install(FILES
-  IrisHRT.jl
+  default_cpu_gpu_kernels.cpp
   iris.h
   iris.hpp
   iris_errno.h

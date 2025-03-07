@@ -98,6 +98,7 @@ DeviceOpenCL::~DeviceOpenCL() {
           _clerror(err);
       }
     }
+    delete timer_;
     delete [] clcmdq_;
     if (default_queue_) {
         cl_int err = ld_->clReleaseCommandQueue(default_queue_);
@@ -105,6 +106,16 @@ DeviceOpenCL::~DeviceOpenCL() {
     }
     if (is_async(false) && platform_obj_->is_event_profile_enabled()) 
         DestroyEvent(single_start_time_event_);
+    cl_int err;
+    if (clprog_) {
+        err = ld_->clReleaseProgram(clprog_);
+        _clerror(err);
+    }
+    if (this == root_device()) {
+        // Context is shared across different opencl devices
+        err = ld_->clReleaseContext(clctx_);
+        _clerror(err);
+    }
 }
 
 int DeviceOpenCL::Init() {
@@ -240,7 +251,7 @@ int DeviceOpenCL::BuildProgram(char* path) {
   return IRIS_SUCCESS;
 }
 
-int DeviceOpenCL::ResetMemory(Task *task, BaseMem *mem, uint8_t reset_value) {
+int DeviceOpenCL::ResetMemory(Task *task, Command *cmd, BaseMem *mem) {
     cl_mem clmem = (cl_mem) mem->arch(this);
     int stream_index = 0;
     cl_command_queue queue = default_queue_;
@@ -250,10 +261,14 @@ int DeviceOpenCL::ResetMemory(Task *task, BaseMem *mem, uint8_t reset_value) {
         queue = clcmdq_[stream_index];
     }
     cl_int err;
+    ResetData & reset_data = cmd->reset_data();
+    uint8_t reset_value = reset_data.value_.u8;
     int value_to_fill = (int)reset_value;
     err = ld_->clEnqueueFillBuffer(queue, clmem, &value_to_fill, sizeof(uint8_t), 0, mem->size(), 0, NULL, NULL);
     _clerror(err);
-    //_error("Reset memory is not implemented yet !");
+    if (mem->reset_data().reset_type_ != iris_reset_memset) {
+        _error("Reset memory is not implemented yet !");
+    } 
     return IRIS_ERROR;
 }
 

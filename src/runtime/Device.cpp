@@ -14,6 +14,7 @@
 #include "Timer.h"
 #include "Utils.h"
 #include "Worker.h"
+#include "LoaderDefaultKernel.h"
 
 #define _debug3 _debug2
 namespace iris {
@@ -26,6 +27,7 @@ Device::Device(int devno, int platform) {
   root_dev_ = NULL;
   current_queue_ = 0;
   current_copy_queue_ = 0;
+  type_ = iris_cpu;
   first_event_cpu_end_time_ = 0.0f;
   first_event_cpu_begin_time_ = 0.0f;
   platform_ = platform;
@@ -50,6 +52,7 @@ Device::Device(int devno, int platform) {
   hook_command_post_ = NULL;
   julia_if_ = NULL;
   worker_ = NULL;
+  ld_default_ = NULL;
   stream_policy_ = STREAM_POLICY_DEFAULT;
   //stream_policy_ = STREAM_POLICY_SAME_FOR_TASK;
   //stream_policy_ = STREAM_POLICY_GIVE_ALL_STREAMS_TO_KERNEL;
@@ -60,11 +63,199 @@ Device::~Device() {
   while(active_tasks_ > 0) {
     sleep(1);
   }
+  if (ld_default_ != NULL) delete ld_default_;
   _event_prof_debug("Device:%d deleted\n", devno());
   FreeDestroyEvents();
   if (peer_access_ != NULL) delete [] peer_access_;
   if (julia_if_ != NULL) delete julia_if_;
   delete timer_;
+}
+
+void Device::CallMemReset(BaseMem *mem, size_t size, ResetData & reset_data, void *stream)
+{
+    int elem_type = mem->element_type();
+    if (elem_type == iris_unknown) return;
+    if (ld_default_ == NULL) return;
+    //ResetData & reset_data = mem->reset_data();
+    int reset_type = reset_data.reset_type_;
+    void *arch = mem->arch(devno());
+    if (reset_type == iris_reset_assign) {
+#define RESET_SEQ(IT, T, M)  case IT: ld_default_->iris_reset_ ## M(static_cast<T*>(arch), reset_data.value_.M, size, stream); break;
+        switch(elem_type) {
+            RESET_SEQ(iris_uint8,  uint8_t,  u8);
+            RESET_SEQ(iris_uint16, uint16_t, u16);
+            RESET_SEQ(iris_uint32, uint32_t, u32);
+            RESET_SEQ(iris_uint64, uint64_t, u64);
+            RESET_SEQ(iris_int8,   int8_t,   i8);
+            RESET_SEQ(iris_int16,  int16_t,  i16);
+            RESET_SEQ(iris_int32,  int32_t,  i32);
+            RESET_SEQ(iris_int64,  int64_t,  i64);
+            RESET_SEQ(iris_float,  float,    f32);
+            RESET_SEQ(iris_double, double,   f64);
+            default: 
+                _error("Invalid element type:%d for mem uid:%lu for reset assign\n", elem_type, mem->uid()); break;
+        }
+    }
+    else if (reset_type == iris_reset_arith_seq) {
+#define ARITH_SEQ(IT, T, M)  case IT: ld_default_->iris_arithmetic_seq_ ## M(static_cast<T*>(arch), reset_data.start_.M, reset_data.step_.M, size, stream); break;
+        switch(elem_type) {
+            ARITH_SEQ(iris_uint8,  uint8_t,  u8);
+            ARITH_SEQ(iris_uint16, uint16_t, u16);
+            ARITH_SEQ(iris_uint32, uint32_t, u32);
+            ARITH_SEQ(iris_uint64, uint64_t, u64);
+            ARITH_SEQ(iris_int8,   int8_t,   i8);
+            ARITH_SEQ(iris_int16,  int16_t,  i16);
+            ARITH_SEQ(iris_int32,  int32_t,  i32);
+            ARITH_SEQ(iris_int64,  int64_t,  i64);
+            ARITH_SEQ(iris_float,  float,    f32);
+            ARITH_SEQ(iris_double, double,   f64);
+            default: 
+                _error("Invalid element type:%d for mem uid:%lu for reset arithmatic sequence\n", elem_type, mem->uid()); break;
+        }
+    }
+    else if (reset_type == iris_reset_geom_seq) {
+#define GEOM_SEQ(IT, T, M)  case IT: ld_default_->iris_geometric_seq_ ## M(static_cast<T*>(arch), reset_data.start_.M, reset_data.step_.M, size, stream); break;
+        switch(elem_type) {
+            GEOM_SEQ(iris_uint8,  uint8_t,  u8);
+            GEOM_SEQ(iris_uint16, uint16_t, u16);
+            GEOM_SEQ(iris_uint32, uint32_t, u32);
+            GEOM_SEQ(iris_uint64, uint64_t, u64);
+            GEOM_SEQ(iris_int8,   int8_t,   i8);
+            GEOM_SEQ(iris_int16,  int16_t,  i16);
+            GEOM_SEQ(iris_int32,  int32_t,  i32);
+            GEOM_SEQ(iris_int64,  int64_t,  i64);
+            GEOM_SEQ(iris_float,  float,    f32);
+            GEOM_SEQ(iris_double, double,   f64);
+            default: 
+                _error("Invalid element type:%d for mem uid:%lu for reset geometric sequence\n", elem_type, mem->uid()); break;
+        }
+    }
+#define RANDOM_SEQ(IT, RTYPE, T, M)  case IT: ld_default_->iris_random_ ## RTYPE ## _seq_ ## M(static_cast<T*>(arch), reset_data.seed_, reset_data.p1_.M, reset_data.p2_.M, size, stream); break;
+    else if (reset_type == iris_reset_random_uniform_seq) {
+        switch(elem_type) {
+            RANDOM_SEQ(iris_uint8,  uniform, uint8_t,  u8);
+            RANDOM_SEQ(iris_uint16, uniform, uint16_t, u16);
+            RANDOM_SEQ(iris_uint32, uniform, uint32_t, u32);
+            RANDOM_SEQ(iris_uint64, uniform, uint64_t, u64);
+            RANDOM_SEQ(iris_int8,   uniform, int8_t,   i8);
+            RANDOM_SEQ(iris_int16,  uniform, int16_t,  i16);
+            RANDOM_SEQ(iris_int32,  uniform, int32_t,  i32);
+            RANDOM_SEQ(iris_int64,  uniform, int64_t,  i64);
+            RANDOM_SEQ(iris_float,  uniform, float,    f32);
+            RANDOM_SEQ(iris_double, uniform, double,   f64);
+            default: 
+                _error("Invalid element type:%d for mem uid:%lu for reset uniform sequence\n", elem_type, mem->uid()); break;
+        }
+    }
+    else if (reset_type == iris_reset_random_normal_seq) {
+        switch(elem_type) {
+            RANDOM_SEQ(iris_uint8,  normal, uint8_t,  u8);
+            RANDOM_SEQ(iris_uint16, normal, uint16_t, u16);
+            RANDOM_SEQ(iris_uint32, normal, uint32_t, u32);
+            RANDOM_SEQ(iris_uint64, normal, uint64_t, u64);
+            RANDOM_SEQ(iris_int8,   normal, int8_t,   i8);
+            RANDOM_SEQ(iris_int16,  normal, int16_t,  i16);
+            RANDOM_SEQ(iris_int32,  normal, int32_t,  i32);
+            RANDOM_SEQ(iris_int64,  normal, int64_t,  i64);
+            RANDOM_SEQ(iris_float,  normal, float,    f32);
+            RANDOM_SEQ(iris_double, normal, double,   f64);
+            default: 
+                _error("Invalid element type:%d for mem uid:%lu for reset normal sequence\n", elem_type, mem->uid()); break;
+        }
+    }
+    else if (reset_type == iris_reset_random_log_normal_seq) {
+        switch(elem_type) {
+            RANDOM_SEQ(iris_uint8,  log_normal, uint8_t,  u8);
+            RANDOM_SEQ(iris_uint16, log_normal, uint16_t, u16);
+            RANDOM_SEQ(iris_uint32, log_normal, uint32_t, u32);
+            RANDOM_SEQ(iris_uint64, log_normal, uint64_t, u64);
+            RANDOM_SEQ(iris_int8,   log_normal, int8_t,   i8);
+            RANDOM_SEQ(iris_int16,  log_normal, int16_t,  i16);
+            RANDOM_SEQ(iris_int32,  log_normal, int32_t,  i32);
+            RANDOM_SEQ(iris_int64,  log_normal, int64_t,  i64);
+            RANDOM_SEQ(iris_float,  log_normal, float,    f32);
+            RANDOM_SEQ(iris_double, log_normal, double,   f64);
+            default: 
+                _error("Invalid element type:%d for mem uid:%lu for reset log_normal sequence\n", elem_type, mem->uid()); break;
+        }
+    }
+    else if (reset_type == iris_reset_random_uniform_sobol_seq) {
+        switch(elem_type) {
+            RANDOM_SEQ(iris_uint8,  uniform_sobol, uint8_t,  u8);
+            RANDOM_SEQ(iris_uint16, uniform_sobol, uint16_t, u16);
+            RANDOM_SEQ(iris_uint32, uniform_sobol, uint32_t, u32);
+            RANDOM_SEQ(iris_uint64, uniform_sobol, uint64_t, u64);
+            RANDOM_SEQ(iris_int8,   uniform_sobol, int8_t,   i8);
+            RANDOM_SEQ(iris_int16,  uniform_sobol, int16_t,  i16);
+            RANDOM_SEQ(iris_int32,  uniform_sobol, int32_t,  i32);
+            RANDOM_SEQ(iris_int64,  uniform_sobol, int64_t,  i64);
+            RANDOM_SEQ(iris_float,  uniform_sobol, float,    f32);
+            RANDOM_SEQ(iris_double, uniform_sobol, double,   f64);
+            default: 
+                _error("Invalid element type:%d for mem uid:%lu for reset uniform sobol sequence\n", elem_type, mem->uid()); break;
+        }
+    }
+    else if (reset_type == iris_reset_random_normal_sobol_seq) {
+        switch(elem_type) {
+            RANDOM_SEQ(iris_uint8,  normal_sobol, uint8_t,  u8);
+            RANDOM_SEQ(iris_uint16, normal_sobol, uint16_t, u16);
+            RANDOM_SEQ(iris_uint32, normal_sobol, uint32_t, u32);
+            RANDOM_SEQ(iris_uint64, normal_sobol, uint64_t, u64);
+            RANDOM_SEQ(iris_int8,   normal_sobol, int8_t,   i8);
+            RANDOM_SEQ(iris_int16,  normal_sobol, int16_t,  i16);
+            RANDOM_SEQ(iris_int32,  normal_sobol, int32_t,  i32);
+            RANDOM_SEQ(iris_int64,  normal_sobol, int64_t,  i64);
+            RANDOM_SEQ(iris_float,  normal_sobol, float,    f32);
+            RANDOM_SEQ(iris_double, normal_sobol, double,   f64);
+            default: 
+                _error("Invalid element type:%d for mem uid:%lu for reset normal sobol sequence\n", elem_type, mem->uid()); break;
+        }
+    }
+    else if (reset_type == iris_reset_random_log_normal_sobol_seq) {
+        switch(elem_type) {
+            RANDOM_SEQ(iris_uint8,  log_normal_sobol, uint8_t,  u8);
+            RANDOM_SEQ(iris_uint16, log_normal_sobol, uint16_t, u16);
+            RANDOM_SEQ(iris_uint32, log_normal_sobol, uint32_t, u32);
+            RANDOM_SEQ(iris_uint64, log_normal_sobol, uint64_t, u64);
+            RANDOM_SEQ(iris_int8,   log_normal_sobol, int8_t,   i8);
+            RANDOM_SEQ(iris_int16,  log_normal_sobol, int16_t,  i16);
+            RANDOM_SEQ(iris_int32,  log_normal_sobol, int32_t,  i32);
+            RANDOM_SEQ(iris_int64,  log_normal_sobol, int64_t,  i64);
+            RANDOM_SEQ(iris_float,  log_normal_sobol, float,    f32);
+            RANDOM_SEQ(iris_double, log_normal_sobol, double,   f64);
+            default: 
+                _error("Invalid element type:%d for mem uid:%lu for reset log normal sobol sequence\n", elem_type, mem->uid()); break;
+        }
+    }
+}
+
+void Device::LoadDefaultKernelLibrary(const char *key, const char *flags)
+{
+    if (!platform_obj_->is_default_kernels_load()) return;
+    char *src = NULL;
+    char *iris = NULL;
+    char *filename = NULL;
+    char *tmpdir = NULL;
+    char path[2048];
+    char out[1024];
+    worker_->platform()->EnvironmentGet("", &iris, NULL, '\0');
+    worker_->platform()->EnvironmentGet("INCLUDE_DIR", &src, NULL);
+    worker_->platform()->EnvironmentGet(key, &filename, NULL);
+    sprintf(path, "%s/%s/%s", iris, src, filename);
+    Platform::GetPlatform()->EnvironmentGet("TMPDIR", &tmpdir, NULL);
+    sprintf(out, "%s/%s.so", tmpdir, filename);
+    int result = Compile(path, out, flags);
+    if (result == IRIS_SUCCESS) {
+        ld_default_ = new LoaderDefaultKernel(out);
+        ld_default_->Load();
+    }
+    else {
+        _warning("Couldn't load default kernel library for dev:(%d, %s) for default kernels in %s\n", devno(), name(), path);
+    }
+    free(src);
+    free(iris);
+    free(filename);
+    free(tmpdir);
 }
 
 void Device::EnableJuliaInterface() {
@@ -105,6 +296,7 @@ int Device::GetStream(Task *task, BaseMem *mem, bool new_stream) {
         return DEFAULT_STREAM_INDEX;
     if (policy == STREAM_POLICY_SAME_FOR_TASK) {
         int stream = GetStream(task);
+        if (mem->get_source_mem() != NULL) mem = mem->get_source_mem();
         mem->set_recommended_stream(devno(), stream);
         return stream;
     }
@@ -112,6 +304,7 @@ int Device::GetStream(Task *task, BaseMem *mem, bool new_stream) {
 #if 1
     if (new_stream || stream == -1) {
         stream = get_new_copy_stream_queue();
+        if (mem->get_source_mem() != NULL) mem = mem->get_source_mem();
         mem->set_recommended_stream(devno(), stream);
     }
 #else
@@ -175,6 +368,7 @@ void Device::Execute(Task* task) {
                                       for(DataMem *dmem : d2h_dmems) {
                                           dmem->set_dirty_except(devno_);
                                           dmem->set_host_dirty();
+                                          dmem->disable_reset();
                                       }
                                       break;
                                   }
@@ -383,6 +577,9 @@ void Device::ResolveInputWriteDependency(Task *task, BaseMem *mem, bool async, D
             else //if (input_devno != -1) 
 #endif 
             {
+                // Threre could be scenario where another explicit D2H is already completed. 
+                if (input_dev == NULL) return;
+                if (input_event == NULL) return;
                 ASSERT(input_dev != NULL);
                 ASSERT(input_event != NULL);
                 _event_debug(" EventSynchronize ASYNC_UNKNOWN_H2D_RESOLVE H2D mem:%lu dev:[%d][%s] src_dev:[%d][%s] Wait for event:%p mem_stream:%d input_stream:%d", mem->uid(), devno(), name(), input_devno, input_dev->name(), input_event, mem_stream, input_stream); 
@@ -410,6 +607,8 @@ void Device::ResolveInputWriteDependency(Task *task, BaseMem *mem, bool async, D
 #endif 
             {
                 _event_debug(" EventSynchronize ASYNC_KNOWN_H2D_RESOLVE H2D mem:%lu dev:[%d][%s] src_dev:[%d][%s] Wait for event:%p mem_stream:%d input_stream:%d", mem->uid(), devno(), name(), input_devno, input_dev->name(), input_event, mem_stream, input_stream); 
+                if (input_dev == NULL) return;
+                if (input_event == NULL) return;
                 ASSERT(input_dev != NULL);
                 ASSERT(input_event != NULL);
                 DeviceEventExchange(task, mem, input_event, input_stream, input_dev);
@@ -601,7 +800,7 @@ void Device::ExecuteInit(Command* cmd) {
          kernel_path_ = string(bin); 
           //strncpy(kernel_path_, bin, strlen(bin)+1);
     }
-    if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
+    if (errid_ == IRIS_ERROR) _error("iret[%d]", errid_);
   }
   errid_ = Init();
   if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
@@ -666,6 +865,7 @@ void Device::ExecuteKernel(Command* cmd) {
           if (mem->GetMemHandlerType() == IRIS_DMEM ||
                   mem->GetMemHandlerType() == IRIS_DMEM_REGION) {
               DataMem *dmem = (DataMem *)mem;
+              if (dmem->get_source_mem() != NULL) dmem = dmem->get_source_mem();
               if (dmem->get_arch(devno()) == NULL) {
                   dmem->set_recommended_stream(devno(), stream_index);
                   _event_debug(" Set stream for write mem of task:%lu:%s dev:[%d][%s] mem:%lu task_stream:%d", task->uid(), task->name(), devno(), name(), mem->uid(), stream_index);
@@ -808,8 +1008,9 @@ void Device::ExecuteMemResetInput(Task *task, Command* cmd) {
             bmem->GetMemHandlerType() == IRIS_DMEM_REGION) {
         int mem_stream = GetStream(task); 
         DataMem* mem = (DataMem *)cmd->mem();
+        if (mem->get_source_mem() != NULL) mem = mem->get_source_mem();
         mem->dev_lock(devno_);
-        ResetMemory(task, mem, cmd->reset_value());
+        ResetMemory(task, cmd, mem);
         mem->set_host_dirty();
         mem->set_dirty_except(devno_);
         mem->dev_unlock(devno_);
@@ -831,7 +1032,11 @@ void Device::ExecuteDMEM2DMEM(Task *task, Command *cmd) {
     BaseMem *dst_mem = cmd->dst_mem();
     if (src_mem->GetMemHandlerType() == IRIS_DMEM && 
             dst_mem->GetMemHandlerType() == IRIS_DMEM) {
-        InvokeDMemInDataTransfer<DataMem>(task, cmd, (DataMem *)dst_mem, NULL, (DataMem*)src_mem);
+        DataMem *dsrc_mem = (DataMem*)src_mem;
+        DataMem *ddst_mem = (DataMem*)dst_mem;
+        if (dsrc_mem->get_source_mem() != NULL) dsrc_mem = dsrc_mem->get_source_mem();
+        if (ddst_mem->get_source_mem() != NULL) ddst_mem = ddst_mem->get_source_mem();
+        InvokeDMemInDataTransfer<DataMem>(task, cmd, ddst_mem, NULL, dsrc_mem);
     }
 }
 void Device::HandleHiddenDMemIns(Task *task) 
@@ -859,6 +1064,7 @@ void Device::HandleHiddenDMemOuts(Task *task)
             dmem->GetMemHandlerType() == IRIS_DMEM_REGION) {
             dmem->set_dirty_except(devno_);
             dmem->set_host_dirty();
+            dmem->disable_reset();
         }
     }
 }
@@ -973,7 +1179,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
     size_t size = mem->size();
     //bool is_src_mem_different = false;
     if (src_mem != NULL) {
-        ASSERT(src_mem->dim() == mem->dim());
+        //ASSERT(src_mem->dim() == mem->dim());This condition cannot be satisfied now
         ASSERT(src_mem->size() == mem->size());
         ASSERT(src_mem->elem_size() == mem->elem_size());
         //is_src_mem_different = true;
@@ -1058,7 +1264,8 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
             WaitForEvent(event, parent_mem_stream, iris_event_wait_default);
         }
     }
-    else if (!Platform::GetPlatform()->is_d2d_disabled() && cpu_dev >= 0) {
+    else if (!Platform::GetPlatform()->is_d2d_disabled() && cpu_dev >= 0 &&
+            Platform::GetPlatform()->device(cpu_dev)->model() != iris_opencl) {
         // Handling O2D data transfer
         // You didn't find data in peer device, 
         // but you found it in neighbouring CPU (OpenMP) device.
@@ -1109,7 +1316,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
             WaitForEvent(event, parent_mem_stream, iris_event_wait_default);
         }
     }
-    else if (!Platform::GetPlatform()->is_d2d_disabled() && this->type() == iris_cpu && non_cpu_dev >= 0) {
+    else if (!Platform::GetPlatform()->is_d2d_disabled() && this->model() != iris_opencl && this->type() == iris_cpu && non_cpu_dev >= 0) {
         //D2O Data transfer 
         // You found data in non-CPU/OpenMP device, but this device is CPU/OpenMP
         // Use target D2H transfer 
@@ -1410,14 +1617,18 @@ void Device::ExecuteMemInDMemIn(Task *task, Command* cmd, DataMem *mem) {
                 DataMem *child_mem = child.first;
                 size_t offset = child.second;
                 void **arch_ptr = (void **)((char *)tmp_host_ptr + offset);
+                if (child_mem->get_source_mem() != NULL)
+                    child_mem = child_mem->get_source_mem();
                 InvokeDMemInDataTransfer<DataMem>(task, cmd, child_mem);
                 *arch_ptr = child_mem->arch(devno());
                 //printf("parsing child mem:%lu size:%lu parent_tmp_host_ptr:%p parent_host:%p offset:%lu child_dev_arch:%p child_arch_ptr:%p child_host_arch_ptr:%p\n", child_mem->uid(), child_mem->size(), tmp_host_ptr, host, offset, *arch_ptr, arch_ptr, host+offset);
             }
+            if (mem->get_source_mem() != NULL) mem = mem->get_source_mem();
             InvokeDMemInDataTransfer<DataMem>(task, cmd, mem);
             //printf("----- mem:%lu size:%lu arch:%p host:%p tmp_host_ptr:%p\n", mem->uid(), mem->size(), mem->arch(devno()), host, tmp_host_ptr);
         }
         else {
+            if (mem->get_source_mem() != NULL) mem = mem->get_source_mem();
             InvokeDMemInDataTransfer<DataMem>(task, cmd, mem);
         }
     }
@@ -1436,12 +1647,14 @@ void Device::ExecuteMemOut(Task *task, Command* cmd) {
         if (params_map != NULL && 
                 (params_map[idx] & iris_all) == 0 && 
                 !(params_map[idx] & type_) ) continue;
+        if (mem->get_source_mem() != NULL) mem = mem->get_source_mem();
         if (mem->GetMemHandlerType() == IRIS_DMEM ||
                 mem->GetMemHandlerType() == IRIS_DMEM_REGION) {
             DataMem *dmem = (DataMem *)mem;
             //printf("ExecuteMemOut mem:%lu dev:%d set_dirty_except:%d host_dirty:True\n", dmem->uid(), devno_, devno_);
             dmem->set_dirty_except(devno_);
             dmem->set_host_dirty();
+            dmem->disable_reset();
         }
         if (is_async(task)) {
             int mem_stream = GetStream(task);
@@ -1464,6 +1677,7 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
         return;
     }
     DataMem* mem = (DataMem *)cmd->mem();
+    if (mem->get_source_mem() != NULL) mem = mem->get_source_mem();
     if (mem->is_host_dirty()) {
         size_t *ptr_off = mem->off();
         size_t *gws = mem->host_size();
@@ -1606,6 +1820,7 @@ void Device::ExecuteMemFlushOutToShadow(Command* cmd) {
         return;
     }
     DataMem* mem = (DataMem *)cmd->mem();
+    if (mem->get_source_mem() != NULL) mem = mem->get_source_mem();
     //if (mem->is_host_dirty()) {
     size_t *ptr_off, *gws, *lws, elem_size, size;
     int dim;
