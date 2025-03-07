@@ -20,7 +20,9 @@ A summary of Development Versioning Specification is shown below.
 ## [Unreleased]
 
 ### Added
-#### New capabilties
+
+#### New Capabilties
+
 - Asynchronous task execution and utilizes underlying device specific asynchronous multi-stream capabilities
 - Handle stream synchronization within device and avoid host involvement
 - Overlapped computation with data transfer using device provided asynchronous multi-stream capabilities
@@ -39,18 +41,22 @@ A summary of Development Versioning Specification is shown below.
 - Support for UniSYCL (In external repository)
 
 #### Updates
+
 - Also enabled manual control of DMEM (H2D, D2H) through IRIS APIs along with automatic data orchestration
 - Added DMEM to DMEM copy command support
 
 ### Changed
+
 - Improved Python interface and Python PIP package installation
 - Improved C++ IRIS interface with DMEM type specific templates
 - iris_task and iris_mem are no longer pointers. They are structs now and the memory will be in application's memory space.
 
 ### Removed
+
 - None
 
 ### Fixed
+
 - Several bug fixes and fixes for deadlock issues
 - DMEM multiple PIN memory registrations
 - Fixed fortan host
