@@ -14,6 +14,7 @@ if !haskey(ENV, "IRIS_ARCHS")
 end
 const ARRAY_TO_DMEM_MAP = Dict{Any, Any}()
 const __iris_dmem_map = Dict{Any, Any}()
+const __iris_dmem_parallel_reduce_map = Dict{Any, Any}()
 const __iris_dmem_mirrors_map = Dict{Any, Any}()
 const __iris_cuda_devno_stream = Dict{Any, Any}()
 const __iris_hip_devno_stream = Dict{Any, Any}()
@@ -135,6 +136,8 @@ module IrisHRT
     const MyAMDGPU = Main.MyAMDGPU
     const hip_available = Main.hip_available
     const iris_kernel_jl = cwd * "/kernel.jl"
+    const default_init = JACC.default_init
+
     #println("Kernel file: $iris_kernel_jl")
     #include(iris_kernel_jl)
     #using .IrisKernelImpl
@@ -169,7 +172,16 @@ module IrisHRT
     const iris_julia_kernel_abstraction  = 2
     const iris_julia_jacc                = 3
     const iris_julia_jacc_parallel_for   = (0 << 16) | 3
-    const iris_julia_jacc_parallel_reduce= (1 << 16) | 3
+    const iris_julia_jacc_parallel_reduce = (1 << 16) | 3
+
+    const iris_jacc_op_plus  = 1
+    const iris_jacc_op_minus = 2
+    const iris_jacc_op_mul   = 3
+    const iris_jacc_op_div   = 4
+    const iris_jacc_op_sum   = 5
+    const iris_jacc_op_prod  = 6
+    const iris_jacc_op_min   = 7
+    const iris_jacc_op_max   = 8
 
 
     const iris_default = 1 << 5
@@ -253,6 +265,11 @@ module IrisHRT
         uid::Culong
     end
 
+    struct IrisTaskMem
+        task::IrisTask
+        dmem::IrisMem
+    end
+
     struct IrisGraph
         class_obj::Ptr{Cvoid}
         uid::Culong
@@ -321,6 +338,28 @@ module IrisHRT
         return hip_ctx_conv
     end
 
+    function get_jacc_op(iris_op)
+        if iris_op == iris_jacc_op_plus 
+            op = +
+        elseif iris_op == iris_jacc_op_minus
+            op = -
+        elseif iris_op == iris_jacc_op_mul  
+            op = *
+        elseif iris_op == iris_jacc_op_div  
+            op = /
+        elseif iris_op == iris_jacc_op_sum  
+            op = sum
+        elseif iris_op == iris_jacc_op_prod 
+            op = prod
+        elseif iris_op == iris_jacc_op_min  
+            op = min 
+        elseif iris_op == iris_jacc_op_max  
+            op = max
+        else
+            op = +
+        end
+        return op
+    end
     function preserve_cuda_iris_stream(devno, cu_stream_ptr, cu_ctx)
         iris_stream_cuda = Main.IRISCuStream(cu_stream_ptr, true, cu_ctx)
         #println(Core.stdout, "CUDA devno: ", devno)
@@ -860,12 +899,23 @@ module IrisHRT
             if julia_kernel_type == iris_julia_jacc_parallel_for
                 JACC.parallel_for(spec, gws, func, args_tuple...)
             elseif julia_kernel_type == iris_julia_jacc_parallel_reduce
-                JACC.parallel_reduce(spec, gws, func, args_tuple...)
+                JACC.parallel_reduce(spec, gws, func, args_tuple[4:end]...)
             end
         else
             backend = MyCUDA.CUDAKernels.CUDABackend(false, false)
             #println(Core.stdout, "Calling JACC:", gws, " func:", func)
-            JACC.parallel_for(backend, gws, func, args_tuple...)
+            if julia_kernel_type == iris_julia_jacc_parallel_for
+                JACC.parallel_for(backend, gws, func, args_tuple...)
+            elseif julia_kernel_type == iris_julia_jacc_parallel_reduce
+                op = get_jacc_op(args_tuple[2])
+                init = args_tuple[3]
+                #println(Core.stdout, "Calling JACC:", gws, " func:", func, " args:", args_tuple[4:end], " init:", init, " op:", op)
+                out_dmem = Main.__iris_dmem_parallel_reduce_map[args_tuple[1]]
+                #println(Core.stdout, " out: ", out_dmem.uid, " type:", typeof(out_dmem))
+                out = [JACC.parallel_reduce(backend, gws, op, func, args_tuple[4:end]...; init)]
+                #println(Core.stdout, " Output: ", out, " type:", typeof(out), " pointer:", pointer(out))
+                copy_host(out_dmem, out)
+            end
         end
         #synchronize(blocking = true)
     end
@@ -1634,6 +1684,10 @@ module IrisHRT
         return iris_task_submit(task, iris_default, Ptr{Int8}(C_NULL), 1)
     end
 
+    function async_submit(task::IrisTask)::Int32
+        return iris_task_submit(task, iris_default, Ptr{Int8}(C_NULL), 0)
+    end
+
     function iris_task_set_policy(task::IrisTask, policy::Int32)::Int32
         return ccall(Libdl.dlsym(lib, :iris_task_set_policy), Int32, (IrisTask, Int32), task, policy)
     end
@@ -2219,6 +2273,15 @@ module IrisHRT
         return ccall(Libdl.dlsym(lib, :iris_data_mem_update), Int32, (IrisMem, Ptr{Cvoid}), mem, host)
     end
 
+    function iris_data_mem_copyto_host(mem::IrisMem, host::Ptr{Cvoid})::Int32
+        return ccall(Libdl.dlsym(lib, :iris_data_mem_copyto_host), Int32, (IrisMem, Ptr{Cvoid}), mem, host)
+    end
+
+    function copy_host(mem::IrisMem, host::AbstractArray)
+        host_ptr = reinterpret(Ptr{Cvoid}, pointer(host))
+        return iris_data_mem_copyto_host(mem, host_ptr)
+    end
+
     function iris_data_mem_refresh(mem::IrisMem)::Int32
         return ccall(Libdl.dlsym(lib, :iris_data_mem_refresh), Int32, (IrisMem, ), mem)
     end
@@ -2749,6 +2812,8 @@ module IrisHRT
         # Clear all elements in the dictionary
         empty!(Main.__iris_dmem_2_task)
         empty!(Main.__iris_dmem_map)
+        empty!(Main.__iris_dmem_mirrors_map)
+        empty!(Main.__iris_dmem_parallel_reduce_map)
         empty!(Main.__iris_dmem_custom_type)
         empty!(Main.__iris_cuda_devno_stream)
         empty!(Main.__iris_hip_devno_stream)
@@ -2950,14 +3015,29 @@ module IrisHRT
             j = 0
             k = 0
             offset = length(gws)
-            if offset == 1
-                m = @which f(i, args...)   # Get method instance
-            elseif offset == 2
-                m = @which f(i, j, args...)   # Get method instance
-            elseif offset == 3
-                m = @which f(i, j, k, args...)   # Get method instance
-            else
-                error("Couldn't find JACC function for gws:", gws, " for kernel:", kernel)
+            #println(Core.stdout, "Args: ", args...)
+            #println(Core.stdout, "f: ", f)
+            if julia_kernel_type == iris_julia_jacc_parallel_for
+                if offset == 1
+                    m = @which f(i, args...)   # Get method instance
+                elseif offset == 2
+                    m = @which f(i, j, args...)   # Get method instance
+                elseif offset == 3
+                    m = @which f(i, j, k, args...)   # Get method instance
+                else
+                    error("Couldn't find JACC function for gws:", gws, " for kernel:", kernel)
+                end
+            else # iris_julia_jacc_parallel_reduce
+                if offset == 1
+                    m = @which f(i, args[4:end]...)   # Get method instance
+                elseif offset == 2
+                    m = @which f(i, j, args[4:end]...)   # Get method instance
+                elseif offset == 3
+                    m = @which f(i, j, k, args[4:end]...)   # Get method instance
+                else
+                    error("Couldn't find JACC function for gws:", gws, " for kernel:", kernel)
+                end
+                offset += 3
             end
         else
             m = @which f(args...)   # Get method instance
@@ -3035,7 +3115,7 @@ module IrisHRT
         end
         vector_in = sort!(unique(vector_in))
         vector_out = sort!(unique(vector_out))
-        #println("Automatic in:", vector_in, " and out:", vector_out)
+        #println("-----Automatic in:", vector_in, " and out:", vector_out)
         a_in = []
         a_out = []
         for i in vector_in
@@ -3059,16 +3139,119 @@ module IrisHRT
         return IrisHRT.task(gws=N, in=in, out=out, task=task, parallel_for=true, submit=submit, policy=policy, wait=wait, flush=flush, auto_dependency=auto_dependency, dependencies=dependencies, metadata=metadata, kernel=String(Symbol(f)), args=Any[x...])
     end
 
-    function parallel_reduce((M,N)::Tuple{Int64,Int64}, op, f::Function, x... ; init, task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true, auto_dependency=true, dependencies=[], flush=Any[], metadata=nothing)
-        return IrisHRT.task(gws=(M,N), task=task, parallel_reduce=true, submit=submit, policy=policy, wait=wait, flush=flush, auto_dependency=auto_dependency, dependencies=dependencies, metadata=metadata, kernel=String(Symbol(f)), args=Any[x...])
+    function parallel_reduce(N::Union{Int64, NTuple{2, Integer}}, f::Function, x... ; task=nothing, submit=true, flush=true, policy=IrisHRT.iris_roundrobin, wait=true, auto_dependency=true, dependencies=[], metadata=nothing, op=nothing, init=nothing)
+        mem = x[1]
+        d_flush=[]
+        d_out=[]
+        d_in = []
+        first_vector = true
+        out_mem = nothing
+        for arg in x
+            if isa(arg, AbstractArray)
+                p_array = pointer(array_obj)
+                if ! haskey(Main.__iris_dmem_map, p_array)
+                    Main.__iris_dmem_map[p_array] = IrisHRT.iris_data_mem(mem)
+                end
+                mem = Main.__iris_dmem_map[p_array]
+                if first_vector
+                    out_mem = IrisHRT.dmem(IrisHRT.get_julia_type(mem), 1)
+                    if flush
+                        push!(d_flush, out_mem)
+                    else
+                        push!(d_out, out_mem)
+                    end
+                    first_vector = false
+                end
+                push!(d_in, mem)
+            elseif isa(arg, IrisMem)
+                mem = arg
+                if first_vector
+                    out_mem = IrisHRT.dmem(IrisHRT.get_julia_type(mem), 1)
+                    if flush
+                        push!(d_flush, out_mem)
+                    else
+                        push!(d_out, out_mem)
+                    end
+                    first_vector = false
+                end
+                push!(d_in, mem)
+            end
+        end
+        if init == nothing
+            out_type = IrisHRT.get_julia_type(out_mem)
+            init = JACC.default_init(out_type, +)
+        end
+        iris_op = IrisHRT.iris_jacc_op_plus
+        if op == nothing
+            iris_op = IrisHRT.iris_jacc_op_plus
+        elseif op == +
+            iris_op = IrisHRT.iris_jacc_op_plus
+        elseif op == -
+            iris_op = IrisHRT.iris_jacc_op_minus
+        elseif op == *
+            iris_op = IrisHRT.iris_jacc_op_mul
+        elseif op == /
+            iris_op = IrisHRT.iris_jacc_op_div
+        elseif op == sum
+            iris_op = IrisHRT.iris_jacc_op_sum
+        elseif op == prod
+            iris_op = IrisHRT.iris_jacc_op_prod
+        elseif op == min 
+            iris_op = IrisHRT.iris_jacc_op_min
+        elseif op == max
+            iris_op = IrisHRT.iris_jacc_op_max
+        else
+            error_("parallel_reduce with unknown op:", op)
+        end
+        Main.__iris_dmem_parallel_reduce_map[out_mem.uid] = out_mem
+        #println(Core.stdout, "Creating task: gws:", N, " iris_op:", iris_op, " func:", f, " init:", init, " out_mem.uid:", out_mem.uid, " args=", x...)
+        task0 = IrisHRT.task(gws=N, task=task, parallel_reduce=true, in=d_in, out=d_out, submit=submit, policy=policy, wait=wait, flush=d_flush, auto_dependency=auto_dependency, dependencies=dependencies, metadata=metadata, kernel=String(Symbol(f)), args=Any[out_mem.uid, iris_op, init, x...])
+        return IrisTaskMem(task0, out_mem)
     end
 
-    function parallel_reduce(N::Int64, op, f::Function, x... ; init, task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true, auto_dependency=true, dependencies=[], metadata=nothing)
-        return IrisHRT.task(gws=N, task=task, parallel_reduce=true, submit=submit, policy=policy, wait=wait, flush=flush, auto_dependency=auto_dependency, dependencies=dependencies, metadata=metadata, kernel=String(Symbol(f)), args=Any[x...])
+    function parallel_reduce(op::Base.Callable, A::AbstractArray; args...)
+        println(Core.stdout, "1")
+        s = size(A)
+        if length(s) == 1
+            return parallel_reduce(s[1], JACC._elem_access, A; op=op, args...)
+        else
+            return parallel_reduce(s, JACC._elem_access, A; op=op, args...)
+        end
+    end
+
+    function parallel_reduce(op::Base.Callable, A::AbstractVector; args...)
+        println(Core.stdout, "2")
+        return parallel_reduce(length(A), JACC._elem_access, A; op=op, args...)
+    end
+
+    function parallel_reduce(op::Base.Callable, A::AbstractMatrix; args...)
+        println(Core.stdout, "3")
+        return parallel_reduce(size(A), JACC._elem_access, A; op=op, args...)
+    end
+
+    function parallel_reduce(A::AbstractArray; args...)
+        println(Core.stdout, "4")
+        s = size(A)
+        if length(s) == 1
+            return parallel_reduce(s[1], JACC._elem_access, A; args...)
+        else
+            return parallel_reduce(s, JACC._elem_access, A; args...)
+        end
+    end
+
+    function parallel_reduce(A::AbstractMatrix; args...)
+        println(Core.stdout, "5")
+        return parallel_reduce(size(A), JACC._elem_access, A; args...)
+    end
+
+    function parallel_reduce(A::AbstractVector; args...)
+        println(Core.stdout, "6")
+        return parallel_reduce(length(A), JACC._elem_access, A; args...)
     end
 
     function custom_print(im::IrisMem)
         host = valid_host(im)
+        flush(im)
         return host #"IrisMem with data: " * join(host, ", ")
     end
 
@@ -3076,6 +3259,28 @@ module IrisHRT
     function show(io::IO, im::IrisMem)
         print(io, custom_print(im))
     end
+
+    function show(io::IO, im::IrisTaskMem)
+        print(io, custom_print(im.dmem))
+    end
+    field_dmem(x::IrisTaskMem) = x.dmem
+    field_dmem(x::IrisMem) = x
+
+    # Custom getindex: Accepts exactly N indices 
+    # (which can be integers, ranges, or other index types)
+    function Base.getindex(mem::IrisHRT.IrisMem, inds::Vararg{Any, N}) where N
+        # Add any custom behavior before/after element access if desired
+        host = IrisHRT.valid_host(mem)
+        IrisHRT.flush(mem)
+        return IrisHRT.getindex(host, inds...)
+    end
+    function Base.getindex(tmem::IrisHRT.IrisTaskMem, inds::Vararg{Any, N}) where N
+        # Add any custom behavior before/after element access if desired
+        host = IrisHRT.valid_host(tmem.dmem)
+        IrisHRT.flush(tmem.dmem)
+        return getindex(host, inds...)
+    end
+
 
     function set_julia_policy(task0, policy)
         if isa(policy, Function)
@@ -3124,7 +3329,7 @@ module IrisHRT
         end
         policy = IrisHRT.set_julia_policy(task0, policy)
         if submit
-            println(Core.stdout, "IRIS task submit")
+            #println(Core.stdout, "IRIS task submit wait:", wait)
             IrisHRT.iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
         else
             IrisHRT.iris_task_set_policy(task0, Int32(policy))
@@ -3239,6 +3444,7 @@ module IrisHRT
             elseif isa(arg, IrisMem)
                 #p_arg = pointer(arg)
                 #push!(kernel_params, (arg, mem_params[arg])) 
+                #println(Core.stdout, " arg: ", arg, " index: ", index, " type: ", typeof(arg))
                 push!(params, Ref(arg))
                 push!(params_info, Int32(mem_params[arg]))
                 if get_type(arg) == iris_custom_type

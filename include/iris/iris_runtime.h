@@ -149,6 +149,7 @@ typedef enum DeviceModel DeviceModel;
 #define iris_dt_d2h             4
 #define iris_dt_d2d             5
 #define iris_dt_d2h_h2d         6
+#define iris_dt_dmem2dmem_fill  7 
 #define iris_dt_error           0
 
 #define iris_julia_native               0
@@ -1427,13 +1428,21 @@ extern int iris_data_mem_set_pin_flag(bool flag);
  */
 extern int iris_data_mem_pin(iris_mem mem);
 
-/**@brief data memory object update for a task
+/**@brief data memory object update the host pointer
  *
  * @param mem memory object
  * @param host host pointer to the memory
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_data_mem_update(iris_mem mem, void *host);
+
+/**@brief data memory object copies the src_host content to  DMEM host
+ *
+ * @param mem memory object
+ * @param src_host source host pointer content
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_data_mem_copyto_host(iris_mem mem, void *src_host);
 
 /**@brief data memory object refresh for a task. It will make host copy valid and device copies invalid
  *

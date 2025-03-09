@@ -23,7 +23,8 @@ const ProfileRecordType = \
     PROFILE_KERNEL : 5, \
     PROFILE_O2D : 6, \
     PROFILE_D2O : 7, \
-    PROFILE_INIT: 8, \
+    PROFILE_DMEM2DMEM_FILL : 8, \
+    PROFILE_INIT: 9, \
 }; \
 const ProfileTypeColor = \
 { \
@@ -109,6 +110,7 @@ function handleCheckboxChange() { \
     var kernel_enable = document.getElementById('kernel'); \
     var d2h_enable = document.getElementById('d2h_enable'); \
     var d2d_enable = document.getElementById('d2d_enable'); \
+    var dmem2dmem_fill_enable = document.getElementById('dmem2dmem_fill_enable'); \
     var h2d_enable = document.getElementById('h2d_enable'); \
     var task_enable= document.getElementById('task_enable'); \
     var d2h_h2d_enable = document.getElementById('d2h_h2d_enable'); \
@@ -127,6 +129,9 @@ function handleCheckboxChange() { \
     }  \
     if (d2d_enable.checked) { \
         extract_data(newData, color_options, ProfileRecordType.PROFILE_D2D); \
+    }  \
+    if (dmem2dmem_fill_enable.checked) { \
+        extract_data(newData, color_options, ProfileRecordType.PROFILE_DMEM2DMEM_FILL); \
     }  \
     if (kernel_enable.checked) { \
         extract_data(newData, color_options, ProfileRecordType.PROFILE_KERNEL); \
@@ -148,6 +153,7 @@ document.getElementById('h2d_enable').addEventListener('change', handleCheckboxC
 document.getElementById('d2h_enable').addEventListener('change', handleCheckboxChange); \
 document.getElementById('d2d_enable').addEventListener('change', handleCheckboxChange); \
 document.getElementById('d2h_h2d_enable').addEventListener('change', handleCheckboxChange); \
+document.getElementById('dmem2dmem_fill_enable').addEventListener('change', handleCheckboxChange); \
 document.getElementById('task_enable').addEventListener('change', handleCheckboxChange); \
 } \
 </script> \
@@ -157,6 +163,7 @@ document.getElementById('task_enable').addEventListener('change', handleCheckbox
 <label for="d2d_enable">D2D:</label> <input type="checkbox" id="d2d_enable" checked> \
 <label for="d2h_enable">D2H:</label> <input type="checkbox" id="d2h_enable" checked> \
 <label for="d2h_h2d_enable">D2H-H2D:</label> <input type="checkbox" id="d2h_h2d_enable" checked> \
+<label for="dmem2dmem_fill_enable">D2D:</label> <input type="checkbox" id="dmem2dmem_fill_enable" checked> \
 <br> \
 <label for="task_enable">Task level details:</label>  <input type="checkbox" id="task_enable"> \
 <br> \

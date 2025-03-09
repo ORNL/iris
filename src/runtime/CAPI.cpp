@@ -778,6 +778,11 @@ int iris_data_mem_clear(iris_mem brs_mem) {
 int iris_data_mem_update(iris_mem mem, void *host) {
   return Platform::GetPlatform()->DataMemUpdate(mem, host);
 }
+int iris_data_mem_copyto_host(iris_mem brs_mem, void *src_host) {
+  DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  mem->CopyToHost(src_host);
+  return IRIS_SUCCESS;
+}
 int iris_data_mem_refresh(iris_mem brs_mem) {
   DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
   mem->RefreshHost();

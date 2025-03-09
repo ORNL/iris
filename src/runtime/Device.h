@@ -234,7 +234,8 @@ public:
   const char *kernel_path() { return kernel_path_.c_str(); }
 protected:
   LoaderDefaultKernel* ld_default() { return ld_default_; }
-  void CallMemReset(BaseMem *mem, size_t size, ResetData & data, void *stream);
+  void HandleMemReset(bool async, Command *cmd, Kernel *kernel, Task *task, DataMem *mem, DataMem *src_mem);
+  void CallMemReset(BaseMem *mem, size_t size, ResetData & data, void *stream, BaseMem *target_mem=NULL);
   void LoadDefaultKernelLibrary(const char *key, const char *flags);
 private:
   LoaderDefaultKernel *ld_default_;

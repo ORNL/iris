@@ -42,7 +42,8 @@ enum ProfileRecordType
     PROFILE_KERNEL = 5,
     PROFILE_O2D = 6,
     PROFILE_D2O = 7,
-    PROFILE_INIT = 8,
+    PROFILE_DMEM2DMEM_FILL = 8,
+    PROFILE_INIT = 9,
 }; 
 class ProfileEvent {
     public:

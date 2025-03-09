@@ -241,6 +241,22 @@ void DataMem::UpdateHost(void *host_ptr)
     }
     if (is_pin_memory_ && old_host_ptr != host_ptr) platform_->DataMemRegisterPin(this);
 }
+void DataMem::CopyToHost(void *host)
+{
+    if (source_mem_ != NULL) {
+        source_mem_->CopyToHost(host);
+        return;
+    }
+    void *host_ptr = host_memory();
+    //printf(" Copy to host: %p, host_ptr:%p\n", host, host_ptr);
+    memcpy(host_ptr, host, size_);
+    host_reset_ = false;
+    enable_reset_ = false;
+    host_dirty_flag_ = false;
+    for(int i=0; i<ndevs_; i++) {
+        dirty_flag_[i] = true;
+    }
+}
 void DataMem::RefreshHost()
 {
     if (source_mem_ != NULL) {

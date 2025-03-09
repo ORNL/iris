@@ -70,15 +70,50 @@ Device::~Device() {
   if (julia_if_ != NULL) delete julia_if_;
   delete timer_;
 }
-
-void Device::CallMemReset(BaseMem *mem, size_t size, ResetData & reset_data, void *stream)
+void Device::HandleMemReset(bool async, Command *cmd, Kernel *kernel, Task *task, DataMem *mem, DataMem *src_mem)
 {
+    int mem_stream = GetStream(task, mem, true);
+    double start = timer_->Now();
+    if (async && platform_obj_->is_event_profile_enabled()) {
+        ProfileEvent & prof_event = task->CreateProfileEvent(mem, devno(), PROFILE_DMEM2DMEM_FILL, this, mem_stream);
+        prof_event.RecordStartEvent(); 
+    }
+    void *stream_ptr = *((void **)get_stream(mem_stream)); 
+    //printf("src_mem:%lu mem:%lu size:%lu stream:%p\n", src_mem->uid(), mem->uid(), src_mem->size(), stream_ptr); 
+    CallMemReset(src_mem, 
+            src_mem->size()/src_mem->elem_size(), 
+            src_mem->reset_data(), stream_ptr, mem);
+    double end = timer_->Now();
+    if (async && platform_obj_->is_event_profile_enabled()) {
+        ProfileEvent & prof_event = task->LastProfileEvent();
+        prof_event.RecordEndEvent(); 
+    }
+    if (async) {
+        mem->RecordEvent(devno(), mem_stream, true);
+    }
+    if (!async && kernel != NULL && kernel->is_profile_data_transfers()) {
+        kernel->AddInDataObjectProfile({(uint32_t) cmd->task()->uid(), (uint32_t) mem->uid(), (uint32_t) iris_dt_dmem2dmem_fill, (uint32_t) -1, (uint32_t) devno_, start, end});
+    }
+    if (!async && Platform::GetPlatform()->is_scheduling_history_enabled()){
+        string cmd_name = "Internal-Fill(" + string(cmd->task()->name()) + ")-" + to_string(this->devno());
+        Platform::GetPlatform()->scheduling_history()->Add(cmd, cmd_name, "MemFill", start,end);
+    }
+
+}
+void Device::CallMemReset(BaseMem *mem, size_t size, ResetData & reset_data, void *stream, BaseMem *target_mem)
+{
+    if (target_mem == NULL) target_mem = mem;
+    int reset_type = reset_data.reset_type_;
+    if (reset_type == iris_reset_memset) {
+        void *arch = target_mem->arch(devno());
+        memset(arch, 0, size*((DataMem*)mem)->elem_size());
+        return;
+    }
     int elem_type = mem->element_type();
     if (elem_type == iris_unknown) return;
     if (ld_default_ == NULL) return;
     //ResetData & reset_data = mem->reset_data();
-    int reset_type = reset_data.reset_type_;
-    void *arch = mem->arch(devno());
+    void *arch = target_mem->arch(devno());
     if (reset_type == iris_reset_assign) {
 #define RESET_SEQ(IT, T, M)  case IT: ld_default_->iris_reset_ ## M(static_cast<T*>(arch), reset_data.value_.M, size, stream); break;
         switch(elem_type) {
@@ -243,7 +278,7 @@ void Device::LoadDefaultKernelLibrary(const char *key, const char *flags)
     worker_->platform()->EnvironmentGet(key, &filename, NULL);
     sprintf(path, "%s/%s/%s", iris, src, filename);
     Platform::GetPlatform()->EnvironmentGet("TMPDIR", &tmpdir, NULL);
-    sprintf(out, "%s/%s.so", tmpdir, filename);
+    sprintf(out, "%s/%s-%d.so", tmpdir, filename, devno());
     int result = Compile(path, out, flags);
     if (result == IRIS_SUCCESS) {
         ld_default_ = new LoaderDefaultKernel(out);
@@ -1525,6 +1560,19 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
                 WaitForEvent(event, parent_mem_stream, iris_event_wait_default);
             }
         }
+        else if (src_mem != mem) {
+            if (src_mem->is_dirty_all() && mem->is_dirty_all() &&
+                    src_mem->is_host_dirty() && mem->is_host_dirty()) {
+                assert(parent == NULL);
+                HandleMemReset(async, cmd, kernel, task, mem, src_mem);
+                //printf(" now doing call memreset\n");
+            }
+            else {
+                _warning("Didn't handle this situation of all source "
+                        "mem:%ld and destination mem:%ld data invalidity "
+                        "state", src_mem->uid(), mem->uid());
+            }
+        }
     }
     mem->clear_dev_dirty(devno_ );
     mem->dev_unlock(devno_);
@@ -1704,6 +1752,18 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
             GetPossibleDevices(mem, devno_, mem->get_non_dirty_devices(nddevs), 
                     d2d_dev, cpu_dev, non_cpu_dev, async);
             _event_debug(" Flushing out mem:%lu dev:[%d][%s] src_dev:%d:%s\n", mem->uid(), devno(), name(), src_dev->devno(), src_dev->name());
+            //printf(" Flushing out mem:%lu dev:[%d][%s] src_dev:%d:%s nddevs[0]:%d\n", mem->uid(), devno(), name(), src_dev->devno(), src_dev->name(), nddevs[0]);
+            if (nddevs[0] == -1 && mem->is_host_dirty()) {
+                if (mem->is_reset()) {
+                    HandleMemReset(async, cmd, NULL, task, mem, mem);
+                    return;
+                }
+                else {
+                    _warning("mem id:%lu is not initialzeed and doesn't have valid data either on any device or host memory. Hence, safely returning from flush operation", mem->uid());
+                    return;
+                }
+                // Device is dirty flag.
+            }
             src_dev = Platform::GetPlatform()->device(nddevs[0]);
             // D2H should be issued from target src (remote) device
             int src_mem_stream = src_dev->GetStream(task, mem, true);
