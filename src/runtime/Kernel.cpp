@@ -1,4 +1,5 @@
 #include "Kernel.h"
+#include "Task.h"
 #include "Debug.h"
 #include "Device.h"
 #include "History.h"
@@ -19,6 +20,8 @@ Kernel::Kernel(const char* name, Platform* platform) {
   task_ = NULL;
   n_mems_ = 0;
   //name_[len] = 0;
+  enable_julia_if_ = false;
+  julia_kernel_type_ = iris_julia_native;
   profile_data_transfers_ = false;
   platform_ = platform;
   Retain();
@@ -62,6 +65,13 @@ int Kernel::set_order(int *order) {
   return IRIS_SUCCESS;
 }
 
+void Kernel::set_task(Task *task) { 
+    task_ = task; 
+    if (task->enable_julia_if()) { 
+        set_enable_julia_if();
+        set_julia_kernel_type(task->julia_kernel_type());
+    }
+}
 int Kernel::SetArg(int idx, size_t size, void* value) {
   KernelArg* arg = new KernelArg;
   arg->size = size & 0xFFFF;

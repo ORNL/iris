@@ -38,7 +38,7 @@ end
 function __iris_jacc_div_s_v(i, Z, Xs, Y)
     @inbounds Z[i] = Xs / Y[i]
 end
-function __arith_kernel_v_s(kernel, a::IrisHRT.IrisMem, b)
+function __arith_kernel_v_s(kernel, a::IrisHRT.IrisMem, b; task=nothing, submit=true, wait=true, args...)
     kernel_fn = IrisHRT.getFunction("__iris_jacc_" * kernel * "_v_s")
     sizes = IrisHRT.host_size(a)
     total_size = prod(sizes)
@@ -52,11 +52,13 @@ function __arith_kernel_v_s(kernel, a::IrisHRT.IrisMem, b)
     #println(Core.stdout, "sizes: ", sizes, " total_size:", total_size, " type:", jtype)
 
     # Create and submit JACC task
-    task = IrisHRT.empty_task()
-    task = IrisHRT.parallel_for(Int64(total_size), kernel_fn, out, a, b, in=[a], out=[out], task=task, submit=true, wait=false)
-    return out
+    if task == nothing
+        task = IrisHRT.empty_task()
+    end
+    task = IrisHRT.parallel_for(Int64(total_size), kernel_fn, out, a, b; in=[a], out=[out], task=task, submit=submit, wait=wait, args...)
+    return IrisHRT.IrisTaskMem(task, out)
 end
-function __arith_kernel_s_v(kernel, a, b::IrisHRT.IrisMem)
+function __arith_kernel_s_v(kernel, a, b::IrisHRT.IrisMem; task=nothing, submit=true, wait=true, args...)
     kernel_fn = IrisHRT.getFunction("__iris_jacc_" * kernel * "_s_v")
     sizes = IrisHRT.host_size(b)
     total_size = prod(sizes)
@@ -70,11 +72,13 @@ function __arith_kernel_s_v(kernel, a, b::IrisHRT.IrisMem)
     #println(Core.stdout, "sizes: ", sizes, " total_size:", total_size, " type:", jtype)
 
     # Create and submit JACC task
-    task = IrisHRT.empty_task()
-    task = IrisHRT.parallel_for(Int64(total_size), kernel_fn, out, a, b, in=[b], out=[out], task=task, submit=true, wait=false)
-    return out
+    if task == nothing
+        task = IrisHRT.empty_task()
+    end
+    task = IrisHRT.parallel_for(Int64(total_size), kernel_fn, out, a, b; in=[b], out=[out], task=task, submit=submit, wait=wait, args...)
+    return IrisHRT.IrisTaskMem(task, out)
 end
-function __arith_kernel(kernel, a::IrisHRT.IrisMem, b::IrisHRT.IrisMem)
+function __arith_kernel(kernel, a::IrisHRT.IrisMem, b::IrisHRT.IrisMem; task=nothing, submit=true, wait=true, args...)
     kernel_fn = IrisHRT.getFunction("__iris_jacc_" * kernel)
     sizes = IrisHRT.host_size(a)
     total_size = prod(sizes)
@@ -85,11 +89,12 @@ function __arith_kernel(kernel, a::IrisHRT.IrisMem, b::IrisHRT.IrisMem)
     out = IrisHRT.dmem(jtype, sizes)
     Main.__iris_dmem_map[out.uid] = out
 
-    #println(Core.stdout, "sizes: ", sizes, " total_size:", total_size, " type:", jtype)
-
     # Create and submit JACC task
-    task = IrisHRT.empty_task()
-    task = IrisHRT.parallel_for(Int64(total_size), kernel_fn, out, a, b, in=[a,b], out=[out], task=task, submit=true, wait=false)
+    if task == nothing
+        task = IrisHRT.empty_task()
+    end
+    #println(Core.stdout, "sizes: ", sizes, " total_size:", total_size, " type:", jtype, " wait:", wait, " submit:", submit, " task:", task)
+    task = IrisHRT.parallel_for(Int64(total_size), kernel_fn, out, a, b; in=[a,b], out=[out], task=task, submit=submit, wait=wait, args...)
     return out
 end
 function +(a::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, b::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}; args...)

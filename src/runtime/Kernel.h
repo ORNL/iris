@@ -64,7 +64,7 @@ public:
   bool is_default_kernel(int devno) { return is_default_kernel_[devno]; }
   void set_default_kernel(int devno, bool flag=true) { is_default_kernel_[devno] = flag; }
   void set_task_name(const char *name) { task_name_= string(name); }
-  void set_task(Task *task) { task_ = task; }
+  void set_task(Task *task); 
   Task *task() { return task_; }
   const char *get_task_name() { return task_name_.c_str(); }
   Platform* platform() { return platform_; }
@@ -101,6 +101,11 @@ public:
   void add_dmem_region(DataMemRegion *mem, int idx, int mode);
   void **GetCompletionEventPtr(bool new_entry=false) { return async_data_.GetCompletionEventPtr(new_entry); }
   void *GetCompletionEvent() { return async_data_.GetCompletionEvent(); }
+  void set_enable_julia_if() { enable_julia_if_ = true; }
+  bool enable_julia_if() { return enable_julia_if_; }
+  bool enable_julia_if_;
+  void set_julia_kernel_type(int type) { julia_kernel_type_ = type; }
+  int julia_kernel_type() { return julia_kernel_type_; }
 /*
 #ifdef AUTO_PAR
 #ifdef AUTO_SHADOW
@@ -110,6 +115,7 @@ public:
 */
 
 private:
+  int julia_kernel_type_;
   int n_mems_;
   std::string name_;
   std::string task_name_;

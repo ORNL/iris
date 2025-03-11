@@ -261,7 +261,7 @@ int DeviceOpenMP::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_siz
 
 int DeviceOpenMP::KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bool report_error) {
   int kernel_idx=-1;
-  if (julia_if_ != NULL && kernel->task()->enable_julia_if()) {
+  if (julia_if_ != NULL && kernel->enable_julia_if()) {
       return IRIS_SUCCESS;
   }
   if (ld_->host_kernel(&kernel_idx, name) == IRIS_SUCCESS) {
@@ -278,9 +278,9 @@ int DeviceOpenMP::KernelGet(Kernel *kernel, void** kernel_bin, const char* name,
 int DeviceOpenMP::KernelLaunchInit(Command *cmd, Kernel* kernel) {
   //c_string_array data = ld_->iris_get_kernel_names();
   int status=IRIS_ERROR;
-  if (julia_if_ != NULL && kernel->task()->enable_julia_if()) {
+  if (julia_if_ != NULL && kernel->enable_julia_if()) {
       julia_if_->launch_init(model(), devno_, 0, 0, (void **)NULL, kernel->GetParamWrapperMemory(), cmd);
-      julia_if_->set_julia_kernel_type(kernel->GetParamWrapperMemory(), kernel->task()->julia_kernel_type());
+      julia_if_->set_julia_kernel_type(kernel->GetParamWrapperMemory(), kernel->julia_kernel_type());
       return IRIS_SUCCESS;
   }
   else {
@@ -300,7 +300,7 @@ int DeviceOpenMP::KernelLaunchInit(Command *cmd, Kernel* kernel) {
 }
 
 int DeviceOpenMP::KernelSetArg(Kernel* kernel, int idx, int kindex, size_t size, void* value) {
-    if (julia_if_ != NULL && kernel->task()->enable_julia_if()) {
+    if (julia_if_ != NULL && kernel->enable_julia_if()) {
        julia_if_->setarg(
               kernel->GetParamWrapperMemory(), kindex, size, value);
        return IRIS_SUCCESS;
@@ -326,7 +326,7 @@ int DeviceOpenMP::KernelSetArg(Kernel* kernel, int idx, int kindex, size_t size,
 int DeviceOpenMP::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, size_t off) {
   void* mpmem = (char*) mem->arch(this) + off;
   size_t size = mem->size() - off;
-  if (julia_if_ != NULL && kernel->task()->enable_julia_if()) {
+  if (julia_if_ != NULL && kernel->enable_julia_if()) {
       julia_if_->setmem(
               kernel->GetParamWrapperMemory(), mem, kindex, mpmem, size);
       return IRIS_SUCCESS;
@@ -349,11 +349,11 @@ int DeviceOpenMP::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem
 int DeviceOpenMP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws) {
   //printf(" Task %s\n", kernel->get_task_name());
   _trace("dev[%d] kernel[%s:%s] dim[%d] off[%lu] gws[%lu]", devno_, kernel->name(), kernel->get_task_name(), dim, off[0], gws[0]);
-  if (julia_if_ != NULL && kernel->task()->enable_julia_if()) {
+  if (julia_if_ != NULL && kernel->enable_julia_if()) {
       julia_if_->host_launch(kernel->task()->uid(), (void **)NULL, 0, NULL, false,
                   0, kernel->name(), 
                   kernel->GetParamWrapperMemory(), devno(),
-                  dim, off, gws);
+                  dim, gws, off, gws);
       return IRIS_SUCCESS;
   }
   else if (ld_->host_launch(NULL, 0, 0, kernel->name(), kernel->GetParamWrapperMemory(), devno(),

@@ -148,7 +148,7 @@ int DeviceQIREE::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_size
 
 int DeviceQIREE::KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bool report_error) {
   int kernel_idx=-1;
-  if (julia_if_ != NULL && kernel->task()->enable_julia_if()) {
+  if (julia_if_ != NULL && kernel->enable_julia_if()) {
       return IRIS_SUCCESS;
   }
   return IRIS_SUCCESS;
@@ -167,7 +167,7 @@ int DeviceQIREE::KernelLaunchInit(Command *cmd, Kernel* kernel) {
 }
 
 int DeviceQIREE::KernelSetArg(Kernel* kernel, int idx, int kindex, size_t size, void* value) {
-  if (julia_if_ != NULL && kernel->task()->enable_julia_if()) {
+  if (julia_if_ != NULL && kernel->enable_julia_if()) {
      julia_if_->setarg(
             kernel->GetParamWrapperMemory(), kindex, size, value);
      return IRIS_SUCCESS;
@@ -193,7 +193,7 @@ int DeviceQIREE::KernelSetArg(Kernel* kernel, int idx, int kindex, size_t size, 
 int DeviceQIREE::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, size_t off) {
   void* mpmem = (char*) mem->arch(this) + off;
   size_t size = mem->size() - off;
-  if (julia_if_ != NULL && kernel->task()->enable_julia_if()) {
+  if (julia_if_ != NULL && kernel->enable_julia_if()) {
       julia_if_->setmem(
               kernel->GetParamWrapperMemory(), mem, kindex, mpmem, size);
       return IRIS_SUCCESS;

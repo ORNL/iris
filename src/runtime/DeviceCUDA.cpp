@@ -690,7 +690,8 @@ int DeviceCUDA::MemD2D(Task *task, Device *src_dev, BaseMem *mem, void *dst, voi
       //err = ld_->cuMemcpyAsync((void *)dst_cumem, (void *)src_cumem, size, cudaMemcpyDeviceToDevice, streams_[stream_index]);
       //err = ld_->cuMemcpyDtoDAsync(dst_cumem, src_cumem, size, streams_[stream_index]);
 #if 1
-      err = ld_->cudaMemcpyAsync((void *)dst_cumem, (void *)src_cumem, size, cudaMemcpyDeviceToDevice, streams_[stream_index]);
+      err = ld_->cuMemcpyDtoDAsync_v2(dst_cumem, src_cumem, size, streams_[stream_index]);
+      //err = ld_->cudaMemcpyAsync((void *)dst_cumem, (void *)src_cumem, size, cudaMemcpyDeviceToDevice, streams_[stream_index]);
 #else
       err = ld_->cuMemcpyPeerAsync(dst_cumem, ctx_, src_cumem, ((DeviceCUDA *)src_dev)->ctx_, size, streams_[stream_index]);
 #endif
@@ -975,7 +976,7 @@ int DeviceCUDA::KernelGet(Kernel *kernel, void** kernel_bin, const char* name, b
       *kernel_bin = host2cuda_ld_->GetFunctionPtr(name);
       return IRIS_SUCCESS;
   }
-  if (julia_if_ != NULL && kernel->task()->enable_julia_if()) {
+  if (julia_if_ != NULL && kernel->enable_julia_if()) {
       return IRIS_SUCCESS;
   }
   if (IsContextChangeRequired()) {
@@ -1023,7 +1024,7 @@ int DeviceCUDA::KernelSetArg(Kernel* kernel, int idx, int kindex, size_t size, v
      host2cuda_ld_->setarg(
             kernel->GetParamWrapperMemory(), kindex, size, value);
   }
-  else if (julia_if_ != NULL && kernel->task()->enable_julia_if()) {
+  else if (julia_if_ != NULL && kernel->enable_julia_if()) {
      julia_if_->setarg(
             kernel->GetParamWrapperMemory(), kindex, size, value);
   }
@@ -1050,7 +1051,7 @@ int DeviceCUDA::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, 
       host2cuda_ld_->setmem(
               kernel->GetParamWrapperMemory(), kindex, dev_ptr, size);
   }
-  else if (julia_if_ != NULL && kernel->task()->enable_julia_if()) {
+  else if (julia_if_ != NULL && kernel->enable_julia_if()) {
       julia_if_->setmem(
               kernel->GetParamWrapperMemory(), mem, kindex, dev_ptr, size);
   }
@@ -1076,9 +1077,9 @@ int DeviceCUDA::KernelLaunchInit(Command *cmd, Kernel* kernel) {
         nstreams = nqueues_-n_copy_engines_;
     }
     host2cuda_ld_->launch_init(model(), devno_, stream_index, nstreams, (void **)kstream, kernel->GetParamWrapperMemory(), cmd);
-    if (julia_if_ != NULL && kernel->task()->enable_julia_if()) {
+    if (julia_if_ != NULL && kernel->enable_julia_if()) {
         julia_if_->launch_init(model(), devno_, stream_index, nstreams, (void **)kstream, kernel->GetParamWrapperMemory(), cmd);
-        julia_if_->set_julia_kernel_type(kernel->GetParamWrapperMemory(), kernel->task()->julia_kernel_type());
+        julia_if_->set_julia_kernel_type(kernel->GetParamWrapperMemory(), kernel->julia_kernel_type());
     }
     return IRIS_SUCCESS;
 }
@@ -1139,7 +1140,7 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
     while (max_compute_units_ * block[0] < gws[0]) block[0] <<= 1;
     while (block[0] > max_block_dims_[0]) block[0] >>= 1;
   }
-  int grid[3] = { (int) (gws[0] / block[0]), (int) (gws[1] / block[1]), (int) (gws[2] / block[2]) };
+  int grid[3] = { (int) ((gws[0]+block[0]-1) / block[0]), (int) ((gws[1]+block[1]-1) / block[1]), (int) ((gws[2]+block[2]-1) / block[2]) };
   //int grid[3] = { (int) ((gws[0]-off[0]) / block[0]), (int) ((gws[1]-off[1]) / block[1]), (int) ((gws[2]-off[2]) / block[2]) };
   size_t blockOff_x = off[0] / block[0];
   size_t blockOff_y = off[1] / block[1];
@@ -1170,13 +1171,13 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
   else {
       _printf("dev[%d][%s] kernel[%s:%s] dim[%d] grid[%d,%d,%d] off[%ld,%ld,%ld] block[%d,%d,%d] blockoff[%lu,%lu,%lu] max_arg_idx[%d] shared_mem_bytes[%u] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, grid[0], grid[1], grid[2], off[0], off[1], off[2], block[0], block[1], block[2], blockOff_x, blockOff_y, blockOff_z, max_arg_idx_, shared_mem_bytes_, stream_index);
   }*/
-  if (julia_if_ != NULL && kernel->task()->enable_julia_if()) {
+  if (julia_if_ != NULL && kernel->enable_julia_if()) {
       size_t grid_s[3] =  { (size_t)grid[0],  (size_t)grid[1],  (size_t)grid[2] };
       size_t block_s[3] = { (size_t)block[0], (size_t)block[1], (size_t)block[2] };
       julia_if_->host_launch(kernel->task()->uid(), (void **)kstream, stream_index, (void *)&ctx_, async,
                   nstreams, kernel->name(), 
                   kernel->GetParamWrapperMemory(), ordinal_,
-                  dim, grid_s, block_s);
+                  dim, gws, grid_s, block_s);
       return IRIS_SUCCESS;
   }
   //printf("Shared mem bytes: %d\n", shared_mem_bytes_);

@@ -78,7 +78,7 @@ public:
   CUresult (*cuMemcpy2DUnaligned)(const CUDA_MEMCPY2D *pCopy);
   CUresult (*cuMemcpy2DAsync)(const CUDA_MEMCPY2D *pCopy, CUstream hStream);
   CUresult (*cuMemcpyDtoD)(CUdeviceptr dstDevice, CUdeviceptr srcDevice, size_t size);
-  CUresult (*cuMemcpyDtoDAsync)(CUdeviceptr dstDevice, CUdeviceptr srcDevice, size_t size, CUstream hStream);
+  CUresult (*cuMemcpyDtoDAsync_v2)(CUdeviceptr dstDevice, CUdeviceptr srcDevice, size_t size, CUstream hStream);
   CUresult (*cuMemcpyHtoD)(CUdeviceptr dstDevice, const void* srcHost, size_t ByteCount);
   CUresult (*cuMemcpyHtoDAsync)(CUdeviceptr dstDevice, const void* srcHost, size_t ByteCount, CUstream hStream);
   CUresult (*cuMemcpyDtoH)(void* dstHost, CUdeviceptr srcDevice, size_t ByteCount);
