@@ -111,7 +111,7 @@ deploy_docs-job:
   extends: .deploy_docs_common
   only:
     refs:
-      - ornl_main
+      - dev
 
 deploy_docs_manual-job:
   extends: .deploy_docs_common
