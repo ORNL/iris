@@ -97,6 +97,55 @@ function __arith_kernel(kernel, a::IrisHRT.IrisMem, b::IrisHRT.IrisMem; task=not
     task = IrisHRT.parallel_for(Int64(total_size), kernel_fn, out, a, b; in=[a,b], out=[out], task=task, submit=submit, wait=wait, args...)
     return out
 end
+function __arith_kernel_v_s_out(kernel, out::IrisHRT.IrisMem, a::IrisHRT.IrisMem, b; task=nothing, submit=true, wait=true, args...)
+    kernel_fn = IrisHRT.getFunction("__iris_jacc_" * kernel * "_v_s")
+    sizes = IrisHRT.host_size(a)
+    total_size = prod(sizes)
+    jtype = IrisHRT.get_julia_type(a)
+    type_str = IrisHRT.iris_get_type_string(a)
+
+    #println(Core.stdout, "sizes: ", sizes, " total_size:", total_size, " type:", jtype)
+
+    # Create and submit JACC task
+    if task == nothing
+        task = IrisHRT.empty_task()
+    end
+    task = IrisHRT.parallel_for(Int64(total_size), kernel_fn, out, a, b; in=[a], out=[out], task=task, submit=submit, wait=wait, args...)
+    return IrisHRT.IrisTaskMem(task, out)
+end
+function __arith_kernel_s_v_out(kernel, out::IrisHRT.IrisMem, a, b::IrisHRT.IrisMem; task=nothing, submit=true, wait=true, args...)
+    kernel_fn = IrisHRT.getFunction("__iris_jacc_" * kernel * "_s_v")
+    sizes = IrisHRT.host_size(b)
+    total_size = prod(sizes)
+    jtype = IrisHRT.get_julia_type(b)
+    type_str = IrisHRT.iris_get_type_string(b)
+
+    #println(Core.stdout, "sizes: ", sizes, " total_size:", total_size, " type:", jtype)
+
+    # Create and submit JACC task
+    if task == nothing
+        task = IrisHRT.empty_task()
+    end
+    task = IrisHRT.parallel_for(Int64(total_size), kernel_fn, out, a, b; in=[b], out=[out], task=task, submit=submit, wait=wait, args...)
+    return IrisHRT.IrisTaskMem(task, out)
+end
+function __arith_kernel_out(kernel, out::IrisHRT.IrisMem, a::IrisHRT.IrisMem, b::IrisHRT.IrisMem; task=nothing, submit=true, wait=true, args...)
+    kernel_fn = IrisHRT.getFunction("__iris_jacc_" * kernel)
+    sizes = IrisHRT.host_size(a)
+    total_size = prod(sizes)
+    jtype = IrisHRT.get_julia_type(a)
+    type_str = IrisHRT.iris_get_type_string(a)
+
+    # Create and submit JACC task
+    if task == nothing
+        task = IrisHRT.empty_task()
+    end
+    #println(Core.stdout, "sizes: ", sizes, " total_size:", total_size, " type:", jtype, " wait:", wait, " submit:", submit, " task:", task)
+    task = IrisHRT.parallel_for(Int64(total_size), kernel_fn, out, a, b; in=[a,b], out=[out], task=task, submit=submit, wait=wait, args...)
+    return out
+end
+
+######## Vector = Vector (Op) Vector
 function +(a::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, b::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}; args...)
     return __arith_kernel("add", IrisHRT.field_dmem(a), IrisHRT.field_dmem(b); args...)
 end
@@ -136,5 +185,48 @@ function *(a::T, b::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}) where T <: Numbe
 end
 function /(a::T, b::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}) where T <: Number
     return __arith_kernel_s_v("div", a, field_mem(b))
+end
+
+###################################
+######## Vector = Vector (Op) Vector
+function +(out::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, a::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, b::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}; args...)
+    return __arith_kernel_out("add", IrisHRT.field_dmem(out), IrisHRT.field_dmem(a), IrisHRT.field_dmem(b); args...)
+end
+function -(out::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, a::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, b::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}; args...)
+    return __arith_kernel_out("sub", IrisHRT.field_dmem(out), IrisHRT.field_dmem(a), IrisHRT.field_dmem(b); args...)
+end
+function *(out::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, a::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, b::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}; args...)
+    return __arith_kernel_out("mul", IrisHRT.field_dmem(out), IrisHRT.field_dmem(a), IrisHRT.field_dmem(b); args...)
+end
+function /(out::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, a::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, b::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}; args...)
+    return __arith_kernel_out("div", IrisHRT.field_dmem(out), IrisHRT.field_dmem(a), IrisHRT.field_dmem(b); args...)
+end
+
+######## Vector = Vector (Op) Scalar 
+function +(out::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, a::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, b::T; args...) where T <: Number
+    return __arith_kernel_v_s_out("add", IrisHRT.field_dmem(out), IrisHRT.field_dmem(a), b; args...)
+end
+function -(out::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, a::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, b::T; args...) where T <: Number
+    return __arith_kernel_v_s_out("sub", IrisHRT.field_dmem(out), IrisHRT.field_dmem(a), b; args...)
+end
+function *(out::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, a::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, b::T; args...) where T <: Number
+    return __arith_kernel_v_s_out("mul", IrisHRT.field_dmem(out), IrisHRT.field_dmem(a), b; args...)
+end
+function /(out::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, a::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, b::T; args...) where T <: Number
+    return __arith_kernel_v_s_out("div", IrisHRT.field_dmem(out), IrisHRT.field_dmem(a), b; args...)
+end
+
+######## Vector = Scalar (Op) Vector 
+function +(out::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, a::T, b::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}) where T <: Number
+    return __arith_kernel_s_v_out("add", IrisHRT.field_dmem(out), a, field_mem(b))
+end
+function -(out::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, a::T, b::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}) where T <: Number
+    return __arith_kernel_s_v_out("sub", IrisHRT.field_dmem(out), a, field_mem(b))
+end
+function *(out::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, a::T, b::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}) where T <: Number
+    return __arith_kernel_s_v_out("mul", IrisHRT.field_dmem(out), a, field_mem(b))
+end
+function /(out::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, a::T, b::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}) where T <: Number
+    return __arith_kernel_s_v_out("div", IrisHRT.field_dmem(out), a, field_mem(b))
 end
 

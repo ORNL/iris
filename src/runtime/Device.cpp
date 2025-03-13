@@ -399,7 +399,7 @@ void Device::Execute(Task* task) {
       case IRIS_CMD_KERNEL:       {
                                       ExecuteMemIn(task, cmd);
                                       ExecuteKernel(cmd);     
-                                      ExecuteMemOut(task, task->cmd_kernel());
+                                      ExecuteMemOut(task, cmd);
                                       for(DataMem *dmem : d2h_dmems) {
                                           dmem->set_dirty_except(devno_);
                                           dmem->set_host_dirty();
@@ -1562,7 +1562,8 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         }
         else if (src_mem != mem) {
             if (src_mem->is_dirty_all() && mem->is_dirty_all() &&
-                    src_mem->is_host_dirty() && mem->is_host_dirty()) {
+                    src_mem->is_host_dirty() && mem->is_host_dirty() &&
+                    src_mem->is_reset()) {
                 assert(parent == NULL);
                 HandleMemReset(async, cmd, kernel, task, mem, src_mem);
                 //printf(" now doing call memreset\n");
@@ -1571,6 +1572,20 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
                 _warning("Didn't handle this situation of all source "
                         "mem:%ld and destination mem:%ld data invalidity "
                         "state", src_mem->uid(), mem->uid());
+            }
+        }
+        else { // src_mem == mem
+            if (mem->is_dirty_all() &&
+                    mem->is_host_dirty() && mem->is_reset()) {
+                assert(parent == NULL);
+                HandleMemReset(async, cmd, kernel, task, mem, mem);
+                //printf(" now doing call memreset mem:%lu\n", mem->uid());
+            }
+            else {
+                _warning("Kernel:%s Didn't handle this situation of all source "
+                        "mem:%ld and destination mem:%ld data invalidity "
+                        "state. There should be some valid data "
+                        "when the kernel reads the memory.", kernel->name(), src_mem->uid(), mem->uid());
             }
         }
     }
@@ -1764,6 +1779,13 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
                 }
                 // Device is dirty flag.
             }
+			else {
+                if (mem->is_host_dirty()) {
+                    // If no source device is found. Just return safely.
+                    _warning("mem id:%lu is not initialzeed and doesn't have valid data either on any device or host memory. Hence, safely returning from flush operation", mem->uid());
+                }
+				return;
+			}
             src_dev = Platform::GetPlatform()->device(nddevs[0]);
             // D2H should be issued from target src (remote) device
             int src_mem_stream = src_dev->GetStream(task, mem, true);
@@ -1927,6 +1949,10 @@ void Device::ExecuteMemFlushOutToShadow(Command* cmd) {
         int d2d_dev = -1;
         GetPossibleDevices(mem, devno_, mem->get_non_dirty_devices(nddevs), 
                     d2d_dev, cpu_dev, non_cpu_dev, async);
+		if (nddevs[0] == -1) {
+			// If no source device is found. Just return safely.
+			return;
+		}
         src_dev = Platform::GetPlatform()->device(nddevs[0]);
         // D2H should be issued from target src (remote) device
         if (!platform_obj_->is_data_transfers_disabled())

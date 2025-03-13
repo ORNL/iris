@@ -263,7 +263,11 @@ void DataMem::RefreshHost()
         source_mem_->RefreshHost();
         return; 
     }
-    host_dirty_flag_ = false;
+    if (!reset_)
+        host_dirty_flag_ = false;
+    else
+        host_dirty_flag_ = true;
+    enable_reset_ = reset_;
     for(int i=0; i<ndevs_; i++) {
         dirty_flag_[i] = true;
     }
