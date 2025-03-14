@@ -78,7 +78,10 @@ void Device::HandleMemReset(bool async, Command *cmd, Kernel *kernel, Task *task
         ProfileEvent & prof_event = task->CreateProfileEvent(mem, devno(), PROFILE_DMEM2DMEM_FILL, this, mem_stream);
         prof_event.RecordStartEvent(); 
     }
-    void *stream_ptr = *((void **)get_stream(mem_stream)); 
+    void **stream_ptr_ptr = (void **)get_stream(mem_stream);
+	void *stream_ptr = NULL;
+	if (stream_ptr != NULL) 
+		stream_ptr = *stream_ptr_ptr;
     //printf("src_mem:%lu mem:%lu size:%lu stream:%p\n", src_mem->uid(), mem->uid(), src_mem->size(), stream_ptr); 
     CallMemReset(src_mem, 
             src_mem->size()/src_mem->elem_size(), 

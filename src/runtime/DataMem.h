@@ -112,6 +112,7 @@ public:
   size_t *host_size() { return host_size_; }
   size_t *dev_size() { return dev_size_; }
   size_t elem_size() { return elem_size_; }
+  int update_dim(int dim) { dim_ = dim; return IRIS_SUCCESS; }
   int dim() { return dim_; }
   void *host_ptr() { 
       if (source_mem_ == NULL) return host_ptr_; 
@@ -160,6 +161,14 @@ public:
   virtual void** arch_ptr(int devno, void *host=NULL);
   virtual void** arch_ptr(Device *dev, void *host=NULL);
   int update_host_size(size_t *host_size);
+  int update_dev_size(size_t *dev_size) { 
+      memcpy(dev_size_, dev_size, sizeof(size_t)*dim_); 
+      return IRIS_SUCCESS;
+  }
+  int update_off(size_t *off) { 
+      memcpy(off_, off, sizeof(size_t)*dim_); 
+      return IRIS_SUCCESS;
+  }
   inline void create_dev_mem(Device *dev, int devno, void *host);
   Platform *platform() { return platform_; }
   bool is_pin_memory() { return is_pin_memory_; }

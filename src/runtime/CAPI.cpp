@@ -792,6 +792,18 @@ int iris_data_mem_update_host_size(iris_mem brs_mem, size_t *host_size) {
   DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
   return mem->update_host_size(host_size);
 }
+int iris_data_mem_update_dim(iris_mem brs_mem, int dim) {
+  DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  return mem->update_dim(dim);
+}
+int iris_data_mem_update_dev_size(iris_mem brs_mem, size_t *dev_size) {
+  DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  return mem->update_dev_size(dev_size);
+}
+int iris_data_mem_update_off(iris_mem brs_mem, size_t *off) {
+  DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  return mem->update_off(off);
+}
 int iris_unregister_pin_memory(void *host) {
   return Platform::GetPlatform()->UnRegisterPin(host);
 }
