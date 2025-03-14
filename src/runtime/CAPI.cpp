@@ -804,6 +804,13 @@ int iris_data_mem_update_off(iris_mem brs_mem, size_t *off) {
   DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
   return mem->update_off(off);
 }
+iris_mem iris_data_mem_copy(iris_mem src_mem)
+{
+  DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(src_mem);
+  DataMem *dst = mem->Copy();
+  iris_mem *brs_mem = dst->struct_obj();
+  return *brs_mem;
+}
 int iris_unregister_pin_memory(void *host) {
   return Platform::GetPlatform()->UnRegisterPin(host);
 }

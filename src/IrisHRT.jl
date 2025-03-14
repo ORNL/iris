@@ -1876,6 +1876,10 @@ module IrisHRT
     function iris_data_mem_init_reset(mem::IrisMem, reset::Int32)::Int32
         return ccall(Libdl.dlsym(lib, :iris_data_mem_init_reset), Int32, (IrisMem, Int32), mem, reset)
     end
+
+    function iris_data_mem_copy(mem::IrisMem)::IrisMem
+        return ccall(Libdl.dlsym(lib, :iris_data_mem_copy), IrisMem, (IrisMem,), mem)
+    end
     
     function iris_task_cmd_init_reset_assign(task::IrisTask, mem::IrisMem, element::Any)::Int32
         ivalue = flat_in_buffer(element)
@@ -2362,9 +2366,19 @@ module IrisHRT
         return ccall(Libdl.dlsym(lib, :iris_data_mem_update_host_size), Int32, (IrisMem, Ptr{Csize_t}), mem, host)
     end
 
-    function dmem_update_host_size(mem::IrisMem, host_size)
+    function update_host_size(mem::IrisMem, host_size)
         dims = collect(Csize_t, host_size)
         iris_data_mem_update_host_size(mem, pointer(dims))
+    end
+
+    function update_dev_size(mem::IrisMem, dev_size)
+        dims = collect(Csize_t, dev_size)
+        iris_data_mem_update_dev_size(mem, pointer(dims))
+    end
+
+    function update_off(mem::IrisMem, off)
+        dims = collect(Csize_t, off)
+        iris_data_mem_update_off(mem, pointer(off))
     end
 
     function iris_data_mem_create_region(mem::Ptr{IrisMem}, root_mem::IrisMem, region::Int32)::Int32
@@ -2895,7 +2909,7 @@ module IrisHRT
             #println(Core.stdout, " hsize", hsize)
             #println(Core.stdout, " prev elems: ", total_elements)
             #println(Core.stdout, " current elems: ", array_elements)
-            dmem_update_host_size(mem, size(larray))
+            update_host_size(mem, size(larray))
         end
     end
 
@@ -3437,7 +3451,7 @@ module IrisHRT
         return policy
     end
 
-    function copyto(dst, src; task=nothing, flush=false, wait=true, submit=true, policy=IrisHRT.iris_roundrobin, auto_dependency=true, dependencies=[])
+    function copyto!(dst, src; task=nothing, flush=false, wait=true, submit=true, policy=IrisHRT.iris_roundrobin, auto_dependency=true, dependencies=[])
         task0 = task
         if task0 == nothing
             task0 = iris_task_create_struct()
@@ -3477,6 +3491,44 @@ module IrisHRT
             IrisHRT.iris_task_set_policy(task0, Int32(policy))
         end
         return task0
+    end
+
+    function copy(src; task=nothing, flush=false, wait=true, submit=true, policy=IrisHRT.iris_roundrobin, auto_dependency=true, dependencies=[])
+        task0 = task
+        if task0 == nothing
+            task0 = iris_task_create_struct()
+            iris_task_set_name(task0, "copyto")
+        end
+        if !isa(src, Union{IrisMem, IrisTaskMem})
+            src_ptr = pointer(src)
+            if !haskey(Main.__iris_dmem_map, src_ptr)
+                Main.__iris_dmem_map[src_ptr] = IrisHRT.iris_data_mem(src)
+            end
+            src = Main.__iris_dmem_map[src_ptr]
+        end
+        dst = iris_data_mem_copy(src)
+        host = valid_host(dst)
+        Main.__iris_dmem_map[pointer(host)] = dst
+        n_dependencies = IrisHRT.IrisTask[x for x in dependencies if x !== nothing]
+        if length(n_dependencies) > 0
+            IrisHRT.iris_task_depend(task0, n_dependencies)
+        end
+        if auto_dependency
+            add_auto_dependencies(task0, [src], [dst])
+        end
+        IrisHRT.iris_task_dmem2dmem(task0, src, dst)
+        if flush
+            IrisHRT.iris_task_dmem_flush_out(task0, dst)
+        end
+        policy = IrisHRT.set_julia_policy(task0, policy)
+        Main.__iris_dmem_2_task[dst] = task0
+        if submit
+            #println(Core.stdout, "IRIS task submit wait:", wait)
+            IrisHRT.iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
+        else
+            IrisHRT.iris_task_set_policy(task0, Int32(policy))
+        end
+        return IrisTaskMem(task0, dst)
     end
 
     function add_auto_dependencies(task0, in_list, out_list)

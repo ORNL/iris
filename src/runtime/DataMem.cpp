@@ -65,6 +65,12 @@ DataMem::DataMem(Platform *platform, void *host_ptr, size_t *off, size_t *host_s
     memcpy(host_size_, host_size, sizeof(size_t)*dim_);
     elem_size_ = elem_size;
 }
+DataMem *DataMem::Copy()
+{
+    DataMem *dmem = new DataMem(platform_, NULL, off_, host_size_, dev_size_, elem_size_, dim_, element_type_);
+    dmem->tile_enabled_ = tile_enabled_;
+    return dmem;
+}
 int DataMem::update_host_size(size_t *host_size) 
 {
     memcpy(host_size_, host_size, sizeof(size_t)*dim_);

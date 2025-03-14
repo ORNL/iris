@@ -1444,6 +1444,13 @@ extern int iris_data_mem_update(iris_mem mem, void *host);
  */
 extern int iris_data_mem_copyto_host(iris_mem mem, void *src_host);
 
+/**@brief Create a copy of data memory object but it doesn't set the host and device pointers and it doesn't copies the data
+ *
+ * @param src_mem memory object to create a copy of DMEM object
+ * @return This function returns an DMEM memory object
+ */
+extern iris_mem iris_data_mem_copy(iris_mem src_mem);
+
 /**@brief data memory object refresh for a task. It will make host copy valid and device copies invalid
  *
  * @param mem memory object
@@ -1458,6 +1465,30 @@ extern int iris_data_mem_refresh(iris_mem mem);
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_data_mem_update_host_size(iris_mem mem, size_t *host_size);
+
+/**@brief data memory object update for a task
+ *
+ * @param mem memory object
+ * @param dev_size device size pointer to the array
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_data_mem_update_dev_size(iris_mem mem, size_t *dev_size);
+
+/**@brief data memory object update for a task
+ *
+ * @param mem memory object
+ * @param off offset pointer to the array
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_data_mem_update_off(iris_mem mem, size_t *off);
+
+/**@brief data memory object update for a task
+ *
+ * @param mem memory object
+ * @param dim is dimension of memory object 
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_data_mem_update_dim(iris_mem mem, int dim);
 
 /**@brief creates data memory region
  *
