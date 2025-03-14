@@ -2220,7 +2220,7 @@ module IrisHRT
         return unsafe_wrap(Array, j_ptr, size, own=false)
     end
 
-    function host(mem::AbstractArray{T}, flush=false) where T
+    function host(host::AbstractArray{T}, flush=false) where T
         p_array = pointer(host)
         if !haskey(Main.__iris_dmem_map, p_array)
             d_mem = dmem(host)
@@ -2243,7 +2243,7 @@ module IrisHRT
         return unsafe_wrap(Array, j_ptr, size, own=false)
     end
 
-    function valid_host(mem::AbstractArray{T}, flush=false) where T
+    function valid_host(host::AbstractArray{T}, flush=false) where T
         p_array = pointer(host)
         if !haskey(Main.__iris_dmem_map, p_array)
             d_mem = dmem(host)
