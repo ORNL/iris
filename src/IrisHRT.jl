@@ -2207,25 +2207,52 @@ module IrisHRT
         return ccall(func, Ptr{Cvoid}, (IrisMem,), brs_mem)
     end
 
-    function host(mem::IrisMem)
+    function host(mem::IrisMem, flush=false)
         arg_ptr = iris_get_dmem_host(mem)
         if arg_ptr == C_NULL
             return nothing
+        end
+        if flush
+            flush(mem)
         end
         size = host_size(mem)
         j_ptr = ptr_reinterpret(mem.uid, 0, 1, arg_ptr, get_type(mem))
         return unsafe_wrap(Array, j_ptr, size, own=false)
     end
 
-    function valid_host(mem::IrisMem)
+    function host(mem::AbstractArray{T}, flush=false) where T
+        p_array = pointer(host)
+        if !haskey(Main.__iris_dmem_map, p_array)
+            d_mem = dmem(host)
+            Main.__iris_dmem_map[p_array] = d_mem
+        end
+        source_mem = Main.__iris_dmem_map[p_array]
+        return host(source_mem)
+    end
+
+    function valid_host(mem::IrisMem, flush=false)
         arg_ptr = iris_get_dmem_valid_host(mem)
         if arg_ptr == C_NULL
             return nothing
+        end
+        if flush
+            flush(mem)
         end
         size = host_size(mem)
         j_ptr = ptr_reinterpret(mem.uid, 0, 1, arg_ptr, get_type(mem))
         return unsafe_wrap(Array, j_ptr, size, own=false)
     end
+
+    function valid_host(mem::AbstractArray{T}, flush=false) where T
+        p_array = pointer(host)
+        if !haskey(Main.__iris_dmem_map, p_array)
+            d_mem = dmem(host)
+            Main.__iris_dmem_map[p_array] = d_mem
+        end
+        source_mem = Main.__iris_dmem_map[p_array]
+        return valid_host(source_mem)
+    end
+
 
     function get_type(mem::IrisMem)
         return iris_get_mem_element_type(mem)
