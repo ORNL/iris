@@ -80,9 +80,9 @@ void Device::HandleMemReset(bool async, Command *cmd, Kernel *kernel, Task *task
     }
     void **stream_ptr_ptr = (void **)get_stream(mem_stream);
 	void *stream_ptr = NULL;
-	if (stream_ptr != NULL) 
+	if (stream_ptr_ptr != NULL) 
 		stream_ptr = *stream_ptr_ptr;
-    //printf("src_mem:%lu mem:%lu size:%lu stream:%p\n", src_mem->uid(), mem->uid(), src_mem->size(), stream_ptr); 
+    //printf("Calling memreset src_mem:%lu mem:%lu size:%lu stream:%p\n", src_mem->uid(), mem->uid(), src_mem->size(), stream_ptr); 
     CallMemReset(src_mem, 
             src_mem->size()/src_mem->elem_size(), 
             src_mem->reset_data(), stream_ptr, mem);
@@ -1751,9 +1751,9 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
         size_t elem_size = mem->elem_size();
         int dim = mem->dim();
         size_t size = mem->size();
-        //printf("Pointer offset %d, gws %d lws %d elem_size %d dim %d size %d\n", 
-            //*ptr_off, *gws, *lws, elem_size, dim, size);
         void* host = mem->host_memory(); // It should work even if host_ptr is null
+        //printf("Pointer offset mem:%lu %lu, gws %lu lws %lu elem_size %lu dim %d size %lu host:%p\n", 
+        //    mem->uid(), *ptr_off, *gws, *lws, elem_size, dim, size, host);
         bool update_host_flag = true;
         if (cmd->host() != NULL) {
             update_host_flag = false;

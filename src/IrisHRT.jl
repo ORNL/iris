@@ -2207,6 +2207,34 @@ module IrisHRT
         return ccall(func, Ptr{Cvoid}, (IrisMem,), brs_mem)
     end
 
+    function host_ptr(mem::IrisMem)
+        return iris_get_dmem_host(mem)
+    end
+
+    function host_ptr(host::AbstractArray{T}) where T
+        p_array = pointer(host)
+        if !haskey(Main.__iris_dmem_map, p_array)
+            d_mem = dmem(host)
+            Main.__iris_dmem_map[p_array] = d_mem
+        end
+        source_mem = Main.__iris_dmem_map[p_array]
+        return host_ptr(source_mem)
+    end
+
+    function uid(mem::IrisMem)
+        return iris_mem_get_uid(mem)
+    end
+
+    function uid(host::AbstractArray{T}) where T
+        p_array = pointer(host)
+        if !haskey(Main.__iris_dmem_map, p_array)
+            d_mem = dmem(host)
+            Main.__iris_dmem_map[p_array] = d_mem
+        end
+        source_mem = Main.__iris_dmem_map[p_array]
+        return uid(source_mem)
+    end
+
     function host(mem::IrisMem, flush=false)
         arg_ptr = iris_get_dmem_host(mem)
         if arg_ptr == C_NULL
