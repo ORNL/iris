@@ -1543,7 +1543,7 @@ module IrisHRT
 
     function get_dmem_from_cache(data)
         if isa(data, Union{IrisMem, IrisTaskMem})
-            return data
+            return field_dmem(data)
         else
             if isa(data, SubArray)
                 offsets = view_offsets_elements(data)
@@ -1552,7 +1552,7 @@ module IrisHRT
                 if haskey(Main.__iris_dmem_subarray_map, key)
                     return Main.__iris_dmem_subarray_map[key]
                 else
-                    d_mem = dmem(data)
+                    d_mem = iris_data_mem(data)
                     Main.__iris_dmem_subarray_map[key] = d_mem
                     return d_mem
                 end   
@@ -1560,12 +1560,11 @@ module IrisHRT
             if haskey(Main.__iris_dmem_map, pointer(data))
                 return Main.__iris_dmem_map[pointer(data)]
             else
-                d_mem = dmem(data)
+                d_mem = iris_data_mem(data)
                 Main.__iris_dmem_map[pointer(data)] = d_mem
-                return data
+                return d_mem
             end
         end 
-
     end
 
     function flush(task::IrisTask, mem::Union{IrisMem,IrisTaskMem})::Int32
@@ -1573,23 +1572,15 @@ module IrisHRT
     end
 
     function flush(task::IrisTask, host::Array{T})::Int32 where T
-        p_host = pointer(host)
-        mem = Main.__iris_dmem_map[p_host]
+        mem = get_dmem_from_cache(host)
         return iris_task_dmem_flush_out(task, mem)
     end
 
     function flush(mem; submit=true, wait=true, dependencies=[], policy=IrisHRT.iris_roundrobin, auto_dependency=true)::IrisTask
         task0 = iris_task_create_struct()
-		iris_task_set_name(task0, "flush")
-        if isa(mem, Union{IrisMem,IrisTaskMem})
-            IrisHRT.iris_task_dmem_flush_out(task0, field_dmem(mem))
-        else
-            p_mem = pointer(mem)
-            mem = Main.__iris_dmem_map[p_mem]
-            #println(Core.stdout, "flush", mem.uid)
-            #println(Core.stdout, "flush pointer: ", p_mem)
-            IrisHRT.iris_task_dmem_flush_out(task0, mem)
-        end
+        iris_task_set_name(task0, "flush")
+        mem = get_dmem_from_cache(mem)
+        IrisHRT.iris_task_dmem_flush_out(task0, mem)
         dependencies = [x for x in dependencies if x !== nothing]
         if length(dependencies) > 0
             IrisHRT.iris_task_depend(task0, dependencies)
@@ -1957,11 +1948,11 @@ module IrisHRT
         return dmem
     end
 
-	function zeros(mem::Union{IrisMem, IrisTaskMem})
-		dmem = field_dmem(mem)
-		T = get_julia_type(dmem)
-		iris_mem_init_reset_assign(dmem, T(0))
-	end
+    function zeros(mem::Union{IrisMem, IrisTaskMem})
+        dmem = field_dmem(mem)
+        T = get_julia_type(dmem)
+        iris_mem_init_reset_assign(dmem, T(0))
+    end
 
     function fill(::Type{T}, data, dims...) where T
         dmem = iris_data_mem(T, dims...)
@@ -1969,21 +1960,21 @@ module IrisHRT
         return dmem
     end
 
-	function fill(mem::Union{IrisMem, IrisTaskMem}, data)
-		dmem = field_dmem(mem)
-		T = get_julia_type(dmem)
-		iris_mem_init_reset_assign(dmem, T(data))
-	end
+    function fill(mem::Union{IrisMem, IrisTaskMem}, data)
+        dmem = field_dmem(mem)
+        T = get_julia_type(dmem)
+        iris_mem_init_reset_assign(dmem, T(data))
+    end
 
-	function ones(T, dims...)
-		dmem = iris_data_mem(T, dims...)
-		iris_mem_init_reset_assign(dmem, T(1))
-		return dmem
-	end
+    function ones(T, dims...)
+        dmem = iris_data_mem(T, dims...)
+        iris_mem_init_reset_assign(dmem, T(1))
+        return dmem
+    end
 
     function ones(mem::Union{IrisMem, IrisTaskMem})
-		dmem = field_dmem(mem)
-		T = get_julia_type(dmem)
+        dmem = field_dmem(mem)
+        T = get_julia_type(dmem)
         iris_mem_init_reset_assign(dmem, T(1))
         return dmem
     end
@@ -2199,11 +2190,7 @@ module IrisHRT
     end
 
     function dmem(host::AbstractArray{T}) where T
-        p_array = pointer(host)
-        if haskey(Main.__iris_dmem_map, p_array)
-            return Main.__iris_dmem_map[p_array]
-        end
-        return iris_data_mem(host)
+        return get_dmem_from_cache(host)
     end
 
     function dmem_offset(host, dev_size, offset=[]) 
@@ -2235,12 +2222,7 @@ module IrisHRT
     end
 
     function reshape(host::AbstractArray{T}, dims...) where T
-        p_array = pointer(host)
-        if !haskey(Main.__iris_dmem_map, p_array)
-            d_mem = dmem(host)
-            Main.__iris_dmem_map[p_array] = d_mem
-        end
-        source_mem = Main.__iris_dmem_map[p_array]
+        source_mem = get_dmem_from_cache(host)
         return reshape(source_mem, dims...)
     end
 
@@ -2261,12 +2243,7 @@ module IrisHRT
     end
 
     function host_ptr(host::AbstractArray{T}) where T
-        p_array = pointer(host)
-        if !haskey(Main.__iris_dmem_map, p_array)
-            d_mem = dmem(host)
-            Main.__iris_dmem_map[p_array] = d_mem
-        end
-        source_mem = Main.__iris_dmem_map[p_array]
+        source_mem = get_dmem_from_cache(host)
         return host_ptr(source_mem)
     end
 
@@ -2275,12 +2252,7 @@ module IrisHRT
     end
 
     function uid(host::AbstractArray{T}) where T
-        p_array = pointer(host)
-        if !haskey(Main.__iris_dmem_map, p_array)
-            d_mem = dmem(host)
-            Main.__iris_dmem_map[p_array] = d_mem
-        end
-        source_mem = Main.__iris_dmem_map[p_array]
+        source_mem = get_dmem_from_cache(host)
         return uid(source_mem)
     end
 
@@ -2298,12 +2270,7 @@ module IrisHRT
     end
 
     function host(host::AbstractArray{T}, flush=false) where T
-        p_array = pointer(host)
-        if !haskey(Main.__iris_dmem_map, p_array)
-            d_mem = dmem(host)
-            Main.__iris_dmem_map[p_array] = d_mem
-        end
-        source_mem = Main.__iris_dmem_map[p_array]
+        source_mem = get_dmem_from_cache(host)
         return host(source_mem)
     end
 
@@ -2321,12 +2288,7 @@ module IrisHRT
     end
 
     function valid_host(host::AbstractArray{T}, flush=false) where T
-        p_array = pointer(host)
-        if !haskey(Main.__iris_dmem_map, p_array)
-            d_mem = dmem(host)
-            Main.__iris_dmem_map[p_array] = d_mem
-        end
-        source_mem = Main.__iris_dmem_map[p_array]
+        source_mem = get_dmem_from_cache(host)
         return valid_host(source_mem)
     end
 
@@ -2992,12 +2954,16 @@ module IrisHRT
         for (key, value) in Main.__iris_dmem_map 
             IrisHRT.iris_mem_release(value)
         end
+        for (key, value) in Main.__iris_dmem_subarray_map
+            IrisHRT.iris_mem_release(value)
+        end
         for (key, value) in Main.__iris_dmem_mirrors_map
             IrisHRT.iris_mem_release(value)
         end
         # Clear all elements in the dictionary
         empty!(Main.__iris_dmem_2_task)
         empty!(Main.__iris_dmem_map)
+        empty!(Main.__iris_dmem_subarray_map)
         empty!(Main.__iris_dmem_mirrors_map)
         empty!(Main.__iris_dmem_parallel_reduce_map)
         empty!(Main.__iris_dmem_custom_type)
@@ -3036,13 +3002,7 @@ module IrisHRT
         end
         dmem0 = dmem
         if dmem0 == nothing
-            p_array = pointer(host)
-            if !haskey(Main.__iris_dmem_map, p_array)
-                dmem0 = iris_data_mem(host)
-                Main.__iris_dmem_map[p_array] = dmem0
-            else
-                dmem0 = Main.__iris_dmem_map[p_array]
-            end
+            dmem0 = get_dmem_from_cache(host)
         end
         return (task=task0, dmem=dmem0)
     end
@@ -3344,11 +3304,7 @@ module IrisHRT
         push!(d_out, tmp_mem)
         for arg in x[2:end]
             if isa(arg, AbstractArray)
-                p_array = pointer(array_obj)
-                if ! haskey(Main.__iris_dmem_map, p_array)
-                    Main.__iris_dmem_map[p_array] = IrisHRT.iris_data_mem(mem)
-                end
-                mem = Main.__iris_dmem_map[p_array]
+                mem = get_dmem_from_cache(array_obj)
                 push!(d_in, mem)
             elseif isa(arg, IrisMem)
                 mem = arg
@@ -3356,15 +3312,15 @@ module IrisHRT
             end
         end
         push!(d_in, tmp_mem)
-		push!(d_in, out_mem)
+        push!(d_in, out_mem)
         if init == nothing
             out_type = IrisHRT.get_julia_type(out_mem)
             init = JACC.default_init(out_type, +)
         end
         IrisHRT.fill(out_mem, init)
         IrisHRT.refresh(out_mem)
-		IrisHRT.fill(tmp_mem, init)
-		IrisHRT.refresh(tmp_mem)
+        IrisHRT.fill(tmp_mem, init)
+        IrisHRT.refresh(tmp_mem)
         iris_op = IrisHRT.iris_jacc_op_plus
         if op == nothing
             iris_op = IrisHRT.iris_jacc_op_plus
@@ -3406,11 +3362,7 @@ module IrisHRT
         out_mem = nothing
         for arg in x
             if isa(arg, AbstractArray)
-                p_array = pointer(array_obj)
-                if ! haskey(Main.__iris_dmem_map, p_array)
-                    Main.__iris_dmem_map[p_array] = IrisHRT.iris_data_mem(mem)
-                end
-                mem = Main.__iris_dmem_map[p_array]
+                mem = get_dmem_from_cache(array_obj)
                 if first_vector
                     out_mem = IrisHRT.dmem(IrisHRT.get_julia_type(mem), 1)
                     if flush
@@ -3468,7 +3420,7 @@ module IrisHRT
                     dependencies=dependencies, metadata=metadata, 
                     kernel=String(Symbol(f)), 
                     args=Any[out_mem.uid, iris_op, init, x...])
-		#println(Core.stdout, " parallel_for:", task0)
+        #println(Core.stdout, " parallel_for:", task0)
         return IrisTaskMem(task0, out_mem)
     end
 
@@ -3593,29 +3545,21 @@ module IrisHRT
         task0 = task
         if task0 == nothing
             task0 = iris_task_create_struct()
-			iris_task_set_name(task0, "copyto")
+            iris_task_set_name(task0, "copyto")
         end
         if !isa(src, Union{IrisMem, IrisTaskMem})
-            src_ptr = pointer(src)
-            if !haskey(Main.__iris_dmem_map, src_ptr)
-                Main.__iris_dmem_map[src_ptr] = IrisHRT.iris_data_mem(src)
-            end
-            src = Main.__iris_dmem_map[src_ptr]
+            src = get_dmem_from_cache(src)
         end
         if !isa(dst, Union{IrisMem, IrisTaskMem})
-            dst_ptr = pointer(dst)
-            if !haskey(Main.__iris_dmem_map, dst_ptr)
-                Main.__iris_dmem_map[dst_ptr] = IrisHRT.iris_data_mem(dst)
-            end
-            dst = Main.__iris_dmem_map[dst_ptr]
+            dst = get_dmem_from_cache(dst)
         end
-		n_dependencies = IrisHRT.IrisTask[x for x in dependencies if x !== nothing]
+        n_dependencies = IrisHRT.IrisTask[x for x in dependencies if x !== nothing]
         if length(n_dependencies) > 0
             IrisHRT.iris_task_depend(task0, n_dependencies)
         end
-		if auto_dependency
-			add_auto_dependencies(task0, [src], [dst])
-		end
+        if auto_dependency
+            add_auto_dependencies(task0, [src], [dst])
+        end
         IrisHRT.iris_task_dmem2dmem(task0, src, dst)
         if flush
             IrisHRT.iris_task_dmem_flush_out(task0, dst)
@@ -3638,11 +3582,7 @@ module IrisHRT
             iris_task_set_name(task0, "copyto")
         end
         if !isa(src, Union{IrisMem, IrisTaskMem})
-            src_ptr = pointer(src)
-            if !haskey(Main.__iris_dmem_map, src_ptr)
-                Main.__iris_dmem_map[src_ptr] = IrisHRT.iris_data_mem(src)
-            end
-            src = Main.__iris_dmem_map[src_ptr]
+            src = get_dmem_from_cache(src)
         end
         dst = iris_data_mem_copy(src)
         host = valid_host(dst)
@@ -3673,21 +3613,20 @@ module IrisHRT
         n_dependencies = IrisHRT.IrisTask[]
         for mem in in_list
             if isa(mem, Union{IrisMem, IrisTaskMem})
-				mem_obj = IrisHRT.field_dmem(mem)
+                mem_obj = IrisHRT.field_dmem(mem)
                 if haskey(Main.__iris_dmem_2_task, mem_obj)
-					dep_task = Main.__iris_dmem_2_task[mem_obj]
-					if dep_task.uid != task0.uid
-                    	push!(n_dependencies, Main.__iris_dmem_2_task[mem_obj]) 
-					end
+                    dep_task = Main.__iris_dmem_2_task[mem_obj]
+                    if dep_task.uid != task0.uid
+                        push!(n_dependencies, Main.__iris_dmem_2_task[mem_obj]) 
+                    end
                 end
             else
-                p_mem = pointer(mem)
-                mem_obj = Main.__iris_dmem_map[p_mem]
+                mem_obj = get_dmem_from_cache(mem) 
                 if haskey(Main.__iris_dmem_2_task, mem_obj)
-					dep_task = Main.__iris_dmem_2_task[mem_obj]
-					if dep_task.uid != task0.uid
-                    	push!(n_dependencies, dep_task)
-					end
+                    dep_task = Main.__iris_dmem_2_task[mem_obj]
+                    if dep_task.uid != task0.uid
+                        push!(n_dependencies, dep_task)
+                    end
                 end
             end
         end
@@ -3695,14 +3634,13 @@ module IrisHRT
             if isa(mem, Union{IrisMem, IrisTaskMem})
                Main.__iris_dmem_2_task[field_dmem(mem)] = task0
             else
-               p_mem = pointer(mem)
-               mem_obj = Main.__iris_dmem_map[p_mem]
+               mem_obj = get_dmem_from_cache(mem) 
                Main.__iris_dmem_2_task[mem_obj] = task0
             end
         end
         if length(n_dependencies) > 0
             IrisHRT.iris_task_depend(task0, n_dependencies)
-			#println(Core.stdout, " dependencies: ", n_dependencies)
+            #println(Core.stdout, " dependencies: ", n_dependencies)
         end
     end
 
@@ -3731,51 +3669,18 @@ module IrisHRT
             (auto_in, auto_out) = identify_in_out(julia_kernel_type, gws, kernel, t_args...)
         end
         for larray in vcat(out, flush, auto_out)
-            p_array = larray
-            if !isa(larray, Union{IrisMem, IrisTaskMem}) 
-                #println("Array is not IrisMem")
-                p_array = pointer(larray)
-                #println(Core.stdout, "Out ---- ", larray, " typeof:", typeof(larray))
-                if !haskey(Main.__iris_dmem_map, p_array)
-                    # Generate DMEM object if not found
-                    #println("Array not found in global map. Out/Flush Creating DMEM object for: ", pointer(larray))
-                    Main.__iris_dmem_map[p_array] = IrisHRT.iris_data_mem(larray)
-                    #finalizer(dmem_finalizer, larray)
-                else
-                    #println("Array already mapped to Output DMEM object: ", larray)
-                end
-			else
-				p_array = IrisHRT.field_dmem(p_array)
-            end
-            #println(Core.stdout, " out inserting p_array: ", p_array)
-            mem_params[p_array] = IrisHRT.iris_w
+            p_dmem = get_dmem_from_cache(larray)
+            #println(Core.stdout, " out inserting p_mem: ", p_dmem.uid)
+            mem_params[p_dmem] = IrisHRT.iris_w
         end
         for larray in vcat(in, auto_in)
-            p_array = larray
-            if !isa(larray, Union{IrisMem, IrisTaskMem}) 
-                p_array = pointer(larray)
-                #println(Core.stdout, "------in inserting iris_r p_array: ", p_array)
-                #println(Core.stdout, "In ---- ", larray, " typeof:", typeof(larray))
-                #println(Core.stdout, "In ----  typeof:", typeof(larray))
-                #println("DMEM object t: ", larray)
-                if !haskey(Main.__iris_dmem_map, p_array)
-                    # Generate DMEM object if not found
-                    #println("Array not found in global map. In Creating DMEM object for: ", pointer(larray))
-                    #println("Array is not IrisMem")
-                    Main.__iris_dmem_map[p_array] = IrisHRT.iris_data_mem(larray)
-                    #finalizer(dmem_finalizer, larray)
-                else
-                    #println("Array already mapped to Input DMEM object: ", larray)
-                end
-			else
-				p_array = IrisHRT.field_dmem(p_array)
-            end
-            if !haskey(mem_params, p_array)
-                #println(Core.stdout, "---- in inserting iris_r p_array: ", p_array, " type:", typeof(larray))
-                mem_params[p_array] = IrisHRT.iris_r
+            p_dmem = get_dmem_from_cache(larray)
+            if !haskey(mem_params, p_dmem)
+                #println(Core.stdout, "---- in inserting iris_r p_mem: ", p_dmem, " type:", typeof(larray))
+                mem_params[p_dmem] = IrisHRT.iris_r
             else
-                #println(Core.stdout, " in inserting iris_rw p_array: ", p_array, " type:", typeof(larray))
-                mem_params[p_array] = IrisHRT.iris_rw
+                #println(Core.stdout, " in inserting iris_rw p_mem: ", p_dmem, " type:", typeof(larray))
+                mem_params[p_dmem] = IrisHRT.iris_rw
             end
         end
         # create task structure
@@ -3792,37 +3697,16 @@ module IrisHRT
         #println(Core.stdout, "--------------")
         for (index, arg) in enumerate(call_args)
             #println(Core.stdout, "- s - s - s - : ", index, " type:", typeof(arg))
-            if isa(arg, AbstractArray)
-                p_arg = pointer(arg)
-                #println(Core.stdout, "- s - s - s - : ", index, " type:", typeof(arg), " pointer:", p_arg, " length:", length(arg), " size:", size(arg))
-                if haskey(Main.__iris_dmem_map, p_arg)
-                    #push!(kernel_params, (Main.__iris_dmem_map[p_arg], mem_params[p_arg]))
-                    push!(params, Ref(Main.__iris_dmem_map[p_arg]))
-                    push!(params_info, Int32(mem_params[p_arg]))
-                    if get_type(Main.__iris_dmem_map[p_arg]) == iris_custom_type
-                        push_custom_type(task0.uid, index, get_dmem_custom_type(Main.__iris_dmem_map[p_arg]))
-                    end
-                    mem = Main.__iris_dmem_map[p_arg]
-                    check_update_dmem_host_size(mem, arg)
+            if isa(arg, Union{AbstractArray, IrisMem, IrisTaskMem})
+                p_dmem = get_dmem_from_cache(arg)
+                push!(params, Ref(p_dmem))
+                if haskey(mem_params, p_dmem)
+                    push!(params_info, Int32(mem_params[p_dmem]))
                 else
-                    Main.__iris_dmem_map[p_arg] = IrisHRT.iris_data_mem(arg)
-                    #finalizer(dmem_finalizer, arg)
-                    #push!(kernel_params, (Main.__iris_dmem_map[p_arg], IrisHRT.iris_r))
-                    push!(params, Ref(Main.__iris_dmem_map[p_arg]))
-                    push!(params_info, Int32(IrisHRT.iris_rw))
-                    if get_type(Main.__iris_dmem_map[p_arg]) == iris_custom_type
-                        push_custom_type(task0.uid, index, get_dmem_custom_type(Main.__iris_dmem_map[p_arg]))
-                    end
+                    push!(params_info, IrisHRT.iris_rw)
                 end
-            elseif isa(arg, Union{IrisMem, IrisTaskMem})
-				arg_mem = IrisHRT.field_dmem(arg)
-                #p_arg = pointer(arg_mem)
-                #push!(kernel_params, (arg_mem, mem_params[arg_mem])) 
-                #println(Core.stdout, " arg: ", arg_mem, " index: ", index, " type: ", typeof(arg_mem))
-                push!(params, Ref(arg_mem))
-                push!(params_info, Int32(mem_params[arg_mem]))
-                if get_type(arg_mem) == iris_custom_type
-                    push_custom_type(task0.uid, index, get_dmem_custom_type(arg_mem))
+                if get_type(p_dmem) == iris_custom_type
+                    push_custom_type(task0.uid, index, get_dmem_custom_type(p_dmem))
                 end
             else
                 # Scalar element
@@ -3834,13 +3718,8 @@ module IrisHRT
             end
         end
         for mem in refresh
-            if isa(mem, Union{IrisMem, IrisTaskMem})
-                IrisHRT.refresh(IrisHRT.field_dmem(mem))
-            else
-                p_mem = pointer(mem)
-                mem_obj = Main.__iris_dmem_map[p_mem]
-                IrisHRT.refresh(mem_obj)
-            end
+            p_dmem = get_dmem_from_cache(mem)
+            IrisHRT.refresh(p_dmem)
         end
         nparams = Int64(length(params))
         #println(Core.stdout, "kernel_params: ", kernel_params)
@@ -3907,12 +3786,8 @@ module IrisHRT
             IrisHRT.set_metadata(task0, metadata)
         end
         for mem in flush 
-            if isa(mem, Union{IrisMem, IrisTaskMem})
-                IrisHRT.iris_task_dmem_flush_out(task0, field_dmem(mem))
-            else
-                p_mem = pointer(mem)
-                IrisHRT.iris_task_dmem_flush_out(task0, Main.__iris_dmem_map[p_mem])
-            end
+            p_dmem = get_dmem_from_cache(mem)
+            IrisHRT.iris_task_dmem_flush_out(task0, p_dmem)
         end
         #println(Core.stdout, "IRIS task dependencies")
         n_dependencies = IrisHRT.IrisTask[x for x in dependencies if x !== nothing]
