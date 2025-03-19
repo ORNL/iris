@@ -454,6 +454,72 @@ int DeviceHIP::MemD2D(Task *task, Device *src_dev, BaseMem *mem, void *dst, void
   }
   return IRIS_SUCCESS;
 }
+void DeviceHIP::MemCpy3DDirect(void *dev, uint8_t *host, size_t *off, 
+        size_t *dev_sizes, size_t *host_sizes, 
+        size_t elem_size, bool host_2_dev, bool async, int stream_index)
+{
+    hipError_t err;
+    hipMemcpy3DParms copyParams; 
+    copyParams.srcArray = NULL;
+    copyParams.dstArray = NULL;
+    // Source is DEVICE
+    size_t *src_sizes = host_sizes;
+    size_t *dst_sizes = dev_sizes;
+    void *src = host, *dst = (void *)dev;
+
+    if (!host_2_dev) {
+        src_sizes = dev_sizes;
+        dst_sizes = host_sizes;
+        src = (void *)dev;
+        dst = host;
+    }
+    
+    copyParams.srcPtr = { 
+        src,
+        src_sizes[0] * elem_size,  // pitch (row size in bytes)
+        src_sizes[0],              // width in elements
+        src_sizes[1] };             // height
+    //copyParams.srcPtr = srcPtr;
+
+    // Destination is HOST
+    copyParams.dstPtr = { 
+        dst,
+        dst_sizes[0] * elem_size, // pitch (row size in bytes)
+        dst_sizes[0],             // width in elements
+        dst_sizes[1] };            // height
+    //copyParams.dstPtr = dstPtr;
+
+    // Set offsets
+    if (host_2_dev) {
+        copyParams.srcPos = { off[0] * elem_size, off[1], off[2] };
+        copyParams.dstPos = { 0, 0, 0 };
+    }
+    else {
+        copyParams.srcPos = { 0, 0, 0 };
+        copyParams.dstPos = { off[0] * elem_size, off[1], off[2] };
+    }
+
+    // Define the tile size
+    copyParams.extent = { 
+        dev_sizes[0] * elem_size,   // Width in bytes
+        dev_sizes[1],               // Height in elements
+        dev_sizes[2] };   // Depth
+
+    if (host_2_dev) 
+        copyParams.kind = hipMemcpyHostToDevice;
+    else
+        copyParams.kind = hipMemcpyDeviceToHost;
+
+    // Initialize copy parameters
+    //hipMemcpy3DParms copyParams = {NULL, srcPos, srcPtr, NULL, dstPos, dstPtr, copy_ext, kind};
+    //_printf(" copyParams: srcPtr:%p dstPtr:%p api:%p\n", (void *)dev, host, ld_->hipMemcpy3D);
+    // Perform the copy
+    if (async)
+        err = ld_->hipMemcpy3DAsync(&copyParams, streams_[stream_index]);
+    else
+        err = ld_->hipMemcpy3D(&copyParams);
+    _hiperror(err);
+}
 int DeviceHIP::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag) {
   bool error_occured = false;
   hipError_t err;
@@ -477,7 +543,11 @@ int DeviceHIP::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,
     // Consider it as a dim = 1
     dim = 1;
   }
-  if (dim == 2) {
+  if (dim == 3) {
+      _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu,%lu,%lu] host_sizes[%lu,%lu,%lu] dev_sizes[%lu,%lu,%lu] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), hipmem, off[0], off[1], off[2], host_sizes[0], host_sizes[1], host_sizes[2], dev_sizes[0], dev_sizes[1], dev_sizes[2], size, host, stream_index);
+      MemCpy3DDirect(hipmem, (uint8_t *)host, off, dev_sizes, host_sizes, elem_size, true, async, stream_index);
+  }
+  else if (dim == 2) {
       _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu,%lu,%lu] host_sizes[%lu,%lu,%lu] dev_sizes[%lu,%lu,%lu] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), hipmem, off[0], off[1], off[2], host_sizes[0], host_sizes[1], host_sizes[2], dev_sizes[0], dev_sizes[1], dev_sizes[2], size, host, stream_index);
       size_t host_row_pitch = elem_size * host_sizes[0];
       void *host_start = (uint8_t *)host + off[0]*elem_size + off[1] * host_row_pitch;
@@ -555,7 +625,17 @@ int DeviceHIP::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,
   }
   bool error_occured = false;
   hipError_t err;
-  if (dim == 2) {
+  if (off[0] == 0 && off[1] == 0 && off[2] == 0 && 
+          host_sizes[0] == dev_sizes[0] && 
+          host_sizes[1] == dev_sizes[1] && host_sizes[2] == dev_sizes[2]) {
+    // Consider it as a dim = 1
+    dim = 1;
+  } 
+  if (dim == 3) {
+      _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu,%lu,%lu] host_sizes[%lu,%lu,%lu] dev_sizes[%lu,%lu,%lu] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)hipmem, off[0], off[1], off[2], host_sizes[0], host_sizes[1], host_sizes[2], dev_sizes[0], dev_sizes[1], dev_sizes[2], size, host, stream_index);
+      MemCpy3DDirect(hipmem, (uint8_t *)host, off, dev_sizes, host_sizes, elem_size, false, async, stream_index);
+  }
+  else if (dim == 2) {
       _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu,%lu,%lu] host_sizes[%lu,%lu,%lu] dev_sizes[%lu,%lu,%lu] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)hipmem, off[0], off[1], off[2], host_sizes[0], host_sizes[1], host_sizes[2], dev_sizes[0], dev_sizes[1], dev_sizes[2], size, host, stream_index);
       size_t host_row_pitch = elem_size * host_sizes[0];
       void *host_start = (uint8_t *)host + off[0]*elem_size + off[1] * host_row_pitch;

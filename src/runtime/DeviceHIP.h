@@ -26,6 +26,9 @@ public:
   int MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset);
   int MemFree(BaseMem *mem, void* mem_addr);
   int MemD2D(Task *task, Device *src_dev, BaseMem *mem, void *dst, void *src, size_t size);
+  void MemCpy3DDirect(void *dev, uint8_t *host, size_t *off, 
+          size_t *dev_sizes, size_t *host_sizes, 
+          size_t elem_size, bool host_2_dev, bool async, int stream_index);
   int MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag="");
   int MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag="");
   int KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bool report_error=true);

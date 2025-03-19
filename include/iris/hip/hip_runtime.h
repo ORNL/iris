@@ -15,9 +15,39 @@ typedef enum hipMemcpyKind {
     hipMemcpyHostToDevice = 1,    ///< Host-to-Device Copy
     hipMemcpyDeviceToHost = 2,    ///< Device-to-Host Copy
     hipMemcpyDeviceToDevice = 3,  ///< Device-to-Device Copy
-    hipMemcpyDefault =
-        4  ///< Runtime will automatically determine copy-kind based on virtual addresses.
+    hipMemcpyDefault = 4,               ///< Runtime will automatically determine
+                                        ///<copy-kind based on virtual addresses.
+    hipMemcpyDeviceToDeviceNoCU = 1024  ///< Device-to-Device Copy without using compute units
 } hipMemcpyKind;
+
+typedef struct hipPitchedPtr {
+    void* ptr;
+    size_t pitch;
+    size_t xsize;
+    size_t ysize;
+}hipPitchedPtr;
+typedef struct hipExtent {
+    size_t width;  // Width in elements when referring to array memory, in bytes when referring to
+                   // linear memory
+    size_t height;
+    size_t depth;
+}hipExtent;
+typedef struct hipPos {
+    size_t x;
+    size_t y;
+    size_t z;
+}hipPos;
+typedef struct hipArray* hipArray_t;
+typedef struct hipMemcpy3DParms {
+    hipArray_t srcArray;
+    struct hipPos srcPos;
+    struct hipPitchedPtr srcPtr;
+    hipArray_t dstArray;
+    struct hipPos dstPos;
+    struct hipPitchedPtr dstPtr;
+    struct hipExtent extent;
+    enum hipMemcpyKind kind;
+} hipMemcpy3DParms;
 
 //Flags that can be used with hipStreamCreateWithFlags.
 /** Default stream creation flags. These are used with hipStreamCreate().*/
@@ -279,6 +309,8 @@ hipError_t hipMemcpyDtoH(void* dst, hipDeviceptr_t src, size_t sizeBytes);
 hipError_t hipMemcpyDtoHAsync(void* dst, hipDeviceptr_t src, size_t sizeBytes, hipStream_t stream);
 hipError_t hipModuleLaunchKernel(hipFunction_t f, unsigned int gridDimX, unsigned int gridDimY, unsigned int gridDimZ, unsigned int blockDimX, unsigned int blockDimY, unsigned int blockDimZ, unsigned int sharedMemBytes, hipStream_t stream, void** kernelParams, void** extra);
 hipError_t hipDeviceSynchronize(void);
+hipError_t hipMemcpy3D(const struct hipMemcpy3DParms* p);
+hipError_t hipMemcpy3DAsync(const struct hipMemcpy3DParms* p, hipStream_t stream);
 hipError_t hipMemcpy2D(void* dst, size_t dpitch, const void* src, size_t spitch, size_t width, size_t height, hipMemcpyKind kind);
 hipError_t hipMemcpy2DAsync(void* dst, size_t dpitch, const void* src, size_t spitch, size_t width,
                             size_t height, hipMemcpyKind kind, hipStream_t stream);

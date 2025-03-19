@@ -51,9 +51,11 @@ int LoaderHIP::LoadFunctions() {
   LOADFUNC(hipStreamCreate);
   LOADFUNC(hipStreamDestroy);
   LOADFUNC(hipMemcpy2D);
+  LOADFUNC(hipMemcpy3D);
   LOADFUNC(hipHostGetDevicePointer);
   LOADFUNC(hipSetDeviceFlags);
   LOADFUNC(hipMemcpy2DAsync);
+  LOADFUNC(hipMemcpy3DAsync);
   LOADFUNC(hipMemcpyDtoD);
   LOADFUNC(hipMemcpyDtoDAsync);
   LOADFUNC(hipMemcpyHtoD);
