@@ -1479,8 +1479,11 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         if (select_src_dev != -1) { //If it is -1, there is no valid data in any place
             int mem_stream = GetStream(task, mem, true); 
 			DMemType *select_mem = src_mem;
+            int select_dim = select_mem->dim();
 			if (mem->tile_enabled()) {
 				select_mem = mem;
+                if (select_dim < mem->dim())
+                    select_dim = mem->dim();
 			}
 #ifndef HALT_UNTIL
             mem_stream = 0; mem->set_recommended_stream(devno(), mem_stream);
@@ -1515,7 +1518,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
                 // Do Device to Host Transfer
                 if (!platform_obj_->is_data_transfers_disabled())
                     errid_ = src_dev->MemD2H(task, src_mem, select_mem->local_off(), 
-                            select_mem->host_size(), select_mem->dev_size(), select_mem->elem_size(), select_mem->dim(), select_mem->size(), host, "D2H->H2D(1) ");
+                            select_mem->host_size(), select_mem->dev_size(), select_mem->elem_size(), select_dim, select_mem->size(), host, "D2H->H2D(1) ");
 
                 if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
                 d2htime = timer_->Now() - d2h_start;
@@ -1548,7 +1551,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
             mem->arch(this);
             if (!platform_obj_->is_data_transfers_disabled())
                 errid_ = MemH2D(task, mem, select_mem->local_off(), 
-                        select_mem->host_size(), lws, elem_size, select_mem->dim(), size, host, "D2H->H2D(2) ");
+                        select_mem->host_size(), lws, elem_size, select_dim, size, host, "D2H->H2D(2) ");
             double end = timer_->Now();
             _event_debug("   MemD2H -> MemH2D done");
             if (async && platform_obj_->is_event_profile_enabled()) {

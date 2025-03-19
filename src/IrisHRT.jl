@@ -490,6 +490,7 @@ module IrisHRT
                 value = unsafe_load(param_dim_size + i*sizeof(Csize_t)*DMEM_MAX_DIM + d * sizeof(Csize_t)) + 0
                 push!(size_dims, Int64(value))
             end
+            size_dims = remove_trailing_ones2(size_dims)
             size_dims = Tuple(size_dims)
             # Load the pointer to the actual argument
             arg_ptr = unsafe_load(Ptr{Ptr{Cvoid}}(args + i*sizeof(Ptr{Cvoid})))
@@ -2981,6 +2982,11 @@ module IrisHRT
             #println(Core.stdout, " current elems: ", array_elements)
             update_host_size(mem, size(larray))
         end
+    end
+
+    function remove_trailing_ones2(arr::Array{T}) where T
+        idx = findlast(x -> x != 1, arr)
+        return idx === nothing ? Int[] : arr[1:idx]
     end
 
     function get_init_task_dmem(::Type{T}, dims...; task=nothing, dmem=nothing) where T
