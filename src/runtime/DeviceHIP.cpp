@@ -471,6 +471,12 @@ int DeviceHIP::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,
       async = true;
       if (stream_index == DEFAULT_STREAM_INDEX) { async = false; stream_index = 0; }
   }
+  if (off[0] == 0 && off[1] == 0 && off[2] == 0 && 
+          host_sizes[0] == dev_sizes[0] && 
+          host_sizes[1] == dev_sizes[1] && host_sizes[2] == dev_sizes[2]) {
+    // Consider it as a dim = 1
+    dim = 1;
+  }
   if (dim == 2) {
       _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu,%lu,%lu] host_sizes[%lu,%lu,%lu] dev_sizes[%lu,%lu,%lu] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), hipmem, off[0], off[1], off[2], host_sizes[0], host_sizes[1], host_sizes[2], dev_sizes[0], dev_sizes[1], dev_sizes[2], size, host, stream_index);
       size_t host_row_pitch = elem_size * host_sizes[0];

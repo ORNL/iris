@@ -38,15 +38,17 @@ DataMem::DataMem(Platform* platform, void *host_ptr, size_t *host_size, int dim,
     memcpy(host_size_, host_size, sizeof(size_t)*dim_);
     elem_size_ = elem_size;
     set_element_type(element_type);
-    //_printf("2DataMem uid:%lu ptr:%p host_ptr:%p host_size:%ld elem_size:%ld dim:%d size:%ld", uid(), this, host_ptr, host_size[0], elem_size, dim, size);
+    //_printf("2DataMem uid:%lu ptr:%p host_ptr:%p host_size:%ld elem_size:%ld dim:%d size:%ld off:%p", uid(), this, host_ptr, host_size[0], elem_size, dim, size, off_);
+    //_printf("DataMem host_ptr:%p off:[%ld,%ld,%ld]:%p host_size:[%ld,%ld,%ld] dev_size:[%ld,%ld,%ld] elem_size:%ld dim:%d size:%ld", host_ptr, off_[0], off_[1], off_[2], off_, host_size_[0], host_size_[1], host_size_[2], dev_size_[0], dev_size_[1], dev_size_[2], elem_size_, dim_, size_);
 }
 DataMem::DataMem(Platform *platform, void *host_ptr, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim, int element_type) : BaseMem(IRIS_DMEM, platform->ndevs()) 
 {
     size_t size = elem_size;
-    tile_enabled_ = true;
+    size_t hsize = elem_size;
     set_element_type(element_type);
     for(int i=0; i<dim; i++) {
         size = size * dev_size[i];
+        hsize = hsize * host_size[i];
     }
     ASSERT(dim < DMEM_MAX_DIM);
     if (dim == 1) {
@@ -59,11 +61,19 @@ DataMem::DataMem(Platform *platform, void *host_ptr, size_t *off, size_t *host_s
         _trace("DataMem host_ptr:%p off:[%ld,%ld,%ld] host_size:[%ld,%ld,%ld] dev_size:[%ld,%ld,%ld] elem_size:%ld dim:%d size:%ld", host_ptr, off[0], off[1], off[2], host_size[0], host_size[1], host_size[2], dev_size[0], dev_size[1], dev_size[2], elem_size, dim, size);
     }
     Init(platform, host_ptr, size);
+    if (hsize != size)
+        tile_enabled_ = true;
     dim_ = dim;
     memcpy(off_, off, sizeof(size_t)*dim_);
     memcpy(dev_size_, dev_size, sizeof(size_t)*dim_);
     memcpy(host_size_, host_size, sizeof(size_t)*dim_);
     elem_size_ = elem_size;
+    //_printf("DataMem host_ptr:%p off:[%ld,%ld,%ld]:%p host_size:[%ld,%ld,%ld] dev_size:[%ld,%ld,%ld] elem_size:%ld dim:%d size:%ld", host_ptr, off_[0], off_[1], off_[2], off_, host_size_[0], host_size_[1], host_size_[2], dev_size_[0], dev_size_[1], dev_size_[2], elem_size_, dim_, size_);
+}
+void DataMem::Print()
+{
+    _printf("DMEM: host_ptr:%p off:[%ld,%ld,%ld]:%p host_size:[%ld,%ld,%ld] dev_size:[%ld,%ld,%ld] elem_size:%ld dim:%d size:%ld", host_ptr_, off_[0], off_[1], off_[2], off_, host_size_[0], host_size_[1], host_size_[2], dev_size_[0], dev_size_[1], dev_size_[2], elem_size_, dim_, size_);
+    
 }
 DataMem *DataMem::Copy()
 {

@@ -13,6 +13,7 @@ if !haskey(ENV, "IRIS_ARCHS")
     ENV["IRIS_ARCHS"] = "cuda:hip:openmp"
 end
 const ARRAY_TO_DMEM_MAP = Dict{Any, Any}()
+const __iris_dmem_subarray_map = Dict{Any, Any}()
 const __iris_dmem_map = Dict{Any, Any}()
 const __iris_dmem_parallel_reduce_map = Dict{Any, Any}()
 const __iris_dmem_mirrors_map = Dict{Any, Any}()
@@ -1536,6 +1537,37 @@ module IrisHRT
         return ccall(Libdl.dlsym(lib, :iris_task_dmem_flush_out), Int32, (IrisTask, IrisMem), task, mem)
     end
 
+    function is_dmem_in_cache(data)
+        return haskey(Main.__iris_dmem_map, pointer(data))
+    end 
+
+    function get_dmem_from_cache(data)
+        if isa(data, Union{IrisMem, IrisTaskMem})
+            return data
+        else
+            if isa(data, SubArray)
+                offsets = view_offsets_elements(data)
+                dev_size = view_device_size(data)
+                key = (pointer(data), offsets, dev_size)
+                if haskey(Main.__iris_dmem_subarray_map, key)
+                    return Main.__iris_dmem_subarray_map[key]
+                else
+                    d_mem = dmem(data)
+                    Main.__iris_dmem_subarray_map[key] = d_mem
+                    return d_mem
+                end   
+            end 
+            if haskey(Main.__iris_dmem_map, pointer(data))
+                return Main.__iris_dmem_map[pointer(data)]
+            else
+                d_mem = dmem(data)
+                Main.__iris_dmem_map[pointer(data)] = d_mem
+                return data
+            end
+        end 
+
+    end
+
     function flush(task::IrisTask, mem::Union{IrisMem,IrisTaskMem})::Int32
         return iris_task_dmem_flush_out(task, field_dmem(mem))
     end
@@ -1546,18 +1578,24 @@ module IrisHRT
         return iris_task_dmem_flush_out(task, mem)
     end
 
-    function flush(mem; submit=true, wait=true, dependencies=[], policy=IrisHRT.iris_roundrobin)::IrisTask
+    function flush(mem; submit=true, wait=true, dependencies=[], policy=IrisHRT.iris_roundrobin, auto_dependency=true)::IrisTask
         task0 = iris_task_create_struct()
 		iris_task_set_name(task0, "flush")
         if isa(mem, Union{IrisMem,IrisTaskMem})
             IrisHRT.iris_task_dmem_flush_out(task0, field_dmem(mem))
         else
             p_mem = pointer(mem)
-            IrisHRT.iris_task_dmem_flush_out(task0, Main.__iris_dmem_map[p_mem])
+            mem = Main.__iris_dmem_map[p_mem]
+            #println(Core.stdout, "flush", mem.uid)
+            #println(Core.stdout, "flush pointer: ", p_mem)
+            IrisHRT.iris_task_dmem_flush_out(task0, mem)
         end
         dependencies = [x for x in dependencies if x !== nothing]
         if length(dependencies) > 0
             IrisHRT.iris_task_depend(task0, dependencies)
+        end
+        if auto_dependency
+            add_auto_dependencies(task0, [mem], [])
         end
         if submit
             IrisHRT.iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
@@ -2118,7 +2156,18 @@ module IrisHRT
         host_cptr = reinterpret(Ptr{Cvoid}, pointer(host))
         #println(Core.stdout, "Type of element: ", T, " Size:", size(host), " host size:", host_size, " host size type:", typeof(host_size), " Element size:", element_size, " pointer:", pointer(host))
         element_type = get_iris_type(T, iris_pointer)
-        iris_mem = ccall(Libdl.dlsym(lib, :iris_data_mem_create_struct_nd), IrisMem, (Ptr{Cvoid}, Ptr{Csize_t}, Int32, Csize_t, Int32), host_cptr, host_size, dim, element_size, Int32(element_type))
+        iris_mem = nothing
+        if !isa(host, SubArray)
+            iris_mem = ccall(Libdl.dlsym(lib, :iris_data_mem_create_struct_nd), IrisMem, (Ptr{Cvoid}, Ptr{Csize_t}, Int32, Csize_t, Int32), host_cptr, host_size, dim, element_size, Int32(element_type))
+        else
+            offset = view_offsets_elements(host)
+            dev_size = view_device_size(host)
+            host_cptr = reinterpret(Ptr{Cvoid}, pointer(host.parent))
+            host_size = collect(size(host.parent))
+            dim = length(host_size)
+            #println(Core.stdout, " offset:", offset, " dev_size:", dev_size, " host_size:", host_size)
+            iris_mem = ccall(Libdl.dlsym(lib, :iris_data_mem_create_tile_struct_with_type), IrisMem, (Ptr{Cvoid}, Ptr{Csize_t}, Ptr{Csize_t}, Ptr{Csize_t}, Csize_t, Int32, Int32), host_cptr, offset, host_size, dev_size, element_size, dim, Int32(element_type))
+        end
         if isstructtype(T) 
             push_dmem_custom_type(iris_mem.uid, T)
         end
@@ -2298,7 +2347,7 @@ module IrisHRT
         size_ptr = iris_dmem_get_host_size(mem)
         dim = iris_dmem_get_dim(mem)
         dims_array = unsafe_wrap(Array, size_ptr, dim)
-        return Tuple(dims_array)
+        return Tuple(Int.(dims_array))
     end
 
     function element_type(mem::IrisMem)
@@ -3506,6 +3555,40 @@ module IrisHRT
         return policy
     end
 
+    function view_offsets_elements(v::SubArray)
+        p = parent(v)
+        nd = ndims(p)
+        out = ntuple(i -> begin
+            # For each dimension, if the index is a range, take its first element;
+            # if it’s a scalar, use that directly.
+            idx = v.indices[i] isa AbstractRange ? first(v.indices[i]) : v.indices[i]
+            # Compute the offset in terms of number of elements:
+            idx - firstindex(p, i)
+        end, nd)
+        return collect(out)
+    end
+    function view_offsets(v::SubArray)
+        p = parent(v)
+        nd = ndims(p)
+        out = ntuple(i -> begin
+            # If the index is a range, use its first element; if it’s a scalar, use it directly.
+            idx = v.indices[i] isa AbstractRange ? first(v.indices[i]) : v.indices[i]
+            # Compute offset relative to the parent’s first index in this dimension,
+            # multiplied by the parent’s stride for that dimension.
+            (idx - firstindex(p, i)) * stride(p, i)
+        end, nd)
+        return collect(out)
+    end
+
+    function view_device_size(v::SubArray)
+        # Determine the number of dimensions in the parent array.
+        nd = ndims(parent(v))
+        # For each parent's dimension, if the corresponding index in the view is a range,
+        # use its length; if it's a scalar, treat its size as 1.
+        out = ntuple(i -> v.indices[i] isa AbstractRange ? length(v.indices[i]) : 1, nd)
+        return collect(out)
+    end
+
     function copyto!(dst, src; task=nothing, flush=false, wait=true, submit=true, policy=IrisHRT.iris_roundrobin, auto_dependency=true, dependencies=[])
         task0 = task
         if task0 == nothing
@@ -3853,6 +3936,13 @@ module IrisHRT
     end
 
 end  # module Iris
+
+import Base: size
+
+function size(mem::Union{IrisHRT.IrisMem, IrisHRT.IrisTaskMem})
+    dmem = IrisHRT.field_dmem(mem)
+    return IrisHRT.host_size(dmem)
+end
 
 include("Tiling1D.jl")
 include("Tiling2D.jl")

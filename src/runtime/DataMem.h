@@ -174,6 +174,8 @@ public:
   Platform *platform() { return platform_; }
   bool is_pin_memory() { return is_pin_memory_; }
   void set_pin_memory(bool flag=true) { is_pin_memory_ = flag; }
+  bool tile_enabled() { return tile_enabled_; }
+  void Print();
 protected:
   bool host_dirty_flag_;
   bool  *dirty_flag_;

@@ -30,6 +30,9 @@ DeviceOpenMP::DeviceOpenMP(LoaderOpenMP* ld, int devno, int platform) : Device(d
     if (GetProcessorNameQualcomm(arg) == IRIS_SUCCESS) break;
     strcpy(name_, "Unknown CPU"); break;
   }
+#ifndef DISABLE_D2D
+  enableD2D();
+#endif
   free(arg);
   fclose(fd);
   _info("device[%d] platform[%d] device[%s] type[%d]", devno_, platform_, name_, type_);
@@ -195,8 +198,9 @@ int DeviceOpenMP::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_siz
   void* mpmem = mem->arch(this, host);
   if (mem->is_usm(devno())) return IRIS_SUCCESS;
       if (dim == 2 || dim == 3) {
-          _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu,%lu,%lu] host_sizes[%lu,%lu,%lu] dev_sizes[%lu,%lu,%lu] size[%lu] host[%p]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), mpmem, off[0], off[1], off[2], host_sizes[0], host_sizes[1], host_sizes[2], dev_sizes[0], dev_sizes[1], dev_sizes[2], size, host);
+          _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu,%lu,%lu] host_sizes[%lu,%lu,%lu] dev_sizes[%lu,%lu,%lu] size[%lu] host[%p] dim[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), mpmem, off[0], off[1], off[2], host_sizes[0], host_sizes[1], host_sizes[2], dev_sizes[0], dev_sizes[1], dev_sizes[2], size, host, dim);
           Utils::MemCpy3D((uint8_t *)mpmem, (uint8_t *)host, off, dev_sizes, host_sizes, elem_size, true);
+          //iris::PrintArrayLimited<int64_t>((int64_t*)mpmem, size, "After H2D");
 #if 0
           printf("H2D: ");
           float *A = (float *) host;
@@ -211,7 +215,7 @@ int DeviceOpenMP::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_siz
 #endif
       }
       else {
-          _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] elem_size:%ld", tag, devno_, name_, task->uid(), task->name(), mem->uid(), mpmem, off[0], size, host, elem_size);
+          _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] elem_size[%ld] dim[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), mpmem, off[0], size, host, elem_size, dim);
           memcpy((char*) mpmem, (char *)host+off[0]*elem_size, size);
 #if 0
           printf("H2D: ");
@@ -225,12 +229,24 @@ int DeviceOpenMP::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_siz
   return IRIS_SUCCESS;
 }
 
+int DeviceOpenMP::MemD2D(Task *task, Device *src_dev, BaseMem *mem, void *dst, void *src, size_t size) {
+    bool async=false;
+    if (mem->is_usm(devno()) || (dst == src) ) return IRIS_SUCCESS;
+    _trace("D2D dev[%d][%s] task[%ld:%s] mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] size[%lu] q[%d] async:%d", devno_, name_, task->uid(), task->name(), mem->uid(), dst, src, size, 0, async);
+    memcpy((char *)dst, (char *)src, size);
+    return IRIS_SUCCESS;
+}
+
 int DeviceOpenMP::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag) {
   void* mpmem = mem->arch(this, host);
   if (mem->is_usm(devno())) return IRIS_SUCCESS;
       if (dim == 2 || dim == 3) {
-          _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu,%lu,%lu] host_sizes[%lu,%lu,%lu] dev_sizes[%lu,%lu,%lu] size[%lu] host[%p]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), mpmem, off[0], off[1], off[2], host_sizes[0], host_sizes[1], host_sizes[2], dev_sizes[0], dev_sizes[1], dev_sizes[2], size, host);
+          size_t total_size = host_sizes[0] * host_sizes[1] * host_sizes[2];
+          //_printf("Total size: %lu\n", total_size);
+          _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu,%lu,%lu] host_sizes[%lu,%lu,%lu] dev_sizes[%lu,%lu,%lu] size[%lu] host[%p] dim[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), mpmem, off[0], off[1], off[2], host_sizes[0], host_sizes[1], host_sizes[2], dev_sizes[0], dev_sizes[1], dev_sizes[2], size, host, dim);
+          //iris::PrintArrayLimited<int64_t>((int64_t*)host, total_size, "Before D2H", 16);
           Utils::MemCpy3D((uint8_t *)mpmem, (uint8_t *)host, off, dev_sizes, host_sizes, elem_size, false);
+          //iris::PrintArrayLimited<int64_t>((int64_t*)host, total_size, "After D2H", 16);
 #if 0
           printf("D2H: ");
           float *A = (float *) host;
@@ -245,7 +261,7 @@ int DeviceOpenMP::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_siz
 #endif
       }
       else {
-          _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] elem_size:%ld", tag, devno_, name_, task->uid(), task->name(), mem->uid(), mpmem, off[0], size, host, elem_size);
+          _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] elem_size[%ld] dim[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), mpmem, off[0], size, host, elem_size, dim);
           memcpy((char *)host + off[0]*elem_size, (char*) mpmem, size);
 #if 0
           printf("D2H: ");

@@ -633,9 +633,75 @@ void DeviceCUDA::ClearGarbage() {
   ngarbage_ = 0;
 }
 
+void DeviceCUDA::MemCpy3DDirect(CUdeviceptr dev, uint8_t *host, size_t *off, 
+        size_t *dev_sizes, size_t *host_sizes, 
+        size_t elem_size, bool host_2_dev, bool async, int stream_index)
+{
+    CUresult err;
+    cudaMemcpy3DParms copyParams; 
+    copyParams.srcArray = NULL;
+    copyParams.dstArray = NULL;
+    // Source is DEVICE
+    size_t *src_sizes = host_sizes;
+    size_t *dst_sizes = dev_sizes;
+    void *src = host, *dst = (void *)dev;
+
+    if (!host_2_dev) {
+        src_sizes = dev_sizes;
+        dst_sizes = host_sizes;
+        src = (void *)dev;
+        dst = host;
+    }
+    
+    copyParams.srcPtr = { 
+        src,
+        src_sizes[0] * elem_size,  // pitch (row size in bytes)
+        src_sizes[0],              // width in elements
+        src_sizes[1] };             // height
+    //copyParams.srcPtr = srcPtr;
+
+    // Destination is HOST
+    copyParams.dstPtr = { 
+        dst,
+        dst_sizes[0] * elem_size, // pitch (row size in bytes)
+        dst_sizes[0],             // width in elements
+        dst_sizes[1] };            // height
+    //copyParams.dstPtr = dstPtr;
+
+    // Set offsets
+    if (host_2_dev) {
+        copyParams.srcPos = { off[0] * elem_size, off[1], off[2] };
+        copyParams.dstPos = { 0, 0, 0 };
+    }
+    else {
+        copyParams.srcPos = { 0, 0, 0 };
+        copyParams.dstPos = { off[0] * elem_size, off[1], off[2] };
+    }
+
+    // Define the tile size
+    copyParams.extent = { 
+        dev_sizes[0] * elem_size,   // Width in bytes
+        dev_sizes[1],               // Height in elements
+        dev_sizes[2] };   // Depth
+
+    if (host_2_dev) 
+        copyParams.kind = cudaMemcpyHostToDevice;
+    else
+        copyParams.kind = cudaMemcpyDeviceToHost;
+
+    // Initialize copy parameters
+    //cudaMemcpy3DParms copyParams = {NULL, srcPos, srcPtr, NULL, dstPos, dstPtr, copy_ext, kind};
+    //_printf(" copyParams: srcPtr:%p dstPtr:%p api:%p\n", (void *)dev, host, ld_->cudaMemcpy3D);
+    // Perform the copy
+    if (async)
+        err = ld_->cudaMemcpy3DAsync(&copyParams, streams_[stream_index]);
+    else
+        err = ld_->cudaMemcpy3D(&copyParams);
+    _cuerror(err);
+}
 void DeviceCUDA::MemCpy3D(CUdeviceptr dev, uint8_t *host, size_t *off, 
         size_t *dev_sizes, size_t *host_sizes, 
-        size_t elem_size, bool host_2_dev)
+        size_t elem_size, bool host_2_dev, bool async, int stream_index)
 {
     size_t host_row_pitch = elem_size * host_sizes[0];
     size_t host_slice_pitch   = host_sizes[1] * host_row_pitch;
@@ -653,13 +719,19 @@ void DeviceCUDA::MemCpy3D(CUdeviceptr dev, uint8_t *host, size_t *off,
             CUdeviceptr d_dev = z_dev + j * dev_row_pitch;
             if (host_2_dev) {
                 //printf("(%d:%d) Host:%p Dest:%p Size:%d\n", i, j, y_host, d_dev, dev_sizes[0]);
-                CUresult err = ld_->cuMemcpyHtoD(d_dev, y_host, dev_sizes[0]*elem_size);
-                _cuerror(err);
+                if (async) {
+                    CUresult err = ld_->cuMemcpyHtoDAsync(d_dev, y_host, dev_sizes[0]*elem_size, streams_[stream_index]); _cuerror(err);
+                } else {
+                    CUresult err = ld_->cuMemcpyHtoD(d_dev, y_host, dev_sizes[0]*elem_size); _cuerror(err);
+                }
             }
             else {
                 //printf("(%d:%d) Host:%p Dest:%p Size:%d\n", i, j, y_host, d_dev, dev_sizes[0]);
-                CUresult err = ld_->cuMemcpyDtoH(y_host, d_dev, dev_sizes[0]*elem_size);
-                _cuerror(err);
+                if (async) {
+                    CUresult err = ld_->cuMemcpyDtoHAsync(y_host, d_dev, dev_sizes[0]*elem_size, streams_[stream_index]); _cuerror(err);
+                } else {
+                    CUresult err = ld_->cuMemcpyDtoH(y_host, d_dev, dev_sizes[0]*elem_size); _cuerror(err);
+                }
             }
         }
     }
@@ -748,9 +820,15 @@ int DeviceCUDA::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
       async = true;
       if (stream_index == DEFAULT_STREAM_INDEX) { async = false; stream_index = 0; }
   }
+  if (off[0] == 0 && off[1] == 0 && off[2] == 0 && 
+          host_sizes[0] == dev_sizes[0] && 
+          host_sizes[1] == dev_sizes[1] && host_sizes[2] == dev_sizes[2]) {
+    // Consider it as a dim = 1
+    dim = 1;
+  } 
   if (dim == 3) {
       _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu,%lu,%lu] host_sizes[%lu,%lu,%lu] dev_sizes[%lu,%lu,%lu] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, off[0], off[1], off[2], host_sizes[0], host_sizes[1], host_sizes[2], dev_sizes[0], dev_sizes[1], dev_sizes[2], size, host, stream_index);
-      MemCpy3D(cumem, (uint8_t *)host, off, dev_sizes, host_sizes, elem_size, true);
+      MemCpy3DDirect(cumem, (uint8_t *)host, off, dev_sizes, host_sizes, elem_size, true, async, stream_index);
   }
   else if (dim == 2) {
       _debug2("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu,%lu,%lu] host_sizes[%lu,%lu,%lu] dev_sizes[%lu,%lu,%lu] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, off[0], off[1], off[2], host_sizes[0], host_sizes[1], host_sizes[2], dev_sizes[0], dev_sizes[1], dev_sizes[2], size, host, stream_index);
@@ -870,6 +948,12 @@ int DeviceCUDA::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
       async = true;
       if (stream_index == DEFAULT_STREAM_INDEX) { async = false; stream_index = 0; }
   }
+  if (off[0] == 0 && off[1] == 0 && off[2] == 0 && 
+          host_sizes[0] == dev_sizes[0] && 
+          host_sizes[1] == dev_sizes[1] && host_sizes[2] == dev_sizes[2]) {
+    // Consider it as a dim = 1
+    dim = 1;
+  } 
   //printf("D2HRegister callback dev:%d stream:%d\n", devno(), stream_index);
   //CUresult status = ld_->cuStreamQuery(streams_[stream_index]);
   //if (status == CUDA_SUCCESS) {
@@ -879,7 +963,14 @@ int DeviceCUDA::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
   //printf("mem:[%lu] stream_index:%d devno:%d\n", mem->uid(), stream_index, devno());
   if (dim == 3) {
       _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu,%lu,%lu] host_sizes[%lu,%lu,%lu] dev_sizes[%lu,%lu,%lu] size[%lu] host[%p]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, off[0], off[1], off[2], host_sizes[0], host_sizes[1], host_sizes[2], dev_sizes[0], dev_sizes[1], dev_sizes[2], size, host);
-      MemCpy3D(cumem, (uint8_t *)host, off, dev_sizes, host_sizes, elem_size, false);
+      MemCpy3DDirect(cumem, (uint8_t *)host, off, dev_sizes, host_sizes, elem_size, false, async, stream_index);
+      /*void *tmp = malloc(size);
+      err = ld_->cuMemcpyDtoH((uint8_t *)tmp, cumem, size);
+      size_t total_size = host_sizes[0] * host_sizes[1] * host_sizes[2];
+      _printf("Total size: %lu\n", total_size);
+      iris::PrintArrayLimited<int64_t>((int64_t*)host, total_size, "After D2H", 16);
+      iris::PrintArrayLimited<int64_t>((int64_t*)tmp, size/8, "After D2H-tmp", size/8);
+      free(tmp);*/
   }
   else if (dim == 2) {
     _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu,%lu,%lu] host_sizes[%lu,%lu,%lu] dev_sizes[%lu,%lu,%lu] size[%lu] host[%p]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, off[0], off[1], off[2], host_sizes[0], host_sizes[1], host_sizes[2], dev_sizes[0], dev_sizes[1], dev_sizes[2], size, host);

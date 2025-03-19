@@ -70,6 +70,39 @@ enum cudaMemcpyKind
     cudaMemcpyDeviceToDevice      =   3,      /**< Device -> Device */
     cudaMemcpyDefault             =   4       /**< Direction of the transfer is inferred from the pointer values. Requires unified virtual addressing */
 };
+struct cudaExtent {
+  size_t width;
+  size_t height;
+  size_t depth;
+};
+
+struct cudaPos {
+  size_t x;
+  size_t y;
+  size_t z;
+};
+
+struct cudaPitchedPtr
+{
+    void   *ptr;      /**< Pointer to allocated memory */
+    size_t  pitch;    /**< Pitch of allocated memory in bytes */
+    size_t  xsize;    /**< Logical width of allocation in elements */
+    size_t  ysize;    /**< Logical height of allocation in elements */
+};
+
+struct cudaMemcpy3DParms
+{
+    void *srcArray;  /**< Source memory address */
+    struct cudaPos         srcPos;    /**< Source position offset */
+    struct cudaPitchedPtr  srcPtr;    /**< Pitched source memory address */
+
+    void *dstArray;  /**< Destination memory address */
+    struct cudaPos         dstPos;    /**< Destination position offset */
+    struct cudaPitchedPtr  dstPtr;    /**< Pitched destination memory address */
+
+    struct cudaExtent      extent;    /**< Requested memory copy size */
+    enum cudaMemcpyKind    kind;      /**< Type of transfer */
+};
 #ifndef __cplusplus
 typedef enum cudaMemcpyKind cudaMemcpyKind;
 #endif
