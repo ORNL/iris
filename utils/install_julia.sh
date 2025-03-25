@@ -124,7 +124,7 @@ julia -e "using Pkg; Pkg.add(\"Dagger\")"
 julia -e "using Pkg; Pkg.add(\"StatsBase\")"
 julia -e "using Pkg; Pkg.add(\"ProgressMeter\")"
 julia -e "using Pkg; Pkg.add(\"Distributions\")"
-julia -e 'using Pkg; Pkg.add(PackageSpec(url="https://github.com/JuliaORNL/JACC.jl", rev="v0.3.1"))'
+julia -e 'using Pkg; Pkg.add(PackageSpec(url="https://github.com/miniskar/JACC.jl"))'
 julia -e 'using Pkg; Pkg.add(PackageSpec(url="https://github.com/miniskar/LoopVectorization.jl", rev="6aea6fb4effd100df12f73f429a5b09ce7a9ab93"))'
 julia -e 'using Pkg; Pkg.add(PackageSpec(url="https://github.com/JuliaGPU/KernelAbstractions.jl", rev="f198f5c8ab1a60fa265279406ab458cfc29f8239"))'
 #julia -e "using Pkg; Pkg.add(PackageSpec(path=\"./KernelAbstractions.jl\"))" 
@@ -151,7 +151,7 @@ if [ "x$SKIP_SETUP" = "x0" ]; then
         julia-debug -e "using Pkg; Pkg.add(\"StatsBase\")"
         julia-debug -e "using Pkg; Pkg.add(\"ProgressMeter\")"
         julia-debug -e "using Pkg; Pkg.add(\"Distributions\")"
-        julia-debug -e 'using Pkg; Pkg.add(PackageSpec(url="https://github.com/JuliaORNL/JACC.jl", rev="v0.3.1"))'
+        julia-debug -e 'using Pkg; Pkg.add(PackageSpec(url="https://github.com/miniskar/JACC.jl"))'
         julia-debug -e 'using Pkg; Pkg.add(PackageSpec(url="https://github.com/miniskar/LoopVectorization.jl", rev="6aea6fb4effd100df12f73f429a5b09ce7a9ab93"))'
         julia-debug -e 'using Pkg; Pkg.add(PackageSpec(url="https://github.com/JuliaGPU/KernelAbstractions.jl", rev="f198f5c8ab1a60fa265279406ab458cfc29f8239"))'
         for f in `find $JULIA_CACHE_DEBUG_PATH -name "libcuda.so"`; do 
