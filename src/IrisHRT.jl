@@ -1598,7 +1598,7 @@ module IrisHRT
         return haskey(Main.__iris_dmem_map, pointer(data))
     end 
 
-    function get_dmem_from_cache(data, new=false)
+    function get_dmem_from_cache(data, new=false, create=true)
         if isa(data, Union{IrisMem, IrisTaskMem})
             return field_dmem(data)
         else
@@ -1609,17 +1609,25 @@ module IrisHRT
                 if !new && haskey(Main.__iris_dmem_subarray_map, key)
                     return Main.__iris_dmem_subarray_map[key]
                 else
-                    d_mem = iris_data_mem(data)
-                    Main.__iris_dmem_subarray_map[key] = d_mem
-                    return d_mem
+                    if create
+                        d_mem = iris_data_mem(data)
+                        Main.__iris_dmem_subarray_map[key] = d_mem
+                        return d_mem
+                    else
+                        return nothing
+                    end
                 end   
             end 
             if !new && haskey(Main.__iris_dmem_map, pointer(data))
                 return Main.__iris_dmem_map[pointer(data)]
             else
-                d_mem = iris_data_mem(data)
-                Main.__iris_dmem_map[pointer(data)] = d_mem
-                return d_mem
+                if create
+                    d_mem = iris_data_mem(data)
+                    Main.__iris_dmem_map[pointer(data)] = d_mem
+                    return d_mem
+                else
+                    return nothing
+                end
             end
         end 
     end
@@ -2210,10 +2218,12 @@ module IrisHRT
         dim = length(host_size)
         element_size = Int32(sizeof(T))
         host_cptr = reinterpret(Ptr{Cvoid}, pointer(host))
+        host_root = host_cptr
         #println(Core.stdout, "Type of element: ", T, " Size:", size(host), " host size:", host_size, " host size type:", typeof(host_size), " Element size:", element_size, " pointer:", pointer(host))
         element_type = get_iris_type(T, iris_pointer)
         iris_mem = nothing
         if !isa(host, SubArray)
+            #println(Core.stdout, "DMEM: ", host_cptr, ", ", size(host), ", ", element_size)
             iris_mem = ccall(Libdl.dlsym(lib, :iris_data_mem_create_struct_nd), IrisMem, (Ptr{Cvoid}, Ptr{Csize_t}, Int32, Csize_t, Int32), host_cptr, host_size, dim, element_size, Int32(element_type))
         else
             offset = view_offsets_elements(host)
@@ -2221,6 +2231,7 @@ module IrisHRT
             host_cptr = reinterpret(Ptr{Cvoid}, pointer(host.parent))
             host_size = collect(size(host.parent))
             dim = length(host_size)
+            #println(Core.stdout, "DMEM: ", host_root, ", ", size(host), ", ", element_size, ", ", host_root, ", ", dev_size)
             #println(Core.stdout, " offset:", offset, " dev_size:", dev_size, " host_size:", host_size)
             iris_mem = ccall(Libdl.dlsym(lib, :iris_data_mem_create_tile_struct_with_type), IrisMem, (Ptr{Cvoid}, Ptr{Csize_t}, Ptr{Csize_t}, Ptr{Csize_t}, Csize_t, Int32, Int32), host_cptr, offset, host_size, dev_size, element_size, dim, Int32(element_type))
         end
@@ -2238,6 +2249,7 @@ module IrisHRT
         element_size = Int32(sizeof(T))
         ptr = pointer(host)
         host_cptr = reinterpret(Ptr{Cvoid}, ptr)
+        #println(Core.stdout, "DMEM: ", host_root, ", ", size(host), ", ", element_size, ", ", host_root, ", ", dev_size)
         #println(Core.stdout, "Type of element: ", T, " Size:", size(host), " Element size:", element_size)
         element_type = get_iris_type(T, iris_pointer)
         if length(offset) == 0
@@ -2254,8 +2266,24 @@ module IrisHRT
         return iris_data_mem(T, dims...)
     end
 
+    function get_parent(host::AbstractArray{T}) where T
+        if isa(host, SubArray) 
+            return host.parent
+        else
+            return nothing
+        end
+    end
+
     function dmem(host::AbstractArray{T}; new=false) where T
         if new
+            #cached_dmem = get_dmem_from_cache(host, false, false)
+            #if cached_dmem != nothing
+            #    flag = size(cached_dmem) != size(host)
+            #    println(Core.stdout, "DMEM: ", [pointer(host), host_ptr(cached_dmem), host_size(cached_dmem), dev_size(cached_dmem), offsets(cached_dmem), get_parent(host), view_offsets_elements(host), size(host), flag])
+            #    if flag
+            #        call_stack()
+            #    end
+            #end
             return iris_data_mem(host)
         else
             return get_dmem_from_cache(host)
@@ -2263,15 +2291,11 @@ module IrisHRT
     end
 
     function array(::Type{T}, dims...) where T
-        return iris_data_mem(T, dims...)
+        return dmem(T, dims...)
     end
 
     function array(host::AbstractArray{T}; new=false) where T
-        if new
-            return iris_data_mem(host)
-        else
-            return get_dmem_from_cache(host)
-        end
+        return dmem(host)
     end
 
     function dmem_offset(host, dev_size, offset=[]) 
@@ -2393,6 +2417,20 @@ module IrisHRT
         return Tuple(Int.(dims_array))
     end
 
+    function dev_size(mem::IrisMem)
+        size_ptr = iris_dmem_get_dev_size(mem)
+        dim = iris_dmem_get_dim(mem)
+        dims_array = unsafe_wrap(Array, size_ptr, dim)
+        return Tuple(Int.(dims_array))
+    end
+
+    function offsets(mem::IrisMem)
+        size_ptr = iris_dmem_get_offsets(mem)
+        dim = iris_dmem_get_dim(mem)
+        dims_array = unsafe_wrap(Array, size_ptr, dim)
+        return Tuple(Int.(dims_array))
+    end
+
     function element_type(mem::IrisMem)
         return iris_dmem_get_elem_type(mem)
     end
@@ -2418,6 +2456,16 @@ module IrisHRT
 
     function iris_dmem_get_host_size(brs_mem::IrisMem)::Ptr{Csize_t}
         func = Libdl.dlsym(lib, :iris_dmem_get_host_size)
+        return ccall(func, Ptr{Csize_t}, (IrisMem,), brs_mem)
+    end
+
+    function iris_dmem_get_dev_size(brs_mem::IrisMem)::Ptr{Csize_t}
+        func = Libdl.dlsym(lib, :iris_dmem_get_dev_size)
+        return ccall(func, Ptr{Csize_t}, (IrisMem,), brs_mem)
+    end
+
+    function iris_dmem_get_offsets(brs_mem::IrisMem)::Ptr{Csize_t}
+        func = Libdl.dlsym(lib, :iris_dmem_get_offsets)
         return ccall(func, Ptr{Csize_t}, (IrisMem,), brs_mem)
     end
 
@@ -3401,11 +3449,8 @@ module IrisHRT
         end
         push!(d_out, tmp_mem)
         for arg in x[2:end]
-            if isa(arg, AbstractArray)
-                mem = get_dmem_from_cache(array_obj)
-                push!(d_in, mem)
-            elseif isa(arg, IrisMem)
-                mem = arg
+            if isa(arg, Union{AbstractArray, IrisMem, IrisTaskMem})
+                mem = get_dmem_from_cache(arg)
                 push!(d_in, mem)
             end
         end
@@ -3442,76 +3487,6 @@ module IrisHRT
             error_("parallel_reduce with unknown op:", op)
         end
         #Main.__iris_dmem_parallel_reduce_map[out_mem.uid] = out_mem
-        #println(Core.stdout, "Creating task: gws:", N, " iris_op:", iris_op, " func:", f, " init:", init, " out_mem.uid:", out_mem.uid, " args=", x...)
-        task0 = IrisHRT.task(gws=N, task=task, parallel_reduce=true, in=d_in, out=d_out, submit=submit, policy=policy, wait=wait, flush=d_flush, 
-                    auto_dependency=auto_dependency, 
-                    dependencies=dependencies, metadata=metadata, 
-                    kernel=String(Symbol(f)), 
-                    args=Any[out_mem.uid, iris_op, init, x...])
-        #println(Core.stdout, " parallel_for:", task0)
-        return IrisTaskMem(task0, out_mem)
-    end
-    function parallel_reduce_old(N::Union{Int64, NTuple{2, Integer}}, f::Function, x... ; task=nothing, submit=true, flush=false, policy=IrisHRT.iris_roundrobin, wait=true, auto_dependency=true, dependencies=[], metadata=nothing, op=nothing, init=nothing)
-        mem = x[1]
-        d_flush=[]
-        d_out=[]
-        d_in = []
-        first_vector = true
-        out_mem = nothing
-        for arg in x
-            if isa(arg, AbstractArray)
-                mem = get_dmem_from_cache(array_obj)
-                if first_vector
-                    out_mem = IrisHRT.dmem(IrisHRT.get_julia_type(mem), 1)
-                    if flush
-                        push!(d_flush, out_mem)
-                    else
-                        push!(d_out, out_mem)
-                    end
-                    first_vector = false
-                end
-                push!(d_in, mem)
-            elseif isa(arg, IrisMem)
-                mem = arg
-                if first_vector
-                    out_mem = IrisHRT.dmem(IrisHRT.get_julia_type(mem), 1)
-                    if flush
-                        push!(d_flush, out_mem)
-                    else
-                        push!(d_out, out_mem)
-                    end
-                    first_vector = false
-                end
-                push!(d_in, mem)
-            end
-        end
-        if init == nothing
-            out_type = IrisHRT.get_julia_type(out_mem)
-            init = JACC.default_init(out_type, +)
-        end
-        iris_op = IrisHRT.iris_jacc_op_plus
-        if op == nothing
-            iris_op = IrisHRT.iris_jacc_op_plus
-        elseif op == +
-            iris_op = IrisHRT.iris_jacc_op_plus
-        elseif op == -
-            iris_op = IrisHRT.iris_jacc_op_minus
-        elseif op == *
-            iris_op = IrisHRT.iris_jacc_op_mul
-        elseif op == /
-            iris_op = IrisHRT.iris_jacc_op_div
-        elseif op == sum
-            iris_op = IrisHRT.iris_jacc_op_sum
-        elseif op == prod
-            iris_op = IrisHRT.iris_jacc_op_prod
-        elseif op == min 
-            iris_op = IrisHRT.iris_jacc_op_min
-        elseif op == max
-            iris_op = IrisHRT.iris_jacc_op_max
-        else
-            error_("parallel_reduce with unknown op:", op)
-        end
-        Main.__iris_dmem_parallel_reduce_map[out_mem.uid] = out_mem
         #println(Core.stdout, "Creating task: gws:", N, " iris_op:", iris_op, " func:", f, " init:", init, " out_mem.uid:", out_mem.uid, " args=", x...)
         task0 = IrisHRT.task(gws=N, task=task, parallel_reduce=true, in=d_in, out=d_out, submit=submit, policy=policy, wait=wait, flush=d_flush, 
                     auto_dependency=auto_dependency, 
@@ -3605,7 +3580,10 @@ module IrisHRT
         return policy
     end
 
-    function view_offsets_elements(v::SubArray)
+    function view_offsets_elements(v::AbstractArray{T}) where T
+        if !isa(v, SubArray)
+            return [0, 0, 0]
+        end
         p = parent(v)
         nd = ndims(p)
         out = ntuple(i -> begin

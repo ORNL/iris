@@ -290,6 +290,18 @@ size_t *iris_dmem_get_host_size(iris_mem brs_mem) {
     return NULL;
 }
 
+size_t *iris_dmem_get_dev_size(iris_mem brs_mem) {
+    DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (mem != NULL) return mem->dev_size();
+    return NULL;
+}
+
+size_t *iris_dmem_get_offsets(iris_mem brs_mem) {
+    DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (mem != NULL) return mem->local_off();
+    return NULL;
+}
+
 int iris_dmem_set_source(iris_mem brs_mem, iris_mem source_mem)
 {
     BaseMem* mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
