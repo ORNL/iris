@@ -29,8 +29,6 @@ function axpy(i, alpha, x, y)
     @inbounds x[i] += alpha[1, 1] * y[i]
 end
 
-include("dot_product1.jl")
-
 SIZE = 10000000
 #SIZE = 16
 a0 = IrisHRT.ones(Float64, SIZE)
@@ -46,12 +44,6 @@ global cond = one(Float64)
 r_aux = IrisHRT.dmem(Float64, SIZE)
 r_old = IrisHRT.dmem(Float64, SIZE)
 julia_start = time()
-function parallel_reduce(task, SIZE, f, x, y, z; eargs...)
-    IrisHRT.task(in=[x,y], out=[z], gws=[SIZE], host=true,
-            task=task, submit=submit, wait=wait,
-            kernel="gpu_dot", 
-            args=[x, y, z])
-end
 
 async_flag = true
 submit = true
@@ -67,16 +59,13 @@ beta0  = IrisHRT.zeros(Float64, 1)
 beta1  = IrisHRT.zeros(Float64, 1)
 ccond  = IrisHRT.zeros(Float64, 1)
 
-alpha0_buffer = IrisHRT.zeros(Float64, SIZE)
-alpha1_buffer = IrisHRT.zeros(Float64, SIZE)
-beta0_buffer = IrisHRT.zeros(Float64, SIZE)
-beta1_buffer = IrisHRT.zeros(Float64, SIZE)
-ccond_buffer = IrisHRT.zeros(Float64, SIZE)
 iterations_max = 50
 index = 0
 while cond[1, 1] >= 1e-14 && index < iterations_max
     global p
 	global index
+	global alpha0, alpha1, beta0, beta1
+	global ccond
 
     julia_inner_start = time()
     task = nothing 
@@ -86,22 +75,22 @@ while cond[1, 1] >= 1e-14 && index < iterations_max
     IrisHRT.copyto!(r_old, r; task=task, submit=submit, wait=wait)
     IrisHRT.parallel_for(SIZE, matvecmul, a0, a1, a2, p, s, SIZE; task=task, submit=submit, wait=wait)
 
-    IrisHRT.parallel_reduce(SIZE, dot, alpha0, alpha0_buffer, r, r; task=task, submit=submit, wait=wait) 
-    IrisHRT.parallel_reduce(SIZE, dot, alpha1, alpha1_buffer, p, s; task=task, submit=submit, wait=wait)
+    alpha0 = IrisHRT.parallel_reduce(SIZE, dot, r, r; result=alpha0, task=task, submit=submit, wait=wait) 
+    alpha1 = IrisHRT.parallel_reduce(SIZE, dot, p, s; result=alpha1, task=task, submit=submit, wait=wait)
 
     /(alpha, alpha0, alpha1; task=task, submit=submit, wait=wait)
     *(negative_alpha, alpha, -1.0; task=task, submit=submit, wait=wait)
 
     IrisHRT.parallel_for(SIZE, axpy, negative_alpha, r, s; task=task, submit=submit, wait=wait)
     IrisHRT.parallel_for(SIZE, axpy, alpha, x, p; task=task, submit=submit, wait=wait)
-    IrisHRT.parallel_reduce(SIZE, dot, beta1, beta1_buffer, r_old, r_old; task=task, submit=submit, wait=wait)
-    IrisHRT.parallel_reduce(SIZE, dot, beta0, beta0_buffer, r, r; task=task, submit=submit, wait=wait)
+    beta1 = IrisHRT.parallel_reduce(SIZE, dot, r_old, r_old; result=beta1, task=task, submit=submit, wait=wait)
+    beta0 = IrisHRT.parallel_reduce(SIZE, dot, r, r; result=beta0, task=task, submit=submit, wait=wait)
     /(beta, beta0, beta1; task=task, submit=submit, wait=wait)
 
     IrisHRT.copyto!(r_aux, r; task=task, submit=submit, wait=wait)
 
     IrisHRT.parallel_for(SIZE, axpy, beta, r_aux, p; task=task, submit=submit, wait=wait)
-    IrisHRT.parallel_reduce(SIZE, dot, ccond, ccond_buffer, r, r; task=task, submit=submit, wait=wait)
+    ccond = IrisHRT.parallel_reduce(SIZE, dot, r, r; result=ccond, task=task, submit=submit, wait=wait)
     IrisHRT.copyto!(p, r_aux; task=task, submit=submit, wait=wait)
     if task != nothing
         IrisHRT.submit(task)
