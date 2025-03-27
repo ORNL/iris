@@ -23,6 +23,12 @@ IRIS is a unified framework across multiple programming platforms. IRIS enables 
 
 .. toctree::
    :maxdepth: 2
+   :caption: Features
+
+   features.rst
+
+.. toctree::
+   :maxdepth: 2
    :caption: IRIS API Specification
 
    api.rst

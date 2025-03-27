@@ -35,8 +35,8 @@ A summary of Development Versioning Specification is shown below.
 - Task Graph policy
 - Changelog added to the repo to track major changes.
 - Xilinx FPGA kernel acceleration support
-- FFI based kernel calls (No need of boiler plate. To be enabled using ENABLE_FFI)
-- Added multi-purpose HostInterface for traditional boiler-plate based host kernel calls and FFI based calls
+- FFI-based kernel calls (No need of boiler plate. To be enabled using ENABLE_FFI)
+- Added multi-purpose HostInterface for traditional boiler-plate based host kernel calls and FFI-based calls
 - Generalized Loader for loading shared libraries of kernels
 - Support for UniSYCL (In external repository)
 
