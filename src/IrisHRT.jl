@@ -573,7 +573,7 @@ module IrisHRT
                     error("Unsupported type", typeof(current_type))
                 end
             else # Assuming 3 is for Char
-                #println(Core.stdout, "I is a pointer:", i)
+                #println(Core.stdout, "I is a pointer:", i, " arg_ptr:", arg_ptr)
                 push!(dev_ptr_index, i+1-start_index)
                 if current_type == Int(iris_float)
                     arg_ptr = Ptr{Cfloat}(arg_ptr)
@@ -733,7 +733,7 @@ module IrisHRT
             #GC.gc()
             #iris_println("dev:$devno")
             func_name = unsafe_string(kernel_name)
-            #iris_println("Calling OpenMP kernel")
+            #println(Core.stdout, "Calling OpenMP kernel")
             if julia_kernel_type == iris_julia_kernel_abstraction 
                 call_openmp_kernel_ka(julia_kernel_type, func_name, j_threads, j_blocks, julia_args, b_async_flag)
             elseif (julia_kernel_type & 0xFFFF) == iris_julia_jacc
@@ -1232,10 +1232,13 @@ module IrisHRT
         if julia_kernel_type == iris_julia_jacc_parallel_for
             JACC.parallel_for(backend, gws, func, args_tuple...)
         else
+            #println(Core.stdout, "------op:", typeof(args_tuple[1]), " -- ", typeof(args_tuple[2]))
+            #println(Core.stdout, "data: ", args_tuple[1])
+            #println(Core.stdout, "------op:", typeof(args_tuple[1]), " -- ", typeof(args_tuple[2]))
             op = get_jacc_op(args_tuple[1])
             init, out_mem, buffer = args_tuple[2:4]
-            out = [JACC.parallel_reduce(backend, gws, op, func, args_tuple[5:end]...; init)]
-            copy_host(out_dmem, out)
+            out_mem[1] = JACC.parallel_reduce(backend, gws, op, func, args_tuple[5:end]...; init)
+            #copy_host(out_dmem, out)
         end
     end
     function call_openmp_kernel_ka(julia_kernel_type::Any, func_name::String, threads::Any, blocks::Any, args::Any, async_flag::Bool=false)
@@ -3439,9 +3442,9 @@ module IrisHRT
         if tmp_mem == nothing
             if !haskey(Main.__iris_dmem_parallel_reduce_map, map_key)
                 tmp_mem = dmem(IrisHRT.get_julia_type(first_x), host_size(first_x))
-                Main.__iris_dmem_parallel_reduce_map[map_key] = tmp_mem
+                Main.__iris_dmem_parallel_reduce_map[map_key] = (tmp_mem, out_mem)
             else
-                tmp_mem = Main.__iris_dmem_parallel_reduce_map[map_key]
+                tmp_mem, prev_mem = Main.__iris_dmem_parallel_reduce_map[map_key]
             end
         else
             tmp_mem = field_dmem(tmp_mem)

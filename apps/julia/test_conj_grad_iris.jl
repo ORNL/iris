@@ -5,7 +5,7 @@
 # so other things like  pre-conditioner can be necessary,
 # but we can focus on this part only for the performance analysis,
 # without considering these constraints.
-include(ENV["IRIS"] * "/include/iris/IrisHRT.jl")
+include(ENV["IRIS"] * "/src/IrisHRT.jl")
 using .IrisHRT
 
 IrisHRT.init()

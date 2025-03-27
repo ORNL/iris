@@ -1,4 +1,4 @@
-include(ENV["IRIS"] * "/include/iris/IrisHRT.jl")
+include(ENV["IRIS"] * "/src/IrisHRT.jl")
 using .IrisHRT
 
 IrisHRT.init()
