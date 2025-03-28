@@ -24,10 +24,9 @@ if [ "x$JULIA_NIGHTLY" = "x1" ]; then
     mkdir -p $JULIA_NIGHTLY_DIR
     tar -xvzf julia-latest-linux-x86_64.tar.gz --strip-components=1 -C ${JULIA_NIGHTLY_DIR}
     cd $JULIA_NIGHTLY_DIR
-    echo "export JULIA_INSTALL_DIR=$CWD/$JULIA_NIGHTLY_DIR" > setup.source
+    echo "export JULIA=$CWD/$JULIA_NIGHTLY_DIR" > setup.source
     echo "export JULIA_CACHE_NAME=$JULIA_CACHE_NAME" >> setup.source
     echo "export JULIA_CACHE_PATH=$JULIA_CACHE_PATH" >> setup.source
-    echo 'export JULIA=$JULIA_INSTALL_DIR' >> setup.source
     echo 'export JULIA_DEPOT_PATH=$HOME/$JULIA_CACHE_NAME:$JULIA_CACHE_PATH/' >> setup.source
     echo 'export PATH=$JULIA/bin:$PATH' >> setup.source
     echo 'export LD_LIBRARY_PATH=$JULIA/lib:$LD_LIBRARY_PATH' >> setup.source
@@ -61,11 +60,10 @@ if [ "x$SKIP_SETUP" = "x0" ]; then
         #ln -s $JULIA_INSTALL_DIR/CUDA.jl .
         #ln -s $JULIA_INSTALL_DIR/KernelAbstractions.jl .
         make -j
-        echo "export JULIA_INSTALL_DIR=$JULIA_INSTALL_DIR" > setup.source
+        echo "export JULIA=$JULIA_INSTALL_DIR/$JULIA_DIR/usr" > setup.source
         echo "export JULIA_DIR=$JULIA_DIR" > setup.source
         echo "export JULIA_CACHE_NAME=$JULIA_CACHE_NAME" >> setup.source
         echo "export JULIA_CACHE_PATH=$JULIA_CACHE_PATH" >> setup.source
-        echo 'export JULIA=$JULIA_INSTALL_DIR/$JULIA_DIR/usr' >> setup.source
         echo 'export JULIA_DEPOT_PATH=$HOME/$JULIA_CACHE_NAME:$JULIA_CACHE_PATH/' >> setup.source
         echo 'export PATH=$JULIA/bin:$PATH' >> setup.source
         echo 'export LD_LIBRARY_PATH=$JULIA/lib:$LD_LIBRARY_PATH' >> setup.source
@@ -81,7 +79,7 @@ if [ "x$SKIP_SETUP" = "x0" ]; then
             #ln -s $JULIA_INSTALL_DIR/KernelAbstractions.jl .
             make cleanall
             make -j debug
-            echo "export JULIA_INSTALL_DIR=$JULIA_INSTALL_DIR" > setup.source
+			echo "export JULIA=$JULIA_INSTALL_DIR/$JULIA_DEBUG_DIR/usr" > setup.source
             echo "export JULIA_DEBUG_DIR=$JULIA_DEBUG_DIR" > setup.source
             echo "export JULIA_CACHE_NAME=$JULIA_CACHE_DEBUG_NAME" >> setup.source
             echo "export JULIA_CACHE_PATH=$JULIA_CACHE_DEBUG_PATH" >> setup.source

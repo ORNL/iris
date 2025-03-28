@@ -3633,9 +3633,13 @@ module IrisHRT
         end
         if !isa(src, Union{IrisMem, IrisTaskMem})
             src = get_dmem_from_cache(src)
+        else
+            src = field_dmem(src)
         end
         if !isa(dst, Union{IrisMem, IrisTaskMem})
             dst = get_dmem_from_cache(dst)
+        else
+            dst = field_dmem(dst)
         end
         n_dependencies = IrisHRT.IrisTask[x for x in dependencies if x !== nothing]
         if length(n_dependencies) > 0
@@ -3659,12 +3663,7 @@ module IrisHRT
         return task0
     end
 
-    function copy(src; task=nothing, flush=false, wait=true, submit=true, policy=IrisHRT.iris_roundrobin, auto_dependency=true, dependencies=[])
-        task0 = task
-        if task0 == nothing
-            task0 = iris_task_create_struct()
-            iris_task_set_name(task0, "copyto")
-        end
+    function copy(src; eargs...)
         if !isa(src, Union{IrisMem, IrisTaskMem})
             src = get_dmem_from_cache(src)
         else
@@ -3673,25 +3672,7 @@ module IrisHRT
         dst = iris_data_mem_copy(src)
         host = valid_host(dst)
         Main.__iris_dmem_map[pointer(host)] = dst
-        n_dependencies = IrisHRT.IrisTask[x for x in dependencies if x !== nothing]
-        if length(n_dependencies) > 0
-            IrisHRT.iris_task_depend(task0, n_dependencies)
-        end
-        if auto_dependency
-            add_auto_dependencies(task0, [src], [dst])
-        end
-        IrisHRT.iris_task_dmem2dmem(task0, src, dst)
-        if flush
-            IrisHRT.iris_task_dmem_flush_out(task0, dst)
-        end
-        policy = IrisHRT.set_julia_policy(task0, policy)
-        Main.__iris_dmem_2_task[dst] = task0
-        if submit
-            #println(Core.stdout, "IRIS task submit wait:", wait)
-            IrisHRT.iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
-        else
-            IrisHRT.iris_task_set_policy(task0, Int32(policy))
-        end
+        task0 = copyto!(src, dst; eargs...)
         return IrisTaskMem(task0, dst)
     end
 
@@ -3902,27 +3883,27 @@ import Base: size
 import Base: axes
 
 function size(mem::Union{IrisHRT.IrisMem, IrisHRT.IrisTaskMem})
-	dmem = IrisHRT.field_dmem(mem)
-	return IrisHRT.host_size(dmem)
+    dmem = IrisHRT.field_dmem(mem)
+    return IrisHRT.host_size(dmem)
 end
 
 function size(mem::Union{IrisHRT.IrisMem, IrisHRT.IrisTaskMem}, index::Int64)
-	dmem = IrisHRT.field_dmem(mem)
-	return IrisHRT.host_size(dmem)[index]
+    dmem = IrisHRT.field_dmem(mem)
+    return IrisHRT.host_size(dmem)[index]
 end
 
 function axes(mem::Union{IrisHRT.IrisMem, IrisHRT.IrisTaskMem})
     dmem = IrisHRT.field_dmem(mem)
     size = collect(IrisHRT.host_size(dmem))
-	axes_from_size = tuple((Base.OneTo(n) for n in size)...)
-	return axes_from_size
+    axes_from_size = tuple((Base.OneTo(n) for n in size)...)
+    return axes_from_size
 end
 
 function axes(mem::Union{IrisHRT.IrisMem, IrisHRT.IrisTaskMem}, index::Int64)
     dmem = IrisHRT.field_dmem(mem)
-	size = collect(IrisHRT.host_size(dmem))
-	axes_from_size = tuple((Base.OneTo(n) for n in size)...)
-	return axes_from_size[index]
+    size = collect(IrisHRT.host_size(dmem))
+    axes_from_size = tuple((Base.OneTo(n) for n in size)...)
+    return axes_from_size[index]
 end
 
 include("Tiling1D.jl")
