@@ -14,6 +14,7 @@ IRIS is a unified framework across multiple programming platforms. IRIS enables 
    :caption: Installation
 
    installation.rst
+   frontend-openacc.rst   
 
 .. toctree::
    :maxdepth: 2
