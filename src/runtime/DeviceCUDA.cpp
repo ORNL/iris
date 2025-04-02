@@ -309,6 +309,10 @@ int DeviceCUDA::Compile(char* src, const char *out, const char *flags) {
       flags = default_comp_flags;
   if (out == NULL) 
       out = kernel_path();
+  if (!Utils::Exist(src)) {
+    _warning(" src file:%s not exist for nvcc compilation\n", src);
+    return IRIS_WARNING;
+  }
   sprintf(cmd, "nvcc %s -o %s %s > /dev/null 2>&1", src, out, flags);
   //printf("Cmd: %s\n", cmd);
   if (system(cmd) != EXIT_SUCCESS) {

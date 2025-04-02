@@ -3520,7 +3520,7 @@ module IrisHRT
         map_key = (first_x.uid, out_mem.uid)
         if tmp_mem == nothing
             if !haskey(Main.__iris_dmem_parallel_reduce_map, map_key)
-                tmp_mem = dmem(IrisHRT.get_julia_type(first_x), host_size(first_x))
+                tmp_mem = dmem(IrisHRT.get_julia_type(first_x), dev_size(first_x))
                 Main.__iris_dmem_parallel_reduce_map[map_key] = (tmp_mem, out_mem)
             else
                 tmp_mem, prev_mem = Main.__iris_dmem_parallel_reduce_map[map_key]
