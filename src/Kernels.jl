@@ -2,6 +2,10 @@ import Base: +
 import Base: -
 import Base: /
 import Base: *
+import Base: sum
+import Base: prod
+import Base: maximum
+import Base: minimum
 function __iris_jacc_log(i, Y, X)
     @inbounds Y[i] = Base.log(X[i])
 end
@@ -573,5 +577,15 @@ end
 function log(out::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, b::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, a::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}; eargs...)
     return __arith_kernel_v_v("log", IrisHRT.field_dmem(b), IrisHRT.field_dmem(a); result=IrisHRT.field_dmem(out), eargs...)
 end
-
-
+function sum(x::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}; eargs...)
+    return IrisHRT.parallel_reduce(+, IrisHRT.field_dmem(x); eargs...)
+end
+function prod(x::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}; eargs...)
+    return IrisHRT.parallel_reduce(*, IrisHRT.field_dmem(x); eargs...)
+end
+function maximum(x::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}; eargs...)
+    return IrisHRT.parallel_reduce(max, IrisHRT.field_dmem(x); eargs...)
+end
+function minimum(x::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}; eargs...)
+    return IrisHRT.parallel_reduce(min, IrisHRT.field_dmem(x); eargs...)
+end
