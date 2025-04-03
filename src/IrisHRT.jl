@@ -3515,7 +3515,7 @@ module IrisHRT
         if out_mem == nothing
             out_mem = dmem(IrisHRT.get_julia_type(first_x), 1)
         else
-            out_mem = field_dmem(out_mem)
+            out_mem = get_dmem_from_cache(out_mem)
         end
         map_key = (first_x.uid, out_mem.uid)
         if tmp_mem == nothing
@@ -3581,20 +3581,20 @@ module IrisHRT
             return "__iris_jacc_max"
         end
     end
-    function parallel_reduce(N::Integer, op::Callable, f::Union{Callable,String}, x...; init=nothing)
-        return parallel_reduce_core(N, f, x...; op=op, init=init)
+    function parallel_reduce(N::Integer, op::Callable, f::Union{Callable,String}, x...; eargs...)
+        return parallel_reduce_core(N, f, x...; op=op, eargs...)
     end
-    function parallel_reduce(N::Integer, f::Union{Callable,String}, x...; init=nothing)
-        return parallel_reduce_core(N, f, x...; init=init)
+    function parallel_reduce(N::Integer, f::Union{Callable,String}, x...; eargs...)
+        return parallel_reduce_core(N, f, x...; eargs...)
     end
     function parallel_reduce(
             (M, N)::NTuple{2, Integer}, op::Callable, f::Union{Callable,String}, x...;
-            init=nothing)
+            eargs...)
         return parallel_reduce_core((M, N), f, x...; op=op, init=init)
     end
     function parallel_reduce(
             (M, N)::NTuple{2, Integer}, f::Union{Callable,String}, x...;
-            init=nothing)
+            eargs...)
         return parallel_reduce_core((M, N), f, x...; init=init)
     end
     function parallel_reduce(op::Base.Callable, A::AbstractArray; args...)
