@@ -329,6 +329,8 @@ module IrisHRT
     export task_policy_handler
     export convert_args
 
+	include("IrisUtils.jl")
+	include("IrisLib.jl")
     function convert_args(args_type::Ptr{Cint}, args::Ptr{Ptr{Cvoid}}, nparams::Cint, start_index::Cint)
         julia_args = []
         return julia_args
@@ -365,77 +367,6 @@ module IrisHRT
         return hip_ctx_conv
     end
 
-    function get_jacc_init(op, out_mem)
-        out_type = IrisHRT.get_julia_type(out_mem)
-        init = zero(out_type)
-        if op == +
-            init = JACC.default_init(out_type, op)
-        elseif op == -
-            init = zero(out_type)
-        elseif op == *
-            init = one(out_type)
-        elseif op == /
-            init = one(out_type)
-        elseif op == sum
-            init = zero(out_type)
-        elseif op == prod
-            init = one(out_type)
-        elseif op == max
-            init = out_type(-Inf)
-        elseif op == min
-            init = out_type(Inf)
-        end
-        return init
-    end
-
-    function convert_jacc_op_2_iris_op(op)
-        iris_op = IrisHRT.iris_jacc_op_plus
-        if op == nothing
-            iris_op = IrisHRT.iris_jacc_op_plus
-        elseif op == +
-            iris_op = IrisHRT.iris_jacc_op_plus
-        elseif op == -
-            iris_op = IrisHRT.iris_jacc_op_minus
-        elseif op == *
-            iris_op = IrisHRT.iris_jacc_op_mul
-        elseif op == /
-            iris_op = IrisHRT.iris_jacc_op_div
-        elseif op == sum
-            iris_op = IrisHRT.iris_jacc_op_sum
-        elseif op == prod
-            iris_op = IrisHRT.iris_jacc_op_prod
-        elseif op == min 
-            iris_op = IrisHRT.iris_jacc_op_min
-        elseif op == max
-            iris_op = IrisHRT.iris_jacc_op_max
-        else
-            error_("parallel_reduce_core with unknown op:", op)
-        end
-        return iris_op
-    end
-
-    function get_jacc_op(iris_op)
-        if iris_op == iris_jacc_op_plus 
-            op = +
-        elseif iris_op == iris_jacc_op_minus
-            op = -
-        elseif iris_op == iris_jacc_op_mul  
-            op = *
-        elseif iris_op == iris_jacc_op_div  
-            op = /
-        elseif iris_op == iris_jacc_op_sum  
-            op = Base.sum
-        elseif iris_op == iris_jacc_op_prod 
-            op = Base.prod
-        elseif iris_op == iris_jacc_op_min  
-            op = Base.min 
-        elseif iris_op == iris_jacc_op_max  
-            op = Base.max
-        else
-            op = +
-        end
-        return op
-    end
     function preserve_cuda_iris_stream(devno, cu_stream_ptr, cu_ctx)
         iris_stream_cuda = Main.IRISCuStream(cu_stream_ptr, true, cu_ctx)
         #println(Core.stdout, "CUDA devno: ", devno)
@@ -479,88 +410,6 @@ module IrisHRT
         out = policy_fn(brs_task, j_devs, Int(ndevs), j_out_devs)
         #println(" JPolicy Fn: ", policy_fn, " out:", out)
         return Int32(out)
-    end
-
-    function parse_function(s::AbstractString)
-        parts = split(s, ":")
-        if length(parts) == 3
-            include_file, mod, func = parts
-            if mod == ""
-                mod = nothing
-            end
-        elseif length(parts) == 2
-            # Assume missing include-file; first part is the module
-            include_file = nothing
-            mod, func = parts
-        elseif length(parts) == 1
-            include_file = nothing
-            mod = nothing
-            func = parts[1]
-        else
-            error("Unexpected format: too many dots")
-        end
-        return (include_file, mod, func)
-    end
-    function getFunction(func_name)
-        (include_file, mod, func) = parse_function(func_name)
-        func_s = nothing
-
-        if include_file != nothing
-            include(include_file * ".jl")
-            if mod != nothing
-                # Check if the module is defined in the current module
-                if isdefined(@__MODULE__, Symbol(mod))
-                    mod_s = getfield(@__MODULE__, Symbol(mod))
-                    # Check if the function exists in the module
-                    if isdefined(mod_s, Symbol(func))
-                        func_s = getfield(mod_s, Symbol(func))
-                    end
-                end
-            else
-                # No module provided, so check in the current module
-                if isdefined(@__MODULE__, Symbol(func))
-                    func_s = getfield(@__MODULE__, Symbol(func))
-                end
-            end
-        elseif mod != nothing
-            # Check if the module is defined in Main
-            if isdefined(Main, Symbol(mod))
-                mod_s = getfield(Main, Symbol(mod))
-                # Check if the function exists in the module
-                if isdefined(mod_s, Symbol(func))
-                    func_s = getfield(mod_s, Symbol(func))
-                end
-            end
-        else
-            # Check directly in Main for the function
-            if isdefined(Main, Symbol(func))
-                func_s = getfield(Main, Symbol(func))
-            end
-        end
-        return func_s
-    end
-
-    function getFunction_old(func_name)
-        (include_file, mod, func) = parse_function(func_name)
-        func_s = nothing
-        if include_file != nothing
-            #println(Core.stdout, "Including file:", include_file)
-            include(include_file * ".jl")
-            if mod != nothing
-                mod_s = getfield(@__MODULE__, Symbol(mod))
-                func_s = getfield(mod_s, Symbol(func))
-            else
-                #println(Core.stdout, "Get symbol: ", func)
-                func_s = getfield(@__MODULE__, Symbol(func))
-                #println(Core.stdout, "Get symbol: ", func_s)
-            end
-        elseif mod != nothing
-            mod_s = getfield(Main, Symbol(mod))
-            func_s = getfield(mod_s, Symbol(func))
-        else
-            func_s = getfield(Main, Symbol(func))
-        end
-        return func_s
     end
 
     function kernel_julia_wrapper(task_id::Culong, julia_kernel_type::Cint, target::Cint, devno::Cint, ctx::Ptr{Cvoid}, async_flag_int::Cint, stream_index::Cint, stream::Ptr{Ptr{Cvoid}}, nstreams::Cint, args_type::Ptr{Cint}, args::Ptr{Ptr{Cvoid}}, param_size::Ptr{Csize_t}, param_dim_size::Ptr{Csize_t}, nparams::Cint, c_gws::Ptr{Csize_t}, c_blocks::Ptr{Csize_t}, c_threads::Ptr{Csize_t}, dim::Cint, kernel_name::Ptr{Cchar})::Cint
@@ -818,94 +667,6 @@ module IrisHRT
         end
     end
 
-    function cuda_reinterpret(task_id, param_id, arg_ptr::Any, current_type::Any)
-        if current_type == Int(iris_float)
-            arg_ptr = reinterpret(MyCUDA.CuPtr{Float32}, arg_ptr)
-        elseif current_type == Int(iris_double)
-            arg_ptr = reinterpret(MyCUDA.CuPtr{Float64}, arg_ptr)
-        elseif current_type == Int(iris_int64)
-            arg_ptr = reinterpret(MyCUDA.CuPtr{Int64}, arg_ptr)
-        elseif current_type == Int(iris_int32)
-            arg_ptr = reinterpret(MyCUDA.CuPtr{Int32}, arg_ptr)
-        elseif current_type == Int(iris_int16)
-            arg_ptr = reinterpret(MyCUDA.CuPtr{Int16}, arg_ptr)
-        elseif current_type == Int(iris_int8)
-            arg_ptr = reinterpret(MyCUDA.CuPtr{Int8}, arg_ptr)
-        elseif current_type == Int(iris_char)
-            arg_ptr = reinterpret(MyCUDA.CuPtr{Char}, arg_ptr)
-        elseif current_type == Int(iris_uint64)
-            arg_ptr = reinterpret(MyCUDA.CuPtr{UInt64}, arg_ptr)
-        elseif current_type == Int(iris_uint32)
-            arg_ptr = reinterpret(MyCUDA.CuPtr{UInt32}, arg_ptr)
-        elseif current_type == Int(iris_uint16)
-            arg_ptr = reinterpret(MyCUDA.CuPtr{UInt16}, arg_ptr)
-        elseif current_type == Int(iris_uint8)
-            arg_ptr = reinterpret(MyCUDA.CuPtr{UInt8}, arg_ptr)
-        elseif current_type == Int(iris_bool)
-            arg_ptr = reinterpret(MyCUDA.CuPtr{Bool}, arg_ptr)
-        elseif current_type == Int(iris_custom_type)
-            data_type = get_custom_type(task_id, param_id)
-            #println(Core.stdout, "dtype2: ", data_type)
-            arg_ptr = reinterpret(MyCUDA.CuPtr{data_type}, arg_ptr)
-        else
-            iris_println("[Julia-IrisHRT-Error][cuda_reinterpret] Unknown type")
-        end
-        return arg_ptr
-    end
-
-    function ptr_reinterpret(task_id, param_id, mem_custom, arg_ptr::Any, current_type::Any)
-        if current_type == Int(iris_float)
-            arg_ptr = reinterpret(Ptr{Float32}, arg_ptr)
-        elseif current_type == Int(iris_double)
-            arg_ptr = reinterpret(Ptr{Float64}, arg_ptr)
-        elseif current_type == Int(iris_int64)
-            arg_ptr = reinterpret(Ptr{Int64}, arg_ptr)
-        elseif current_type == Int(iris_int32)
-            arg_ptr = reinterpret(Ptr{Int32}, arg_ptr)
-        elseif current_type == Int(iris_int16)
-            arg_ptr = reinterpret(Ptr{Int16}, arg_ptr)
-        elseif current_type == Int(iris_int8)
-            arg_ptr = reinterpret(Ptr{Int8}, arg_ptr)
-        elseif current_type == Int(iris_char)
-            arg_ptr = reinterpret(Ptr{Char}, arg_ptr)
-        elseif current_type == Int(iris_uint64)
-            arg_ptr = reinterpret(Ptr{UInt64}, arg_ptr)
-        elseif current_type == Int(iris_uint32)
-            arg_ptr = reinterpret(Ptr{UInt32}, arg_ptr)
-        elseif current_type == Int(iris_uint16)
-            arg_ptr = reinterpret(Ptr{UInt16}, arg_ptr)
-        elseif current_type == Int(iris_uint8)
-            arg_ptr = reinterpret(Ptr{UInt8}, arg_ptr)
-        elseif current_type == Int(iris_bool)
-            arg_ptr = reinterpret(Ptr{Bool}, arg_ptr)
-        elseif current_type == Int(iris_custom_type) && mem_custom == 0
-            data_type = get_custom_type(task_id, param_id)
-            #println(Core.stdout, "dtype: ", data_type)
-            arg_ptr = reinterpret(Ptr{data_type}, arg_ptr)
-        elseif current_type == Int(iris_custom_type) && mem_custom == 1
-            data_type = Main.__iris_dmem_custom_type[task_id] 
-            #println(Core.stdout, "dtype1: ", data_type)
-            arg_ptr = reinterpret(Ptr{data_type}, arg_ptr)
-        else
-            iris_println("[Julia-IrisHRT-Error][ptr_reinterpret] Unknown type")
-        end
-        return arg_ptr
-    end
-
-    function iris_print_array(data::Ptr{T}, N::Int) where T
-        str = []
-        arr = unsafe_wrap(Array, data, N)
-        for i in 1:N
-            value = string.(arr[i])
-            #iris_println("Data Value: $value")
-            push!(str, value)
-        end
-        str_data = "[" * join(str, ",") * "]"
-        iris_println("Data: $str_data")
-    end
-    function vec_string(arr::AbstractArray, sep::String = ", ")
-        return "[" * join(string.(arr), sep) * "]"
-    end
 
     # Bind functions from the IRIS library using ccall
     function iris_init(sync)::Int32
@@ -916,9 +677,9 @@ module IrisHRT
         global stored_func_ptr = func_ptr
         use_julia_threads = false
         if use_julia_threads
-            flag = ccall(Libdl.dlsym(lib, :iris_julia_init), Int32, (Ptr{Cvoid}, Int32), func_ptr, Int32(1))
-            flag = flag & ccall(Libdl.dlsym(lib, :iris_init), Int32, (Ref{Int32}, Ref{Ptr{Ptr{Cchar}}}, Int32), Int32(1), C_NULL, Int32(sync))
-            flag = flag & ccall(Libdl.dlsym(lib, :iris_julia_policy_init), Int32, (Ptr{Cvoid},), policy_ptr)
+			flag = iris_julia_init(func_ptr, 1)
+			flag = flag & iris_init_c(sync)
+			flag = flag & iris_julia_policy_init(policy_ptr)
             ndevs = iris_ndevices()
             t = @spawn begin 
                 iris_init_scheduler(0)
@@ -946,9 +707,9 @@ module IrisHRT
             flag = flag & iris_init_devices_synchronize(1)
             #println(Core.stdout, "Julia: Completed device synchronize")
         else
-            flag = ccall(Libdl.dlsym(lib, :iris_julia_init), Int32, (Ptr{Cvoid}, Int32), func_ptr, Int32(0))
-            flag = flag & ccall(Libdl.dlsym(lib, :iris_init), Int32, (Ref{Int32}, Ref{Ptr{Ptr{Cchar}}}, Int32), Int32(1), C_NULL, Int32(sync))
-            flag = flag & ccall(Libdl.dlsym(lib, :iris_julia_policy_init), Int32, (Ptr{Cvoid},), policy_ptr)
+			flag = iris_julia_init(func_ptr, 0)
+			flag = flag & iris_init_c(sync)
+			flag = flag & iris_julia_policy_init(policy_ptr)
         end
         ndevs = iris_ndevices()
         for i in 1:ndevs
@@ -974,24 +735,81 @@ module IrisHRT
         return status
     end
 
-    function iris_init_scheduler(use_pthread::Int)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_init_scheduler), Int32, (Int32,), Int32(use_pthread))
-    end
-    function iris_init_worker(dev::Int)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_init_worker), Int32, (Int32,), Int32(dev))
-    end
-    function iris_start_worker(dev::Int, use_pthread::Int)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_start_worker), Int32, (Int32, Int32), Int32(dev), Int32(use_pthread))
-    end
-    function iris_init_device(dev::Int)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_init_device), Int32, (Int32,), Int32(dev))
-    end
-    function iris_init_devices(sync::Int)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_init_devices), Int32, (Int32,), Int32(sync))
-    end
-    function iris_init_devices_synchronize(sync::Int)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_init_devices_synchronize), Int32, (Int32,), Int32(sync))
-    end
+	function cuda_reinterpret(task_id, param_id, arg_ptr::Any, current_type::Any)
+		if current_type == Int(iris_float)
+			arg_ptr = reinterpret(MyCUDA.CuPtr{Float32}, arg_ptr)
+		elseif current_type == Int(iris_double)
+			arg_ptr = reinterpret(MyCUDA.CuPtr{Float64}, arg_ptr)
+		elseif current_type == Int(iris_int64)
+			arg_ptr = reinterpret(MyCUDA.CuPtr{Int64}, arg_ptr)
+		elseif current_type == Int(iris_int32)
+			arg_ptr = reinterpret(MyCUDA.CuPtr{Int32}, arg_ptr)
+		elseif current_type == Int(iris_int16)
+			arg_ptr = reinterpret(MyCUDA.CuPtr{Int16}, arg_ptr)
+		elseif current_type == Int(iris_int8)
+			arg_ptr = reinterpret(MyCUDA.CuPtr{Int8}, arg_ptr)
+		elseif current_type == Int(iris_char)
+			arg_ptr = reinterpret(MyCUDA.CuPtr{Char}, arg_ptr)
+		elseif current_type == Int(iris_uint64)
+			arg_ptr = reinterpret(MyCUDA.CuPtr{UInt64}, arg_ptr)
+		elseif current_type == Int(iris_uint32)
+			arg_ptr = reinterpret(MyCUDA.CuPtr{UInt32}, arg_ptr)
+		elseif current_type == Int(iris_uint16)
+			arg_ptr = reinterpret(MyCUDA.CuPtr{UInt16}, arg_ptr)
+		elseif current_type == Int(iris_uint8)
+			arg_ptr = reinterpret(MyCUDA.CuPtr{UInt8}, arg_ptr)
+		elseif current_type == Int(iris_bool)
+			arg_ptr = reinterpret(MyCUDA.CuPtr{Bool}, arg_ptr)
+		elseif current_type == Int(iris_custom_type)
+			data_type = get_custom_type(task_id, param_id)
+			#println(Core.stdout, "dtype2: ", data_type)
+			arg_ptr = reinterpret(MyCUDA.CuPtr{data_type}, arg_ptr)
+		else
+			iris_println("[Julia-IrisHRT-Error][cuda_reinterpret] Unknown type")
+		end
+		return arg_ptr
+	end
+
+	function ptr_reinterpret(task_id, param_id, mem_custom, arg_ptr::Any, current_type::Any)
+		if current_type == Int(iris_float)
+			arg_ptr = reinterpret(Ptr{Float32}, arg_ptr)
+		elseif current_type == Int(iris_double)
+			arg_ptr = reinterpret(Ptr{Float64}, arg_ptr)
+		elseif current_type == Int(iris_int64)
+			arg_ptr = reinterpret(Ptr{Int64}, arg_ptr)
+		elseif current_type == Int(iris_int32)
+			arg_ptr = reinterpret(Ptr{Int32}, arg_ptr)
+		elseif current_type == Int(iris_int16)
+			arg_ptr = reinterpret(Ptr{Int16}, arg_ptr)
+		elseif current_type == Int(iris_int8)
+			arg_ptr = reinterpret(Ptr{Int8}, arg_ptr)
+		elseif current_type == Int(iris_char)
+			arg_ptr = reinterpret(Ptr{Char}, arg_ptr)
+		elseif current_type == Int(iris_uint64)
+			arg_ptr = reinterpret(Ptr{UInt64}, arg_ptr)
+		elseif current_type == Int(iris_uint32)
+			arg_ptr = reinterpret(Ptr{UInt32}, arg_ptr)
+		elseif current_type == Int(iris_uint16)
+			arg_ptr = reinterpret(Ptr{UInt16}, arg_ptr)
+		elseif current_type == Int(iris_uint8)
+			arg_ptr = reinterpret(Ptr{UInt8}, arg_ptr)
+		elseif current_type == Int(iris_bool)
+			arg_ptr = reinterpret(Ptr{Bool}, arg_ptr)
+		elseif current_type == Int(iris_custom_type) && mem_custom == 0
+			data_type = get_custom_type(task_id, param_id)
+			#println(Core.stdout, "dtype: ", data_type)
+			arg_ptr = reinterpret(Ptr{data_type}, arg_ptr)
+		elseif current_type == Int(iris_custom_type) && mem_custom == 1
+			data_type = Main.__iris_dmem_custom_type[task_id] 
+			#println(Core.stdout, "dtype1: ", data_type)
+			arg_ptr = reinterpret(Ptr{data_type}, arg_ptr)
+		else
+			iris_println("[Julia-IrisHRT-Error][ptr_reinterpret] Unknown type")
+		end
+		return arg_ptr
+	end
+
+
     # Call Julia kernel 
     # CUDA kernel wrapper (KernelAbstraction kernels)
     function call_cuda_kernel_jacc(julia_kernel_type::Any, devno::Any, func_name::String, j_gws::Any, threads::Any, blocks::Any, ctx::Any, stream::Any, args::Any, async_flag::Bool=false)
@@ -1024,17 +842,14 @@ module IrisHRT
         else
             spec.stream = JACC.default_stream(MyCUDA.CUDAKernels.CUDABackend)
         end
+		gws = Tuple(remove_trailing_ones2(collect(gws)))
+		if length(gws)==1
+			gws = gws[1]
+		end
         backend = MyCUDA.CUDAKernels.CUDABackend(false, false)
         if julia_kernel_type == iris_julia_jacc_parallel_for
-            if length(gws)==1
-                gws = gws[1]
-            end
             JACC.parallel_for(spec, gws, func, args_tuple...)
         elseif julia_kernel_type == iris_julia_jacc_parallel_reduce
-            gws = Tuple(remove_trailing_ones2(collect(gws)))
-            if length(gws) == 1
-                gws = gws[1]
-            end
             op = get_jacc_op(args_tuple[1])
             init, out_mem, buffer = args_tuple[2:4]
             spec.ret = out_mem
@@ -1175,16 +990,13 @@ module IrisHRT
             spec.stream = nothing #JACC.default_stream(MyAMDGPU.ROCBackend)
         end
         backend = MyAMDGPU.ROCBackend()
+		gws = Tuple(remove_trailing_ones2(collect(gws)))
+		if length(gws)==1
+			gws = gws[1]
+		end
         if julia_kernel_type == iris_julia_jacc_parallel_for
-            if length(gws)==1
-                gws = gws[1]
-            end
             JACC.parallel_for(spec, gws, func, args_tuple...)
         else
-            gws = Tuple(remove_trailing_ones2(collect(gws)))
-            if length(gws) == 1
-                gws = gws[1]
-            end
             op = get_jacc_op(args_tuple[1])
             init, out_mem, buffer = args_tuple[2:4]
             spec.ret = out_mem
@@ -1304,19 +1116,16 @@ module IrisHRT
         backend = JACC.ThreadsImpl.ThreadsBackend()
         nthreads = Threads.nthreads()
         num_cpus = Sys.CPU_THREADS
+		gws = Tuple(remove_trailing_ones2(collect(gws)))
+		if length(gws) == 1
+			gws = gws[1]
+		end
         if julia_kernel_type == iris_julia_jacc_parallel_for
-            if length(gws)==1
-                gws = gws[1]
-            end
             JACC.parallel_for(backend, gws, func, args_tuple...)
         else
             #println(Core.stdout, "------op:", typeof(args_tuple[1]), " -- ", typeof(args_tuple[2]))
             #println(Core.stdout, "data: ", args_tuple[1])
             #println(Core.stdout, "------op:", typeof(args_tuple[1]), " -- ", typeof(args_tuple[2]))
-            gws = Tuple(remove_trailing_ones2(collect(gws)))
-            if length(gws) == 1
-                gws = gws[1]
-            end
             op = get_jacc_op(args_tuple[1])
             init, out_mem, buffer = args_tuple[2:4]
             out_mem[1] = JACC.parallel_reduce(backend, gws, op, func, args_tuple[5:end]...; init)
@@ -1338,19 +1147,6 @@ module IrisHRT
         #AMDGPU.synchronize()
     end
 
-    function iris_vendor_kernel_launch(dev::Any, kernel::Ptr{Cvoid}, gridx::Any, gridy::Any, gridz::Any, blockx::Any, blocky::Any, blockz::Any, shared_mem_bytes::Any, stream::Ptr{Cvoid}, params::Ptr{Ptr{Cvoid}})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_vendor_kernel_launch), Int32, (Int32, Ptr{Cvoid}, Int32, Int32, Int32, Int32, Int32, Int32, Int32, Ptr{Cvoid}, Ptr{Ptr{Cvoid}}), Int32(dev), kernel, Int32(gridx), Int32(gridy), Int32(gridz), Int32(blockx), Int32(blocky), Int32(blockz), Int32(shared_mem_bytes), stream, params)
-    end
-
-
-    function iris_error_count()::Int32
-        return ccall(Libdl.dlsym(lib, :iris_error_count), Int32, ())
-    end
-
-    function iris_finalize()::Int32
-        return ccall(Libdl.dlsym(lib, :iris_finalize), Int32, ())
-    end
-
     function finalize(;gc_leave=true)::Int32
         if gc_leave
             IrisHRT.gc_leave(gc_state)
@@ -1359,223 +1155,23 @@ module IrisHRT
     end
 
     function synchronize()::Int32
-        return ccall(Libdl.dlsym(lib, :iris_synchronize), Int32, ())
-    end
-
-    function iris_synchronize()::Int32
-        return ccall(Libdl.dlsym(lib, :iris_synchronize), Int32, ())
-    end
-
-    function iris_task_retain(task::IrisTask, flag::Int32)::Cvoid
-        ccall(Libdl.dlsym(lib, :iris_task_retain), Cvoid, (IrisTask, Int32), task, flag)
+		return iris_synchronize()
     end
 
 	function retain(task::Union{IrisTask,IrisTaskMem}, flag=1)
 		iris_task_retain(field_task(task), Int32(flag))
 	end
 
-    function iris_task_set_julia_policy(task::IrisTask, name::String)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_task_set_julia_policy), Int32, (IrisTask, Ptr{Cchar}), task, pointer(name))
-    end
-
-    function iris_println(data::String)::Cvoid
-        return ccall(Libdl.dlsym(lib, :iris_println), Cvoid , (Ptr{Cchar},), pointer(data))
-    end
-
-    function iris_env_set(key::String, value::String)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_env_set), Int32, (Ptr{Cchar}, Ptr{Cchar}), pointer(key), pointer(value))
-    end
-
-    function iris_env_get(key::String, value::String, vallen::Ref{Csize_t})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_env_get), Int32, (Ptr{Cchar}, Ref{Ptr{Cchar}}, Ref{Csize_t}), pointer(key), pointer(value), vallen)
-    end
-
-    function iris_overview()::Cvoid
-        ccall(Libdl.dlsym(lib, :iris_overview), Cvoid, ())
-    end
-
-    function iris_platform_count(nplatforms::Ref{Int32})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_platform_count), Int32, (Ref{Int32},), nplatforms)
-    end
-
-    function iris_platform_info(platform::Int32, param::Int32, value::Ptr{Cvoid}, size::Ref{Csize_t})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_platform_info), Int32, (Int32, Int32, Ptr{Cvoid}, Ref{Csize_t}), platform, param, value, size)
-    end
-
-    function iris_set_stream_policy(policy::StreamPolicy)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_set_stream_policy), Int32, (StreamPolicy,), policy)
-    end
-
-    function iris_set_asynchronous(flag::Int32)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_set_asynchronous), Int32, (Int32,), flag)
-    end
-
-    function iris_set_shared_memory_model(flag::Int32)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_set_shared_memory_model), Int32, (Int32,), flag)
-    end
-
-    function iris_mem_enable_usm(mem::IrisMem, type::DeviceModel)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_mem_enable_usm), Int32, (IrisMem, DeviceModel), mem, type)
-    end
-
-    function iris_mem_disable_usm(mem::IrisMem, type::DeviceModel)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_mem_disable_usm), Int32, (IrisMem, DeviceModel), mem, type)
-    end
-
-    function iris_set_enable_profiler(flag::Int32)::Cvoid
-        ccall(Libdl.dlsym(lib, :iris_set_enable_profiler), Cvoid, (Int32,), flag)
-    end
-
-    function iris_device_count(ndevs::Ref{Int32})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_device_count), Int32, (Ref{Int32},), ndevs)
-    end
-
-    function iris_ndevices()::Int32
-        return ccall(Libdl.dlsym(lib, :iris_ndevices), Int32, ())
-    end
-
     function ndevs()::Int
         return Int(iris_ndevices())
-    end
-
-    function iris_set_nstreams(n::Int32)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_set_nstreams), Int32, (Int32,), n)
-    end
-
-    function iris_set_ncopy_streams(n::Int32)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_set_ncopy_streams), Int32, (Int32,), n)
-    end
-
-    function iris_nstreams()::Int32
-        return ccall(Libdl.dlsym(lib, :iris_nstreams), Int32, ())
-    end
-
-    function iris_ncopy_streams()::Int32
-        return ccall(Libdl.dlsym(lib, :iris_ncopy_streams), Int32, ())
-    end
-
-    function iris_device_info(device::Int32, param::Int32, value::Ptr{Cvoid}, size::Ref{Csize_t})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_device_info), Int32, (Int32, Int32, Ptr{Cvoid}, Ref{Csize_t}), device, param, value, size)
-    end
-
-    function iris_device_set_default(device::Int32)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_device_set_default), Int32, (Int32,), device)
-    end
-
-    function iris_device_get_default(device::Ref{Int32})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_device_get_default), Int32, (Ref{Int32},), device)
-    end
-
-    function iris_device_synchronize(ndevs::Int32, devices::Ptr{Int32})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_device_synchronize), Int32, (Int32, Ptr{Int32}), ndevs, devices)
-    end
-
-    #function iris_register_policy(lib::Ptr{Cchar}, name::Ptr{Cchar}, params::Ptr{Cvoid})::Int32
-    #    return ccall(Libdl.dlsym(lib, :iris_register_policy), Int32, (Ptr{Cchar}, Ptr{Cchar}, Ptr{Cvoid}), lib, name, params)
-    #end
-
-    function iris_register_command(tag::Int32, device::Int32, handler::Ptr{Cvoid})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_register_command), Int32, (Int32, Int32, Ptr{Cvoid}), tag, device, handler)
-    end
-
-    function iris_register_hooks_task(pre::Ptr{Cvoid}, post::Ptr{Cvoid})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_register_hooks_task), Int32, (Ptr{Cvoid}, Ptr{Cvoid}), pre, post)
-    end
-
-    function iris_register_hooks_command(pre::Ptr{Cvoid}, post::Ptr{Cvoid})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_register_hooks_command), Int32, (Ptr{Cvoid}, Ptr{Cvoid}), pre, post)
-    end
-
-    function iris_kernel_create_struct(name::String)::IrisKernel
-        return ccall(Libdl.dlsym(lib, :iris_kernel_create_struct), IrisKernel, (Ptr{Cchar},), pointer(name))
-    end
-
-    function iris_kernel_create(name::String, kernel::Ptr{IrisKernel})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_kernel_create), Int32, (Ptr{Cchar}, Ptr{IrisKernel}), pointer(name), kernel)
-    end
-
-    function iris_kernel_get(name::String, kernel::Ptr{IrisKernel})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_kernel_get), Int32, (Ptr{Cchar}, Ptr{IrisKernel}), pointer(name), kernel)
-    end
-
-    function iris_kernel_setarg(kernel::IrisKernel, idx::Int32, size::Csize_t, value::Ptr{Cvoid})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_kernel_setarg), Int32, (IrisKernel, Int32, Csize_t, Ptr{Cvoid}), kernel, idx, size, value)
-    end
-
-    function iris_kernel_setmem(kernel::IrisKernel, idx::Int32, mem::IrisMem, mode::Csize_t)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_kernel_setmem), Int32, (IrisKernel, Int32, IrisMem, Csize_t), kernel, idx, mem, mode)
-    end
-
-    function iris_kernel_setmem_off(kernel::IrisKernel, idx::Int32, mem::IrisMem, off::Csize_t, mode::Csize_t)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_kernel_setmem_off), Int32, (IrisKernel, Int32, IrisMem, Csize_t, Csize_t), kernel, idx, mem, off, mode)
-    end
-
-    function iris_kernel_release(kernel::IrisKernel)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_kernel_release), Int32, (IrisKernel,), kernel)
-    end
-
-    function iris_task_create(task::Ptr{IrisTask})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_task_create), Int32, (Ptr{IrisTask},), task)
-    end
-
-    function iris_task_create_struct()::IrisTask
-        return ccall(Libdl.dlsym(lib, :iris_task_create_struct), IrisTask, ())
     end
 
     function empty_task()
         return iris_task_create_struct()
     end
 
-    function iris_task_create_perm(task::Ptr{IrisTask})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_task_create_perm), Int32, (Ptr{IrisTask},), task)
-    end
-
-    function iris_task_create_name(name::String, task::Ptr{IrisTask})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_task_create_name), Int32, (Ptr{Cchar}, Ptr{IrisTask}), pointer(name), task)
-    end
-
-    function iris_task_depend(task::IrisTask, ntasks::Int32, tasks::Ptr{IrisTask})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_task_depend), Int32, (IrisTask, Int32, Ptr{IrisTask}), task, ntasks, tasks)
-    end
-
     function iris_task_depend(task::IrisTask, tasks::Vector{IrisTask})::Int32
         return iris_task_depend(task, Int32(length(tasks)), pointer(tasks)) 
-    end
-
-    function iris_task_malloc(task::IrisTask, mem::IrisMem)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_task_malloc), Int32, (IrisTask, IrisMem), task, mem)
-    end
-
-    function iris_task_cmd_reset_mem(task::IrisTask, mem::IrisMem, reset::UInt8)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_task_cmd_reset_mem), Int32, (IrisTask, IrisMem, UInt8), task, mem, reset)
-    end
-
-    function iris_task_set_stream_policy(task::IrisTask, policy::StreamPolicy)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_task_set_stream_policy), Int32, (IrisTask, StreamPolicy), task, policy)
-    end
-
-    function iris_task_disable_asynchronous(task::IrisTask)::Cvoid
-        ccall(Libdl.dlsym(lib, :iris_task_disable_asynchronous), Cvoid, (IrisTask,), task)
-    end
-
-    function iris_task_get_metadata_all(task::IrisTask)::Ptr{Int32}
-        return ccall(Libdl.dlsym(lib, :iris_task_get_metadata_all), Ptr{Int32}, (IrisTask, ), task)
-    end
-
-    function iris_task_set_metadata_all(task::IrisTask, metadata::Ptr{Int32}, n)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_task_set_metadata_all), Int32, (IrisTask, Ptr{Int32}, Int32), task, metadata, Int32(n))
-    end
-
-    function iris_task_get_metadata(task::IrisTask, index::Int)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_task_get_metadata), Int32, (IrisTask, Int32), task, Int32(index))
-    end
-
-    function iris_task_set_metadata(task::IrisTask, index::Int, metadata::Int)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_task_set_metadata), Int32, (IrisTask, Int32, Int32), task, Int32(index), Int32(metadata))
-    end
-
-    function iris_task_get_metadata_count(task::IrisTask)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_task_get_metadata_count), Int32, (IrisTask, ), task)
     end
 
     function metadata(task::IrisTask, index=nothing)
@@ -1607,54 +1203,6 @@ module IrisHRT
             error("Unknown metadata type for task: ", task, " metadata:", metadata, " metadata type: ", typeof(metadata))
             return IrisHRT.IRIS_ERROR
         end
-    end
-
-    function iris_task_h2broadcast(task::IrisTask, mem::IrisMem, off::Csize_t, size::Csize_t, host::Ptr{Cvoid})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_task_h2broadcast), Int32, (IrisTask, IrisMem, Csize_t, Csize_t, Ptr{Cvoid}), task, mem, off, size, host)
-    end
-
-    function iris_task_h2broadcast_offsets(task::IrisTask, mem::IrisMem, off::Ptr{Csize_t}, host_sizes::Ptr{Csize_t}, dev_sizes::Ptr{Csize_t}, elem_size::Csize_t, dim::Int32, host::Ptr{Cvoid})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_task_h2broadcast_offsets), Int32, (IrisTask, IrisMem, Ptr{Csize_t}, Ptr{Csize_t}, Ptr{Csize_t}, Csize_t, Int32, Ptr{Cvoid}), task, mem, off, host_sizes, dev_sizes, elem_size, dim, host)
-    end
-
-    function iris_task_h2broadcast_full(task::IrisTask, mem::IrisMem, host::Ptr{Cvoid})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_task_h2broadcast_full), Int32, (IrisTask, IrisMem, Ptr{Cvoid}), task, mem, host)
-    end
-
-    function iris_task_d2d(task::IrisTask, mem::IrisMem, off::Csize_t, size::Csize_t, host::Ptr{Cvoid}, src_dev::Int32)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_task_d2d), Int32, (IrisTask, IrisMem, Csize_t, Csize_t, Ptr{Cvoid}, Int32), task, mem, off, size, host, src_dev)
-    end
-
-    function iris_task_dmem2dmem(task::IrisTask, src_mem::IrisMem, dst_mem::IrisMem)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_task_dmem2dmem), Int32, (IrisTask, IrisMem, IrisMem), task, src_mem, dst_mem)
-    end
-
-    function iris_task_dmem_d2h(task::IrisTask, mem::IrisMem)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_task_dmem_d2h), Int32, (IrisTask, IrisMem), task, mem)
-    end
-
-    function iris_task_dmem_h2d(task::IrisTask, mem::IrisMem)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_task_dmem_h2d), Int32, (IrisTask, IrisMem), task, mem)
-    end
-
-    function iris_task_h2d(task::IrisTask, mem::IrisMem, off::Csize_t, size::Csize_t, host::Ptr{Cvoid})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_task_h2d), Int32, (IrisTask, IrisMem, Csize_t, Csize_t, Ptr{Cvoid}), task, mem, off, size, host)
-    end
-
-    function iris_task_h2d_offsets(task::IrisTask, mem::IrisMem, off::Ptr{Csize_t}, host_sizes::Ptr{Csize_t}, dev_sizes::Ptr{Csize_t}, elem_size::Csize_t, dim::Int32, host::Ptr{Cvoid})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_task_h2d_offsets), Int32, (IrisTask, IrisMem, Ptr{Csize_t}, Ptr{Csize_t}, Ptr{Csize_t}, Csize_t, Int32, Ptr{Cvoid}), task, mem, off, host_sizes, dev_sizes, elem_size, dim, host)
-    end
-
-    function iris_task_d2h(task::IrisTask, mem::IrisMem, off::Csize_t, size::Csize_t, host::Ptr{Cvoid})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_task_d2h), Int32, (IrisTask, IrisMem, Csize_t, Csize_t, Ptr{Cvoid}), task, mem, off, size, host)
-    end
-
-    function iris_task_d2h_offsets(task::IrisTask, mem::IrisMem, off::Ptr{Csize_t}, host_sizes::Ptr{Csize_t}, dev_sizes::Ptr{Csize_t}, elem_size::Csize_t, dim::Int32, host::Ptr{Cvoid})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_task_d2h_offsets), Int32, (IrisTask, IrisMem, Ptr{Csize_t}, Ptr{Csize_t}, Ptr{Csize_t}, Csize_t, Int32, Ptr{Cvoid}), task, mem, off, host_sizes, dev_sizes, elem_size, dim, host)
-    end
-
-    function iris_task_dmem_flush_out(task::IrisTask, mem::IrisMem)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_task_dmem_flush_out), Int32, (IrisTask, IrisMem), task, mem)
     end
 
     function is_dmem_in_cache(data)
@@ -1754,18 +1302,6 @@ module IrisHRT
         end
     end
 
-    function iris_task_h2d_full(task::IrisTask, mem::IrisMem, host::Ptr{Cvoid})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_task_h2d_full), Int32, (IrisTask, IrisMem, Ptr{Cvoid}), task, mem, host)
-    end
-
-    function iris_task_d2h_full(task::IrisTask, mem::IrisMem, host::Ptr{Cvoid})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_task_d2h_full), Int32, (IrisTask, IrisMem, Ptr{Cvoid}), task, mem, host)
-    end
-
-    function iris_task_kernel_object(task::IrisTask, kernel::IrisKernel, dim::Int32, off::Ptr{Csize_t}, gws::Ptr{Csize_t}, lws::Ptr{Csize_t})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_task_kernel_object), Int32, (IrisTask, IrisKernel, Int32, Ptr{Csize_t}, Ptr{Csize_t}, Ptr{Csize_t}), task, kernel, dim, off, gws, lws)
-    end
-
     function print_element_info(vec::Vector{Any})
         for element in vec
             println("Type: ", typeof(element), " Value:", element)
@@ -1816,7 +1352,7 @@ module IrisHRT
         #println("Params: ", params)
         #println("NParams : $nparams")
         task = iris_task_create_struct()
-        ccall(Libdl.dlsym(lib, :iris_task_enable_julia_interface), Int32, (IrisTask, Int32), task, Int32(IrisHRT.iris_julia_native))
+		iris_task_enable_julia_interface(task, IrisHRT.iris_julia_native)
         off_c = Ptr{UInt64}(C_NULL)
         if length(off) != 0
             off_c = reinterpret(Ptr{UInt64}, pointer(off))
@@ -1830,7 +1366,7 @@ module IrisHRT
             lws_c = reinterpret(Ptr{UInt64}, pointer(lws))
         end
         c_params = reinterpret(Ptr{Ptr{Cvoid}}, pointer(params))
-        ccall(Libdl.dlsym(lib, :iris_task_kernel), Int32, (IrisTask, Ptr{Cchar}, Int32, Ptr{Csize_t}, Ptr{Csize_t}, Ptr{Csize_t}, Int32, Ptr{Ptr{Cvoid}}, Ptr{Int32}), task, pointer(kernel), Int32(dim), off_c, gws_c, lws_c, Int32(nparams), c_params, pointer(params_info))
+        iris_task_kernel(task, kernel, dim, off_c, gws_c, lws_c, nparams, c_params, pointer(params_info))
         return task
     end
 
@@ -1849,47 +1385,8 @@ module IrisHRT
             lws_c = reinterpret(Ptr{UInt64}, pointer(lws))
         end
         c_params = reinterpret(Ptr{Ptr{Cvoid}}, pointer(params))
-        ccall(Libdl.dlsym(lib, :iris_task_kernel), Int32, (IrisTask, Ptr{Cchar}, Int32, Ptr{Csize_t}, Ptr{Csize_t}, Ptr{Csize_t}, Int32, Ptr{Ptr{Cvoid}}, Ptr{Int32}), task, pointer(kernel), Int32(dim), off_c, gws_c, lws_c, Int32(nparams), c_params, pointer(params_info))
+		iris_task_kernel(task, kernel, dim, off_c, gws_c, lws_c, nparams, c_params, pointer(params_info))
         return task
-    end
-
-    function iris_task_kernel(task::IrisTask, kernel::String, dim::Int32, off::Ptr{Csize_t}, gws::Ptr{Csize_t}, lws::Ptr{Csize_t}, nparams::Int32, params::Ptr{Ptr{Cvoid}}, params_info::Ptr{Int32})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_task_kernel), Int32, (IrisTask, Ptr{Cchar}, Int32, Ptr{Csize_t}, Ptr{Csize_t}, Ptr{Csize_t}, Int32, Ptr{Ptr{Cvoid}}, Ptr{Int32}), task, pointer(kernel), dim, off, gws, lws, nparams, params, params_info)
-    end
-
-    function iris_task_kernel_v2(task::IrisTask, kernel::String, dim::Int32, off::Ptr{Csize_t}, gws::Ptr{Csize_t}, lws::Ptr{Csize_t}, nparams::Int32, params::Ptr{Ptr{Cvoid}}, params_off::Ptr{Csize_t}, params_info::Ptr{Int32})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_task_kernel_v2), Int32, (IrisTask, Ptr{Cchar}, Int32, Ptr{Csize_t}, Ptr{Csize_t}, Ptr{Csize_t}, Int32, Ptr{Ptr{Cvoid}}, Ptr{Csize_t}, Ptr{Int32}), task, pointer(kernel), dim, off, gws, lws, nparams, params, params_off, params_info)
-    end
-
-    function iris_task_kernel_v3(task::IrisTask, kernel::String, dim::Int32, off::Ptr{Csize_t}, gws::Ptr{Csize_t}, lws::Ptr{Csize_t}, nparams::Int32, params::Ptr{Ptr{Cvoid}}, params_off::Ptr{Csize_t}, params_info::Ptr{Int32}, memranges::Ptr{Csize_t})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_task_kernel_v3), Int32, (IrisTask, Ptr{Cchar}, Int32, Ptr{Csize_t}, Ptr{Csize_t}, Ptr{Csize_t}, Int32, Ptr{Ptr{Cvoid}}, Ptr{Csize_t}, Ptr{Int32}, Ptr{Csize_t}), task, pointer(kernel), dim, off, gws, lws, nparams, params, params_off, params_info, memranges)
-    end
-
-    function iris_task_kernel_selector(task::IrisTask, func::IrisSelectorKernel, params::Ptr{Cvoid}, params_size::Csize_t)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_task_kernel_selector), Int32, (IrisTask, IrisSelectorKernel, Ptr{Cvoid}, Csize_t), task, func, params, params_size)
-    end
-
-    function iris_task_kernel_launch_disabled(task::IrisTask, flag::Int64)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_task_kernel_launch_disabled), Int32, (IrisTask, Int32), task, Int32(flag))
-    end
-
-    #function iris_task_python_host(task::IrisTask, func::IrisHostPythonTask, params_id::Int64)::Int32
-    #    return ccall(Libdl.dlsym(lib, :iris_task_python_host), Int32, (IrisTask, IrisHostPythonTask, Int64), task, func, params_id)
-    #end
-
-    function iris_task_host(task::IrisTask, func::IrisHostTask, params::Ptr{Cvoid})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_task_host), Int32, (IrisTask, IrisHostTask, Ptr{Cvoid}), task, func, params)
-    end
-
-    function iris_task_custom(task::IrisTask, tag::Int32, params::Ptr{Cvoid}, params_size::Csize_t)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_task_custom), Int32, (IrisTask, Int32, Ptr{Cvoid}, Csize_t), task, tag, params, params_size)
-    end
-
-    function iris_task_submit(task::IrisTask, device_policy::Int64, opt::Ptr{Int8}, sync::Int64)::Int32
-        #gc_state = @ccall(jl_gc_safe_enter()::Int8)
-        status = ccall(Libdl.dlsym(lib, :iris_task_submit), Int32, (IrisTask, Int32, Ptr{Int8}, Int32), task, Int32(device_policy), opt, Int32(sync))
-        #@ccall(jl_gc_safe_leave(gc_state::Int8)::Cvoid)
-        return status
     end
 
     function submit(task::IrisTask, device_policy::Int64, opt::Ptr{Int8}, sync::Int64)::Int32
@@ -1912,22 +1409,6 @@ module IrisHRT
         return iris_task_submit(task, iris_default, Ptr{Int8}(C_NULL), 0)
     end
 
-    function iris_task_set_policy(task::IrisTask, policy::Int32)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_task_set_policy), Int32, (IrisTask, Int32), task, policy)
-    end
-
-    function iris_task_get_policy(task::IrisTask)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_task_get_policy), Int32, (IrisTask,), task)
-    end
-
-    function iris_task_wait(task::IrisTask)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_task_wait), Int32, (IrisTask,), task)
-    end
-
-    function iris_task_wait_all(ntasks::Int32, tasks::Ptr{IrisTask})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_task_wait_all), Int32, (Int32, Ptr{IrisTask}), ntasks, tasks)
-    end
-
     function wait(task::IrisTask)::Int32
         return iris_task_wait(task)
     end
@@ -1945,142 +1426,13 @@ module IrisHRT
         return IRIS_SUCCESS
     end
 
-    #function iris_task_add_subtask(task::IrisTask, subtask::IrisTask)::Int32
-    #    return ccall(Libdl.dlsym(lib, :iris_task_add_subtask), Int32, (IrisTask, IrisTask), task, subtask)
-    #end
-
-    function iris_task_kernel_cmd_only(task::IrisTask)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_task_kernel_cmd_only), Int32, (IrisTask,), task)
-    end
-
-    function iris_task_release(task::IrisTask)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_task_release), Int32, (IrisTask,), task)
-    end
-
     function release(task::IrisTask)::Int32
         return iris_task_release(task)
-    end
-
-    function iris_task_release_mem(task::IrisTask, mem::IrisMem)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_task_release_mem), Int32, (IrisTask, IrisMem), task, mem)
-    end
-
-    function iris_params_map(task::IrisTask, params_map::Ptr{Int32})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_params_map), Int32, (IrisTask, Ptr{Int32}), task, params_map)
-    end
-
-    function iris_task_info(task::IrisTask, param::Int32, value::Ptr{Cvoid}, size::Ref{Csize_t})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_task_info), Int32, (IrisTask, Int32, Ptr{Cvoid}, Ref{Csize_t}), task, param, value, size)
-    end
-
-    function iris_register_pin_memory(host::Ptr{Cvoid}, size::Csize_t)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_register_pin_memory), Int32, (Ptr{Cvoid}, Csize_t), host, size)
     end
 
     function register_pin(host::Array{T}) where T
         ptr = reinterpret(Ptr{Cvoid}, pointer(host))
         return iris_register_pin_memory(ptr, Csize_t(sizeof(host)))
-    end
-
-    function iris_mem_create(size::Csize_t, mem::Ptr{IrisMem})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_mem_create), Int32, (Csize_t, Ptr{IrisMem}), size, mem)
-    end
-
-    function iris_mem_init_reset(mem::IrisMem, reset::Int32)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_mem_init_reset), Int32, (IrisMem, Int32), mem, reset)
-    end
-
-    const VALUE_SIZE = 8
-    function flat_in_buffer(value::Any)::IRISValue
-        value_buffer = Base.zeros(UInt8, VALUE_SIZE)
-        if typeof(value) == Float32
-            value_buffer[1:4] .= reinterpret(UInt8, [value])
-        elseif typeof(value) == Float64
-            value_buffer[1:8] .= reinterpret(UInt8, [value])
-        elseif typeof(value) == Int64
-            value_buffer[1:8] .= reinterpret(UInt8, [value])
-        elseif typeof(value) == Int32
-            value_buffer[1:4] .= reinterpret(UInt8, [value])
-        elseif typeof(value) == Int16
-            value_buffer[1:2] .= reinterpret(UInt8, [value])
-        elseif typeof(value) == Int8
-            value_buffer[1:1] .= reinterpret(UInt8, [value])
-        elseif typeof(value) == UInt64
-            value_buffer[1:8] .= reinterpret(UInt8, [value])
-        elseif typeof(value) == UInt32
-            value_buffer[1:4] .= reinterpret(UInt8, [value])
-        elseif typeof(value) == UInt16
-            value_buffer[1:2] .= reinterpret(UInt8, [value])
-        elseif typeof(value) == UInt8
-            value_buffer[1:1] .= reinterpret(UInt8, [value])
-        elseif typeof(value) == Bool 
-            value_buffer[1:1] .= reinterpret(UInt8, [value])
-        else
-            println(Core.stdout, "Unknown type of $value")
-        end
-        ivalue = IRISValue(Tuple(value_buffer))
-        #println("Element: ", value, " buffer:", ivalue)
-        return ivalue 
-    end
-
-    function iris_mem_init_reset_assign(mem::IrisMem, element::Any)::Int32
-        ivalue = flat_in_buffer(element)
-        return ccall(Libdl.dlsym(lib, :iris_mem_init_reset_assign), Int32, (IrisMem, IRISValue), mem, ivalue)
-    end
-
-    function iris_mem_init_reset_random_uniform_seq(mem::IrisMem, seed::Int, min::Any, max::Any)::Int32
-        imin = flat_in_buffer(min)
-        imax = flat_in_buffer(max)
-        #println("Element: ", element, " buffer:", ivalue)
-        return ccall(Libdl.dlsym(lib, :iris_mem_init_reset_random_uniform_seq), Int32, (IrisMem, Clonglong, IRISValue, IRISValue), mem, seed, imin, imax)
-    end
-
-    function iris_mem_init_reset_arith_seq(mem::IrisMem, element::Any, step::Any)::Int32
-        ivalue = flat_in_buffer(element)
-        istep = flat_in_buffer(step)
-        #println("Element: ", element, " buffer:", ivalue)
-        return ccall(Libdl.dlsym(lib, :iris_mem_init_reset_arith_seq), Int32, (IrisMem, IRISValue, IRISValue), mem, ivalue, istep)
-    end
-
-    function iris_mem_init_reset_geom_seq(mem::IrisMem, element::Any, step::Any)::Int32
-        ivalue = flat_in_buffer(element)
-        istep = flat_in_buffer(step)
-        #println("Element: ", element, " buffer:", ivalue)
-        return ccall(Libdl.dlsym(lib, :iris_mem_init_reset_geom_seq), Int32, (IrisMem, IRISValue, IRISValue), mem, ivalue, istep)
-    end
-
-    function iris_data_mem_init_reset(mem::IrisMem, reset::Int32)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_data_mem_init_reset), Int32, (IrisMem, Int32), mem, reset)
-    end
-
-    function iris_data_mem_copy(mem::IrisMem)::IrisMem
-        return ccall(Libdl.dlsym(lib, :iris_data_mem_copy), IrisMem, (IrisMem,), mem)
-    end
-    
-    function iris_task_cmd_init_reset_assign(task::IrisTask, mem::IrisMem, element::Any)::Int32
-        ivalue = flat_in_buffer(element)
-        return ccall(Libdl.dlsym(lib, :iris_task_cmd_init_reset_assign), Int32, (IrisTask, IrisMem, IRISValue), task, mem, ivalue)
-    end
-
-    function iris_task_cmd_init_reset_random_uniform_seq(task::IrisTask, mem::IrisMem, seed::Int, min::Any, max::Any)::Int32
-        imin = flat_in_buffer(min)
-        imax = flat_in_buffer(max)
-        #println("Element: ", element, " buffer:", ivalue)
-        return ccall(Libdl.dlsym(lib, :iris_task_cmd_init_reset_random_uniform_seq), Int32, (IrisTask, IrisMem, Clonglong, IRISValue, IRISValue), task, mem, seed, imin, imax)
-    end
-
-    function iris_task_cmd_init_reset_arith_seq(task::IrisTask, mem::IrisMem, element::Any, step::Any)::Int32
-        ivalue = flat_in_buffer(element)
-        istep = flat_in_buffer(step)
-        #println("Element: ", element, " buffer:", ivalue)
-        return ccall(Libdl.dlsym(lib, :iris_task_cmd_init_reset_arith_seq), Int32, (IrisTask, IrisMem, IRISValue, IRISValue), task, mem, ivalue, istep)
-    end
-
-    function iris_task_cmd_init_reset_geom_seq(task::IrisTask, mem::IrisMem, element::Any, step::Any)::Int32
-        ivalue = flat_in_buffer(element)
-        istep = flat_in_buffer(step)
-        #println("Element: ", element, " buffer:", ivalue)
-        return ccall(Libdl.dlsym(lib, :iris_task_cmd_init_reset_geom_seq), Int32, (IrisTask, IrisMem, IRISValue, IRISValue), task, mem, ivalue, istep)
     end
 
     function rand(T, seed, dims...)
@@ -2144,126 +1496,6 @@ module IrisHRT
         return dmem
     end
 
-    function iris_data_mem_create(mem::Ptr{IrisMem}, host::Ptr{Cvoid}, size::Csize_t)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_data_mem_create), Int32, (Ptr{IrisMem}, Ptr{Cvoid}, Csize_t), mem, host, size)
-    end
-
-    function iris_data_mem_create_ptr(host::Ptr{Cvoid}, size::Csize_t)::Ptr{IrisMem}
-        return ccall(Libdl.dlsym(lib, :iris_data_mem_create_ptr), Ptr{IrisMem}, (Ptr{Cvoid}, Csize_t), host, size)
-    end
-
-    function get_iris_type(T, default=iris_unknown)
-        element_type = default
-        if T == Float32
-            element_type = iris_float 
-        elseif T == Float64
-            element_type = iris_double
-        elseif T == Int64
-            element_type = iris_int64
-        elseif T == Int32
-            element_type = iris_int32
-        elseif T == Int16
-            element_type = iris_int16
-        elseif T == Int8
-            element_type = iris_int8
-        elseif T == UInt64
-            element_type = iris_uint64
-        elseif T == UInt32
-            element_type = iris_uint32
-        elseif T == UInt16
-            element_type = iris_uint16
-        elseif T == UInt8
-            element_type = iris_uint8
-        elseif T == Char
-            element_type = iris_char
-        elseif T == Bool
-            element_type = iris_bool
-        elseif T <: SubArray
-            #println(Core.stdout, " calling param: ", T.parameters[1])
-            element_type = get_iris_type(T.parameters[1])
-        elseif isstructtype(T) 
-            element_type = iris_custom_type
-        elseif default == iris_pointer
-            println(Core.stdout, "[Error] get_iris_type type is not found")
-            element_type = iris_unknown
-        end
-        #println(Core.stdout, " get_iris_type returning element type: ", element_type, " ifloat:", iris_float, " custom_type:", iris_custom_type, " type:", T)
-        return element_type
-    end
-
-    function iris_get_type_string(mem)
-        element_type = iris_get_mem_element_type(mem)
-        if element_type == iris_float 
-            return "float"
-        elseif element_type == iris_double
-            return "double"
-        elseif element_type == iris_int64
-            return "int64_t" 
-        elseif element_type == iris_int32
-            return "int32_t"
-        elseif element_type == iris_int16
-            return "int16_t"
-        elseif element_type == iris_int8
-            return "int8_t"
-        elseif element_type == iris_uint64
-            return "uint64_t"
-        elseif element_type == iris_uint32
-            return "uint32_t"
-        elseif element_type == iris_uint16
-            return "uint16_t"
-        elseif element_type == iris_uint8
-            return "uint8_t"
-        elseif element_type == iris_char
-            return "char"
-        elseif element_type == iris_bool
-            return "bool"
-        else
-            error_("Unknown iris type handler: ", element_type)
-        end
-        return "__unknown"
-    end
-
-    function iris_get_julia_type(mem::IrisMem)
-        element_type = iris_get_mem_element_type(mem)
-        if element_type == iris_float 
-            return Float32
-        elseif element_type == iris_double
-            return Float64
-        elseif element_type == iris_int64
-            return Int64
-        elseif element_type == iris_int32
-            return Int32
-        elseif element_type == iris_int16
-            return Int16
-        elseif element_type == iris_int8
-            return Int8
-        elseif element_type == iris_uint64
-            return UInt64
-        elseif element_type == iris_uint32
-            return UInt32
-        elseif element_type == iris_uint16
-            return UInt16
-        elseif element_type == iris_uint8
-            return UInt8
-        elseif element_type == iris_char
-            return Char
-        elseif element_type == iris_bool
-            return Bool
-        elseif element_type == iris_custom_type
-            return get_dmem_custom_type(mem)
-        else
-            error_("Unknown iris type for julia type: ", element_type)
-        end
-        return Ptr{Cvoid}
-    end
-
-    function call_stack()
-        println("Backtrace:")
-        for (i, bt) in enumerate(Base.stacktrace())
-            println("[$i] ", bt)
-        end
-    end
-
     function iris_data_mem(::Type{T}, dims...; dev_size=nothing, offset=[])  where T
         #size = Csize_t(length(host) * sizeof(T))
         dim_size = dims
@@ -2274,7 +1506,7 @@ module IrisHRT
         host_size = prod(dim_size) * sizeof(T)
         dim = length(dim_size)
         dim_size_v = collect(dim_size)
-        element_size = Int32(sizeof(T))
+        element_size = sizeof(T)
         host_cptr = C_NULL
         #call_stack()
         #println(Core.stdout, "Type of element: ", T, " dim:", dim, " Size:", host_size, " Element size:", element_size)
@@ -2284,9 +1516,13 @@ module IrisHRT
             if length(offset) == 0
                 offset = Base.zeros(Csize_t, dim)
             end
-            iris_mem = ccall(Libdl.dlsym(lib, :iris_data_mem_create_tile_struct_with_type), IrisMem, (Ptr{Cvoid}, Ptr{Csize_t}, Ptr{Csize_t}, Ptr{Csize_t}, Csize_t, Int32, Int32), host_cptr, pointer(offset), dim_size_v, pointer(dev_size), element_size, dim, Int32(element_type))
+			GC.@preserve offset dim_size_v dev_size begin 
+			iris_mem = iris_data_mem_create_tile_struct_with_type(host_cptr, pointer(offset), pointer(dim_size_v), pointer(dev_size), element_size, dim, element_type)
+			end
         else
-            iris_mem = ccall(Libdl.dlsym(lib, :iris_data_mem_create_struct_nd), IrisMem, (Ptr{Cvoid}, Ptr{Cvoid}, Int32, Csize_t, Int32), host_cptr, dim_size_v, dim, element_size, Int32(element_type))
+			GC.@preserve dim_size_v begin 
+			iris_mem = iris_data_mem_create_struct_nd(host_cptr, dim_size_v, dim, element_size, element_type)
+			end
         end
         if isstructtype(T) 
             push_dmem_custom_type(iris_mem.uid, T)
@@ -2298,7 +1534,7 @@ module IrisHRT
         #size = Csize_t(length(host) * sizeof(T))
         host_size = collect(size(host))
         dim = length(host_size)
-        element_size = Int32(sizeof(T))
+        element_size = sizeof(T)
         host_cptr = reinterpret(Ptr{Cvoid}, pointer(host))
         host_root = host_cptr
         #println(Core.stdout, "Type of element: ", T, " Size:", size(host), " host size:", host_size, " host size type:", typeof(host_size), " Element size:", element_size, " pointer:", pointer(host))
@@ -2306,7 +1542,9 @@ module IrisHRT
         iris_mem = nothing
         if !isa(host, SubArray)
             #println(Core.stdout, "DMEM: ", host_cptr, ", ", size(host), ", ", element_size)
-            iris_mem = ccall(Libdl.dlsym(lib, :iris_data_mem_create_struct_nd), IrisMem, (Ptr{Cvoid}, Ptr{Csize_t}, Int32, Csize_t, Int32), host_cptr, host_size, dim, element_size, Int32(element_type))
+			GC.@preserve host_size begin
+			iris_mem = iris_data_mem_create_struct_nd(host_cptr, pointer(host_size), dim, element_size, element_type)
+			end
         else
             offset = view_offsets_elements(host)
             dev_size = view_device_size(host)
@@ -2315,7 +1553,9 @@ module IrisHRT
             dim = length(host_size)
             #println(Core.stdout, "DMEM: ", host_root, ", ", size(host), ", ", element_size, ", ", host_root, ", ", dev_size)
             #println(Core.stdout, " offset:", offset, " dev_size:", dev_size, " host_size:", host_size)
-            iris_mem = ccall(Libdl.dlsym(lib, :iris_data_mem_create_tile_struct_with_type), IrisMem, (Ptr{Cvoid}, Ptr{Csize_t}, Ptr{Csize_t}, Ptr{Csize_t}, Csize_t, Int32, Int32), host_cptr, offset, host_size, dev_size, element_size, dim, Int32(element_type))
+			GC.@preserve host_size offset dev_size begin
+			iris_mem = iris_data_mem_create_tile_struct_with_type(host_cptr, pointer(offset), pointer(host_size), pointer(dev_size), element_size, dim, element_type)
+			end
         end
         if isstructtype(T) 
             push_dmem_custom_type(iris_mem.uid, T)
@@ -2337,7 +1577,10 @@ module IrisHRT
         if length(offset) == 0
             offset = Base.zeros(Csize_t, dim)
         end
-        iris_mem = ccall(Libdl.dlsym(lib, :iris_data_mem_create_tile_struct_with_type), IrisMem, (Ptr{Cvoid}, Ptr{Csize_t}, Ptr{Csize_t}, Ptr{Csize_t}, Csize_t, Int32, Int32), host_cptr, pointer(offset), host_size, dev_size, element_size, dim, Int32(element_type))
+		iris_mem = nothing
+		GC.@preserve offset host_size dev_size begin 
+		iris_mem = iris_data_mem_create_tile_struct_with_type(host_cptr, pointer(offset), pointer(host_size), pointer(dev_size), element_size, dim, element_type)
+		end
         if isstructtype(T) 
             push_dmem_custom_type(iris_mem.uid, T)
         end
@@ -2399,7 +1642,10 @@ module IrisHRT
         dim_size_v = collect(dim_size)
         dim = length(dim_size)
         #println(Core.stdout, "Type of element: ", " HostSize:", host_size, " Dims:", dim_size_v, " N-dims:", dim, " Element size:", elem_size, " pointer:", host_cptr)
-        iris_mem = ccall(Libdl.dlsym(lib, :iris_data_mem_create_struct_nd), IrisMem, (Ptr{Cvoid}, Ptr{Cvoid}, Int32, Csize_t, Int32), host_cptr, pointer(dim_size_v), dim, elem_size, elem_type)
+		iris_mem=nothing
+		GC.@preserve dim_size_v begin 
+		iris_mem = iris_data_mem_create_struct_nd(host_cptr, pointer(dim_size_v), dim, elem_size, elem_type)
+		end
         if elem_type == iris_custom_type 
             T = get_dmem_custom_type(mem)
             push_dmem_custom_type(iris_mem.uid, T)
@@ -2412,18 +1658,6 @@ module IrisHRT
     function reshape(host::AbstractArray{T}, dims...) where T
         source_mem = get_dmem_from_cache(host)
         return reshape(source_mem, dims...)
-    end
-
-    function iris_dmem_set_source(brs_mem::IrisMem, source::IrisMem)::Ptr{Cint}
-        jfunc = Libdl.dlsym(lib, :iris_dmem_set_source)
-        return ccall(jfunc, Ptr{Cint}, (IrisMem,IrisMem), brs_mem, source)
-
-    end
-
-    # Function: void* iris_get_dmem_host(iris_mem brs_mem);
-    function iris_get_dmem_host(brs_mem::IrisMem)::Ptr{Cvoid}
-        func = Libdl.dlsym(lib, :iris_get_dmem_host)
-        return ccall(func, Ptr{Cvoid}, (IrisMem,), brs_mem)
     end
 
     function host_ptr(mem::Union{IrisMem, IrisTaskMem})
@@ -2527,95 +1761,6 @@ module IrisHRT
         return iris_dmem_get_elem_size(field_dmem(mem))
     end
 
-    function iris_dmem_get_elem_size(brs_mem::IrisMem)::Cint
-        func = Libdl.dlsym(lib, :iris_dmem_get_elem_size)
-        return ccall(func, Cint, (IrisMem,), brs_mem)
-    end
-
-    function iris_dmem_get_elem_type(brs_mem::IrisMem)::Cint
-        func = Libdl.dlsym(lib, :iris_dmem_get_elem_type)
-        return ccall(func, Cint, (IrisMem,), brs_mem)
-    end
-
-    function iris_dmem_get_dim(brs_mem::IrisMem)::Cint
-        func = Libdl.dlsym(lib, :iris_dmem_get_dim)
-        return ccall(func, Cint, (IrisMem,), brs_mem)
-    end
-
-    function iris_dmem_get_host_size(brs_mem::IrisMem)::Ptr{Csize_t}
-        func = Libdl.dlsym(lib, :iris_dmem_get_host_size)
-        return ccall(func, Ptr{Csize_t}, (IrisMem,), brs_mem)
-    end
-
-    function iris_dmem_get_dev_size(brs_mem::IrisMem)::Ptr{Csize_t}
-        func = Libdl.dlsym(lib, :iris_dmem_get_dev_size)
-        return ccall(func, Ptr{Csize_t}, (IrisMem,), brs_mem)
-    end
-
-    function iris_dmem_get_offsets(brs_mem::IrisMem)::Ptr{Csize_t}
-        func = Libdl.dlsym(lib, :iris_dmem_get_offsets)
-        return ccall(func, Ptr{Csize_t}, (IrisMem,), brs_mem)
-    end
-
-    function iris_get_mem_element_type(brs_mem::IrisMem)::Cint
-        func = Libdl.dlsym(lib, :iris_get_mem_element_type)
-        return ccall(func, Cint, (IrisMem,), brs_mem)
-    end
-
-    # Function: void* iris_get_dmem_valid_host(iris_mem brs_mem);
-    function iris_get_dmem_valid_host(brs_mem::IrisMem)::Ptr{Cvoid}
-        func = Libdl.dlsym(lib, :iris_get_dmem_valid_host)
-        return ccall(func, Ptr{Cvoid}, (IrisMem,), brs_mem)
-    end
-
-    # Function: void* iris_get_dmem_host_fetch(iris_mem brs_mem);
-    function iris_get_dmem_host_fetch(brs_mem::IrisMem)::Ptr{Cvoid}
-        func = Libdl.dlsym(lib, :iris_get_dmem_host_fetch)
-        return ccall(func, Ptr{Cvoid}, (IrisMem,), brs_mem)
-    end
-
-    # Function: void* iris_get_dmem_host_fetch_with_size(iris_mem brs_mem, size_t size);
-    function iris_get_dmem_host_fetch_with_size(brs_mem::IrisMem, size::Csize_t)::Ptr{Cvoid}
-        func = Libdl.dlsym(lib, :iris_get_dmem_host_fetch_with_size)
-        return ccall(func, Ptr{Cvoid}, (IrisMem, Csize_t), brs_mem, size)
-    end
-
-    # Function: int iris_fetch_dmem_data(iris_mem brs_mem, void* host_ptr);
-    function iris_fetch_dmem_data(brs_mem::IrisMem, host_ptr::Ptr{Cvoid})::Cint
-        func = Libdl.dlsym(lib, :iris_fetch_dmem_data)
-        return ccall(func, Cint, (IrisMem, Ptr{Cvoid}), brs_mem, host_ptr)
-    end
-
-    # Function: int iris_fetch_dmem_data_with_size(iris_mem brs_mem, void* host_ptr, size_t size);
-    function iris_fetch_dmem_data_with_size(brs_mem::IrisMem, host_ptr::Ptr{Cvoid}, size::Csize_t)::Cint
-        func = Libdl.dlsym(lib, :iris_fetch_dmem_data_with_size)
-        return ccall(func, Cint, (IrisMem, Ptr{Cvoid}, Csize_t), brs_mem, host_ptr, size)
-    end
-
-    function iris_data_mem_create_struct(host::Ptr{Cvoid}, size::Csize_t)::IrisMem
-        return ccall(Libdl.dlsym(lib, :iris_data_mem_create_struct), IrisMem, (Ptr{Cvoid}, Csize_t), host, size)
-    end
-
-    function iris_data_mem_create_struct_nd(host::Ptr{Cvoid}, host_size::Ptr{Csize_t}, dim::Int32, elem_size::Csize_t, element_type::Int32)::IrisMem
-        return ccall(Libdl.dlsym(lib, :iris_data_mem_create_struct_nd), IrisMem, (Ptr{Cvoid}, Ptr{Csize_t}, Int32, Csize_t, Int32), host, host_size, dim, elem_size, element_type)
-    end
-
-    function iris_data_mem_create_struct_with_type(host::Ptr{Cvoid}, size::Csize_t, element_type::Int32)::IrisMem
-        return ccall(Libdl.dlsym(lib, :iris_data_mem_create_struct_with_type), IrisMem, (Ptr{Cvoid}, Csize_t, Int32), host, size, element_type)
-    end
-
-    function iris_data_mem_clear(mem::IrisMem)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_data_mem_clear), Int32, (IrisMem,), mem)
-    end
-
-    function iris_data_mem_pin(mem::IrisMem)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_data_mem_pin), Int32, (IrisMem,), mem)
-    end
-
-    function iris_data_mem_set_pin_flag(flag::Bool)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_data_mem_set_pin_flag), Int32, (Int32,), Int32(flag))
-    end
-
     function enable_pin()
         return iris_data_mem_set_pin_flag(true)
     end
@@ -2624,116 +1769,34 @@ module IrisHRT
         return iris_data_mem_set_pin_flag(false)
     end
 
-    function iris_data_mem_update(mem::IrisMem, host::Ptr{Cvoid})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_data_mem_update), Int32, (IrisMem, Ptr{Cvoid}), mem, host)
-    end
-
-    function iris_data_mem_copyto_host(mem::IrisMem, host::Ptr{Cvoid})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_data_mem_copyto_host), Int32, (IrisMem, Ptr{Cvoid}), mem, host)
-    end
-
     function copy_host(mem::Union{IrisMem, IrisTaskMem}, host::AbstractArray)
         host_ptr = reinterpret(Ptr{Cvoid}, pointer(host))
         return iris_data_mem_copyto_host(field_dmem(mem), host_ptr)
-    end
-
-    function iris_data_mem_refresh(mem::IrisMem)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_data_mem_refresh), Int32, (IrisMem, ), mem)
     end
 
     function refresh(mem::Union{IrisMem, IrisTaskMem})
         return iris_data_mem_refresh(field_dmem(mem))
     end
 
-    function iris_data_mem_update_host_size(mem::IrisMem, host::Ptr{Csize_t})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_data_mem_update_host_size), Int32, (IrisMem, Ptr{Csize_t}), mem, host)
-    end
-
     function update_host_size(mem::Union{IrisMem, IrisTaskMem}, host_size)
-        dims = collect(Csize_t, host_size)
-        iris_data_mem_update_host_size(field_dmem(mem), pointer(dims))
+        vec = collect(Csize_t, host_size)
+		GC.@preserve vec begin 
+        iris_data_mem_update_host_size(field_dmem(mem), pointer(vec))
+		end
     end
 
     function update_dev_size(mem::Union{IrisMem, IrisTaskMem}, dev_size)
-        dims = collect(Csize_t, dev_size)
-        iris_data_mem_update_dev_size(field_dmem(mem), pointer(dims))
+        vec = collect(Csize_t, dev_size)
+		GC.@preserve vec begin 
+        iris_data_mem_update_dev_size(field_dmem(mem), pointer(vec))
+		end
     end
 
     function update_off(mem::Union{IrisMem, IrisTaskMem}, off)
-        dims = collect(Csize_t, off)
-        iris_data_mem_update_off(field_dmem(mem), pointer(off))
-    end
-
-    function iris_data_mem_create_region(mem::Ptr{IrisMem}, root_mem::IrisMem, region::Int32)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_data_mem_create_region), Int32, (Ptr{IrisMem}, IrisMem, Int32), mem, root_mem, region)
-    end
-
-    function iris_data_mem_create_region_struct(root_mem::IrisMem, region::Int32)::IrisMem
-        return ccall(Libdl.dlsym(lib, :iris_data_mem_create_region_struct), IrisMem, (IrisMem, Int32), root_mem, region)
-    end
-
-    function iris_data_mem_create_region_ptr(root_mem::IrisMem, region::Int32)::Ptr{IrisMem}
-        return ccall(Libdl.dlsym(lib, :iris_data_mem_create_region_ptr), Ptr{IrisMem}, (IrisMem, Int32), root_mem, region)
-    end
-
-    function iris_data_mem_enable_outer_dim_regions(mem::IrisMem)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_data_mem_enable_outer_dim_regions), Int32, (IrisMem,), mem)
-    end
-
-    function iris_data_mem_create_tile(mem::Ptr{IrisMem}, host::Ptr{Cvoid}, off::Ptr{Csize_t}, host_size::Ptr{Csize_t}, dev_size::Ptr{Csize_t}, elem_size::Csize_t, dim::Int32)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_data_mem_create_tile), Int32, (Ptr{IrisMem}, Ptr{Cvoid}, Ptr{Csize_t}, Ptr{Csize_t}, Ptr{Csize_t}, Csize_t, Int32), mem, host, off, host_size, dev_size, elem_size, dim)
-    end
-
-    function iris_data_mem_create_tile_struct(host::Ptr{Cvoid}, off::Ptr{Csize_t}, host_size::Ptr{Csize_t}, dev_size::Ptr{Csize_t}, elem_size::Csize_t, dim::Int32)::IrisMem
-        return ccall(Libdl.dlsym(lib, :iris_data_mem_create_tile_struct), IrisMem, (Ptr{Cvoid}, Ptr{Csize_t}, Ptr{Csize_t}, Ptr{Csize_t}, Csize_t, Int32), host, off, host_size, dev_size, elem_size, dim)
-    end
-
-    function iris_data_mem_create_tile_struct_with_type(host::Ptr{Cvoid}, off::Ptr{Csize_t}, host_size::Ptr{Csize_t}, dev_size::Ptr{Csize_t}, elem_size::Csize_t, dim::Int32, element_type::Int32)::IrisMem
-        return ccall(Libdl.dlsym(lib, :iris_data_mem_create_tile_struct_with_type), IrisMem, (Ptr{Cvoid}, Ptr{Csize_t}, Ptr{Csize_t}, Ptr{Csize_t}, Csize_t, Int32, Int32), host, off, host_size, dev_size, elem_size, dim, element_type)
-    end
-
-    function iris_data_mem_create_tile_ptr(host::Ptr{Cvoid}, off::Ptr{Csize_t}, host_size::Ptr{Csize_t}, dev_size::Ptr{Csize_t}, elem_size::Csize_t, dim::Int32)::Ptr{IrisMem}
-        return ccall(Libdl.dlsym(lib, :iris_data_mem_create_tile_ptr), Ptr{IrisMem}, (Ptr{Cvoid}, Ptr{Csize_t}, Ptr{Csize_t}, Ptr{Csize_t}, Csize_t, Int32), host, off, host_size, dev_size, elem_size, dim)
-    end
-
-    function iris_data_mem_update_bc(mem::IrisMem, bc::Int32, row::Int32, col::Int32)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_data_mem_update_bc), Int32, (IrisMem, Int32, Int32, Int32), mem, bc, row, col)
-    end
-
-    function iris_data_mem_get_rr_bc_dev(mem::IrisMem)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_data_mem_get_rr_bc_dev), Int32, (IrisMem,), mem)
-    end
-
-    function iris_data_mem_n_regions(mem::IrisMem)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_data_mem_n_regions), Int32, (IrisMem,), mem)
-    end
-
-    function iris_data_mem_get_region_uid(mem::IrisMem, region::Int32)::Culong
-        return ccall(Libdl.dlsym(lib, :iris_data_mem_get_region_uid), Culong, (IrisMem, Int32), mem, region)
-    end
-
-    function iris_mem_arch(mem::IrisMem, device::Int32, arch::Ref{Ptr{Cvoid}})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_mem_arch), Int32, (IrisMem, Int32, Ref{Ptr{Cvoid}}), mem, device, arch)
-    end
-
-    function iris_dev_get_ctx(device::Int)::Ptr{Cvoid}
-        return ccall(Libdl.dlsym(lib, :iris_dev_get_ctx), Ptr{Cvoid}, (Int32, ), Int32(device))
-    end
-
-    function iris_dev_get_stream(device::Int, index::Int)::Ptr{Cvoid}
-        return ccall(Libdl.dlsym(lib, :iris_dev_get_stream), Ptr{Cvoid}, (Int32, Int32), Int32(device), Int32(index))
-    end
-
-    function iris_mem_arch_ptr(mem::IrisMem, device::Int)::Ptr{Cvoid}
-        return ccall(Libdl.dlsym(lib, :iris_mem_arch_ptr), Ptr{Cvoid}, (IrisMem, Int32), mem, Int32(device))
-    end
-
-    #function iris_mem_reduce(mem::IrisMem, mode::Int32, type::Int32)::Int32
-    #    return ccall(Libdl.dlsym(lib, :iris_mem_reduce), Int32, (IrisMem, Int32, Int32), mem, mode, type)
-    #end
-
-    function iris_mem_release(mem::IrisMem)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_mem_release), Int32, (IrisMem,), mem)
+        vec = collect(Csize_t, off)
+		GC.@preserve vec begin 
+        iris_data_mem_update_off(field_dmem(mem), pointer(vec))
+		end
     end
 
     function release(mem::Union{IrisMem, IrisTaskMem})::Int32
@@ -2752,80 +1815,16 @@ module IrisHRT
         end
     end
 
-    function iris_graph_create(graph::Ptr{IrisGraph})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_graph_create), Int32, (Ptr{IrisGraph},), graph)
-    end
-
-    function iris_graph_create_empty()::IrisGraph
-        return ccall(Libdl.dlsym(lib, :iris_graph_create_empty), IrisGraph, ())
-    end
-
     function graph()
         return iris_graph_create_empty()
-    end
-
-    function iris_graph_create_null(graph::Ptr{IrisGraph})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_graph_create_null), Int32, (Ptr{IrisGraph},), graph)
-    end
-
-    function iris_is_graph_null(graph::IrisGraph)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_is_graph_null), Int32, (IrisGraph,), graph)
-    end
-
-    function iris_graph_free(graph::IrisGraph)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_graph_free), Int32, (IrisGraph,), graph)
-    end
-
-    function iris_graph_tasks_order(graph::IrisGraph, order::Ptr{Int32})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_graph_tasks_order), Int32, (IrisGraph, Ptr{Int32}), graph, order)
-    end
-
-    function iris_graph_create_json(json::String, params::Ref{Ptr{Cvoid}}, graph::Ptr{IrisGraph})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_graph_create_json), Int32, (Ptr{Cchar}, Ref{Ptr{Cvoid}}, Ptr{IrisGraph}), pointer(json), params, graph)
-    end
-
-    function iris_graph_task(graph::IrisGraph, task::IrisTask, device::Int32, opt::Ptr{Cchar})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_graph_task), Int32, (IrisGraph, IrisTask, Int32, Ptr{Cchar}), graph, task, device, opt)
     end
 
     function add_task(graph::IrisGraph, task::IrisTask, policy=IrisHRT.iris_roundrobin)
         return iris_graph_task(graph, task, policy, C_NULL)
     end
 
-    function iris_graph_retain(graph::IrisGraph, flag::Int32)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_graph_retain), Int32, (IrisGraph, Int32), graph, flag)
-    end
-
-    function iris_graph_release(graph::IrisGraph)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_graph_release), Int32, (IrisGraph,), graph)
-    end
-
     function release(graph::IrisGraph)::Int32
         return iris_graph_release(graph)
-    end
-
-    function iris_graph_submit(graph::IrisGraph, device::Int32, sync::Int32)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_graph_submit), Int32, (IrisGraph, Int32, Int32), graph, device, sync)
-    end
-
-    function iris_graph_submit_with_order(graph::IrisGraph, order::Ptr{Int32}, device::Int32, sync::Int32)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_graph_submit_with_order), Int32, (IrisGraph, Ptr{Int32}, Int32, Int32), graph, order, device, sync)
-    end
-
-    function iris_graph_submit_with_order_and_time(graph::IrisGraph, order::Ptr{Int32}, time::Ref{Cdouble}, device::Int32, sync::Int32)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_graph_submit_with_order_and_time), Int32, (IrisGraph, Ptr{Int32}, Ref{Cdouble}, Int32, Int32), graph, order, time, device, sync)
-    end
-
-    function iris_graph_submit_with_time(graph::IrisGraph, time::Ref{Cdouble}, device::Int32, sync::Int32)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_graph_submit_with_time), Int32, (IrisGraph, Ref{Cdouble}, Int32, Int32), graph, time, device, sync)
-    end
-
-    function iris_graph_wait(graph::IrisGraph)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_graph_wait), Int32, (IrisGraph,), graph)
-    end
-
-    function iris_graph_wait_all(ngraphs::Int32, graphs::Ptr{IrisGraph})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_graph_wait_all), Int32, (Int32, Ptr{IrisGraph}), ngraphs, graphs)
     end
 
     function wait(graph::IrisGraph)::Int32
@@ -2834,342 +1833,6 @@ module IrisHRT
 
     function wait(graphs::Vector{IrisGraph})::Int32
         return iris_graph_wait_all(Int32(length(graphs)), pointer(graphs))
-    end
-
-    function iris_record_start()::Int32
-        return ccall(Libdl.dlsym(lib, :iris_record_start), Int32, ())
-    end
-
-    function iris_record_stop()::Int32
-        return ccall(Libdl.dlsym(lib, :iris_record_stop), Int32, ())
-    end
-
-    function iris_timer_now(time::Ref{Cdouble})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_timer_now), Int32, (Ref{Cdouble},), time)
-    end
-
-    function iris_enable_d2d()::Cvoid
-        ccall(Libdl.dlsym(lib, :iris_enable_d2d), Cvoid, ())
-    end
-
-    function iris_disable_d2d()::Cvoid
-        ccall(Libdl.dlsym(lib, :iris_disable_d2d), Cvoid, ())
-    end
-
-    function iris_disable_consistency_check()::Cvoid
-        ccall(Libdl.dlsym(lib, :iris_disable_consistency_check), Cvoid, ())
-    end
-
-    function iris_enable_consistency_check()::Cvoid
-        ccall(Libdl.dlsym(lib, :iris_enable_consistency_check), Cvoid, ())
-    end
-
-    function iris_kernel_get_name(kernel::IrisKernel)::String
-        return unsafe_string(ccall(Libdl.dlsym(lib, :iris_kernel_get_name), Ptr{Cchar}, (IrisKernel,), kernel))
-    end
-
-    function iris_task_get_name(task::IrisTask)::String
-        return unsafe_string(ccall(Libdl.dlsym(lib, :iris_task_get_name), Ptr{Cchar}, (IrisTask,), task))
-    end
-
-    function iris_task_set_name(task::IrisTask, name::String)::Cvoid
-        ccall(Libdl.dlsym(lib, :iris_task_set_name), Cvoid, (IrisTask, Ptr{Cchar}), task, pointer(name))
-    end
-	
-	function set_name(task::Union{IrisTask,IrisTaskMem}, name::String)
-		iris_task_set_name(field_task(task), name)
-	end
-
-    function iris_task_get_dependency_count(task::IrisTask)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_task_get_dependency_count), Int32, (IrisTask,), task)
-    end
-
-    function iris_task_get_dependencies(task::IrisTask, tasks::Ptr{IrisTask})::Cvoid
-        ccall(Libdl.dlsym(lib, :iris_task_get_dependencies), Cvoid, (IrisTask, Ptr{IrisTask}), task, tasks)
-    end
-
-    function iris_task_get_uid(task::IrisTask)::Culong
-        return ccall(Libdl.dlsym(lib, :iris_task_get_uid), UInt64, (IrisTask,), task)
-    end
-
-    function iris_kernel_get_uid(kernel::IrisKernel)::Culong
-        return ccall(Libdl.dlsym(lib, :iris_kernel_get_uid), Culong, (IrisKernel,), kernel)
-    end
-
-    function iris_task_get_kernel(task::IrisTask)::IrisKernel
-        return ccall(Libdl.dlsym(lib, :iris_task_get_kernel), IrisKernel, (IrisTask,), task)
-    end
-
-    function iris_task_kernel_dmem_fetch_order(task::IrisTask, order::Ptr{Int32})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_task_kernel_dmem_fetch_order), Int32, (IrisTask, Ptr{Int32}), task, order)
-    end
-
-    function iris_task_disable_consistency(task::IrisTask)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_task_disable_consistency), Int32, (IrisTask,), task)
-    end
-
-    function iris_task_is_cmd_kernel_exists(task::IrisTask)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_task_is_cmd_kernel_exists), Int32, (IrisTask,), task)
-    end
-
-    function iris_task_get_cmd_kernel(task::IrisTask)::Ptr{Cvoid}
-        return ccall(Libdl.dlsym(lib, :iris_task_get_cmd_kernel), Ptr{Cvoid}, (IrisTask,), task)
-    end
-
-    function iris_mem_get_size(mem::IrisMem)::Csize_t
-        return ccall(Libdl.dlsym(lib, :iris_mem_get_size), Csize_t, (IrisMem,), mem)
-    end
-
-    function iris_mem_get_type(mem::IrisMem)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_mem_get_type), Int32, (IrisMem,), mem)
-    end
-
-    function iris_mem_get_uid(mem::IrisMem)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_mem_get_uid), Int32, (IrisMem,), mem)
-    end
-
-    function iris_mem_is_reset(mem::IrisMem)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_mem_is_reset), Int32, (IrisMem,), mem)
-    end
-
-    function iris_get_dmem_for_region(dmem_region_obj::IrisMem)::IrisMem
-        return ccall(Libdl.dlsym(lib, :iris_get_dmem_for_region), IrisMem, (IrisMem,), dmem_region_obj)
-    end
-
-    function iris_cmd_kernel_get_nargs(cmd::Ptr{Cvoid})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_cmd_kernel_get_nargs), Int32, (Ptr{Cvoid},), cmd)
-    end
-
-    function iris_cmd_kernel_get_arg_is_mem(cmd::Ptr{Cvoid}, index::Int32)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_cmd_kernel_get_arg_is_mem), Int32, (Ptr{Cvoid}, Int32), cmd, index)
-    end
-
-    function iris_cmd_kernel_get_arg_size(cmd::Ptr{Cvoid}, index::Int32)::Csize_t
-        return ccall(Libdl.dlsym(lib, :iris_cmd_kernel_get_arg_size), Csize_t, (Ptr{Cvoid}, Int32), cmd, index)
-    end
-
-    function iris_cmd_kernel_get_arg_value(cmd::Ptr{Cvoid}, index::Int32)::Ptr{Cvoid}
-        return ccall(Libdl.dlsym(lib, :iris_cmd_kernel_get_arg_value), Ptr{Cvoid}, (Ptr{Cvoid}, Int32), cmd, index)
-    end
-
-    function iris_cmd_kernel_get_arg_mem(cmd::Ptr{Cvoid}, index::Int32)::IrisMem
-        return ccall(Libdl.dlsym(lib, :iris_cmd_kernel_get_arg_mem), IrisMem, (Ptr{Cvoid}, Int32), cmd, index)
-    end
-
-    function iris_cmd_kernel_get_arg_mem_off(cmd::Ptr{Cvoid}, index::Int32)::Csize_t
-        return ccall(Libdl.dlsym(lib, :iris_cmd_kernel_get_arg_mem_off), Csize_t, (Ptr{Cvoid}, Int32), cmd, index)
-    end
-
-    function iris_cmd_kernel_get_arg_mem_size(cmd::Ptr{Cvoid}, index::Int32)::Csize_t
-        return ccall(Libdl.dlsym(lib, :iris_cmd_kernel_get_arg_mem_size), Csize_t, (Ptr{Cvoid}, Int32), cmd, index)
-    end
-
-    function iris_cmd_kernel_get_arg_off(cmd::Ptr{Cvoid}, index::Int32)::Csize_t
-        return ccall(Libdl.dlsym(lib, :iris_cmd_kernel_get_arg_off), Csize_t, (Ptr{Cvoid}, Int32), cmd, index)
-    end
-
-    function iris_cmd_kernel_get_arg_mode(cmd::Ptr{Cvoid}, index::Int32)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_cmd_kernel_get_arg_mode), Int32, (Ptr{Cvoid}, Int32), cmd, index)
-    end
-
-    function iris_graph_enable_mem_profiling(graph::IrisGraph)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_graph_enable_mem_profiling), Int32, (IrisGraph,), graph)
-    end
-
-    function iris_graph_reset_memories(graph::IrisGraph)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_graph_reset_memories), Int32, (IrisGraph,), graph)
-    end
-
-    function iris_graph_get_tasks(graph::IrisGraph, tasks::Ptr{IrisTask})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_graph_get_tasks), Int32, (IrisGraph, Ptr{IrisTask}), graph, tasks)
-    end
-
-    function iris_graph_tasks_count(graph::IrisGraph)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_graph_tasks_count), Int32, (IrisGraph,), graph)
-    end
-
-    function iris_get_graph_max_theoretical_parallelism(graph::IrisGraph)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_get_graph_max_theoretical_parallelism), Int32, (IrisGraph,), graph)
-    end
-
-    function iris_get_graph_dependency_adj_list(graph::IrisGraph, dep_matrix::Ptr{Cchar})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_get_graph_dependency_adj_list), Int32, (IrisGraph, Ptr{Cchar}), graph, dep_matrix)
-    end
-
-    function iris_get_graph_dependency_adj_matrix(graph::IrisGraph, dep_matrix::Ptr{Cchar})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_get_graph_dependency_adj_matrix), Int32, (IrisGraph, Ptr{Cchar}), graph, dep_matrix)
-    end
-
-    function iris_get_graph_3d_comm_data_size(graph::IrisGraph)::Csize_t
-        return ccall(Libdl.dlsym(lib, :iris_get_graph_3d_comm_data_size), Csize_t, (IrisGraph,), graph)
-    end
-
-    function iris_get_graph_3d_comm_data_ptr(graph::IrisGraph)::Ptr{Cvoid}
-        return ccall(Libdl.dlsym(lib, :iris_get_graph_3d_comm_data_ptr), Ptr{Cvoid}, (IrisGraph,), graph)
-    end
-
-    function iris_get_graph_tasks_execution_schedule(graph::IrisGraph, kernel_profile::Int32)::Ptr{Cvoid}
-        return ccall(Libdl.dlsym(lib, :iris_get_graph_tasks_execution_schedule), Ptr{Cvoid}, (IrisGraph, Int32), graph, kernel_profile)
-    end
-
-    function iris_get_graph_tasks_execution_schedule_count(graph::IrisGraph)::Csize_t
-        return ccall(Libdl.dlsym(lib, :iris_get_graph_tasks_execution_schedule_count), Csize_t, (IrisGraph,), graph)
-    end
-
-    function iris_get_graph_dataobjects_execution_schedule(graph::IrisGraph)::Ptr{Cvoid}
-        return ccall(Libdl.dlsym(lib, :iris_get_graph_dataobjects_execution_schedule), Ptr{Cvoid}, (IrisGraph,), graph)
-    end
-
-    function iris_get_graph_dataobjects_execution_schedule_count(graph::IrisGraph)::Csize_t
-        return ccall(Libdl.dlsym(lib, :iris_get_graph_dataobjects_execution_schedule_count), Csize_t, (IrisGraph,), graph)
-    end
-
-    function iris_get_graph_3d_comm_data(graph::IrisGraph, comm_data::Ptr{Cvoid})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_get_graph_3d_comm_data), Int32, (IrisGraph, Ptr{Cvoid}), graph, comm_data)
-    end
-
-    function iris_get_graph_2d_comm_adj_matrix(graph::IrisGraph, size_data::Ptr{Csize_t})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_get_graph_2d_comm_adj_matrix), Int32, (IrisGraph, Ptr{Csize_t}), graph, size_data)
-    end
-
-    function iris_calibrate_compute_cost_adj_matrix(graph::IrisGraph, comp_data::Ptr{Cdouble})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_calibrate_compute_cost_adj_matrix), Int32, (IrisGraph, Ptr{Cdouble}), graph, comp_data)
-    end
-
-    function iris_calibrate_compute_cost_adj_matrix_only_for_types(graph::IrisGraph, comp_data::Ptr{Cdouble})::Int32
-        return ccall(Libdl.dlsym(lib, :iris_calibrate_compute_cost_adj_matrix_only_for_types), Int32, (IrisGraph, Ptr{Cdouble}), graph, comp_data)
-    end
-
-    function iris_calibrate_communication_cost(data::Ptr{Cdouble}, data_size::Csize_t, iterations::Int32, pin_memory_flag::Int32)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_calibrate_communication_cost), Int32, (Ptr{Cdouble}, Csize_t, Int32, Int32), data, data_size, iterations, pin_memory_flag)
-    end
-
-    function iris_get_graph_3d_comm_time(graph::IrisGraph, comm_time::Ptr{Cdouble}, mem_ids::Ptr{Int32}, iterations::Int32, pin_memory_flag::Int32)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_get_graph_3d_comm_time), Int32, (IrisGraph, Ptr{Cdouble}, Ptr{Int32}, Int32, Int32), graph, comm_time, mem_ids, iterations, pin_memory_flag)
-    end
-
-    function iris_count_mems(graph::IrisGraph)::Csize_t
-        return ccall(Libdl.dlsym(lib, :iris_count_mems), Csize_t, (IrisGraph,), graph)
-    end
-
-    function iris_free_array(ptr::Ptr{Cvoid})::Cvoid
-        ccall(Libdl.dlsym(lib, :iris_free_array), Cvoid, (Ptr{Cvoid},), ptr)
-    end
-
-    function iris_allocate_array_int8_t(SIZE::Int32, init::Int8)::Ptr{Int8}
-        return ccall(Libdl.dlsym(lib, :iris_allocate_array_int8_t), Ptr{Int8}, (Int32, Int8), SIZE, init)
-    end
-
-    function iris_allocate_array_int16_t(SIZE::Int32, init::Int16)::Ptr{Int16}
-        return ccall(Libdl.dlsym(lib, :iris_allocate_array_int16_t), Ptr{Int16}, (Int32, Int16), SIZE, init)
-    end
-
-    function iris_allocate_array_int32_t(SIZE::Int32, init::Int32)::Ptr{Int32}
-        return ccall(Libdl.dlsym(lib, :iris_allocate_array_int32_t), Ptr{Int32}, (Int32, Int32), SIZE, init)
-    end
-
-    function iris_allocate_array_int64_t(SIZE::Int32, init::Int64)::Ptr{Int64}
-        return ccall(Libdl.dlsym(lib, :iris_allocate_array_int64_t), Ptr{Int64}, (Int32, Int64), SIZE, init)
-    end
-
-    function iris_allocate_array_size_t(SIZE::Int32, init::Csize_t)::Ptr{Csize_t}
-        return ccall(Libdl.dlsym(lib, :iris_allocate_array_size_t), Ptr{Csize_t}, (Int32, Csize_t), SIZE, init)
-    end
-
-    function iris_allocate_array_float(SIZE::Int32, init::Float32)::Ptr{Float32}
-        return ccall(Libdl.dlsym(lib, :iris_allocate_array_float), Ptr{Float32}, (Int32, Float32), SIZE, init)
-    end
-
-    function iris_allocate_array_double(SIZE::Int32, init::Cdouble)::Ptr{Cdouble}
-        return ccall(Libdl.dlsym(lib, :iris_allocate_array_double), Ptr{Cdouble}, (Int32, Cdouble), SIZE, init)
-    end
-
-    function iris_allocate_random_array_int8_t(SIZE::Int32)::Ptr{Int8}
-        return ccall(Libdl.dlsym(lib, :iris_allocate_random_array_int8_t), Ptr{Int8}, (Int32,), SIZE)
-    end
-
-    function iris_allocate_random_array_int16_t(SIZE::Int32)::Ptr{Int16}
-        return ccall(Libdl.dlsym(lib, :iris_allocate_random_array_int16_t), Ptr{Int16}, (Int32,), SIZE)
-    end
-
-    function iris_allocate_random_array_int32_t(SIZE::Int32)::Ptr{Int32}
-        return ccall(Libdl.dlsym(lib, :iris_allocate_random_array_int32_t), Ptr{Int32}, (Int32,), SIZE)
-    end
-
-    function iris_allocate_random_array_int64_t(SIZE::Int32)::Ptr{Int64}
-        return ccall(Libdl.dlsym(lib, :iris_allocate_random_array_int64_t), Ptr{Int64}, (Int32,), SIZE)
-    end
-
-    function iris_allocate_random_array_size_t(SIZE::Int32)::Ptr{Csize_t}
-        return ccall(Libdl.dlsym(lib, :iris_allocate_random_array_size_t), Ptr{Csize_t}, (Int32,), SIZE)
-    end
-
-    function iris_allocate_random_array_float(SIZE::Int32)::Ptr{Float32}
-        return ccall(Libdl.dlsym(lib, :iris_allocate_random_array_float), Ptr{Float32}, (Int32,), SIZE)
-    end
-
-    function iris_allocate_random_array_double(SIZE::Int32)::Ptr{Cdouble}
-        return ccall(Libdl.dlsym(lib, :iris_allocate_random_array_double), Ptr{Cdouble}, (Int32,), SIZE)
-    end
-
-    function iris_print_matrix_full_double(data::Ptr{Cdouble}, M::Int32, N::Int32, description::String)::Cvoid
-        ccall(Libdl.dlsym(lib, :iris_print_matrix_full_double), Cvoid, (Ptr{Cdouble}, Int32, Int32, Ptr{Cchar}), data, M, N, pointer(description))
-    end
-
-    function iris_print_matrix_limited_double(data::Ptr{Cdouble}, M::Int32, N::Int32, description::String, limit::Int32)::Cvoid
-        ccall(Libdl.dlsym(lib, :iris_print_matrix_limited_double), Cvoid, (Ptr{Cdouble}, Int32, Int32, Ptr{Cchar}, Int32), data, M, N, pointer(description), limit)
-    end
-
-    function iris_print_matrix_full_float(data::Ptr{Float32}, M::Int32, N::Int32, description::String)::Cvoid
-        ccall(Libdl.dlsym(lib, :iris_print_matrix_full_float), Cvoid, (Ptr{Float32}, Int32, Int32, Ptr{Cchar}), data, M, N, pointer(description))
-    end
-
-    function iris_print_matrix_limited_float(data::Ptr{Float32}, M::Int32, N::Int32, description::String, limit::Int32)::Cvoid
-        ccall(Libdl.dlsym(lib, :iris_print_matrix_limited_float), Cvoid, (Ptr{Float32}, Int32, Int32, Ptr{Cchar}, Int32), data, M, N, pointer(description), limit)
-    end
-
-    function iris_print_matrix_full_int64_t(data::Ptr{Int64}, M::Int32, N::Int32, description::String)::Cvoid
-        ccall(Libdl.dlsym(lib, :iris_print_matrix_full_int64_t), Cvoid, (Ptr{Int64}, Int32, Int32, Ptr{Cchar}), data, M, N, pointer(description))
-    end
-
-    function iris_print_matrix_limited_int64_t(data::Ptr{Int64}, M::Int32, N::Int32, description::String, limit::Int32)::Cvoid
-        ccall(Libdl.dlsym(lib, :iris_print_matrix_limited_int64_t), Cvoid, (Ptr{Int64}, Int32, Int32, Ptr{Cchar}, Int32), data, M, N, pointer(description), limit)
-    end
-
-    function iris_print_matrix_full_int32_t(data::Ptr{Int32}, M::Int32, N::Int32, description::String)::Cvoid
-        ccall(Libdl.dlsym(lib, :iris_print_matrix_full_int32_t), Cvoid, (Ptr{Int32}, Int32, Int32, Ptr{Cchar}), data, M, N, pointer(description))
-    end
-
-    function iris_print_matrix_limited_int32_t(data::Ptr{Int32}, M::Int32, N::Int32, description::String, limit::Int32)::Cvoid
-        ccall(Libdl.dlsym(lib, :iris_print_matrix_limited_int32_t), Cvoid, (Ptr{Int32}, Int32, Int32, Ptr{Cchar}, Int32), data, M, N, pointer(description), limit)
-    end
-
-    function iris_print_matrix_full_int16_t(data::Ptr{Int16}, M::Int32, N::Int32, description::String)::Cvoid
-        ccall(Libdl.dlsym(lib, :iris_print_matrix_full_int16_t), Cvoid, (Ptr{Int16}, Int32, Int32, Ptr{Cchar}), data, M, N, pointer(description))
-    end
-
-    function iris_print_matrix_limited_int16_t(data::Ptr{Int16}, M::Int32, N::Int32, description::String, limit::Int32)::Cvoid
-        ccall(Libdl.dlsym(lib, :iris_print_matrix_limited_int16_t), Cvoid, (Ptr{Int16}, Int32, Int32, Ptr{Cchar}, Int32), data, M, N, pointer(description), limit)
-    end
-
-    function iris_print_matrix_full_int8_t(data::Ptr{Int8}, M::Int32, N::Int32, description::String)::Cvoid
-        ccall(Libdl.dlsym(lib, :iris_print_matrix_full_int8_t), Cvoid, (Ptr{Int8}, Int32, Int32, Ptr{Cchar}), data, M, N, pointer(description))
-    end
-
-    function iris_print_matrix_limited_int8_t(data::Ptr{Int8}, M::Int32, N::Int32, description::String, limit::Int32)::Cvoid
-        ccall(Libdl.dlsym(lib, :iris_print_matrix_limited_int8_t), Cvoid, (Ptr{Int8}, Int32, Int32, Ptr{Cchar}, Int32), data, M, N, pointer(description), limit)
-    end
-
-    function iris_run_hpl_mapping(graph::IrisGraph)::Cvoid
-        ccall(Libdl.dlsym(lib, :iris_run_hpl_mapping), Cvoid, (IrisGraph,), graph)
-    end
-
-    function iris_read_bool_env(env_name::String)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_read_bool_env), Int32, (Ptr{Cchar},), pointer(env_name))
-    end
-
-    function iris_read_int_env(env_name::String)::Int32
-        return ccall(Libdl.dlsym(lib, :iris_read_int_env), Int32, (Ptr{Cchar},), pointer(env_name))
     end
 
     function gc_safe_enter()
@@ -3987,11 +2650,11 @@ module IrisHRT
 
         # Set kernel type
         if (julia_kernel_type & 0xFFFF) == IrisHRT.iris_julia_native 
-            ccall(Libdl.dlsym(lib, :iris_task_enable_julia_interface), Int32, (IrisTask, Int32), task0, Int32(julia_kernel_type))
+			iris_task_enable_julia_interface(task0, julia_kernel_type)
         elseif (julia_kernel_type & 0xFFFF) == IrisHRT.iris_julia_kernel_abstraction
-            ccall(Libdl.dlsym(lib, :iris_task_enable_julia_interface), Int32, (IrisTask, Int32), task0, Int32(julia_kernel_type))
+			iris_task_enable_julia_interface(task0, julia_kernel_type)
         elseif (julia_kernel_type & 0xFFFF) == IrisHRT.iris_julia_jacc
-            ccall(Libdl.dlsym(lib, :iris_task_enable_julia_interface), Int32, (IrisTask, Int32), task0, Int32(julia_kernel_type))
+			iris_task_enable_julia_interface(task0, julia_kernel_type)
         elseif (julia_kernel_type & 0xFFFF) == IrisHRT.iris_core_native
             # Do nothing here
         end
@@ -4035,7 +2698,7 @@ module IrisHRT
         # Create kernel with task
         #println(Core.stdout, "Before IRIS task creation")
         GC.@preserve gws lws off kernel_name begin
-            ccall(Libdl.dlsym(lib, :iris_task_kernel), Int32, (IrisTask, Ptr{Cchar}, Int32, Ptr{Csize_t}, Ptr{Csize_t}, Ptr{Csize_t}, Int32, Ptr{Ptr{Cvoid}}, Ptr{Int32}), task0, pointer(kernel_name), Int32(length(gws)), off_c, gws_c, lws_c, Int32(nparams), c_params, pointer(params_info))
+			iris_task_kernel(task0, kernel_name, length(gws), off_c, gws_c, lws_c, nparams, c_params, pointer(params_info))
         end
         #println(Core.stdout, "After IRIS task creation")
         if metadata != nothing
