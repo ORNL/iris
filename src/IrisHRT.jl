@@ -26,6 +26,7 @@ const IRIS_ERROR            = -1
 const IRIS_WARNING          = -2
 const iris_path = ENV["IRIS"]
 module DummyAMDGPU
+	__precompile__()
     macro sync(args...) end
     macro async(args...) end
     macro roc(args...) end  # Use a varargs definition instead of keyword arguments
@@ -56,6 +57,7 @@ module DummyAMDGPU
 end
 
 module DummyCUDA
+	__precompile__()
     struct CUctx_st
         id::Int
     end
@@ -94,7 +96,7 @@ else
     const MyCUDA = DummyCUDA
 end
 
-#__precompile__(false)
+__precompile__()
 const hip_available = try
     using AMDGPU
     if AMDGPU.has_rocm_gpu()
@@ -137,6 +139,9 @@ mutable struct IRISHIPStream
 end
 import Base: reshape
 module IrisHRT
+
+	__precompile__()
+
     import Base: Callable
     import Base: show
 
@@ -296,6 +301,11 @@ module IrisHRT
     struct IRISBackend
         backend_name::String
     end
+
+	field_task(x::IrisTaskMem) = x.task
+	field_task(x::IrisTask) = x
+	field_dmem(x::IrisTaskMem) = x.dmem
+	field_dmem(x::IrisMem) = x
 
     macro maybethreads(ex)
        nthreads = Threads.nthreads()
@@ -1360,6 +1370,10 @@ module IrisHRT
         ccall(Libdl.dlsym(lib, :iris_task_retain), Cvoid, (IrisTask, Int32), task, flag)
     end
 
+	function retain(task::Union{IrisTask,IrisTaskMem}, flag=1)
+		iris_task_retain(field_task(task), Int32(flag))
+	end
+
     function iris_task_set_julia_policy(task::IrisTask, name::String)::Int32
         return ccall(Libdl.dlsym(lib, :iris_task_set_julia_policy), Int32, (IrisTask, Ptr{Cchar}), task, pointer(name))
     end
@@ -1575,7 +1589,8 @@ module IrisHRT
         return j_out64
     end
 
-    function set_metadata(task::IrisTask, metadata, index=nothing)
+    function set_metadata(task::Union{IrisTask,IrisTaskMem}, metadata, index=nothing)
+		task = field_task(task)
         if index != nothing
             return iris_task_set_metadata(task, index, metadata)
         end
@@ -1646,18 +1661,26 @@ module IrisHRT
         return haskey(Main.__iris_dmem_map, pointer(data))
     end 
 
-    function get_dmem_from_cache(data, new=false, create=true)
+    function get_dmem_from_cache(data, new=false, create=true; name="")
         if isa(data, Union{IrisMem, IrisTaskMem})
             return field_dmem(data)
         else
             if isa(data, SubArray)
                 offsets = view_offsets_elements(data)
                 dev_size = view_device_size(data)
-                key = (pointer(data), offsets, dev_size)
+				parent = data.parent
+				host_size = size(parent)
+				key = (pointer(data), host_size, offsets, dev_size)
                 if !new && haskey(Main.__iris_dmem_subarray_map, key)
+					#if name != ""
+					#	println(Core.stdout, " name:", name, " dev_size:", dev_size, " offsets:", offsets, " host:", size(parent), " pointer:", pointer(data), " :: ", pointer(parent), "  E")
+					#end
                     return Main.__iris_dmem_subarray_map[key]
                 else
                     if create
+						#if name != ""
+						#	println(Core.stdout, " name:", name, " dev_size:", dev_size, " offsets:", offsets, " host:", size(parent), " pointer:", pointer(data), " :: ", pointer(parent), "  N")
+						#end
                         d_mem = iris_data_mem(data)
                         Main.__iris_dmem_subarray_map[key] = d_mem
                         return d_mem
@@ -1680,35 +1703,42 @@ module IrisHRT
         end 
     end
 
-    function flush(task::IrisTask, mem::Union{IrisMem,IrisTaskMem})::Int32
-        return iris_task_dmem_flush_out(task, field_dmem(mem))
+    function flush(task::Union{IrisTask,IrisTaskMem}, mem::Union{IrisMem,IrisTaskMem})::Int32
+        return iris_task_dmem_flush_out(field_task(task), field_dmem(mem))
     end
 
-    function flush(task::IrisTask, host::Array{T})::Int32 where T
+    function flush(task::Union{IrisTask,IrisTaskMem}, host::AbstractArray{T})::Int32 where T
         mem = get_dmem_from_cache(host)
-        return iris_task_dmem_flush_out(task, mem)
+        return iris_task_dmem_flush_out(field_task(task), mem)
     end
 
     function flush(mem; task=nothing, submit=true, wait=true, dependencies=[], policy=IrisHRT.iris_roundrobin, auto_dependency=true)::IrisTask
         task0 = task
         if task0 == nothing
             task0 = iris_task_create_struct()
+		else
+			task0 = field_task(task)
         end
-        iris_task_set_name(task0, "flush")
+        set_name(task0, "flush")
         mem = get_dmem_from_cache(mem)
-        IrisHRT.iris_task_dmem_flush_out(task0, mem)
-        dependencies = [x for x in dependencies if x !== nothing]
+		#println(Core.stdout, "flushing now: ", typeof(mem))
+		iris_task_dmem_flush_out(task0, mem)
+        dependencies = [x for x in dependencies if x !== nothing && x != task0]
         if length(dependencies) > 0
             IrisHRT.iris_task_depend(task0, dependencies)
         end
+		#println(Core.stdout, "n deps:", dependencies, " task:", task0)
         if auto_dependency
             add_auto_dependencies(task0, [mem], [])
         end
+		#println(Core.stdout, "added depe")
         if submit
+			#println(Core.stdout, "submits")
             IrisHRT.iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
         else
             IrisHRT.iris_task_set_policy(task0, Int32(policy))
         end
+		#println(Core.stdout, "returning task")
         return task0
     end
     function release(array_obj::Array{T}) where T 
@@ -2326,7 +2356,7 @@ module IrisHRT
         end
     end
 
-    function dmem(host::AbstractArray{T}; new=false) where T
+    function dmem(host::AbstractArray{T}; new=false, name="") where T
         if new
             #cached_dmem = get_dmem_from_cache(host, false, false)
             #if cached_dmem != nothing
@@ -2338,7 +2368,7 @@ module IrisHRT
             #end
             return iris_data_mem(host)
         else
-            return get_dmem_from_cache(host)
+            return get_dmem_from_cache(host; name=name)
         end
     end
 
@@ -2845,6 +2875,10 @@ module IrisHRT
     function iris_task_set_name(task::IrisTask, name::String)::Cvoid
         ccall(Libdl.dlsym(lib, :iris_task_set_name), Cvoid, (IrisTask, Ptr{Cchar}), task, pointer(name))
     end
+	
+	function set_name(task::Union{IrisTask,IrisTaskMem}, name::String)
+		iris_task_set_name(field_task(task), name)
+	end
 
     function iris_task_get_dependency_count(task::IrisTask)::Int32
         return ccall(Libdl.dlsym(lib, :iris_task_get_dependency_count), Int32, (IrisTask,), task)
@@ -3666,21 +3700,22 @@ module IrisHRT
     end
 
     function custom_print(im::IrisMem)
+		#println(Core.stdout, " before flushed now!")
         flush(im)
+		#println(Core.stdout, " flushed now!")
         host = get_host_4_dmem(im)
         return host #"IrisMem with data: " * join(host, ", ")
     end
 
     # Overriding show so that println calls custom_print.
-    function show(io::IO, im::IrisMem)
+    function Base.show(io::IO, im::IrisMem)
         print(io, custom_print(im))
     end
 
-    function show(io::IO, im::IrisTaskMem)
+    function Base.show(io::IO, im::IrisTaskMem)
+		#println(Core.stdout, " called show!")
         print(io, custom_print(im.dmem))
     end
-    field_dmem(x::IrisTaskMem) = x.dmem
-    field_dmem(x::IrisMem) = x
 
     function get_tile(host, offset, tile_size)
         # Build index ranges for each dimension.
@@ -3688,7 +3723,7 @@ module IrisHRT
         index_ranges = tuple(((offset[i]+1 : (offset[i] + tile_size[i])) for i in 1:length(offset))...)
         # println(Core.stdout, " indexes:", index_ranges)        
         # Slice the host array using the generated ranges.
-        tile = host[index_ranges...]
+        tile = @view host[index_ranges...]
         # Print the tile.
         # println("Tile:", tile)
         return tile
@@ -3774,6 +3809,8 @@ module IrisHRT
         if task0 == nothing
             task0 = iris_task_create_struct()
             iris_task_set_name(task0, "copyto")
+		else
+			task0 = field_task(task)
         end
         if !isa(src, Union{IrisMem, IrisTaskMem})
             src = get_dmem_from_cache(src)
@@ -3785,7 +3822,7 @@ module IrisHRT
         else
             dst = field_dmem(dst)
         end
-        n_dependencies = IrisHRT.IrisTask[x for x in dependencies if x !== nothing]
+        n_dependencies = IrisHRT.IrisTask[field_task(x) for x in dependencies if x !== nothing && x != task0]
         if length(n_dependencies) > 0
             IrisHRT.iris_task_depend(task0, n_dependencies)
         end
@@ -3828,7 +3865,7 @@ module IrisHRT
                 if haskey(Main.__iris_dmem_2_task, mem_obj)
                     dep_task = Main.__iris_dmem_2_task[mem_obj]
                     if dep_task.uid != task0.uid
-                        push!(n_dependencies, Main.__iris_dmem_2_task[mem_obj]) 
+                        push!(n_dependencies, field_task(Main.__iris_dmem_2_task[mem_obj]))
                     end
                 end
             else
@@ -3836,7 +3873,7 @@ module IrisHRT
                 if haskey(Main.__iris_dmem_2_task, mem_obj)
                     dep_task = Main.__iris_dmem_2_task[mem_obj]
                     if dep_task.uid != task0.uid
-                        push!(n_dependencies, dep_task)
+                        push!(n_dependencies, field_task(dep_task))
                     end
                 end
             end
@@ -4009,7 +4046,7 @@ module IrisHRT
             IrisHRT.iris_task_dmem_flush_out(task0, p_dmem)
         end
         #println(Core.stdout, "IRIS task dependencies")
-        n_dependencies = IrisHRT.IrisTask[x for x in dependencies if x !== nothing]
+        n_dependencies = IrisHRT.IrisTask[field_task(x) for x in dependencies if x !== nothing && x != task0]
         if length(n_dependencies) > 0
             IrisHRT.iris_task_depend(task0, n_dependencies)
         end
@@ -4093,6 +4130,13 @@ function Base.length(mem::Union{IrisHRT.IrisMem, IrisHRT.IrisTaskMem})
     s = Base.prod(size)
     return s
 end
+
+function Base.pointer(mem::Union{IrisHRT.IrisMem, IrisHRT.IrisTaskMem})
+	dmem = IrisHRT.field_dmem(mem)
+	host = IrisHRT.get_host_4_dmem(dmem)
+	return pointer(host)
+end
+
 
 include("Tiling1D.jl")
 include("Tiling2D.jl")
