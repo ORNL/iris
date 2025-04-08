@@ -20,3 +20,5 @@ task.flush(dst_iris)
 task.submit()
 
 print(np.all(src == dst))
+
+iris.finalize()
