@@ -1020,7 +1020,11 @@ class task:
         kernel_name = c_char_p(kernel) if sys.version_info[0] == 2 else c_char_p(bytes(kernel, 'ascii'))
         dll.iris_task_kernel(self.handle, kernel_name, c_int(dim), coff, cgws, clws, c_int(nparams), cparams, cparams_info)
         for pobj in flush_objs:
-            dll.iris_task_dmem_flush_out(self.handle, pobj);
+            dll.iris_task_dmem_flush_out(self.handle, pobj)
+
+    def flush(self, mem):                                                       |                (s, iris.iris_w, iris.iris_flush),
+        dll.iris_task_dmem_flush_out(self.handle, mem.handle)                          |                A,
+
     def name(self):
         dll.iris_task_get_name.restype = c_char_p
         kname = dll.iris_task_get_name(self.handle)
