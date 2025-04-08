@@ -4,21 +4,32 @@ import iris
 import numpy as np
 import sys
 
+# IRIS initialize
 iris.init()
 
 N=16
-src = np.arange(N, dtype=np.float32)
-dst = np.zeros(N, dtype=np.float32)
+# Create and initialize src and dst memory
+src_data = np.arange(N, dtype=np.float32)
+dst_data = np.zeros(N, dtype=np.float32)
 
+# Create DMEM2DMEM command in task
+src = iris.dmem(src_data)
+dst = iris.dmem(dst_data)
 
-src_iris = iris.dmem(src)
-dst_iris = iris.dmem(dst)
-
+# Create task
 task = iris.task()
-task.dmem2dmem(src_iris, dst_iris)
-task.flush(dst_iris)
+
+# Add DMEM2DMEM command to task
+task.dmem2dmem(src, dst)
+
+# Add flush command to task
+task.flush(dst)
+
+# Submit task
 task.submit()
 
-print(np.all(src == dst))
+# Compare output
+print(np.all(src_data == dst_data))
 
+# IRIS finalize
 iris.finalize()

@@ -7,28 +7,28 @@ int main(int argc, char **argv)
 
     // Create and initialize Src memory
     int N=16;
-    int *src_data = (int*)malloc(sizeof(int)*N);
+    int *src_data = new int[N];
     for(int i=0; i<N; i++) src_data[i] = i+1;
 
     // Create and initialize Src memory
-    int *dst_data = (int*)malloc(sizeof(int)*N);
+    int *dst_data = new int[N];
     for(int i=0; i<N; i++) dst_data[i] = i+1;
 
     // Create IRIS DMEM objects for source and destination
-    iris_dmem src = iris_data_mem_create_struct(src_data, N*sizeof(int));
-    iris_dmem dst = iris_data_mem_create_struct(dst_data, N*sizeof(int));
+    iris::DMemArray<int> src(src_data, N);
+    iris::DMemArray<int> dst(dst_data, N);
 
     // Create IRIS task
-    iris_task task = iris_task_create_struct();
-
+    iris::Task task();
+    
     // Create DMEM2DMEM command in task
-    iris_task_dmem2dmem(task, src, dst);
+    task.dmem2dmem(src, dst);
 
     // Flush destination DMEM to host memory
-    iris_task_dmem_flush_out(task, dst);
+    task.flush(dst);
 
     // Submit the task
-    iris_task_submit(task, iris_default, NULL, 1);
+    task.submit(sync=true);
 
     // Compare output
     int nerrors = 0;
@@ -37,10 +37,10 @@ int main(int argc, char **argv)
     }
 
     // Clear
-    iris_mem_release(src);
-    iris_mem_release(dst);
-    free(src_data);
-    free(dst_data);
+    DMem.release(src);
+    DMem.release(dst);
+    delete [] src_data;
+    delete [] dst_data;
 
     // IRIS finalize
     iris_finalize();

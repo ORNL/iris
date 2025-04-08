@@ -11,6 +11,12 @@ DMEM to DMEM @miniskarnr
           :language: c
 
     .. tab-container:: tab2
+        :title: C++
+
+        .. literalinclude:: ../../../tests/39_dmem2dmem/cpp_host.cpp
+          :language: c++
+
+    .. tab-container:: tab3
         :title: Python
 
         .. literalinclude:: ../../../tests/39_dmem2dmem/py_host.py
