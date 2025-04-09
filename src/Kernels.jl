@@ -6,6 +6,8 @@ import Base: sum
 import Base: prod
 import Base: maximum
 import Base: minimum
+import Base: sqrt
+
 function __iris_jacc_log(i, Y, X)
     @inbounds Y[i] = Base.log(X[i])
 end
@@ -62,6 +64,15 @@ function __iris_jacc_mul_s_v(i, Z, Xs, Y)
 end
 function __iris_jacc_div_s_v(i, Z, Xs, Y)
     @inbounds Z[i] = Xs / Y[i]
+end
+function __iris_dot_v_v(i, X, Y)
+    @inbounds X[i] * Y[i]
+end
+function __iris_dot_v_s(i, X, y)
+    @inbounds X[i] * y
+end
+function __iris_dot_s_v(i, x, Y)
+    @inbounds x * Y[i]
 end
 function __arith_kernel_v(kernel, a::IrisHRT.IrisMem; task=nothing, submit=true, wait=true, flush=true, jacc=true, result=nothing, eargs...)
     kernel_name = "__iris_jacc_" * kernel * "_v"
@@ -378,17 +389,17 @@ function /(a::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, b::T; eargs...) where 
 end
 
 ######## Vector = Scalar (Op) Vector 
-function +(a::T, b::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}) where T <: Number
-    return __arith_kernel_s_v("add", a, field_mem(b))
+function +(a::T, b::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}; eargs...) where T <: Number
+    return __arith_kernel_s_v("add", a, IrisHRT.field_dmem(b); eargs...)
 end
-function -(a::T, b::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}) where T <: Number
-    return __arith_kernel_s_v("sub", a, field_mem(b))
+function -(a::T, b::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}; eargs...) where T <: Number
+    return __arith_kernel_s_v("sub", a, IrisHRT.field_dmem(b); eargs...)
 end
-function *(a::T, b::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}) where T <: Number
-    return __arith_kernel_s_v("mul", a, field_mem(b))
+function *(a::T, b::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}; eargs...) where T <: Number
+    return __arith_kernel_s_v("mul", a, IrisHRT.field_dmem(b); eargs...)
 end
-function /(a::T, b::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}) where T <: Number
-    return __arith_kernel_s_v("div", a, field_mem(b))
+function /(a::T, b::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}; eargs...) where T <: Number
+    return __arith_kernel_s_v("div", a, IrisHRT.field_dmem(b); eargs...)
 end
 
 ###################################
@@ -421,17 +432,17 @@ function /(out::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, a::Union{IrisHRT.Iri
 end
 
 ######## Vector = Scalar (Op) Vector 
-function +(out::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, a::T, b::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}) where T <: Number
-    return __arith_kernel_s_v("add", a, field_mem(b); result=IrisHRT.field_dmem(out), )
+function +(out::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, a::T, b::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}; eargs...) where T <: Number
+    return __arith_kernel_s_v("add", a, IrisHRT.field_dmem(b); result=IrisHRT.field_dmem(out), eargs...)
 end
-function -(out::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, a::T, b::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}) where T <: Number
-    return __arith_kernel_s_v("sub", a, field_mem(b); result=IrisHRT.field_dmem(out), )
+function -(out::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, a::T, b::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}; eargs...) where T <: Number
+    return __arith_kernel_s_v("sub", a, IrisHRT.field_dmem(b); result=IrisHRT.field_dmem(out), eargs...)
 end
-function *(out::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, a::T, b::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}) where T <: Number
-    return __arith_kernel_s_v("mul", a, field_mem(b); result=IrisHRT.field_dmem(out), )
+function *(out::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, a::T, b::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}; eargs...) where T <: Number
+    return __arith_kernel_s_v("mul", a, IrisHRT.field_dmem(b); result=IrisHRT.field_dmem(out), eargs...)
 end
-function /(out::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, a::T, b::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}) where T <: Number
-    return __arith_kernel_s_v("div", a, field_mem(b); result=IrisHRT.field_dmem(out), )
+function /(out::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, a::T, b::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}; eargs...) where T <: Number
+    return __arith_kernel_s_v("div", a, IrisHRT.field_dmem(b); result=IrisHRT.field_dmem(out), eargs...)
 end
 
 ################### Define Common macros to define math functions #################
@@ -492,30 +503,6 @@ macro __core_math_define(fn_names...)
             function $(esc(name))(a::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, b::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, alpha::T, beta::T; eargs...) where T <: Number
                 return __arith_kernel_v_v_s_s($name_str, IrisHRT.field_dmem(a), IrisHRT.field_dmem(b), alpha, beta; eargs...)
             end
-            #  op_wrapper(C, op(A))
-            function $(esc(name))(out::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, a::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}; eargs...)
-                return __arith_kernel_v($name_str, IrisHRT.field_dmem(a); result=IrisHRT.field_dmem(out), eargs...)
-            end
-            #  op_wrapper(C, alpha * op(A))
-            function $(esc(name))(out::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, a::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, alpha::T; eargs...) where T <: Number
-                return __arith_kernel_v_s($name_str, IrisHRT.field_dmem(a), alpha; result=IrisHRT.field_dmem(out), eargs...)
-            end
-            #  op_wrapper(C, beta + alpha * op(A))
-            function $(esc(name))(out::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, a::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, alpha::T, beta::T; eargs...) where T <: Number
-                return __arith_kernel_v_s_s($name_str, IrisHRT.field_dmem(a), alpha, beta; result=IrisHRT.field_dmem(out), eargs...)
-            end
-            #  op_wrapper(C, B + op(A))
-            function $(esc(name))(out::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, a::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, b::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}; eargs...) 
-                return __arith_kernel_v_v($name_str, IrisHRT.field_dmem(a), IrisHRT.field_dmem(b); result=IrisHRT.field_dmem(out), eargs...)
-            end
-            #  op_wrapper(C, B + alpha * op(A))
-            function $(esc(name))(out::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, a::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, b::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, alpha::T; eargs...) where T <: Number
-                return __arith_kernel_v_v_s($name_str, IrisHRT.field_dmem(a), IrisHRT.field_dmem(b), alpha; result=IrisHRT.field_dmem(out), eargs...)
-            end
-            #  op_wrapper(C, beta * B + alpha * op(A))
-            function $(esc(name))(out::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, a::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, b::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, alpha::T, beta::T; eargs...) where T <: Number
-                return __arith_kernel_v_v_s_s($name_str, IrisHRT.field_dmem(a), IrisHRT.field_dmem(b), alpha, beta; result=IrisHRT.field_dmem(out), eargs...)
-            end
         end)
     end
     return Expr(:block, exprs...)
@@ -537,24 +524,12 @@ end
 function ldexp(a::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, n::Int64, alpha::T; eargs...) where T <: Number
     return __arith_kernel_v_s_s("ldexp", IrisHRT.field_dmem(a), n, alpha; eargs...)
 end
-function ldexp(out::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, a::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, n::Int64; eargs...)
-    return __arith_kernel_v_s("ldexp", IrisHRT.field_dmem(a), n; result=IrisHRT.field_dmem(out), eargs...)
-end
-function ldexp(out::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, a::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, n::Int64, alpha; eargs...)
-    return __arith_kernel_v_s_s("ldexp", IrisHRT.field_dmem(a), n, alpha; result=IrisHRT.field_dmem(out), eargs...)
-end
 
 function ldexp(a::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, b::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}; eargs...)
     return __arith_kernel_v_v("ldexp", IrisHRT.field_dmem(a), IrisHRT.field_dmem(b); eargs...)
 end
 function ldexp(a::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, b::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, alpha::T; eargs...) where T <: Number
     return __arith_kernel_v_v_s("ldexp", IrisHRT.field_dmem(a), IrisHRT.field_dmem(b), alpha; eargs...)
-end
-function ldexp(out::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, a::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, b::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}; eargs...)
-    return __arith_kernel_v_v("ldexp", IrisHRT.field_dmem(a), IrisHRT.field_dmem(b); result=IrisHRT.field_dmem(out), eargs...)
-end
-function ldexp(out::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, a::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, b::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, alpha; eargs...)
-    return __arith_kernel_v_v_s("ldexp", IrisHRT.field_dmem(a), IrisHRT.field_dmem(b), alpha; result=IrisHRT.field_dmem(out), eargs...)
 end
 
 ######### log ############
@@ -568,15 +543,6 @@ function log(b::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, a::Union{IrisHRT.Iri
     return __arith_kernel_v_v("log", IrisHRT.field_dmem(b), IrisHRT.field_dmem(a); eargs...)
 end
 
-function log(out::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, a::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}; eargs...)
-    return __arith_kernel_v("log", IrisHRT.field_dmem(a); result=IrisHRT.field_dmem(out), eargs...)
-end
-function log(out::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, b::Int64, a::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}; eargs...)
-    return __arith_kernel_s_v("log", b, IrisHRT.field_dmem(a); result=IrisHRT.field_dmem(out), eargs...)
-end
-function log(out::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, b::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, a::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}; eargs...)
-    return __arith_kernel_v_v("log", IrisHRT.field_dmem(b), IrisHRT.field_dmem(a); result=IrisHRT.field_dmem(out), eargs...)
-end
 function sum(x::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}; eargs...)
     return IrisHRT.parallel_reduce(+, IrisHRT.field_dmem(x); eargs...)
 end
@@ -588,4 +554,22 @@ function maximum(x::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}; eargs...)
 end
 function minimum(x::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}; eargs...)
     return IrisHRT.parallel_reduce(min, IrisHRT.field_dmem(x); eargs...)
+end
+function inner(x::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, y::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}; eargs...)
+    return IrisHRT.parallel_reduce(*, __iris_dot_v_v, IrisHRT.field_dmem(x), IrisHRT.field_dmem(y); eargs...)
+end
+function inner(x::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, y::T; eargs...) where T <: Number
+    return IrisHRT.parallel_reduce(*, __iris_dot_v_s, IrisHRT.field_dmem(x), y; eargs...)
+end
+function inner(x::T, y::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}; eargs...) where T <: Number
+    return IrisHRT.parallel_reduce(*, __iris_dot_s_v, x, IrisHRT.field_dmem(y); eargs...)
+end
+function dot(x::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, y::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}; eargs...)
+    return IrisHRT.parallel_reduce(*, __iris_dot_v_v, IrisHRT.field_dmem(x), IrisHRT.field_dmem(y); eargs...)
+end
+function dot(x::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, y::T; eargs...) where T <: Number
+    return IrisHRT.parallel_reduce(*, __iris_dot_v_s, IrisHRT.field_dmem(x), y; eargs...)
+end
+function dot(x::T, y::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}; eargs...) where T <: Number
+    return IrisHRT.parallel_reduce(*, __iris_dot_s_v, x, IrisHRT.field_dmem(y); eargs...)
 end

@@ -16,6 +16,7 @@ JULIA_NIGHTLY_DIR=julia-nightly-${date_variable}
 JULIA_DIR=julia-${date_variable}
 JULIA_DEBUG_DIR=julia-debug-${date_variable}
 
+julia_version=$(julia -v)
 if [ "x$JULIA_NIGHTLY" = "x1" ]; then
     if [ -e julia-latest-linux-x86_64.tar.gz ]; then
         rm -f julia-latest-linux-x86_64.tar.gz
@@ -99,15 +100,22 @@ if [ "x$SKIP_SETUP" = "x0" ]; then
     fi
 fi
 export JULIA_DEPOT_PATH=$JULIA_CACHE_PATH
-GPUCompiler=${GPUCompiler:-v1.3.0}
-CUDA=${CUDA:-v5.7.1}
+if [ "x$julia_version" = "xjulia version 1.12.0-beta1" ]; then
+GPUCompiler=${GPUCompiler:-master}
+AMDGPURepository="JuliaGPU"
+AMDGPU=${AMDGPU:-v1.2.7}
+else
+GPUCompiler=${GPUCompiler:-v1.3.2}
+AMDGPURepository="miniskar"
 AMDGPU=${AMDGPU:-dev}
+fi
+CUDA=${CUDA:-v5.7.1}
 LoopVectorization=${LoopVectorization:-6aea6fb4eff}
 KernelAbstractions=${KernelAbstractions:-v0.9.34}
 #julia -e "using Pkg; Pkg.add(PackageSpec(name=\"LLD_jll\", version=\"19.1.7\"))"
 julia -e "using Pkg; Pkg.add(PackageSpec(url=\"https://github.com/JuliaGPU/GPUCompiler.jl\", rev=\"$GPUCompiler\"))"
 julia -e "using Pkg; Pkg.add(PackageSpec(url=\"https://github.com/JuliaGPU/CUDA.jl\", rev=\"$CUDA\"))"
-julia -e "using Pkg; Pkg.add(PackageSpec(url=\"https://github.com/miniskar/AMDGPU.jl\", rev=\"$AMDGPU\"))"
+julia -e "using Pkg; Pkg.add(PackageSpec(url=\"https://github.com/$AMDGPURepository/AMDGPU.jl\", rev=\"$AMDGPU\"))"
 julia -e "using Pkg; Pkg.add(\"Requires\")"
 julia -e "using Pkg; Pkg.add(\"Dagger\")"
 julia -e "using Pkg; Pkg.add(\"StatsBase\")"
@@ -132,7 +140,7 @@ if [ "x$SKIP_SETUP" = "x0" ]; then
         #julia-debug -e "using Pkg; Pkg.add(PackageSpec(name=\"LLD_jll\", version=\"19.1.7\"))"
         julia-debug -e "using Pkg; Pkg.add(PackageSpec(url=\"https://github.com/JuliaGPU/GPUCompiler.jl\", rev=\"$GPUCompiler\"))"
         julia-debug -e "using Pkg; Pkg.add(PackageSpec(url=\"https://github.com/JuliaGPU/CUDA.jl\", rev=\"$CUDA\"))"
-        julia-debug -e "using Pkg; Pkg.add(PackageSpec(url=\"https://github.com/miniskar/AMDGPU.jl\", rev=\"$AMDGPU\"))"
+        julia-debug -e "using Pkg; Pkg.add(PackageSpec(url=\"https://github.com/$AMDGPURepository/AMDGPU.jl\", rev=\"$AMDGPU\"))"
         julia-debug -e "using Pkg; Pkg.add(\"Requires\")"
         julia-debug -e "using Pkg; Pkg.add(\"Dagger\")"
         julia-debug -e "using Pkg; Pkg.add(\"StatsBase\")"

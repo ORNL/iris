@@ -987,7 +987,7 @@ module IrisHRT
             spec.sync = false
         else
             MyAMDGPU.context!(ctx)
-            spec.stream = nothing #JACC.default_stream(MyAMDGPU.ROCBackend)
+            spec.stream = JACC.default_stream(MyAMDGPU.ROCBackend)
         end
         backend = MyAMDGPU.ROCBackend()
 		gws = Tuple(remove_trailing_ones2(collect(gws)))
@@ -1734,7 +1734,8 @@ module IrisHRT
         size_ptr = iris_dmem_get_host_size(mem)
         dim = iris_dmem_get_dim(mem)
         dims_array = unsafe_wrap(Array, size_ptr, dim)
-        return Tuple(Int.(dims_array))
+		tr_size = remove_trailing_ones2(Int.(dims_array))
+        return Tuple(tr_size)
     end
 
     function dev_size(bmem::Union{IrisMem, IrisTaskMem})
@@ -1742,7 +1743,8 @@ module IrisHRT
         size_ptr = iris_dmem_get_dev_size(mem)
         dim = iris_dmem_get_dim(mem)
         dims_array = unsafe_wrap(Array, size_ptr, dim)
-        return Tuple(Int.(dims_array))
+		tr_size = remove_trailing_ones2(Int.(dims_array))
+        return Tuple(tr_size)
     end
 
     function offsets(bmem::Union{IrisMem, IrisTaskMem})
@@ -2349,6 +2351,54 @@ module IrisHRT
     function Base.minimum(x::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}; eargs...)
         return IrisHRT.parallel_reduce(max, IrisHRT.field_dmem(x); eargs...)
     end
+	function __iris_dot_v_v(i, X, Y)
+		@inbounds X[i] * Y[i]
+	end
+	function __iris_dot_v_s(i, X, y)
+		@inbounds X[i] * y
+	end
+	function __iris_dot_s_v(i, x, Y)
+		@inbounds x * Y[i]
+	end
+	function parallel_reduce_size(x)
+		s = size(x)
+		if length(s) == 1
+			return s[1]
+		end
+		return s
+	end
+	function inner(x::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem,AbstractArray,AbstractVector}, y::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem,AbstractArray,AbstractVector}; eargs...)
+		N = parallel_reduce_size(x)
+		x = get_dmem_from_cache(x)
+		y = get_dmem_from_cache(y)
+		return parallel_reduce(N, +, "IrisHRT:__iris_dot_v_v", x, y; eargs...)
+	end
+	function inner(x::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem,AbstractArray,AbstractVector}, y::T; eargs...) where T <: Number
+		N = parallel_reduce_size(x)
+		x = get_dmem_from_cache(x)
+		return parallel_reduce(N, +, "IrisHRT:__iris_dot_v_s", x, y; eargs...)
+	end
+	function inner(x::T, y::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem,AbstractArray,AbstractVector}; eargs...) where T <: Number
+		N = parallel_reduce_size(y)
+		y = get_dmem_from_cache(y)
+		return parallel_reduce(N, +, "IrisHRT:__iris_dot_s_v", x, y; eargs...)
+	end
+	function dot(x::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem,AbstractArray,AbstractVector}, y::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem,AbstractArray,AbstractVector}; eargs...)
+		N = parallel_reduce_size(x)
+		x = get_dmem_from_cache(x)
+		y = get_dmem_from_cache(y)
+		return parallel_reduce(N, +, "IrisHRT:__iris_dot_v_v", x, y; eargs...)
+	end
+	function dot(x::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem,AbstractArray,AbstractVector}, y::T; eargs...) where T <: Number
+		N = parallel_reduce_size(x)
+		x = get_dmem_from_cache(x)
+		return parallel_reduce(N, +, "IrisHRT:__iris_dot_v_s", x, y; eargs...)
+	end
+	function dot(x::T, y::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem,AbstractArray,AbstractVector}; eargs...) where T <: Number
+		N = parallel_reduce_size(y)
+		y = get_dmem_from_cache(y)
+		return parallel_reduce(N, +, "IrisHRT:__iris_dot_s_v", x, y; eargs...)
+	end
     function sum_data(x; eargs...)
         return parallel_reduce(+, x; eargs...)
     end
