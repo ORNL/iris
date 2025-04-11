@@ -1,5 +1,6 @@
 include(ENV["IRIS"] * "/src/IrisHRT.jl")
 using .IrisHRT
+using Test
 
 IrisHRT.init()
 
@@ -44,4 +45,8 @@ IrisHRT.flush(@view AA[1,:,:])
 println(Core.stdout, " A: ", A, " ptr:", pointer(A))
 println(Core.stdout, " AA: ", AA, " ptr:", pointer(AA))
 
+@testset "copyto_test" begin
+    @test A == [50 51 52 53; 50 51 52 53; 3 7 2 6; 4 8 3 7]
+    @test AA == [50 51; 50 51; 3 7; 4 8;;; 52 53; 52 53; 2 6; 3 7]
+end
 IrisHRT.finalize()

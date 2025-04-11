@@ -1,6 +1,7 @@
 include(ENV["IRIS"] * "/src/IrisHRT.jl")
 using .IrisHRT
 using CUDA
+using Test
 
 IrisHRT.init()
 
@@ -21,8 +22,11 @@ function main()
 	IrisHRT.parallel_for(N, Main.iris_jacc_exp, y_d, x_d)
 	println("Y: ", y_d)
     IrisHRT.synchronize()
+    Y_host = IrisHRT.valid_host(y_d)
+    @test Y_host == Float32[2.7182817, 2.7182817, 2.7182817, 2.7182817, 2.7182817, 2.7182817, 2.7182817, 2.7182817]
 end
-main()
-
+@testset "iris_jacc_exp" begin
+    main()
+end
 IrisHRT.finalize()
 
