@@ -138,6 +138,7 @@ mutable struct IRISHIPStream
     ctx::MyAMDGPU.HIPContext
 end
 import Base: reshape
+import Base: reinterpret
 module IrisHRT
 
     __precompile__()
@@ -606,7 +607,7 @@ module IrisHRT
             if julia_kernel_type == iris_julia_kernel_abstraction 
                 call_cuda_kernel_ka(julia_kernel_type, devno, func_name, j_threads, j_blocks, cu_ctx, cu_stream, julia_args, b_async_flag)
             elseif (julia_kernel_type & 0xFFFF) == iris_julia_jacc
-                call_cuda_kernel_jacc(julia_kernel_type, devno, func_name, j_gws, j_threads, j_blocks, cu_ctx, cu_stream, julia_args, b_async_flag)
+                call_cuda_kernel_jacc(julia_kernel_type, devno, dim, func_name, j_gws, j_threads, j_blocks, cu_ctx, cu_stream, julia_args, b_async_flag)
             else
                 call_cuda_kernel(julia_kernel_type, devno, func_name, j_threads, j_blocks, cu_ctx, cu_stream, all_streams, julia_args, b_async_flag)
             end
@@ -639,7 +640,7 @@ module IrisHRT
             if julia_kernel_type == iris_julia_kernel_abstraction 
                 call_hip_kernel_ka(julia_kernel_type, devno, func_name, j_threads, j_blocks, hip_ctx, hip_stream, julia_args, b_async_flag)
             elseif (julia_kernel_type & 0xFFFF) == iris_julia_jacc
-                call_hip_kernel_jacc(julia_kernel_type, devno, func_name, j_gws, j_threads, j_blocks, hip_ctx, hip_stream, julia_args, b_async_flag)
+                call_hip_kernel_jacc(julia_kernel_type, devno, dim, func_name, j_gws, j_threads, j_blocks, hip_ctx, hip_stream, julia_args, b_async_flag)
             else
                 call_hip_kernel(julia_kernel_type, devno, func_name, j_threads, j_blocks, hip_ctx, hip_stream, all_streams, julia_args, b_async_flag)
             end
@@ -655,7 +656,7 @@ module IrisHRT
             if julia_kernel_type == iris_julia_kernel_abstraction 
                 call_openmp_kernel_ka(julia_kernel_type, func_name, j_threads, j_blocks, julia_args, b_async_flag)
             elseif (julia_kernel_type & 0xFFFF) == iris_julia_jacc
-                call_openmp_kernel_jacc(julia_kernel_type, func_name, j_gws, j_threads, j_blocks, julia_args, b_async_flag)
+                call_openmp_kernel_jacc(julia_kernel_type, dim, func_name, j_gws, j_threads, j_blocks, julia_args, b_async_flag)
             else
                 call_openmp_kernel(julia_kernel_type, devno, func_name, j_threads, j_blocks, julia_args, b_async_flag)
             end
@@ -812,7 +813,7 @@ module IrisHRT
 
     # Call Julia kernel 
     # CUDA kernel wrapper (KernelAbstraction kernels)
-    function call_cuda_kernel_jacc(julia_kernel_type::Any, devno::Any, func_name::String, j_gws::Any, threads::Any, blocks::Any, ctx::Any, stream::Any, args::Any, async_flag::Bool=false)
+    function call_cuda_kernel_jacc(julia_kernel_type::Any, devno::Any, dim, func_name::String, j_gws::Any, threads::Any, blocks::Any, ctx::Any, stream::Any, args::Any, async_flag::Bool=false)
         if !Main.cuda_available
             error("CUDA device not available.")
         end
@@ -842,7 +843,7 @@ module IrisHRT
         else
             spec.stream = JACC.default_stream(MyCUDA.CUDAKernels.CUDABackend)
         end
-        gws = Tuple(remove_trailing_ones2(collect(gws)))
+        #gws = Tuple(remove_trailing_ones2(collect(gws)))
         if length(gws)==1
             gws = gws[1]
         end
@@ -962,7 +963,7 @@ module IrisHRT
         #synchronize(blocking = true)
     end
 
-    function call_hip_kernel_jacc(julia_kernel_type::Any, devno::Any, func_name::String, j_gws::Any, threads::Any, blocks::Any, ctx::Any, stream::Any, args::Any, async_flag::Bool=false)
+    function call_hip_kernel_jacc(julia_kernel_type::Any, devno::Any, dim, func_name::String, j_gws::Any, threads::Any, blocks::Any, ctx::Any, stream::Any, args::Any, async_flag::Bool=false)
         #iris_println("Func $func_name")
         # Initialize CUDA
         #func = getfield(Main, Symbol(func_name))
@@ -990,7 +991,7 @@ module IrisHRT
             spec.stream = JACC.default_stream(MyAMDGPU.ROCBackend)
         end
         backend = MyAMDGPU.ROCBackend()
-        gws = Tuple(remove_trailing_ones2(collect(gws)))
+        #gws = Tuple(remove_trailing_ones2(collect(gws)))
         if length(gws)==1
             gws = gws[1]
         end
@@ -1104,7 +1105,7 @@ module IrisHRT
         end
     end
 
-    function call_openmp_kernel_jacc(julia_kernel_type::Any, func_name::String, j_gws::Any, threads::Any, blocks::Any, args::Any, async_flag::Bool=false)
+    function call_openmp_kernel_jacc(julia_kernel_type::Any, dim, func_name::String, j_gws::Any, threads::Any, blocks::Any, args::Any, async_flag::Bool=false)
         func_name_target = func_name
         #func = getfield(IrisKernelImpl, Symbol(func_name_target))
         #func = getfield(Main, Symbol(func_name_target))
@@ -1116,7 +1117,7 @@ module IrisHRT
         backend = JACC.ThreadsImpl.ThreadsBackend()
         nthreads = Threads.nthreads()
         num_cpus = Sys.CPU_THREADS
-        gws = Tuple(remove_trailing_ones2(collect(gws)))
+        #gws = Tuple(remove_trailing_ones2(collect(gws)))
         if length(gws) == 1
             gws = gws[1]
         end
@@ -1660,6 +1661,53 @@ module IrisHRT
         return reshape(source_mem, dims...)
     end
 
+	isdivisible(m, n) = iszero(m % n)
+	function Base.reinterpret(::Type{T}, bmem::Union{IrisMem, IrisTaskMem}) where T
+		mem = field_dmem(bmem)
+		host_cptr = iris_get_dmem_host(mem)
+		host_cptr = reinterpret(Ptr{Cvoid}, host_cptr)
+		elem_size = element_size(mem) 
+		iris_elem_type = element_type(mem)
+		elem_type = get_julia_type(mem)
+		dst_elem_type = T
+		dst_elem_size = sizeof(T)
+		#println(Core.stdout, " elem_size: ", elem_size, " dst_elem_size:", dst_elem_size)
+		if !isdivisible(elem_size, dst_elem_size) && !isdivisible(dst_elem_size, elem_size)
+			error("ArgumentError: cannot reinterpret an `$elem_type` array to `$T`")
+		end
+		hsize = collect(host_size(mem))
+		dst_host_size = hsize
+		if !isdivisible(hsize[1] * elem_size, dst_elem_size)
+			error("ArgumentError: cannot reinterpret an `$elem_type` array to `$T` for the source array of size: $hsize")
+		end
+		#println(Core.stdout, "Type of element: ", " HostSize:", dst_host_size, " Element size:", dst_elem_size, " pointer:", host_cptr)
+
+		
+		factor = elem_size / dst_elem_size
+		dst_elem_type = get_iris_type(T)
+		hT = eltype(dst_host_size)
+		#println(Core.stdout, "hsize:", hsize, " dst_host_size:", dst_host_size, " hT:", hT)
+		dst_host_size[1] = hT(dst_host_size[1] * factor)
+		dim = length(dst_host_size)
+		#println(Core.stdout, "Type of element: ", " HostSize:", dst_host_size, " N-dims:", dim, " Element size:", dst_elem_size, " pointer:", host_cptr, " hT:", hT)
+
+		iris_mem=nothing
+		GC.@preserve dst_host_size begin 
+		iris_mem = iris_data_mem_create_struct_nd(host_cptr, pointer(dst_host_size), dim, dst_elem_size, dst_elem_type)
+		end
+		if dst_elem_type == iris_custom_type 
+			push_dmem_custom_type(iris_mem.uid, T)
+		end
+		iris_dmem_set_source(iris_mem, mem)
+		Main.__iris_dmem_mirrors_map[iris_mem.uid] = iris_mem
+		return iris_mem
+	end
+
+	function reinterpret_host(::Type{T1}, host::AbstractArray{T2}) where {T1, T2}
+		source_mem = get_dmem_from_cache(host)
+		return reinterpret(T1, source_mem)
+	end
+
     function host_ptr(mem::Union{IrisMem, IrisTaskMem})
         return iris_get_dmem_host(field_dmem(mem))
     end
@@ -1685,7 +1733,7 @@ module IrisHRT
             return nothing
         end
         if flush
-            flush(mem)
+            IrisHRT.flush(mem)
         end
         size = host_size(mem)
         j_ptr = ptr_reinterpret(mem.uid, 0, 1, arg_ptr, get_type(mem))
@@ -1697,21 +1745,21 @@ module IrisHRT
         return host(source_mem)
     end
 
-    function valid_host(bmem::Union{IrisMem, IrisTaskMem}, flush=false)
+    function valid_host(bmem::Union{IrisMem, IrisTaskMem}; flush=false)
         mem = field_dmem(bmem)
         arg_ptr = iris_get_dmem_valid_host(mem)
         if arg_ptr == C_NULL
             return nothing
         end
         if flush
-            flush(mem)
+            IrisHRT.flush(mem)
         end
         size = host_size(mem)
         j_ptr = ptr_reinterpret(mem.uid, 0, 1, arg_ptr, get_type(mem))
         return unsafe_wrap(Array, j_ptr, size, own=false)
     end
 
-    function valid_host(host::AbstractArray{T}, flush=false) where T
+    function valid_host(host::AbstractArray{T}; flush=false) where T
         source_mem = get_dmem_from_cache(host)
         return valid_host(source_mem)
     end
@@ -1723,6 +1771,7 @@ module IrisHRT
 
     function get_julia_type(mem::Union{IrisMem, IrisTaskMem})
         element_type = iris_get_julia_type(field_dmem(mem))
+		return element_type
     end
 
     function ndim(mem::Union{IrisMem, IrisTaskMem})
@@ -2181,16 +2230,16 @@ module IrisHRT
         return (in=a_in, out=a_out)
     end
 
-    function parallel_for((L, M, N)::Union{Tuple{Int64, Int64, Int64},Tuple{UInt64, UInt64, UInt64}}, f::Union{Function,String}, x... ; in=Any[], out=Any[], task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true, auto_dependency=true, dependencies=[], flush=Any[], metadata=nothing)
-        return IrisHRT.task(gws=(L,M,N), in=in, out=out, task=task, parallel_for=true, submit=submit, policy=policy, wait=wait, flush=flush, auto_dependency=auto_dependency, dependencies=dependencies, metadata=metadata, kernel=f, args=Any[x...])
+    function parallel_for((L, M, N)::Union{Tuple{Int64, Int64, Int64},Tuple{UInt64, UInt64, UInt64}}, f::Union{Function,String}, x... ; eargs...)
+        return IrisHRT.task(;gws=(L,M,N), parallel_for=true, kernel=f, args=Any[x...], eargs...)
     end
 
-    function parallel_for((M, N)::Union{Tuple{Int64, Int64},Tuple{UInt64, UInt64}}, f::Union{Function,String}, x... ; in=Any[], out=Any[], task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true, auto_dependency=true, dependencies=[], flush=Any[], metadata=nothing)
-        return IrisHRT.task(gws=(M,N), in=in, out=out, task=task, parallel_for=true, submit=submit, policy=policy, wait=wait, flush=flush, auto_dependency=auto_dependency, dependencies=dependencies, metadata=metadata, kernel=f, args=Any[x...])
+    function parallel_for((M, N)::Union{Tuple{Int64, Int64},Tuple{UInt64, UInt64}}, f::Union{Function,String}, x... ; eargs...)
+        return IrisHRT.task(;gws=(M,N), parallel_for=true, kernel=f, args=Any[x...], eargs...) 
     end
 
-    function parallel_for(N::Union{Int64,UInt64}, f::Union{Function,String}, x... ; in=Any[], out=Any[], task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true, auto_dependency=true, dependencies=[], flush=Any[], metadata=nothing)
-        return IrisHRT.task(gws=N, in=in, out=out, task=task, parallel_for=true, submit=submit, policy=policy, wait=wait, flush=flush, auto_dependency=auto_dependency, dependencies=dependencies, metadata=metadata, kernel=f, args=Any[x...])
+    function parallel_for(N::Union{Int64,UInt64}, f::Union{Function,String}, x... ; eargs...)
+        return IrisHRT.task(;gws=N, parallel_for=true, kernel=f, args=Any[x...], eargs...) 
     end
 
     function parallel_reduce_core(N::Union{Int64, UInt64, Tuple{Int64}, Tuple{UInt64}, NTuple{2, Integer}, NTuple{3, Integer}}, f::Union{Function,String}, x... ; result=nothing, buffer=nothing, task=nothing, submit=true, flush=false, policy=IrisHRT.iris_roundrobin, wait=true, auto_dependency=true, dependencies=[], metadata=nothing, op=nothing, init=nothing)
@@ -2566,7 +2615,7 @@ module IrisHRT
         dst = iris_data_mem_copy(src)
         host = valid_host(dst)
         Main.__iris_dmem_map[pointer(host)] = dst
-        task0 = copyto!(src, dst; eargs...)
+        task0 = copyto!(dst, src; eargs...)
         return IrisTaskMem(task0, dst)
     end
 
@@ -2782,6 +2831,7 @@ module IrisHRT
 end  # module Iris
 
 import Base: size
+import Base: sizeof
 import Base: axes
 
 function dim(mem::Union{IrisHRT.IrisMem, IrisHRT.IrisTaskMem})
@@ -2812,6 +2862,11 @@ end
 function host_size(mem::Union{IrisHRT.IrisMem, IrisHRT.IrisTaskMem}, index::Int64)
     dmem = IrisHRT.field_dmem(mem)
     return IrisHRT.host_size(dmem)[index]
+end
+
+function sizeof(mem::Union{IrisHRT.IrisMem, IrisHRT.IrisTaskMem})
+	dmem = IrisHRT.field_dmem(mem)
+	return IrisHRT.iris_mem_get_size(dmem)
 end
 
 function size(mem::Union{IrisHRT.IrisMem, IrisHRT.IrisTaskMem})
@@ -2850,6 +2905,9 @@ function Base.pointer(mem::Union{IrisHRT.IrisMem, IrisHRT.IrisTaskMem})
     return pointer(host)
 end
 
+function Base.eltype(mem::Union{IrisHRT.IrisMem, IrisHRT.IrisTaskMem})
+	return IrisHRT.get_julia_type(mem)
+end
 
 include("Tiling1D.jl")
 include("Tiling2D.jl")

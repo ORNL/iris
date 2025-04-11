@@ -96,7 +96,8 @@ int DataMem::update_host_size(size_t *host_size)
 }
 void DataMem::FetchDataFromDevice(void *dst_host_ptr)
 {   
-    if (source_mem_ != NULL) {
+    DataMem *source_mem = (DataMem *)get_source_mem();
+    if (source_mem != NULL) {
         FetchDataFromDevice(dst_host_ptr);
         return;
     }
@@ -128,8 +129,9 @@ void DataMem::FetchDataFromDevice(void *dst_host_ptr)
 }
 void DataMem::FetchDataFromDevice(void *dst_host_ptr, size_t size)
 {   
-    if (source_mem_ != NULL) {
-        source_mem_->FetchDataFromDevice(dst_host_ptr, size);
+    DataMem *source_mem = (DataMem *)get_source_mem();
+    if (source_mem != NULL) {
+        source_mem->FetchDataFromDevice(dst_host_ptr, size);
         return;
     }
     //printf("Fetch1 mem:%lu dst_host_ptr:%p host_dirty_flag:%d host_ptr:%p size:%lu\n", uid(), dst_host_ptr, host_dirty_flag_, host_ptr_, size);
@@ -217,13 +219,14 @@ void DataMem::Init(Platform *platform, void *host_ptr, size_t size)
 }
 DataMem::~DataMem() {
     //printf("Releasing memory: %lu host:%p src_mem:%p\n", uid(), host_ptr(), source_mem_);
-    if (!platform_->IsFinalized() && is_pin_memory_ && source_mem_ == NULL) {
+    DataMem *source_mem = (DataMem *)get_source_mem();
+    if (!platform_->IsFinalized() && is_pin_memory_ && source_mem == NULL) {
         //printf("Unregistering mem:%p\n", host_ptr());
         platform_->DataMemUnRegisterPin(this);
     }
-    if (host_ptr_owner_ && source_mem_ == NULL) free(host_ptr_);
+    if (host_ptr_owner_ && source_mem == NULL) free(host_ptr_);
     if (tmp_host_ptr_) free(tmp_host_ptr_);
-    if (!platform_->IsFinalized() && source_mem_ == NULL) {
+    if (!platform_->IsFinalized() && source_mem == NULL) {
       for (int i = 0; i < ndevs_; i++) {
         if (archs_[i] && !is_usm(i)) archs_dev_[i]->MemFree(this, archs_[i]);
       }
@@ -236,8 +239,9 @@ DataMem::~DataMem() {
 }
 void DataMem::UpdateHost(void *host_ptr)
 {
-    if (source_mem_ != NULL) {
-        source_mem_->UpdateHost(host_ptr);
+    DataMem *source_mem = (DataMem *)get_source_mem();
+    if (source_mem != NULL) {
+        source_mem->UpdateHost(host_ptr);
         return;
     }
     if (is_pin_memory_ && host_ptr_ != NULL && host_ptr_ != host_ptr) {
@@ -259,8 +263,9 @@ void DataMem::UpdateHost(void *host_ptr)
 }
 void DataMem::CopyToHost(void *host)
 {
-    if (source_mem_ != NULL) {
-        source_mem_->CopyToHost(host);
+    DataMem *source_mem = (DataMem *)get_source_mem();
+    if (source_mem != NULL) {
+        source_mem->CopyToHost(host);
         return;
     }
     void *host_ptr = host_memory();
@@ -275,8 +280,9 @@ void DataMem::CopyToHost(void *host)
 }
 void DataMem::RefreshHost()
 {
-    if (source_mem_ != NULL) {
-        source_mem_->RefreshHost();
+    DataMem *source_mem = (DataMem *)get_source_mem();
+    if (source_mem != NULL) {
+        source_mem->RefreshHost();
         return; 
     }
     if (!reset_)
@@ -290,8 +296,9 @@ void DataMem::RefreshHost()
 }
 void DataMem::init_reset(bool reset)
 {
-    if (source_mem_ != NULL) {
-        source_mem_->init_reset(reset);
+    DataMem *source_mem = (DataMem *)get_source_mem();
+    if (source_mem != NULL) {
+        source_mem->init_reset(reset);
         return; 
     }
     reset_ = reset;
@@ -306,8 +313,9 @@ void DataMem::AddChild(DataMem *child, size_t offset)
   child_.push_back(make_pair(child, offset));
 }
 void DataMem::clear() {
-  if (source_mem_ != NULL) {
-      source_mem_->clear();
+  DataMem *source_mem = (DataMem *)get_source_mem();
+  if (source_mem != NULL) {
+      source_mem->clear();
       return; 
   }
   host_dirty_flag_ = false;
@@ -329,7 +337,8 @@ void *DataMem::tmp_host_memory() {
     return tmp_host_ptr_;
 }
 void *DataMem::host_memory() {
-    if (source_mem_ != NULL) return source_mem_->host_memory();
+    DataMem *source_mem = (DataMem *)get_source_mem();
+    if (source_mem != NULL) return source_mem->host_memory();
     if (!host_ptr_)  {
         host_ptr_ = malloc(size_); 
         platform_->DataMemRegisterPin(this);
@@ -390,8 +399,9 @@ void DataMem::EnableOuterDimensionRegions()
 
 void DataMem::create_dev_mem(Device *dev, int devno, void *host)
 {
-    if (source_mem_ != NULL) {
-        source_mem_->create_dev_mem(dev, devno, host); 
+    DataMem *source_mem = (DataMem *)get_source_mem();
+    if (source_mem != NULL) {
+        source_mem->create_dev_mem(dev, devno, host); 
         return;
     }
     //printf(" Dev: %d is shared:%d host:%p host_ptr_:%p\n", devno, dev->is_shared_memory_buffers(), host, host_ptr_);
@@ -413,7 +423,8 @@ void DataMem::create_dev_mem(Device *dev, int devno, void *host)
 }
 
 void** DataMem::arch_ptr(Device *dev, void *host) {
-    if (source_mem_ != NULL) return source_mem_->arch_ptr(dev, host);
+    DataMem *source_mem = (DataMem *)get_source_mem();
+    if (source_mem != NULL) return source_mem->arch_ptr(dev, host);
     int devno = dev->devno();
     if (archs_[devno] == NULL) {
         create_dev_mem(dev, devno, host);
@@ -422,7 +433,8 @@ void** DataMem::arch_ptr(Device *dev, void *host) {
 }
 
 void** DataMem::arch_ptr(int devno, void *host) {
-    if (source_mem_ != NULL) return source_mem_->arch_ptr(devno, host);
+    DataMem *source_mem = (DataMem *)get_source_mem();
+    if (source_mem != NULL) return source_mem->arch_ptr(devno, host);
     if (archs_[devno] == NULL) {
         Device *dev = archs_dev_[devno];
         create_dev_mem(dev, devno, host);
@@ -431,7 +443,8 @@ void** DataMem::arch_ptr(int devno, void *host) {
 }
 
 void* DataMem::arch(int devno, void *host) {
-    if (source_mem_ != NULL) return source_mem_->arch(devno, host);
+    DataMem *source_mem = (DataMem *)get_source_mem();
+    if (source_mem != NULL) return source_mem->arch(devno, host);
     if (archs_[devno] == NULL) {
         Device *dev = archs_dev_[devno];
         create_dev_mem(dev, devno, host);
@@ -440,7 +453,8 @@ void* DataMem::arch(int devno, void *host) {
 }
 
 void* DataMem::arch(Device* dev, void *host) {
-    if (source_mem_ != NULL) return source_mem_->arch(dev, host);
+    DataMem *source_mem = (DataMem *)get_source_mem();
+    if (source_mem != NULL) return source_mem->arch(dev, host);
     int devno = dev->devno();
     if (archs_[devno] == NULL) {
         create_dev_mem(dev, devno, host);

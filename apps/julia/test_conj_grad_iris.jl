@@ -7,6 +7,7 @@
 # without considering these constraints.
 include(ENV["IRIS"] * "/src/IrisHRT.jl")
 using .IrisHRT
+using Test
 
 IrisHRT.init()
 
@@ -26,7 +27,7 @@ function dot(i, x, y)
 end
 
 function axpy(i, alpha, x, y)
-    @inbounds x[i] += alpha[1, 1] * y[i]
+    @inbounds x[i] += alpha[1] * y[i]
 end
 
 SIZE = 10000000
@@ -106,4 +107,7 @@ end
 julia_time0 = time() - julia_start
 println("Julia time: ", julia_time0)
 println("Test:", cond[1, 1] <= 1e-14)
+@testset "conj_grad" begin
+    @test isapprox(cond[1,1], 3.1268536771503473e-15, atol=1e-6)
+end
 IrisHRT.finalize()

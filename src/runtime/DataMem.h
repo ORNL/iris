@@ -40,39 +40,47 @@ public:
   vector<pair<DataMem *, size_t>> & child() { return child_; }
   void init_reset(bool reset=true);
   bool is_host_dirty() { 
-      if (source_mem_ == NULL) return host_dirty_flag_; 
-      else return source_mem_->host_dirty_flag_;
+      DataMem *source_mem = (DataMem*)get_source_mem();
+      if (source_mem == NULL) return host_dirty_flag_; 
+      else return source_mem->host_dirty_flag_;
   }
   void clear_host_dirty() { 
-      if (source_mem_ == NULL) host_dirty_flag_ = false; 
-      else source_mem_->host_dirty_flag_ = false;
+      DataMem *source_mem = (DataMem*)get_source_mem();
+      if (source_mem == NULL) host_dirty_flag_ = false; 
+      else source_mem->host_dirty_flag_ = false;
   }
   void set_host_dirty(bool flag=true) { 
-      if (source_mem_ == NULL) host_dirty_flag_ = flag; 
-      else source_mem_->host_reset_ = false; 
+      DataMem *source_mem = (DataMem*)get_source_mem();
+      if (source_mem == NULL) host_dirty_flag_ = flag; 
+      else source_mem->host_dirty_flag_ = flag; 
   }
   bool is_dev_dirty(int devno) { 
-      if (source_mem_ == NULL) return dirty_flag_[devno]; 
-      else return source_mem_->dirty_flag_[devno];
+      DataMem *source_mem = (DataMem*)get_source_mem();
+      if (source_mem == NULL) return dirty_flag_[devno]; 
+      else return source_mem->dirty_flag_[devno];
   }
   void set_dev_dirty(int devno, bool flag=true) { 
-      if (source_mem_ == NULL) dirty_flag_[devno] = flag; 
-      else source_mem_->dirty_flag_[devno] = flag;
+      DataMem *source_mem = (DataMem*)get_source_mem();
+      if (source_mem == NULL) dirty_flag_[devno] = flag; 
+      else source_mem->dirty_flag_[devno] = flag;
   }
   int  get_dev_affinity() { 
-      if (source_mem_ != NULL) return source_mem_->get_dev_affinity();
+      DataMem *source_mem = (DataMem*)get_source_mem();
+      if (source_mem != NULL) return source_mem->get_dev_affinity();
       for(int i=0; i<ndevs_; i++) 
           if (!dirty_flag_[i]) 
               return i; 
       return -1;
   }
   void clear_dev_dirty(int devno) { 
-      if (source_mem_ == NULL) dirty_flag_[devno] = false; 
-      else source_mem_->dirty_flag_[devno] = false; 
+      DataMem *source_mem = (DataMem*)get_source_mem();
+      if (source_mem == NULL) dirty_flag_[devno] = false; 
+      else source_mem->dirty_flag_[devno] = false; 
   }
   void set_dirty_except(int devno) {
-    if (source_mem_ != NULL) {
-        source_mem_->set_dirty_except(devno);
+    DataMem *source_mem = (DataMem*)get_source_mem();
+    if (source_mem != NULL) {
+        source_mem->set_dirty_except(devno);
         return;
     }
     for(int i=0; i<ndevs_; i++) {
@@ -81,8 +89,9 @@ public:
     dirty_flag_[devno] = false;
   }
   void set_dirty_all(bool flag=true) {
-    if (source_mem_ != NULL) {
-        source_mem_->set_dirty_all(flag);
+    DataMem *source_mem = (DataMem*)get_source_mem();
+    if (source_mem != NULL) {
+        source_mem->set_dirty_all(flag);
         return;
     }
     for(int i=0; i<ndevs_; i++) {
@@ -90,8 +99,9 @@ public:
     }
   }
   int *get_non_dirty_devices(int *dev) {
-    if (source_mem_ != NULL) 
-        return source_mem_->get_non_dirty_devices(dev);
+    DataMem *source_mem = (DataMem*)get_source_mem();
+    if (source_mem != NULL) 
+        return source_mem->get_non_dirty_devices(dev);
     int i=0,j=0;
     for(i=0, j=0; i<ndevs_; i++) {
         if (!dirty_flag_[i]) dev[j++] = i;
@@ -100,7 +110,8 @@ public:
     return dev;
   }
   bool is_dirty_all() {
-    if (source_mem_ != NULL) return source_mem_->is_dirty_all();
+    DataMem *source_mem = (DataMem*)get_source_mem();
+    if (source_mem != NULL) return source_mem->is_dirty_all();
     bool all=true;
     for(int i=0; i<ndevs_; i++) {
         all = all & dirty_flag_[i];
@@ -116,8 +127,9 @@ public:
   int update_dim(int dim) { dim_ = dim; return IRIS_SUCCESS; }
   int dim() { return dim_; }
   void *host_ptr() { 
-      if (source_mem_ == NULL) return host_ptr_; 
-      else return source_mem_->host_ptr_; 
+      DataMem *source_mem = (DataMem*)get_source_mem();
+      if (source_mem == NULL) return host_ptr_; 
+      else return source_mem->host_ptr_; 
   }
   void *tmp_host_ptr() { return tmp_host_ptr_; }
 #ifdef AUTO_PAR
@@ -125,7 +137,11 @@ public:
   void* get_host_ptr_shadow(){return host_ptr_shadow_;}
   void set_host_ptr_shadow(void* host_ptr_shadow){
 	  host_ptr_shadow_ = host_ptr_shadow;}
-  bool is_host_shadow_dirty() { return host_dirty_flag_; }
+  bool is_host_shadow_dirty() { 
+      DataMem *source_mem = (DataMem*)get_source_mem();
+      if (source_mem == NULL) return host_dirty_flag_;
+      return source_mem->host_dirty_flag_; 
+  }
   void clear_host_shadow_dirty() { host_shadow_dirty_flag_ = false; }
   void set_host_shadow_dirty(bool flag=true) { host_shadow_dirty_flag_ = flag; }
   DataMem* get_current_dmem_shadow(){return current_dmem_shadow_;}

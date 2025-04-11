@@ -292,13 +292,22 @@ namespace rt {
         bool is_usm(int devno) { return is_usm_[devno]; }
         void set_usm_flag(int devno, bool flag=true) { is_usm_[devno] = flag; }
         int element_type() { return element_type_; }
+        bool is_host_reset() { return host_reset_; }
         void set_element_type(int t) { element_type_ = t; }
         pair<bool, int8_t> IsResetPossibleWithMemset();
         pair<bool, int8_t> IsResetPossibleWithMemset(ResetData & reset_data);
-        void set_source_mem(BaseMem *mem) { source_mem_ = (DataMem *)mem; }
-        DataMem *get_source_mem() { return source_mem_; }
+        void set_source_mem(BaseMem *mem) { source_mem_ = mem; }
+        BaseMem *get_source_mem() { 
+            if (source_mem_ != NULL) {
+                if (source_mem_->get_source_mem() == NULL)
+                    return source_mem_;
+                else
+                    return source_mem_->get_source_mem();
+            }
+            return source_mem_; 
+        }
         protected:
-            DataMem *source_mem_;
+            BaseMem *source_mem_;
             int element_type_;
             int recommended_stream_[IRIS_MAX_NDEVS];
             MemHandlerType handler_type_;

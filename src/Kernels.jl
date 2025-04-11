@@ -556,20 +556,20 @@ function minimum(x::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}; eargs...)
     return IrisHRT.parallel_reduce(min, IrisHRT.field_dmem(x); eargs...)
 end
 function inner(x::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, y::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}; eargs...)
-    return IrisHRT.parallel_reduce(*, __iris_dot_v_v, IrisHRT.field_dmem(x), IrisHRT.field_dmem(y); eargs...)
+    return IrisHRT.inner(x, y; eargs...)
 end
 function inner(x::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, y::T; eargs...) where T <: Number
-    return IrisHRT.parallel_reduce(*, __iris_dot_v_s, IrisHRT.field_dmem(x), y; eargs...)
+    return IrisHRT.inner(x, y; eargs...)
 end
 function inner(x::T, y::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}; eargs...) where T <: Number
-    return IrisHRT.parallel_reduce(*, __iris_dot_s_v, x, IrisHRT.field_dmem(y); eargs...)
+    return IrisHRT.inner(x, y; eargs...)
 end
 function dot(x::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, y::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}; eargs...)
-    return IrisHRT.parallel_reduce(*, __iris_dot_v_v, IrisHRT.field_dmem(x), IrisHRT.field_dmem(y); eargs...)
+    return IrisHRT.dot(x, y; eargs...)
 end
 function dot(x::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, y::T; eargs...) where T <: Number
-    return IrisHRT.parallel_reduce(*, __iris_dot_v_s, IrisHRT.field_dmem(x), y; eargs...)
+    return IrisHRT.dot(x, y; eargs...)
 end
 function dot(x::T, y::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}; eargs...) where T <: Number
-    return IrisHRT.parallel_reduce(*, __iris_dot_s_v, x, IrisHRT.field_dmem(y); eargs...)
+    return IrisHRT.dot(x, y; eargs...)
 end

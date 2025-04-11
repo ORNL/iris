@@ -336,7 +336,7 @@ int Device::GetStream(Task *task, BaseMem *mem, bool new_stream) {
         return DEFAULT_STREAM_INDEX;
     if (policy == STREAM_POLICY_SAME_FOR_TASK) {
         int stream = GetStream(task);
-        if (mem->get_source_mem() != NULL) mem = mem->get_source_mem();
+        if (mem->get_source_mem() != NULL) mem = (DataMem*)mem->get_source_mem();
         mem->set_recommended_stream(devno(), stream);
         return stream;
     }
@@ -344,7 +344,7 @@ int Device::GetStream(Task *task, BaseMem *mem, bool new_stream) {
 #if 1
     if (new_stream || stream == -1) {
         stream = get_new_copy_stream_queue();
-        if (mem->get_source_mem() != NULL) mem = mem->get_source_mem();
+        if (mem->get_source_mem() != NULL) mem = (DataMem*)mem->get_source_mem();
         mem->set_recommended_stream(devno(), stream);
     }
 #else
@@ -905,7 +905,7 @@ void Device::ExecuteKernel(Command* cmd) {
           if (mem->GetMemHandlerType() == IRIS_DMEM ||
                   mem->GetMemHandlerType() == IRIS_DMEM_REGION) {
               DataMem *dmem = (DataMem *)mem;
-              if (dmem->get_source_mem() != NULL) dmem = dmem->get_source_mem();
+              if (dmem->get_source_mem() != NULL) dmem = (DataMem*)dmem->get_source_mem();
               if (dmem->get_arch(devno()) == NULL) {
                   dmem->set_recommended_stream(devno(), stream_index);
                   _event_debug(" Set stream for write mem of task:%lu:%s dev:[%d][%s] mem:%lu task_stream:%d", task->uid(), task->name(), devno(), name(), mem->uid(), stream_index);
@@ -1048,7 +1048,7 @@ void Device::ExecuteMemResetInput(Task *task, Command* cmd) {
             bmem->GetMemHandlerType() == IRIS_DMEM_REGION) {
         int mem_stream = GetStream(task); 
         DataMem* mem = (DataMem *)cmd->mem();
-        if (mem->get_source_mem() != NULL) mem = mem->get_source_mem();
+        if (mem->get_source_mem() != NULL) mem = (DataMem*)mem->get_source_mem();
         mem->dev_lock(devno_);
         ResetMemory(task, cmd, mem);
         mem->set_host_dirty();
@@ -1074,8 +1074,8 @@ void Device::ExecuteDMEM2DMEM(Task *task, Command *cmd) {
             dst_mem->GetMemHandlerType() == IRIS_DMEM) {
         DataMem *dsrc_mem = (DataMem*)src_mem;
         DataMem *ddst_mem = (DataMem*)dst_mem;
-        if (dsrc_mem->get_source_mem() != NULL) dsrc_mem = dsrc_mem->get_source_mem();
-        if (ddst_mem->get_source_mem() != NULL) ddst_mem = ddst_mem->get_source_mem();
+        if (dsrc_mem->get_source_mem() != NULL) dsrc_mem = (DataMem*)dsrc_mem->get_source_mem();
+        if (ddst_mem->get_source_mem() != NULL) ddst_mem = (DataMem*)ddst_mem->get_source_mem();
 
         bool dst_tile_enabled = ddst_mem->tile_enabled();
         bool src_tile_enabled = dsrc_mem->tile_enabled();
@@ -1709,17 +1709,17 @@ void Device::ExecuteMemInDMemIn(Task *task, Command* cmd, DataMem *mem) {
                 size_t offset = child.second;
                 void **arch_ptr = (void **)((char *)tmp_host_ptr + offset);
                 if (child_mem->get_source_mem() != NULL)
-                    child_mem = child_mem->get_source_mem();
+                    child_mem = (DataMem*)child_mem->get_source_mem();
                 InvokeDMemInDataTransfer<DataMem>(task, cmd, child_mem);
                 *arch_ptr = child_mem->arch(devno());
                 //printf("parsing child mem:%lu size:%lu parent_tmp_host_ptr:%p parent_host:%p offset:%lu child_dev_arch:%p child_arch_ptr:%p child_host_arch_ptr:%p\n", child_mem->uid(), child_mem->size(), tmp_host_ptr, host, offset, *arch_ptr, arch_ptr, host+offset);
             }
-            if (mem->get_source_mem() != NULL) mem = mem->get_source_mem();
+            if (mem->get_source_mem() != NULL) mem = (DataMem*)mem->get_source_mem();
             InvokeDMemInDataTransfer<DataMem>(task, cmd, mem);
             //printf("----- mem:%lu size:%lu arch:%p host:%p tmp_host_ptr:%p\n", mem->uid(), mem->size(), mem->arch(devno()), host, tmp_host_ptr);
         }
         else {
-            if (mem->get_source_mem() != NULL) mem = mem->get_source_mem();
+            if (mem->get_source_mem() != NULL) mem = (DataMem*)mem->get_source_mem();
             InvokeDMemInDataTransfer<DataMem>(task, cmd, mem);
         }
     }
@@ -1738,7 +1738,7 @@ void Device::ExecuteMemOut(Task *task, Command* cmd) {
         if (params_map != NULL && 
                 (params_map[idx] & iris_all) == 0 && 
                 !(params_map[idx] & type_) ) continue;
-        if (mem->get_source_mem() != NULL) mem = mem->get_source_mem();
+        if (mem->get_source_mem() != NULL) mem = (DataMem*)mem->get_source_mem();
         if (mem->GetMemHandlerType() == IRIS_DMEM ||
                 mem->GetMemHandlerType() == IRIS_DMEM_REGION) {
             DataMem *dmem = (DataMem *)mem;
@@ -1769,7 +1769,7 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
     }
     DataMem* mem = (DataMem *)cmd->mem();
 	//_printf("Inside flush of mem: %lu\n", mem->uid());
-    if (mem->get_source_mem() != NULL) mem = mem->get_source_mem();
+    if (mem->get_source_mem() != NULL) mem = (DataMem*)mem->get_source_mem();
     if (mem->is_host_dirty()) {
         size_t *ptr_off = mem->off();
         size_t *gws = mem->host_size();
@@ -1931,7 +1931,7 @@ void Device::ExecuteMemFlushOutToShadow(Command* cmd) {
         return;
     }
     DataMem* mem = (DataMem *)cmd->mem();
-    if (mem->get_source_mem() != NULL) mem = mem->get_source_mem();
+    if (mem->get_source_mem() != NULL) mem = (DataMem*)mem->get_source_mem();
     //if (mem->is_host_dirty()) {
     size_t *ptr_off, *gws, *lws, elem_size, size;
     int dim;
