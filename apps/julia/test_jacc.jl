@@ -1,12 +1,13 @@
 include(ENV["IRIS"] * "/src/IrisHRT.jl")
 using .IrisHRT
+using Test
 
 IrisHRT.init()
 
-function iris_jacc_add(i, z, x, y)
-        @inbounds z[i] = x[i] + y[i]
+function iris_jacc_add(i, z, x, y, alpha)
+        @inbounds z[i] = alpha * x[i] + y[i]
 end
-function sum(i, x)
+function sumdd(i, x)
     @inbounds x[i]
 end
 
@@ -18,12 +19,16 @@ function main()
     z = IrisHRT.zeros(Float64, N)
     alpha = 2.5
 
-    IrisHRT.parallel_for(N, Main.iris_jacc_add, z, x, y)
+    IrisHRT.parallel_for(N, Main.iris_jacc_add, z, x, y, alpha)
     println("Z: ", z)
-    out = IrisHRT.parallel_reduce(N, Main.sum, z)
+    out = IrisHRT.parallel_reduce(N, sumdd, z)
     IrisHRT.synchronize()
     println("Z: ", z)
     println("out: ", out)
+    out_host = IrisHRT.host(out)
+    @test out_host == [35.0]
 end
-main()
+@testset "iris_jacc_parallel_for_reduce" begin
+    main()
+end
 IrisHRT.finalize()

@@ -29,6 +29,12 @@ end
 function __iris_jacc_ldexp(i, Y, X, N::AbstractArray{Int64}, alpha)
     @inbounds Y[i] = alpha * Base.ldexp(X[i], N[i])
 end
+function __iris_jacc_equal_v_v(i, Z, X, Y)
+    @inbounds X[i] == Y[i]
+end
+function __iris_jacc_not_equal_v_v(i, Z, X, Y)
+    @inbounds X[i] != Y[i]
+end
 function __iris_jacc_add_v_v(i, Z, X, Y)
     @inbounds Z[i] = X[i] + Y[i]
 end
@@ -198,13 +204,18 @@ function __arith_kernel_v_s_s(kernel, a::IrisHRT.IrisMem, scalar1, scalar2; task
         return task
     end
 end
-function __arith_kernel_v_v(kernel, a::IrisHRT.IrisMem, b::IrisHRT.IrisMem; task=nothing, submit=true, wait=true, flush=true, jacc=true, result=nothing, eargs...)
+function __arith_kernel_v_v(kernel, a::IrisHRT.IrisMem, b::IrisHRT.IrisMem; task=nothing, submit=true, wait=true, flush=true, jacc=true, result=nothing, parallel_for=true, parallel_reduce=false, parallel_reduce_op=+, eargs...)
     kernel_name = "__iris_jacc_" * kernel * "_v_v"
     #kernel_fn = IrisHRT.getFunction("__iris_jacc_" * kernel * "_v_v")
     sizes = IrisHRT.host_size(a)
     total_size = prod(sizes)
     jtype = IrisHRT.get_julia_type(a)
     type_str = IrisHRT.iris_get_type_string(a)
+    if jacc 
+        if parallel_reduce
+            sizes = 1
+        end
+    end
 
     # Create DMEM
     out = result
@@ -225,7 +236,11 @@ function __arith_kernel_v_v(kernel, a::IrisHRT.IrisMem, b::IrisHRT.IrisMem; task
     end
     #println(Core.stdout, "sizes: ", sizes, " total_size:", total_size, " type:", jtype, " wait:", wait, " submit:", submit, " task:", task)
     if jacc
-        task = IrisHRT.parallel_for(Int64(total_size), kernel_name, out, a, b; in=[a,b], out=out_m, flush=flush_m, task=task, submit=submit, wait=wait, eargs...)
+        if parallel_for
+            task = IrisHRT.parallel_for(Int64(total_size), kernel_name, out, a, b; in=[a,b], out=out_m, flush=flush_m, task=task, submit=submit, wait=wait, eargs...)
+        else
+            task = IrisHRT.parallel_reduce(Int64(total_size), parallel_reduce_op, kernel_name, a, b; in=[a,b], out=out_m, result=out, flush=flush_m, task=task, submit=submit, wait=wait, eargs...)
+        end
     else
         task = IrisHRT.task(in=[a, b], out=out_m, flush=flush_m, task=task, submit=submit, wait=wait, 
                 kernel=kernel_name,
@@ -573,3 +588,13 @@ end
 function dot(x::T, y::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}; eargs...) where T <: Number
     return IrisHRT.dot(x, y; eargs...)
 end
+
+
+######## Vector = Vector == Vector
+function equal(a::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, b::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}; eargs...)
+    return __arith_kernel_v_v("equal", IrisHRT.field_dmem(a), IrisHRT.field_dmem(b); parallel_reduce=true, parallel_reduce_op=&, init=true, eargs...)
+end
+function notequal(a::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, b::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}; eargs...)
+    return __arith_kernel_v_v("not_equal", IrisHRT.field_dmem(a), IrisHRT.field_dmem(b); parallel_reduce=true, parallel_reduce_op=&, init=true, eargs...)
+end
+

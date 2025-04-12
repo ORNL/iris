@@ -1,4 +1,6 @@
 const VALUE_SIZE = 8
+#and(a, b) = a && b
+#or(a, b) = a || b
 function flat_in_buffer(value::Any)::IRISValue
     value_buffer = Base.zeros(UInt8, VALUE_SIZE)
     if typeof(value) == Float32
@@ -97,7 +99,7 @@ function iris_get_type_string(mem)
     elseif element_type == iris_bool
         return "bool"
     else
-        error_("Unknown iris type handler: ", element_type)
+        error("Unknown iris type handler: ", element_type)
     end
     return "__unknown"
 end
@@ -131,7 +133,7 @@ function iris_get_julia_type(mem::IrisMem)
     elseif element_type == iris_custom_type
         return get_dmem_custom_type(mem)
     else
-        error_("Unknown iris type for julia type: ", element_type)
+        error("Unknown iris type for julia type: ", element_type)
     end
     return Ptr{Cvoid}
 end
@@ -194,6 +196,10 @@ function convert_jacc_op_2_iris_op(op)
         iris_op = IrisHRT.iris_jacc_op_mul
     elseif op == /
         iris_op = IrisHRT.iris_jacc_op_div
+    elseif op == Main.and
+        iris_op = IrisHRT.iris_jacc_op_and
+    elseif op == Main.or
+        iris_op = IrisHRT.iris_jacc_op_or
     elseif op == sum
         iris_op = IrisHRT.iris_jacc_op_sum
     elseif op == prod
@@ -203,7 +209,7 @@ function convert_jacc_op_2_iris_op(op)
     elseif op == max
         iris_op = IrisHRT.iris_jacc_op_max
     else
-        error_("parallel_reduce_core with unknown op:", op)
+        error("parallel_reduce_core with unknown op:", op)
     end
     return iris_op
 end
@@ -217,6 +223,10 @@ function get_jacc_op(iris_op)
         op = *
     elseif iris_op == iris_jacc_op_div  
         op = /
+    elseif iris_op == iris_jacc_op_and
+        op = Main.and
+    elseif iris_op == iris_jacc_op_or
+        op = Main.or
     elseif iris_op == iris_jacc_op_sum  
         op = Base.sum
     elseif iris_op == iris_jacc_op_prod 

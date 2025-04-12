@@ -12,6 +12,8 @@ Base.Experimental.make_io_thread()
 if !haskey(ENV, "IRIS_ARCHS")
     ENV["IRIS_ARCHS"] = "cuda:hip:openmp"
 end
+and(a, b) = a && b
+or(a, b) = a || b
 const ARRAY_TO_DMEM_MAP = Dict{Any, Any}()
 const __iris_dmem_subarray_map = Dict{Any, Any}()
 const __iris_dmem_map = Dict{Any, Any}()
@@ -205,6 +207,8 @@ module IrisHRT
     const iris_jacc_op_prod  = 6
     const iris_jacc_op_min   = 7
     const iris_jacc_op_max   = 8
+    const iris_jacc_op_and   = 9
+    const iris_jacc_op_or    = 10
 
 
     const iris_default = 1 << 5
@@ -855,7 +859,7 @@ module IrisHRT
             init, out_mem, buffer = args_tuple[2:4]
             spec.ret = out_mem
             spec.buffer = buffer
-            #println(Core.stdout, " op: ", op, " init:", init, " ret:", spec.ret, " buffer:", spec.buffer, " gws:", gws)
+            #println(Core.stdout, " op: ", op, " init:", init, " ret:", spec.ret, " buffer:", spec.buffer, " gws:", gws, " func:", func)
             JACC.parallel_reduce(spec, gws, op, func, args_tuple[5:end]...; init)
         end
         #synchronize(blocking = true)
