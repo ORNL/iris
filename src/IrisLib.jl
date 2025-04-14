@@ -418,6 +418,10 @@ end
     return ccall(Libdl.dlsym(lib, :iris_data_mem_copy), IrisMem, (IrisMem,), mem)
 end
 
+@inline function iris_data_mem_print(mem::IrisMem)::Cvoid
+    ccall(Libdl.dlsym(lib, :iris_data_mem_print), Cvoid, (IrisMem,), mem)
+end
+
 @inline function iris_task_cmd_init_reset_assign(task::IrisTask, mem::IrisMem, element::Any)::Int32
     ivalue = flat_in_buffer(element)
     return ccall(Libdl.dlsym(lib, :iris_task_cmd_init_reset_assign), Int32, (IrisTask, IrisMem, IRISValue), task, mem, ivalue)

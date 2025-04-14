@@ -80,7 +80,7 @@ end
 function __iris_dot_s_v(i, x, Y)
     @inbounds x * Y[i]
 end
-function __arith_kernel_v(kernel, a::IrisHRT.IrisMem; task=nothing, submit=true, wait=true, flush=true, jacc=true, result=nothing, eargs...)
+function __arith_kernel_v(kernel, a::IrisHRT.IrisMem; task=nothing, submit=true, wait=true, flush=false, jacc=true, result=nothing, eargs...)
     kernel_name = "__iris_jacc_" * kernel * "_v"
     #kernel_fn = IrisHRT.getFunction(kernel_name)
     #println(Core.stdout, "F call: ", kernel_name, " f:", kernel_fn)
@@ -122,7 +122,7 @@ function __arith_kernel_v(kernel, a::IrisHRT.IrisMem; task=nothing, submit=true,
         return task
     end
 end
-function __arith_kernel_v_s(kernel, a::IrisHRT.IrisMem, b; task=nothing, submit=true, wait=true, flush=true, jacc=true, result=nothing, eargs...)
+function __arith_kernel_v_s(kernel, a::IrisHRT.IrisMem, b; task=nothing, submit=true, wait=true, flush=false, jacc=true, result=nothing, eargs...)
     kernel_name = "__iris_jacc_" * kernel * "_v_s"
     #kernel_fn = IrisHRT.getFunction("__iris_jacc_" * kernel * "_v_s")
     sizes = IrisHRT.host_size(a)
@@ -163,7 +163,7 @@ function __arith_kernel_v_s(kernel, a::IrisHRT.IrisMem, b; task=nothing, submit=
         return task
     end
 end
-function __arith_kernel_v_s_s(kernel, a::IrisHRT.IrisMem, scalar1, scalar2; task=nothing, submit=true, wait=true, flush=true, jacc=true, result=nothing, eargs...)
+function __arith_kernel_v_s_s(kernel, a::IrisHRT.IrisMem, scalar1, scalar2; task=nothing, submit=true, wait=true, flush=false, jacc=true, result=nothing, eargs...)
     kernel_name = "__iris_jacc_" * kernel * "_v_s_s"
     #kernel_fn = IrisHRT.getFunction("__iris_jacc_" * kernel * "_v_s_s")
     sizes = IrisHRT.host_size(a)
@@ -204,7 +204,7 @@ function __arith_kernel_v_s_s(kernel, a::IrisHRT.IrisMem, scalar1, scalar2; task
         return task
     end
 end
-function __arith_kernel_v_v(kernel, a::IrisHRT.IrisMem, b::IrisHRT.IrisMem; task=nothing, submit=true, wait=true, flush=true, jacc=true, result=nothing, parallel_for=true, parallel_reduce=false, parallel_reduce_op=+, eargs...)
+function __arith_kernel_v_v(kernel, a::IrisHRT.IrisMem, b::IrisHRT.IrisMem; task=nothing, submit=true, wait=true, flush=false, jacc=true, result=nothing, parallel_for=true, parallel_reduce=false, parallel_reduce_op=+, eargs...)
     kernel_name = "__iris_jacc_" * kernel * "_v_v"
     #kernel_fn = IrisHRT.getFunction("__iris_jacc_" * kernel * "_v_v")
     sizes = IrisHRT.host_size(a)
@@ -253,7 +253,7 @@ function __arith_kernel_v_v(kernel, a::IrisHRT.IrisMem, b::IrisHRT.IrisMem; task
         return task
     end
 end
-function __arith_kernel_v_v_s(kernel, a::IrisHRT.IrisMem, b::IrisHRT.IrisMem, scalar; task=nothing, submit=true, wait=true, flush=true, jacc=true, result=nothing, eargs...)
+function __arith_kernel_v_v_s(kernel, a::IrisHRT.IrisMem, b::IrisHRT.IrisMem, scalar; task=nothing, submit=true, wait=true, flush=false, jacc=true, result=nothing, eargs...)
     kernel_name = "__iris_jacc_" * kernel * "_v_v_s"
     #kernel_fn = IrisHRT.getFunction("__iris_jacc_" * kernel * "_v_v_s")
     sizes = IrisHRT.host_size(a)
@@ -293,7 +293,7 @@ function __arith_kernel_v_v_s(kernel, a::IrisHRT.IrisMem, b::IrisHRT.IrisMem, sc
         return task
     end
 end
-function __arith_kernel_v_v_s_s(kernel, a::IrisHRT.IrisMem, b::IrisHRT.IrisMem, scalar1, scalar2; task=nothing, submit=true, wait=true, flush=true, jacc=true, result=nothing, eargs...)
+function __arith_kernel_v_v_s_s(kernel, a::IrisHRT.IrisMem, b::IrisHRT.IrisMem, scalar1, scalar2; task=nothing, submit=true, wait=true, flush=false, jacc=true, result=nothing, eargs...)
     kernel_name = "__iris_jacc_" * kernel * "_v_v_s_s"
     #kernel_fn = IrisHRT.getFunction("__iris_jacc_" * kernel *"_v_v_s_s")
     sizes = IrisHRT.host_size(a)
@@ -333,7 +333,7 @@ function __arith_kernel_v_v_s_s(kernel, a::IrisHRT.IrisMem, b::IrisHRT.IrisMem, 
         return task
     end
 end
-function __arith_kernel_s_v(kernel, scalar, b::IrisHRT.IrisMem; task=nothing, submit=true, wait=true, flush=true, jacc=true, result=nothing, eargs...)
+function __arith_kernel_s_v(kernel, scalar, b::IrisHRT.IrisMem; task=nothing, submit=true, wait=true, flush=false, jacc=true, result=nothing, eargs...)
     kernel_name = "__iris_jacc_" * kernel * "_s_v"
     #kernel_fn = IrisHRT.getFunction("__iris_jacc_" * kernel * "_s_v")
     sizes = IrisHRT.host_size(b)

@@ -6,8 +6,12 @@
 #include "Task.h"
 #include "Utils.h"
 #include <stdlib.h>
+#include <string>
+#include <sstream>
 
 #define USE_MEMRANGE
+
+using namespace std;
 
 namespace iris {
 namespace rt {
@@ -72,8 +76,16 @@ DataMem::DataMem(Platform *platform, void *host_ptr, size_t *off, size_t *host_s
 }
 void DataMem::Print()
 {
-    _printf("DMEM: uid:%lu host_ptr:%p off:[%ld,%ld,%ld]:%p host_size:[%ld,%ld,%ld] dev_size:[%ld,%ld,%ld] elem_size:%ld dim:%d size:%ld", uid(), host_ptr_, off_[0], off_[1], off_[2], off_, host_size_[0], host_size_[1], host_size_[2], dev_size_[0], dev_size_[1], dev_size_[2], elem_size_, dim_, size_);
-    
+    stringstream ss;
+    ss << "[";
+    for (int i = 0; i < ndevs_; i++) {
+        ss << is_dev_dirty(i);
+        if (i != ndevs_-1)
+            ss << ", ";
+    }
+    ss << "]";
+    string str = ss.str();
+    _printf("DMEM: uid:%lu host_ptr:%p off:[%ld,%ld,%ld]:%p host_size:[%ld,%ld,%ld] dev_size:[%ld,%ld,%ld] elem_size:%ld dim:%d size:%ld host_dirty:%d dev_dirty:%s", uid(), host_ptr_, off_[0], off_[1], off_[2], off_, host_size_[0], host_size_[1], host_size_[2], dev_size_[0], dev_size_[1], dev_size_[2], elem_size_, dim_, size_, is_host_dirty(), str.c_str());
 }
 DataMem *DataMem::Copy()
 {

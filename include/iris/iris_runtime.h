@@ -1236,6 +1236,14 @@ extern int iris_mem_create(size_t size, iris_mem* mem);
  */
 extern int iris_data_mem_init_reset(iris_mem mem, int reset);
 
+/**@brief Print DMEM status 
+ *
+ * This function prints data memory object status 
+ *
+ * @return void 
+ */
+extern void iris_data_mem_print(iris_mem mem);
+
 /**@brief Get DMem element type
  *
  * This function returns a DMEM element type if it is configured

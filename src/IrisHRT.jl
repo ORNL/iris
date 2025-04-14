@@ -1620,6 +1620,15 @@ module IrisHRT
         end
     end
 
+    function print(mem::Union{IrisHRT.IrisMem, IrisHRT.IrisTaskMem})
+        iris_data_mem_print(field_dmem(mem))
+    end
+
+    function print(host::AbstractArray{T}) where T
+        mem = get_dmem_from_cache(host)
+        iris_data_mem_print(mem)
+    end
+
     function array(::Type{T}, dims...) where T
         return dmem(T, dims...)
     end
@@ -1645,6 +1654,10 @@ module IrisHRT
         end
         host_size = prod(dim_size) * elem_size
         dim_size_v = collect(dim_size)
+        key = (mem.uid, dim_size_v, elem_size, elem_type)
+        if haskey(Main.__iris_dmem_mirrors_map, key)
+            return Main.__iris_dmem_mirrors_map[key]
+        end 
         dim = length(dim_size)
         #println(Core.stdout, "Type of element: ", " HostSize:", host_size, " Dims:", dim_size_v, " N-dims:", dim, " Element size:", elem_size, " pointer:", host_cptr)
         iris_mem=nothing
@@ -1656,7 +1669,7 @@ module IrisHRT
             push_dmem_custom_type(iris_mem.uid, T)
         end
         iris_dmem_set_source(iris_mem, mem)
-        Main.__iris_dmem_mirrors_map[iris_mem.uid] = iris_mem
+        Main.__iris_dmem_mirrors_map[key] = iris_mem
         return iris_mem
     end
 
@@ -1692,6 +1705,10 @@ module IrisHRT
 		hT = eltype(dst_host_size)
 		#println(Core.stdout, "hsize:", hsize, " dst_host_size:", dst_host_size, " hT:", hT)
 		dst_host_size[1] = hT(dst_host_size[1] * factor)
+        key = (mem.uid, dst_host_size, dst_elem_size, dst_elem_type)
+        if haskey(Main.__iris_dmem_mirrors_map, key)
+            return Main.__iris_dmem_mirrors_map[key]
+        end 
 		dim = length(dst_host_size)
 		#println(Core.stdout, "Type of element: ", " HostSize:", dst_host_size, " N-dims:", dim, " Element size:", dst_elem_size, " pointer:", host_cptr, " hT:", hT)
 
@@ -1703,7 +1720,7 @@ module IrisHRT
 			push_dmem_custom_type(iris_mem.uid, T)
 		end
 		iris_dmem_set_source(iris_mem, mem)
-		Main.__iris_dmem_mirrors_map[iris_mem.uid] = iris_mem
+		Main.__iris_dmem_mirrors_map[key] = iris_mem
 		return iris_mem
 	end
 

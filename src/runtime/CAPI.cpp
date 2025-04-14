@@ -823,6 +823,11 @@ iris_mem iris_data_mem_copy(iris_mem src_mem)
   iris_mem *brs_mem = dst->struct_obj();
   return *brs_mem;
 }
+void iris_data_mem_print(iris_mem src_mem)
+{
+  DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(src_mem);
+  mem->Print();
+}
 int iris_unregister_pin_memory(void *host) {
   return Platform::GetPlatform()->UnRegisterPin(host);
 }
