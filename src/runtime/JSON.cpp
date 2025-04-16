@@ -127,9 +127,11 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
     }
     int target = iris_default;
     if(iris_tasks_[i]["target"].IsString()){
+      //the scheduled target can be passed in as an input parameter,
       const char* target_str = iris_tasks_[i]["target"].GetString();
       void* p_target = GetParameterInput(params,target_str);
       if (p_target) target = (*(int*) p_target);
+      //or a string
       //device only policies
       else if(strcmp(target_str, "cpu") == 0) target = iris_cpu;
       else if(strcmp(target_str, "gpu") == 0) target = iris_gpu;
@@ -142,6 +144,10 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
       else if(strcmp(target_str, "profile") == 0) target = iris_profile;
       else if(strcmp(target_str, "random") == 0) target = iris_random;
       else if(strcmp(target_str, "roundrobin") == 0) target = iris_roundrobin;
+      //if custom is mentioned in the IRIS policy --- its a custom policy but we need to register it
+      else if(strcmp(target_str, "custom") == 0) {
+        target = iris_custom;
+      }
       //the policy can also just be the actual device id!
       else if(isdigit(target_str[0])){
         target = atoi(target_str);
@@ -152,6 +158,16 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
       _error("malformed task target (not a string or int) in file[%s]", path);
       platform_->IncrementErrorCount();
       return IRIS_ERROR;
+    }
+
+    //if we have a custom policy we have one final string passed: the name of the previously registered custom policy
+    if (target == iris_custom){
+      //get the last input which is the custom_policy_name
+      //not strictly passed in the JSON we have to evaluate the last parameter explicitly.
+      //This is because the custom policies target string isn't **strictly** part of the schema
+      //this means we can change the target policy as a runtime argument.
+      const char* custom_policy_name = (char*) params[iris_inputs_.Size()];//it will always be the size of the number of expected input arguments (plus one).
+      task->set_opt(custom_policy_name);
     }
     task->set_brs_policy(target);
     //commands (populate each task with assigned commands)
@@ -523,6 +539,7 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
     }
     graph->AddTask(task, task->uid());
   }
+  graph->get_metadata()->set_json_url(path);
   return IRIS_SUCCESS;
 }
 

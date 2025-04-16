@@ -233,6 +233,9 @@ public:
   int nchilds() { return nchilds_; }
   void AddChild(unsigned long uid);
   void AddAllChilds();
+
+  Graph* get_graph(){return graph_;}
+  void set_graph(Graph* graph){graph_ = graph;}
  
 #ifdef AUTO_PAR
   std::vector<BaseMem*>* get_write_list() { return &write_list_; }
@@ -240,8 +243,6 @@ public:
   void add_to_read_list(BaseMem* mem) { read_list_.push_back(mem); }
   void add_to_write_list(BaseMem* mem) { write_list_.push_back(mem); }
 #ifdef AUTO_FLUSH
-  Graph* get_graph(){return graph_;}
-  void set_graph(Graph* graph){graph_ = graph;}
   //void EraseDepend();
   void ReplaceDependFlushTask(Task * task);
 #endif
@@ -278,12 +279,10 @@ private:
   Scheduler* scheduler_;
   std::vector<Task*> subtasks_;
   std::vector<Command *> reset_mems_;
+  Graph* graph_;
 #ifdef AUTO_PAR
   std::vector<BaseMem*> write_list_;
   std::vector<BaseMem*> read_list_;
-#ifdef AUTO_FLUSH
-  Graph* graph_;
-#endif
 #ifdef AUTO_SHADOW
   bool shadow_dep_added_;
 #endif
