@@ -468,8 +468,8 @@ end
     return ccall(Libdl.dlsym(lib, :iris_data_mem_create_region), Int32, (Ptr{IrisMem}, IrisMem, Int32), mem, root_mem, region)
 end
 
-@inline function iris_data_mem_create_region_struct(root_mem::IrisMem, region::Int32)::IrisMem
-    return ccall(Libdl.dlsym(lib, :iris_data_mem_create_region_struct), IrisMem, (IrisMem, Int32), root_mem, region)
+@inline function iris_data_mem_create_region_struct(root_mem::IrisMem, region::Int)::IrisMem
+    return ccall(Libdl.dlsym(lib, :iris_data_mem_create_region_struct), IrisMem, (IrisMem, Int32), root_mem, Int32(region))
 end
 
 @inline function iris_data_mem_create_region_ptr(root_mem::IrisMem, region::Int32)::Ptr{IrisMem}
@@ -935,7 +935,11 @@ end
 @inline function iris_dmem_set_source(brs_mem::IrisMem, source::IrisMem)::Ptr{Cint}
     jfunc = Libdl.dlsym(lib, :iris_dmem_set_source)
     return ccall(jfunc, Ptr{Cint}, (IrisMem,IrisMem), brs_mem, source)
+end
 
+@inline function iris_dmem_get_source(brs_mem::IrisMem)::IrisMem
+    jfunc = Libdl.dlsym(lib, :iris_dmem_get_source)
+    return ccall(jfunc, IrisMem, (IrisMem,), brs_mem)
 end
 
 # Function: void* iris_get_dmem_host(iris_mem brs_mem);
@@ -959,6 +963,11 @@ end
     return ccall(func, Cint, (IrisMem,), brs_mem)
 end
 
+@inline function iris_dmem_get_host_size_dim(brs_mem::IrisMem)::Cint
+    func = Libdl.dlsym(lib, :iris_dmem_get_host_size_dim)
+    return ccall(func, Cint, (IrisMem,), brs_mem)
+end
+
 @inline function iris_dmem_get_host_size(brs_mem::IrisMem)::Ptr{Csize_t}
     func = Libdl.dlsym(lib, :iris_dmem_get_host_size)
     return ccall(func, Ptr{Csize_t}, (IrisMem,), brs_mem)
@@ -971,6 +980,11 @@ end
 
 @inline function iris_dmem_get_offsets(brs_mem::IrisMem)::Ptr{Csize_t}
     func = Libdl.dlsym(lib, :iris_dmem_get_offsets)
+    return ccall(func, Ptr{Csize_t}, (IrisMem,), brs_mem)
+end
+
+@inline function iris_dmem_get_offsets_from_host(brs_mem::IrisMem)::Ptr{Csize_t}
+    func = Libdl.dlsym(lib, :iris_dmem_get_offsets_from_host)
     return ccall(func, Ptr{Csize_t}, (IrisMem,), brs_mem)
 end
 

@@ -296,9 +296,9 @@ namespace rt {
         void set_element_type(int t) { element_type_ = t; }
         pair<bool, int8_t> IsResetPossibleWithMemset();
         pair<bool, int8_t> IsResetPossibleWithMemset(ResetData & reset_data);
-        void set_source_mem(BaseMem *mem) { source_mem_ = mem; }
-        BaseMem *get_source_mem() { 
-            if (source_mem_ != NULL) {
+        virtual void set_source_mem(BaseMem *mem) { source_mem_ = mem; }
+        BaseMem *get_source_mem(bool deep=true) { 
+            if (source_mem_ != NULL && deep) {
                 if (source_mem_->get_source_mem() == NULL)
                     return source_mem_;
                 else

@@ -119,9 +119,15 @@ public:
     return all;
   }
   void clear();
-  size_t *off() { return off_; }
-  virtual size_t *local_off() { return off_; }
-  size_t *host_size() { return host_size_; }
+  size_t *off() { 
+    return off_;
+  }
+  virtual size_t *local_off() { return off(); }
+  size_t *host_size() { 
+    DataMem *source_mem = (DataMem*)get_source_mem();
+    if (source_mem == NULL) return host_size_;
+    return source_mem->host_size(); 
+  }
   size_t *dev_size() { return dev_size_; }
   size_t elem_size() { return elem_size_; }
   int update_dim(int dim) { dim_ = dim; return IRIS_SUCCESS; }

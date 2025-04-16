@@ -19,6 +19,12 @@ DataMemRegion::DataMemRegion(DataMem *mem, int region, size_t *off, size_t *loff
     memcpy(loff_, loff, sizeof(size_t)*DMEM_MAX_DIM);
     dev_offset_from_root_ = dev_offset_from_root;
     if (mem_->is_reset()) init_reset(true);
+    set_host_dirty(mem->is_host_dirty());
+    for(int i=0; i<ndevs_; i++) {
+        set_dev_dirty(i, mem->is_dev_dirty(i));
+    }
+    host_ptr_ = mem->host_ptr();
+	host_ptr_owner_ = false;
 }
 void *DataMemRegion::host_root_memory() { return mem_->host_memory(); }
 

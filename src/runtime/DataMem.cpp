@@ -84,6 +84,8 @@ void DataMem::Print()
             ss << ", ";
     }
     ss << "]";
+    if (source_mem_ != NULL)
+        ss << " source:"<<source_mem_->uid();
     string str = ss.str();
     _printf("DMEM: uid:%lu host_ptr:%p off:[%ld,%ld,%ld]:%p host_size:[%ld,%ld,%ld] dev_size:[%ld,%ld,%ld] elem_size:%ld dim:%d size:%ld host_dirty:%d dev_dirty:%s", uid(), host_ptr_, off_[0], off_[1], off_[2], off_, host_size_[0], host_size_[1], host_size_[2], dev_size_[0], dev_size_[1], dev_size_[2], elem_size_, dim_, size_, is_host_dirty(), str.c_str());
 }
@@ -238,7 +240,8 @@ DataMem::~DataMem() {
     }
     if (host_ptr_owner_ && source_mem == NULL) free(host_ptr_);
     if (tmp_host_ptr_) free(tmp_host_ptr_);
-    if (!platform_->IsFinalized() && source_mem == NULL) {
+    if (!platform_->IsFinalized() && source_mem == NULL && 
+        GetMemHandlerType() == IRIS_DMEM) {
       for (int i = 0; i < ndevs_; i++) {
         if (archs_[i] && !is_usm(i)) archs_dev_[i]->MemFree(this, archs_[i]);
       }

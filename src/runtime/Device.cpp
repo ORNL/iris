@@ -1070,8 +1070,10 @@ void Device::ExecuteMemResetInput(Task *task, Command* cmd) {
 void Device::ExecuteDMEM2DMEM(Task *task, Command *cmd) {
     BaseMem *src_mem = cmd->mem();
     BaseMem *dst_mem = cmd->dst_mem();
-    if (src_mem->GetMemHandlerType() == IRIS_DMEM && 
-            dst_mem->GetMemHandlerType() == IRIS_DMEM) {
+    if ((src_mem->GetMemHandlerType() == IRIS_DMEM ||
+                src_mem->GetMemHandlerType() == IRIS_DMEM_REGION) &&
+            (dst_mem->GetMemHandlerType() == IRIS_DMEM ||
+             dst_mem->GetMemHandlerType() == IRIS_DMEM_REGION)) {
         DataMem *dsrc_mem = (DataMem*)src_mem;
         DataMem *ddst_mem = (DataMem*)dst_mem;
         if (dsrc_mem->get_source_mem() != NULL) dsrc_mem = (DataMem*)dsrc_mem->get_source_mem();
@@ -1219,7 +1221,6 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
 {
     int nddevs[IRIS_MAX_NDEVS+1];
     Kernel *kernel = cmd->kernel();
-    size_t *ptr_off = mem->local_off();
     size_t *gws = mem->host_size();
     size_t *lws = mem->dev_size();
     size_t elem_size = mem->elem_size();
@@ -1763,7 +1764,8 @@ void Device::ExecuteMemOut(Task *task, Command* cmd) {
 void Device::ExecuteMemFlushOut(Command* cmd) {
     int nddevs[IRIS_MAX_NDEVS+1];
     BaseMem* bmem = (BaseMem *)cmd->mem();
-    if (bmem->GetMemHandlerType() != IRIS_DMEM) {
+    if (bmem->GetMemHandlerType() != IRIS_DMEM &&
+        bmem->GetMemHandlerType() != IRIS_DMEM_REGION) {
         _error("Flush out is called for unsupported memory handler task:%ld:%s\n", cmd->task()->uid(), cmd->task()->name());
         return;
     }
@@ -1926,7 +1928,8 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
 void Device::ExecuteMemFlushOutToShadow(Command* cmd) {
     int nddevs[IRIS_MAX_NDEVS+1];
     BaseMem* bmem = (BaseMem *)cmd->mem();
-    if (bmem->GetMemHandlerType() != IRIS_DMEM) {
+    if (bmem->GetMemHandlerType() != IRIS_DMEM &&
+        bmem->GetMemHandlerType() != IRIS_DMEM_REGION) {
         _error("Shadow Flush out is called for unssuported memory handler task:%ld:%s\n", cmd->task()->uid(), cmd->task()->name());
         return;
     }

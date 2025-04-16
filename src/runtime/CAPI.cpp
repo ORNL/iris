@@ -302,6 +302,23 @@ size_t *iris_dmem_get_offsets(iris_mem brs_mem) {
     return NULL;
 }
 
+size_t *iris_dmem_get_offsets_from_host(iris_mem brs_mem) {
+    DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (mem != NULL) return mem->off();
+    return NULL;
+}
+
+iris_mem iris_dmem_get_source(iris_mem brs_mem)
+{
+    BaseMem* mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+    BaseMem *source = mem->get_source_mem(false);
+    if (source == NULL) {
+        iris_mem rmem = { NULL, 0UL };
+        return rmem;
+    }
+    return *(source->struct_obj());
+}
+
 int iris_dmem_set_source(iris_mem brs_mem, iris_mem source_mem)
 {
     BaseMem* mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
@@ -326,6 +343,15 @@ int iris_dmem_get_dim(iris_mem brs_mem) {
     DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
     if (mem != NULL) return mem->dim();
     return 0;
+}
+
+int iris_dmem_get_host_size_dim(iris_mem brs_mem) {
+    DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (mem == NULL) return 0;
+    DataMem *source_mem = (DataMem*)mem->get_source_mem();
+    if (source_mem != NULL)
+        return source_mem->dim();
+    return mem->dim();
 }
 
 void *iris_get_dmem_valid_host(iris_mem brs_mem) {

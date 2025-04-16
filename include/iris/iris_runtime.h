@@ -1895,12 +1895,15 @@ extern int iris_mem_init_reset_random_log_normal_sobol_seq(iris_mem brs_mem, IRI
 
 // DMem Memory member access
 extern int iris_dmem_get_dim(iris_mem mem);
+extern int iris_dmem_get_host_size_dim(iris_mem mem);
 extern int iris_dmem_get_elem_size(iris_mem mem);
 extern int iris_dmem_get_elem_type(iris_mem mem);
 extern size_t *iris_dmem_get_host_size(iris_mem mem);
 extern size_t *iris_dmem_get_dev_size(iris_mem mem);
 extern size_t *iris_dmem_get_offsets(iris_mem mem);
+extern size_t *iris_dmem_get_offsets_from_host(iris_mem mem);
 extern iris_mem iris_get_dmem_for_region(iris_mem dmem_region_obj);
+extern iris_mem iris_dmem_get_source(iris_mem brs_mem);
 extern int iris_dmem_set_source(iris_mem brs_mem, iris_mem source_mem);
 
 // Command kernel member access

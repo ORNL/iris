@@ -4,10 +4,6 @@ using Test
 
 IrisHRT.init()
 
-function tryme(host::AbstractArray{T}) where T 
-    println(host)
-end
-
 A = reshape(collect(1:16), 4, 4)
 
 AA = IrisHRT.reshape(A, 4, 2, 2)
