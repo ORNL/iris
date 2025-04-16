@@ -4,7 +4,7 @@
 # Contact for bug : miniskarnr@ornl.gov
 #
 
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.5)
 
 # Sources(C) in sd_hexagon file without extension 
 #set(SDHEXAGON_SOURCES
