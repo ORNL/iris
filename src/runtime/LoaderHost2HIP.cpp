@@ -10,6 +10,10 @@ LoaderHost2HIP::LoaderHost2HIP() : HostInterfaceClass("KERNEL_HOST2HIP") {
     enable_strict_handle_check();
 }
 
+LoaderHost2HIP::LoaderHost2HIP(string path) : HostInterfaceClass(path, true) {
+    enable_strict_handle_check();
+}
+
 LoaderHost2HIP::~LoaderHost2HIP() {
 }
 

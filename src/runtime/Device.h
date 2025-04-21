@@ -32,7 +32,7 @@ class Timer;
 class Worker;
 class Platform;
 class JuliaHostInterfaceLoader;
-class LoaderDefaultKernel;
+class LoaderResetKernel;
 
 enum AsyncResolveType
 {
@@ -233,12 +233,13 @@ public:
   double Now() { return timer_->Now(); }
   const char *kernel_path() { return kernel_path_.c_str(); }
 protected:
-  LoaderDefaultKernel* ld_default() { return ld_default_; }
+  LoaderResetKernel* ld_reset() { return ld_reset_; }
   void HandleMemReset(bool async, Command *cmd, Kernel *kernel, Task *task, DataMem *mem, DataMem *src_mem);
   void CallMemReset(BaseMem *mem, size_t size, ResetData & data, void *stream, BaseMem *target_mem=NULL);
-  void LoadDefaultKernelLibrary(const char *key, const char *flags);
+  string CompileDefaultKernelLibrary(const char *key, const char *flags);
+  Platform *platform_obj() { return platform_obj_; }
 private:
-  LoaderDefaultKernel *ld_default_;
+  LoaderResetKernel *ld_reset_;
   int get_new_stream_queue(int offset=0) {
     int nqs = ((nqueues_-1)-offset);
     if (nqs <= 0) return current_queue_ + offset+1;

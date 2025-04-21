@@ -126,6 +126,7 @@ iris_hip = 3,
 iris_levelzero = 4,
 iris_opencl = 5,
 iris_openmp = 6,
+iris_qiree = 7,
 iris_model_all = (1 << 25) // Same as iris_all
 };
 typedef enum DeviceModel DeviceModel;

@@ -66,6 +66,7 @@ public:
 
 private:
   LoaderHIP* ld_;
+  LoaderHost2HIP* ld_default_;
   LoaderHost2HIP* host2hip_ld_;
   hipCtx_t ctx_;
   hipDevice_t dev_;

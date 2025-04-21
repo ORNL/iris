@@ -2,6 +2,7 @@
 #include "Debug.h"
 #include "Kernel.h"
 #include "LoaderOpenMP.h"
+#include "LoaderResetKernel.h"
 #include "BaseMem.h"
 #include "DataMem.h"
 #include "Mem.h"
@@ -16,6 +17,7 @@ namespace rt {
 
 DeviceOpenMP::DeviceOpenMP(LoaderOpenMP* ld, int devno, int platform) : Device(devno, platform) {
   ld_ = ld;
+  ld_default_ = NULL;
   type_ = iris_cpu;
   model_ = iris_openmp;
   can_share_host_memory_ = true;
@@ -39,6 +41,8 @@ DeviceOpenMP::DeviceOpenMP(LoaderOpenMP* ld, int devno, int platform) : Device(d
 }
 
 DeviceOpenMP::~DeviceOpenMP() {
+  if (ld_default_ != NULL) ld_default_->finalize(devno());
+  if (ld_default_ != NULL) delete ld_default_;
   ld_->finalize(devno());
   if (julia_if_ != NULL) julia_if_->finalize(devno());
 }
@@ -60,7 +64,7 @@ int DeviceOpenMP::Compile(char* src, const char *out, const char *flags) {
     int result = system("g++ --version > /dev/null 2>&1");
     if (result == 0) {
         _error("cmd[%s]", cmd);
-        worker_->platform()->IncrementErrorCount();
+        platform_obj()->IncrementErrorCount();
         return IRIS_ERROR;
     }
     else {
@@ -127,10 +131,17 @@ int DeviceOpenMP::Init() {
   if (julia_if_ != NULL) julia_if_->init(devno());
   set_first_event_cpu_begin_time(timer_->Now());
   set_first_event_cpu_end_time(timer_->Now());
-  char flags[128];
-  sprintf(flags, "-shared -fopenmp -fPIC");
-  LoadDefaultKernelLibrary("DEFAULT_OMP_KERNELS", flags);
-
+  if (platform_obj()->is_default_kernels_load()) {
+      char flags[128];
+      sprintf(flags, "-shared -fopenmp -fPIC -DENABLE_IRIS_OPENMP_APIS ");
+      string ld_default_path = CompileDefaultKernelLibrary("DEFAULT_OMP_KERNELS", flags);
+      if (Utils::Exist(ld_default_path.c_str())) {
+          ld_default_ = new LoaderOpenMP(ld_default_path);
+          ld_default_->Load();
+      }
+  }
+  if (ld_default_ != NULL)
+    ld_default_->init(devno());
   return IRIS_SUCCESS;
 }
 
@@ -162,7 +173,7 @@ int DeviceOpenMP::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool rese
   void** mpmem = mem_addr;
   if (posix_memalign(mpmem, 0x1000, size) != 0) {
     _error("%s", "posix_memalign");
-    worker_->platform()->IncrementErrorCount();
+    platform_obj()->IncrementErrorCount();
     return IRIS_ERROR;
   }
   _trace("Allocated mem:%lu addr:%p, size:%lu reset:%d", mem->uid(), *mem_addr, size, reset);
@@ -170,7 +181,7 @@ int DeviceOpenMP::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool rese
       if (mem->reset_data().reset_type_ == iris_reset_memset) {
           memset(*mpmem, 0, size);
       }
-      else if (ld_default() != NULL) {
+      else if (ld_default_ != NULL) {
           pair<bool, int8_t> out = mem->IsResetPossibleWithMemset();
           if (out.first) {
               memset(*mpmem, out.second, size);
@@ -276,6 +287,8 @@ int DeviceOpenMP::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_siz
 }
 
 int DeviceOpenMP::KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bool report_error) {
+  if (!kernel->vendor_specific_kernel_check_flag(devno_))
+      CheckVendorSpecificKernel(kernel);
   int kernel_idx=-1;
   if (julia_if_ != NULL && kernel->enable_julia_if()) {
       return IRIS_SUCCESS;
@@ -284,13 +297,29 @@ int DeviceOpenMP::KernelGet(Kernel *kernel, void** kernel_bin, const char* name,
       *kernel_bin = ld_->GetFunctionPtr(name);
       return IRIS_SUCCESS;
   }
+  if (ld_default_ != NULL &&
+      kernel->is_default_kernel(devno_) && 
+      ld_default_->host_kernel(&kernel_idx, name) == IRIS_SUCCESS) {
+      *kernel_bin = ld_default_->GetFunctionPtr(name);
+      return IRIS_SUCCESS;
+  }
   if (report_error) {
       _error("Missing function for OpenMP kernel:%s", kernel->name());
-      worker_->platform()->IncrementErrorCount();
+      platform_obj()->IncrementErrorCount();
   }
   return IRIS_ERROR;
 }
 
+void DeviceOpenMP::CheckVendorSpecificKernel(Kernel* kernel) {
+    kernel->set_vendor_specific_kernel(devno_, false);
+    if (ld_default_ != NULL && 
+            ld_default_->host_kernel(
+                kernel->GetParamWrapperMemory(),
+                kernel->name())==IRIS_SUCCESS) {
+        kernel->set_default_kernel(devno_, true);
+    }
+    kernel->set_vendor_specific_kernel_check(devno_, true);
+}
 int DeviceOpenMP::KernelLaunchInit(Command *cmd, Kernel* kernel) {
   //c_string_array data = ld_->iris_get_kernel_names();
   int status=IRIS_ERROR;
@@ -299,6 +328,8 @@ int DeviceOpenMP::KernelLaunchInit(Command *cmd, Kernel* kernel) {
       julia_if_->set_julia_kernel_type(kernel->GetParamWrapperMemory(), kernel->julia_kernel_type());
       return IRIS_SUCCESS;
   }
+  else if (ld_default_ != NULL && kernel->is_default_kernel(devno_))
+      ld_default_->launch_init(model(), devno_, 0, 0, NULL, kernel->GetParamWrapperMemory(), cmd);
   else {
       status = ld_->launch_init(model(), devno_, 0, 0, NULL, kernel->GetParamWrapperMemory(), cmd);
       /*
@@ -309,7 +340,7 @@ int DeviceOpenMP::KernelLaunchInit(Command *cmd, Kernel* kernel) {
        */
       if (status == IRIS_ERROR) {
           _error("Missing iris_openmp_kernel/iris_openmp_kernel_with_obj for OpenMP kernel:%s", kernel->name());
-          worker_->platform()->IncrementErrorCount();
+          platform_obj()->IncrementErrorCount();
       }
   }
   return status;
@@ -320,6 +351,10 @@ int DeviceOpenMP::KernelSetArg(Kernel* kernel, int idx, int kindex, size_t size,
        julia_if_->setarg(
               kernel->GetParamWrapperMemory(), kindex, size, value);
        return IRIS_SUCCESS;
+    }
+    else if (ld_default_ != NULL && kernel->is_default_kernel(devno_)) {
+       ld_default_->setarg(
+              kernel->GetParamWrapperMemory(), kindex, size, value);
     }
     else {
         int status = ld_->setarg(
@@ -332,7 +367,7 @@ int DeviceOpenMP::KernelSetArg(Kernel* kernel, int idx, int kindex, size_t size,
          */
         if (status != IRIS_SUCCESS) {
             _error("Missing host iris_openmp_setarg/iris_openmp_setarg_with_obj function for OpenMP kernel:%s", kernel->name());
-            worker_->platform()->IncrementErrorCount();
+            platform_obj()->IncrementErrorCount();
         }
         return status;
     }
@@ -347,6 +382,10 @@ int DeviceOpenMP::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem
               kernel->GetParamWrapperMemory(), mem, kindex, mpmem, size);
       return IRIS_SUCCESS;
   }
+  else if (ld_default_ != NULL && kernel->is_default_kernel(devno_)) {
+      ld_default_->setmem(
+              kernel->GetParamWrapperMemory(), kindex, mpmem, size);
+  }
   else {
       int status = ld_->setmem(kernel->GetParamWrapperMemory(), kindex, mpmem, size);
       /*
@@ -357,7 +396,7 @@ int DeviceOpenMP::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem
        */
       if (status == IRIS_SUCCESS) return IRIS_SUCCESS;
       _error("Missing host iris_openmp_setmem/iris_openmp_setmem_with_obj function for OpenMP kernel:%s", kernel->name());
-      worker_->platform()->IncrementErrorCount();
+      platform_obj()->IncrementErrorCount();
   }
   return IRIS_ERROR;
 }
@@ -372,6 +411,13 @@ int DeviceOpenMP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws
                   dim, gws, off, gws);
       return IRIS_SUCCESS;
   }
+  if (ld_default_ != NULL && kernel->is_default_kernel(devno_) && 
+          (ld_default_->host_launch(NULL, 0, 0, kernel->name(), 
+                            kernel->GetParamWrapperMemory(), 
+                            devno(),
+                            dim, off, gws) == IRIS_SUCCESS)) {
+    return IRIS_SUCCESS;
+  }
   else if (ld_->host_launch(NULL, 0, 0, kernel->name(), kernel->GetParamWrapperMemory(), devno(),
               dim, off, gws) == IRIS_SUCCESS) 
       return IRIS_SUCCESS;
@@ -384,7 +430,7 @@ int DeviceOpenMP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws
     return ld_->iris_openmp_launch(dim, off[0], gws[0]);
     */
   _error("Missing host iris_openmp_launch/iris_openmp_launch_with_obj function for OpenMP kernel:%s", kernel->name());
-  worker_->platform()->IncrementErrorCount();
+  platform_obj()->IncrementErrorCount();
   return IRIS_ERROR;
 }
 

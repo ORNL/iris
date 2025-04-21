@@ -1,5 +1,21 @@
+#ifndef HIP_INCLUDE_HIP_HIP_RUNTIME_H
+#define HIP_INCLUDE_HIP_HIP_RUNTIME_H
+#ifndef HIP_INCLUDE_HIP_HIP_RUNTIME_API_H
+#define HIP_INCLUDE_HIP_HIP_RUNTIME_API_H
 #ifndef HIP_INCLUDE_HIP_HCC_DETAIL_HIP_RUNTIME_API_H
 #define HIP_INCLUDE_HIP_HCC_DETAIL_HIP_RUNTIME_API_H
+
+#ifdef __cplusplus
+  #define __dparm(x) \
+          = x
+#else
+  #define __dparm(x)
+#endif
+
+struct __half {
+    unsigned short __x;
+};
+typedef struct __half half;
 
 #ifdef __cplusplus
 extern "C" {
@@ -38,6 +54,7 @@ typedef struct hipPos {
     size_t z;
 }hipPos;
 typedef struct hipArray* hipArray_t;
+typedef const struct hipArray* hipArray_const_;
 typedef struct hipMemcpy3DParms {
     hipArray_t srcArray;
     struct hipPos srcPos;
@@ -433,3 +450,5 @@ hipError_t hipGetDeviceProperties(hipDeviceProp_t* prop, int deviceId);
 #endif
 
 #endif /* HIP_INCLUDE_HIP_HCC_DETAIL_HIP_RUNTIME_API_H */
+#endif //HIP_INCLUDE_HIP_HIP_RUNTIME_API_H
+#endif //HIP_INCLUDE_HIP_HIP_RUNTIME_H

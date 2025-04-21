@@ -7,9 +7,10 @@
 #include <string.h>
 #include <math.h>
 
-#define IRIS_HOST2HIP_KERNEL_ARGS     size_t _off, size_t _ndr
-#define IRIS_HOST2HIP_KERNEL_BEGIN(i) for (i = _off; i < _off + _ndr; i++) {
-#define IRIS_HOST2HIP_KERNEL_END      }
+#ifndef ENABLE_HIP_MACROS
+#define ENABLE_HIP_MACROS
+#endif
+#include "iris/iris_gpu.h" 
 
 #define __kernel
 #define __global

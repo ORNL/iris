@@ -66,7 +66,7 @@ int LoaderCUDA::LoadFunctions() {
   LOADFUNCEXT(cudaMemcpy2DAsync);
   LOADFUNCEXT(cudaMemcpy3D);
   LOADFUNCEXT(cudaMemcpy3DAsync);
-  LOADFUNCEXT(cudaGetSymbolAddress);
+  //LOADFUNCEXT(cudaGetSymbolAddress);
   LOADFUNCEXT(cudaHostGetDevicePointer);
   LOADFUNCEXT(cudaSetDeviceFlags);
   LOADFUNCEXT(cudaMemset);

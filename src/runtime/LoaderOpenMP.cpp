@@ -27,6 +27,9 @@ namespace rt {
 LoaderOpenMP::LoaderOpenMP() : HostInterfaceClass("KERNEL_BIN_OPENMP") {
 }
 
+LoaderOpenMP::LoaderOpenMP(string path) : HostInterfaceClass(path, true) {
+}
+
 LoaderOpenMP::~LoaderOpenMP() {
 }
 

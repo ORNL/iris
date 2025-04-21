@@ -66,6 +66,57 @@ if (DEBUG_DISABLE)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDEBUG_DISABLE")
 endif()
 
+function(initVar var_name default_value)
+#    message(STATUS "args var:(${var_name}) default_value:(${default_value})")
+    if (NOT ${var_name})
+        #message(STATUS "var  (${var_name}) is not defined. Setting default: ${default_value}")
+        set(${var_name} "${default_value}" PARENT_SCOPE)
+    endif() #var_name
+    #message(STATUS "var  (${var_name}) is set to ${default_value}")
+endfunction() # initVar
+initVar(APP_FLAGS "-D__nothing__ -I../../../include/")
+#message(STATUS " APP_FLAGS: ${APP_FLAGS}")
+function(extractIRISAPIs)
+   set(src_include_paths "")
+   set(src_rules "")
+   set(src_iris_files "")
+   list(APPEND list_of_sources ${ARGN})
+   #message(STATUS "\n ARG : ${list_of_sources}\n")
+   while(list_of_sources)
+        list(GET list_of_sources 0 first_core)
+        #message(STATUS "\n FIRST ARG : ${first_core}\n")
+        list(REMOVE_AT list_of_sources 0)
+        string(REGEX REPLACE " $" "" first "${first_core}")
+        string(REGEX REPLACE "/" ".__" rule_name "${first}.iris")
+        string(REGEX REPLACE "\n$" "" rule_name "${rule_name}")
+        get_filename_component(SRC_PATH ${first} DIRECTORY)
+        if (SRC_PATH STREQUAL "")
+        set(SRC_PATH ".")
+        endif()
+        #message(STATUS "\n Processing file: ${first} in path:${SRC_PATH}\n")
+        get_filename_component(SRC_DIR_PATH ${SRC_PATH} ABSOLUTE BASE_DIR ${PROJECT_SOURCE_DIR}/src/runtime/)
+        get_filename_component(SRC_FILE_PATH ${first} ABSOLUTE BASE_DIR ${PROJECT_SOURCE_DIR}/src/runtime/)
+        list(APPEND src_include_paths "-I${SRC_DIR_PATH}")
+        add_custom_command(OUTPUT  ${CMAKE_BINARY_DIR}/${rule_name}.iris 
+            COMMAND python3 ${PROJECT_SOURCE_DIR}/utils/extract_iris_task_calls.py -input ${SRC_FILE_PATH} -compile_options "${APP_FLAGS}" -output ${CMAKE_BINARY_DIR}/${rule_name}.iris -extract  -codegen_file_tag iris_default_math
+            DEPENDS ${SRC_FILE_PATH}
+        )
+        #message(STATUS " RULE: ${rule_name}")
+        add_custom_target(${rule_name} DEPENDS ${CMAKE_BINARY_DIR}/${rule_name}.iris)
+        #message(STATUS "\n Processing file: ${first} in path:${SRC_PATH} rule:${rule_name}\n")
+        list(APPEND src_rules "${rule_name}")
+        list(APPEND src_iris_files "${CMAKE_BINARY_DIR}/${rule_name}.iris")
+   endwhile()
+   add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/src/runtime/iris/iris_default_math_boilerplate.h ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_cuda_kernels.cu ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_hip_kernels.hip.cpp ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_openmp_kernels.cpp
+           COMMAND mkdir -p ${CMAKE_BINARY_DIR}/src/runtime/iris
+           COMMAND python3 ${PROJECT_SOURCE_DIR}/utils/extract_iris_task_calls.py -input ${src_iris_files} -output ${CMAKE_BINARY_DIR}/src/runtime/iris/iris_default_math_boilerplate.h -generate $ENV{IRIS_NO_CODEGEN} -codegen_file_tag iris_default_math -signature_file iris_default_math.h -signature_file_include_headers "iris/iris.h,iris/Tiling1D.h,iris/Tiling2D.h" -signature_file_using_namespace "std,iris"
+           DEPENDS ${src_rules}
+           )
+    add_custom_target(iris_default_math_boilerplate_h DEPENDS ${CMAKE_BINARY_DIR}/src/runtime/iris/iris_default_math_boilerplate.h)
+    install(FILES ${CMAKE_BINARY_DIR}/src/runtime/iris/iris_default_math_boilerplate.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/iris/)
+endfunction()
+
+
 
 set(IRIS_RUNTIME_SOURCES
 #AutoDAG.cpp
@@ -90,7 +141,7 @@ set(IRIS_RUNTIME_SOURCES
   Kernel.cpp
   Loader.cpp
   LoaderCUDA.cpp
-  LoaderDefaultKernel.cpp
+  LoaderResetKernel.cpp
   LoaderHost2OpenCL.cpp
   LoaderHost2HIP.cpp
   LoaderHost2CUDA.cpp
@@ -168,7 +219,7 @@ set(IRIS_RUNTIME_HEADERS
   Kernel.h
   Loader.h
   LoaderCUDA.h
-  LoaderDefaultKernel.h
+  LoaderResetKernel.h
   LoaderHexagon.h
   LoaderHIP.h
   LoaderOpenCL.h
@@ -263,12 +314,33 @@ if(USE_FORTRAN)
   install(FILES ${IRIS_BIN_DIR}/runtime/iris.mod DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/iris)
 endif()
 
+install(FILES
+  default_cpu_gpu_kernels.cpp
+  DESTINATION ${CMAKE_INSTALL_PREFIX}/default)
+
 if(USE_PYTHON)
   MESSAGE(STATUS "USE_PYTHON")
   install(FILES iris.py DESTINATION ${CMAKE_INSTALL_PREFIX})
 endif()
 
-add_library(iris ${IRIS_RUNTIME_SOURCES})
+set(DEFAULT_KERNELS 
+    default_iris_task_core.cpp
+    default_iris_task.cpp 
+    )
+extractIRISAPIs(${DEFAULT_KERNELS})
+
+#add_library(default_iris ${DEFAULT_KERNELS})
+#add_dependencies(default_iris  iris_app_cpu_dsp_interface.h)
+#target_compile_options(default_iris PRIVATE -Wall)a
+#install(TARGETS default_iris DESTINATION ${CMAKE_INSTALL_PREFIX}/default)
+
+install(FILES ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math.h DESTINATION ${CMAKE_INSTALL_PREFIX}/include/iris/)
+install(FILES ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_hip_kernels.hip.cpp DESTINATION ${CMAKE_INSTALL_PREFIX}/default/)
+install(FILES ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_cuda_kernels.cu DESTINATION ${CMAKE_INSTALL_PREFIX}/default/)
+#install(FILES ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_openmp_kernels.cpp DESTINATION ${CMAKE_INSTALL_PREFIX}/default/)
+
+add_library(iris ${IRIS_RUNTIME_SOURCES} ${DEFAULT_KERNELS})
+add_dependencies(iris iris_default_math_boilerplate_h)
 if (ENABLE_FFI)
 install(FILES ${libffi_BINARY_DIR}/libffi.so DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(FILES ${libffi_BINARY_DIR}/libffi.a DESTINATION ${CMAKE_INSTALL_LIBDIR})
@@ -288,3 +360,68 @@ install(FILES
   ${IRIS_BIN_DIR}/runtime/Config.h
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/iris/rt)
 
+find_package(OpenMP REQUIRED)
+add_library(cpu_default default_cpu_gpu_kernels.cpp ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_openmp_kernels.cpp)
+add_dependencies(cpu_default iris_default_math_boilerplate_h)
+target_compile_options(cpu_default PRIVATE -Wall -fopenmp -DENABLE_IRIS_OPENMP_APIS)
+target_link_libraries(cpu_default PRIVATE OpenMP::OpenMP_CXX)
+install(TARGETS cpu_default DESTINATION ${CMAKE_INSTALL_PREFIX}/default)
+
+find_package(CUDAToolkit QUIET COMPONENTS curand)
+if (CUDAToolkit_FOUND)
+    message(STATUS "CUDA found!")
+    set(MYCUDA_SRCS
+           default_cpu_gpu_kernels.cpp 
+            ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_cuda_kernels.cu 
+    )
+    get_target_property(CUDA_INCLUDE_DIRS CUDA::cudart
+                      INTERFACE_INCLUDE_DIRECTORIES)
+    get_target_property(MATHLIB_INCLUDE_DIRS CUDA::curand
+                      INTERFACE_INCLUDE_DIRECTORIES)
+    set(include_paths "")
+    while(MATHLIB_INCLUDE_DIRS)
+        list(GET MATHLIB_INCLUDE_DIRS 0 first_core)
+        list(REMOVE_AT MATHLIB_INCLUDE_DIRS 0)
+        list(APPEND include_paths -I${first_core})
+    endwhile()
+    add_custom_command(
+        OUTPUT libcuda_default.so
+        #COMMAND nvcc -x cu -g -Xcompiler -fPIC -DENABLE_IRIS_HOST2CUDA_APIS ${include_paths} -I${IRIS_INC_DIR} -I${CUDA_INCLUDE_DIRS}/ ${PROJECT_SOURCE_DIR}/src/runtime/default_cpu_gpu_kernels.cpp -c -o default_cpu_gpu_kernels_cuda.cpp.o
+        #COMMAND nvcc -x cu -g -Xcompiler -fPIC -I${IRIS_INC_DIR} ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_cuda_kernels.cu -c -o iris_default_math_cuda_kernels.cu.o
+        #COMMAND nvcc -shared -g -Xcompiler -fPIC default_cpu_gpu_kernels_cuda.cpp.o iris_default_math_cuda_kernels.cu.o -o libcuda_default.so 
+		COMMAND nvcc -shared -x cu -g -Xcompiler -fPIC -DENABLE_IRIS_HOST2CUDA_APIS ${include_paths} -I${IRIS_INC_DIR} -I${CUDA_INCLUDE_DIRS}/ ${PROJECT_SOURCE_DIR}/src/runtime/default_cpu_gpu_kernels.cpp ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_cuda_kernels.cu -o libcuda_default.so 
+		DEPENDS ${PROJECT_SOURCE_DIR}/src/runtime/default_cpu_gpu_kernels.cpp
+    )
+    add_custom_target(myapp_cuda DEPENDS libcuda_default.so)
+    add_dependencies(myapp_cuda iris_default_math_boilerplate_h)
+    install(FILES  ${CMAKE_BINARY_DIR}/src/runtime/libcuda_default.so  DESTINATION ${CMAKE_INSTALL_PREFIX}/default)
+    add_dependencies(iris myapp_cuda)
+endif()
+
+find_package(hip)
+if (hip_FOUND)
+	find_package(hiprand)
+	message(STATUS "HIP found!")
+ 	get_target_property(HIP_INCLUDE_DIRS hip::host
+                     INTERFACE_INCLUDE_DIRECTORIES)
+
+	get_target_property(HIPRAND_INCLUDE_DIRS hip::hiprand
+                    INTERFACE_INCLUDE_DIRECTORIES)
+	set(include_paths "")
+	while(HIPRAND_INCLUDE_DIRS)
+		list(GET HIPRAND_INCLUDE_DIRS 0 first_core)
+		list(REMOVE_AT HIPRAND_INCLUDE_DIRS 0)
+		list(APPEND include_paths -I${first_core})
+	endwhile()
+	add_custom_command(
+		OUTPUT libhip_default.so
+		COMMAND hipcc -g -fPIC ${include_paths} -DENABLE_IRIS_HOST2HIP_APIS -I${IRIS_INC_DIR} -I${HIP_INCLUDE_DIRS}/ ${PROJECT_SOURCE_DIR}/src/runtime/default_cpu_gpu_kernels.cpp -c -o default_cpu_gpu_kernels_hip.cpp.o
+		COMMAND hipcc -g -fPIC -I${IRIS_INC_DIR} ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_hip_kernels.hip.cpp -c -o iris_default_math_hip_kernels.hip.cpp.o
+		COMMAND hipcc -shared -g -fPIC default_cpu_gpu_kernels_hip.cpp.o iris_default_math_hip_kernels.hip.cpp.o -o libhip_default.so 
+		DEPENDS ${PROJECT_SOURCE_DIR}/src/runtime/default_cpu_gpu_kernels.cpp
+	)
+	add_custom_target(myapp_hip DEPENDS libhip_default.so)
+	add_dependencies(myapp_hip iris_default_math_boilerplate_h)
+	install(FILES  ${CMAKE_BINARY_DIR}/src/runtime/libhip_default.so  DESTINATION ${CMAKE_INSTALL_PREFIX}/default)
+	add_dependencies(iris myapp_hip)
+endif()

@@ -153,8 +153,8 @@ else()
     set(HIP_ENABLED OFF)
 endif()
 option(ENABLE_OPENMP_NVCC "Enable Host cuda kernel with NVC++ for OpenMP offload"    OFF)
-option(ENABLE_HOST2CUDA_NATIVE "Compile host2cuda kernels with NVC++ compiler"    OFF)
-option(ENABLE_HOST2HIP_NATIVE "Compile host2hip kernels with hipcc compiler"    OFF)
+option(ENABLE_HOST2CUDA_NATIVE "Compile host2cuda kernels with NVC++ compiler"    ON)
+option(ENABLE_HOST2HIP_NATIVE "Compile host2hip kernels with hipcc compiler"    ON)
 option(APP_LIB_STATIC "Enable static app lib"    OFF)
 option(SNAPDRAGON "Enable support for Hexagon"    OFF )
 option(CDSP_FLAG "Enable support for CDSP"     OFF )
@@ -230,6 +230,8 @@ initVar(APP_FLAGS "")
 initVar(APP_LDFLAGS "")
 initVar(HEXAGON_FLAGS "")
 initVar(HEXAGON_LDFLAGS "")
+
+find_package(OpenCL)
 
 #set(COMMON_FLAGS "-Dirishxg_free_stub=irishxg_free_stub_core -Dirishxg_alloc_stub=irishxg_alloc_stub_core")
 #set(COMMON_FLAGS "")
@@ -745,6 +747,19 @@ function(addKernelRule kernel_target kernel_sources flags ldflags libraries)
         endif()
 endfunction() #addKernelRule
 
+function(addKernelOpenCLRule kernel_target kernel_sources flags ldflags libraries)
+        add_library(${kernel_target} SHARED ${kernel_sources})
+        set_target_properties(${kernel_target} PROPERTIES COMPILE_FLAGS ${flags})
+        set_target_properties(${kernel_target} PROPERTIES LINK_FLAGS ${ldflags})
+        set_target_properties(${kernel_target} PROPERTIES PREFIX "")
+        target_link_libraries(${kernel_target} ${OpenCL_LIBRARIES})
+        add_dependencies(${kernel_target} iris_app_cpu_dsp_interface.h)
+        install(TARGETS ${kernel_target} DESTINATION ${LIB_INSTALL_PATH})
+        if (libraries)
+            target_link_libraries(${kernel_target} ${libraries})
+        endif()
+endfunction() #addKernelRule
+
 function(addKernelSpecificCompiler 
                            kernel_target 
                            compiler
@@ -760,7 +775,7 @@ function(addKernelSpecificCompiler
         string(REPLACE " " ";" ldflags_X ${ldflags_X})
         set(local_output_obj_files )
         foreach(cuda_source ${kernel_sources})
-            message(STATUS ${cuda_source})
+            #message(STATUS ${cuda_source})
             string(REGEX REPLACE " $" "" first "${cuda_source}")
             string(REGEX REPLACE "/" ".__" rule_name "${first}.iris.${kernel_target}.specific")
             string(REGEX REPLACE "\n$" "" rule_name "${rule_name}")
@@ -768,10 +783,10 @@ function(addKernelSpecificCompiler
             if (SRC_PATH STREQUAL "")
             set(SRC_PATH ".")
             endif()
-            message(STATUS "\n Processing file: ${CMAKE_CURRENT_BINARY_DIR} ${first} in path:${SRC_PATH} rule:${rule_name}\n")
+            #message(STATUS "\n Processing file: ${CMAKE_CURRENT_BINARY_DIR} ${first} in path:${SRC_PATH} rule:${rule_name}\n")
             get_filename_component(SRC_DIR_PATH ${SRC_PATH} ABSOLUTE BASE_DIR ${PROJECT_SOURCE_DIR})
             get_filename_component(SRC_FILE_PATH ${first} ABSOLUTE BASE_DIR ${PROJECT_SOURCE_DIR})
-            message(STATUS "\n ${SRC_DIR_PATH} ${SRC_FILE_PATH}\n")
+            #message(STATUS "\n ${SRC_DIR_PATH} ${SRC_FILE_PATH}\n")
             set(output "${rule_name}.o")
             add_custom_command(
                     OUTPUT ${output}
@@ -787,7 +802,7 @@ function(addKernelSpecificCompiler
         foreach(libname ${libraries})
         list(APPEND libpaths "-l${libname}")
         endforeach()
-        message(STATUS "OBJ files: ${local_output_obj_files}")
+        #message(STATUS "OBJ files: ${local_output_obj_files}")
         set(output_obj_files ${local_output_obj_files} PARENT_SCOPE)
         add_custom_command(
                 OUTPUT ${kernel_target}.so
@@ -812,7 +827,7 @@ function(addKernelCUDARule kernel_target
         string(REPLACE " " ";" ldflags_X ${ldflags_X})
         set(local_output_obj_files )
         foreach(cuda_source ${kernel_sources})
-            message(STATUS ${cuda_source})
+            #message(STATUS ${cuda_source})
             string(REGEX REPLACE " $" "" first "${cuda_source}")
             string(REGEX REPLACE "/" ".__" rule_name "${first}.iris")
             string(REGEX REPLACE "\n$" "" rule_name "${rule_name}")
@@ -820,10 +835,10 @@ function(addKernelCUDARule kernel_target
             if (SRC_PATH STREQUAL "")
             set(SRC_PATH ".")
             endif()
-            message(STATUS "\n Processing file: ${CMAKE_CURRENT_BINARY_DIR} ${first} in path:${SRC_PATH} rule:${rule_name}\n")
+            #message(STATUS "\n Processing file: ${CMAKE_CURRENT_BINARY_DIR} ${first} in path:${SRC_PATH} rule:${rule_name}\n")
             get_filename_component(SRC_DIR_PATH ${SRC_PATH} ABSOLUTE BASE_DIR ${PROJECT_SOURCE_DIR})
             get_filename_component(SRC_FILE_PATH ${first} ABSOLUTE BASE_DIR ${PROJECT_SOURCE_DIR})
-            message(STATUS "\n ${SRC_DIR_PATH} ${SRC_FILE_PATH}\n")
+            #message(STATUS "\n ${SRC_DIR_PATH} ${SRC_FILE_PATH}\n")
             set(output "${rule_name}.o")
             add_custom_command(
                     OUTPUT ${output}
@@ -841,7 +856,7 @@ function(addKernelCUDARule kernel_target
         foreach(libname ${libraries})
         list(APPEND libpaths "-l${libname}")
         endforeach()
-        message(STATUS "OBJ files: ${local_output_obj_files}")
+        #message(STATUS "OBJ files: ${local_output_obj_files}")
         set(output_obj_files ${local_output_obj_files} PARENT_SCOPE)
         add_custom_command(
                 OUTPUT lib${kernel_target}.a
@@ -865,12 +880,16 @@ if (OPENMP_KERNEL_SOURCES)
     endif() # USE_NDK
 endif() #OPENMP_KERNEL_SOURCES
 
-if (HOST2OPENCL_KERNEL_SOURCES)
-addKernelRule(kernel.host2opencl "${HOST2OPENCL_KERNEL_SOURCES}" ${HOST2OPENCL_FLAGS} ${HOST2OPENCL_LDFLAGS} "${HOST2OPENCL_LIBRARIES}")
+if (OpenCL_FOUND AND HOST2OPENCL_KERNEL_SOURCES)
+message(STATUS "→ OpenCL found: ${OpenCL_VERSION}")
+message(STATUS "   Includes: ${OpenCL_INCLUDE_DIRS}")
+message(STATUS "   Libs:     ${OpenCL_LIBRARIES}")
+#set(HOST2OPENCL_LDFLAGS "${HOST2OPENCL_LDFLAGS} ${OpenCL_LIBRARIES} -g -fPIC")
+addKernelOpenCLRule(kernel.host2opencl "${HOST2OPENCL_KERNEL_SOURCES}" ${HOST2OPENCL_FLAGS} ${HOST2OPENCL_LDFLAGS} "${HOST2OPENCL_LIBRARIES}")
 endif() #HOST2OPENCL_KERNEL_SOURCES
 
 if (HOST2XILINX_KERNEL_SOURCES AND USE_XILINX)
-addKernelRule(kernel.host2opencl.xilinx "${HOST2XILINX_KERNEL_SOURCES}" ${HOST2XILINX_FLAGS} ${HOST2XILINX_LDFLAGS} "${HOST2XILINX_LIBRARIES}")
+addKernelOpenCLRule(kernel.host2opencl.xilinx "${HOST2XILINX_KERNEL_SOURCES}" ${HOST2XILINX_FLAGS} ${HOST2XILINX_LDFLAGS} "${HOST2XILINX_LIBRARIES}")
 endif() #HOST2XILINX_KERNEL_SOURCES
 
 set(output_obj_files "")

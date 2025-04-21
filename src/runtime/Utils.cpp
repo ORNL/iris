@@ -129,6 +129,21 @@ void Utils::Logo(bool color) {
   }
 }
 
+string Utils::GetBackendName(int backend_id)
+{
+    string backend = "error";
+    switch(backend_id){
+        case (iris_qiree):    backend = "qiree";       break;
+        case (iris_cuda):     backend = "cuda";       break;
+        case (iris_hexagon):  backend = "hexagon";    break;
+        case (iris_hip):      backend = "hip";        break;
+        case (iris_levelzero):backend = "levelzero";  break;
+        case (iris_opencl):   backend = "opencl";     break;
+        case (iris_openmp):   backend = "cpu";        break;
+    }
+    return backend;
+}
+
 template <typename T>
 void Utils::Fill(T* array_ptr, size_t n_elements, T value) {
     if (array_ptr == nullptr) {
@@ -327,7 +342,7 @@ int Utils::Mkdir(char* path) {
   return IRIS_SUCCESS;
 }
 
-bool Utils::Exist(char* path) {
+bool Utils::Exist(const char* path) {
   struct stat st;
   return stat(path, &st) != -1;
 }
@@ -350,9 +365,11 @@ void Utils::ReadSet(std::set<std::string> & out, const char *data)
     }
 }
 
-void Utils::ReadVector(std::vector<std::string> & out, const char *data)
+void Utils::ReadVector(std::vector<std::string> & out, const char *data, const char *delim)
 {
-    const char* delim = " :;.,";
+    const char* delim_c = " :;.,";
+    if (delim == NULL) 
+        delim = delim_c;
     std::string data_str = std::string(data);
     std::transform(data_str.begin(), data_str.end(), data_str.begin(), ::tolower);
     char* rest = (char *)data_str.c_str();

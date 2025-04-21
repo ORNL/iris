@@ -15,6 +15,7 @@ namespace iris {
         class Utils {
             public:
                 static void Logo(bool color);
+                static string GetBackendName(int backend_id);
                 static int ReadFile(char* path, char** string, size_t* len);
                 static int Mkdir(char* path);
                 template <typename T>
@@ -45,7 +46,7 @@ namespace iris {
                 template <typename T>
                 static void RandomLogNormalSobolSeq(T *arr, unsigned long long seed, size_t size, T p1, T p2, void *stream);
 
-                static bool Exist(char* path);
+                static bool Exist(const char* path);
                 static long Mtime(char* path);
                 static void Datetime(char* str);
                 static void PrintStackTrace();
@@ -53,7 +54,7 @@ namespace iris {
                 static void SetThreadAffinity(unsigned int core_id);
                 static void MemCpy3D(uint8_t *dev, uint8_t *host, size_t *off, size_t *dev_sizes, size_t *host_sizes, size_t elem_size, bool host_2_dev=true);
                 static void ReadSet(std::set<std::string> & out, const char *data);
-                static void ReadVector(std::vector<std::string> & out, const char *data);
+                static void ReadVector(std::vector<std::string> & out, const char *data, const char *delim=NULL);
                 static void ReadMap(std::map<std::string, int> & in_map, std::map<int, bool> & out_map, const char *data);
         };
 

@@ -1,4 +1,5 @@
 #include <unistd.h>
+#include <sstream>
 #include "Device.h"
 #include "Debug.h"
 #include "Command.h"
@@ -14,7 +15,7 @@
 #include "Timer.h"
 #include "Utils.h"
 #include "Worker.h"
-#include "LoaderDefaultKernel.h"
+#include "LoaderResetKernel.h"
 
 #define _debug3 _debug2
 namespace iris {
@@ -52,7 +53,7 @@ Device::Device(int devno, int platform) {
   hook_command_post_ = NULL;
   julia_if_ = NULL;
   worker_ = NULL;
-  ld_default_ = NULL;
+  ld_reset_ = NULL;
   stream_policy_ = STREAM_POLICY_DEFAULT;
   //stream_policy_ = STREAM_POLICY_SAME_FOR_TASK;
   //stream_policy_ = STREAM_POLICY_GIVE_ALL_STREAMS_TO_KERNEL;
@@ -63,7 +64,7 @@ Device::~Device() {
   while(active_tasks_ > 0) {
     sleep(1);
   }
-  if (ld_default_ != NULL) delete ld_default_;
+  if (ld_reset_ != NULL) delete ld_reset_;
   _event_prof_debug("Device:%d deleted\n", devno());
   FreeDestroyEvents();
   if (peer_access_ != NULL) delete [] peer_access_;
@@ -114,13 +115,13 @@ void Device::CallMemReset(BaseMem *mem, size_t size, ResetData & reset_data, voi
     }
     int elem_type = mem->element_type();
     if (elem_type == iris_unknown) return;
-    if (ld_default_ == NULL) return;
+    if (ld_reset_ == NULL) return;
     //ResetData & reset_data = mem->reset_data();
     void *arch = target_mem->arch(devno());
     //_printf(" mem:%lu size:%lu reset_type:%d target:%lu arch:%p reset:(%d:%d)\n", mem->uid(), size, reset_type, target_mem->uid(), arch, mem->is_reset(), target_mem->is_reset());
     target_mem->disable_reset();
     if (reset_type == iris_reset_assign) {
-#define RESET_SEQ(IT, T, M)  case IT: ld_default_->iris_reset_ ## M(static_cast<T*>(arch), reset_data.value_.M, size, stream); break;
+#define RESET_SEQ(IT, T, M)  case IT: ld_reset_->iris_reset_ ## M(static_cast<T*>(arch), reset_data.value_.M, size, stream); break;
         switch(elem_type) {
             RESET_SEQ(iris_uint8,  uint8_t,  u8);
             RESET_SEQ(iris_uint16, uint16_t, u16);
@@ -137,7 +138,7 @@ void Device::CallMemReset(BaseMem *mem, size_t size, ResetData & reset_data, voi
         }
     }
     else if (reset_type == iris_reset_arith_seq) {
-#define ARITH_SEQ(IT, T, M)  case IT: ld_default_->iris_arithmetic_seq_ ## M(static_cast<T*>(arch), reset_data.start_.M, reset_data.step_.M, size, stream); break;
+#define ARITH_SEQ(IT, T, M)  case IT: ld_reset_->iris_arithmetic_seq_ ## M(static_cast<T*>(arch), reset_data.start_.M, reset_data.step_.M, size, stream); break;
         switch(elem_type) {
             ARITH_SEQ(iris_uint8,  uint8_t,  u8);
             ARITH_SEQ(iris_uint16, uint16_t, u16);
@@ -154,7 +155,7 @@ void Device::CallMemReset(BaseMem *mem, size_t size, ResetData & reset_data, voi
         }
     }
     else if (reset_type == iris_reset_geom_seq) {
-#define GEOM_SEQ(IT, T, M)  case IT: ld_default_->iris_geometric_seq_ ## M(static_cast<T*>(arch), reset_data.start_.M, reset_data.step_.M, size, stream); break;
+#define GEOM_SEQ(IT, T, M)  case IT: ld_reset_->iris_geometric_seq_ ## M(static_cast<T*>(arch), reset_data.start_.M, reset_data.step_.M, size, stream); break;
         switch(elem_type) {
             GEOM_SEQ(iris_uint8,  uint8_t,  u8);
             GEOM_SEQ(iris_uint16, uint16_t, u16);
@@ -170,7 +171,7 @@ void Device::CallMemReset(BaseMem *mem, size_t size, ResetData & reset_data, voi
                 _error("Invalid element type:%d for mem uid:%lu for reset geometric sequence\n", elem_type, mem->uid()); break;
         }
     }
-#define RANDOM_SEQ(IT, RTYPE, T, M)  case IT: ld_default_->iris_random_ ## RTYPE ## _seq_ ## M(static_cast<T*>(arch), reset_data.seed_, reset_data.p1_.M, reset_data.p2_.M, size, stream); break;
+#define RANDOM_SEQ(IT, RTYPE, T, M)  case IT: ld_reset_->iris_random_ ## RTYPE ## _seq_ ## M(static_cast<T*>(arch), reset_data.seed_, reset_data.p1_.M, reset_data.p2_.M, size, stream); break;
     else if (reset_type == iris_reset_random_uniform_seq) {
         switch(elem_type) {
             RANDOM_SEQ(iris_uint8,  uniform, uint8_t,  u8);
@@ -269,33 +270,51 @@ void Device::CallMemReset(BaseMem *mem, size_t size, ResetData & reset_data, voi
     }
 }
 
-void Device::LoadDefaultKernelLibrary(const char *key, const char *flags)
+string Device::CompileDefaultKernelLibrary(const char *key, const char *flags)
 {
-    if (!platform_obj_->is_default_kernels_load()) return;
     char *src = NULL;
     char *iris = NULL;
     char *filename = NULL;
     char *tmpdir = NULL;
     char path[2048];
     char out[1024];
+    string out_str;
+    string backend = Utils::GetBackendName(model());
     worker_->platform()->EnvironmentGet("", &iris, NULL, '\0');
-    worker_->platform()->EnvironmentGet("INCLUDE_DIR", &src, NULL);
-    worker_->platform()->EnvironmentGet(key, &filename, NULL);
-    sprintf(path, "%s/%s/%s", iris, src, filename);
-    Platform::GetPlatform()->EnvironmentGet("TMPDIR", &tmpdir, NULL);
-    sprintf(out, "%s/%s-%d.so", tmpdir, filename, devno());
-    int result = Compile(path, out, flags);
-    if (result == IRIS_SUCCESS) {
-        ld_default_ = new LoaderDefaultKernel(out);
-        ld_default_->Load();
+    worker_->platform()->EnvironmentGet("DEFAULT_DIR", &src, NULL);
+    sprintf(out, "%s/%s/lib%s_default.so", iris, src, backend.c_str());
+    out_str = out;
+    if (Utils::Exist(out)) {
+        ld_reset_= new LoaderResetKernel(out);
+        ld_reset_->Load();
     }
     else {
-        _warning("Couldn't load default kernel library for dev:(%d, %s) for default kernels in %s\n", devno(), name(), path);
+        vector<string> file_list;
+        worker_->platform()->EnvironmentGet(key, &filename, NULL);
+        Utils::ReadVector(file_list, filename, ",");
+        stringstream ss;
+        for(string fl : file_list) {
+            ss << iris << "/" << src << "/" << fl << " ";
+        }
+        string path_str = ss.str();
+        sprintf(path, "%s", path_str.c_str());
+        Platform::GetPlatform()->EnvironmentGet("TMPDIR", &tmpdir, NULL);
+        sprintf(out, "%s/lib%s-%d.so", tmpdir, backend.c_str(), devno());
+        int result = Compile(path, out, flags);
+        if (result == IRIS_SUCCESS) {
+            ld_reset_ = new LoaderResetKernel(out);
+            ld_reset_->Load();
+            out_str = out;
+        }
+        else {
+            _warning("Couldn't load default kernel library for dev:(%d, %s) for default kernels in %s\n", devno(), name(), path);
+        }
     }
     free(src);
     free(iris);
     free(filename);
     free(tmpdir);
+    return out_str;
 }
 
 void Device::EnableJuliaInterface() {

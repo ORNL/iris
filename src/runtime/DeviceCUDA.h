@@ -77,6 +77,7 @@ private:
 
 private:
   LoaderCUDA* ld_;
+  LoaderHost2CUDA *ld_default_;
   LoaderHost2CUDA* host2cuda_ld_;
   CUdevice dev_;
   CUdevice peers_[IRIS_MAX_NDEVS];

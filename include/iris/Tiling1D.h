@@ -33,10 +33,10 @@ namespace iris {
                         Tile1DIteratorType iterator_type): 
                     row_tile_index(row_tile_index), 
                     row_tiles_count(row_tiles_count), 
-                    collection(collection), iterator_type(iterator_type),
-                    row_start_index(row_tile_index) {
-                        state = 0; level = 0;
-                    }
+                    row_start_index(row_tile_index),
+                    state(0), level(0),
+                    iterator_type(iterator_type),
+                    collection(collection) { }
 
                 bool operator!= (Tiling1DIteratorType const & other) const
                 {
@@ -62,8 +62,8 @@ namespace iris {
             private:
                 size_t   row_tile_index;
                 size_t   row_tiles_count;
-                size_t   state, level;
                 size_t   row_start_index;
+                size_t   state, level;
                 Tile1DIteratorType iterator_type;
                 C & collection;
         };

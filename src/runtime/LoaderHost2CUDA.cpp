@@ -10,6 +10,9 @@ namespace rt {
 LoaderHost2CUDA::LoaderHost2CUDA() : HostInterfaceClass("KERNEL_HOST2CUDA") {
     enable_strict_handle_check();
 }
+LoaderHost2CUDA::LoaderHost2CUDA(string path) : HostInterfaceClass(path, true) {
+    enable_strict_handle_check();
+}
 
 LoaderHost2CUDA::~LoaderHost2CUDA() {
 }

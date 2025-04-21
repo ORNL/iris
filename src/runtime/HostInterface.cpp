@@ -11,7 +11,7 @@
     FN = NULL;
 namespace iris {
     namespace rt {
-        HostInterfaceLoader::HostInterfaceLoader(string kernel_env) : Loader(), kernel_env_(kernel_env) 
+        HostInterfaceLoader::HostInterfaceLoader(string kernel_env, bool is_path) : Loader(), kernel_env_(kernel_env), is_path_(is_path)
         { 
             INIT_SYM_FN(iris_host_init);
             INIT_SYM_FN(iris_host_init_handles);
@@ -70,6 +70,8 @@ namespace iris {
         }
         const char* HostInterfaceLoader::library() {
             char* path = NULL;
+            if (is_path_)
+                return kernel_env_.c_str();
             Platform::GetPlatform()->EnvironmentGet(kernel_env_.c_str(), &path, NULL);
             return path;
         }
@@ -102,8 +104,8 @@ namespace iris {
                 *(sym_map_fn_[string(func_name)]) = symbol;
             }
         }
-        BoilerPlateHostInterfaceLoader::BoilerPlateHostInterfaceLoader(string kernel_env):
-            HostInterfaceLoader(kernel_env) {
+        BoilerPlateHostInterfaceLoader::BoilerPlateHostInterfaceLoader(string kernel_env, bool is_path):
+            HostInterfaceLoader(kernel_env, is_path) {
                 INIT_SYM_FN(iris_host_kernel);
                 INIT_SYM_FN(iris_host_setarg);
                 INIT_SYM_FN(iris_host_setmem);
@@ -323,8 +325,8 @@ namespace iris {
         }
 
 #ifdef ENABLE_FFI
-        FFIHostInterfaceLoader::FFIHostInterfaceLoader(string kernel_env) :
-            HostInterfaceLoader(kernel_env) {
+        FFIHostInterfaceLoader::FFIHostInterfaceLoader(string kernel_env, bool is_path) :
+            HostInterfaceLoader(kernel_env, is_path) {
                 
             }
         int FFIHostInterfaceLoader::LoadFunctions() {

@@ -25,6 +25,7 @@ public:
   int KernelSetArg(Kernel* kernel, int idx, int kindex, size_t size, void* value);
   int KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, size_t off);
   int KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws);
+  void CheckVendorSpecificKernel(Kernel* kernel);
   int Synchronize();
   int Compile(char* src, const char *out, const char *flags);
   int AddCallback(Task* task);
@@ -35,6 +36,7 @@ public:
   }
 
 private:
+  LoaderOpenMP *ld_default_;
   LoaderOpenMP* ld_;
   int GetProcessorNameIntel(char* cpuinfo);
   int GetProcessorNamePower(char* cpuinfo);

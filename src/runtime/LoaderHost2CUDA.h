@@ -11,6 +11,7 @@ namespace rt {
 class LoaderHost2CUDA : public HostInterfaceClass {
 public:
   LoaderHost2CUDA();
+  LoaderHost2CUDA(string path);
   ~LoaderHost2CUDA();
 
   int LoadFunctions();

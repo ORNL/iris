@@ -52,7 +52,7 @@ int DeviceQIREE::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset
       if (mem->reset_data().reset_type_ == iris_reset_memset) {
           memset(*mpmem, 0, size);
       }
-      else if (ld_default() != NULL) {
+      else if (ld_reset() != NULL) {
           pair<bool, int8_t> out = mem->IsResetPossibleWithMemset();
           if (out.first) {
               memset(*mpmem, out.second, size);

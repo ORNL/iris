@@ -231,6 +231,7 @@ int Platform::Init(int* argc, char*** argv, int sync) {
 
   SetDevsAvailable();
 
+  EnvironmentBoolRead("DEFAULT_KERNELS", enable_default_kernels_load_);
   EnvironmentBoolRead("DISABLE_KERNEL_LAUNCH", disable_kernel_launch_);
   EnvironmentBoolRead("PROFILE", enable_profiler_);
   EnvironmentBoolRead("HISTORY", enable_scheduling_history_);
@@ -440,12 +441,13 @@ int Platform::EnvironmentInit() {
   // Removed qiree 
   EnvironmentSet("ARCHS",  "openmp:cuda:hip:levelzero:hexagon:opencl",  false);
 #endif
-  EnvironmentSet("DEFAULT_OMP_KERNELS",  "default_cpu_gpu_kernels.cpp", false);
-  EnvironmentSet("DEFAULT_CUDA_KERNELS", "default_cpu_gpu_kernels.cpp", false);
-  EnvironmentSet("DEFAULT_HIP_KERNELS",  "default_cpu_gpu_kernels.cpp", false);
+  EnvironmentSet("DEFAULT_OMP_KERNELS",  "default_cpu_gpu_kernels.cpp,iris_default_math_openmp_kernels.cpp", false);
+  EnvironmentSet("DEFAULT_CUDA_KERNELS", "default_cpu_gpu_kernels.cpp,iris_default_math_cuda_kernels.cu", false);
+  EnvironmentSet("DEFAULT_HIP_KERNELS",  "default_cpu_gpu_kernels.cpp,iris_default_math_hip_kernels.hip.cpp", false);
   EnvironmentSet("TMPDIR",               tmp_dir_,               false);
   EnvironmentSet("OPENCL_VENDORS",       "all",                  false);
   EnvironmentSet("INCLUDE_DIR",          "include/iris",         false);
+  EnvironmentSet("DEFAULT_DIR",          "default",              false);
   EnvironmentSet("KERNEL_DIR",           "",                     false);
   EnvironmentSet("KERNEL_SRC_CUDA",      "kernel.cu",            false);
   EnvironmentSet("KERNEL_BIN_CUDA",      "kernel.ptx",           false);

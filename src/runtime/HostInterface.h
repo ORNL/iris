@@ -41,8 +41,8 @@ namespace iris {
         // function pointer. The loaders are shared across same homogeneous devices
         class HostInterfaceLoader : public Loader {
             public:
-                HostInterfaceLoader(string kernel_env);
-                HostInterfaceLoader(string kernel_env, string suffix);
+                HostInterfaceLoader(string kernel_env, bool is_path=false);
+                //HostInterfaceLoader(string kernel_env, string suffix);
                 virtual ~HostInterfaceLoader() { }
                 virtual const char* library();
 #ifdef DISABLE_DYNAMIC_LINKING
@@ -77,10 +77,11 @@ namespace iris {
                 string & kernel_env() { return kernel_env_; }
             private:
                 string kernel_env_;
+                bool is_path_;
         };
         class BoilerPlateHostInterfaceLoader : public HostInterfaceLoader {
             public:
-                BoilerPlateHostInterfaceLoader(string kernel_env);
+                BoilerPlateHostInterfaceLoader(string kernel_env, bool is_path=false);
                 ~BoilerPlateHostInterfaceLoader() { }
                 virtual const char* library() { return HostInterfaceLoader::library(); }
                 int LoadFunctions();
@@ -361,7 +362,7 @@ namespace iris {
         };
         class FFIHostInterfaceLoader : public HostInterfaceLoader {
             public:
-                FFIHostInterfaceLoader(string kernel_env);
+                FFIHostInterfaceLoader(string kernel_env, bool is_path=false);
                 ~FFIHostInterfaceLoader() { }
                 virtual const char* library() { return HostInterfaceLoader::library(); }
                 int LoadFunctions();

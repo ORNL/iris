@@ -1,5 +1,5 @@
-#ifndef IRIS_SRC_RT_LOADER_DEFAULT_KERNEL_H
-#define IRIS_SRC_RT_LOADER_DEFAULT_KERNEL_H
+#ifndef IRIS_SRC_RT_LOADER_RESET_KERNEL_H
+#define IRIS_SRC_RT_LOADER_RESET_KERNEL_H
 
 #include "Loader.h"
 
@@ -11,10 +11,10 @@ using namespace std;
 namespace iris {
 namespace rt {
 
-class LoaderDefaultKernel : public HostInterfaceLoader {
+class LoaderResetKernel : public HostInterfaceClass {
 public:
-  LoaderDefaultKernel(string path);
-  ~LoaderDefaultKernel();
+  LoaderResetKernel(string path);
+  ~LoaderResetKernel();
 
   const char* library();
   int LoadFunctions();
@@ -124,6 +124,6 @@ public:
 } /* namespace rt */
 } /* namespace iris */
 
-#endif /* IRIS_SRC_RT_LOADER_DEFAULT_KERNEL_H */
+#endif /* IRIS_SRC_RT_LOADER_RESET_KERNEL_H */
 
 

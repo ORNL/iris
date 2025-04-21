@@ -164,6 +164,7 @@ void testMemcpy(LoaderCUDA *ld)
 }
 DeviceCUDA::DeviceCUDA(LoaderCUDA* ld, LoaderHost2CUDA *host2cuda_ld, CUdevice cudev, int ordinal, int devno, int platform, int local_devno) : Device(devno, platform) {
   ld_ = ld;
+  ld_default_ = NULL;
   local_devno = local_devno;
   ordinal_ = ordinal;
   set_async(true && Platform::GetPlatform()->is_async()); 
@@ -261,6 +262,9 @@ DeviceCUDA::~DeviceCUDA() {
     _trace("CUDA device:%d is getting destroyed", devno());
     ld_->cuCtxSetCurrent(ctx_);
     host2cuda_ld_->finalize(devno());
+    if (ld_default_ != NULL)
+        ld_default_->finalize(devno());
+    if (ld_default_ != NULL) delete ld_default_;
     if (julia_if_ != NULL) julia_if_->finalize(devno());
     for (int i = 0; i < nqueues_; i++) {
       if (streams_[i] != NULL) {
@@ -309,17 +313,17 @@ int DeviceCUDA::Compile(char* src, const char *out, const char *flags) {
       flags = default_comp_flags;
   if (out == NULL) 
       out = kernel_path();
-  if (!Utils::Exist(src)) {
-    _warning(" src file:%s not exist for nvcc compilation\n", src);
-    return IRIS_WARNING;
-  }
+  //if (!Utils::Exist(src)) {
+  //  _warning(" src file:%s not exist for nvcc compilation\n", src);
+  //  return IRIS_WARNING;
+  //}
   sprintf(cmd, "nvcc %s -o %s %s > /dev/null 2>&1", src, out, flags);
   //printf("Cmd: %s\n", cmd);
   if (system(cmd) != EXIT_SUCCESS) {
     int result = system("nvcc --version > /dev/null 2>&1");
     if (result == 0) {
         _error("cmd[%s]", cmd);
-        worker_->platform()->IncrementErrorCount();
+        platform_obj()->IncrementErrorCount();
         return IRIS_ERROR;
     }
     else {
@@ -437,11 +441,21 @@ int DeviceCUDA::Init() {
           _event_prof_debug("Event start time of device:%f end time of record:%f", first_event_cpu_begin_time(), first_event_cpu_end_time());
       }
   }
-  char flags[128];
-  sprintf(flags, "-shared -x cu -g -Xcompiler -fPIC");
-  LoadDefaultKernelLibrary("DEFAULT_CUDA_KERNELS", flags);
+  if (platform_obj()->is_default_kernels_load()) {
+	  char flags[128];
+	  sprintf(flags, "-shared -x cu -g -Xcompiler -fPIC -DENABLE_IRIS_HOST2CUDA_APIS ");
+	  string ld_default_path = CompileDefaultKernelLibrary("DEFAULT_CUDA_KERNELS", flags);
+	  if (Utils::Exist(ld_default_path.c_str())) {
+		  ld_default_ = new LoaderHost2CUDA(ld_default_path);
+		  if (ld_default_->Load() != IRIS_SUCCESS) {
+			_trace("%s", "skipping Host2CUDA wrapper calls");
+		  }
+	  }
+  }
 
   host2cuda_ld_->init(devno());
+  if (ld_default_ != NULL)
+    ld_default_->init(devno());
   if (julia_if_ != NULL) julia_if_->init(devno());
 
   char* path = (char *)kernel_path();
@@ -460,7 +474,7 @@ int DeviceCUDA::Init() {
     _cuerror(err);
     _error("srclen[%zu] src\n%s", srclen, src);
     if (src) free(src);
-    worker_->platform()->IncrementErrorCount();
+    platform_obj()->IncrementErrorCount();
     return IRIS_ERROR;
   }
   if (src) free(src);
@@ -491,11 +505,11 @@ int DeviceCUDA::ResetMemory(Task *task, Command *cmd, BaseMem *mem) {
             err = ld_->cudaMemset(mem->arch(this), reset_value, mem->size());
         _cuerror(err);
         if (err != CUDA_SUCCESS){
-            worker_->platform()->IncrementErrorCount();
+            platform_obj()->IncrementErrorCount();
             return IRIS_ERROR;
         }
     }
-    else if (ld_default() != NULL) {
+    else if (ld_default_ != NULL) {
         pair<bool, int8_t> out = mem->IsResetPossibleWithMemset(reset_data);
         if (out.first) {
             if (async) 
@@ -504,7 +518,7 @@ int DeviceCUDA::ResetMemory(Task *task, Command *cmd, BaseMem *mem) {
                 err = ld_->cudaMemset(mem->arch(this), out.second, mem->size());
             _cuerror(err);
             if (err != CUDA_SUCCESS){
-                worker_->platform()->IncrementErrorCount();
+                platform_obj()->IncrementErrorCount();
                 return IRIS_ERROR;
             }
         }
@@ -561,7 +575,7 @@ int DeviceCUDA::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset)
   //mtime = timer_->Now() - mtime;
   _cuerror(err);
   if (err != CUDA_SUCCESS){
-    worker_->platform()->IncrementErrorCount();
+    platform_obj()->IncrementErrorCount();
     return IRIS_ERROR;
   }
   _event_debug("CUDA MemAlloc dev:%d:%s mem:%lu size:%zu ptr:%p async:%d stream:%d\n", devno_, name_, mem->uid(), size, (void *)*cumem, async, stream);
@@ -574,11 +588,11 @@ int DeviceCUDA::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset)
               err = ld_->cudaMemset((void *)(*cumem), 0, size);
           _cuerror(err);
           if (err != CUDA_SUCCESS){
-              worker_->platform()->IncrementErrorCount();
+              platform_obj()->IncrementErrorCount();
               return IRIS_ERROR;
           }
       }
-      else if (ld_default() != NULL) {
+      else if (ld_default_ != NULL) {
           pair<bool, int8_t> out = mem->IsResetPossibleWithMemset();
           if (out.first) {
               if (l_async) 
@@ -794,7 +808,7 @@ int DeviceCUDA::MemD2D(Task *task, Device *src_dev, BaseMem *mem, void *dst, voi
   }
   //ASSERT(!error_occured && "CUDA Error occured");
   if (error_occured) {
-      worker_->platform()->IncrementErrorCount();
+      platform_obj()->IncrementErrorCount();
       return IRIS_ERROR;
   }
   return IRIS_SUCCESS;
@@ -908,7 +922,7 @@ int DeviceCUDA::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
   _debug2("Completed H2D DT of %sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, size, host, stream_index);
   ASSERT(!error_occured && "CUDA Error occured");
   if (error_occured){
-   worker_->platform()->IncrementErrorCount();
+   platform_obj()->IncrementErrorCount();
    return IRIS_ERROR;
   }
   return IRIS_SUCCESS;
@@ -1056,7 +1070,7 @@ int DeviceCUDA::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
   if (error_occured){
    _debug2("Error D2H DT of %sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] size[%lu] host[%p]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, size, host);
    _error("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, off[0], size, host, stream_index);
-   worker_->platform()->IncrementErrorCount();
+   platform_obj()->IncrementErrorCount();
    assert(!error_occured && "CUDA Error occured");
    return IRIS_ERROR;
   }
@@ -1071,6 +1085,12 @@ int DeviceCUDA::KernelGet(Kernel *kernel, void** kernel_bin, const char* name, b
       *kernel_bin = host2cuda_ld_->GetFunctionPtr(name);
       return IRIS_SUCCESS;
   }
+  if (ld_default_ != NULL && 
+          kernel->is_default_kernel(devno_) && 
+          ld_default_->host_kernel(&kernel_idx, name) == IRIS_SUCCESS) {
+      *kernel_bin = ld_default_->GetFunctionPtr(name);
+      return IRIS_SUCCESS;
+  }
   if (julia_if_ != NULL && kernel->enable_julia_if()) {
       return IRIS_SUCCESS;
   }
@@ -1081,7 +1101,7 @@ int DeviceCUDA::KernelGet(Kernel *kernel, void** kernel_bin, const char* name, b
   if (native_kernel_not_exists()) {
       if (report_error) {
           _error("CUDA kernel:%s not found !", name);
-          worker_->platform()->IncrementErrorCount();
+          platform_obj()->IncrementErrorCount();
       }
       return IRIS_ERROR;
   }
@@ -1091,7 +1111,7 @@ int DeviceCUDA::KernelGet(Kernel *kernel, void** kernel_bin, const char* name, b
   if (err != CUDA_SUCCESS) {
       if (report_error) {
           _error("CUDA kernel:%s not found !", name);
-          worker_->platform()->IncrementErrorCount();
+          platform_obj()->IncrementErrorCount();
       }
       return IRIS_ERROR;
   }
@@ -1117,6 +1137,10 @@ int DeviceCUDA::KernelSetArg(Kernel* kernel, int idx, int kindex, size_t size, v
   if (max_arg_idx_ < idx) max_arg_idx_ = idx;
   if (kernel->is_vendor_specific_kernel(devno_)) {
      host2cuda_ld_->setarg(
+            kernel->GetParamWrapperMemory(), kindex, size, value);
+  }
+  else if (ld_default_ != NULL && kernel->is_default_kernel(devno_)) {
+     ld_default_->setarg(
             kernel->GetParamWrapperMemory(), kindex, size, value);
   }
   else if (julia_if_ != NULL && kernel->enable_julia_if()) {
@@ -1146,6 +1170,10 @@ int DeviceCUDA::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, 
       host2cuda_ld_->setmem(
               kernel->GetParamWrapperMemory(), kindex, dev_ptr, size);
   }
+  else if (ld_default_ != NULL && kernel->is_default_kernel(devno_)) {
+      ld_default_->setmem(
+              kernel->GetParamWrapperMemory(), kindex, dev_ptr, size);
+  }
   else if (julia_if_ != NULL && kernel->enable_julia_if()) {
       julia_if_->setmem(
               kernel->GetParamWrapperMemory(), mem, kindex, dev_ptr, size);
@@ -1155,8 +1183,15 @@ int DeviceCUDA::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, 
 
 void DeviceCUDA::CheckVendorSpecificKernel(Kernel* kernel) {
     kernel->set_vendor_specific_kernel(devno_, false);
-    if (host2cuda_ld_->host_kernel(kernel->GetParamWrapperMemory(), kernel->name())==IRIS_SUCCESS) {
+    if (host2cuda_ld_->host_kernel(kernel->GetParamWrapperMemory(),
+                kernel->name())==IRIS_SUCCESS) {
             kernel->set_vendor_specific_kernel(devno_, true);
+    }
+    else if (ld_default_ != NULL && 
+            ld_default_->host_kernel(
+                kernel->GetParamWrapperMemory(),
+                kernel->name())==IRIS_SUCCESS) {
+        kernel->set_default_kernel(devno_, true);
     }
     kernel->set_vendor_specific_kernel_check(devno_, true);
 }
@@ -1171,8 +1206,11 @@ int DeviceCUDA::KernelLaunchInit(Command *cmd, Kernel* kernel) {
         //nstreams = nqueues_ - stream_index;
         nstreams = nqueues_-n_copy_engines_;
     }
-    host2cuda_ld_->launch_init(model(), devno_, stream_index, nstreams, (void **)kstream, kernel->GetParamWrapperMemory(), cmd);
-    if (julia_if_ != NULL && kernel->enable_julia_if()) {
+    if (kernel->is_vendor_specific_kernel(devno_))
+        host2cuda_ld_->launch_init(model(), devno_, stream_index, nstreams, (void **)kstream, kernel->GetParamWrapperMemory(), cmd);
+    else if (ld_default_ != NULL && kernel->is_default_kernel(devno_))
+        ld_default_->launch_init(model(), devno_, stream_index, nstreams, (void **)kstream, kernel->GetParamWrapperMemory(), cmd);
+    else if (julia_if_ != NULL && kernel->enable_julia_if()) {
         julia_if_->launch_init(model(), devno_, stream_index, nstreams, (void **)kstream, kernel->GetParamWrapperMemory(), cmd);
         julia_if_->set_julia_kernel_type(kernel->GetParamWrapperMemory(), kernel->julia_kernel_type());
     }
@@ -1219,13 +1257,35 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
              _cuerror(err);
              if (err != CUDA_SUCCESS){
                  _error("dev[%d][%s] task[%ld:%s] kernel launch::%ld:%s failed q[%d]", devno_, name_, kernel->task()->uid(), kernel->task()->name(), kernel->uid(), kernel->name(), stream_index);
-                 worker_->platform()->IncrementErrorCount();
+                 platform_obj()->IncrementErrorCount();
                  return IRIS_ERROR;
              }
          }
          return IRIS_SUCCESS;
      }
-     worker_->platform()->IncrementErrorCount();
+     platform_obj()->IncrementErrorCount();
+     return IRIS_ERROR;
+  }
+  if (kernel->is_default_kernel(devno_)) {
+     if (ld_default_ != NULL && 
+             ld_default_->host_launch((void **)kstream, 
+                 stream_index, 
+                 nstreams, kernel->name(), 
+                 kernel->GetParamWrapperMemory(), devno(),
+                 dim, off, gws) == IRIS_SUCCESS) {
+         if (!async) {
+             //err = ld_->cuStreamSynchronize(0);
+             err = ld_->cuCtxSynchronize();
+             _cuerror(err);
+             if (err != CUDA_SUCCESS){
+                 _error("dev[%d][%s] task[%ld:%s] kernel launch::%ld:%s failed q[%d]", devno_, name_, kernel->task()->uid(), kernel->task()->name(), kernel->uid(), kernel->name(), stream_index);
+                 platform_obj()->IncrementErrorCount();
+                 return IRIS_ERROR;
+             }
+         }
+         return IRIS_SUCCESS;
+     }
+     platform_obj()->IncrementErrorCount();
      return IRIS_ERROR;
   }
   _trace("native kernel start dev[%d][%s] kernel[%s:%s] dim[%d] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, stream_index);
@@ -1248,7 +1308,7 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
     if (kernels_offs_.find(cukernel) == kernels_offs_.end()) {
       _trace("off0[%lu] cannot find %s_with_offsets kernel. ignore offsets", off[0], kernel->name());
       _error("CUDA kernel name:%s with offset kernel:%s_with_offsets function is not found", kernel->name(), kernel->name());
-      worker_->platform()->IncrementErrorCount();
+      platform_obj()->IncrementErrorCount();
     } else {
       cukernel = kernels_offs_[cukernel];
       _trace("off0[%lu] running %s_with_offsets kernel.", off[0], kernel->name());
@@ -1280,13 +1340,13 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
       err = ld_->cuLaunchKernel(cukernel, grid[0], grid[1], grid[2], block[0], block[1], block[2], shared_mem_bytes_, 0, params_, NULL);
       _cuerror(err);
       if (err != CUDA_SUCCESS){
-          worker_->platform()->IncrementErrorCount();
+          platform_obj()->IncrementErrorCount();
           return IRIS_ERROR;
       }
       err = ld_->cuStreamSynchronize(0);
       _cuerror(err);
       if (err != CUDA_SUCCESS){
-          worker_->platform()->IncrementErrorCount();
+          platform_obj()->IncrementErrorCount();
           return IRIS_ERROR;
       }
   }
@@ -1294,7 +1354,7 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
       err = ld_->cuLaunchKernel(cukernel, grid[0], grid[1], grid[2], block[0], block[1], block[2], shared_mem_bytes_, streams_[stream_index], params_, NULL);
       _cuerror(err);
       if (err != CUDA_SUCCESS){
-          worker_->platform()->IncrementErrorCount();
+          platform_obj()->IncrementErrorCount();
           return IRIS_ERROR;
       }
   }
@@ -1323,7 +1383,7 @@ int DeviceCUDA::Synchronize() {
   CUresult err = ld_->cuCtxSynchronize();
   _cuerror(err);
   if (err != CUDA_SUCCESS){
-      worker_->platform()->IncrementErrorCount();
+      platform_obj()->IncrementErrorCount();
       return IRIS_ERROR;
   }
   return IRIS_SUCCESS;
@@ -1332,7 +1392,7 @@ int DeviceCUDA::Synchronize() {
 int DeviceCUDA::Custom(int tag, char* params) {
   if (!cmd_handlers_.count(tag)) {
     _error("unknown tag[0x%x]", tag);
-    worker_->platform()->IncrementErrorCount();
+    platform_obj()->IncrementErrorCount();
     return IRIS_ERROR;
   }
   command_handler handler = cmd_handlers_[tag];
@@ -1355,7 +1415,7 @@ int DeviceCUDA::RegisterCallback(int stream, CallBackType callback_fn, void *dat
     CUresult err = ld_->cuStreamAddCallback(streams_[stream], (CUstreamCallback)callback_fn, data, iris_stream_default);
     _cuerror(err);
     if (err != CUDA_SUCCESS){
-        worker_->platform()->IncrementErrorCount();
+        platform_obj()->IncrementErrorCount();
         return IRIS_ERROR;
     }
     return IRIS_SUCCESS;
@@ -1373,7 +1433,7 @@ void DeviceCUDA::CreateEvent(void **event, int flags)
     err = ld_->cuEventCreate((CUevent *)event, flags);   
     _cuerror(err);
     if (err != CUDA_SUCCESS)
-        worker_->platform()->IncrementErrorCount();
+        platform_obj()->IncrementErrorCount();
     _event_debug("Create dev:%d event_ptr:%p event:%p err_id:%d", devno(), event, *event, err);
 }
 float DeviceCUDA::GetEventTime(void *event, int stream) 
@@ -1408,7 +1468,7 @@ void DeviceCUDA::RecordEvent(void **event, int stream, int event_creation_flag)
         err = ld_->cuEventRecord(*((CUevent *)event), streams_[stream]);
     _cuerror(err);
     if (err != CUDA_SUCCESS) {
-        worker_->platform()->IncrementErrorCount();
+        platform_obj()->IncrementErrorCount();
         Utils::PrintStackTrace();
     }
     _event_debug("Recorded dev:[%d]:[%s] event:%p stream:%d err_id:%d", devno(), name(), *event, stream, err);
@@ -1421,7 +1481,7 @@ void DeviceCUDA::WaitForEvent(void *event, int stream, int flags)
     CUresult err = ld_->cuStreamWaitEvent(streams_[stream], (CUevent)event, flags);
     _cuerror(err);
     if (err != CUDA_SUCCESS) {
-        worker_->platform()->IncrementErrorCount();
+        platform_obj()->IncrementErrorCount();
         Utils::PrintStackTrace();
     }
 }
@@ -1439,7 +1499,7 @@ void DeviceCUDA::DestroyEvent(void *event)
     CUresult err = ld_->cuEventDestroy((CUevent) event);
     _cuerror(err);
     if (err != CUDA_SUCCESS)
-        worker_->platform()->IncrementErrorCount();
+        platform_obj()->IncrementErrorCount();
 }
 void DeviceCUDA::EventSynchronize(void *event)
 {
@@ -1449,7 +1509,7 @@ void DeviceCUDA::EventSynchronize(void *event)
     CUresult err = ld_->cuEventSynchronize((CUevent) event);
     _cuerror(err);
     if (err != CUDA_SUCCESS) {
-        worker_->platform()->IncrementErrorCount();
+        platform_obj()->IncrementErrorCount();
         Utils::PrintStackTrace();
     }
 }
