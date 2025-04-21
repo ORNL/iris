@@ -20,7 +20,7 @@ IRIS_CREATE_APIS(
         VS_CODE_GEN(iris_hip, CFUNC(IRIS_FUNC(iris_kernel_hip_, MATHOP_TYPE)), INCLUDE(math.h, stdint.h), EXPR(out[] = CORE_MATHOP_FN(in[]))),
         VS_CODE_GEN(iris_cuda_host, INCLUDE(math.h, stdint.h, cuda.h), 
             EXPR(
-                int threadsPerBlock = IRIS_MAX(256, size);
+                int threadsPerBlock = IRIS_MIN(256, size);
                 int blocksPerGrid = static_cast<int>((size + threadsPerBlock - 1) / threadsPerBlock);
                 //printf("Size: %lu seed:%ld p1:%f p2:%f stream:%p\n", size, seed, (float)p1, (float)p2, stream);
                 if (stream != NULL) {
@@ -34,7 +34,7 @@ IRIS_CREATE_APIS(
         VS_CODE_GEN(iris_hip_host, 
             INCLUDE(math.h, stdint.h, hip/hip_runtime_api.h), 
             EXPR(
-                int threadsPerBlock = IRIS_MAX(256, size);
+                int threadsPerBlock = IRIS_MIN(256, size);
                 int blocksPerGrid = static_cast<int>((size + threadsPerBlock - 1) / threadsPerBlock);
                 //printf("Size: %lu seed:%ld p1:%f p2:%f stream:%p\n", size, seed, (float)p1, (float)p2, stream);
                 if (stream != NULL) {

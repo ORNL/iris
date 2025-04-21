@@ -66,6 +66,22 @@
 #define CORE_MATHOP_FN powf
 #include "default_iris_task_macros_2_input.h"
 
+#define CPP_REDUCTION sum
+#define REDUCTION    sumf
+#include "default_iris_task_macros_reduction.h"
+
+#define CPP_REDUCTION prod
+#define REDUCTION    prodf
+#include "default_iris_task_macros_reduction.h"
+
+#define CPP_REDUCTION min
+#define REDUCTION    minf
+#include "default_iris_task_macros_reduction.h"
+
+#define CPP_REDUCTION max
+#define REDUCTION    maxf
+#include "default_iris_task_macros_reduction.h"
+
 #undef DTYPE
 
 
@@ -176,6 +192,22 @@
 #define MATHOP_TYPE ddiv
 #define CORE_MATHOP_FN CPP_MATHOP
 #include "default_iris_task_macros_2_input.h"
+
+#define CPP_REDUCTION sum
+#define REDUCTION    sumd
+#include "default_iris_task_macros_reduction.h"
+
+#define CPP_REDUCTION prod
+#define REDUCTION    prodd
+#include "default_iris_task_macros_reduction.h"
+
+#define CPP_REDUCTION min
+#define REDUCTION    mind
+#include "default_iris_task_macros_reduction.h"
+
+#define CPP_REDUCTION max
+#define REDUCTION    maxd
+#include "default_iris_task_macros_reduction.h"
 
 #undef DTYPE
 

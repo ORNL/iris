@@ -8,11 +8,13 @@ int main(int argc, char **argv)
     iris_enable_default_kernels(true);
     iris_init(&argc, &argv, true);
 	float d[16], out[16];
+	float reduction[1];
 	for(int i=0; i<16; i++) {
 		d[i] = 2.0f;
 		out[i] = 0.0f;
 	}
 	iris_cos<float>(iris_default, out, d, 16);
+	iris_reduction_sum<float>(iris_default, reduction, out, 16);
 	printf(" Out:");
     int errors = 0;
 	for(int i=0; i<16; i++) {
@@ -21,6 +23,9 @@ int main(int argc, char **argv)
 		printf(" %f", out[i]);
 	}
 	printf("\n");
+	printf("Reduction: %f\n", reduction[0]);
+    if ((fabs(reduction[0] -  -6.658349)) > 1e-6)
+        errors++;
     if (errors > 0)
         fprintf(stderr, "Errors: %d\n", errors);
 	iris_finalize();
