@@ -572,10 +572,6 @@ dagger-zenith-test-local-workgroup-sizes-asynchronous-dmem:
 .dagger-zenith-test-duplication:
   extends: [.dagger]
   script:
-    - source /auto/software/iris/setup_system.source
-    - echo "Installing iris to $IRIS_INSTALL_ROOT"
-    - bash build-coverage.sh
-    - source $IRIS_INSTALL_ROOT/setup.source
     - .gitlab-ci-scripts/runner_watcher.sh $$ &
     - sbatch --partition=gpu --nodelist=zenith .gitlab-ci-scripts/slurm-dagger-test-duplication.sh
     - python3 -u .gitlab-ci-scripts/slurm-tee.py slurm-test-err.txt slurm-test-out.txt
