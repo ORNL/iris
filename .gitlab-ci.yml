@@ -450,7 +450,7 @@ test-backends-37:
   tags: [slurm]
   stage: dagger
   resource_group: slurm_zenith
-  needs: [build-noffi-zenith]
+  # needs: [build-noffi-zenith]
 
 .dagger-zenith-run-policy-evaluations:
   extends: [.dagger]
@@ -573,6 +573,8 @@ dagger-zenith-test-local-workgroup-sizes-asynchronous-dmem:
   extends: [.dagger]
   script:
     - source /auto/software/iris/setup_system.source
+    - echo "Installing iris to $CI_PROJECT_DIR/install"
+    - IRIS_TAG=.noffi.$IRIS_MACHINE bash build.sh -DCMAKE_BUILD_TYPE=DEBUG -DCOVERAGE=true 
     - source $IRIS_INSTALL_ROOT/setup.source
     - .gitlab-ci-scripts/runner_watcher.sh $$ &
     - sbatch --partition=gpu --nodelist=zenith .gitlab-ci-scripts/slurm-dagger-test-duplication.sh
