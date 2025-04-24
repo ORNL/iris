@@ -157,6 +157,10 @@ end
     return ccall(Libdl.dlsym(lib, :iris_kernel_get), Int32, (Ptr{Cchar}, Ptr{IrisKernel}), pointer(name), kernel)
 end
 
+@inline function iris_kernel_set_shared_memory_size(kernel::IrisKernel, size::Csize_t)::Int32
+    return ccall(Libdl.dlsym(lib, :iris_kernel_set_shared_memory_size), Int32, (IrisKernel, Csize_t), kernel, size)
+end
+
 @inline function iris_kernel_setarg(kernel::IrisKernel, idx::Int32, size::Csize_t, value::Ptr{Cvoid})::Int32
     return ccall(Libdl.dlsym(lib, :iris_kernel_setarg), Int32, (IrisKernel, Int32, Csize_t, Ptr{Cvoid}), kernel, idx, size, value)
 end
@@ -293,6 +297,10 @@ end
     return ccall(Libdl.dlsym(lib, :iris_task_kernel), Int32, (IrisTask, Ptr{Cchar}, Int32, Ptr{Csize_t}, Ptr{Csize_t}, Ptr{Csize_t}, Int32, Ptr{Ptr{Cvoid}}, Ptr{Int32}), task, pointer(kernel), Int32(dim), off, gws, lws, Int32(nparams), params, params_info)
 end
 
+@inline function iris_task_kernel_struct(task::IrisTask, kernel::String, dim::Number, off::Ptr{Csize_t}, gws::Ptr{Csize_t}, lws::Ptr{Csize_t}, nparams::Number, params::Ptr{Ptr{Cvoid}}, params_info::Ptr{Int32})::IrisKernel
+    return ccall(Libdl.dlsym(lib, :iris_task_kernel_struct), IrisKernel, (IrisTask, Ptr{Cchar}, Int32, Ptr{Csize_t}, Ptr{Csize_t}, Ptr{Csize_t}, Int32, Ptr{Ptr{Cvoid}}, Ptr{Int32}), task, pointer(kernel), Int32(dim), off, gws, lws, Int32(nparams), params, params_info)
+end
+
 @inline function iris_task_kernel_v2(task::IrisTask, kernel::String, dim::Int32, off::Ptr{Csize_t}, gws::Ptr{Csize_t}, lws::Ptr{Csize_t}, nparams::Int32, params::Ptr{Ptr{Cvoid}}, params_off::Ptr{Csize_t}, params_info::Ptr{Int32})::Int32
     return ccall(Libdl.dlsym(lib, :iris_task_kernel_v2), Int32, (IrisTask, Ptr{Cchar}, Int32, Ptr{Csize_t}, Ptr{Csize_t}, Ptr{Csize_t}, Int32, Ptr{Ptr{Cvoid}}, Ptr{Csize_t}, Ptr{Int32}), task, pointer(kernel), dim, off, gws, lws, nparams, params, params_off, params_info)
 end
@@ -378,6 +386,10 @@ end
 
 @inline function iris_mem_init_reset(mem::IrisMem, reset::Int32)::Int32
     return ccall(Libdl.dlsym(lib, :iris_mem_init_reset), Int32, (IrisMem, Int32), mem, reset)
+end
+
+@inline function iris_kernel_enable_julia_interface(kernel::IrisKernel, flag::Number)::Int32
+    return ccall(Libdl.dlsym(lib, :iris_kernel_enable_julia_interface), Int32, (IrisKernel, Int32), kernel, Int32(flag))
 end
 
 @inline function iris_task_enable_julia_interface(task::IrisTask, flag::Number)::Int32

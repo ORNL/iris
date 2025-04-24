@@ -1332,7 +1332,7 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
       julia_if_->host_launch(kernel->task()->uid(), (void **)kstream, stream_index, (void *)&ctx_, async,
                   nstreams, kernel->name(), 
                   kernel->GetParamWrapperMemory(), ordinal_,
-                  dim, gws, grid_s, block_s);
+                  dim, gws, grid_s, block_s, kernel->shared_mem_size());
       return IRIS_SUCCESS;
   }
   //printf("Shared mem bytes: %d\n", shared_mem_bytes_);

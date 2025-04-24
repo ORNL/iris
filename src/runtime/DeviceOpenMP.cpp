@@ -408,7 +408,7 @@ int DeviceOpenMP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws
       julia_if_->host_launch(kernel->task()->uid(), (void **)NULL, 0, NULL, false,
                   0, kernel->name(), 
                   kernel->GetParamWrapperMemory(), devno(),
-                  dim, gws, off, gws);
+                  dim, gws, off, gws, kernel->shared_mem_size());
       return IRIS_SUCCESS;
   }
   if (ld_default_ != NULL && kernel->is_default_kernel(devno_) && 

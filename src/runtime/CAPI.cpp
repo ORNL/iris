@@ -167,6 +167,13 @@ int iris_task_create(iris_task* task) {
   return Platform::GetPlatform()->TaskCreate(NULL, false, task);
 }
 
+int iris_kernel_enable_julia_interface(iris_kernel brs_kernel, int type) {
+  Kernel *kernel = brs_kernel.class_obj;
+  kernel->set_enable_julia_if();
+  kernel->set_julia_kernel_type(type);
+  return IRIS_SUCCESS;
+}
+
 int iris_task_enable_julia_interface(iris_task brs_task, int type) {
   Task *task = Platform::GetPlatform()->get_task_object(brs_task);
   task->set_enable_julia_if();
@@ -416,6 +423,10 @@ int iris_task_kernel_object(iris_task task, iris_kernel kernel, int dim, size_t*
 
 int iris_task_kernel(iris_task task, const char* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, int* params_info) {
   return Platform::GetPlatform()->TaskKernel(task, kernel, dim, off, gws, lws, nparams, params, NULL, params_info, NULL);
+}
+
+iris_kernel iris_task_kernel_struct(iris_task task, const char* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, int* params_info) {
+  return Platform::GetPlatform()->TaskKernelStruct(task, kernel, dim, off, gws, lws, nparams, params, NULL, params_info, NULL);
 }
 
 int iris_task_kernel_v2(iris_task task, const char* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, size_t* params_off, int* params_info) {
@@ -944,6 +955,13 @@ iris_kernel iris_kernel_create_struct(const char* name) {
 
 int iris_kernel_get(const char* name, iris_kernel* kernel) {
   return Platform::GetPlatform()->KernelGet(name, kernel);
+}
+
+int iris_kernel_set_shared_memory_size(iris_kernel brs_kernel, size_t size)
+{
+  Kernel *kernel = brs_kernel.class_obj;
+  kernel->set_shared_mem_size(size);
+  return IRIS_SUCCESS;
 }
 
 int iris_kernel_setarg(iris_kernel kernel, int idx, size_t size, void* value) {

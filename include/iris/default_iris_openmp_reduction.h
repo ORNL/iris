@@ -3,7 +3,7 @@
 #include <omp.h>
 
 template <typename T>
-void iris_reduction_openmp_dot_product(T *out, T* data1, T* data2, size_t size) 
+void iris_reduction_openmp_dot(T *out, T* data1, T* data2, size_t size) 
 {
     T global_sum = T(0);
     #pragma omp parallel

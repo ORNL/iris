@@ -106,6 +106,8 @@ public:
   bool enable_julia_if_;
   void set_julia_kernel_type(int type) { julia_kernel_type_ = type; }
   int julia_kernel_type() { return julia_kernel_type_; }
+  void set_shared_mem_size(size_t size) { shared_mem_size_ = size; }
+  size_t shared_mem_size() { return shared_mem_size_; }
 /*
 #ifdef AUTO_PAR
 #ifdef AUTO_SHADOW
@@ -115,6 +117,7 @@ public:
 */
 
 private:
+  size_t shared_mem_size_;
   int julia_kernel_type_;
   int n_mems_;
   std::string name_;

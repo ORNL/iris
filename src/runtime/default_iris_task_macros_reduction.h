@@ -15,7 +15,7 @@ IRIS_CREATE_APIS(
         IN_TASK(in, DTYPE*, DTYPE, in, sizeof(DTYPE)*size),
         PARAM(size, size_t),
         CPP_TASK_TEMPLATE(IRIS_FUNC(iris_reduction_, CPP_REDUCTION), MAP(DTYPE, DataType)),
-        VS_CODE_GEN(iris_cpu, INCLUDE(math.h, stdlib.h, stdint.h, iris/default_iris_openmp_reduction.h), 
+        VS_CODE_GEN(iris_cpu_host, INCLUDE(math.h, stdlib.h, stdint.h, iris/default_iris_openmp_reduction.h), 
 			EXPR(
 			    IRIS_FUNC(iris_reduction_openmp_, CPP_REDUCTION)<DTYPE>(out, in, size);
 			)),

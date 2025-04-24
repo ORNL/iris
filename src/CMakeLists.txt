@@ -1,6 +1,7 @@
 add_subdirectory(runtime)
 
 set(JULIA_SRC_FILES
+        IrisKernels.jl
         IrisLib.jl
         IrisUtils.jl
         IrisHRT.jl

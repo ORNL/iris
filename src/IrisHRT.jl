@@ -144,7 +144,6 @@ import Base: reinterpret
 module IrisHRT
 
     __precompile__()
-
     import Base: Callable
     import Base: show
 
@@ -229,11 +228,11 @@ module IrisHRT
     const iris_pending = 1 << 23
     const iris_sdq = 1 << 24
     const iris_ftf = 1 << 25
-    const iris_all = 1 << 25
     const iris_ocl = 1 << 26
     const iris_block_cycle = 1 << 27
     const iris_custom = 1 << 28
     const iris_julia_policy = 1 << 29
+    const iris_all = 0x7FFFFFFF
 
     const iris_unknown       = 0 << 16
     const iris_int           = 1 << 16
@@ -329,6 +328,10 @@ module IrisHRT
     const HookCommand = Ptr{Cvoid}
     const IrisSelectorKernel = Ptr{Cvoid}
 
+    const UTask = Union{IrisTask, IrisTaskMem}
+    const UMem  = Union{IrisMem, IrisTaskMem}
+    const USize = Union{Csize_t, Int64}
+
     export iris_init
     export kernel_julia_wrapper
     export task_policy_handler
@@ -336,6 +339,7 @@ module IrisHRT
 
     include("IrisUtils.jl")
     include("IrisLib.jl")
+    include("IrisKernels.jl")
     function convert_args(args_type::Ptr{Cint}, args::Ptr{Ptr{Cvoid}}, nparams::Cint, start_index::Cint)
         julia_args = []
         return julia_args
@@ -417,7 +421,7 @@ module IrisHRT
         return Int32(out)
     end
 
-    function kernel_julia_wrapper(task_id::Culong, julia_kernel_type::Cint, target::Cint, devno::Cint, ctx::Ptr{Cvoid}, async_flag_int::Cint, stream_index::Cint, stream::Ptr{Ptr{Cvoid}}, nstreams::Cint, args_type::Ptr{Cint}, args::Ptr{Ptr{Cvoid}}, param_size::Ptr{Csize_t}, param_dim_size::Ptr{Csize_t}, nparams::Cint, c_gws::Ptr{Csize_t}, c_blocks::Ptr{Csize_t}, c_threads::Ptr{Csize_t}, dim::Cint, kernel_name::Ptr{Cchar})::Cint
+    function kernel_julia_wrapper(task_id::Culong, julia_kernel_type::Cint, target::Cint, devno::Cint, ctx::Ptr{Cvoid}, async_flag_int::Cint, stream_index::Cint, stream::Ptr{Ptr{Cvoid}}, nstreams::Cint, args_type::Ptr{Cint}, args::Ptr{Ptr{Cvoid}}, param_size::Ptr{Csize_t}, param_dim_size::Ptr{Csize_t}, nparams::Cint, c_gws::Ptr{Csize_t}, c_blocks::Ptr{Csize_t}, c_threads::Ptr{Csize_t}, shared_mem_size::Csize_t, dim::Cint, kernel_name::Ptr{Cchar})::Cint
         # Array to hold the converted Julia values
         #julia_args = convert_args(args_type, args, nparams, 2)
         #iris_println("nstreams: $nstreams, steram:$stream ctx:$ctx stream_index:$stream_index")
@@ -611,7 +615,7 @@ module IrisHRT
             if julia_kernel_type == iris_julia_kernel_abstraction 
                 call_cuda_kernel_ka(julia_kernel_type, devno, func_name, j_threads, j_blocks, cu_ctx, cu_stream, julia_args, b_async_flag)
             elseif (julia_kernel_type & 0xFFFF) == iris_julia_jacc
-                call_cuda_kernel_jacc(julia_kernel_type, devno, dim, func_name, j_gws, j_threads, j_blocks, cu_ctx, cu_stream, julia_args, b_async_flag)
+                call_cuda_kernel_jacc(julia_kernel_type, devno, dim, func_name, j_gws, j_threads, j_blocks, cu_ctx, cu_stream, julia_args, b_async_flag, shared_mem_size)
             else
                 call_cuda_kernel(julia_kernel_type, devno, func_name, j_threads, j_blocks, cu_ctx, cu_stream, all_streams, julia_args, b_async_flag)
             end
@@ -644,7 +648,7 @@ module IrisHRT
             if julia_kernel_type == iris_julia_kernel_abstraction 
                 call_hip_kernel_ka(julia_kernel_type, devno, func_name, j_threads, j_blocks, hip_ctx, hip_stream, julia_args, b_async_flag)
             elseif (julia_kernel_type & 0xFFFF) == iris_julia_jacc
-                call_hip_kernel_jacc(julia_kernel_type, devno, dim, func_name, j_gws, j_threads, j_blocks, hip_ctx, hip_stream, julia_args, b_async_flag)
+                call_hip_kernel_jacc(julia_kernel_type, devno, dim, func_name, j_gws, j_threads, j_blocks, hip_ctx, hip_stream, julia_args, b_async_flag, shared_mem_size)
             else
                 call_hip_kernel(julia_kernel_type, devno, func_name, j_threads, j_blocks, hip_ctx, hip_stream, all_streams, julia_args, b_async_flag)
             end
@@ -656,7 +660,7 @@ module IrisHRT
             #GC.gc()
             #iris_println("dev:$devno")
             func_name = unsafe_string(kernel_name)
-            #println(Core.stdout, "Calling OpenMP kernel")
+            #println(Core.stdout, "Calling OpenMP kernel: ", func_name)
             if julia_kernel_type == iris_julia_kernel_abstraction 
                 call_openmp_kernel_ka(julia_kernel_type, func_name, j_threads, j_blocks, julia_args, b_async_flag)
             elseif (julia_kernel_type & 0xFFFF) == iris_julia_jacc
@@ -678,7 +682,7 @@ module IrisHRT
         ENV["LD_LIBRARY_PATH"] =  Main.iris_path * "/lib64:" * Main.iris_path * "/lib:" * ENV["LD_LIBRARY_PATH"]
         policy_ptr = @cfunction(task_policy_handler, Cint, (IrisTask, Ptr{Cchar}, Ptr{IrisDevice}, Int32, Ptr{Int32}))
         global stored_policy_ptr = policy_ptr
-        func_ptr = @cfunction(kernel_julia_wrapper, Cint, (Culong, Cint, Cint,        Cint,        Ptr{Cvoid}, Cint, Cint,               Ptr{Ptr{Cvoid}},         Cint,           Ptr{Cint},       Ptr{Ptr{Cvoid}},         Ptr{Csize_t},  Ptr{Csize_t}, Cint,          Ptr{Csize_t}, Ptr{Csize_t},          Ptr{Csize_t},         Cint,      Ptr{Cchar}))
+        func_ptr = @cfunction(kernel_julia_wrapper, Cint, (Culong, Cint, Cint,        Cint,        Ptr{Cvoid}, Cint, Cint,               Ptr{Ptr{Cvoid}},         Cint,           Ptr{Cint},       Ptr{Ptr{Cvoid}},         Ptr{Csize_t},  Ptr{Csize_t}, Cint,          Ptr{Csize_t}, Ptr{Csize_t},          Ptr{Csize_t}, Csize_t,        Cint,      Ptr{Cchar}))
         global stored_func_ptr = func_ptr
         use_julia_threads = false
         if use_julia_threads
@@ -817,7 +821,7 @@ module IrisHRT
 
     # Call Julia kernel 
     # CUDA kernel wrapper (KernelAbstraction kernels)
-    function call_cuda_kernel_jacc(julia_kernel_type::Any, devno::Any, dim, func_name::String, j_gws::Any, threads::Any, blocks::Any, ctx::Any, stream::Any, args::Any, async_flag::Bool=false)
+    function call_cuda_kernel_jacc(julia_kernel_type::Any, devno::Any, dim, func_name::String, j_gws::Any, threads::Any, blocks::Any, ctx::Any, stream::Any, args::Any, async_flag::Bool=false, shared_mem_size=0)
         if !Main.cuda_available
             error("CUDA device not available.")
         end
@@ -837,7 +841,8 @@ module IrisHRT
         if length(blocks)==1
             blocks = blocks[1]
         end
-        shmem=0
+        shmem = shared_mem_size 
+        backend = MyCUDA.CUDAKernels.CUDABackend(false, false)
         spec = JACC.LaunchSpec{MyCUDA.CUDAKernels.CUDABackend}(stream=stream, threads=threads, blocks=blocks, shmem_size=shmem, sync=true)
         if async_flag
             MyCUDA.device!(Int(devno))
@@ -851,7 +856,7 @@ module IrisHRT
         if length(gws)==1
             gws = gws[1]
         end
-        backend = MyCUDA.CUDAKernels.CUDABackend(false, false)
+        #println(Core.stdout, " func: ", func_name, " gws:", gws)
         if julia_kernel_type == iris_julia_jacc_parallel_for
             JACC.parallel_for(spec, gws, func, args_tuple...)
         elseif julia_kernel_type == iris_julia_jacc_parallel_reduce
@@ -967,7 +972,7 @@ module IrisHRT
         #synchronize(blocking = true)
     end
 
-    function call_hip_kernel_jacc(julia_kernel_type::Any, devno::Any, dim, func_name::String, j_gws::Any, threads::Any, blocks::Any, ctx::Any, stream::Any, args::Any, async_flag::Bool=false)
+    function call_hip_kernel_jacc(julia_kernel_type::Any, devno::Any, dim, func_name::String, j_gws::Any, threads::Any, blocks::Any, ctx::Any, stream::Any, args::Any, async_flag::Bool=false, shared_mem_size=0)
         #iris_println("Func $func_name")
         # Initialize CUDA
         #func = getfield(Main, Symbol(func_name))
@@ -977,7 +982,7 @@ module IrisHRT
         # Call the function with arguments
         #gws = map(*, threads, blocks)
         gws = j_gws
-        shmem=0
+        shmem = shared_mem_size
         if length(threads)==1
             threads = threads[1]
         end
@@ -2138,7 +2143,55 @@ module IrisHRT
     end
 
 
-    function identify_in_out(julia_kernel_type, gws, kernel, args...)
+    function find_shared_vars(julia_kernel_type, gws, kernel, args...)
+        m, offset = get_method(julia_kernel_type, gws, kernel, args...)
+        #println(Core.stdout, " all args:", args)
+        if m == nothing
+            return (in=[], out=[])
+        end
+        # pull out the root Expr from whatever uncompressed_ast gives us
+        ast = Base.uncompressed_ast(m)
+        #println(Core.stdout, m)
+        #println(Core.stdout, ast)
+        root = if ast isa Tuple
+            ast[1]
+        elseif ast isa Core.CodeInfo
+            Expr(:block, ast.code...)
+        else
+            ast
+        end
+        found = Set{Any}()
+        # recursive descent
+        required_expr = false
+        function walk!(node)
+            if node isa Expr
+                # detect JACC.shared calls
+                if node.head === :call && length(node.args)>=3 && node.args[3] === :(:shared)
+                    required_expr = true
+                elseif node.head === :call && required_expr
+                    index = Int(node.args[2].id)-1-offset
+                    if index >=1  && index < length(args)
+                        esize = 1
+                        if args[index] isa Union{IrisTaskMem, IrisMem}
+                            esize = element_size(args[index])
+                        else
+                            esize = sizeof(eltype(args[index]))
+                        end
+                        push!(found, length(args[index]) * esize)
+                        #println("---- Node:", node, " args:", node.args, " offset:", offset, " index:", index, " esize:", esize)
+                    end
+                    required_expr = false
+                end
+                # recurse into all sub‐expressions
+                for arg in node.args
+                    walk!(arg)
+                end
+            end
+        end
+        walk!(root)
+        return sum(collect(found))
+    end
+    function get_method(julia_kernel_type, gws, kernel, args...)
         f = nothing 
         if (julia_kernel_type & 0xFFFF) == IrisHRT.iris_julia_native && (f=getFunction(kernel*"_cuda")) != nothing
             nothing
@@ -2152,10 +2205,10 @@ module IrisHRT
             nothing
         else
             error("Couldn't find function definition for kernel: ", kernel)
-            return (in=[], out=[])
+            return nothing, 0 #(in=[], out=[])
         end
         if f == nothing
-            return (in=[], out=[])
+            return nothing, 0 #(in=[], out=[])
         end
         m = nothing
         offset = 0
@@ -2190,6 +2243,13 @@ module IrisHRT
             end
         else
             m = @which f(args...)   # Get method instance
+        end
+        return m, offset
+    end
+    function identify_in_out(julia_kernel_type, gws, kernel, args...)
+        m, offset = get_method(julia_kernel_type, gws, kernel, args...)
+        if m == nothing
+            return (in=[], out=[])
         end
         ast = Base.uncompressed_ast(m)  # Extract AST
         #println(ast)
@@ -2738,10 +2798,17 @@ module IrisHRT
         end
     end
 
-    function task(; in=Any[], out=Any[], flush=Any[], refresh=[], auto_in_out=false, lws=Int64[], gws=Int64[], off=Int64[], policy=IrisHRT.iris_roundrobin, wait=true, core=false, ka=false, parallel_reduce=false, parallel_for=false, host=false, auto_dependency=true, task=nothing, metadata=nothing, kernel="kernel", args=[], submit=true, dependencies=[])
+    function predef_task(f, x...; eargs...)
+        return task(;kernel=f, args=x, predef_task=true, eargs...)
+    end
+
+    function task(; in=Any[], out=Any[], flush=Any[], refresh=[], auto_in_out=false, lws=Int64[], gws=Int64[], off=Int64[], policy=IrisHRT.iris_roundrobin, wait=true, core=false, ka=false, parallel_reduce=false, parallel_for=false, host=false, predef_task=false, auto_dependency=true, task=nothing, metadata=nothing, kernel="kernel", args=[], submit=true, dependencies=[])
         call_args = args
         mem_params = Dict{Any, Any}()
-        t_args = Tuple(args)
+        t_args = args
+        if !isa(args, Tuple)
+            t_args = Tuple(args)
+        end
         auto_in = Any[]
         auto_out = Any[]
         if ! auto_in_out && length(in)==0 && length(out)==0 && length(args)!=0
@@ -2755,6 +2822,9 @@ module IrisHRT
         elseif kernel isa Callable
             kernel_name = String(Symbol(kernel))
         end
+        if predef_task == true
+            core=true
+        end
         julia_kernel_type = IrisHRT.iris_julia_native
         if core
             julia_kernel_type = IrisHRT.iris_core_native
@@ -2767,8 +2837,14 @@ module IrisHRT
         elseif host
             julia_kernel_type = IrisHRT.iris_julia_native_host
         end
-        if auto_in_out
+        if auto_in_out && predef_task == false
             (auto_in, auto_out) = identify_in_out(julia_kernel_type, gws, kernel_name, t_args...)
+        end
+        shared_mem = 0
+        if julia_kernel_type == IrisHRT.iris_julia_jacc_parallel_reduce ||
+            julia_kernel_type == IrisHRT.iris_julia_jacc_parallel_for
+            shared_mem = find_shared_vars(julia_kernel_type, gws, kernel_name, t_args...)
+            #println(Core.stdout, " Shared args:", shared_mem)
         end
         for larray in vcat(out, flush, auto_out)
             p_dmem = get_dmem_from_cache(larray)
@@ -2802,6 +2878,7 @@ module IrisHRT
             if isa(arg, Union{AbstractArray, IrisMem, IrisTaskMem})
                 p_dmem = get_dmem_from_cache(arg)
                 push!(params, Ref(p_dmem))
+                push!(kernel_params, p_dmem)
                 if haskey(mem_params, p_dmem)
                     push!(params_info, Int32(mem_params[p_dmem]))
                 else
@@ -2812,7 +2889,7 @@ module IrisHRT
                 end
             else
                 # Scalar element
-                #push!(kernel_params, arg)
+                push!(kernel_params, arg)
                 type_data = get_iris_type(typeof(arg))
                 #println(Core.stdout, " type_data: ", type_data, " arg:", arg, " type of arg: ", typeof(arg))
                 push!(params_info, type_data | sizeof(arg))
@@ -2832,17 +2909,7 @@ module IrisHRT
         #println(Core.stdout, "kernel_params     :", kernel_params)
 
         # Set kernel type
-        if (julia_kernel_type & 0xFFFF) == IrisHRT.iris_julia_native 
-            iris_task_enable_julia_interface(task0, julia_kernel_type)
-        elseif (julia_kernel_type & 0xFFFF) == IrisHRT.iris_julia_kernel_abstraction
-            iris_task_enable_julia_interface(task0, julia_kernel_type)
-        elseif (julia_kernel_type & 0xFFFF) == IrisHRT.iris_julia_jacc
-            iris_task_enable_julia_interface(task0, julia_kernel_type)
-        elseif (julia_kernel_type & 0xFFFF) == IrisHRT.iris_core_native
-            # Do nothing here
-        end
         
-        #task0=IrisHRT.iris_task_julia(kernel_name, length(gws), off, gws, lws, kernel_params)
         if isa(gws, Number)
             gws = [gws]
         end
@@ -2881,7 +2948,25 @@ module IrisHRT
         # Create kernel with task
         #println(Core.stdout, "Before IRIS task creation")
         GC.@preserve gws lws off kernel_name begin
-            iris_task_kernel(task0, kernel_name, length(gws), off_c, gws_c, lws_c, nparams, c_params, pointer(params_info))
+            if !predef_task
+                ikernel = iris_task_kernel_struct(task0, kernel_name, length(gws), off_c, gws_c, lws_c, nparams, c_params, pointer(params_info))
+				if (julia_kernel_type & 0xFFFF) == IrisHRT.iris_julia_native 
+					iris_kernel_enable_julia_interface(ikernel, julia_kernel_type)
+				elseif (julia_kernel_type & 0xFFFF) == IrisHRT.iris_julia_kernel_abstraction
+					iris_kernel_enable_julia_interface(ikernel, julia_kernel_type)
+				elseif (julia_kernel_type & 0xFFFF) == IrisHRT.iris_julia_jacc
+					iris_kernel_enable_julia_interface(ikernel, julia_kernel_type)
+				elseif (julia_kernel_type & 0xFFFF) == IrisHRT.iris_core_native
+					# Do nothing here
+				end
+                if shared_mem > 0
+                    iris_kernel_set_shared_memory_size(ikernel, shared_mem)
+                end
+            else
+                f = getFunction(kernel_name)
+                #println(Core.stdout, " kname:", kernel_name, " f:", f)
+                f(task0, kernel_params...)
+            end
         end
         #println(Core.stdout, "After IRIS task creation")
         if metadata != nothing

@@ -114,11 +114,11 @@ typedef enum StreamPolicy StreamPolicy;
 #define iris_pending            (1 << 23)
 #define iris_sdq                (1 << 24)
 #define iris_ftf                (1 << 25)
-#define iris_all                (1 << 25)
 #define iris_ocl                (1 << 26)
 #define iris_block_cycle        (1 << 27)
 #define iris_custom             (1 << 28)
 #define iris_julia_policy       (1 << 29)
+#define iris_all                0x7FFFFFFF
 
 enum DeviceModel {
 iris_cuda = 1,
@@ -575,6 +575,14 @@ extern iris_kernel iris_kernel_create_struct(const char* name);
 extern int iris_kernel_get(const char* name, iris_kernel* kernel);
 
 
+/**@brief Sets the shared memory size for a given kernel
+ *
+ * @param kernel a kernel object
+ * @param size shared memory size of the kernel
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_kernel_set_shared_memory_size(iris_kernel kernel, size_t size);
+
 /**@brief Sets the arguments for a given kernel
  *
  * @param kernel a kernel object
@@ -935,6 +943,15 @@ extern int iris_init_devices_synchronize(int sync);
  */
 extern int iris_init_devices(int sync);
 
+
+/**@brief Enable Julia Interface for kernel alone
+ *
+ * @param kernel iris kernel object
+ * @param type type of julia kernel (iris_julia_native, iris_core_native, iris_julia_kernel_abstraction, iris_julia_jacc)
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_kernel_enable_julia_interface(iris_kernel kernel, int type);
+
 /**@brief Enable Julia Interface for task kernels inside
  *
  * @param task iris task object
@@ -986,6 +1003,21 @@ extern int iris_task_d2h_full(iris_task task, iris_mem mem, void* host);
  */
 extern int iris_task_kernel_object(iris_task task, iris_kernel kernel, int dim, size_t* off, size_t* gws, size_t* lws);
 
+
+/**@brief Launches a kernel
+ *
+ * @param task target task
+ * @param kernel kernel name
+ * @param dim dimension
+ * @param off global workitem space offsets
+ * @param gws global workitem space
+ * @param lws local workitem space
+ * @param nparams number of kernel parameters
+ * @param params kernel parameters
+ * @param params_info kernel parameters information
+ * @return IRIS kernel 
+ */
+extern iris_kernel iris_task_kernel_struct(iris_task task, const char* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, int* params_info);
 
 /**@brief Launches a kernel
  *
@@ -2382,7 +2414,7 @@ extern int iris_read_int_env(const char *env_name);
 
 typedef int32_t (*julia_policy_t)(iris_task task, const char *policy_name, iris_device *devs, int32_t ndevs, int32_t *out_dev); 
 // Define a type for the Julia kernel launch function call pointer
-typedef int32_t (*julia_kernel_t)(unsigned long task_id, int32_t julia_kernel_type, int32_t target, int32_t devno, void *ctx, int async, int32_t stream_index, void **stream, int32_t nstreams, int32_t *args, void **values, size_t *param_size, size_t *param_dim_size, int32_t nparams, size_t *gws, size_t *threads, size_t *blocks, int dim, const char *kernel_name);
+typedef int32_t (*julia_kernel_t)(unsigned long task_id, int32_t julia_kernel_type, int32_t target, int32_t devno, void *ctx, int async, int32_t stream_index, void **stream, int32_t nstreams, int32_t *args, void **values, size_t *param_size, size_t *param_dim_size, int32_t nparams, size_t *gws, size_t *threads, size_t *blocks, size_t shared_mem_size, int dim, const char *kernel_name);
 
 /* API to initialize Julia interfacea
  * @param kernel_launch_func Kernel launch Julia function 

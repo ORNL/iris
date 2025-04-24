@@ -272,11 +272,11 @@ namespace iris {
             //julia_data->set_kernel_name(kernel_name);
             return IRIS_SUCCESS;
         }
-        int JuliaHostInterfaceLoader::host_launch(unsigned long task_id, void **stream, int stream_index, void *ctx, bool async, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *gws, size_t *grid, size_t *block)
+        int JuliaHostInterfaceLoader::host_launch(unsigned long task_id, void **stream, int stream_index, void *ctx, bool async, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *gws, size_t *grid, size_t *block, size_t shared_mem_size)
         {
             KernelJulia *julia_data = get_kernel_julia(param_mem);
             SetKernelPtr(param_mem, kname);
-            launch_julia_kernel(task_id, julia_data->julia_kernel_type(), target_, devno, ctx, async, stream_index, stream, nstreams, julia_data->args(), julia_data->values(), julia_data->param_size(), julia_data->param_dim_size(), julia_data->top(), gws, grid, block, dim, kname);
+            launch_julia_kernel(task_id, julia_data->julia_kernel_type(), target_, devno, ctx, async, stream_index, stream, nstreams, julia_data->args(), julia_data->values(), julia_data->param_size(), julia_data->param_dim_size(), julia_data->top(), gws, grid, block, shared_mem_size, dim, kname);
             return IRIS_SUCCESS;
         }
         int JuliaHostInterfaceLoader::setarg(void *param_mem, int kindex, size_t size, void *value)

@@ -17,6 +17,7 @@ Kernel::Kernel(const char* name, Platform* platform) {
   //size_t len = strlen(name);
   //strncpy(name_, name, len);
   task_name_ = name_;
+  shared_mem_size_ = 0;
   task_ = NULL;
   n_mems_ = 0;
   //name_[len] = 0;
