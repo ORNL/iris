@@ -157,8 +157,8 @@ end
     return ccall(Libdl.dlsym(lib, :iris_kernel_get), Int32, (Ptr{Cchar}, Ptr{IrisKernel}), pointer(name), kernel)
 end
 
-@inline function iris_kernel_set_shared_memory_size(kernel::IrisKernel, size::Csize_t)::Int32
-    return ccall(Libdl.dlsym(lib, :iris_kernel_set_shared_memory_size), Int32, (IrisKernel, Csize_t), kernel, size)
+@inline function iris_kernel_set_shared_memory_size(kernel::IrisKernel, size::USize)::Int32
+    return ccall(Libdl.dlsym(lib, :iris_kernel_set_shared_memory_size), Int32, (IrisKernel, Csize_t), kernel, Csize_t(size))
 end
 
 @inline function iris_kernel_setarg(kernel::IrisKernel, idx::Int32, size::Csize_t, value::Ptr{Cvoid})::Int32

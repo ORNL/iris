@@ -2189,7 +2189,11 @@ module IrisHRT
             end
         end
         walk!(root)
-        return sum(collect(found))
+        if length(found) > 0
+            return sum(collect(found))
+        else
+            return 0
+        end
     end
     function get_method(julia_kernel_type, gws, kernel, args...)
         f = nothing 
