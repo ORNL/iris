@@ -368,34 +368,45 @@ target_link_libraries(cpu_default PRIVATE OpenMP::OpenMP_CXX)
 install(TARGETS cpu_default DESTINATION ${CMAKE_INSTALL_PREFIX}/default)
 
 find_package(CUDAToolkit QUIET COMPONENTS curand)
+
+message(STATUS "NVCC: ${CUDA_NVCC_EXECUTABLE}")
 if (CUDAToolkit_FOUND)
-    message(STATUS "CUDA found!")
-    set(MYCUDA_SRCS
-           default_cpu_gpu_kernels.cpp 
-            ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_cuda_kernels.cu 
+    find_program(NVCC_EXECUTABLE
+        NAMES nvcc
+        HINTS ${CUDAToolkit_ROOT}/bin
+              $ENV{CUDA_PATH}/bin
+              /usr/local/cuda/bin
+
     )
-    get_target_property(CUDA_INCLUDE_DIRS CUDA::cudart
-                      INTERFACE_INCLUDE_DIRECTORIES)
-    get_target_property(MATHLIB_INCLUDE_DIRS CUDA::curand
-                      INTERFACE_INCLUDE_DIRECTORIES)
-    set(include_paths "")
-    while(MATHLIB_INCLUDE_DIRS)
-        list(GET MATHLIB_INCLUDE_DIRS 0 first_core)
-        list(REMOVE_AT MATHLIB_INCLUDE_DIRS 0)
-        list(APPEND include_paths -I${first_core})
-    endwhile()
-    add_custom_command(
-        OUTPUT libcuda_default.so
-        #COMMAND nvcc -x cu -g -Xcompiler -fPIC -DENABLE_IRIS_HOST2CUDA_APIS ${include_paths} -I${IRIS_INC_DIR} -I${CUDA_INCLUDE_DIRS}/ ${PROJECT_SOURCE_DIR}/src/runtime/default_cpu_gpu_kernels.cpp -c -o default_cpu_gpu_kernels_cuda.cpp.o
-        #COMMAND nvcc -x cu -g -Xcompiler -fPIC -I${IRIS_INC_DIR} ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_cuda_kernels.cu -c -o iris_default_math_cuda_kernels.cu.o
-        #COMMAND nvcc -shared -g -Xcompiler -fPIC default_cpu_gpu_kernels_cuda.cpp.o iris_default_math_cuda_kernels.cu.o -o libcuda_default.so 
-		COMMAND nvcc -shared -x cu -g -Xcompiler -fPIC -DENABLE_IRIS_HOST2CUDA_APIS ${include_paths} -I${IRIS_INC_DIR} -I${CUDA_INCLUDE_DIRS}/ ${PROJECT_SOURCE_DIR}/src/runtime/default_cpu_gpu_kernels.cpp ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_cuda_kernels.cu -o libcuda_default.so 
-		DEPENDS ${PROJECT_SOURCE_DIR}/src/runtime/default_cpu_gpu_kernels.cpp
-    )
-    add_custom_target(myapp_cuda DEPENDS libcuda_default.so)
-    add_dependencies(myapp_cuda iris_default_math_boilerplate_h)
-    install(FILES  ${CMAKE_BINARY_DIR}/src/runtime/libcuda_default.so  DESTINATION ${CMAKE_INSTALL_PREFIX}/default)
-    add_dependencies(iris myapp_cuda)
+    if (NVCC_EXECUTABLE)
+        message(STATUS "CUDA found!")
+        set(MYCUDA_SRCS
+               default_cpu_gpu_kernels.cpp 
+                ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_cuda_kernels.cu 
+        )
+        get_target_property(CUDA_INCLUDE_DIRS CUDA::cudart
+                          INTERFACE_INCLUDE_DIRECTORIES)
+        get_target_property(MATHLIB_INCLUDE_DIRS CUDA::curand
+                          INTERFACE_INCLUDE_DIRECTORIES)
+        set(include_paths "")
+        while(MATHLIB_INCLUDE_DIRS)
+            list(GET MATHLIB_INCLUDE_DIRS 0 first_core)
+            list(REMOVE_AT MATHLIB_INCLUDE_DIRS 0)
+            list(APPEND include_paths -I${first_core})
+        endwhile()
+        add_custom_command(
+            OUTPUT libcuda_default.so
+            #COMMAND nvcc -x cu -g -Xcompiler -fPIC -DENABLE_IRIS_HOST2CUDA_APIS ${include_paths} -I${IRIS_INC_DIR} -I${CUDA_INCLUDE_DIRS}/ ${PROJECT_SOURCE_DIR}/src/runtime/default_cpu_gpu_kernels.cpp -c -o default_cpu_gpu_kernels_cuda.cpp.o
+            #COMMAND nvcc -x cu -g -Xcompiler -fPIC -I${IRIS_INC_DIR} ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_cuda_kernels.cu -c -o iris_default_math_cuda_kernels.cu.o
+            #COMMAND nvcc -shared -g -Xcompiler -fPIC default_cpu_gpu_kernels_cuda.cpp.o iris_default_math_cuda_kernels.cu.o -o libcuda_default.so 
+			COMMAND nvcc -shared -x cu -g -Xcompiler -fPIC -DENABLE_IRIS_HOST2CUDA_APIS ${include_paths} -I${IRIS_INC_DIR} -I${CUDA_INCLUDE_DIRS}/ ${PROJECT_SOURCE_DIR}/src/runtime/default_cpu_gpu_kernels.cpp ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_cuda_kernels.cu -o libcuda_default.so 
+			DEPENDS ${PROJECT_SOURCE_DIR}/src/runtime/default_cpu_gpu_kernels.cpp
+        )
+        add_custom_target(myapp_cuda DEPENDS libcuda_default.so)
+        add_dependencies(myapp_cuda iris_default_math_boilerplate_h)
+        install(FILES  ${CMAKE_BINARY_DIR}/src/runtime/libcuda_default.so  DESTINATION ${CMAKE_INSTALL_PREFIX}/default)
+        add_dependencies(iris myapp_cuda)
+    endif()
 endif()
 
 find_package(hip)
