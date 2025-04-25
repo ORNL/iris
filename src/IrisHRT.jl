@@ -180,7 +180,7 @@ module IrisHRT
 
     # Define enums
     @enum StreamPolicy STREAM_POLICY_DEFAULT=0 STREAM_POLICY_SAME_FOR_TASK=1 STREAM_POLICY_GIVE_ALL_STREAMS_TO_KERNEL=2
-    @enum DeviceModel iris_cuda=1 iris_hip=3 iris_levelzero=4 iris_opencl=5 iris_openmp=6 iris_model_all=(1<<25)
+    @enum DeviceModel iris_cuda=1 iris_hip=3 iris_levelzero=4 iris_opencl=5 iris_openmp=6 iris_qiree=7 iris_model_all=(1<<25)
 
     # Define constants corresponding to the C macros
     const iris_r::Int32 = -1
@@ -294,6 +294,22 @@ module IrisHRT
     struct IrisTaskMem
         task::IrisTask
         dmem::IrisMem
+    end
+
+    struct IrisMem1D{T} <: AbstractVector{T}
+        mem::IrisMem
+    end
+
+    struct IrisMem2D{T} <: AbstractMatrix{T}
+        mem::IrisMem
+    end
+
+    struct IrisMem3D{T} <: AbstractArray{T,3}
+        mem::IrisMem
+    end
+
+    struct IrisMem4D{T} <: AbstractArray{T,4}
+        mem::IrisMem
     end
 
     struct IrisGraph
@@ -1312,6 +1328,9 @@ module IrisHRT
         end
     end
 
+    function dim(mem::UMem)
+        return iris_dmem_get_dim(field_dmem(mem))
+    end
     function print_element_info(vec::Vector{Any})
         for element in vec
             println("Type: ", typeof(element), " Value:", element)
@@ -2144,51 +2163,73 @@ module IrisHRT
 
 
     function find_shared_vars(julia_kernel_type, gws, kernel, args...)
+        #println(Core.stdout, " all args:", args, " legnth:", length(args))
         m, offset = get_method(julia_kernel_type, gws, kernel, args...)
-        #println(Core.stdout, " all args:", args)
         if m == nothing
             return (in=[], out=[])
         end
+        extra_args = offset - length(gws)
+        #println(Core.stdout, " m = ", m, " offset:", offset, " gws:", gws, " length:", length(gws))
         # pull out the root Expr from whatever uncompressed_ast gives us
         ast = Base.uncompressed_ast(m)
         #println(Core.stdout, m)
         #println(Core.stdout, ast)
-        root = if ast isa Tuple
-            ast[1]
-        elseif ast isa Core.CodeInfo
-            Expr(:block, ast.code...)
-        else
-            ast
-        end
+        root = ast
         found = Set{Any}()
         # recursive descent
-        required_expr = false
-        function walk!(node)
-            if node isa Expr
-                # detect JACC.shared calls
-                if node.head === :call && length(node.args)>=3 && node.args[3] === :(:shared)
-                    required_expr = true
-                elseif node.head === :call && required_expr
-                    index = Int(node.args[2].id)-1-offset
-                    if index >=1  && index < length(args)
+        all_outs = []
+        function parse_expr(code)
+            #println("Parsing Expression offset:", offset, " extra_args:", extra_args)
+            required_expr = false
+            for (i, item) in enumerate(code)
+                #println("Expression $(i):", item, " required:", required_expr)
+                #println("  ", item)
+                push!(all_outs, item)
+                node = item
+                # Process only expressions (Expr objects) that are assignments.
+                if node isa Expr && required_expr && node.head == :(=)
+                    index = Int(node.args[2].args[2].id)-2*length(gws) + offset - 1
+                    #println(" 222Expr: ", node, " head:", node.head, " args: ", node.args, " index:", index, " length:", length(args))
+                    if index >=1  && index <= length(args)
                         esize = 1
-                        if args[index] isa Union{IrisTaskMem, IrisMem}
-                            esize = element_size(args[index])
+                        data = args[index]
+                        if data isa Union{IrisTaskMem, IrisMem}
+                            esize = element_size(data)
                         else
-                            esize = sizeof(eltype(args[index]))
+                            esize = sizeof(eltype(data))
                         end
-                        push!(found, length(args[index]) * esize)
-                        #println("---- Node:", node, " args:", node.args, " offset:", offset, " index:", index, " esize:", esize)
+                        push!(found, length(data) * esize)
+                        #println("---- Node:", node, " args:", node.args, " offset:", (offset, extra_args), " kernel:", kernel, " index:", index, " esize:", esize)
                     end
                     required_expr = false
-                end
-                # recurse into all sub‐expressions
-                for arg in node.args
-                    walk!(arg)
+                elseif node isa Expr && node.head == :call
+                    #println(" Expr: ", node, " head:", node.head, " args: ", node.args)
+                    if length(node.args)>=3 && node.args[3] === :shared
+                        required_expr = true
+                    elseif length(node.args)>=3 && node.args[3] === :(:shared)
+                        required_expr = true
+                    elseif required_expr
+                        index = Int(node.args[2].id) -2*length(gws) + offset
+                        if index >=1  && index <= length(args)
+                            esize = 1
+                            data = args[index]
+                            if data isa Union{IrisTaskMem, IrisMem}
+                                esize = element_size(data)
+                            else
+                                esize = sizeof(eltype(data))
+                            end
+                            push!(found, length(data) * esize)
+                            #println("---- Node:", node, " args:", node.args, " offset:", offset, " kernel:", kernel, " index:", index, " esize:", esize)
+                        end
+                        required_expr = false
+                    end
+                elseif node isa Expr && node.head == :block
+                    parse_expr(node.args)           
                 end
             end
         end
-        walk!(root)
+        parse_expr(root.code)
+        #println("Completed Parsing Expression ", found)
         if length(found) > 0
             return sum(collect(found))
         else
@@ -2216,38 +2257,64 @@ module IrisHRT
         end
         m = nothing
         offset = 0
+        function convert_iris_mem(mem)
+            d = ndim(mem)
+            if d == 1
+                return IrisMem1D{eltype(mem)}(mem)
+            elseif d == 2
+                return IrisMem2D{eltype(mem)}(mem)
+            elseif d == 3
+                return IrisMem3D{eltype(mem)}(mem)
+            elseif d == 4
+                return IrisMem4D{eltype(mem)}(mem)
+            else
+                println(Core.stdout, "[Warning] Unhandled dim:", d," kernel:", kernel, " for convert_iris_mem")
+                return mem
+            end
+        end
+        conv_args = []
+        for each_arg in args
+            if each_arg isa UMem
+                push!(conv_args, convert_iris_mem(field_dmem(each_arg)))
+            else
+                push!(conv_args, each_arg)
+            end
+        end 
+        #println(Core.stdout, "Args: ", conv_args)
+        conv_args = Tuple(conv_args)
         if (julia_kernel_type & 0xFFFF) == iris_julia_jacc
             i = 0 
             j = 0
             k = 0
             offset = length(gws)
-            #println(Core.stdout, "Args: ", args...)
+            #println(Core.stdout, "Args: ", conv_args...)
             #println(Core.stdout, "f: ", f)
             if julia_kernel_type == iris_julia_jacc_parallel_for
                 if offset == 1
-                    m = @which f(i, args...)   # Get method instance
+                    m = @which f(i, conv_args...)   # Get method instance
                 elseif offset == 2
-                    m = @which f(i, j, args...)   # Get method instance
+                    m = @which f(i, j, conv_args...)   # Get method instance
                 elseif offset == 3
-                    m = @which f(i, j, k, args...)   # Get method instance
+                    m = @which f(i, j, k, conv_args...)   # Get method instance
                 else
                     error("Couldn't find JACC function for gws:", gws, " for kernel:", kernel)
                 end
             else # iris_julia_jacc_parallel_reduce
                 if offset == 1
-                    m = @which f(i, args[4:end]...)   # Get method instance
+                    m = @which f(i, conv_args[5:end]...)   # Get method instance
                 elseif offset == 2
-                    m = @which f(i, j, args[4:end]...)   # Get method instance
+                    m = @which f(i, j, conv_args[5:end]...)   # Get method instance
                 elseif offset == 3
-                    m = @which f(i, j, k, args[4:end]...)   # Get method instance
+                    m = @which f(i, j, k, conv_args[5:end]...)   # Get method instance
                 else
                     error("Couldn't find JACC function for gws:", gws, " for kernel:", kernel)
                 end
-                offset += 3
+                offset += 4
             end
         else
-            m = @which f(args...)   # Get method instance
+            m = @which f(conv_args...)   # Get method instance
         end
+        #println(Core.stdout, "JACC function for kernel:", kernel, " for offset:", offset)
         return m, offset
     end
     function identify_in_out(julia_kernel_type, gws, kernel, args...)
@@ -2308,13 +2375,14 @@ module IrisHRT
                         elseif arg isa Core.SlotNumber
                             sn = arg.id
                             slot_index = Int(arg.id)
+                            index = Int(slot_index) -2*length(gws) + offset - 1
                             original_var = ci.slotnames[slot_index]
                             o_original_var = getfield(ci, :slotnames)[slot_index]
                             if fname == :getindex
-                                push!(vector_in, slot_index-1-offset)
+                                push!(vector_in, index)
                             end
                             if fname == :setindex!
-                                push!(vector_out, slot_index-1-offset)
+                                push!(vector_out, index)
                             end
                         else
                             #println("    Argument $(j): ", arg)
@@ -3009,7 +3077,7 @@ import Base: axes
 
 function dim(mem::Union{IrisHRT.IrisMem, IrisHRT.IrisTaskMem})
     dmem = IrisHRT.field_dmem(mem)
-    return IrisHRT.dim(dmem)
+    return IrisHRT.ndim(dmem)
 end
 
 function uid(mem::Union{IrisHRT.IrisMem, IrisHRT.IrisTaskMem})
@@ -3081,6 +3149,34 @@ end
 function Base.eltype(mem::Union{IrisHRT.IrisMem, IrisHRT.IrisTaskMem})
     return IrisHRT.get_julia_type(mem)
 end
+
+Base.eltype(::Type{IrisHRT.IrisMem1D{T}}) where {T} = T
+Base.length(v::IrisHRT.IrisMem1D) = length(v.mem)
+Base.size(v::IrisHRT.IrisMem1D) = size(v.mem)
+Base.getindex(v::IrisHRT.IrisMem1D, i::Int) = Base.getindex(v.mem, i)
+Base.axes(v::IrisHRT.IrisMem1D) = Base.axes(v.mem)
+Base.IndexStyle(::Type{<:IrisHRT.IrisMem1D}) = IndexLinear()  # tells code it’s a simple linear index
+
+Base.eltype(::Type{IrisHRT.IrisMem2D{T}}) where {T} = T
+Base.length(v::IrisHRT.IrisMem2D) = length(v.mem)
+Base.size(v::IrisHRT.IrisMem2D) = size(v.mem)
+Base.getindex(v::IrisHRT.IrisMem2D, i::Int, j::Int) = Base.getindex(v.mem, i, j)
+Base.axes(v::IrisHRT.IrisMem2D) = Base.axes(v.mem)
+Base.IndexStyle(::Type{<:IrisHRT.IrisMem2D}) = IndexCartesian()  # tells code it’s a simple linear index
+
+Base.eltype(::Type{IrisHRT.IrisMem3D{T}}) where {T} = T
+Base.length(v::IrisHRT.IrisMem3D) = length(v.mem)
+Base.size(v::IrisHRT.IrisMem3D) = size(v.mem)
+Base.getindex(v::IrisHRT.IrisMem3D, i::Int, j::Int, k::Int) = Base.getindex(v.mem, i, j, k)
+Base.axes(v::IrisHRT.IrisMem3D) = Base.axes(v.mem)
+Base.IndexStyle(::Type{<:IrisHRT.IrisMem3D}) = IndexCartesian()  # tells code it’s a simple linear index
+
+Base.eltype(::Type{IrisHRT.IrisMem4D{T}}) where {T} = T
+Base.length(v::IrisHRT.IrisMem4D) = length(v.mem)
+Base.size(v::IrisHRT.IrisMem4D) = size(v.mem)
+Base.getindex(v::IrisHRT.IrisMem4D, i::Int, j::Int, k::Int, l::Int) = Base.getindex(v.mem, i, j, k, l)
+Base.axes(v::IrisHRT.IrisMem4D) = Base.axes(v.mem)
+Base.IndexStyle(::Type{<:IrisHRT.IrisMem4D}) = IndexCartesian()  # tells code it’s a simple linear index
 
 include("Tiling1D.jl")
 include("Tiling2D.jl")

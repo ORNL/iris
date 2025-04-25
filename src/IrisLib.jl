@@ -329,7 +329,7 @@ end
     return ccall(Libdl.dlsym(lib, :iris_task_custom), Int32, (IrisTask, Int32, Ptr{Cvoid}, Csize_t), task, tag, params, params_size)
 end
 
-@inline function iris_task_submit(task::IrisTask, device_policy::Int64, opt::Ptr{Int8}, sync::Int64)::Int32
+@inline function iris_task_submit(task::IrisTask, device_policy::Union{Int64,DeviceModel}, opt::Ptr{Int8}, sync::Int64)::Int32
     #gc_state = @ccall(jl_gc_safe_enter()::Int8)
     status = ccall(Libdl.dlsym(lib, :iris_task_submit), Int32, (IrisTask, Int32, Ptr{Int8}, Int32), task, Int32(device_policy), opt, Int32(sync))
     #@ccall(jl_gc_safe_leave(gc_state::Int8)::Cvoid)
