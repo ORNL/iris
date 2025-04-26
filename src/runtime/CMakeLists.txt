@@ -434,7 +434,7 @@ if (CUDAToolkit_FOUND)
             #COMMAND nvcc -x cu -g -Xcompiler -fPIC -DENABLE_IRIS_HOST2CUDA_APIS ${include_paths} -I. -I${IRIS_INC_DIR} -I${CUDA_INCLUDE_DIRS}/ ${PROJECT_SOURCE_DIR}/src/runtime/default_cpu_gpu_kernels.cpp -c -o default_cpu_gpu_kernels_cuda.cpp.o
             #COMMAND nvcc -x cu -g -Xcompiler -fPIC -I${IRIS_INC_DIR} ${include_paths} -I. ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_cuda_kernels.cu -c -o iris_default_math_cuda_kernels.cu.o
             #COMMAND nvcc -shared -g -Xcompiler -fPIC default_cpu_gpu_kernels_cuda.cpp.o iris_default_math_cuda_kernels.cu.o -o libcuda_default.so 
-			COMMAND nvcc -shared -x cu -g -Xcompiler -fPIC -DENABLE_IRIS_HOST2CUDA_APIS ${include_paths} -I${IRIS_INC_DIR} -I${CUDA_INCLUDE_DIRS}/ ${PROJECT_SOURCE_DIR}/src/runtime/default_cpu_gpu_kernels.cpp ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_cuda_kernels.cu -o libcuda_default.so 
+			COMMAND nvcc -shared -x cu -g -Xcompiler -fPIC -DENABLE_IRIS_HOST2CUDA_APIS ${include_paths} -I. -I${IRIS_INC_DIR} -I${CUDA_INCLUDE_DIRS}/ ${PROJECT_SOURCE_DIR}/src/runtime/default_cpu_gpu_kernels.cpp ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_cuda_kernels.cu -o libcuda_default.so 
 			DEPENDS ${PROJECT_SOURCE_DIR}/src/runtime/default_cpu_gpu_kernels.cpp
         )
         add_custom_target(myapp_cuda DEPENDS libcuda_default.so)
@@ -461,8 +461,8 @@ if (hip_FOUND)
 	endwhile()
 	add_custom_command(
 		OUTPUT libhip_default.so
-		COMMAND hipcc -g -fPIC ${include_paths} -DENABLE_IRIS_HOST2HIP_APIS -I${IRIS_INC_DIR} -I${HIP_INCLUDE_DIRS}/ ${PROJECT_SOURCE_DIR}/src/runtime/default_cpu_gpu_kernels.cpp -c -o default_cpu_gpu_kernels_hip.cpp.o
-		COMMAND hipcc -g -fPIC -I${IRIS_INC_DIR} ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_hip_kernels.hip.cpp -c -o iris_default_math_hip_kernels.hip.cpp.o
+		COMMAND hipcc -g -fPIC ${include_paths} -I. -I${CMAKE_BINARY_DIR}/src/runtime -DENABLE_IRIS_HOST2HIP_APIS -I${IRIS_INC_DIR} -I${HIP_INCLUDE_DIRS}/ ${PROJECT_SOURCE_DIR}/src/runtime/default_cpu_gpu_kernels.cpp -c -o default_cpu_gpu_kernels_hip.cpp.o
+		COMMAND hipcc -g -fPIC -I${IRIS_INC_DIR} -I. -I${CMAKE_BINARY_DIR}/src/runtime ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_hip_kernels.hip.cpp -c -o iris_default_math_hip_kernels.hip.cpp.o
 		COMMAND hipcc -shared -g -fPIC default_cpu_gpu_kernels_hip.cpp.o iris_default_math_hip_kernels.hip.cpp.o -o libhip_default.so 
 		DEPENDS ${PROJECT_SOURCE_DIR}/src/runtime/default_cpu_gpu_kernels.cpp
 	)
