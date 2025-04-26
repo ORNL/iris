@@ -428,10 +428,11 @@ if (CUDAToolkit_FOUND)
         #    list(REMOVE_AT MATHLIB_INCLUDE_DIRS 0)
         #    list(APPEND include_paths -I${first_core})
         #endwhile()
+        list(APPEND include_paths "-I${CMAKE_BINARY_DIR}/src/runtime")
         add_custom_command(
             OUTPUT libcuda_default.so
-            #COMMAND nvcc -x cu -g -Xcompiler -fPIC -DENABLE_IRIS_HOST2CUDA_APIS ${include_paths} -I${IRIS_INC_DIR} -I${CUDA_INCLUDE_DIRS}/ ${PROJECT_SOURCE_DIR}/src/runtime/default_cpu_gpu_kernels.cpp -c -o default_cpu_gpu_kernels_cuda.cpp.o
-            #COMMAND nvcc -x cu -g -Xcompiler -fPIC -I${IRIS_INC_DIR} ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_cuda_kernels.cu -c -o iris_default_math_cuda_kernels.cu.o
+            #COMMAND nvcc -x cu -g -Xcompiler -fPIC -DENABLE_IRIS_HOST2CUDA_APIS ${include_paths} -I. -I${IRIS_INC_DIR} -I${CUDA_INCLUDE_DIRS}/ ${PROJECT_SOURCE_DIR}/src/runtime/default_cpu_gpu_kernels.cpp -c -o default_cpu_gpu_kernels_cuda.cpp.o
+            #COMMAND nvcc -x cu -g -Xcompiler -fPIC -I${IRIS_INC_DIR} ${include_paths} -I. ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_cuda_kernels.cu -c -o iris_default_math_cuda_kernels.cu.o
             #COMMAND nvcc -shared -g -Xcompiler -fPIC default_cpu_gpu_kernels_cuda.cpp.o iris_default_math_cuda_kernels.cu.o -o libcuda_default.so 
 			COMMAND nvcc -shared -x cu -g -Xcompiler -fPIC -DENABLE_IRIS_HOST2CUDA_APIS ${include_paths} -I${IRIS_INC_DIR} -I${CUDA_INCLUDE_DIRS}/ ${PROJECT_SOURCE_DIR}/src/runtime/default_cpu_gpu_kernels.cpp ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_cuda_kernels.cu -o libcuda_default.so 
 			DEPENDS ${PROJECT_SOURCE_DIR}/src/runtime/default_cpu_gpu_kernels.cpp
