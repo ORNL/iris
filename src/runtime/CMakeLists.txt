@@ -367,7 +367,7 @@ target_compile_options(cpu_default PRIVATE -Wall -fopenmp -DENABLE_IRIS_OPENMP_A
 target_link_libraries(cpu_default PRIVATE OpenMP::OpenMP_CXX)
 install(TARGETS cpu_default DESTINATION ${CMAKE_INSTALL_PREFIX}/default)
 
-find_package(CUDAToolkit QUIET COMPONENTS curand)
+find_package(CUDAToolkit QUIET)
 
 message(STATUS "NVCC: ${CUDA_NVCC_EXECUTABLE}")
 if (CUDAToolkit_FOUND)
@@ -380,20 +380,54 @@ if (CUDAToolkit_FOUND)
     )
     if (NVCC_EXECUTABLE)
         message(STATUS "CUDA found!")
+        find_path(
+                CURAND_INCLUDE_DIR
+                NAMES curand.h
+                HINTS "${CUDA_TOOLKIT_ROOT_DIR}/include"
+                      "$ENV{MATH_LIBS}/include"
+                      "$ENV{NVIDIA_PATH}/math_libs/include"
+                PATH_SUFFIXES ""        # you can strip off sub-folders
+                REQUIRED
+              )
+        find_library(
+              CURAND_LIBRARY
+              NAMES curand curand_static   # try both the shared and static names
+              HINTS
+                "${CUDA_TOOLKIT_ROOT_DIR}/lib64"
+                "${CUDA_TOOLKIT_ROOT_DIR}/lib"
+                "$ENV{MATH_LIBS}/lib"
+                "$ENV{MATH_LIBS}/lib64"
+                "$ENV{NVIDIA_PATH}/math_libs/lib"
+                "$ENV{NVIDIA_PATH}/math_libs/lib64"
+              PATH_SUFFIXES ""             # no extra suffixes
+              REQUIRED
+            )
+        get_filename_component(
+            CURAND_LIBDIR   # the variable to set
+            ${CURAND_LIBRARY}  # the input full path
+            DIRECTORY      # tell CMake you want the directory portion
+          )
+        message(STATUS "Found curand library at: ${CURAND_LIBDIR}")
+        message(STATUS "CURAND_INCLUDE_DIR imported targets:  ${CURAND_INCLUDE_DIR}")
+        #find_package(CUDA REQUIRED COMPONENTS curand
+        #            HINTS $ENV{MATH_PATH}/lib64)
         set(MYCUDA_SRCS
                default_cpu_gpu_kernels.cpp 
                 ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_cuda_kernels.cu 
         )
+        #get_property(ALL_TARGETS GLOBAL PROPERTY TARGETS)
+        #message(STATUS "All imported targets:\n  ${ALL_TARGETS}")
+
         get_target_property(CUDA_INCLUDE_DIRS CUDA::cudart
                           INTERFACE_INCLUDE_DIRECTORIES)
-        get_target_property(MATHLIB_INCLUDE_DIRS CUDA::curand
-                          INTERFACE_INCLUDE_DIRECTORIES)
-        set(include_paths "")
-        while(MATHLIB_INCLUDE_DIRS)
-            list(GET MATHLIB_INCLUDE_DIRS 0 first_core)
-            list(REMOVE_AT MATHLIB_INCLUDE_DIRS 0)
-            list(APPEND include_paths -I${first_core})
-        endwhile()
+        #get_target_property(MATHLIB_INCLUDE_DIRS CUDA::curand
+        #                  INTERFACE_INCLUDE_DIRECTORIES)
+        set(include_paths "-I${CURAND_INCLUDE_DIR}")
+        #while(MATHLIB_INCLUDE_DIRS)
+        #    list(GET MATHLIB_INCLUDE_DIRS 0 first_core)
+        #    list(REMOVE_AT MATHLIB_INCLUDE_DIRS 0)
+        #    list(APPEND include_paths -I${first_core})
+        #endwhile()
         add_custom_command(
             OUTPUT libcuda_default.so
             #COMMAND nvcc -x cu -g -Xcompiler -fPIC -DENABLE_IRIS_HOST2CUDA_APIS ${include_paths} -I${IRIS_INC_DIR} -I${CUDA_INCLUDE_DIRS}/ ${PROJECT_SOURCE_DIR}/src/runtime/default_cpu_gpu_kernels.cpp -c -o default_cpu_gpu_kernels_cuda.cpp.o
