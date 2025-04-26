@@ -444,21 +444,18 @@ if (CUDAToolkit_FOUND)
     endif()
 endif()
 
-find_package(hip)
+find_package(hip 
+        HINTS
+        "/opt/rocm"               # root of your ROCm install
+        "/opt/rocm/hip"           # sometimes hip lives in a separate sub-folder
+        PATH_SUFFIXES
+        lib/cmake/hip             # where hip-config.cmake usually resides
+        )
 if (hip_FOUND)
-	find_package(hiprand)
 	message(STATUS "HIP found!")
  	get_target_property(HIP_INCLUDE_DIRS hip::host
                      INTERFACE_INCLUDE_DIRECTORIES)
-
-	get_target_property(HIPRAND_INCLUDE_DIRS hip::hiprand
-                    INTERFACE_INCLUDE_DIRECTORIES)
 	set(include_paths "")
-	while(HIPRAND_INCLUDE_DIRS)
-		list(GET HIPRAND_INCLUDE_DIRS 0 first_core)
-		list(REMOVE_AT HIPRAND_INCLUDE_DIRS 0)
-		list(APPEND include_paths -I${first_core})
-	endwhile()
 	add_custom_command(
 		OUTPUT libhip_default.so
 		COMMAND hipcc -g -fPIC ${include_paths} -I. -I${CMAKE_BINARY_DIR}/src/runtime -DENABLE_IRIS_HOST2HIP_APIS -I${IRIS_INC_DIR} -I${HIP_INCLUDE_DIRS}/ ${PROJECT_SOURCE_DIR}/src/runtime/default_cpu_gpu_kernels.cpp -c -o default_cpu_gpu_kernels_hip.cpp.o
