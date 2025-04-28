@@ -128,6 +128,26 @@ public:
     if (source_mem == NULL) return host_size_;
     return source_mem->host_size(); 
   }
+  virtual void** archs() { 
+      DataMem *source_mem = (DataMem*)get_source_mem();
+      if (source_mem != NULL) return source_mem->archs();
+      return archs_; 
+  }
+  virtual void **get_arch_ptr(int devno) { 
+      DataMem *source_mem = (DataMem*)get_source_mem();
+      if (source_mem != NULL) return source_mem->get_arch_ptr(devno);
+      return &archs_[devno]; 
+  }
+  virtual void *get_arch(int devno) { 
+      DataMem *source_mem = (DataMem*)get_source_mem();
+      if (source_mem != NULL) return source_mem->get_arch(devno);
+      return archs_[devno]; 
+  }
+  virtual void set_arch(int devno, void *ptr) { 
+      DataMem *source_mem = (DataMem*)get_source_mem();
+      if (source_mem != NULL) source_mem->set_arch(devno, ptr);
+      else archs_[devno] = ptr; 
+  }
   size_t *dev_size() { return dev_size_; }
   size_t elem_size() { return elem_size_; }
   int update_dim(int dim) { dim_ = dim; return IRIS_SUCCESS; }

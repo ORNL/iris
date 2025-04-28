@@ -902,11 +902,6 @@ int DeviceCUDA::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
           err = ld_->cuMemcpyHtoD(cumem, (uint8_t *)host + off[0] * elem_size, size);
           _cuerror(err);
           if (err != CUDA_SUCCESS) error_occured = true;
-          if (error_occured) {
-            DataMem *dmem = (DataMem *)mem;
-            dmem->Print();
-            printf("\n\n");
-          }
 #if 0
           printf("H2D: %ld:%s mem:%ld dev:%p host:%p host_start:%p elem_size:%lu ", task->uid(), task->name(), mem->uid(), cumem+off[0], host, host, elem_size);
           float *A = (float *) host;
@@ -924,12 +919,13 @@ int DeviceCUDA::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
   }
   _event_debug("Completed H2D DT of %sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, size, host, stream_index);
   _event_prof_debug("Completed H2D DT of %sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] size[%lu] host[%p] q[%d]\n", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, size, host, stream_index);
-  _info("Completed H2D DT of %sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, size, host, stream_index);
-  if (error_occured) {
-    DataMem *dmem = (DataMem *)mem;
-    dmem->Print();
-    printf("\n\n");
-  }
+  _debug2("Completed H2D DT of %sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, size, host, stream_index);
+  //if (error_occured) {
+	//Utils::PrintStackTrace();
+    //DataMem *dmem = (DataMem *)mem;
+    //dmem->Print();
+    //printf("\n\n");
+  //}
   ASSERT(!error_occured && "CUDA Error occured");
   if (error_occured){
    platform_obj()->IncrementErrorCount();

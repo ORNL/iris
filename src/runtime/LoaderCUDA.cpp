@@ -36,6 +36,7 @@ int LoaderCUDA::LoadFunctions() {
   LOADFUNC(cuCtxSynchronize);
   LOADFUNC(cuStreamAddCallback);
   LOADFUNC(cuStreamCreate);
+  LOADFUNC(cuMemHostGetDevicePointer);
   LOADFUNC(cuStreamQuery);
   LOADFUNC(cuStreamDestroy);
   LOADFUNC(cuStreamSynchronize);

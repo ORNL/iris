@@ -77,17 +77,62 @@ DataMem::DataMem(Platform *platform, void *host_ptr, size_t *off, size_t *host_s
 void DataMem::Print()
 {
     stringstream ss;
+    stringstream dev_ptr;
+    dev_ptr << "[";
     ss << "[";
     for (int i = 0; i < ndevs_; i++) {
         ss << is_dev_dirty(i);
-        if (i != ndevs_-1)
+        dev_ptr << hex << get_arch(i);
+        if (i != ndevs_-1) {
             ss << ", ";
+            dev_ptr << ", ";
+        }
     }
     ss << "]";
+    dev_ptr << "]";
     if (source_mem_ != NULL)
         ss << " source:"<<source_mem_->uid();
     string str = ss.str();
-    _printf("DMEM: uid:%lu host_ptr:%p off:[%ld,%ld,%ld]:%p host_size:[%ld,%ld,%ld] dev_size:[%ld,%ld,%ld] elem_size:%ld dim:%d size:%ld host_dirty:%d dev_dirty:%s", uid(), host_ptr_, off_[0], off_[1], off_[2], off_, host_size_[0], host_size_[1], host_size_[2], dev_size_[0], dev_size_[1], dev_size_[2], elem_size_, dim_, size_, is_host_dirty(), str.c_str());
+    string dev_str = dev_ptr.str();
+    string dmem_type = "DMEM";
+    if (GetMemHandlerType() == IRIS_DMEM_REGION)
+        dmem_type = " DMEM-REGION";
+    stringstream source_mem_str;
+    DataMem *source_mem = (DataMem *)get_source_mem();
+    if (source_mem != NULL) {
+        source_mem_str << " SourceMem(s_uid: "<< source_mem->uid();
+        source_mem_str << " s_dim: " << source_mem->dim();
+        source_mem_str << " s_host_size: ";
+        source_mem_str << "[ ";
+        size_t *host_size = source_mem->host_size_;
+        for (int i=0; i<source_mem->dim(); i++) {
+            source_mem_str << host_size[i];
+            if (i-1 != source_mem->dim())
+                source_mem_str << ", ";
+        }
+        source_mem_str << "], ";
+        source_mem_str << " s_dev_size: ";
+        source_mem_str << "[ ";
+        size_t *dev_size = source_mem->dev_size_;
+        for (int i=0; i<source_mem->dim(); i++) {
+            source_mem_str << dev_size[i];
+            if (i-1 != source_mem->dim())
+                source_mem_str << ", ";
+        }
+        source_mem_str << "], ";
+        source_mem_str << " s_host_ptr: " << hex << source_mem->host_ptr_;
+        source_mem_str << " s_dev_ptr: ";
+        source_mem_str << "[ ";
+        void **dev_ptr = source_mem->archs_;
+        for (int i=0; i<source_mem->dim(); i++) {
+            source_mem_str << hex << dev_ptr[i];
+            if (i-1 != source_mem->dim())
+                source_mem_str << ", ";
+        }
+        source_mem_str << "], ";
+        source_mem_str << ") ";
+    }
+    _printf("%s: uid:%lu host_ptr:%p off:[%ld,%ld,%ld]:%p host_size:[%ld,%ld,%ld] dev_size:[%ld,%ld,%ld] elem_size:%ld dim:%d size:%ld host_dirty:%d dev_dirty:%s dev:%s %s", dmem_type.c_str(), uid(), host_ptr_, off_[0], off_[1], off_[2], off_, host_size_[0], host_size_[1], host_size_[2], dev_size_[0], dev_size_[1], dev_size_[2], elem_size_, dim_, size_, is_host_dirty(), str.c_str(), dev_str.c_str(), source_mem_str.str().c_str());
 }
 DataMem *DataMem::Copy()
 {

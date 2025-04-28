@@ -156,10 +156,10 @@ namespace rt {
                 reset_data_.p2_ = stddev;
             }
             inline void** archs_off() { return archs_off_; }
-            inline void** archs() { return archs_; }
-            inline void **get_arch_ptr(int devno) { return &archs_[devno]; }
-            inline void *get_arch(int devno) { return archs_[devno]; }
-            inline void set_arch(int devno, void *ptr) { archs_[devno] = ptr; }
+            virtual void** archs() { return archs_; }
+            virtual void **get_arch_ptr(int devno) { return &archs_[devno]; }
+            virtual void *get_arch(int devno) { return archs_[devno]; }
+            virtual void set_arch(int devno, void *ptr) { archs_[devno] = ptr; }
             inline size_t size() { return size_; }
             void dev_unlock(int devno) {
               device_map_[devno].Unlock();

@@ -35,6 +35,7 @@ public:
   CUresult (*cuCtxDestroy)(CUcontext pctx);
   CUresult (*cuCtxSynchronize)(void);
   CUresult (*cuStreamAddCallback)(CUstream hStream, CUstreamCallback callback, void *userData, unsigned int flags);
+  CUresult (*cuMemHostGetDevicePointer)(CUdeviceptr *pdptr, void *p, unsigned int Flags);
   CUresult (*cuStreamCreate)(CUstream* phStream, unsigned int Flags);
   CUresult (*cuStreamQuery)(CUstream hStream);
   CUresult (*cuStreamDestroy)(CUstream hStream);
