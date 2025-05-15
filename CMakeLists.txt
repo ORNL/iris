@@ -49,11 +49,11 @@ add_custom_command(
   WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
   COMMAND echo "SCRIPT_FILE=\${BASH_SOURCE[0]}" > ${CMAKE_BINARY_DIR}/setup.source VERBATIM
   COMMAND echo "PYTHON_EXE=python" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
-  COMMAND echo "version=\$(python -V 2>&1 | grep -Po '(?<=Python )(.+)')" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
+  COMMAND echo "version=\$(python -V 2>&1 | grep -Po '(?<=Python )(.+)' || echo '')" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
   COMMAND echo "if [[ -z \"\$version\" ]]" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
   COMMAND echo "then" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
   COMMAND echo "    PYTHON_EXE=python3" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
-  COMMAND echo "    version=\$(python3 -V 2>&1 | grep -Po '(?<=Python )(.+)')" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
+  COMMAND echo "    version=\$(python3 -V 2>&1 | grep -Po '(?<=Python )(.+)' || echo '')" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
   COMMAND echo "    if [[ -z \"\$version\" ]]" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
   COMMAND echo "    then" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
   COMMAND echo "    echo \"No Python is detected! Cannot source\" " >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
@@ -76,11 +76,11 @@ add_custom_command(
   WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
   COMMAND echo "SCRIPT_FILE=\${(%):-%N}" > ${CMAKE_BINARY_DIR}/setup.zsh VERBATIM
   COMMAND echo "PYTHON_EXE=python" >> ${CMAKE_BINARY_DIR}/setup.zsh VERBATIM
-  COMMAND echo "version=\$(python -V 2>&1 | grep -Po '(?<=Python )(.+)')" >> ${CMAKE_BINARY_DIR}/setup.zsh VERBATIM
+  COMMAND echo "version=\$(python -V 2>&1 | grep -Po '(?<=Python )(.+)' || echo '')" >> ${CMAKE_BINARY_DIR}/setup.zsh VERBATIM
   COMMAND echo "if [[ -z \"\$version\" ]]" >> ${CMAKE_BINARY_DIR}/setup.zsh VERBATIM
   COMMAND echo "then" >> ${CMAKE_BINARY_DIR}/setup.zsh VERBATIM
   COMMAND echo "    PYTHON_EXE=python3" >> ${CMAKE_BINARY_DIR}/setup.zsh VERBATIM
-  COMMAND echo "    version=\$(python3 -V 2>&1 | grep -Po '(?<=Python )(.+)')" >> ${CMAKE_BINARY_DIR}/setup.zsh VERBATIM
+  COMMAND echo "    version=\$(python3 -V 2>&1 | grep -Po '(?<=Python )(.+)' || echo '')" >> ${CMAKE_BINARY_DIR}/setup.zsh VERBATIM
   COMMAND echo "    if [[ -z \"\$version\" ]]" >> ${CMAKE_BINARY_DIR}/setup.zsh VERBATIM
   COMMAND echo "    then" >> ${CMAKE_BINARY_DIR}/setup.zsh VERBATIM
   COMMAND echo "    echo \"No Python is detected! Cannot source\" " >> ${CMAKE_BINARY_DIR}/setup.zsh VERBATIM
@@ -104,10 +104,10 @@ add_custom_command(
   WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
   COMMAND echo "set SCRIPT_FILE (status filename)" > ${CMAKE_BINARY_DIR}/setup.fish VERBATIM
   COMMAND echo "set -l PYTHON_EXE python" >> ${CMAKE_BINARY_DIR}/setup.fish VERBATIM
-  COMMAND echo "set -l pyversion (python -V 2>&1 | grep -Po '(?<=Python )(.+)')" >> ${CMAKE_BINARY_DIR}/setup.fish VERBATIM
+  COMMAND echo "set -l pyversion (python -V 2>&1 | grep -Po '(?<=Python )(.+)' || echo '')" >> ${CMAKE_BINARY_DIR}/setup.fish VERBATIM
   COMMAND echo "if  test -z \"\$pyversion\" " >> ${CMAKE_BINARY_DIR}/setup.fish VERBATIM
   COMMAND echo "    set -l PYTHON_EXE python3" >> ${CMAKE_BINARY_DIR}/setup.fish VERBATIM
-  COMMAND echo "    set -l pyversion (python3 -V 2>&1 | grep -Po '(?<=Python )(.+)')" >> ${CMAKE_BINARY_DIR}/setup.fish VERBATIM
+  COMMAND echo "    set -l pyversion (python3 -V 2>&1 | grep -Po '(?<=Python )(.+)' || echo '')" >> ${CMAKE_BINARY_DIR}/setup.fish VERBATIM
   COMMAND echo "    if test -z \"\$pyversion\" ]]" >> ${CMAKE_BINARY_DIR}/setup.fish VERBATIM
   COMMAND echo "    echo \"No Python is detected! Cannot source\" " >> ${CMAKE_BINARY_DIR}/setup.fish VERBATIM
   COMMAND echo "    exit" >> ${CMAKE_BINARY_DIR}/setup.fish VERBATIM
