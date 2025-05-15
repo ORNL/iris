@@ -581,7 +581,9 @@ variables:
     - ls $IRIS_INSTALL_ROOT
     - echo $SHELL
     - echo source $IRIS_INSTALL_ROOT/setup.source
+    - set -x
     - source $IRIS_INSTALL_ROOT/setup.source
+    - set +x
     - echo "After source"
     - .gitlab-ci-scripts/runner_watcher.sh $$ &
     - sbatch --partition=gpu --nodelist=zenith .gitlab-ci-scripts/slurm-dagger-test-duplication.sh
