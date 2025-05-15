@@ -575,6 +575,8 @@ dagger-zenith-test-local-workgroup-sizes-asynchronous-dmem:
     - source /auto/software/iris/setup_system.source
     - echo "Installing iris to $CI_PROJECT_DIR/install"
     - bash build.sh -DCMAKE_BUILD_TYPE=DEBUG -DCOVERAGE=true 
+    - echo $IRIS_INSTALL_ROOT
+    - ls $IRIS_INSTALL_ROOT
     - source $IRIS_INSTALL_ROOT/setup.source
     - .gitlab-ci-scripts/runner_watcher.sh $$ &
     - sbatch --partition=gpu --nodelist=zenith .gitlab-ci-scripts/slurm-dagger-test-duplication.sh
