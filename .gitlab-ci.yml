@@ -582,6 +582,8 @@ variables:
     - echo $SHELL
     - echo source $IRIS_INSTALL_ROOT/setup.source
     - set -x
+    - python -V
+    - python3 -V 2>&1 | grep -Po '(?<=Python )(.+)'
     - source $IRIS_INSTALL_ROOT/setup.source
     - set +x
     - echo "After source"
