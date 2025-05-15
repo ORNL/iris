@@ -297,6 +297,31 @@ else() #USE_NDK
 set(STUB_TARGET "UbuntuARM_Release_aarch64")
 endif() #USE_NDK
 
+set(VENV_DIR "iris.venv")
+set(VENV_PYTHON "${CMAKE_BINARY_DIR}/${VENV_DIR}/bin/python3")
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+execute_process(
+    COMMAND "${Python3_EXECUTABLE}" -c "import regex"
+    RESULT_VARIABLE regex_import_result
+    OUTPUT_QUIET
+    ERROR_QUIET
+)
+if(NOT regex_import_result EQUAL 0)
+    message(STATUS "'regex' not found in venv. Installing via pip...")
+    execute_process(
+        COMMAND ${Python3_EXECUTABLE} -m venv "${VENV_DIR}"
+        RESULT_VARIABLE pip_result
+    )
+    execute_process(
+        COMMAND ${VENV_PYTHON} -m pip install regex
+    )
+    set(MATRIS_PYTHON "${VENV_PYTHON}")
+else()
+    set(MATRIS_PYTHON "python3")
+    message(STATUS "'regex' already present in virtual environment.")
+endif()
+
+
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COMMON_FLAGS} -std=gnu99")
 if (ENABLE_STD11)
@@ -469,7 +494,7 @@ function(extractIRISAPIs)
         get_filename_component(SRC_FILE_PATH ${first} ABSOLUTE BASE_DIR ${PROJECT_SOURCE_DIR})
         list(APPEND src_include_paths "-I${SRC_DIR_PATH}")
         add_custom_command(OUTPUT  ${CMAKE_BINARY_DIR}/${rule_name}.iris 
-            COMMAND python3 $ENV{IRIS}/utils/extract_iris_task_calls.py -input ${SRC_FILE_PATH} -compile_options "${APP_FLAGS}" -output ${CMAKE_BINARY_DIR}/${rule_name}.iris -extract 
+            COMMAND ${MATRIS_PYTHON} $ENV{IRIS}/utils/extract_iris_task_calls.py -input ${SRC_FILE_PATH} -compile_options "${APP_FLAGS}" -output ${CMAKE_BINARY_DIR}/${rule_name}.iris -extract 
             DEPENDS ${SRC_FILE_PATH}
         )
         #message(STATUS " RULE: ${rule_name}")
@@ -479,7 +504,7 @@ function(extractIRISAPIs)
         list(APPEND src_iris_files "${CMAKE_BINARY_DIR}/${rule_name}.iris")
    endwhile()
    add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/iris_app_cpu_dsp_interface.h
-           COMMAND python3 $ENV{IRIS}/utils/extract_iris_task_calls.py -input ${src_iris_files} -output ${CMAKE_BINARY_DIR}/iris_app_cpu_dsp_interface.h -generate $ENV{IRIS_NO_CODEGEN}
+           COMMAND ${MATRIS_PYTHON} $ENV{IRIS}/utils/extract_iris_task_calls.py -input ${src_iris_files} -output ${CMAKE_BINARY_DIR}/iris_app_cpu_dsp_interface.h -generate $ENV{IRIS_NO_CODEGEN}
            DEPENDS ${src_rules}
            )
     add_custom_target(iris_app_cpu_dsp_interface.h DEPENDS ${CMAKE_BINARY_DIR}/iris_app_cpu_dsp_interface.h)
