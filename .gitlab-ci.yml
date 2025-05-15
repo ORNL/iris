@@ -577,6 +577,7 @@ variables:
     - bash build.sh -DCMAKE_BUILD_TYPE=DEBUG -DCOVERAGE=true 
     - echo $IRIS_INSTALL_ROOT
     - ls $IRIS_INSTALL_ROOT
+    - echo $SHELL
     - source $IRIS_INSTALL_ROOT/setup.source
     - echo "After source"
     - .gitlab-ci-scripts/runner_watcher.sh $$ &
