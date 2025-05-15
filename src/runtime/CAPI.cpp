@@ -912,6 +912,11 @@ unsigned long iris_data_mem_get_region_uid(iris_mem brs_mem, int region) {
 int iris_data_mem_enable_outer_dim_regions(iris_mem mem) {
   return Platform::GetPlatform()->DataMemEnableOuterDimRegions(mem);
 }
+int iris_data_mem_enable_regions(iris_mem brs_mem, int axis) {
+  DataMem *mem= (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  mem->EnableRegions(axis);
+  return IRIS_SUCCESS;
+}
 iris_mem iris_get_dmem_for_region(iris_mem brs_mem) {
     DataMemRegion *obj = (DataMemRegion*)Platform::GetPlatform()->get_mem_object(brs_mem);
     return *(obj->get_dmem()->struct_obj());

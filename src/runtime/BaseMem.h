@@ -76,17 +76,41 @@ namespace rt {
             */
             void SetMemHandlerType(MemHandlerType type) { handler_type_ = type; }
             MemHandlerType GetMemHandlerType() { return handler_type_; }
-            void HostUnlock() {
+            virtual void HostUnlock() {
                 pthread_mutex_unlock(&host_mutex_);
             }
-            void HostLock() {
+            virtual void HostLock() {
                 pthread_mutex_lock(&host_mutex_);
             }
-            void HostWriteLock(int devno) {
+            virtual void HostWriteLock(int devno) {
                 pthread_mutex_lock(&host_write_lock_[devno]);
             }
-            void HostWriteUnLock(int devno) {
+            virtual void HostWriteUnLock(int devno) {
                 pthread_mutex_unlock(&host_write_lock_[devno]);
+            }
+            virtual void HardHostWriteEventSynchronize(Device *dev, void *event);
+            virtual int GetHostWriteStream() { 
+                return device_map_[ndevs_].GetWriteStream(); 
+            }
+            virtual void SetHostWriteStream(int stream) { 
+                device_map_[ndevs_].SetWriteStream(stream); 
+            }
+            virtual int GetHostWriteDevice() { 
+                return device_map_[ndevs_].devno(); 
+            }
+            virtual void SetHostWriteDevice(int dev) { 
+                device_map_[ndevs_].set_devno(dev); 
+            }
+            virtual void HostRecordEvent(int devno, int stream);
+            virtual void *GetHostCompletionEvent() { 
+                return device_map_[ndevs_].GetCompletionEvent(); 
+            }
+            virtual void **GetHostCompletionEventPtr(bool new_entry=false) { 
+                return device_map_[ndevs_].GetCompletionEventPtr(new_entry); 
+            }
+            virtual void *GetDeviceSpecificHostCompletionEvent(int devno) {
+                ASSERT(devno >=0 && devno < ndevs_);
+                return d2h_events_[devno];
             }
             virtual ~BaseMem() { 
                 pthread_mutex_destroy(&host_mutex_);
@@ -216,7 +240,6 @@ namespace rt {
                 device_map_[devno].SetWriteStream(stream); 
             }
             void HardDeviceWriteEventSynchronize(Device *dev, void *event);
-            void HardHostWriteEventSynchronize(Device *dev, void *event);
             bool IsProactive(int devno) { 
                 ASSERT(devno >=0 && devno < ndevs_+1);
                 return device_map_[devno].IsProactive(); 
@@ -240,29 +263,6 @@ namespace rt {
             void **GetCompletionEventPtr(int devno, bool new_entry=false) { 
                 ASSERT(devno >=0 && devno < ndevs_+1);
                 return device_map_[devno].GetCompletionEventPtr(new_entry); 
-            }
-            int GetHostWriteStream() { 
-                return device_map_[ndevs_].GetWriteStream(); 
-            }
-            void SetHostWriteStream(int stream) { 
-                device_map_[ndevs_].SetWriteStream(stream); 
-            }
-            int GetHostWriteDevice() { 
-                return device_map_[ndevs_].devno(); 
-            }
-            void SetHostWriteDevice(int dev) { 
-                device_map_[ndevs_].set_devno(dev); 
-            }
-            void HostRecordEvent(int devno, int stream);
-            void *GetHostCompletionEvent() { 
-                return device_map_[ndevs_].GetCompletionEvent(); 
-            }
-            void **GetHostCompletionEventPtr(bool new_entry=false) { 
-                return device_map_[ndevs_].GetCompletionEventPtr(new_entry); 
-            }
-            void *GetDeviceSpecificHostCompletionEvent(int devno) {
-                ASSERT(devno >=0 && devno < ndevs_);
-                return d2h_events_[devno];
             }
             void clear_d2h_events() { 
                 for (int i=0; i<ndevs_; i++) d2h_events_[i] = NULL; 

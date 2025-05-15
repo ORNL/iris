@@ -21,6 +21,27 @@ class Device;
 class DataMemRegion;
 class DataMem;
 
+struct UncoveredRegion {
+    size_t off_[DMEM_MAX_DIM];
+    size_t dev_size_[DMEM_MAX_DIM];
+    int dim_;
+
+    UncoveredRegion(const size_t offset[], const size_t size[], int ndim) : dim_(ndim) {
+        memcpy(off_, offset, ndim * sizeof(size_t));
+        memcpy(dev_size_, size, ndim * sizeof(size_t));
+    }
+
+    void start(size_t out[DMEM_MAX_DIM]) const {
+        memcpy(out, off_, dim_ * sizeof(size_t));
+    }
+
+    void end(size_t out[DMEM_MAX_DIM]) const {
+        for (int i = 0; i < dim_; ++i)
+            out[i] = off_[i] + dev_size_[i];
+    }
+};
+
+
 class DataMem: public BaseMem {
 public:
   DataMem(Platform* platform, void *host, size_t size, int element_type=iris_unknown);
@@ -28,7 +49,7 @@ public:
   DataMem(Platform* platform, void *host, size_t *host_size, int dim, size_t elem_size, int element_type=iris_unknown);
   DataMem(Platform *platform, void *host_ptr, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim, int element_type=iris_unknown);
   DataMem *Copy();
-  void Init(Platform *platform, void *host_ptr, size_t size);
+  void Init(Platform *platform, void *host_ptr, size_t size, int dim=1);
   virtual ~DataMem();
   void AddChild(DataMem *child, size_t offset);
   void FetchDataFromDevice(void *dst_host_ptr);
@@ -37,87 +58,23 @@ public:
   void CopyToHost(void *host);
   void RefreshHost();
   void EnableOuterDimensionRegions();
+  iris_mem CreateRegion(size_t *off, size_t *size);
   vector<pair<DataMem *, size_t>> & child() { return child_; }
   void init_reset(bool reset=true);
-  bool is_host_dirty() { 
-      DataMem *source_mem = (DataMem*)get_source_mem();
-      if (source_mem == NULL) return host_dirty_flag_; 
-      else return source_mem->host_dirty_flag_;
-  }
-  void clear_host_dirty() { 
-      DataMem *source_mem = (DataMem*)get_source_mem();
-      if (source_mem == NULL) host_dirty_flag_ = false; 
-      else source_mem->host_dirty_flag_ = false;
-  }
-  void set_host_dirty(bool flag=true) { 
-      DataMem *source_mem = (DataMem*)get_source_mem();
-      if (source_mem == NULL) host_dirty_flag_ = flag; 
-      else source_mem->host_dirty_flag_ = flag; 
-  }
-  bool is_dev_dirty(int devno) { 
-      DataMem *source_mem = (DataMem*)get_source_mem();
-      if (source_mem == NULL) return dirty_flag_[devno]; 
-      else return source_mem->dirty_flag_[devno];
-  }
-  void set_dev_dirty(int devno, bool flag=true) { 
-      DataMem *source_mem = (DataMem*)get_source_mem();
-      if (source_mem == NULL) dirty_flag_[devno] = flag; 
-      else source_mem->dirty_flag_[devno] = flag;
-  }
-  int  get_dev_affinity() { 
-      DataMem *source_mem = (DataMem*)get_source_mem();
-      if (source_mem != NULL) return source_mem->get_dev_affinity();
-      for(int i=0; i<ndevs_; i++) 
-          if (!dirty_flag_[i]) 
-              return i; 
-      return -1;
-  }
-  void clear_dev_dirty(int devno) { 
-      DataMem *source_mem = (DataMem*)get_source_mem();
-      if (source_mem == NULL) dirty_flag_[devno] = false; 
-      else source_mem->dirty_flag_[devno] = false; 
-  }
-  void set_dirty_except(int devno) {
-    DataMem *source_mem = (DataMem*)get_source_mem();
-    if (source_mem != NULL) {
-        source_mem->set_dirty_except(devno);
-        return;
-    }
-    for(int i=0; i<ndevs_; i++) {
-        if (i != devno) dirty_flag_[i] = true;
-    }
-    dirty_flag_[devno] = false;
-  }
-  void set_dirty_all(bool flag=true) {
-    DataMem *source_mem = (DataMem*)get_source_mem();
-    if (source_mem != NULL) {
-        source_mem->set_dirty_all(flag);
-        return;
-    }
-    for(int i=0; i<ndevs_; i++) {
-        dirty_flag_[i] = flag;
-    }
-  }
-  int *get_non_dirty_devices(int *dev) {
-    DataMem *source_mem = (DataMem*)get_source_mem();
-    if (source_mem != NULL) 
-        return source_mem->get_non_dirty_devices(dev);
-    int i=0,j=0;
-    for(i=0, j=0; i<ndevs_; i++) {
-        if (!dirty_flag_[i]) dev[j++] = i;
-    }
-    dev[j++] = -1;
-    return dev;
-  }
-  bool is_dirty_all() {
-    DataMem *source_mem = (DataMem*)get_source_mem();
-    if (source_mem != NULL) return source_mem->is_dirty_all();
-    bool all=true;
-    for(int i=0; i<ndevs_; i++) {
-        all = all & dirty_flag_[i];
-    }
-    return all;
-  }
+  vector<UncoveredRegion> find_uncovered_tiles();
+  bool is_within_bounds(size_t *off, size_t *size);
+  int check_overlap(size_t *off, size_t *size);
+  virtual bool is_host_dirty(bool check_regions=true);
+  virtual void clear_host_dirty();
+  virtual void set_host_dirty(bool flag=true);
+  bool is_dev_dirty(int devno, bool check_regions=true);
+  void set_dev_dirty(int devno, bool flag=true, bool check_regions=true);
+  int  get_dev_affinity();
+  void clear_dev_dirty(int devno);
+  void set_dirty_except(int devno);
+  void set_dirty_all(bool flag=true);
+  int *get_non_dirty_devices(int *dev);
+  bool is_dirty_all();
   void clear();
   size_t *off() { 
     return off_;
@@ -127,6 +84,16 @@ public:
     DataMem *source_mem = (DataMem*)get_source_mem();
     if (source_mem == NULL) return host_size_;
     return source_mem->host_size(); 
+  }
+  size_t *dev_strides() { 
+    DataMem *source_mem = (DataMem*)get_source_mem();
+    if (source_mem == NULL) return dev_strides_;
+    return source_mem->dev_strides(); 
+  }
+  size_t *host_strides() { 
+    DataMem *source_mem = (DataMem*)get_source_mem();
+    if (source_mem == NULL) return host_strides_;
+    return source_mem->host_strides(); 
   }
   virtual void** archs() { 
       DataMem *source_mem = (DataMem*)get_source_mem();
@@ -148,8 +115,11 @@ public:
       if (source_mem != NULL) source_mem->set_arch(devno, ptr);
       else archs_[devno] = ptr; 
   }
+  size_t *dev_off() { return dev_off_; }
   size_t *dev_size() { return dev_size_; }
   size_t elem_size() { return elem_size_; }
+  void enable_multi_dim_dev_offset() { multi_dim_dev_offset_ = true; }
+  bool is_multi_dim_dev_offset() { return multi_dim_dev_offset_; }
   int update_dim(int dim) { dim_ = dim; return IRIS_SUCCESS; }
   int dim() { return dim_; }
   void *host_ptr() { 
@@ -190,15 +160,24 @@ public:
   void unset_h2d_df_flag(int dev) { h2d_df_flag_[dev] = false;}
   bool get_h2d_df_flag(int dev) { return h2d_df_flag_[dev];}
   bool is_symbol() { return is_symbol_; }
-
   void *host_root_memory() { return host_memory(); }
   void *host_memory();
+  void compute_strides(size_t *strides, size_t *size);
+  void compute_dev_strides(size_t *size);
+  void compute_host_strides(size_t *size);
   void *tmp_host_memory();
   void lock_host_region(int region);
   void unlock_host_region(int region);
   int get_n_regions() { return n_regions_; }
-  bool is_regions_enabled() { return n_regions_ != -1; }
-  DataMemRegion *get_region(int i) { return regions_[i]; }
+  bool is_regions_enabled() { return n_regions_ != 0; }
+  bool is_dynamic_regions() { return dynamic_regions_; }
+  DataMemRegion *get_region(int i, bool dev_region=true) {
+    ASSERT((size_t)i < regions_.size()); 
+    if (dev_region)
+        return regions_[i].second;
+    else
+        return regions_[i].first;
+  }
   virtual void* arch(int devno, void *host=NULL);
   virtual void* arch(Device* dev, void *host=NULL);
   virtual void** arch_ptr(int devno, void *host=NULL);
@@ -217,23 +196,46 @@ public:
   bool is_pin_memory() { return is_pin_memory_; }
   void set_pin_memory(bool flag=true) { is_pin_memory_ = flag; }
   bool tile_enabled() { return tile_enabled_; }
-  void Print();
+  void Print(bool check_regions=true);
+  string ToString(bool check_regions=true);
+  void EnableRegions(int axis);
+  string GetSizeString(size_t *data, int dim);
+  string GetPtrString(void **data, int dim);
 protected:
+  void start(size_t out[DMEM_MAX_DIM]) const {
+      memcpy(out, off_, dim_ * sizeof(size_t));
+  }
+
+  void end(size_t out[DMEM_MAX_DIM]) const {
+      for (int i = 0; i < dim_; ++i)
+          out[i] = off_[i] + dev_size_[i];
+  }
+  void set_dev_off(size_t *dev_off) {
+      memcpy(dev_off_, dev_off, dim_ * sizeof(size_t));
+  }
   bool host_dirty_flag_;
   bool  *dirty_flag_;
+  bool dynamic_regions_;
+  bool host_ptr_owner_;
+  bool tile_enabled_;
+  bool bc_; // for BC distribution
+  bool h2d_df_flag_[16];
+  bool is_symbol_;
+  bool is_pin_memory_;
+  bool multi_dim_dev_offset_;
   pthread_mutex_t host_mutex_;
   int n_regions_;
   void *host_ptr_;
   void *tmp_host_ptr_;
+  size_t dev_off_[DMEM_MAX_DIM];
   size_t off_[DMEM_MAX_DIM];
+  size_t dev_strides_[DMEM_MAX_DIM];
+  size_t host_strides_[DMEM_MAX_DIM];
   size_t host_size_[DMEM_MAX_DIM];
   size_t dev_size_[DMEM_MAX_DIM];
   size_t elem_size_;
   int dim_;
-  bool host_ptr_owner_;
   Platform *platform_;
-  DataMemRegion **regions_;
-  bool tile_enabled_;
 #ifdef AUTO_PAR
 #ifdef AUTO_SHADOW
   void *host_ptr_shadow_;
@@ -245,10 +247,7 @@ protected:
 #endif
 #endif
   int row_, col_, rr_bc_dev_; // index for BC distribution
-  bool bc_; // for BC distribution
-  bool h2d_df_flag_[16];
-  bool is_symbol_;
-  bool is_pin_memory_;
+  vector<pair<DataMemRegion*, DataMemRegion*> > regions_;
   vector<pair<DataMem *, size_t> > child_;
 };
 

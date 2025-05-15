@@ -1595,7 +1595,7 @@ module IrisHRT
     function iris_data_mem(host::AbstractArray{T,N}, dev_size_array, offset) where {T,N} 
         #size = Csize_t(length(host) * sizeof(T))
         host_size = collect(size(host))
-        dev_size = pointer(dev_size_array)
+        dev_size = dev_size_array
         dim = length(host_size)
         element_size = Int32(sizeof(T))
         ptr = pointer(host)
@@ -1655,6 +1655,10 @@ module IrisHRT
 
     function enable_regions(mem::Union{IrisHRT.IrisMem, IrisHRT.IrisTaskMem})
         return iris_data_mem_enable_outer_dim_regions(field_dmem(mem))
+    end
+
+    function enable_regions(mem::Union{IrisHRT.IrisMem, IrisHRT.IrisTaskMem}, axis)
+        return iris_data_mem_enable_regions(field_dmem(mem), axis)
     end
 
     function regions_count(mem::Union{IrisHRT.IrisMem, IrisHRT.IrisTaskMem})
@@ -3177,6 +3181,22 @@ Base.size(v::IrisHRT.IrisMem4D) = size(v.mem)
 Base.getindex(v::IrisHRT.IrisMem4D, i::Int, j::Int, k::Int, l::Int) = Base.getindex(v.mem, i, j, k, l)
 Base.axes(v::IrisHRT.IrisMem4D) = Base.axes(v.mem)
 Base.IndexStyle(::Type{<:IrisHRT.IrisMem4D}) = IndexCartesian()  # tells code it’s a simple linear index
+
+function Base.ndims(v::IrisHRT.UMem) 
+    dmem = IrisHRT.field_dmem(v)
+    return IrisHRT.ndims(dmem)
+end
+
+function Base.iterate(v::IrisHRT.UMem) 
+    dmem = IrisHRT.field_dmem(v)
+    host, dsize = IrisHRT.get_host_4_dmem(dmem)
+    return iterate(host)
+end
+function Base.iterate(v::IrisHRT.UMem, state) 
+    dmem = IrisHRT.field_dmem(v)
+    host, dsize = IrisHRT.get_host_4_dmem(dmem)
+    return iterate(host, state)
+end
 
 include("Tiling1D.jl")
 include("Tiling2D.jl")

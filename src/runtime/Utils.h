@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <iostream>
 #include <iomanip>
+#include <sstream>
 #include <vector>
 #include <set>
 #include <map>
@@ -53,9 +54,38 @@ namespace iris {
                 static int  CPUCoresCount();
                 static void SetThreadAffinity(unsigned int core_id);
                 static void MemCpy3D(uint8_t *dev, uint8_t *host, size_t *off, size_t *dev_sizes, size_t *host_sizes, size_t elem_size, bool host_2_dev=true);
+                static void MemCpy(int dim, 
+                        void* dst, const size_t *dst_off, const size_t* dst_strides, 
+                        const void* src, const size_t* src_off, const size_t* src_strides, 
+                        const size_t* tile_size, size_t elem_size);
                 static void ReadSet(std::set<std::string> & out, const char *data);
                 static void ReadVector(std::vector<std::string> & out, const char *data, const char *delim=NULL);
                 static void ReadMap(std::map<std::string, int> & in_map, std::map<int, bool> & out_map, const char *data);
+                static string GetPtrString(void **data, int dim) 
+                {
+                    stringstream ss;
+                    ss << "[";
+                    for (int i = 0; i < dim; i++) {
+                        ss << hex << data[i];
+                        if (i != dim-1) 
+                            ss << ", ";
+                    }
+                    ss << "]";
+                    return ss.str();
+                }
+                template <typename T>
+                static string GetString(T *data, int dim) 
+                {
+                    stringstream ss;
+                    ss << "[";
+                    for (int i = 0; i < dim; i++) {
+                        ss << data[i];
+                        if (i != dim-1) 
+                            ss << ", ";
+                    }
+                    ss << "]";
+                    return ss.str();
+                }
         };
 
     } /* namespace rt */

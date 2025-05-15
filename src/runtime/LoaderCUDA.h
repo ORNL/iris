@@ -58,7 +58,12 @@ public:
   CUresult (*cuMemFreeAsync)(CUdeviceptr dptr, CUstream hStream);
   CUresult (*cuMemcpyPeerAsync)(CUdeviceptr dstDevice, CUcontext dstContext, CUdeviceptr srcDevice, CUcontext srcContext, size_t ByteCount, CUstream hStream);
   CUresult (*cuMemcpyPeer)(CUdeviceptr dstDevice, CUcontext dstContext, CUdeviceptr srcDevice, CUcontext srcContext, size_t ByteCount);
-  CUresult (*cuMemcpy2D)(const CUDA_MEMCPY2D *pCopy);
+  CUresult (*cuMemcpy2DUnaligned)(const CUDA_MEMCPY2D *pCopy);
+  //CUresult (*cuMemcpy2DAsync_v2)(const CUDA_MEMCPY2D *pCopy, CUstream hStream);
+  CUresult (*cuMemcpy2D_v2)(const CUDA_MEMCPY2D *pCopy);
+  CUresult (*cuMemcpy2DAsync_v2)(const CUDA_MEMCPY2D *pCopy, CUstream hStream);
+  CUresult (*cuMemcpy3D_v2)(const CUDA_MEMCPY3D *pCopy);
+  CUresult (*cuMemcpy3DAsync_v2)(const CUDA_MEMCPY3D *pCopy, CUstream hStream);
   CUresult (*cuMemHostRegister_v2)(void *p, size_t bytesize, unsigned int Flags);
   CUresult (*cuMemHostUnregister)(void *p);
   CUresult (*cudaHostRegister)(void *ptr, size_t size, unsigned int flags);
@@ -76,11 +81,10 @@ public:
   CUresult (*cudaHostGetDevicePointer)(void **pDevice, void *pHost, unsigned int flags);  
   CUresult (*cudaSetDeviceFlags)(unsigned int flags);
   CUresult (*cudaMemcpy2DAsync)( void* dst, size_t dpitch, const void* src, size_t spitch, size_t width, size_t height, cudaMemcpyKind kind, CUstream stream);
-  CUresult (*cuMemcpy2DUnaligned)(const CUDA_MEMCPY2D *pCopy);
-  CUresult (*cuMemcpy2DAsync)(const CUDA_MEMCPY2D *pCopy, CUstream hStream);
   CUresult (*cudaMemcpy3DAsync)(const cudaMemcpy3DParms *pCopy, CUstream hStream);
   CUresult (*cudaMemcpy3D)(const cudaMemcpy3DParms *pCopy);
-  CUresult (*cuMemcpyDtoD)(CUdeviceptr dstDevice, CUdeviceptr srcDevice, size_t size);
+  //CUresult (*cuMemcpyDtoD)(CUdeviceptr dstDevice, CUdeviceptr srcDevice, size_t size);
+  CUresult (*cuMemcpyDtoD_v2)(CUdeviceptr dstDevice, CUdeviceptr srcDevice, size_t size);
   CUresult (*cuMemcpyDtoDAsync_v2)(CUdeviceptr dstDevice, CUdeviceptr srcDevice, size_t size, CUstream hStream);
   CUresult (*cuMemcpyHtoD)(CUdeviceptr dstDevice, const void* srcHost, size_t ByteCount);
   CUresult (*cuMemcpyHtoDAsync)(CUdeviceptr dstDevice, const void* srcHost, size_t ByteCount, CUstream hStream);

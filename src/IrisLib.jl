@@ -492,6 +492,10 @@ end
     return ccall(Libdl.dlsym(lib, :iris_data_mem_enable_outer_dim_regions), Int32, (IrisMem,), mem)
 end
 
+@inline function iris_data_mem_enable_regions(mem::IrisMem, axis::Union{Int32,Int64,UInt32,UInt64})::Int32
+    return ccall(Libdl.dlsym(lib, :iris_data_mem_enable_regions), Int32, (IrisMem, Int32), mem, Int32(axis-1))
+end
+
 @inline function iris_data_mem_create_tile(mem::Ptr{IrisMem}, host::Ptr{Cvoid}, off::Ptr{Csize_t}, host_size::Ptr{Csize_t}, dev_size::Ptr{Csize_t}, elem_size::Csize_t, dim::Int32)::Int32
     return ccall(Libdl.dlsym(lib, :iris_data_mem_create_tile), Int32, (Ptr{IrisMem}, Ptr{Cvoid}, Ptr{Csize_t}, Ptr{Csize_t}, Ptr{Csize_t}, Csize_t, Int32), mem, host, off, host_size, dev_size, elem_size, dim)
 end

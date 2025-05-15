@@ -79,7 +79,7 @@ while cond[1, 1] >= 1e-14 && index < iterations_max
     alpha0 = IrisHRT.parallel_reduce(SIZE, dot, r, r; result=alpha0, task=task, submit=submit, wait=wait) 
     alpha1 = IrisHRT.parallel_reduce(SIZE, dot, p, s; result=alpha1, task=task, submit=submit, wait=wait)
 
-    /(alpha, alpha0, alpha1; task=task, submit=submit, wait=wait)
+    /(alpha, alpha0, alpha1; task=task, submit=submit, wait=wait) # alpha = alpha0/alpha1
     *(negative_alpha, alpha, -1.0; task=task, submit=submit, wait=wait)
 
     IrisHRT.parallel_for(SIZE, axpy, negative_alpha, r, s; task=task, submit=submit, wait=wait)

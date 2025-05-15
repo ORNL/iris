@@ -460,6 +460,11 @@ function /(out::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, a::T, b::Union{IrisH
     return __arith_kernel_s_v("div", a, IrisHRT.field_dmem(b); result=IrisHRT.field_dmem(out), eargs...)
 end
 
+Base.:+(A::IrisHRT.UMem, C) = +(A, A, C)
+Base.:-(A::IrisHRT.UMem, C) = -(A, A, C)
+Base.:*(A::IrisHRT.UMem, C) = *(A, A, C)
+Base.:/(A::IrisHRT.UMem, C) = /(A, A, C)
+
 ################### Define Common macros to define math functions #################
 macro __core_math_define(fn_names...)
     exprs = []

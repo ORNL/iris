@@ -52,18 +52,22 @@ void Utils::PrintStackTrace() {
         std::string symbol = symbols[i];
         std::string hex_str = "";
         unsigned long long hex_value = 0;
+        int decimal;
         if (std::regex_match(symbol, match, pattern1)) {
             symbol = match[1].str();
         }
         else if (std::regex_match(symbol, match, pattern2)) {
             symbol = match[1].str();
             hex_str = match[2].str();
+            std::stringstream ss;
+            ss << std::hex << hex_str;
+            ss >> decimal;
             //char *end_ptr;
             //hex_value = strtoull(match[2].str().c_str(), &end_ptr, 16);
         }
         char* demangled = abi::__cxa_demangle(symbol.c_str(), func_name, &func_name_size, &status);
         if (status == 0) {
-            std::cout << "[" << i << "] " << demangled << "("<<hex_str<<")"<< std::endl;
+            std::cout << "[" << i << "] " << demangled << "("<<hex_str<<"::" << decimal <<")"<< std::endl;
         } else {
             std::cout << "[" << i << "] " << symbols[i] << std::endl;
         }
@@ -110,6 +114,49 @@ void Utils::MemCpy3D(uint8_t *dev, uint8_t *host, size_t *off,
     }
 }
 
+void Utils::MemCpy(int dim, void* dst, const size_t *dst_off, const size_t* dst_strides, 
+        const void* src, const size_t* src_off, const size_t* src_strides, 
+        const size_t* tile_size, size_t elem_size) {
+    assert(dim >= 1 && dim <= 3);
+
+    int idx[3] = {0, 0, 0};
+    int total = 1;
+    for (int d = 1; d < dim; ++d) total *= tile_size[d];
+
+    for (int linear_idx = 0; linear_idx < total; ++linear_idx) {
+        int rem = linear_idx;
+        for (int d = dim - 1; d >= 1; --d) {
+            idx[d] = rem % tile_size[d];
+            rem /= tile_size[d];
+        }
+
+        void* dst_ptr = static_cast<char*>(dst);
+        const void* src_ptr = static_cast<const char*>(src);
+
+        size_t dst_offset = 0;
+        size_t src_offset = 0;
+        for (int d = 1; d < dim; ++d) {
+            dst_offset += (dst_off[d] + idx[d]) * dst_strides[d];
+            src_offset += (src_off[d] + idx[d]) * src_strides[d];
+        }
+
+        if (dst_strides[0] == 1) {
+            dst_ptr = static_cast<char*>(dst_ptr) + (dst_offset + dst_off[0]) * elem_size;
+            src_ptr = static_cast<const char*>(src_ptr) + (src_offset + src_off[0]) * elem_size;
+            std::memcpy(dst_ptr, src_ptr, tile_size[0] * elem_size);
+        }
+        else {
+            dst_ptr = static_cast<char*>(dst_ptr) + (dst_offset + dst_off[0] * dst_strides[0]) * elem_size;
+            src_ptr = static_cast<const char*>(src_ptr) + (src_offset + src_off[0] * src_strides[0]) * elem_size;
+            for (size_t i = 0; i < tile_size[0]; ++i) {
+                std::memcpy(
+                        static_cast<char*>(dst_ptr) + i * dst_strides[0] * elem_size,
+                        static_cast<const char*>(src_ptr) + i * src_strides[0] * elem_size,
+                        elem_size);
+            }
+        }
+    }
+}
 void Utils::Logo(bool color) {
   if (color) {
     srand(time(NULL));

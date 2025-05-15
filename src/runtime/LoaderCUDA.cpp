@@ -54,9 +54,16 @@ int LoaderCUDA::LoadFunctions() {
   LOADFUNC(cuPointerGetAttribute);
   LOADFUNC(cuMemcpyPeer);
   LOADFUNC(cuMemcpyPeerAsync);
-  LOADFUNC(cuMemcpy2D);
+  //LOADFUNC(cuMemcpy2DAsync);
+  //LOADFUNC(cuMemcpy2DAsync);
+  LOADFUNC(cuMemcpy2DUnaligned);
+  LOADFUNC(cuMemcpy2DAsync_v2);
+  LOADFUNC(cuMemcpy2D_v2);
+  LOADFUNC(cuMemcpy3DAsync_v2);
+  LOADFUNC(cuMemcpy3D_v2);
   //LOADFUNC(cuMemset);
-  LOADFUNC(cuMemcpyDtoD);
+  //LOADFUNC(cuMemcpyDtoD);
+  LOADFUNC(cuMemcpyDtoD_v2);
   LOADFUNC(cuMemcpyDtoDAsync_v2);
   LOADFUNCEXT(cudaMalloc);
   LOADFUNCEXT(cudaMemcpy);
@@ -76,8 +83,6 @@ int LoaderCUDA::LoadFunctions() {
   LOADFUNCEXT(cudaHostUnregister);
   LOADFUNC(cuMemHostRegister_v2);
   LOADFUNC(cuMemHostUnregister);
-  LOADFUNC(cuMemcpy2DUnaligned);
-  LOADFUNC(cuMemcpy2DAsync);
   LOADFUNC(cuMemAllocAsync);
   LOADFUNC(cuMemFreeAsync);
   LOADFUNCSYM(cuMemAlloc, cuMemAlloc_v2);

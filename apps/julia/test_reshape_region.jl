@@ -9,14 +9,17 @@ function tryme(host::AbstractArray{T}) where T
 end
 
 A = reshape(collect(1:16), 4, 4)
+AA_reshape = reshape(A, 4, 2, 2)
+println(Core.stdout, " Original A: ", A, " type:", typeof(A), " size:", size(A))
+println(Core.stdout, " Original AA: ", AA_reshape, " ptr:", typeof(AA_reshape), " size:", size(AA_reshape))
 
 AA = IrisHRT.reshape(A, 4, 2, 2)
 
-IrisHRT.enable_regions(AA)
+IrisHRT.enable_regions(AA, 2)
 
 ARs = IrisHRT.regions(AA)
 
-+(ARs[1], ARs[1], ARs[1])
++(AA, AA, AA)
 
 IrisHRT.synchronize()
 println(Core.stdout, "ARs[1]: ", ARs[1]) 
@@ -30,12 +33,13 @@ AA_host = IrisHRT.valid_host(AA)
 ARs1_host = IrisHRT.valid_host(ARs[1])
 ARs2_host = IrisHRT.valid_host(ARs[2])
 
-@testset "iris_max" begin
-    @test A_host == [2 10 9 13; 4 12 10 14; 6 14 11 15; 8 16 12 16]
-    @test AA_host == [2 10; 4 12; 6 14; 8 16;;; 9 13; 10 14; 11 15; 12 16]
-    @test ARs1_host == [2 10; 4 12; 6 14; 8 16;;;] 
-    @test ARs2_host == [9 13; 10 14; 11 15; 12 16;;;]
+@testset "iris_region_2_2" begin
+    @test A_host == [1 10 9 26; 2 12 10 28; 3 14 11 30; 4 16 12 32]
+    @test AA_host == [1 10; 2 12; 3 14; 4 16;;; 9 26; 10 28; 11 30; 12 32]
+    @test ARs1_host == [1; 2; 3; 4;;; 9; 10; 11; 12]
+    @test ARs2_host == [10; 12; 14; 16;;; 26; 28; 30; 32]
 end
 
 IrisHRT.finalize()
+
 
