@@ -208,6 +208,7 @@ public:
       memcpy(dev_size_, dev_size, sizeof(size_t)*dim_); 
       return IRIS_SUCCESS;
   }
+  void realllocate_space(size_t size);
   int update_off(size_t *off) { 
       memcpy(off_, off, sizeof(size_t)*dim_); 
       return IRIS_SUCCESS;

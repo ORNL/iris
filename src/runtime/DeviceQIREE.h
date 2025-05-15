@@ -27,9 +27,19 @@ public:
   bool SupportJIT() { return false; }
 
 private:
+  CQiree *manager_;
   LoaderQIREE* ld_;
-  void *qiree_params_[56];
-  int qiree_nparams_;
+  unsigned int shared_mem_bytes_;
+  unsigned int shared_mem_offs_[IRIS_MAX_KERNEL_NARGS];
+  void* params_[IRIS_MAX_KERNEL_NARGS];
+  int max_arg_idx_;
+  int nquant_results_;
+  int nclass_results_;
+  int num_shots_;
+  const char *backend_;
+  int result_bytes_;
+  int max_results_;
+  uint64_t *encoded_;
 
   //float* Z;
   //float* X;
