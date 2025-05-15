@@ -416,6 +416,7 @@ if (CUDAToolkit_FOUND)
         NAMES nvcc
         HINTS ${CUDAToolkit_ROOT}/bin
               $ENV{CUDA_PATH}/bin
+              $ENV{NVHPC_ROOT}/cuda/bin
               /usr/local/cuda/bin
 
     )
@@ -427,6 +428,7 @@ if (CUDAToolkit_FOUND)
                 HINTS "${CUDA_TOOLKIT_ROOT_DIR}/include"
                       "$ENV{MATH_LIBS}/include"
                       "$ENV{NVIDIA_PATH}/math_libs/include"
+                      "$ENV{NVHPC_ROOT}/math_libs/include"
                 PATH_SUFFIXES ""        # you can strip off sub-folders
                 REQUIRED
               )
@@ -440,6 +442,8 @@ if (CUDAToolkit_FOUND)
                 "$ENV{MATH_LIBS}/lib64"
                 "$ENV{NVIDIA_PATH}/math_libs/lib"
                 "$ENV{NVIDIA_PATH}/math_libs/lib64"
+                "$ENV{NVHPC_ROOT}/math_libs/lib"
+                "$ENV{NVHPC_ROOT}/math_libs/lib64"
               PATH_SUFFIXES ""             # no extra suffixes
               REQUIRED
             )
@@ -489,6 +493,7 @@ find_package(hip
         HINTS
         "/opt/rocm"               # root of your ROCm install
         "/opt/rocm/hip"           # sometimes hip lives in a separate sub-folder
+        "$ENV{ROCM_PATH}"
         PATH_SUFFIXES
         lib/cmake/hip             # where hip-config.cmake usually resides
         )
