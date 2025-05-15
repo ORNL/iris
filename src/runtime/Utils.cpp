@@ -143,13 +143,13 @@ void Utils::MemCpy(int dim, void* dst, const size_t *dst_off, const size_t* dst_
         if (dst_strides[0] == 1) {
             dst_ptr = static_cast<char*>(dst_ptr) + (dst_offset + dst_off[0]) * elem_size;
             src_ptr = static_cast<const char*>(src_ptr) + (src_offset + src_off[0]) * elem_size;
-            std::memcpy(dst_ptr, src_ptr, tile_size[0] * elem_size);
+            memcpy(dst_ptr, src_ptr, tile_size[0] * elem_size);
         }
         else {
             dst_ptr = static_cast<char*>(dst_ptr) + (dst_offset + dst_off[0] * dst_strides[0]) * elem_size;
             src_ptr = static_cast<const char*>(src_ptr) + (src_offset + src_off[0] * src_strides[0]) * elem_size;
             for (size_t i = 0; i < tile_size[0]; ++i) {
-                std::memcpy(
+                memcpy(
                         static_cast<char*>(dst_ptr) + i * dst_strides[0] * elem_size,
                         static_cast<const char*>(src_ptr) + i * src_strides[0] * elem_size,
                         elem_size);
