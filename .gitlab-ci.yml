@@ -1,5 +1,3 @@
-#!/bin/bash
-
 stages:
   - build
   - docs
@@ -574,6 +572,8 @@ variables:
 .dagger-zenith-test-duplication:
   extends: [.dagger]
   script:
+    - echo $SHELL
+    - echo $0
     - source /auto/software/iris/setup_system.source
     - echo "Installing iris to $CI_PROJECT_DIR/install"
     - bash build.sh -DCMAKE_BUILD_TYPE=DEBUG -DCOVERAGE=true 
