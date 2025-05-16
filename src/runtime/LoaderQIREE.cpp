@@ -6,6 +6,16 @@ namespace iris {
 namespace rt {
 
 LoaderQIREE::LoaderQIREE() : HostInterfaceClass("LIB_QIREE") {
+    qiree_create = NULL;
+    qiree_destroy = NULL;
+    qiree_load_module_from_memory = NULL;
+    qiree_load_module_from_file = NULL;
+    qiree_num_quantum_reg = NULL;
+    qiree_num_classical_reg = NULL;
+    qiree_sizeof_result = NULL;
+    qiree_setup_executor = NULL;
+    qiree_execute = NULL;
+    qiree_save_result = NULL;
 }
 
 LoaderQIREE::~LoaderQIREE() {

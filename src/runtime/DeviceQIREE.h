@@ -38,7 +38,6 @@ private:
   int num_shots_;
   const char *backend_;
   int result_bytes_;
-  int max_results_;
   uint64_t *encoded_;
 
   //float* Z;

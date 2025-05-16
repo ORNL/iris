@@ -330,7 +330,7 @@ void DataMem::realllocate_space(size_t size)
         return;
     }
     ASSERT(dim_ == 1);
-    ASSERT(n_regions_ == 0);
+    ASSERT(n_regions_ <= 0);
     if (size > size_) { 
         if (host_ptr_owner_) free(host_ptr_);
         host_ptr_ = malloc(size);
