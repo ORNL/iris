@@ -531,6 +531,34 @@ void DataMem::UpdateHost(void *host_ptr)
     }
     if (is_pin_memory_ && old_host_ptr != host_ptr) platform_->DataMemRegisterPin(this);
 }
+void DataMem::realllocate_space(size_t size)
+{
+    // Supported only for one dim
+    DataMem *source_mem = (DataMem *)get_source_mem();
+    if (source_mem != NULL) {
+        source_mem->realllocate_space(size);
+        return;
+    }
+    ASSERT(dim_ == 1);
+    ASSERT(n_regions_ <= 0);
+    if (size > size_) { 
+        if (host_ptr_owner_) free(host_ptr_);
+        host_ptr_ = malloc(size);
+        host_ptr_owner_ = true;
+        host_dirty_flag_ = true;
+        for(int i=0; i<ndevs_; i++) {
+            if (!dirty_flag_[i]) {
+                if (archs_[i] && !is_usm(i)) {
+                    archs_dev_[i]->MemFree(this, archs_[i]);
+                    archs_[i] = NULL;
+                }
+                dirty_flag_[i] = true;
+            }
+        }
+    }
+    update_host_size(&size);
+    update_dev_size(&size);
+}
 void DataMem::CopyToHost(void *host)
 {
     DataMem *source_mem = (DataMem *)get_source_mem();

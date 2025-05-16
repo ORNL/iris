@@ -6,6 +6,16 @@ namespace iris {
 namespace rt {
 
 LoaderQIREE::LoaderQIREE() : HostInterfaceClass("LIB_QIREE") {
+    qiree_create = NULL;
+    qiree_destroy = NULL;
+    qiree_load_module_from_memory = NULL;
+    qiree_load_module_from_file = NULL;
+    qiree_num_quantum_reg = NULL;
+    qiree_num_classical_reg = NULL;
+    qiree_sizeof_result = NULL;
+    qiree_setup_executor = NULL;
+    qiree_execute = NULL;
+    qiree_save_result = NULL;
 }
 
 LoaderQIREE::~LoaderQIREE() {
@@ -16,7 +26,16 @@ const char * LoaderQIREE::library() {
     return path;
 }
 int LoaderQIREE::LoadFunctions() {
-  LOADFUNC(parse_input_c);
+  LOADFUNC(qiree_create);
+  LOADFUNC(qiree_destroy);
+  LOADFUNC(qiree_load_module_from_memory);
+  LOADFUNC(qiree_load_module_from_file);
+  LOADFUNC(qiree_num_classical_reg);
+  LOADFUNC(qiree_num_quantum_reg);
+  LOADFUNC(qiree_sizeof_result);
+  LOADFUNC(qiree_setup_executor);
+  LOADFUNC(qiree_execute);
+  LOADFUNC(qiree_save_result);
   return IRIS_SUCCESS;
 }
 

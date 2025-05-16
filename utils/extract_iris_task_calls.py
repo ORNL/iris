@@ -541,8 +541,8 @@ def is_expression_satisfied(expr, constraint='iris_all'):
     res = global_res
     if not re.match(r'.*iris_', expr):
         return False
-    expr = re.sub('\|\|', ' | ', expr)
-    expr = re.sub('\&\&', ' & ', expr)
+    expr = re.sub(r'\|\|', ' | ', expr)
+    expr = re.sub(r'\&\&', ' & ', expr)
     expr = expr + " & " + constraint
     #print("EXPR: "+expr)
     expr_eval = eval(expr, res.copy())
@@ -570,8 +570,8 @@ def appendConditionalParameters(expr, fdt, params, lines, constraint='iris_all',
     if not re.match(r'.*iris_', expr):
         params.append(fdt)
         return
-    expr = re.sub('\|\|', ' | ', expr)
-    expr = re.sub('\&\&', ' & ', expr)
+    expr = re.sub(r'\|\|', ' | ', expr)
+    expr = re.sub(r'\&\&', ' & ', expr)
     #print("EXPR: "+expr)
     expr_eval = eval(expr, res.copy())
     if expr_eval == res['iris_all']:
@@ -801,7 +801,7 @@ def extract_parameters(tag_list, line, parse_fn_control=True):
             else:
                 tdata = re.sub(r'^\(\s*', '', r)
                 tdata = re.sub(r'\s*\)$', '', tdata)
-                tdata = tdata.split('\s*[;,]\s*')
+                tdata = tdata.split(r'\s*[;,]\s*')
                 #print(f"tag:{tag} OUT: {tdata}")
                 tag_data_tag.append(tdata)
         if len(tag_data_tag) > 0:

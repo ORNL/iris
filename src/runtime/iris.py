@@ -618,7 +618,7 @@ def timer_now():
 
 mem_handle_2_pobj = {}
 class dmem_null:
-  def __init__(self, size):
+  def __init__(self, size=0):
     m = iris_mem()
     c_host = c_void_p(0)
     dll.iris_data_mem_create(byref(m), c_host, c_size_t(size))
@@ -639,6 +639,7 @@ class dmem_base:
   track_host2dmems = {}
   def __init__(self, reuse, *args):
     self.str_data = None
+    self.host = None
     self.handle, self.type = self.dmem_create(reuse, args)
     if self.handle.uid not in mem_handle_2_pobj:
         mem_handle_2_pobj[self.handle.uid] = []
@@ -647,6 +648,16 @@ class dmem_base:
   def dmem_create(self, reuse, *args):
     if len(args) == 1:
       c_host = None
+      if len(args[0]) == 0:
+        m = iris_mem()
+        size=0
+        c_host = c_void_p(0)
+        dll.iris_data_mem_create(byref(m), c_host, c_size_t(size))
+        self.handle = m
+        if self.handle.uid not in mem_handle_2_pobj:
+            mem_handle_2_pobj[self.handle.uid] = []
+        mem_handle_2_pobj[self.handle.uid].append(self)
+        return m, IRIS_DMEM
       host = args[0][0]
       host_size = 0
       dim = 0
@@ -659,6 +670,7 @@ class dmem_base:
       dim = len(host_size)
       size = host.nbytes
       if reuse and c_host.value in dmem_base.track_host2dmems:
+        self.host = host
         return dmem_base.track_host2dmems[c_host.value], IRIS_DMEM
       m = iris_mem()
       if dim == 1:
@@ -668,6 +680,7 @@ class dmem_base:
         elem_size = host.dtype.itemsize
         elem_type = get_iris_type(host.dtype)
         dll.iris_data_mem_create_nd(byref(m), c_host, chost_size, c_int(dim), c_size_t(elem_size), c_int(elem_type))
+      self.host = host
       dmem_base.track_host2dmems[c_host.value] = m
       return m, IRIS_DMEM
     elif len(args) == 2:
@@ -684,6 +697,7 @@ class dmem_base:
       chost_size = (c_size_t * dim)(*host_size)
       cdev_size = (c_size_t * dim)(*dev_size)
       size = host.nbytes
+      self.host = host
       dll.iris_data_mem_create_tile(byref(m), c_host, coff, chost_size, cdev_size, c_size_t(elem_size), c_int(dim))
       return m, IRIS_DMEM
 
@@ -753,6 +767,26 @@ class dmem_region(dmem_base):
     uid = pmem.uid()
     self.mem = pmem
   
+class dmem_infile(dmem_base):
+    def __init__(self, file_path):
+        data = self.read_file(file_path)
+        args = data
+        super().__init__(True, args)
+    def read_file(self, file_path):
+        try:
+            with open(file_path, 'r') as file:
+                text_content = file.read()
+                char_array = np.array(list(text_content), dtype='<U1')
+                return char_array
+        except FileNotFoundError:
+            print(f"Error: File not found at '{file_path}'")
+            return None
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            return None
+
+
+    
 class mem:
   def __init__(self, size):
     self.handle = mem_create(size)
