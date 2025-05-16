@@ -4,6 +4,18 @@
 #include "iris/iris_gpu.h"
 #include <math.h>
 
+template <typename T> __device__ T __iris_cos(T x);
+template <> __device__ float  __iris_cos(float x)  { return cosf(x); }
+template <> __device__ double __iris_cos(double x) { return cos(x);  }
+
+template <typename T> __device__ T __iris_pow(T x, T y);
+template <> __device__ float  __iris_pow(float x, float y)   { return powf(x, y); }
+template <> __device__ double __iris_pow(double x, double y) { return pow(x, y);  }
+
+template <typename T> __device__ T __iris_sin(T x);
+template <> __device__ float  __iris_sin(float x)  { return sinf(x); }
+template <> __device__ double __iris_sin(double x) { return sin(x);  }
+
 // -----------------------------------------------------------------------------
 // CUDA kernel: operates on an interleaved complex buffer [re,im, re,im, …]
 // Template parameter T can be float or double.
@@ -25,12 +37,12 @@ __global__ void iris_rope_gpu_core(
         size_t idx2 = 2 * idx;
 
         // compute θ = (pos - 1) * theta_scale^(i - 1)
-        T exponent = (i == 0 ? T(1) : powf(theta_scale, T(i)));
+        T exponent = (i == 0 ? T(1) : __iris_pow(theta_scale, T(i)));
         T theta    = T(pos - 1) * exponent;
 
         // cis(θ) = cos(θ) + i·sin(θ)
-        T c = cos(theta);
-        T s = sin(theta);
+        T c = __iris_cos(theta);
+        T s = __iris_sin(theta);
 
         // load
         T a = x[idx2 + 0];  // real part
