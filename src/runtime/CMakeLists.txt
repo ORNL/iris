@@ -19,7 +19,7 @@ include_directories(${IRIS_INC_DIR})
 include_directories(${IRIS_BIN_DIR}/runtime)
 include_directories(${IRIS_BIN_DIR}/runtime/rapidjson)
 
-cmake_minimum_required(VERSION 3.15)
+#cmake_minimum_required(VERSION 3.15)
 project(SetupPythonVenv)
 
 # Step 1: Locate Python
@@ -113,7 +113,7 @@ function(initVar var_name default_value)
     endif() #var_name
     #message(STATUS "var  (${var_name}) is set to ${default_value}")
 endfunction() # initVar
-initVar(APP_FLAGS "-D__nothing__ -I../../../include/")
+initVar(APP_FLAGS "-D__nothing__ -I${CMAKE_CURRENT_SOURCE_DIR}/../../include/")
 #message(STATUS " APP_FLAGS: ${APP_FLAGS}")
 message(STATUS " PROJECT_SOURCE_DIR: ${PROJECT_SOURCE_DIR}")
 message(STATUS " CMAKE_CURRENT_SOURCE_DIR: ${CMAKE_CURRENT_SOURCE_DIR}")
