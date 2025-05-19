@@ -1022,9 +1022,9 @@ class task:
         for pobj in flush_objs:
             dll.iris_task_dmem_flush_out(self.handle, pobj)
 
-    def flush(self, mem):                                                       |                (s, iris.iris_w, iris.iris_flush),
-        dll.iris_task_dmem_flush_out(self.handle, mem.handle)                          |                A,
-
+    def flush(self, mem):
+        dll.iris_task_dmem_flush_out(self.handle, mem.handle)
+        
     def name(self):
         dll.iris_task_get_name.restype = c_char_p
         kname = dll.iris_task_get_name(self.handle)
