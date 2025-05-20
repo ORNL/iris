@@ -29,6 +29,8 @@ elif [ "$SYSTEM" = "orc-open-hyp" ] ; then
   rm -f *.csv ; make dagger_runner kernel.hip kernel.ptx kernel.openmp.so
 elif [ "$SYSTEM" = "milan" ] ; then
   rm -f *.csv ; make dagger_runner kernel.ptx kernel.openmp.so
+elif [ "$SYSTEM" = "milan2" ] ; then
+  rm -f *.csv ; make dagger_runner kernel.ptx kernel.openmp.so
 elif [ "$SYSTEM" = "hudson" ] ; then
   rm -f *.csv ; make dagger_runner kernel.ptx kernel.openmp.so
 else
