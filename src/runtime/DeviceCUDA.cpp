@@ -1160,7 +1160,7 @@ int DeviceCUDA::MemCpy(Task *task, BaseMem *mem, int dim, void *dst, size_t *dst
 	  }
 	  _cuerror(err);
       if (err != CUDA_SUCCESS) error_occured = true;
-      if (err != CUDA_SUCCESS) {
+      if (true || err != CUDA_SUCCESS) {
           ((DataMem *)mem)->Print();
           string src_off_str = Utils::GetString(src_off, dim);
           string dst_off_str = Utils::GetString(src_off, dim);
