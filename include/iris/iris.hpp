@@ -460,6 +460,20 @@ namespace iris {
             }
         }
     template<class DType>
+    static void PrintMatrixFull(DType *A, size_t M, size_t N, size_t K, const char *description)
+        {
+            printf("%s data:%p (%ld, %ld, %ld)\n", description, A, M, N, K);
+            for(size_t i=0; i<M; i++) {
+                for (size_t j = 0; j < N; j++) {
+                    for (size_t k = 0; k < K; k++) {
+                        cout << setw(6) << A[i*N*K+j*K+k] << " ";
+                    }
+                    cout << " ; ";
+                }
+                cout << endl;
+            }
+        }
+    template<class DType>
         static void MemSet(DType *A, size_t M, DType value)
         {
             for(size_t i=0; i<M; i++) {

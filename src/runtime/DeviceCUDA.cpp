@@ -1168,8 +1168,13 @@ int DeviceCUDA::MemCpy(Task *task, BaseMem *mem, int dim, void *dst, size_t *dst
           string dst_strides_str = Utils::GetString(dst_strides, dim);
           string tile_size_str = Utils::GetString(tile_size, dim);
           _error(" %s couldn't handle the dim:%d ptr:%p tile copy for DMEM dev[%d][%s] task[%ld:%s] mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] src_off:%s dst_off:%s src_strides:%s dst_strides:%s tile_size:%s elem_size:%lu [%d]", tag, dim, ld_->cuMemcpy3D_v2, devno_, name_, task->uid(), task->name(), mem->uid(), dst, src, src_off_str.c_str(), dst_off_str.c_str(), src_strides_str.c_str(), dst_strides_str.c_str(), tile_size_str.c_str(), elem_size, stream_index);
+          if (src_type == CU_MEMORYTYPE_HOST) {
+              iris::PrintMatrixFull<int64_t>((int64_t *)src, src_size[2], src_size[1], src_size[0], " Src:");
+          }
+          if (dst_type == CU_MEMORYTYPE_HOST) {
+              iris::PrintMatrixFull<int64_t>((int64_t *)dst, dst_size[2], dst_size[1], dst_size[0], " Dst:");
+          }
           Utils::PrintStackTrace();
-        
       }
   }
   else if (dim == 2) {

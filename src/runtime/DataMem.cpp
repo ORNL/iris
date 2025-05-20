@@ -325,6 +325,7 @@ int *DataMem::get_non_dirty_devices(int *dev) {
         return dev;
     } 
     else {
+        ASSERT(0 && "This case is not handled");
         for(int i=0; i<n_regions_; i++) {
             regions_[i].first->get_non_dirty_devices(dev);
             if (regions_[i].first != regions_[i].second) 
@@ -740,6 +741,7 @@ void DataMem::EnableRegions(int axis)
         full_region->enable_multi_dim_dev_offset();
         full_region->compute_dev_strides(host_size_);
         DataMemRegion *region = new DataMemRegion(this, i, off, loff, host_size_, dev_size, elem_size_, dim_, 0);
+        region->enable_multi_dim_dev_offset();
         region->set_dirty_all(true, false);
         region->set_own_dev_memory();
         regions_.push_back(make_pair(full_region, region));
@@ -775,6 +777,7 @@ iris_mem DataMem::CreateRegion(size_t *off, size_t *size)
     full_region->enable_multi_dim_dev_offset();
     full_region->compute_dev_strides(host_size_);
     DataMemRegion *region = new DataMemRegion(this, index, off, off, host_size_, size, elem_size_, dim_, 0);
+    region->enable_multi_dim_dev_offset();
     region->set_own_dev_memory();
     dynamic_regions_ = true;
     regions_.push_back(make_pair(full_region, region));
