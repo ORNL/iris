@@ -2294,7 +2294,7 @@ extern void iris_print_matrix_limited_int8_t(int8_t *data, int M, int N, const c
   * @param string pointer
   * @return Void
   */
-extern void iris_logo();
+extern int iris_logo();
 
 /**
   * This function prints string on console
