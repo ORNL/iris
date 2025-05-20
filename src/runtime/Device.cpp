@@ -394,7 +394,7 @@ void Device::Execute(Task* task) {
   task->set_time_start(timer_);
   //printf("================== Task:%s =====================\n", task->name());
   _event_debug("task[%lu:%s] started execution on dev[%d][%s] time[%lf] start:[%lf] q[%d]", task->uid(), task->name(), devno(), name(), task->time(), task->time_start(), task->recommended_stream());
-  _info("task[%lu:%s] started execution on dev[%d][%s] time[%lf] start:[%lf] q[%d]", task->uid(), task->name(), devno(), name(), task->time(), task->time_start(), task->recommended_stream());
+  _trace("task[%lu:%s] started execution on dev[%d][%s] time[%lf] start:[%lf] q[%d]", task->uid(), task->name(), devno(), name(), task->time(), task->time_start(), task->recommended_stream());
   //for(Command *cmd : task->reset_mems()) {
       // Handle Memory Reset commands IRIS_CMD_RESET_INPUT first
   //    ExecuteMemResetInput(task, cmd);
@@ -1700,7 +1700,6 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
 void Device::ExecuteMemInDMemRegionIn(Task *task, Command* cmd, DataMemRegion *mem) {
     if (mem->is_dev_dirty(devno_)) {
         _trace("Initiating DMEM_REGION data transfer dev[%d:%s] task[%ld:%s] dmem_reg[%lu] dmem[%lu]", devno_, name_, task->uid(), task->name(), mem->uid(), mem->get_dmem()->uid());
-        _info("Initiating DMEM_REGION data transfer dev[%d:%s] task[%ld:%s] dmem_reg[%lu] dmem[%lu]", devno_, name_, task->uid(), task->name(), mem->uid(), mem->get_dmem()->uid());
         //InvokeDMemInDataTransfer<DataMemRegion>(task, cmd, mem);
         DataMem *parent = mem->get_dmem();
         int region = mem->region_index();

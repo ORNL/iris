@@ -1127,7 +1127,7 @@ int DeviceCUDA::MemCpy(Task *task, BaseMem *mem, int dim, void *dst, size_t *dst
           cd.srcHost      = src;
       }
 	  cd.srcPitch         = src_strides[1] * elem_size;
-	  cd.srcHeight        = dst_strides[2] / dst_strides[1]; //src_size[1]; 
+	  cd.srcHeight        = src_strides[2] / src_strides[1]; //src_size[1]; 
 	  cd.srcXInBytes      = src_off[0] * elem_size;
 	  cd.srcY             = src_off[1];
 	  cd.srcZ             = src_off[2];
@@ -1160,20 +1160,22 @@ int DeviceCUDA::MemCpy(Task *task, BaseMem *mem, int dim, void *dst, size_t *dst
 	  }
 	  _cuerror(err);
       if (err != CUDA_SUCCESS) error_occured = true;
-      if (true || err != CUDA_SUCCESS) {
+      if (err != CUDA_SUCCESS) {
           ((DataMem *)mem)->Print();
+		  string src_size_str = Utils::GetString(src_size, dim);
+		  string dst_size_str = Utils::GetString(dst_size, dim);
           string src_off_str = Utils::GetString(src_off, dim);
-          string dst_off_str = Utils::GetString(src_off, dim);
+          string dst_off_str = Utils::GetString(dst_off, dim);
           string src_strides_str = Utils::GetString(src_strides, dim);
           string dst_strides_str = Utils::GetString(dst_strides, dim);
           string tile_size_str = Utils::GetString(tile_size, dim);
-          _error(" %s couldn't handle the dim:%d ptr:%p tile copy for DMEM dev[%d][%s] task[%ld:%s] mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] src_off:%s dst_off:%s src_strides:%s dst_strides:%s tile_size:%s elem_size:%lu [%d]", tag, dim, ld_->cuMemcpy3D_v2, devno_, name_, task->uid(), task->name(), mem->uid(), dst, src, src_off_str.c_str(), dst_off_str.c_str(), src_strides_str.c_str(), dst_strides_str.c_str(), tile_size_str.c_str(), elem_size, stream_index);
-          if (src_type == CU_MEMORYTYPE_HOST) {
+          _error(" %s couldn't handle the dim:%d ptr:%p tile copy for DMEM dev[%d][%s] task[%ld:%s] mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] src_size:%s dst_size:%s src_off:%s dst_off:%s src_strides:%s dst_strides:%s tile_size:%s elem_size:%lu [%d]", tag, dim, ld_->cuMemcpy3D_v2, devno_, name_, task->uid(), task->name(), mem->uid(), dst, src, src_size_str.c_str(), dst_size_str.c_str(), src_off_str.c_str(), dst_off_str.c_str(), src_strides_str.c_str(), dst_strides_str.c_str(), tile_size_str.c_str(), elem_size, stream_index);
+          /*if (src_type == CU_MEMORYTYPE_HOST) {
               iris::PrintMatrixFull<int64_t>((int64_t *)src, src_size[2], src_size[1], src_size[0], " Src:");
           }
           if (dst_type == CU_MEMORYTYPE_HOST) {
               iris::PrintMatrixFull<int64_t>((int64_t *)dst, dst_size[2], dst_size[1], dst_size[0], " Dst:");
-          }
+          }*/
           Utils::PrintStackTrace();
       }
   }
@@ -1219,12 +1221,14 @@ int DeviceCUDA::MemCpy(Task *task, BaseMem *mem, int dim, void *dst, size_t *dst
 	  if (err != CUDA_SUCCESS) error_occured = true;
       if (err != CUDA_SUCCESS) {
           ((DataMem *)mem)->Print();
+		  string src_size_str = Utils::GetString(src_size, dim);
+		  string dst_size_str = Utils::GetString(dst_size, dim);
           string src_off_str = Utils::GetString(src_off, dim);
-          string dst_off_str = Utils::GetString(src_off, dim);
+          string dst_off_str = Utils::GetString(dst_off, dim);
           string src_strides_str = Utils::GetString(src_strides, dim);
           string dst_strides_str = Utils::GetString(dst_strides, dim);
           string tile_size_str = Utils::GetString(tile_size, dim);
-          _error("\n\n couldn't handle the dim:%d tile copy for DMEM dev[%d][%s] task[%ld:%s] mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] src_off:%s dst_off:%s src_strides:%s dst_strides:%s tile_size:%s [%d]", dim, devno_, name_, task->uid(), task->name(), mem->uid(), dst, src, src_off_str.c_str(), dst_off_str.c_str(), src_strides_str.c_str(), dst_strides_str.c_str(), tile_size_str.c_str(), stream_index);
+          _error("\n\n couldn't handle the dim:%d tile copy for DMEM dev[%d][%s] task[%ld:%s] mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] src_size:%s dst_size:%s src_off:%s dst_off:%s src_strides:%s dst_strides:%s tile_size:%s [%d]", dim, devno_, name_, task->uid(), task->name(), mem->uid(), dst, src, src_size_str.c_str(), dst_size_str.c_str(), src_off_str.c_str(), dst_off_str.c_str(), src_strides_str.c_str(), dst_strides_str.c_str(), tile_size_str.c_str(), stream_index);
           Utils::PrintStackTrace();
         
       }
@@ -1241,23 +1245,27 @@ int DeviceCUDA::MemCpy(Task *task, BaseMem *mem, int dim, void *dst, size_t *dst
 	  if (err != CUDA_SUCCESS) error_occured = true;
       if (err != CUDA_SUCCESS) {
           ((DataMem *)mem)->Print();
+		  string src_size_str = Utils::GetString(src_size, dim);
+		  string dst_size_str = Utils::GetString(dst_size, dim);
           string src_off_str = Utils::GetString(src_off, dim);
-          string dst_off_str = Utils::GetString(src_off, dim);
+          string dst_off_str = Utils::GetString(dst_off, dim);
           string src_strides_str = Utils::GetString(src_strides, dim);
           string dst_strides_str = Utils::GetString(dst_strides, dim);
           string tile_size_str = Utils::GetString(tile_size, dim);
-          _error(" couldn't handle the dim:%d tile copy for DMEM dev[%d][%s] task[%ld:%s] mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] src_off:%s dst_off:%s src_strides:%s dst_strides:%s tile_size:%s [%d]", dim, devno_, name_, task->uid(), task->name(), mem->uid(), dst, src, src_off_str.c_str(), dst_off_str.c_str(), src_strides_str.c_str(), dst_strides_str.c_str(), tile_size_str.c_str(), stream_index);
+          _error(" couldn't handle the dim:%d tile copy for DMEM dev[%d][%s] task[%ld:%s] mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] src_size:%s dst_size:%s src_off:%s dst_off:%s src_strides:%s dst_strides:%s tile_size:%s [%d]", dim, devno_, name_, task->uid(), task->name(), mem->uid(), dst, src, src_size_str.c_str(), dst_size_str.c_str(), src_off_str.c_str(), dst_off_str.c_str(), src_strides_str.c_str(), dst_strides_str.c_str(), tile_size_str.c_str(), stream_index);
           Utils::PrintStackTrace();
         
       }
   }
   else {
+	  string src_size_str = Utils::GetString(src_size, dim);
+	  string dst_size_str = Utils::GetString(dst_size, dim);
       string src_off_str = Utils::GetString(src_off, dim);
-      string dst_off_str = Utils::GetString(src_off, dim);
+      string dst_off_str = Utils::GetString(dst_off, dim);
       string src_strides_str = Utils::GetString(src_strides, dim);
       string dst_strides_str = Utils::GetString(dst_strides, dim);
       string tile_size_str = Utils::GetString(tile_size, dim);
-	  _error(" couldn't handle the dim:%d tile copy for DMEM dev[%d][%s] task[%ld:%s] mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] src_off:%s dst_off:%s src_strides:%s dst_strides:%s tile_size:%s [%d]", dim, devno_, name_, task->uid(), task->name(), mem->uid(), dst, src, src_off_str.c_str(), dst_off_str.c_str(), src_strides_str.c_str(), dst_strides_str.c_str(), tile_size_str.c_str(), stream_index);
+	  _error(" couldn't handle the dim:%d tile copy for DMEM dev[%d][%s] task[%ld:%s] mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] src_size:%s dst_size:%s src_off:%s dst_off:%s src_strides:%s dst_strides:%s tile_size:%s [%d]", dim, devno_, name_, task->uid(), task->name(), mem->uid(), dst, src, src_size_str.c_str(), dst_size_str.c_str(), src_off_str.c_str(), dst_off_str.c_str(), src_strides_str.c_str(), dst_strides_str.c_str(), tile_size_str.c_str(), stream_index);
 	  Utils::PrintStackTrace();
   }
   _trace("dev[%d][%s] task[%ld:%s] mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] size[%lu] q[%d]", devno_, name_, task->uid(), task->name(), mem->uid(), dst, src, size, stream_index);

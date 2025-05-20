@@ -449,6 +449,23 @@ namespace iris {
             }
         }
     template<class DType>
+    static void PrintMatrixLimited(DType *A, size_t M, size_t N, size_t K, const char *description, size_t limit=8)
+        {
+            printf("%s data:%p (%ld, %ld, %ld)\n", description, A, M, N, K);
+            size_t print_m = M>limit?limit:M;
+            size_t print_n = N>limit?limit:N;
+            size_t print_k = K>limit?limit:K;
+            for(size_t i=0; i<print_m; i++) {
+                for (size_t j = 0; j < print_n; j++) {
+                    for (size_t k = 0; k < print_k; k++) {
+                        cout << setw(6) << A[i*N*K+j*K+k] << " ";
+                    }
+                    cout << " ; ";
+                }
+                cout << endl;
+            }
+        }
+    template<class DType>
     static void PrintMatrixFull(DType *A, size_t M, size_t N, const char *description)
         {
             printf("%s data:%p (%ld, %ld)\n", description, A, M, N);
