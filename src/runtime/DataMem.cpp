@@ -261,38 +261,54 @@ void DataMem::clear_dev_dirty(int devno) {
         }
     }
 }
-void DataMem::set_dirty_except(int devno) { 
+void DataMem::set_dirty_except(int devno, bool check_regions) { 
     DataMem *source_mem = (DataMem*)get_source_mem();
     if (source_mem != NULL) 
         source_mem->set_dirty_except(devno);
-    else if (n_regions_ == 0) {
+    else if (n_regions_ <= 0) {
         for(int i=0; i<ndevs_; i++) {
             if (i != devno) dirty_flag_[i] = true;
         }
         dirty_flag_[devno] = false;
+        if (check_regions && GetMemHandlerType() == IRIS_DMEM_REGION) {
+            DataMemRegion *rmem = (DataMemRegion *)this;
+            if (rmem != rmem->get_clone_region()) {
+                rmem->get_clone_region()->set_dirty_all(true, false);
+            }
+        }
     } 
     else {
         for(int i=0; i<n_regions_; i++) {
             regions_[i].first->set_dirty_except(devno);
-            if (regions_[i].first != regions_[i].second) 
-                regions_[i].second->set_dirty_except(devno);
+            if (regions_[i].first != regions_[i].second)  {
+                // We shouldn't update the device copy as we requested to update the whole host
+                //regions_[i].second->set_dirty_except(devno);
+                // Set all device copy is invalid
+                regions_[i].second->set_dirty_all(true, false);
+            }
         }
     }
 }
-void DataMem::set_dirty_all(bool flag) { 
+void DataMem::set_dirty_all(bool flag, bool check_regions) { 
     DataMem *source_mem = (DataMem*)get_source_mem();
     if (source_mem != NULL) 
         source_mem->set_dirty_all(flag);
-    else if (n_regions_ == 0) {
+    else if (n_regions_ <= 0) {
         for(int i=0; i<ndevs_; i++) {
             dirty_flag_[i] = flag;
+        }
+        if (check_regions && GetMemHandlerType() == IRIS_DMEM_REGION) {
+            DataMemRegion *rmem = (DataMemRegion *)this;
+            if (rmem != rmem->get_clone_region()) {
+                rmem->get_clone_region()->set_dirty_all(flag, false);
+            }
         }
     } 
     else {
         for(int i=0; i<n_regions_; i++) {
             regions_[i].first->set_dirty_all(flag);
             if (regions_[i].first != regions_[i].second) 
-                regions_[i].second->set_dirty_all(flag);
+                regions_[i].second->set_dirty_all(flag, false);
         }
     }
 }
@@ -724,7 +740,7 @@ void DataMem::EnableRegions(int axis)
         full_region->enable_multi_dim_dev_offset();
         full_region->compute_dev_strides(host_size_);
         DataMemRegion *region = new DataMemRegion(this, i, off, loff, host_size_, dev_size, elem_size_, dim_, 0);
-        region->set_dirty_all();
+        region->set_dirty_all(true, false);
         region->set_own_dev_memory();
         regions_.push_back(make_pair(full_region, region));
         //full_region->Print(false);

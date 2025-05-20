@@ -934,6 +934,7 @@ void Device::ExecuteKernel(Command* cmd) {
           }
       }
   }
+  // _printf("----- Kernel execution: %s\n", kernel->name());
   //double atime_start = timer_->GetCurrentTime();
   //double set_mem_time = 0.0f;
   for (int idx = 0; idx < cmd->kernel_nargs(); idx++) {
@@ -1238,7 +1239,7 @@ void Device::WaitForDataAvailability(int ldevno, Task *task, DMemType *mem, int 
     }
 }
 template <typename DMemType>
-void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, BaseMem *parent, DMemType *src_mem, bool disable_host_dirty_update)
+void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, BaseMem *parent, DMemType *src_mem, bool disable_dirty_update)
 {
     int nddevs[IRIS_MAX_NDEVS+1];
     Kernel *kernel = cmd->kernel();
@@ -1253,9 +1254,10 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         ASSERT(src_mem->size() == mem->size());
         ASSERT(src_mem->elem_size() == mem->elem_size());
         //is_src_mem_different = true;
-		if (!disable_host_dirty_update)
+		if (!disable_dirty_update) {
 			mem->set_host_dirty(true);
-        mem->set_dirty_all(true);
+            mem->set_dirty_all(true);
+        }
     }
     else {
         src_mem = mem;
@@ -1265,8 +1267,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
     void *cmd_host = cmd->host();
 	bool enable_to_check_other_devices = true;
     if (cmd_host != NULL && src_mem->host_ptr() != cmd_host) {
-		if (!disable_host_dirty_update)
-			mem->set_host_dirty(true);
+        mem->set_host_dirty(true);
         mem->set_dirty_all(true);
 		is_host_dirty = false;
 		enable_to_check_other_devices = false;
@@ -1315,7 +1316,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         _event_debug("D2D: src:%d dest:%d src_arch:%p dst_arch:%p mem_stream:%d\n\n", src_dev->devno(), this->devno(), src_arch, dst_arch, mem_stream);
         // Now do D2D
         if (!platform_obj_->is_data_transfers_disabled()) {
-            if (!mem->is_multi_dim_dev_offset())
+            if (!mem->is_multi_dim_dev_offset() && !src_mem->is_multi_dim_dev_offset())
                 MemD2D(task, src_dev, mem, dst_arch, src_arch, mem->size());
             else
                 MemD2D(task, mem, mem->dim(), dst_arch, mem->dev_size(), mem->dev_off(), mem->dev_strides(), src_arch, src_mem->dev_size(), src_mem->dev_off(), src_mem->dev_strides(), mem->dev_size(), mem->elem_size());
@@ -1365,7 +1366,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         void *dst_arch = mem->arch(this);
         double start = timer_->Now();
         if (!platform_obj_->is_data_transfers_disabled()) {
-            if (!mem->is_multi_dim_dev_offset())
+            if (!mem->is_multi_dim_dev_offset() && !src_mem->is_multi_dim_dev_offset())
                 errid_ = MemH2D(task, mem, src_mem->local_off(), src_mem->host_size(), mem->dev_size(), elem_size, src_mem->dim(), size, host);
             else
                 errid_ = MemH2D(task, mem, mem->dim(), dst_arch, mem->dev_size(), mem->dev_off(), mem->dev_strides(), host, src_mem->host_size(), src_mem->off(), src_mem->host_strides(), mem->dev_size(), mem->elem_size());
@@ -1424,7 +1425,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         void* src_arch = src_mem->arch(src_dev);
         double start = timer_->Now();
         if (!platform_obj_->is_data_transfers_disabled()) {
-            if (!mem->is_multi_dim_dev_offset())
+            if (!mem->is_multi_dim_dev_offset() && !src_mem->is_multi_dim_dev_offset())
                 MemH2D(task, mem, off, host_sizes, dev_sizes, 1, 1, mem->size(), src_arch, "OpenMP2DEV ");
             else {
                 void *dst_arch = mem->arch(this, src_arch);
@@ -1483,7 +1484,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         }
         void* dst_host = mem->arch(this);
         if (!platform_obj_->is_data_transfers_disabled()) {
-            if (!mem->is_multi_dim_dev_offset())
+            if (!mem->is_multi_dim_dev_offset() && !src_mem->is_multi_dim_dev_offset())
                 src_dev->MemD2H(task, src_mem, off, host_sizes, dev_sizes, 1, 1, mem->size(), dst_host, "DEV2OpenMP ");
             else {
                 src_dev->MemD2H(task, mem, mem->dim(), dst_host, mem->dev_size(), mem->dev_off(), mem->dev_strides(), src_mem->arch(this), src_mem->dev_size(), src_mem->dev_off(), src_mem->dev_strides(), mem->dev_size(), mem->elem_size());
@@ -1567,7 +1568,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
 
                 // Do Device to Host Transfer
                 if (!platform_obj_->is_data_transfers_disabled()) {
-                    if (!mem->is_multi_dim_dev_offset())
+                    if (!mem->is_multi_dim_dev_offset() && !src_mem->is_multi_dim_dev_offset())
                         errid_ = src_dev->MemD2H(task, src_mem, select_mem->local_off(), 
                                 select_mem->host_size(), select_mem->dev_size(), select_mem->elem_size(), 
                                 select_dim, select_mem->size(), host, "D2H->H2D(1) ");
@@ -1606,7 +1607,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
             double start = timer_->Now();
             mem->arch(this);
             if (!platform_obj_->is_data_transfers_disabled()) {
-                if (!mem->is_multi_dim_dev_offset())
+                if (!mem->is_multi_dim_dev_offset() && !src_mem->is_multi_dim_dev_offset())
                     errid_ = MemH2D(task, mem, select_mem->local_off(), 
                             select_mem->host_size(), lws, elem_size, select_dim, size, host, "D2H->H2D(2) ");
                 else
@@ -1817,12 +1818,12 @@ void Device::CopyDataBetweenConnectedDMemRegions(Task *task, Command *cmd, DataM
     if (primary == secondary) {
         InvokeDMemInDataTransfer<DataMemRegion>(task, cmd, primary, parent);
     }
+    else if (!secondary->is_dev_dirty(devno_)) {
+        // D(P[Ri]) <- D(Ri)
+        // D(Ri) <- D(P[Ri])
+        InvokeDMemInDataTransfer<DataMemRegion>(task, cmd, primary, parent, secondary, true);
+    }
     else {
-        if (!secondary->is_dev_dirty(devno_)) {
-            // D(P[Ri]) <- D(Ri)
-            // D(Ri) <- D(P[Ri])
-            InvokeDMemInDataTransfer<DataMemRegion>(task, cmd, primary, secondary);
-        }
         int rmem_nddevs[IRIS_MAX_NDEVS+1];
         int rmem_cpu_dev = -1;
         int rmem_non_cpu_dev = -1;
@@ -1880,14 +1881,14 @@ void Device::CopyDataBetweenConnectedDMemRegions(Task *task, Command *cmd, DataM
         bool found = false;
         for (int i=0; i<9; i++) {
             if (data[i].flag) {
-				bool disable_host_dirty_update = false;
-                unsigned long uid = 0;
+				bool disable_dirty_update = false;
+                //unsigned long uid = 0;
 				if (data[i].secondary != NULL) {
-					disable_host_dirty_update = true;
-                    uid = data[i].secondary->uid();
+					disable_dirty_update = true;
+                    //uid = data[i].secondary->uid();
                 }
-                //_printf(" ID:%d primary:%lu secondary:%lu host_update:%d is_dev_centric:%d", i, data[i].primary->uid(), uid, disable_host_dirty_update, is_dev_centric);
-                InvokeDMemInDataTransfer<DataMemRegion>(task, cmd, data[i].primary, data[i].parent, data[i].secondary, disable_host_dirty_update);
+                //_printf(" ID:%d primary:%lu secondary:%lu host_update:%d is_dev_centric:%d", i, data[i].primary->uid(), uid, disable_dirty_update, is_dev_centric);
+                InvokeDMemInDataTransfer<DataMemRegion>(task, cmd, data[i].primary, data[i].parent, data[i].secondary, disable_dirty_update);
                 found = true;
                 break;
             }
@@ -2048,7 +2049,7 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
         Task *task = cmd->task();
         bool async = is_async(task);
         Device *src_dev = this;
-        if (mem->is_dev_dirty(devno_)) {
+        if (mem->get_n_regions() <=0 && mem->is_dev_dirty(devno_)) {
             int cpu_dev = -1;
             int non_cpu_dev = -1;
             int d2d_dev = -1;

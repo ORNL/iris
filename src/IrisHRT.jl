@@ -1227,7 +1227,7 @@ module IrisHRT
             return iris_task_set_metadata(task, 0, metadata)
         else
             error("Unknown metadata type for task: ", task, " metadata:", metadata, " metadata type: ", typeof(metadata))
-            return IrisHRT.IRIS_ERROR
+            return IRIS_ERROR
         end
     end
 
@@ -1653,6 +1653,16 @@ module IrisHRT
         iris_data_mem_print(mem)
     end
 
+	function enable_regions(host::AbstractArray{T}) where T
+		mem = get_dmem_from_cache(host)
+		return iris_data_mem_enable_outer_dim_regions(mem)
+	end
+
+	function enable_regions(host::AbstractArray{T}, axis) where T
+		mem = get_dmem_from_cache(host)
+		return iris_data_mem_enable_regions(mem, axis)
+	end
+
     function enable_regions(mem::Union{IrisHRT.IrisMem, IrisHRT.IrisTaskMem})
         return iris_data_mem_enable_outer_dim_regions(field_dmem(mem))
     end
@@ -1950,18 +1960,30 @@ module IrisHRT
     end
 
     function add_task(graph::IrisGraph, task::IrisTask, policy=IrisHRT.iris_roundrobin)
+		if graph == nothing
+			return IRIS_ERROR
+		end
         return iris_graph_task(graph, task, policy, C_NULL)
     end
 
     function release(graph::IrisGraph)::Int32
+		if graph == nothing
+			return IRIS_ERROR
+		end
         return iris_graph_release(graph)
     end
 
     function wait(graph::IrisGraph)::Int32
+		if graph == nothing
+			return IRIS_ERROR
+		end
         return iris_graph_wait(graph)
     end
 
     function wait(graphs::Vector{IrisGraph})::Int32
+		if graph == nothing
+			return IRIS_ERROR
+		end
         return iris_graph_wait_all(Int32(length(graphs)), pointer(graphs))
     end
 

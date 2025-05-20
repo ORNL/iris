@@ -1086,7 +1086,7 @@ int DeviceCUDA::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
   }
   return IRIS_SUCCESS;
 }
-int DeviceCUDA::MemCpy(Task *task, BaseMem *mem, int dim, void *dst, size_t *dst_size, size_t *dst_off, size_t *dst_strides, void *src, size_t *src_size, size_t *src_off, size_t *src_strides, size_t *tile_size, size_t elem_size, int src_type, int dst_type) 
+int DeviceCUDA::MemCpy(Task *task, BaseMem *mem, int dim, void *dst, size_t *dst_size, size_t *dst_off, size_t *dst_strides, void *src, size_t *src_size, size_t *src_off, size_t *src_strides, size_t *tile_size, size_t elem_size, int src_type, int dst_type, const char *tag) 
 {
   if (mem->is_usm(devno()) || (dst == src) ) return IRIS_SUCCESS;
   CUdeviceptr src_cumem = (CUdeviceptr) src;
@@ -1167,7 +1167,7 @@ int DeviceCUDA::MemCpy(Task *task, BaseMem *mem, int dim, void *dst, size_t *dst
           string src_strides_str = Utils::GetString(src_strides, dim);
           string dst_strides_str = Utils::GetString(dst_strides, dim);
           string tile_size_str = Utils::GetString(tile_size, dim);
-          _error(" couldn't handle the dim:%d ptr:%p tile copy for DMEM dev[%d][%s] task[%ld:%s] mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] src_off:%s dst_off:%s src_strides:%s dst_strides:%s tile_size:%s elem_size:%lu [%d]", dim, ld_->cuMemcpy3D_v2, devno_, name_, task->uid(), task->name(), mem->uid(), dst, src, src_off_str.c_str(), dst_off_str.c_str(), src_strides_str.c_str(), dst_strides_str.c_str(), tile_size_str.c_str(), elem_size, stream_index);
+          _error(" %s couldn't handle the dim:%d ptr:%p tile copy for DMEM dev[%d][%s] task[%ld:%s] mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] src_off:%s dst_off:%s src_strides:%s dst_strides:%s tile_size:%s elem_size:%lu [%d]", tag, dim, ld_->cuMemcpy3D_v2, devno_, name_, task->uid(), task->name(), mem->uid(), dst, src, src_off_str.c_str(), dst_off_str.c_str(), src_strides_str.c_str(), dst_strides_str.c_str(), tile_size_str.c_str(), elem_size, stream_index);
           Utils::PrintStackTrace();
         
       }
@@ -1219,7 +1219,7 @@ int DeviceCUDA::MemCpy(Task *task, BaseMem *mem, int dim, void *dst, size_t *dst
           string src_strides_str = Utils::GetString(src_strides, dim);
           string dst_strides_str = Utils::GetString(dst_strides, dim);
           string tile_size_str = Utils::GetString(tile_size, dim);
-          _error(" couldn't handle the dim:%d tile copy for DMEM dev[%d][%s] task[%ld:%s] mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] src_off:%s dst_off:%s src_strides:%s dst_strides:%s tile_size:%s [%d]", dim, devno_, name_, task->uid(), task->name(), mem->uid(), dst, src, src_off_str.c_str(), dst_off_str.c_str(), src_strides_str.c_str(), dst_strides_str.c_str(), tile_size_str.c_str(), stream_index);
+          _error("\n\n couldn't handle the dim:%d tile copy for DMEM dev[%d][%s] task[%ld:%s] mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] src_off:%s dst_off:%s src_strides:%s dst_strides:%s tile_size:%s [%d]", dim, devno_, name_, task->uid(), task->name(), mem->uid(), dst, src, src_off_str.c_str(), dst_off_str.c_str(), src_strides_str.c_str(), dst_strides_str.c_str(), tile_size_str.c_str(), stream_index);
           Utils::PrintStackTrace();
         
       }
@@ -1268,15 +1268,15 @@ int DeviceCUDA::MemCpy(Task *task, BaseMem *mem, int dim, void *dst, size_t *dst
 }
 int DeviceCUDA::MemD2D(Task *task, BaseMem *mem, int dim, void *dst, size_t *dst_size, size_t *dst_off, size_t *dst_strides, void *src, size_t *src_size, size_t *src_off, size_t *src_strides, size_t *tile_size, size_t elem_size) 
 {
-	return MemCpy(task, mem, dim, dst, dst_size, dst_off, dst_strides, src, src_size, src_off, src_strides, tile_size, elem_size, CU_MEMORYTYPE_DEVICE, CU_MEMORYTYPE_DEVICE); 
+	return MemCpy(task, mem, dim, dst, dst_size, dst_off, dst_strides, src, src_size, src_off, src_strides, tile_size, elem_size, CU_MEMORYTYPE_DEVICE, CU_MEMORYTYPE_DEVICE, "D2D"); 
 }
 int DeviceCUDA::MemH2D(Task *task, BaseMem *mem, int dim, void *dst, size_t *dst_size, size_t *dst_off, size_t *dst_strides, void *src, size_t *src_size, size_t *src_off, size_t *src_strides, size_t *tile_size, size_t elem_size) 
 {
-	return MemCpy(task, mem, dim, dst, dst_size, dst_off, dst_strides, src, src_size, src_off, src_strides, tile_size, elem_size, CU_MEMORYTYPE_HOST, CU_MEMORYTYPE_DEVICE); 
+	return MemCpy(task, mem, dim, dst, dst_size, dst_off, dst_strides, src, src_size, src_off, src_strides, tile_size, elem_size, CU_MEMORYTYPE_HOST, CU_MEMORYTYPE_DEVICE, "H2D"); 
 }
 int DeviceCUDA::MemD2H(Task *task, BaseMem *mem, int dim, void *dst, size_t *dst_size, size_t *dst_off, size_t *dst_strides, void *src, size_t *src_size, size_t *src_off, size_t *src_strides, size_t *tile_size, size_t elem_size) 
 {
-	return MemCpy(task, mem, dim, dst, dst_size, dst_off, dst_strides, src, src_size, src_off, src_strides, tile_size, elem_size, CU_MEMORYTYPE_DEVICE, CU_MEMORYTYPE_HOST); 
+	return MemCpy(task, mem, dim, dst, dst_size, dst_off, dst_strides, src, src_size, src_off, src_strides, tile_size, elem_size, CU_MEMORYTYPE_DEVICE, CU_MEMORYTYPE_HOST, "D2H"); 
 }
 
 int DeviceCUDA::KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bool report_error) {

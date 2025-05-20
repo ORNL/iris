@@ -71,8 +71,8 @@ public:
   void set_dev_dirty(int devno, bool flag=true, bool check_regions=true);
   int  get_dev_affinity();
   void clear_dev_dirty(int devno);
-  void set_dirty_except(int devno);
-  void set_dirty_all(bool flag=true);
+  void set_dirty_except(int devno, bool check_regions=true);
+  void set_dirty_all(bool flag=true, bool check_regions=true);
   int *get_non_dirty_devices(int *dev);
   bool is_dirty_all();
   void clear();
