@@ -47,6 +47,7 @@ pushd apps/dagger
 #conda activate ./envs
 
 # Run command
+make dagger_runner kernel.hip kernel.ptx kernel.openmp.so
 make -f Makefile.venv clean
 make -f Makefile.venv setup
 make -f Makefile.venv test-duplication
