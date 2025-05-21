@@ -5,29 +5,32 @@
 #include <stdio.h>
 #include <string.h>
 
-#define _PRINTF_ENABLE
-#define FFLUSH(X)    //fflush(X)
-#ifndef NDEBUG
 #ifndef TRACE_DISABLE
 #define _TRACE_ENABLE
 #endif //TRACE_DISABLE
+#ifndef CHECK_DISABLE
 #define _CHECK_ENABLE
+#endif //CHECK_DISABLE
 #ifndef DEBUG_DISABLE
 #define _DEBUG_ENABLE
 #endif //DEBUG_DISABLE
 #ifndef INFO_DISABLE
 #define _INFO_ENABLE
 #endif //INFO_DISABLE
+#ifndef TODO_DISABLE
 #define _TODO_ENABLE
-#endif //NDEBUG
-
+#endif //TODO_DISABLE
+#ifndef WARNING_DISABLE
 #define _WARNING_ENABLE
+#endif //WARNING_DISABLE
+
+#define _PRINTF_ENABLE
+#define FFLUSH(X)    //fflush(X)
 #define _ERROR_ENABLE
 #define _CLERROR_ENABLE
 #define _CUERROR_ENABLE
 #define _HIPERROR_ENABLE
 #define _ZEERROR_ENABLE
-
 #define _HIPWARNING_ENABLE
 #define _CUWARNING_ENABLE
 #define _CLWARNING_ENABLE
