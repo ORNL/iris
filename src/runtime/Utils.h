@@ -86,6 +86,8 @@ namespace iris {
                     ss << "]";
                     return ss.str();
                 }
+                static bool IsTileContiguous( const size_t strides[3],   
+                        const size_t tile_size[3], int dims);              
         };
 
     } /* namespace rt */

@@ -85,15 +85,27 @@ public:
     if (source_mem == NULL) return host_size_;
     return source_mem->host_size(); 
   }
-  size_t *dev_strides() { 
+  size_t *dev_strides(int dim=-1) { 
     DataMem *source_mem = (DataMem*)get_source_mem();
-    if (source_mem == NULL) return dev_strides_;
-    return source_mem->dev_strides(); 
+    if (source_mem == NULL) {
+        if (dim == -1 || dim == dim_) return dev_strides_;
+        else {
+            compute_strides(dev_strides_, dev_size_, dim);
+            return dev_strides_;
+        }
+    }
+    return source_mem->dev_strides(dim); 
   }
-  size_t *host_strides() { 
+  size_t *host_strides(int dim=-1) { 
     DataMem *source_mem = (DataMem*)get_source_mem();
-    if (source_mem == NULL) return host_strides_;
-    return source_mem->host_strides(); 
+    if (source_mem == NULL) {
+        if (dim == -1 || dim == dim_) return host_strides_;
+        else {
+            compute_strides(host_strides_, host_size_, dim);
+            return host_strides_;
+        }
+    }
+    return source_mem->host_strides(dim); 
   }
   virtual void** archs() { 
       DataMem *source_mem = (DataMem*)get_source_mem();
@@ -162,7 +174,7 @@ public:
   bool is_symbol() { return is_symbol_; }
   void *host_root_memory() { return host_memory(); }
   void *host_memory();
-  void compute_strides(size_t *strides, size_t *size);
+  void compute_strides(size_t *strides, size_t *size, int dim=-1);
   void compute_dev_strides(size_t *size);
   void compute_host_strides(size_t *size);
   void *tmp_host_memory();

@@ -77,10 +77,11 @@ DataMem::DataMem(Platform *platform, void *host_ptr, size_t *off, size_t *host_s
     elem_size_ = elem_size;
     //Print();
 }
-void DataMem::compute_strides(size_t *strides, size_t *size)
+void DataMem::compute_strides(size_t *strides, size_t *size, int dim)
 {
+    if (dim == -1) dim = dim_; 
     strides[0] = 1;
-    for(int i=1; i<dim_; i++) {
+    for(int i=1; i<dim; i++) {
         strides[i] = size[i-1] * strides[i-1];
     }
 }

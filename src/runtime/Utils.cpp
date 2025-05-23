@@ -176,6 +176,25 @@ void Utils::Logo(bool color) {
   }
 }
 
+// returns true if an up-to-3D tile is laid out as one contiguous block
+bool Utils::IsTileContiguous(
+        const size_t strides[3],   // { elems in X-step, elems in row, elems in slice }
+        const size_t tile_size[3],     // { width, height, depth } in elements
+        int          dims              // 1, 2 or 3
+        ) {
+    size_t expect = 1;
+    for (int d = 0; d < dims; ++d) {
+        if (d > 0 && tile_size[d] > 1) {
+            // must have exactly 'expect' elements between starts of consecutive
+            // lines/slices/etc for no gaps
+            if (strides[d] != expect) {
+                return false;
+            }
+        }
+        expect *= tile_size[d];
+    }
+    return true;
+}
 string Utils::GetBackendName(int backend_id)
 {
     string backend = "error";

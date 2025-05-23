@@ -6,6 +6,9 @@
 #include <stdint.h>
 
 #define DMEM_MAX_DIM 6
+#define IRIS_MAX(X, Y)    (((X) > (Y)) ? (X) : (Y))
+#define IRIS_MIN(X, Y)    (((X) < (Y)) ? (X) : (Y))
+
 
 #ifdef __cplusplus
 namespace iris {

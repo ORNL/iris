@@ -4,9 +4,6 @@
 #include <math.h>
 #include <iris/iris.h>
 
-#define IRIS_MAX(X, Y)    (((X) > (Y)) ? (X) : (Y))
-#define IRIS_MIN(X, Y)    (((X) < (Y)) ? (X) : (Y))
-
 #ifdef __HIPCC__
 #ifndef ENABLE_HIP_MACROS
 #define ENABLE_HIP_MACROS

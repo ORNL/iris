@@ -1685,6 +1685,22 @@ module IrisHRT
         return mem_list
     end
 
+    function regions_count(host::AbstractArray{T}) where T
+        mem = get_dmem_from_cache(host)
+        return iris_data_mem_n_regions(field_dmem(mem))
+    end
+
+    function regions(host::AbstractArray{T}) where T
+        mem = get_dmem_from_cache(host)
+        mem_list = []
+        nregions = regions_count(mem)
+        for i in 1:nregions
+            rmem = iris_data_mem_create_region_struct(mem, i-1)
+            push!(mem_list, rmem)
+        end
+        return mem_list
+    end
+
     function region(mem::Union{IrisMem, IrisTaskMem}, i::Int)
         return iris_data_mem_create_region_struct(mem, i-1)
     end
@@ -3203,6 +3219,17 @@ Base.size(v::IrisHRT.IrisMem4D) = size(v.mem)
 Base.getindex(v::IrisHRT.IrisMem4D, i::Int, j::Int, k::Int, l::Int) = Base.getindex(v.mem, i, j, k, l)
 Base.axes(v::IrisHRT.IrisMem4D) = Base.axes(v.mem)
 Base.IndexStyle(::Type{<:IrisHRT.IrisMem4D}) = IndexCartesian()  # tells code it’s a simple linear index
+function Base.copyto!(dst::IrisHRT.UMem, src::IrisHRT.UMem; args...)
+    IrisHRT.copyto!(dst, src; args...)
+end
+
+function Base.copyto!(dst::AbstractArray{T}, src::IrisHRT.UMem; args...) where T
+    IrisHRT.copyto!(dst, src; args...)
+end
+
+function Base.copyto!(dst::IrisHRT.UMem, src::AbstractArray{T}; args...) where T
+    IrisHRT.copyto!(dst, src; args...)
+end
 
 function Base.ndims(v::IrisHRT.UMem) 
     dmem = IrisHRT.field_dmem(v)
