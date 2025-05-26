@@ -8,12 +8,10 @@
 #include <time.h>
 #include <iostream>
 #include <fstream>
-//#include <codecvt>
 #include <locale>
 #include <string>
 
 #define SCHEDULING_HISTORY_HEADER "taskname,type,start,end,duration,size,policy,acclname"
-
 #define SCHEDULING_HISTORY_FOOTER ""
 
 namespace iris {
