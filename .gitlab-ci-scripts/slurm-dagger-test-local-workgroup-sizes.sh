@@ -26,6 +26,7 @@ echo ${SLURM_JOB_ID} > slurm.job
 echo --------------------------------------------------------------------------------
 
 ### Setup Environment
+export IRIS_HISTORY=1
 
 ## Slurm/gitlab-runner specific setup
 # Work around for lmod + Slurm
