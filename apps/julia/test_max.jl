@@ -27,7 +27,7 @@ println("x: ", x)
 println("x1: ", x1)
 println("max: ", m)
 
-@testset "iris_max" begin
+@testset "max" begin
     @test m[1] == 8.5
 end
 IrisHRT.finalize()

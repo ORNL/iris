@@ -15,7 +15,7 @@ println(Core.stdout, " AA: ", AA, " ptr:", typeof(AA), " size:", size(AA))
 println(Core.stdout, " A: ", A, " type:", typeof(A), " size:", size(A))
 println(Core.stdout, " AA: ", AA, " ptr:", typeof(AA), " size:", size(AA))
 
-@testset "iris_max" begin
+@testset "reshape_op_overhead" begin
     AA_host = IrisHRT.host(AA)
     @test AA_host == [0.20412414523193154, 0.20412414523193154, 0.20412414523193154, 0.20412414523193154, 0.20412414523193154, 0.20412414523193154, 0.20412414523193154, 0.20412414523193154, 0.20412414523193154, 0.20412414523193154, 0.20412414523193154, 0.20412414523193154, 0.20412414523193154, 0.20412414523193154, 0.20412414523193154, 0.20412414523193154] 
 end

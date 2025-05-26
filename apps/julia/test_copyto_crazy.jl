@@ -20,7 +20,7 @@ println(Core.stdout, " r_old: ", r_old_host[1:min(SIZE,10)])
 r_ref_p5 = fill(Float64(0.5), SIZE)
 r_ref_1 = fill(Float64(1.0), SIZE)
 
-@testset "copyto_test" begin
+@testset "copyto_crazy" begin
     @test r_old_host == r_ref_p5
     @test r_host == r_ref_1
 end

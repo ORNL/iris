@@ -172,9 +172,9 @@ bool DataMem::is_host_dirty(bool check_regions) {
     if (source_mem != NULL) 
         return source_mem->is_host_dirty(check_regions);
     if (!check_regions) return host_dirty_flag_;
-    if (n_regions_ == 0) 
+    if (valid_n_regions_ == 0) 
         return host_dirty_flag_; 
-    for(int i=0; i<n_regions_; i++) {
+    for(int i=0; i<valid_n_regions_; i++) {
         if (regions_[i].first->is_host_dirty())
             return true;
     }
@@ -184,10 +184,10 @@ void DataMem::clear_host_dirty() {
     DataMem *source_mem = (DataMem*)get_source_mem();
     if (source_mem != NULL) 
         source_mem->clear_host_dirty();
-    else if (n_regions_ == 0) 
+    else if (valid_n_regions_ == 0) 
         host_dirty_flag_ = false; 
     else {
-        for(int i=0; i<n_regions_; i++) {
+        for(int i=0; i<valid_n_regions_; i++) {
             regions_[i].first->clear_host_dirty();
         }
     }
@@ -196,10 +196,10 @@ void DataMem::set_host_dirty(bool flag) {
     DataMem *source_mem = (DataMem*)get_source_mem();
     if (source_mem != NULL) 
         source_mem->set_host_dirty(flag);
-    else if (n_regions_ == 0) 
+    else if (valid_n_regions_ == 0) 
         host_dirty_flag_ = flag; 
     else {
-        for(int i=0; i<n_regions_; i++) {
+        for(int i=0; i<valid_n_regions_; i++) {
             regions_[i].first->set_host_dirty(flag);
         }
     }
@@ -209,9 +209,9 @@ bool DataMem::is_dev_dirty(int devno, bool check_regions) {
     if (source_mem != NULL) 
         return source_mem->is_dev_dirty(devno, check_regions);
     if (!check_regions) return dirty_flag_[devno];
-    if (n_regions_ == 0) 
+    if (valid_n_regions_ == 0) 
         return dirty_flag_[devno]; 
-    for(int i=0; i<n_regions_; i++) {
+    for(int i=0; i<valid_n_regions_; i++) {
         if (regions_[i].first->is_dev_dirty(devno))
             return true;
     }
@@ -223,10 +223,10 @@ void DataMem::set_dev_dirty(int devno, bool flag, bool check_regions) {
         source_mem->set_dev_dirty(devno, flag);
     else if (!check_regions)  
         dirty_flag_[devno] = flag; 
-    else if (n_regions_ == 0) 
+    else if (valid_n_regions_ == 0) 
         dirty_flag_[devno] = flag; 
     else {
-        for(int i=0; i<n_regions_; i++) {
+        for(int i=0; i<valid_n_regions_; i++) {
             regions_[i].first->set_dev_dirty(devno, flag);
             if (regions_[i].first != regions_[i].second) 
                 regions_[i].second->set_dev_dirty(devno, flag);
@@ -236,7 +236,7 @@ void DataMem::set_dev_dirty(int devno, bool flag, bool check_regions) {
 int DataMem::get_dev_affinity() { 
     DataMem *source_mem = (DataMem*)get_source_mem();
     if (source_mem != NULL) return source_mem->get_dev_affinity();
-    if (n_regions_ == 0) {
+    if (valid_n_regions_ == 0) {
         for(int i=0; i<ndevs_; i++) 
             if (!is_dev_dirty(i)) 
                 return i; 
@@ -252,10 +252,10 @@ void DataMem::clear_dev_dirty(int devno) {
     DataMem *source_mem = (DataMem*)get_source_mem();
     if (source_mem != NULL) 
         source_mem->clear_dev_dirty(devno);
-    else if (n_regions_ == 0) 
+    else if (valid_n_regions_ == 0) 
         dirty_flag_[devno] = false; 
     else {
-        for(int i=0; i<n_regions_; i++) {
+        for(int i=0; i<valid_n_regions_; i++) {
             regions_[i].first->clear_dev_dirty(devno);
             if (regions_[i].first != regions_[i].second) 
                 regions_[i].second->clear_dev_dirty(devno);
@@ -266,7 +266,7 @@ void DataMem::set_dirty_except(int devno, bool check_regions) {
     DataMem *source_mem = (DataMem*)get_source_mem();
     if (source_mem != NULL) 
         source_mem->set_dirty_except(devno);
-    else if (n_regions_ <= 0) {
+    else if (valid_n_regions_ <= 0) {
         for(int i=0; i<ndevs_; i++) {
             if (i != devno) dirty_flag_[i] = true;
         }
@@ -279,7 +279,7 @@ void DataMem::set_dirty_except(int devno, bool check_regions) {
         }
     } 
     else {
-        for(int i=0; i<n_regions_; i++) {
+        for(int i=0; i<valid_n_regions_; i++) {
             regions_[i].first->set_dirty_except(devno);
             if (regions_[i].first != regions_[i].second)  {
                 // We shouldn't update the device copy as we requested to update the whole host
@@ -294,7 +294,7 @@ void DataMem::set_dirty_all(bool flag, bool check_regions) {
     DataMem *source_mem = (DataMem*)get_source_mem();
     if (source_mem != NULL) 
         source_mem->set_dirty_all(flag);
-    else if (n_regions_ <= 0) {
+    else if (valid_n_regions_ <= 0) {
         for(int i=0; i<ndevs_; i++) {
             dirty_flag_[i] = flag;
         }
@@ -306,7 +306,7 @@ void DataMem::set_dirty_all(bool flag, bool check_regions) {
         }
     } 
     else {
-        for(int i=0; i<n_regions_; i++) {
+        for(int i=0; i<valid_n_regions_; i++) {
             regions_[i].first->set_dirty_all(flag);
             if (regions_[i].first != regions_[i].second) 
                 regions_[i].second->set_dirty_all(flag, false);
@@ -317,7 +317,7 @@ int *DataMem::get_non_dirty_devices(int *dev) {
     DataMem *source_mem = (DataMem*)get_source_mem();
     if (source_mem != NULL) 
         return source_mem->get_non_dirty_devices(dev);
-    else if (n_regions_ == 0) {
+    else if (valid_n_regions_ == 0) {
         int i=0,j=0;
         for(i=0, j=0; i<ndevs_; i++) {
             if (!dirty_flag_[i]) dev[j++] = i;
@@ -327,7 +327,7 @@ int *DataMem::get_non_dirty_devices(int *dev) {
     } 
     else {
         ASSERT(0 && "This case is not handled");
-        for(int i=0; i<n_regions_; i++) {
+        for(int i=0; i<valid_n_regions_; i++) {
             regions_[i].first->get_non_dirty_devices(dev);
             if (regions_[i].first != regions_[i].second) 
                 regions_[i].second->get_non_dirty_devices(dev);
@@ -338,7 +338,7 @@ int *DataMem::get_non_dirty_devices(int *dev) {
 bool DataMem::is_dirty_all() {
     DataMem *source_mem = (DataMem*)get_source_mem();
     if (source_mem != NULL) return source_mem->is_dirty_all();
-    else if (n_regions_ == 0) {
+    else if (valid_n_regions_ == 0) {
         bool all=true;
         for(int i=0; i<ndevs_; i++) {
             all = all & dirty_flag_[i];
@@ -346,7 +346,7 @@ bool DataMem::is_dirty_all() {
         return all;
     }
     bool all=true;
-    for(int i=0; i<n_regions_; i++) {
+    for(int i=0; i<valid_n_regions_; i++) {
         all = all & regions_[i].first->is_dirty_all();
         if (regions_[i].first != regions_[i].second) 
             all = all & regions_[i].second->is_dirty_all();
@@ -449,6 +449,7 @@ void DataMem::Init(Platform *platform, void *host_ptr, size_t size, int dim)
     host_ptr_owner_ = false;
     size_ = size;
     n_regions_ = 0;
+	valid_n_regions_ = 0;
     dynamic_regions_ = false;
     tmp_host_ptr_ = NULL;
     for(size_t i=0; i<regions_.size(); i++) {
@@ -558,7 +559,7 @@ void DataMem::realllocate_space(size_t size)
         return;
     }
     ASSERT(dim_ == 1);
-    ASSERT(n_regions_ <= 0);
+    ASSERT(valid_n_regions_ <= 0);
     if (size > size_) { 
         if (host_ptr_owner_) free(host_ptr_);
         host_ptr_ = malloc(size);
@@ -696,6 +697,7 @@ void DataMem::EnableOuterDimensionRegions()
     if (regions_.size() != 0) return;
     int outer_dim = dev_size_[dim_-1];
     n_regions_ = outer_dim;
+	valid_n_regions_ = outer_dim;
     //regions_ = new DataMemRegion*[n_regions_];
     size_t dev_size[DMEM_MAX_DIM], off[DMEM_MAX_DIM], loff[DMEM_MAX_DIM];
     memcpy(dev_size, dev_size_, sizeof(size_t)*DMEM_MAX_DIM);
@@ -705,7 +707,7 @@ void DataMem::EnableOuterDimensionRegions()
     size_t dev_offset = 1;
     for(int i=0; i<dim_-1; i++) 
         dev_offset *= dev_size_[i];
-    for(int i=0; i<n_regions_; i++) {
+    for(int i=0; i<valid_n_regions_; i++) {
         off[dim_-1] = off_[dim_-1]+i; 
         loff[dim_-1] = 0;
         size_t dev_offset_from_root = i * dev_offset * elem_size_;
@@ -725,6 +727,7 @@ void DataMem::EnableRegions(int axis)
     //}
     int outer_dim = dev_size_[axis];
     n_regions_ = outer_dim;
+	valid_n_regions_ = outer_dim;
     //regions_ = new DataMemRegion*[n_regions_];
     size_t dev_size[DMEM_MAX_DIM], off[DMEM_MAX_DIM], loff[DMEM_MAX_DIM];
     size_t dev_off[DMEM_MAX_DIM];
@@ -733,7 +736,7 @@ void DataMem::EnableRegions(int axis)
     memcpy(off, off_, sizeof(size_t)*DMEM_MAX_DIM);
     memcpy(loff, off_, sizeof(size_t)*DMEM_MAX_DIM);
     dev_size[axis] = 1;
-    for(int i=0; i<n_regions_; i++) {
+    for(int i=0; i<valid_n_regions_; i++) {
         off[axis] = off_[axis]+i; 
         loff[axis] = 0;
         dev_off[axis] = off_[axis] + i;
@@ -783,6 +786,7 @@ iris_mem DataMem::CreateRegion(size_t *off, size_t *size)
     dynamic_regions_ = true;
     regions_.push_back(make_pair(full_region, region));
     n_regions_++;
+	valid_n_regions_++;
     return *(region->struct_obj());
 }
 

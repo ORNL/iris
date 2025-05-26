@@ -29,7 +29,7 @@ end
 
 
 
-@testset "rope test" begin
+@testset "reinterpret" begin
     IrisHRT.init()
 
     test_reinterpret_kernel!()

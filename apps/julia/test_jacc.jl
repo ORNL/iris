@@ -28,7 +28,7 @@ function main()
     out_host = IrisHRT.host(out)
     @test out_host == [35.0]
 end
-@testset "iris_jacc_parallel_for_reduce" begin
+@testset "jacc" begin
     main()
 end
 IrisHRT.finalize()

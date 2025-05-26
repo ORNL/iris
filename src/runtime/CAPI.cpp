@@ -917,6 +917,11 @@ int iris_data_mem_enable_regions(iris_mem brs_mem, int axis) {
   mem->EnableRegions(axis);
   return IRIS_SUCCESS;
 }
+int iris_data_mem_set_valid_regions(iris_mem brs_mem, int regions) {
+  DataMem *mem= (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  mem->SetValidRegions(regions);
+  return IRIS_SUCCESS;
+}
 iris_mem iris_get_dmem_for_region(iris_mem brs_mem) {
     DataMemRegion *obj = (DataMemRegion*)Platform::GetPlatform()->get_mem_object(brs_mem);
     return *(obj->get_dmem()->struct_obj());

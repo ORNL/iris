@@ -33,7 +33,7 @@ println(AA_host)
 println(AAA_host)
 println(AAAA_host)
 
-@testset "iris_max" begin
+@testset "reshape_view_reshape" begin
 	@test A_host == hA
 	@test AA_host   == [19 27 35 43; 20 28 36 44; 21 29 37 45; 22 30 38 46]
 	@test AAA_host  == [19 21 27 29 35 37 43 45; 20 22 28 30 36 38 44 46]

@@ -1568,6 +1568,14 @@ extern iris_mem *iris_data_mem_create_region_ptr(iris_mem root_mem, int region);
  */
 extern int iris_data_mem_enable_regions(iris_mem mem, int axis);
 
+/**@brief enable decomposition along the given axis dimension
+ *
+ * @param mem memory object
+ * @param regions set number of valid regions to check 
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_data_mem_set_valid_regions(iris_mem mem, int regions);
+
 /**@brief enable decomposition along the outer dimension
  *
  * @param mem memory object

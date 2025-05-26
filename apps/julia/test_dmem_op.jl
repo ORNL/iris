@@ -14,7 +14,7 @@ Z = A + B
 IrisHRT.wait(Z)
 IrisHRT.flush(Z)
 println("Z: ", Z)
-@testset "copyto_test" begin
+@testset "dmem_op" begin
     Z_host = IrisHRT.host(Z)
     @test Z_host == Float32[3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0]
 end

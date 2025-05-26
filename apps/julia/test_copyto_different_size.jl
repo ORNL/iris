@@ -37,7 +37,7 @@ println(Core.stdout, " DB: ", DB)
 println(Core.stdout, " AA: ", AA, " ptr:", pointer(AA))
 
 
-@testset "copyto_test" begin
+@testset "copyto_different_size" begin
     @test AA == [5 25; 10 30; 15 35; 20 40;;; 0 4; 1 5; 2 6; 3 7]
 end
 IrisHRT.finalize()

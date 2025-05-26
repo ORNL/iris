@@ -29,7 +29,7 @@ IrisHRT.synchronize()
 
 axpy_test(alpha, x_ref, y)
 
-@testset "axpy_test" begin
+@testset "axpy_jacc" begin
     @test x_ref == x
 end
 

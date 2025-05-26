@@ -11,7 +11,7 @@ out = IrisHRT.zeros(Float64, 8)
 
 println(Core.stdout, " op1:", op1, " op2:", op2, " out:", out)
 
-@testset "iris_add" begin
+@testset "op_add" begin
     out_host = IrisHRT.host(out)
     @test out_host == [2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0]
 end

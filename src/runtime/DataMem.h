@@ -180,8 +180,8 @@ public:
   void *tmp_host_memory();
   void lock_host_region(int region);
   void unlock_host_region(int region);
-  int get_n_regions() { return n_regions_; }
-  bool is_regions_enabled() { return n_regions_ != 0; }
+  int get_n_regions() { return valid_n_regions_; }
+  bool is_regions_enabled() { return valid_n_regions_ != 0; }
   bool is_dynamic_regions() { return dynamic_regions_; }
   DataMemRegion *get_region(int i, bool dev_region=true) {
     ASSERT((size_t)i < regions_.size()); 
@@ -214,6 +214,10 @@ public:
   void EnableRegions(int axis);
   string GetSizeString(size_t *data, int dim);
   string GetPtrString(void **data, int dim);
+  void SetValidRegions(int valid_regions) { 
+        ASSERT(valid_regions <= n_regions_);
+        valid_n_regions_ = valid_regions;
+  }
 protected:
   void start(size_t out[DMEM_MAX_DIM]) const {
       memcpy(out, off_, dim_ * sizeof(size_t));
@@ -238,6 +242,7 @@ protected:
   bool multi_dim_dev_offset_;
   pthread_mutex_t host_mutex_;
   int n_regions_;
+  int valid_n_regions_;
   void *host_ptr_;
   void *tmp_host_ptr_;
   size_t dev_off_[DMEM_MAX_DIM];

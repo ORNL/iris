@@ -496,6 +496,10 @@ end
     return ccall(Libdl.dlsym(lib, :iris_data_mem_enable_regions), Int32, (IrisMem, Int32), mem, Int32(axis-1))
 end
 
+@inline function iris_data_mem_set_valid_regions(mem::IrisMem, n_regions::Union{Int32,Int64,UInt32,UInt64})::Int32
+    return ccall(Libdl.dlsym(lib, :iris_data_mem_set_valid_regions), Int32, (IrisMem, Int32), mem, Int32(n_regions))
+end
+
 @inline function iris_data_mem_create_tile(mem::Ptr{IrisMem}, host::Ptr{Cvoid}, off::Ptr{Csize_t}, host_size::Ptr{Csize_t}, dev_size::Ptr{Csize_t}, elem_size::Csize_t, dim::Int32)::Int32
     return ccall(Libdl.dlsym(lib, :iris_data_mem_create_tile), Int32, (Ptr{IrisMem}, Ptr{Cvoid}, Ptr{Csize_t}, Ptr{Csize_t}, Ptr{Csize_t}, Csize_t, Int32), mem, host, off, host_size, dev_size, elem_size, dim)
 end
@@ -1073,6 +1077,14 @@ end
 
 @inline function iris_data_mem_update_host_size(mem::IrisMem, host::Ptr{Csize_t})::Int32
     return ccall(Libdl.dlsym(lib, :iris_data_mem_update_host_size), Int32, (IrisMem, Ptr{Csize_t}), mem, host)
+end
+
+@inline function iris_data_mem_update_dev_size(mem::IrisMem, dev_size::Ptr{Csize_t})::Int32
+    return ccall(Libdl.dlsym(lib, :iris_data_mem_update_dev_size), Int32, (IrisMem, Ptr{Csize_t}), mem, dev_size)
+end
+
+@inline function iris_data_mem_update_off(mem::IrisMem, dev_size::Ptr{Csize_t})::Int32
+    return ccall(Libdl.dlsym(lib, :iris_data_mem_update_off), Int32, (IrisMem, Ptr{Csize_t}), mem, dev_size)
 end
 
 @inline function iris_julia_init(func_ptr::Ptr{Cvoid}, flag::Number)::Int32

@@ -1671,6 +1671,15 @@ module IrisHRT
         return iris_data_mem_enable_regions(field_dmem(mem), axis)
     end
 
+    function set_valid_regions(mem::Union{IrisHRT.IrisMem, IrisHRT.IrisTaskMem}, n_regions)
+        return iris_data_mem_set_valid_regions(field_dmem(mem), n_regions)
+    end
+
+    function set_valid_regions(host::AbstractArray{T}, n_regions) where T
+        mem = get_dmem_from_cache(host)
+        return set_valid_regions(mem, n_regions)
+    end
+
     function regions_count(mem::Union{IrisHRT.IrisMem, IrisHRT.IrisTaskMem})
         return iris_data_mem_n_regions(field_dmem(mem))
     end
@@ -1717,7 +1726,7 @@ module IrisHRT
         return iris_data_mem(host, dev_size, offset)
     end
 
-    function reshape(bmem::Union{IrisMem, IrisTaskMem}, dims...) 
+    function reshape(bmem::Union{IrisMem, IrisTaskMem}, dims...; region_axis=-1) 
         mem = field_dmem(bmem)
         host_cptr = iris_get_dmem_host(mem)
         host_cptr = reinterpret(Ptr{Cvoid}, host_cptr)
@@ -1746,14 +1755,17 @@ module IrisHRT
             push_dmem_custom_type(iris_mem.uid, T)
         end
         iris_dmem_set_source(iris_mem, mem)
+        if region_axis != -1
+            IrisHRT.enable_regions(iris_mem, region_axis)
+        end
         Main.__iris_dmem_mirrors_map[key] = iris_mem
         #print_dmem(iris_mem)
         return iris_mem
     end
 
-    function reshape(host::AbstractArray{T}, dims...) where T
+    function reshape(host::AbstractArray{T}, dims...; args...) where T
         source_mem = get_dmem_from_cache(host)
-        return reshape(source_mem, dims...)
+        return reshape(source_mem, dims...; args...)
     end
 
     isdivisible(m, n) = iszero(m % n)

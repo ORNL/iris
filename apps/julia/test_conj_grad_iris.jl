@@ -107,7 +107,7 @@ end
 julia_time0 = time() - julia_start
 println("Julia time: ", julia_time0)
 println("Test:", cond[1, 1] <= 1e-14)
-@testset "conj_grad" begin
+@testset "conj_grad_iris" begin
     @test isapprox(cond[1,1], 3.1268536771503473e-15, atol=1e-6)
 end
 IrisHRT.finalize()
