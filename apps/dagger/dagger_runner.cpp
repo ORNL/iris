@@ -429,27 +429,21 @@ char LOG_BUFFER[32];
               printf("\033[41mInvalid memory argument! Kernel %s has a buffer of memory type %s but only r,w or rw are allowed.\n\033[0m",kernel.name,buf.c_str());
               return(EXIT_FAILURE);
             }
-            host_mem.push_back(tmp);
-            host_mem_ptr = tmp;
-            num_buffers_used++;
-          } else if(buf == "w"){
-            double* tmp = new double[(int)pow(SIZE,kernel.dimensions)];
-            host_mem.push_back(tmp);
-            host_mem_ptr = tmp;
-            num_buffers_used++;
-          } else if(buf == "rw"){
-            //create and populate memory
-            double* tmp = new double[(int)pow(SIZE,kernel.dimensions)];
-            for(int i = 0; i < pow(SIZE,kernel.dimensions); i++){
-              tmp[i] = i;
+            //and create device memory of the same size
+            iris_mem x;
+            char buffer_name[80];
+            sprintf(buffer_name,"%s-%s-%d",kernel.name,buf.c_str(),argument_index);
+            if (use_data_memory){
+              retcode = iris_data_mem_create(&x,host_mem[0], (int)pow(SIZE,kernel.dimensions)*sizeof(double));
+              memory_task_target = iris_pending;
             }
-            else
+           else
               retcode = iris_mem_create( (int)pow(SIZE,kernel.dimensions)*sizeof(double), &x);//, (char*)buffer_name);
-            assert (retcode == IRIS_SUCCESS && "Failed to create IRIS memory buffer");
-            dev_mem.push_back(x);
-            //and update the count of buffers used
-            num_buffers_used++;
-            argument_index++;
+           assert (retcode == IRIS_SUCCESS && "Failed to create IRIS memory buffer");
+           dev_mem.push_back(x);
+           //and update the count of buffers used
+           num_buffers_used++;
+           argument_index++;
           }
         }
       }

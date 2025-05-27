@@ -52,7 +52,7 @@ variables:
   stage: build
   script:
     - echo "Installing iris to $CI_PROJECT_DIR/install"
-    - IRIS_TAG=.noffi.$IRIS_MACHINE bash build.sh -DCMAKE_BUILD_TYPE=DEBUG -DCOVERAGE=true 
+    - IRIS_TAG=.noffi.$IRIS_MACHINE bash build.sh -DCMAKE_BUILD_TYPE=DEBUG -DCOVERAGE=true
 
 build-ffi-explorer:
   # Using aliasin features
@@ -87,7 +87,7 @@ docs-job:
     - source sphinx_venv/bin/activate
     - python3 -m pip install -e .
     - python3 -m pip install -r docs/sphinx/requirements.txt
-    - source `python3 -c 'import iris; print(iris.path)'`/setup.source 
+    - source `python3 -c 'import iris; print(iris.path)'`/setup.source
   script:
     - pushd docs/sphinx/source
     - python -m sphinx -T -E -b html -d _build/doctrees -D language=en . _build/html
@@ -123,7 +123,7 @@ deploy_docs_manual-job:
   script:
     - echo "Installing iris to $CI_PROJECT_DIR/install"
     # - IRIS_TAG=.ffi.$IRIS_MACHINE bash build.sh -DENABLE_FFI=ON -DCMAKE_BUILD_TYPE=DEBUG -DCOVERAGE=true
-    - IRIS_TAG=.$IRIS_TAG.$IRIS_MACHINE bash build.sh -DENABLE_FFI=$IRIS_FFI_FLAG -DCMAKE_BUILD_TYPE=DEBUG -DCOVERAGE=true 
+    - IRIS_TAG=.$IRIS_TAG.$IRIS_MACHINE bash build.sh -DENABLE_FFI=$IRIS_FFI_FLAG -DCMAKE_BUILD_TYPE=DEBUG -DCOVERAGE=true
     - echo $CI_REPOSITORY_URL
     - echo $CI_PROJECT_PATH
     - echo $IRIS_MACHINE
@@ -149,7 +149,7 @@ deploy_docs_manual-job:
     - echo $IRIS_ASYNC
     - echo $OPENCL_VENDOR_PATH
     - echo $OPENCL_PATH
-    - ctest --output-junit testRes.xml 
+    - ctest --output-junit testRes.xml
     - cd ../..
     - echo $IRIS_ARCHS
     - echo $IRIS_ASYNC
@@ -337,7 +337,7 @@ test-job-zenith-all-ffi-async-s2k:
 #    - echo "Installing iris to $IRIS_INSTALL_ROOT"
     - echo $CI_REPOSITORY_URL
     - echo $CI_PROJECT_PATH
-    - IRIS_TAG=.$IRIS_TAG.$IRIS_MACHINE.$IRIS_TESTNAME bash build.sh -DENABLE_FFI=$IRIS_FFI_FLAG -DCMAKE_BUILD_TYPE=DEBUG -DCOVERAGE=true 
+    - IRIS_TAG=.$IRIS_TAG.$IRIS_MACHINE.$IRIS_TESTNAME bash build.sh -DENABLE_FFI=$IRIS_FFI_FLAG -DCMAKE_BUILD_TYPE=DEBUG -DCOVERAGE=true
     - source $IRIS_INSTALL_ROOT.$IRIS_TAG.$IRIS_MACHINE.$IRIS_TESTNAME/setup.source
     - export IRIS_ARCHS=$IRIS_ARCHS_CICD
     - echo $PATH
@@ -450,7 +450,7 @@ test-backends-37:
   tags: [slurm]
   stage: dagger
   resource_group: slurm_zenith
-  needs: [build-noffi-zenith]
+  # needs: [build-noffi-zenith]
 
 .dagger-zenith-run-policy-evaluations:
   extends: [.dagger]
@@ -464,8 +464,8 @@ test-backends-37:
   artifacts:
     when: always
     paths:
-      - apps/dagger$IRIS_TAG/test-out.txt 
-      - apps/dagger$IRIS_TAG/errors.txt 
+      - apps/dagger$IRIS_TAG/test-out.txt
+      - apps/dagger$IRIS_TAG/errors.txt
       - apps/dagger$IRIS_TAG/dagger-payloads
       - apps/dagger$IRIS_TAG/dagger-graphs
       - apps/dagger$IRIS_TAG/dagger-results
@@ -514,8 +514,8 @@ dagger-zenith-test-correctness:
   artifacts:
     when: always
     paths:
-      - apps/dagger$IRIS_TAG/test-out.txt 
-      - apps/dagger$IRIS_TAG/errors.txt 
+      - apps/dagger$IRIS_TAG/test-out.txt
+      - apps/dagger$IRIS_TAG/errors.txt
       - slurm*.txt
 
 .dagger-zenith-test-local-workgroup-sizes:
@@ -530,8 +530,8 @@ dagger-zenith-test-correctness:
   artifacts:
     when: always
     paths:
-      - apps/dagger$IRIS_TAG/test-out.txt 
-      - apps/dagger$IRIS_TAG/errors.txt 
+      - apps/dagger$IRIS_TAG/test-out.txt
+      - apps/dagger$IRIS_TAG/errors.txt
       - apps/dagger$IRIS_TAG/dagger-payloads
       - apps/dagger$IRIS_TAG/dagger-graphs
       - apps/dagger$IRIS_TAG/dagger-results
@@ -573,8 +573,9 @@ dagger-zenith-test-local-workgroup-sizes-asynchronous-dmem:
   extends: [.dagger]
   script:
     - source /auto/software/iris/setup_system.source
-    - echo "Installing iris to $IRIS_INSTALL_ROOT"
-    - bash build-coverage.sh
+    - echo "Installing iris to $CI_PROJECT_DIR/install"
+    - bash build.sh -DCMAKE_BUILD_TYPE=DEBUG -DCOVERAGE=true
+    - echo source $IRIS_INSTALL_ROOT/setup.source
     - source $IRIS_INSTALL_ROOT/setup.source
     - .gitlab-ci-scripts/runner_watcher.sh $$ &
     - sbatch --partition=gpu --nodelist=zenith .gitlab-ci-scripts/slurm-dagger-test-duplication.sh
@@ -585,8 +586,8 @@ dagger-zenith-test-local-workgroup-sizes-asynchronous-dmem:
   artifacts:
     when: always
     paths:
-      - apps/dagger/test-out.txt 
-      - apps/dagger/errors.txt 
+      - apps/dagger/test-out.txt
+      - apps/dagger/errors.txt
       - apps/dagger/dagger-payloads
       - apps/dagger/dagger-graphs
       - apps/dagger/dagger-results

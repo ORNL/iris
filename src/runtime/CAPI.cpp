@@ -1240,6 +1240,12 @@ void iris_print_matrix_full_int8_t(int8_t *data, int M, int N, const char *descr
 {
     iris::PrintMatrixFull<int8_t>(data, M, N, description);
 }
+
+int iris_logo(){
+  Utils::Logo(true);
+  return IRIS_SUCCESS;
+}
+
 void iris_println(const char *s)
 {
     printf("%s\n", s);

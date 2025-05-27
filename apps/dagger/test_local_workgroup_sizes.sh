@@ -7,7 +7,6 @@ export WORKING_DIR=`realpath .`
 set -x
 #source $SCRIPT_DIR/setup_backends.sh
 #export IRIS_ARCHS=$BACKENDS
-
 # export IRIS_ARCHS=opencl
 #$BACKENDS
 export IRIS_HISTORY=1
@@ -79,19 +78,18 @@ for ((idx=0; idx<${#LOCAL_SIZES[@]}; idx++)); do
   for POLICY in roundrobin #depend profile random ftf sdq
   do
     start=`date +%s.%N`
-    LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$SCRIPT_DIR $SCRIPT_DIR/dagger_runner --graph="$WORKING_DIR/dagger-payloads/lws-graph-$FILENAME.json" --logfile="$WORKING_DIR/dagger-results/time-lws-graph-$FILENAME.csv" --repeats=1 --scheduling-policy="$POLICY" --size=$PAYLOAD_SIZE --kernels="ijk" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=40 --num-tasks=240 --min-width=6 --max-width=6 --concurrent-kernels="ijk:6" --skips=3  --sandwich $USE_DATA_MEMORY
+    export IRIS_HISTORY_FILE=$WORKING_DIR/dagger-results/$HOST-$POLICY-lws-$FILENAME-time.csv
+    LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$SCRIPT_DIR $SCRIPT_DIR/dagger_runner --graph="$WORKING_DIR/dagger-payloads/lws-graph-$FILENAME.json" --repeats=1 --scheduling-policy="$POLICY" --size=$PAYLOAD_SIZE --kernels="ijk" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=40 --num-tasks=240 --min-width=6 --max-width=6 --concurrent-kernels="ijk:6" --skips=3  --sandwich $USE_DATA_MEMORY
     [ $? -ne 0 ] && echo "Failed to run DAG" && exit 1
     end=`date +%s.%N`
     runtime=$( echo "$end - $start" | bc -l )
     echo "RUNTIME took $runtime"
     echo "$FILENAME,$runtime,$DIM" >> dagger-results/lws_times.csv
-    mv $SCRIPT_DIR/dagger_runner-$HOST*\.csv $WORKING_DIR/dagger-results/$HOST-$POLICY-lws-$FILENAME-time.csv
     #joint plot
     python $SCRIPT_DIR/gantt/gantt.py --dag="$WORKING_DIR/dagger-payloads/lws-graph-$FILENAME.json" --timeline="$WORKING_DIR/dagger-results/$HOST-$POLICY-lws-$FILENAME-time.csv" --timeline-out="$WORKING_DIR/dagger-graphs/$HOST-$POLICY-time-lws-graph-$FILENAME-timeline.pdf" --dag-out="$WORKING_DIR/dagger-graphs/$HOST-$POLICY-time-lws-graph-$FILENAME-recoloured_dag.pdf"  --combined-out="$WORKING_DIR/dagger-graphs/$HOST-$POLICY-time-lws-graph-$FILENAME-combined.pdf" --no-show-kernel-legend --no-show-task-legend #--drop="Internal-*"
   done
 
 done
-
 python ./plot_local_workgroup_sizes.py
 ([ $? -ne 0 ] && echo "Failed plot the combined timing results" && exit 1) || true
 
