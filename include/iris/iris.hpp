@@ -436,7 +436,7 @@ namespace iris {
         }
 
     template<class DType>
-    static void PrintMatrixLimited(DType *A, size_t M, size_t N, const char *description, size_t limit=8)
+    static void PrintArrayLimited(DType *A, size_t M, size_t N, const char *description, size_t limit=8)
         {
             printf("%s data:%p (%ld, %ld)\n", description, A, M, N);
             size_t print_rows = M>limit?limit:M;
@@ -449,7 +449,7 @@ namespace iris {
             }
         }
     template<class DType>
-    static void PrintMatrixLimited(DType *A, size_t M, size_t N, size_t K, const char *description, size_t limit=8)
+    static void PrintArrayLimited(DType *A, size_t M, size_t N, size_t K, const char *description, size_t limit=8)
         {
             printf("%s data:%p (%ld, %ld, %ld)\n", description, A, M, N, K);
             size_t print_m = M>limit?limit:M;
@@ -466,7 +466,7 @@ namespace iris {
             }
         }
     template<class DType>
-    static void PrintMatrixFull(DType *A, size_t M, size_t N, const char *description)
+    static void PrintArrayFull(DType *A, size_t M, size_t N, const char *description)
         {
             printf("%s data:%p (%ld, %ld)\n", description, A, M, N);
             for(size_t i=0; i<M; i++) {
@@ -477,7 +477,7 @@ namespace iris {
             }
         }
     template<class DType>
-    static void PrintMatrixFull(DType *A, size_t M, size_t N, size_t K, const char *description)
+    static void PrintArrayFull(DType *A, size_t M, size_t N, size_t K, const char *description)
         {
             printf("%s data:%p (%ld, %ld, %ld)\n", description, A, M, N, K);
             for(size_t i=0; i<M; i++) {

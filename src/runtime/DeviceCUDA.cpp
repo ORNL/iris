@@ -850,7 +850,7 @@ int DeviceCUDA::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
     dim = 1;
   } 
   if (dim == 3) {
-      _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu,%lu,%lu] host_sizes[%lu,%lu,%lu] dev_sizes[%lu,%lu,%lu] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, off[0], off[1], off[2], host_sizes[0], host_sizes[1], host_sizes[2], dev_sizes[0], dev_sizes[1], dev_sizes[2], size, host, stream_index);
+      _debug2("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu,%lu,%lu] host_sizes[%lu,%lu,%lu] dev_sizes[%lu,%lu,%lu] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, off[0], off[1], off[2], host_sizes[0], host_sizes[1], host_sizes[2], dev_sizes[0], dev_sizes[1], dev_sizes[2], size, host, stream_index);
       MemCpy3DDirect(cumem, (uint8_t *)host, off, dev_sizes, host_sizes, elem_size, true, async, stream_index);
   }
   else if (dim == 2) {
@@ -1124,8 +1124,8 @@ int DeviceCUDA::MemCpy(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t 
 		string dst_size_str = Utils::GetString(dst_size, dim);
 		string src_off_str = Utils::GetString(src_off, dim);
 		string dst_off_str = Utils::GetString(dst_off, dim);
-		string src_strides_str = Utils::GetString(src_strides, dim);
-		string dst_strides_str = Utils::GetString(dst_strides, dim);
+		string src_strides_str = Utils::GetString(src_strides, dim+1);
+		string dst_strides_str = Utils::GetString(dst_strides, dim+1);
 		string tile_size_str = Utils::GetString(tile_size, dim);
 		_error("\n\n %s couldn't handle the dim:%d tile copy for DMEM dev[%d][%s] task[%ld:%s] elem_size:%lu mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] src_size:%s dst_size:%s src_off:%s dst_off:%s src_strides:%s dst_strides:%s tile_size:%s [%d]", tag, dim, devno_, name_, task->uid(), task->name(), elem_size, mem->uid(), dst, src, src_size_str.c_str(), dst_size_str.c_str(), src_off_str.c_str(), dst_off_str.c_str(), src_strides_str.c_str(), dst_strides_str.c_str(), tile_size_str.c_str(), stream_index);
 		Utils::PrintStackTrace();
@@ -1172,7 +1172,7 @@ int DeviceCUDA::MemCpy(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t 
 	  async = true;
 	  if (stream_index == DEFAULT_STREAM_INDEX) { async = false; stream_index = 0; }
   }
-  _event_debug("dev[%d][%s] task[%ld:%s] mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] size[%lu] q[%d] async:%d", devno_, name_, task->uid(), task->name(), mem->uid(), dst, src, size, stream_index, async);
+  _event_debug("dev[%d][%s] task[%ld:%s] mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] q[%d] async:%d", devno_, name_, task->uid(), task->name(), mem->uid(), dst, src, stream_index, async);
   ASSERT(src_strides0 == 1);
   ASSERT(dst_strides0 == 1);
   if (dim == 3) {
@@ -1236,15 +1236,15 @@ int DeviceCUDA::MemCpy(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t 
 		  string dst_size_str = Utils::GetString(dst_size, dim);
           string src_off_str = Utils::GetString(src_off, dim);
           string dst_off_str = Utils::GetString(dst_off, dim);
-          string src_strides_str = Utils::GetString(src_strides, dim);
-          string dst_strides_str = Utils::GetString(dst_strides, dim);
+          string src_strides_str = Utils::GetString(src_strides, dim+1);
+          string dst_strides_str = Utils::GetString(dst_strides, dim+1);
           string tile_size_str = Utils::GetString(tile_size, dim);
           _error(" %s couldn't handle the dim:%d ptr:%p tile copy for DMEM dev[%d][%s] task[%ld:%s] elem_size:%lu mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] src_size:%s dst_size:%s src_off:%s dst_off:%s src_strides:%s dst_strides:%s tile_size:%s elem_size:%lu [%d]", tag, dim, ld_->cuMemcpy3D_v2, devno_, name_, task->uid(), task->name(), elem_size, mem->uid(), dst, src, src_size_str.c_str(), dst_size_str.c_str(), src_off_str.c_str(), dst_off_str.c_str(), src_strides_str.c_str(), dst_strides_str.c_str(), tile_size_str.c_str(), elem_size, stream_index);
           /*if (src_type == CU_MEMORYTYPE_HOST) {
-              iris::PrintMatrixFull<int64_t>((int64_t *)src, src_size[2], src_size[1], src_size[0], " Src:");
+              iris::PrintArrayFull<int64_t>((int64_t *)src, src_size[2], src_size[1], src_size[0], " Src:");
           }
           if (dst_type == CU_MEMORYTYPE_HOST) {
-              iris::PrintMatrixFull<int64_t>((int64_t *)dst, dst_size[2], dst_size[1], dst_size[0], " Dst:");
+              iris::PrintArrayFull<int64_t>((int64_t *)dst, dst_size[2], dst_size[1], dst_size[0], " Dst:");
           }*/
           Utils::PrintStackTrace();
       }
@@ -1282,7 +1282,6 @@ int DeviceCUDA::MemCpy(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t 
 	  cd.WidthInBytes   = tile_size0 * elem_size;
 	  cd.Height         = tile_size1;
 	  //_cuerror(cuMemcpy2D(&cd));
-	
 	  if (async) {
 		  ASSERT(stream_index >= 0);
 		  err = ld_->cuMemcpy2DAsync_v2(&cd, streams_[stream_index]);
@@ -1298,12 +1297,20 @@ int DeviceCUDA::MemCpy(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t 
 		  string dst_size_str = Utils::GetString(dst_size, dim);
           string src_off_str = Utils::GetString(src_off, dim);
           string dst_off_str = Utils::GetString(dst_off, dim);
-          string src_strides_str = Utils::GetString(src_strides, dim);
-          string dst_strides_str = Utils::GetString(dst_strides, dim);
+          string src_strides_str = Utils::GetString(src_strides, dim+1);
+          string dst_strides_str = Utils::GetString(dst_strides, dim+1);
           string tile_size_str = Utils::GetString(tile_size, dim);
           _error("\n\n %s couldn't handle the dim:%d tile copy for DMEM dev[%d][%s] task[%ld:%s] elem_size:%lu mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] src_size:%s dst_size:%s src_off:%s dst_off:%s src_strides:%s dst_strides:%s tile_size:%s [%d]", tag, dim, devno_, name_, task->uid(), task->name(), elem_size, mem->uid(), dst, src, src_size_str.c_str(), dst_size_str.c_str(), src_off_str.c_str(), dst_off_str.c_str(), src_strides_str.c_str(), dst_strides_str.c_str(), tile_size_str.c_str(), stream_index);
           Utils::PrintStackTrace();
-        
+#if 0
+          if (dst_type == CU_MEMORYTYPE_DEVICE) {
+              size_t total_size=128;
+              int64_t data[16];
+              ld_->cuMemcpyDtoH((uint8_t*)data, dst_cumem, total_size);
+              iris::PrintArrayFull<int64_t>((int64_t *)src, 4, 4, " Src:");
+              iris::PrintArrayFull<int64_t>((int64_t *)data, 4, 4, " Dst:");
+          }
+#endif      
       }
   }
   else if (dim == 1) {
@@ -1322,8 +1329,8 @@ int DeviceCUDA::MemCpy(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t 
 		  string dst_size_str = Utils::GetString(dst_size, dim);
           string src_off_str = Utils::GetString(src_off, dim);
           string dst_off_str = Utils::GetString(dst_off, dim);
-          string src_strides_str = Utils::GetString(src_strides, dim);
-          string dst_strides_str = Utils::GetString(dst_strides, dim);
+          string src_strides_str = Utils::GetString(src_strides, dim+1);
+          string dst_strides_str = Utils::GetString(dst_strides, dim+1);
           string tile_size_str = Utils::GetString(tile_size, dim);
           _error(" %s couldn't handle the dim:%d tile copy for DMEM dev[%d][%s] task[%ld:%s] elem_size:%lu mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] src_size:%s dst_size:%s src_off:%s dst_off:%s src_strides:%s dst_strides:%s tile_size:%s [%d]", tag, dim, devno_, name_, task->uid(), task->name(), elem_size, mem->uid(), dst, src, src_size_str.c_str(), dst_size_str.c_str(), src_off_str.c_str(), dst_off_str.c_str(), src_strides_str.c_str(), dst_strides_str.c_str(), tile_size_str.c_str(), stream_index);
           Utils::PrintStackTrace();
@@ -1335,8 +1342,8 @@ int DeviceCUDA::MemCpy(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t 
 	  string dst_size_str = Utils::GetString(dst_size, dim);
       string src_off_str = Utils::GetString(src_off, dim);
       string dst_off_str = Utils::GetString(dst_off, dim);
-      string src_strides_str = Utils::GetString(src_strides, dim);
-      string dst_strides_str = Utils::GetString(dst_strides, dim);
+      string src_strides_str = Utils::GetString(src_strides, dim+1);
+      string dst_strides_str = Utils::GetString(dst_strides, dim+1);
       string tile_size_str = Utils::GetString(tile_size, dim);
 	  _error(" %s couldn't handle the dim:%d tile copy for DMEM dev[%d][%s] task[%ld:%s] elem_size:%lu mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] src_size:%s dst_size:%s src_off:%s dst_off:%s src_strides:%s dst_strides:%s tile_size:%s [%d]", tag, dim, devno_, name_, task->uid(), task->name(), elem_size, mem->uid(), dst, src, src_size_str.c_str(), dst_size_str.c_str(), src_off_str.c_str(), dst_off_str.c_str(), src_strides_str.c_str(), dst_strides_str.c_str(), tile_size_str.c_str(), stream_index);
 	  Utils::PrintStackTrace();

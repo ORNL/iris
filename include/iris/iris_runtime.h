@@ -1513,10 +1513,26 @@ extern int iris_data_mem_update_host_size(iris_mem mem, size_t *host_size);
 /**@brief data memory object update for a task
  *
  * @param mem memory object
+ * @param host_size host size pointer to the array. It do not update strides. Only for expert users.
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_data_mem_update_host_size_no_strides(iris_mem mem, size_t *host_size);
+
+/**@brief data memory object update for a task
+ *
+ * @param mem memory object
  * @param dev_size device size pointer to the array
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_data_mem_update_dev_size(iris_mem mem, size_t *dev_size);
+
+/**@brief data memory object update for a task
+ *
+ * @param mem memory object
+ * @param dev_size device size pointer to the array. It do not update strides. Only for expert users.
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_data_mem_update_dev_size_no_strides(iris_mem mem, size_t *dev_size);
 
 /**@brief data memory object update for a task
  *

@@ -31,18 +31,17 @@ DataMem::DataMem(Platform* platform, void *host_ptr, size_t size, const char *sy
 }
 DataMem::DataMem(Platform* platform, void *host_ptr, size_t *host_size, int dim, size_t elem_size, int element_type) : BaseMem(IRIS_DMEM, platform->ndevs()) {
     size_t size = elem_size;
-    set_element_type(element_type);
     ASSERT(dim < DMEM_MAX_DIM);
     for(int i=0; i<dim; i++) {
         size = size * host_size[i];
     }
     Init(platform, host_ptr, size, dim);
+    set_element_type(element_type);
     memcpy(dev_size_, host_size, sizeof(size_t)*dim_);
     memcpy(host_size_, host_size, sizeof(size_t)*dim_);
     elem_size_ = elem_size;
     compute_strides(host_strides_, host_size_);
     compute_strides(dev_strides_,  dev_size_);
-    set_element_type(element_type);
     //_printf("2DataMem uid:%lu ptr:%p host_ptr:%p host_size:%ld elem_size:%ld dim:%d size:%ld off:%p", uid(), this, host_ptr, host_size[0], elem_size, dim, size, off_);
     //Print();
 }
@@ -50,7 +49,6 @@ DataMem::DataMem(Platform *platform, void *host_ptr, size_t *off, size_t *host_s
 {
     size_t size = elem_size;
     size_t hsize = elem_size;
-    set_element_type(element_type);
     for(int i=0; i<dim; i++) {
         size = size * dev_size[i];
         hsize = hsize * host_size[i];
@@ -66,6 +64,7 @@ DataMem::DataMem(Platform *platform, void *host_ptr, size_t *off, size_t *host_s
         _trace("DataMem host_ptr:%p off:[%ld,%ld,%ld] host_size:[%ld,%ld,%ld] dev_size:[%ld,%ld,%ld] elem_size:%ld dim:%d size:%ld", host_ptr, off[0], off[1], off[2], host_size[0], host_size[1], host_size[2], dev_size[0], dev_size[1], dev_size[2], elem_size, dim, size);
     }
     Init(platform, host_ptr, size, dim);
+    set_element_type(element_type);
     if (hsize != size)
         tile_enabled_ = true;
     dim_ = dim;
@@ -84,6 +83,16 @@ void DataMem::compute_strides(size_t *strides, size_t *size, int dim)
     for(int i=1; i<dim; i++) {
         strides[i] = size[i-1] * strides[i-1];
     }
+    strides[dim] = size[dim-1] * strides[dim-1];
+}
+size_t DataMem::get_alloc_size(size_t *strides) 
+{
+    if (strides == NULL) strides = dev_strides_;
+    size_t size=elem_size_;
+    for(int i=1; i<=dim_; i++) {
+        size *= strides[i] / strides[i-1];
+    }
+    return size;
 }
 void DataMem::compute_dev_strides(size_t *size)
 {
@@ -113,8 +122,8 @@ string DataMem::ToString(bool check_regions)
     string dev_size_str = Utils::GetString(dev_size_, dim());
     string off_size_str = Utils::GetString(off_, dim());
     string dev_off_size_str = Utils::GetString(dev_off_, dim());
-    string host_strides_size_str = Utils::GetString(host_strides_, dim());
-    string dev_strides_size_str = Utils::GetString(dev_strides_, dim());
+    string host_strides_size_str = Utils::GetString(host_strides_, dim()+1);
+    string dev_strides_size_str = Utils::GetString(dev_strides_, dim()+1);
 
     stringstream output;
     if (GetMemHandlerType() == IRIS_DMEM_REGION) 
@@ -124,6 +133,8 @@ string DataMem::ToString(bool check_regions)
     output << " uid:" << uid();
     output << " dim:" << dim_;
     output << " element_size:" << elem_size_;
+    if (get_n_regions() > 0) 
+        output << " regions:" << get_n_regions();
     output << " host_size:" << host_size_str;
     output << " host_off:" << off_size_str;
     output << " host_strides:" << host_strides_size_str;
@@ -160,6 +171,20 @@ void DataMem::Print(bool check_regions)
 {
     string output = ToString(check_regions);
     _printf("%s", output.c_str());
+}
+void DataMem::Print(const char *tag)
+{
+    char const_tag[] = "";
+    if (tag == NULL) tag = const_tag;
+    string output = ToString(false);
+    _printf("%s%s", tag, output.c_str());
+}
+void DataMem::Print(bool check_regions, const char *tag)
+{
+    char const_tag[] = "";
+    if (tag == NULL) tag = const_tag;
+    string output = ToString(check_regions);
+    _printf("%s%s", tag, output.c_str());
 }
 DataMem *DataMem::Copy()
 {
@@ -353,19 +378,35 @@ bool DataMem::is_dirty_all() {
     }
     return all;
 }
-int DataMem::update_host_size(size_t *host_size) 
+int DataMem::update_host_size(size_t *host_size, bool update_strides) 
 {
+    //Print("Before host update:");
+    if (dim_ > 1)
+        multi_dim_dev_offset_ = true;
     memcpy(host_size_, host_size, sizeof(size_t)*dim_);
-    compute_strides(host_strides_, host_size_);
+    if (update_strides)
+        compute_strides(host_strides_, host_size_);
     if (!tile_enabled_) {
         memcpy(dev_size_, host_size, sizeof(size_t)*dim_);
-        compute_strides(dev_strides_,  dev_size_);
+        if (update_strides)
+            compute_strides(dev_strides_,  dev_size_);
         size_t size = elem_size_;
         for(int i=0; i<dim_; i++) {
             size = size * host_size[i];
         }
         size_ = size;
     }
+    //Print("After host update:");
+    return IRIS_SUCCESS;
+}
+int DataMem::update_dev_size(size_t *dev_size, bool update_strides) { 
+    if (dim_ > 1)
+        multi_dim_dev_offset_ = true;
+    //Print("Before dev update:");
+    memcpy(dev_size_, dev_size, sizeof(size_t)*dim_); 
+    if (update_strides)
+        compute_strides(dev_strides_,  dev_size_);
+    //Print("After dev update:");
     return IRIS_SUCCESS;
 }
 void DataMem::FetchDataFromDevice(void *dst_host_ptr)
@@ -478,6 +519,7 @@ void DataMem::Init(Platform *platform, void *host_ptr, size_t size, int dim)
         dev_off_[i] = 0;
         host_strides_[i] = dev_strides_[i] = 1;
     }
+    host_strides_[dim_] = dev_strides_[dim_] = 1;
     host_ptr_ = host_ptr;
     //printf("host pointer %p\n", host_ptr_);
 #ifdef AUTO_PAR
@@ -819,14 +861,15 @@ void DataMem::create_dev_mem(Device *dev, int devno, void *host)
         source_mem->create_dev_mem(dev, devno, host); 
         return;
     }
-    //printf(" Dev: %d is shared:%d host:%p host_ptr_:%p\n", devno, dev->is_shared_memory_buffers(), host, host_ptr_);
     if (is_usm(devno) && dev->is_shared_memory_buffers() && 
             (host != NULL || host_ptr_ != NULL)) {
         archs_[devno] = dev->GetSharedMemPtr((host == NULL) ? host_ptr_ : host, size());
     }
     else {
         set_usm_flag(devno, false);
-        dev->MemAlloc(this, archs_ + devno, size_, is_reset());
+        size_t size = get_alloc_size(dev_strides_);
+        //_printf(" dev:%d mem:%lu size:%lu, %lu allocation", devno, uid(), size, size_);
+        dev->MemAlloc(this, archs_ + devno, size, is_reset());
         if (is_reset()) {
             dirty_flag_[devno] = false;
             // It is not required to make host dirty for all reset types. 

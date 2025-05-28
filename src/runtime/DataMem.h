@@ -174,6 +174,7 @@ public:
   bool is_symbol() { return is_symbol_; }
   void *host_root_memory() { return host_memory(); }
   void *host_memory();
+  size_t get_alloc_size(size_t *strides=NULL);
   void compute_strides(size_t *strides, size_t *size, int dim=-1);
   void compute_dev_strides(size_t *size);
   void compute_host_strides(size_t *size);
@@ -194,11 +195,8 @@ public:
   virtual void* arch(Device* dev, void *host=NULL);
   virtual void** arch_ptr(int devno, void *host=NULL);
   virtual void** arch_ptr(Device *dev, void *host=NULL);
-  int update_host_size(size_t *host_size);
-  int update_dev_size(size_t *dev_size) { 
-      memcpy(dev_size_, dev_size, sizeof(size_t)*dim_); 
-      return IRIS_SUCCESS;
-  }
+  int update_host_size(size_t *host_size, bool update_strides=true);
+  int update_dev_size(size_t *dev_size, bool update_strides=true);
   void realllocate_space(size_t size);
   int update_off(size_t *off) { 
       memcpy(off_, off, sizeof(size_t)*dim_); 
@@ -210,6 +208,8 @@ public:
   void set_pin_memory(bool flag=true) { is_pin_memory_ = flag; }
   bool tile_enabled() { return tile_enabled_; }
   void Print(bool check_regions=true);
+  void Print(const char *tag);
+  void Print(bool check_regions, const char *tag);
   string ToString(bool check_regions=true);
   void EnableRegions(int axis);
   string GetSizeString(size_t *data, int dim);
@@ -247,8 +247,8 @@ protected:
   void *tmp_host_ptr_;
   size_t dev_off_[DMEM_MAX_DIM];
   size_t off_[DMEM_MAX_DIM];
-  size_t dev_strides_[DMEM_MAX_DIM];
-  size_t host_strides_[DMEM_MAX_DIM];
+  size_t dev_strides_[DMEM_MAX_DIM+1];
+  size_t host_strides_[DMEM_MAX_DIM+1];
   size_t host_size_[DMEM_MAX_DIM];
   size_t dev_size_[DMEM_MAX_DIM];
   size_t elem_size_;

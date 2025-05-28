@@ -841,6 +841,10 @@ int iris_data_mem_update_host_size(iris_mem brs_mem, size_t *host_size) {
   DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
   return mem->update_host_size(host_size);
 }
+int iris_data_mem_update_host_size_no_strides(iris_mem brs_mem, size_t *host_size) {
+  DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  return mem->update_host_size(host_size, false);
+}
 int iris_data_mem_update_dim(iris_mem brs_mem, int dim) {
   DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
   return mem->update_dim(dim);
@@ -848,6 +852,10 @@ int iris_data_mem_update_dim(iris_mem brs_mem, int dim) {
 int iris_data_mem_update_dev_size(iris_mem brs_mem, size_t *dev_size) {
   DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
   return mem->update_dev_size(dev_size);
+}
+int iris_data_mem_update_dev_size_no_strides(iris_mem brs_mem, size_t *dev_size) {
+  DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  return mem->update_dev_size(dev_size, false);
 }
 int iris_data_mem_update_off(iris_mem brs_mem, size_t *off) {
   DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
@@ -1289,51 +1297,51 @@ double *iris_allocate_random_array_double(int SIZE)
 }
 void iris_print_matrix_limited_double(double *data, int M, int N, const char *description, int limit) 
 {
-    return iris::PrintMatrixLimited<double>(data, M, N, description, limit);
+    return iris::PrintArrayLimited<double>(data, M, N, description, limit);
 }
 void iris_print_matrix_full_double(double *data, int M, int N, const char *description) 
 {
-    iris::PrintMatrixFull<double>(data, M, N, description);
+    iris::PrintArrayFull<double>(data, M, N, description);
 }
 void iris_print_matrix_limited_float(float *data, int M, int N, const char *description, int limit) 
 {
-    return iris::PrintMatrixLimited<float>(data, M, N, description, limit);
+    return iris::PrintArrayLimited<float>(data, M, N, description, limit);
 }
 void iris_print_matrix_full_float(float *data, int M, int N, const char *description) 
 {
-    iris::PrintMatrixFull<float>(data, M, N, description);
+    iris::PrintArrayFull<float>(data, M, N, description);
 }
 void iris_print_matrix_limited_int64_t(int64_t *data, int M, int N, const char *description, int limit) 
 {
-    return iris::PrintMatrixLimited<int64_t>(data, M, N, description, limit);
+    return iris::PrintArrayLimited<int64_t>(data, M, N, description, limit);
 }
 void iris_print_matrix_full_int64_t(int64_t *data, int M, int N, const char *description) 
 {
-    iris::PrintMatrixFull<int64_t>(data, M, N, description);
+    iris::PrintArrayFull<int64_t>(data, M, N, description);
 }
 void iris_print_matrix_limited_int32_t(int32_t *data, int M, int N, const char *description, int limit) 
 {
-    return iris::PrintMatrixLimited<int32_t>(data, M, N, description, limit);
+    return iris::PrintArrayLimited<int32_t>(data, M, N, description, limit);
 }
 void iris_print_matrix_full_int32_t(int32_t *data, int M, int N, const char *description) 
 {
-    iris::PrintMatrixFull<int32_t>(data, M, N, description);
+    iris::PrintArrayFull<int32_t>(data, M, N, description);
 }
 void iris_print_matrix_limited_int16_t(int16_t *data, int M, int N, const char *description, int limit) 
 {
-    return iris::PrintMatrixLimited<int16_t>(data, M, N, description, limit);
+    return iris::PrintArrayLimited<int16_t>(data, M, N, description, limit);
 }
 void iris_print_matrix_full_int16_t(int16_t *data, int M, int N, const char *description) 
 {
-    iris::PrintMatrixFull<int16_t>(data, M, N, description);
+    iris::PrintArrayFull<int16_t>(data, M, N, description);
 }
 void iris_print_matrix_limited_int8_t(int8_t *data, int M, int N, const char *description, int limit) 
 {
-    return iris::PrintMatrixLimited<int8_t>(data, M, N, description, limit);
+    return iris::PrintArrayLimited<int8_t>(data, M, N, description, limit);
 }
 void iris_print_matrix_full_int8_t(int8_t *data, int M, int N, const char *description) 
 {
-    iris::PrintMatrixFull<int8_t>(data, M, N, description);
+    iris::PrintArrayFull<int8_t>(data, M, N, description);
 }
 void iris_println(const char *s)
 {
