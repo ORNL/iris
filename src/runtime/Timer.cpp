@@ -1,6 +1,8 @@
 #include "Timer.h"
 #include <time.h>
 #include <cstdio>
+#include <math.h>
+
 namespace iris {
 namespace rt {
 
@@ -35,7 +37,7 @@ double Timer::GetCurrentTime() {
 size_t Timer::NowNS() {
   struct timespec t;
   clock_gettime(CLOCK_REALTIME, &t);
-  return t.tv_sec * 1.e+9 + t.tv_nsec - 1601956000000000000;
+  return (t.tv_sec * 1.e+9 + t.tv_nsec) - round(boot_ * 1.e+9);
 }
 
 double Timer::Start(int i) {

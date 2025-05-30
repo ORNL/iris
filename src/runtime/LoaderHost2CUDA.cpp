@@ -6,44 +6,28 @@
 namespace iris {
 namespace rt {
 
-LoaderHost2CUDA::LoaderHost2CUDA() : Loader() {
-    iris_host2cuda_init = NULL;
-    iris_host2cuda_init_handles = NULL;
-    iris_host2cuda_finalize_handles = NULL;
-    iris_host2cuda_finalize = NULL;
-    iris_host2cuda_kernel = NULL;
-    iris_host2cuda_setarg = NULL;
-    iris_host2cuda_setmem = NULL;
-    iris_host2cuda_launch = NULL;
-    iris_host2cuda_kernel_with_obj = NULL;
-    iris_host2cuda_setarg_with_obj = NULL;
-    iris_host2cuda_setmem_with_obj = NULL;
-    iris_host2cuda_launch_with_obj = NULL;
+
+LoaderHost2CUDA::LoaderHost2CUDA() : HostInterfaceClass("KERNEL_HOST2CUDA") {
+    enable_strict_handle_check();
 }
 
 LoaderHost2CUDA::~LoaderHost2CUDA() {
 }
 
-const char* LoaderHost2CUDA::library() {
-  char* path = NULL;
-  Platform::GetPlatform()->EnvironmentGet("KERNEL_HOST2CUDA", &path, NULL);
-  return path;
-}
-
 int LoaderHost2CUDA::LoadFunctions() {
-  Loader::LoadFunctions();
-  LOADFUNC_OPTIONAL(iris_host2cuda_init);
-  LOADFUNC_OPTIONAL(iris_host2cuda_init_handles);
-  LOADFUNC_OPTIONAL(iris_host2cuda_finalize_handles);
-  LOADFUNC_OPTIONAL(iris_host2cuda_finalize);
-  LOADFUNC_OPTIONAL(iris_host2cuda_kernel);
-  LOADFUNC_OPTIONAL(iris_host2cuda_setarg);
-  LOADFUNC_OPTIONAL(iris_host2cuda_setmem);
-  LOADFUNC_OPTIONAL(iris_host2cuda_launch);
-  LOADFUNC_OPTIONAL(iris_host2cuda_kernel_with_obj);
-  LOADFUNC_OPTIONAL(iris_host2cuda_setarg_with_obj);
-  LOADFUNC_OPTIONAL(iris_host2cuda_setmem_with_obj);
-  LOADFUNC_OPTIONAL(iris_host2cuda_launch_with_obj);
+  HostInterfaceClass::LoadFunctions();
+  REGISTER_HOST_WRAPPER(iris_host_init,             iris_host2cuda_init             );
+  REGISTER_HOST_WRAPPER(iris_host_init_handles,     iris_host2cuda_init_handles     );
+  REGISTER_HOST_WRAPPER(iris_host_finalize_handles, iris_host2cuda_finalize_handles );
+  REGISTER_HOST_WRAPPER(iris_host_finalize,         iris_host2cuda_finalize         );
+  REGISTER_HOST_WRAPPER(iris_host_kernel,           iris_host2cuda_kernel           );
+  REGISTER_HOST_WRAPPER(iris_host_setarg,           iris_host2cuda_setarg           );
+  REGISTER_HOST_WRAPPER(iris_host_setmem,           iris_host2cuda_setmem           );
+  REGISTER_HOST_WRAPPER(iris_host_launch,           iris_host2cuda_launch           );
+  REGISTER_HOST_WRAPPER(iris_host_kernel_with_obj,  iris_host2cuda_kernel_with_obj  );
+  REGISTER_HOST_WRAPPER(iris_host_setarg_with_obj,  iris_host2cuda_setarg_with_obj  );
+  REGISTER_HOST_WRAPPER(iris_host_setmem_with_obj,  iris_host2cuda_setmem_with_obj  );
+  REGISTER_HOST_WRAPPER(iris_host_launch_with_obj,  iris_host2cuda_launch_with_obj  );
   return IRIS_SUCCESS;
 }
 

@@ -30,12 +30,12 @@ int main(int argc, char** argv) {
   iris_synchronize();
   int errs = 0;
   for (int i = 0; i < SIZE; i++) {
-    printf("[%3d] %3d\n", i, B[i]);
+    printf("------------[%3d] %3d %3d\n", i, A[i], B[i]);
     if (A[i] != B[i]) errs++;
   }
   iris_finalize();
 
-  printf("return code = %i\n",iris_error_count()+errs);
+  printf("return code = %i value_errors:%d\n",iris_error_count()+errs, errs);
 
   return iris_error_count()+errs;
 }

@@ -1,0 +1,28 @@
+name = "IrisHRT"
+uuid = "24efd7ac-9fee-46ff-a976-1a4721440d7c" 
+authors = ["Narasigna Rao Miniskar <miniskarnr@ornl.gov>"]
+version = "3.0.0" # This tells the package manager to run deps/build.jl when building the package.
+
+[build]
+script = "build.jl"
+
+[deps]
+Atomix = "a9b6321e-bd34-4604-b9c9-b65b8de01458"
+Preferences = "21216c6a-2e73-6563-6e65-726566657250"
+CxxWrap = "1f15a43c-97ca-5a2a-ae31-89f07a497df4"
+
+[weakdeps]
+AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+oneAPI = "8f75cd03-7ff8-4ecb-9b8f-daf728133b1b"
+JACC = "0979c8fe-16a4-4796-9b82-89a9f10403ea"
+[extensions]
+
+[compat]
+AMDGPU = "1.1.3"
+JACC = "0.0.5"
+Atomix = "0.1"
+CUDA = "5"
+CxxWrap="0.16.0"
+Preferences = "1.4.0"
+julia = "1.10.3"

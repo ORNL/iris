@@ -1,0 +1,15 @@
+__pycache__/
+dag.png
+dagger-graphs/
+dagger-payloads/
+dagger-results/
+dagger_runner
+dagger_test
+graph.json
+kernel.hip
+kernel.ptx
+src/
+/daggerpy/
+dag.pdf
+*.csv
+test-out.txt

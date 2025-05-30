@@ -28,7 +28,7 @@ void ShowUsage(){
   printf("\t\t --size=\"1024\"\n");
   printf("\t\t --repeats=\"100\"\n");
   printf("\t\t --logfile=\"log.csv\"\n");
-  printf("\t\t --scheduling-policy=\"roundrobin\"\t all options include (roundrobin, depend, profile, random, any, all, custom)\n");
+  printf("\t\t --scheduling-policy=\"roundrobin\"\t all options include (roundrobin, depend, profile, random, sdq, ftf, custom)\n");
   printf("\t\t --num-tasks=\"6\"\t (optional) only used for throughput computation\n");
   printf("\t\t --sandwich\t\t (optional) determines if there are the beginning and terminating nodes\n");
 
@@ -75,8 +75,8 @@ int main(int argc, char** argv) {
     {"data", iris_data},
     {"profile", iris_profile},
     {"random", iris_random},
-    {"any",iris_any},
-    {"all", iris_all},
+    {"sdq",iris_sdq},
+    {"ftf", iris_ftf},
     {"custom", iris_custom}
   };
 

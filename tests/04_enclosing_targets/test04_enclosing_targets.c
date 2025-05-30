@@ -3,13 +3,15 @@
 #include <stdlib.h>
 
 int main(int argc, char** argv) {
+  printf("Inside main\n");
   size_t SIZE;
   int *A, *B;
 
+  SIZE = argc > 1 ? atol(argv[1]) : 16;
+  printf("INIT SIZE[%d]\n", SIZE);
   //setenv("IRIS_ARCHS", "opencl", 1);
   iris_init(&argc, &argv, true);
 
-  SIZE = argc > 1 ? atol(argv[1]) : 16;
   printf("SIZE[%d]\n", SIZE);
 
   A = (int*) valloc(SIZE * sizeof(int));

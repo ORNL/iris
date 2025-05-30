@@ -7,7 +7,7 @@
 namespace iris {
 namespace rt {
 
-#define IRIS_MSG_SIZE           512
+#define IRIS_MSG_SIZE           256
 
 class Message {
 public:
@@ -44,10 +44,11 @@ public:
 
   char* buf() { return buf_; }
   size_t offset() { return offset_; }
+  size_t free_buf_size() { return IRIS_MSG_SIZE - offset_; }
   void Clear();
 
 private:
-  char buf_[IRIS_MSG_SIZE] __attribute__ ((aligned(0x10)));
+  char buf_[IRIS_MSG_SIZE+4] __attribute__ ((aligned(0x10)));
   size_t offset_;
 };
 

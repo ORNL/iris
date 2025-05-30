@@ -22,6 +22,7 @@ AEEResult irishxg_saxpy(
         int Xlen,
         const int32 *Y,
         int Ylen,
+        int32 SIZE,
         int32 A,
         int32 *dspUsec,
         int32 *dspCyc,

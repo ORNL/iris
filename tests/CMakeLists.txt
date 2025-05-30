@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.5)
 
 project(IRIS-Tests)
 include(GNUInstallDirs)
@@ -20,6 +20,10 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
 elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64")
   set(CUDAToolkit_TARGET_NAME "x86_64-linux")
 endif()
+
+message(STATUS "Current working directory: ${CMAKE_CURRENT_LIST_DIR}")
+message(STATUS "Current working directory (binary): ${CMAKE_CURRENT_BINARY_DIR}")
+message(STATUS "Current working directory (source): ${CMAKE_CURRENT_SOURCE_DIR}")
 
 message(STATUS "CUDAToolkit_FOUND=${CUDAToolkit_FOUND}")
 message(STATUS "CUDAToolkit_INCLUDE_DIRS=${CUDAToolkit_INCLUDE_DIRS}")
@@ -95,7 +99,7 @@ list(APPEND TEST_EXES "14_permanent_task" "test14_permanent_task" "")
 endif()
 list(APPEND TEST_EXES "15_graph" "test15_graph" "")
 #[FIXME] Temporarily disabled due to a deadlock issue.
-#list(APPEND TEST_EXES "16_task_host" "test16_task_host" "")
+list(APPEND TEST_EXES "16_task_host" "test16_task_host" "")
 list(APPEND TEST_EXES "17_json" "test17_json" "")
 list(APPEND TEST_EXES "18_record" "test18_record" "")
 list(APPEND TEST_EXES "19_replay" "test19_replay" "")
@@ -104,6 +108,7 @@ if (CUDAToolkit_FOUND)
   #list(APPEND TEST_EXES "20_cublas" "test20_cublas" "")
 list(APPEND TEST_EXES "21_task_malloc" "test21_task_malloc" "")
 endif()
+list(APPEND TEST_EXES "22_json_mixed_args" "test22_json_mixed_args" "")
 list(APPEND TEST_EXES "23_multigraph" "test23_multigraph" "")
 list(APPEND TEST_EXES "24_multi_kernels" "test24_multi_kernels" "")
 if (CUDAToolkit_FOUND)
@@ -118,19 +123,26 @@ list(APPEND TEST_EXES "30_task_info" "test30_task_info" " ")
 endif()
 #[FIXME] Temporarily disabled due to improper configuration.
 #list(APPEND TEST_EXES "31_isaxpy" "test31_isaxpy" "")
-list(APPEND TEST_EXES "32_json3" "test32_json3" "--kernels=ijk --duplicates=0 --buffers-per-kernel=\"ijk:w-r-r\" --kernel-dimensions=ijk:2 --kernel-split=100 --depth=10 --num-tasks=10 --min-width=1 --max-width=1 --logfile=log.txt --repeats=1 --scheduling-policy=any --size=128")
+list(APPEND TEST_EXES "32_json3" "test32_json3" "--kernels=ijk --duplicates=0 --buffers-per-kernel=\"ijk:w-r-r\" --kernel-dimensions=ijk:2 --kernel-split=100 --depth=10 --num-tasks=10 --min-width=1 --max-width=1 --logfile=log.txt --repeats=1 --scheduling-policy=sdq --size=128")
 list(APPEND TEST_EXES "33_graph_cpp" "test33_graph_cpp" " ")
 list(APPEND TEST_EXES "34_set_mem" "test34_set_mem" " ")
+list(APPEND TEST_EXES "35_json_mixed_args_record_replay" "test35_json_mixed_args_record_replay" " ")
+list(APPEND TEST_EXES "36_double_json_mixed_args_record_replay" "test36_double_json_mixed_args_record_replay" " ")
+#list(APPEND TEST_EXES "37_opencl_icd" "test37_opencl_icd" " ")
+list(APPEND TEST_EXES "38_offset" "test38_offset" " ")
+# FIXME: This test is disabled for now due to no support subbuffer in IRIS/OpenCL
+# list(APPEND TEST_EXES "38_offset_subbuffer" "test38_offset_subbuffer" " ")
 
 # Run each test in TEST_EXES
 list(LENGTH TEST_EXES count)
+math(EXPR TEST_REPEAT 1)
 math(EXPR count "${count}-1")
 foreach(i RANGE 0 ${count} 3)
   math(EXPR ii "${i}+1")
-	math(EXPR iii "${i}+2")
+  math(EXPR iii "${i}+2")
 
-	list(GET TEST_EXES ${i} dir)
-	list(GET TEST_EXES ${ii} exes)
+  list(GET TEST_EXES ${i} dir)
+  list(GET TEST_EXES ${ii} exes)
   list(GET TEST_EXES ${iii} args)
   separate_arguments(args)
 
@@ -139,34 +151,37 @@ foreach(i RANGE 0 ${count} 3)
    add_custom_target(
       ${dir}
       ALL
-      COMMAND make IRIS=${IRIS} CC=${CMAKE_C_COMPILER} CXX=${CMAKE_CXX_COMPILER} EXT_INCLUDE="${EXT_INCLUDE}" EXT_LDFLAGS="${EXT_LDFLAGS}"
+      COMMAND make VERBOSE=1 IRIS=${IRIS} CC=${CMAKE_C_COMPILER} CXX=${CMAKE_CXX_COMPILER} EXT_INCLUDE="${EXT_INCLUDE}" EXT_LDFLAGS="${EXT_LDFLAGS}"
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${dir}
    )
    else()
    add_custom_target(
       ${dir}
       ALL
-      COMMAND make CC=${CMAKE_C_COMPILER} CXX=${CMAKE_CXX_COMPILER} EXT_INCLUDE="${EXT_INCLUDE}" EXT_LDFLAGS="${EXT_LDFLAGS}"
+      COMMAND make VERBOSE=1 CC=${CMAKE_C_COMPILER} CXX=${CMAKE_CXX_COMPILER} EXT_INCLUDE="${EXT_INCLUDE}" EXT_LDFLAGS="${EXT_LDFLAGS}"
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${dir}
    )
    endif()
 
    string(REPLACE "::" ";" exe_list ${exes})
    message(STATUS "**LD_LIBRARY_PATH** : ${LD_LIBRARY_PATH}")
-   FOREACH(exe ${exe_list})
-      if(${exe} STREQUAL " ") # Space is used for an empty test.
-         continue()
-      endif()
-      message(STATUS "**Test Added** Dir: ${dir} Exe: ${exe} Arg: ${args}")
-      add_test(
-         NAME ${exe}
-         COMMAND ${exe} ${args}
-         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${dir}
-         )
-      if (CUDAToolkit_FOUND OR HIP_ROOT_DIR)
-        set_property(TEST ${exe} PROPERTY ENVIRONMENT ${TEST_PROP})
-      endif()
-      #some tests use .so resources that are local (in the same directory), i.e. 07_policy_register, so add it to the LD_LIBRARY_PATH
-      set_property(TEST ${exe} PROPERTY ENVIRONMENT "LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${CMAKE_CURRENT_SOURCE_DIR}/${dir}")
+   FOREACH(index RANGE 1 ${TEST_REPEAT} 1)
+      FOREACH(exe ${exe_list})
+         if(${exe} STREQUAL " ") # Space is used for an empty test.
+            continue()
+         endif()
+         message(STATUS "**Test Added** Dir: ${dir} Exe: ${exe} Iteration:${index} Arg: ${args}")
+         set(exe_it "${exe}_i${index}")
+         add_test(
+            NAME ${exe_it}
+            COMMAND ${exe} ${args}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${dir}
+            )
+         if (CUDAToolkit_FOUND OR HIP_ROOT_DIR)
+           set_property(TEST ${exe_it} PROPERTY ENVIRONMENT ${TEST_PROP})
+         endif()
+         #some tests use .so resources that are local (in the same directory), i.e. 07_policy_register, so add it to the LD_LIBRARY_PATH
+         set_property(TEST ${exe_it} PROPERTY ENVIRONMENT "LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${CMAKE_CURRENT_SOURCE_DIR}/${dir}")
+      ENDFOREACH()
    ENDFOREACH()
 ENDFOREACH()

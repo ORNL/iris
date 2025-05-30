@@ -6,6 +6,8 @@
 #include <iostream>
 #include <iomanip>
 #include <vector>
+#include <set>
+#include <map>
 using namespace std;
 namespace iris {
     namespace rt {
@@ -15,95 +17,44 @@ namespace iris {
                 static void Logo(bool color);
                 static int ReadFile(char* path, char** string, size_t* len);
                 static int Mkdir(char* path);
+                template <typename T>
+                static void Fill(T* array_ptr, size_t n_elements, T value);
+                static void Fill(void *array_ptr, size_t n_elements, int element_type, ResetData &value);
+                template <typename T>
+                static void ArithSequence(T* array_ptr, size_t n_elements, T start, T increment);
+                static void ArithSequence(void *array_ptr, size_t n_elements, int element_type, ResetData &value);
+                template <typename T>
+                static void GeometricSequence(T* array_ptr, size_t n_elements, T start, T ratio);
+                static void GeometricSequence(void *array_ptr, size_t n_elements, int element_type, ResetData &value);
+                template <typename T>
+                static void RandomUniformSeq(T *arr, long long seed, size_t size, T p1, T p2);
+                static void RandomUniformSeq(void *array_ptr, size_t size, int element_type, ResetData &reset);
+
+                template <typename T>
+                static void RandomNormalSeq(T *arr, unsigned long long seed, size_t size, T p1, T p2, void *stream);
+
+                template <typename T>
+                static void RandomLogNormalSeq(T *arr, unsigned long long seed, size_t size, T p1, T p2, void *stream);
+
+                template <typename T>
+                static void RandomUniformSobolSeq(T *arr, unsigned long long seed, size_t size, T p1, T p2, void *stream);
+
+                template <typename T>
+                static void RandomNormalSobolSeq(T *arr, unsigned long long seed, size_t size, T p1, T p2, void *stream);
+
+                template <typename T>
+                static void RandomLogNormalSobolSeq(T *arr, unsigned long long seed, size_t size, T p1, T p2, void *stream);
+
                 static bool Exist(char* path);
                 static long Mtime(char* path);
                 static void Datetime(char* str);
+                static void PrintStackTrace();
+                static int  CPUCoresCount();
+                static void SetThreadAffinity(unsigned int core_id);
                 static void MemCpy3D(uint8_t *dev, uint8_t *host, size_t *off, size_t *dev_sizes, size_t *host_sizes, size_t elem_size, bool host_2_dev=true);
-
-                template<typename DType>
-                static DType *AllocateArray(size_t SIZE, DType init=0)
-                {
-                    DType *A = (DType *)malloc ( SIZE *  sizeof(DType));
-                    for (size_t i = 0; i < SIZE; i++ )
-                        A[i] = init;
-                    return A;
-                }
-                template<typename DType>
-                static DType *AllocateRandomArray(size_t SIZE)
-                {
-                    DType *A = (DType *)malloc ( SIZE *  sizeof(DType));
-                    for (size_t i = 0; i < SIZE; i++ )
-                    {
-                        int a = rand() % 5+1;
-                        A[i] = (DType)a;
-                    }
-                    return A;
-                }
-                template<class DType>
-                static void PrintVectorLimited(vector<DType> & A, const char *description, int limit=8)
-                    {
-                        printf("%s (%d)\n", description, A.size());
-                        int print_cols = A.size()>limit?limit:A.size();
-                        for (int j = 0; j < print_cols; j++) {
-                            cout << setw(6) << A[j] << " ";
-                        }
-                        cout << endl;
-                    }
-                template<class DType>
-                static void PrintVectorFull(vector<DType> &A, const char *description)
-                    {
-                        printf("%s (%d)\n", description, A.size());
-                        for (int j = 0; j < A.size(); j++) {
-                            cout << setw(6) << A[j] << " ";
-                        }
-                        cout << endl;
-                    }
-
-                template<class DType>
-                static void PrintArrayLimited(DType *A, int N, const char *description, int limit=8)
-                    {
-                        printf("%s data:%p (%d)\n", description, A, N);
-                        int print_cols = N>limit?limit:N;
-                        for (int j = 0; j < print_cols; j++) {
-                            cout << setw(6) << A[j] << " ";
-                        }
-                        cout << endl;
-                    }
-                template<class DType>
-                static void PrintAarrayFull(DType *A, int N, const char *description)
-                    {
-                        printf("%s data:%p (%d)\n", description, A, N);
-                        for (int j = 0; j < N; j++) {
-                            cout << setw(6) << A[j] << " ";
-                        }
-                        cout << endl;
-                    }
-
-                template<class DType>
-                static void PrintMatrixLimited(DType *A, int M, int N, const char *description, int limit=8)
-                    {
-                        printf("%s data:%p (%d, %d)\n", description, A, M, N);
-                        int print_rows = M>limit?limit:M;
-                        int print_cols = N>limit?limit:N;
-                        for(int i=0; i<print_rows; i++) {
-                            for (int j = 0; j < print_cols; j++) {
-                                cout << setw(6) << A[i*N+j] << " ";
-                            }
-                            cout << endl;
-                        }
-                    }
-                template<class DType>
-                static void PrintMatrixFull(DType *A, int M, int N, const char *description)
-                    {
-                        printf("%s data:%p (%d, %d)\n", description, A, M, N);
-                        for(int i=0; i<M; i++) {
-                            for (int j = 0; j < N; j++) {
-                                cout << setw(6) << A[i*N+j] << " ";
-                            }
-                            cout << endl;
-                        }
-                    }
-
+                static void ReadSet(std::set<std::string> & out, const char *data);
+                static void ReadVector(std::vector<std::string> & out, const char *data);
+                static void ReadMap(std::map<std::string, int> & in_map, std::map<int, bool> & out_map, const char *data);
         };
 
     } /* namespace rt */

@@ -1,33 +1,43 @@
 #ifndef IRIS_SRC_RT_DEBUG_H
 #define IRIS_SRC_RT_DEBUG_H
 
+#include <assert.h>
 #include <stdio.h>
 #include <string.h>
 
-#define FFLUSH(X)    //fflush(X)
-#ifndef NDEBUG
 #ifndef TRACE_DISABLE
 #define _TRACE_ENABLE
 #endif //TRACE_DISABLE
+#ifndef CHECK_DISABLE
 #define _CHECK_ENABLE
+#endif //CHECK_DISABLE
 #ifndef DEBUG_DISABLE
 #define _DEBUG_ENABLE
 #endif //DEBUG_DISABLE
 #ifndef INFO_DISABLE
 #define _INFO_ENABLE
 #endif //INFO_DISABLE
+#ifndef TODO_DISABLE
 #define _TODO_ENABLE
-#endif //NDEBUG
-
+#endif //TODO_DISABLE
+#ifndef WARNING_DISABLE
 #define _WARNING_ENABLE
+#endif //WARNING_DISABLE
+
+#define _PRINTF_ENABLE
+#define FFLUSH(X)    //fflush(X)
 #define _ERROR_ENABLE
 #define _CLERROR_ENABLE
 #define _CUERROR_ENABLE
 #define _HIPERROR_ENABLE
 #define _ZEERROR_ENABLE
+#define _HIPWARNING_ENABLE
+#define _CUWARNING_ENABLE
+#define _CLWARNING_ENABLE
 
 #define _COLOR_DEBUG
 
+#define ASSERT(X)   assert(X)
 #ifdef _COLOR_DEBUG
 #define RED     "\033[22;31m"
 #define GREEN   "\033[22;32m"
@@ -86,13 +96,42 @@ extern char iris_log_prefix_[];
 
 #define __SHORT_FILE__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 
+//#define  _printf(fmt, ...) do { printf( GREEN "[T] %s [%s:%d:%s] " fmt RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, ##__VA_ARGS__); FFLUSH(stdout); } while (0)
+
+//#define _DEBUG2_ENABLE
+#ifdef _DEBUG2_ENABLE
+#define  _debug2(fmt, ...) do { printf( GREEN "[T] %s [%s:%d:%s] " fmt RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, ##__VA_ARGS__); FFLUSH(stdout); } while (0)
+#else
+#define  _debug2(fmt, ...) do { } while (0)
+#endif
+
+//#define _DEBUG2_EVENT_PROF
+#ifdef _DEBUG2_EVENT_PROF
+#define  _event_prof_debug(fmt, ...) do { printf( "[T] %s [%s:%d:%s] " fmt RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, ##__VA_ARGS__); FFLUSH(stdout); } while (0)
+#else
+#define  _event_prof_debug(fmt, ...) do { } while (0)
+#endif
+
+
+//#define _DEBUG_EVENT
+#ifdef _DEBUG_EVENT
+#define EVENT_DEBUG(X)   X
+#define  _event_debug(fmt, ...) do { printf( "[T] %s [%s:%d:%s] " fmt RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, ##__VA_ARGS__); FFLUSH(stdout); } while (0)
+#else
+#define EVENT_DEBUG(X)   
+#define  _event_debug(fmt, ...) do { } while (0)
+#endif
+
 #ifdef _TRACE_ENABLE
 #define  _trace(fmt, ...) do { printf( BLUE "[T] %s [%s:%d:%s] " fmt RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, ##__VA_ARGS__); FFLUSH(stdout); } while (0)
 #define  _trace_debug(fmt, ...) do { printf( BRED "[T] Manual Debug %s [%s:%d:%s] " fmt RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, ##__VA_ARGS__); FFLUSH(stdout); } while (0)
 #define __trace(fmt, ...) do { printf(_BLUE "[T] %s [%s:%d:%s] " fmt RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, ##__VA_ARGS__); FFLUSH(stdout); } while (0)
+//#define  _printf(fmt, ...) do { printf( GREEN "[T] %s [%s:%d:%s] " fmt RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, ##__VA_ARGS__); FFLUSH(stdout); } while (0)
 #else
 #define  _trace(fmt, ...) do { } while (0)
-#define __trace(fmt, ...) do { } while (0)
+#define  __trace(fmt, ...) do { } while (0)
+#define  _trace_debug(fmt, ...) do { } while (0)
+//#define  _printf(fmt, ...) do { } while (0)
 #endif
 
 #ifdef _CHECK_ENABLE
@@ -109,6 +148,14 @@ extern char iris_log_prefix_[];
 #else
 #define  _debug(fmt, ...) do { } while (0)
 #define __debug(fmt, ...) do { } while (0)
+#endif
+
+#ifdef _PRINTF_ENABLE
+#define  _printf(fmt, ...) do { printf( YELLOW "[I] %s [%s:%d:%s] " fmt RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, ##__VA_ARGS__); FFLUSH(stdout); } while (0)
+#define __printf(fmt, ...) do { printf(_YELLOW "[I] %s [%s:%d:%s] " fmt RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, ##__VA_ARGS__); FFLUSH(stdout); } while (0)
+#else
+#define  _printf(fmt, ...) do { } while (0)
+#define __printf(fmt, ...) do { } while (0)
 #endif
 
 #ifdef _INFO_ENABLE
@@ -155,8 +202,8 @@ extern char iris_log_prefix_[];
 #define  _cuerror(err) do { if (err != CUDA_SUCCESS) { printf( RED "[E] %s [%s:%d:%s] err[%d]" RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, err); FFLUSH(stdout); } } while (0)
 #define __cuerror(err) do { if (err != CUDA_SUCCESS) { printf(_RED "[E] %s [%s:%d:%s] err[%d]" RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, err); FFLUSH(stdout); } } while (0)
 #else
-#define  _clerror(err) do { } while (0)
-#define __clerror(err) do { } while (0)
+#define  _cuerror(err) do { } while (0)
+#define __cuerror(err) do { } while (0)
 #endif
 
 #ifdef _HIPERROR_ENABLE
@@ -166,6 +213,31 @@ extern char iris_log_prefix_[];
 #define  _hiperror(err) do { } while (0)
 #define __hiperror(err) do { } while (0)
 #endif
+
+#ifdef _CLWARNING_ENABLE
+#define  _clwarning(err) do { if (err != CL_SUCCESS) { printf( RED "[W] %s [%s:%d:%s] err[%d]" RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, err); FFLUSH(stdout); } } while (0)
+#define __clwarning(err) do { if (err != CL_SUCCESS) { printf(_RED "[W] %s [%s:%d:%s] err[%d]" RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, err); FFLUSH(stdout); } } while (0)
+#else
+#define  _clwarning(err) do { } while (0)
+#define __clwarning(err) do { } while (0)
+#endif
+
+#ifdef _CUWARNING_ENABLE
+#define  _cuwarning(err) do { if (err != CUDA_SUCCESS) { printf( RED "[W] %s [%s:%d:%s] err[%d]" RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, err); FFLUSH(stdout); } } while (0)
+#define __cuwarning(err) do { if (err != CUDA_SUCCESS) { printf(_RED "[W] %s [%s:%d:%s] err[%d]" RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, err); FFLUSH(stdout); } } while (0)
+#else
+#define  _cuwarning(err) do { } while (0)
+#define __cuwarning(err) do { } while (0)
+#endif
+
+#ifdef _HIPWARNING_ENABLE
+#define  _hipwarning(err) do { if (err != hipSuccess) { printf( RED "[W] %s [%s:%d:%s] err[%d]" RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, err); FFLUSH(stdout); } } while (0)
+#define __hipwarning(err) do { if (err != hipSuccess) { printf(_RED "[W] %s [%s:%d:%s] err[%d]" RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, err); FFLUSH(stdout); } } while (0)
+#else
+#define  _hipwarning(err) do { } while (0)
+#define __hipwarning(err) do { } while (0)
+#endif
+
 
 #ifdef _ZEERROR_ENABLE
 #define  _zeerror(err) do { if (err != ZE_RESULT_SUCCESS) { printf( RED "[E] %s [%s:%d:%s] err[%d]" RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, err); FFLUSH(stdout); } } while (0)

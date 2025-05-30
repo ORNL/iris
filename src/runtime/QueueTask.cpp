@@ -8,7 +8,7 @@ namespace rt {
 QueueTask::QueueTask(Platform* platform) {
   platform_ = platform;
   enable_profiler_ = platform->enable_profiler();
-  last_sync_task_ = NULL;
+  //last_sync_task_ = NULL;
   pthread_mutex_init(&mutex_, NULL);
 }
 
@@ -39,7 +39,7 @@ bool QueueTask::Peek(Task** task, int target_index){
 }
 
 bool QueueTask::Dequeue(Task** task) {
-  _trace("Trying to dequeue task");
+  _debug2("Trying to dequeue task");
   pthread_mutex_lock(&mutex_);
   if (tasks_.empty()) {
     pthread_mutex_unlock(&mutex_);
@@ -47,7 +47,11 @@ bool QueueTask::Dequeue(Task** task) {
   }
   for (std::list<Task*>::iterator I = tasks_.begin(), E = tasks_.end(); I != E; ++I) {
     Task* t = *I;
-    _trace("Checking task dispatchable for task:%lu:%s", t->uid(), t->name());
+    _debug2("Queue task:%lu:%s pending for execution", t->uid(), t->name());
+  }
+  for (std::list<Task*>::iterator I = tasks_.begin(), E = tasks_.end(); I != E; ++I) {
+    Task* t = *I;
+    _debug2("Checking task dispatchable for task:%lu:%s", t->uid(), t->name());
     if (!t->Dispatchable()) continue;
     if (t->marker() && I != tasks_.begin()) continue;
     *task = t;

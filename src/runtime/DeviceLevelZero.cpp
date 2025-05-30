@@ -33,16 +33,16 @@ DeviceLevelZero::DeviceLevelZero(LoaderLevelZero* ld, ze_device_handle_t zedev, 
 DeviceLevelZero::~DeviceLevelZero() {
 }
 
-int DeviceLevelZero::Compile(char* src) {
+int DeviceLevelZero::Compile(char* src, const char *out, const char *flags) {
   char cmd[1024];
   memset(cmd, 0, 256);
-  sprintf(cmd, "clang -cc1 -finclude-default-header -triple spir %s -flto -emit-llvm-bc -o %s.bc", src, kernel_path_);
+  sprintf(cmd, "clang -cc1 -finclude-default-header -triple spir %s -flto -emit-llvm-bc -o %s.bc", src, kernel_path());
   if (system(cmd) != EXIT_SUCCESS) {
     _error("cmd[%s]", cmd);
     worker_->platform()->IncrementErrorCount();
     return IRIS_ERROR;
   }
-  sprintf(cmd, "llvm-spirv %s.bc -o %s", kernel_path_, kernel_path_);
+  sprintf(cmd, "llvm-spirv %s.bc -o %s", kernel_path(), kernel_path());
   if (system(cmd) != EXIT_SUCCESS) {
     _error("cmd[%s]", cmd);
     worker_->platform()->IncrementErrorCount();
@@ -68,7 +68,7 @@ int DeviceLevelZero::Init() {
   err_ = ld_->zeEventPoolCreate(zectx_, &evtpool_desc, 1, &zedev_, &zeevtpool_);
   _zeerror(err_);
 
-  char* path = kernel_path_;
+  char* path = (char *)kernel_path();
 //  Platform::GetPlatform()->EnvironmentGet("KERNEL_BIN_SPV", &path, NULL);
   uint8_t* src = nullptr;
   size_t srclen = 0;
@@ -93,13 +93,13 @@ int DeviceLevelZero::Init() {
   return IRIS_SUCCESS;
 }
 
-int DeviceLevelZero::ResetMemory(BaseMem *mem, uint8_t reset_value)
+int DeviceLevelZero::ResetMemory(Task *task, Command *cmd, BaseMem *mem)
 {
     _error("Reset Memory is not implemented");
     return IRIS_ERROR;
 }
-int DeviceLevelZero::MemAlloc(void** mem, size_t size, bool reset) {
-  void** dptr = mem;
+int DeviceLevelZero::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset) {
+  void** dptr = mem_addr;
   ze_device_mem_alloc_desc_t desc = {};
   desc.stype = ZE_STRUCTURE_TYPE_DEVICE_MEM_ALLOC_DESC;
   err_ = ld_->zeMemAllocDevice(zectx_, &desc, size, align_, zedev_, dptr);
@@ -110,15 +110,15 @@ int DeviceLevelZero::MemAlloc(void** mem, size_t size, bool reset) {
   return IRIS_SUCCESS;
 }
 
-int DeviceLevelZero::MemFree(void* mem) {
-  void* dptr = mem;
+int DeviceLevelZero::MemFree(BaseMem *mem, void* mem_addr) {
+  void* dptr = mem_addr;
   err_ = ld_->zeMemFree(zectx_, dptr);
   _zeerror(err_);
   return IRIS_SUCCESS;
 }
 
 int DeviceLevelZero::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *tile_sizes,  size_t *full_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag) {
-  void* dptr = (void*) ((char*) mem->arch(this) + off[0]);
+  void* dptr = (void*) ((char*) mem->arch(this));
   _trace("%sdptr[%p] offset[%lu] size[%lu] host[%p]", tag,  dptr, off[0], size, host);
 
   ze_event_handle_t zeevt;
@@ -127,7 +127,7 @@ int DeviceLevelZero::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *tile_
   err_ = ld_->zeEventCreate(zeevtpool_, &zeevt_desc, &zeevt);
   _zeerror(err_);
 
-  err_ = ld_->zeCommandListAppendMemoryCopy(zecml_, dptr, (const void*) host, size, zeevt, 0, nullptr);
+  err_ = ld_->zeCommandListAppendMemoryCopy(zecml_, dptr, (const char*) host + off[0]*elem_size, size, zeevt, 0, nullptr);
   _zeerror(err_);
 
   err_ = ld_->zeCommandListAppendSignalEvent(zecml_, zeevt);
@@ -151,7 +151,7 @@ int DeviceLevelZero::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *tile_
 }
 
 int DeviceLevelZero::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *tile_sizes,  size_t *full_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag) {
-  void* dptr = (void*) ((char*) mem->arch(this) + off[0]);
+  void* dptr = (void*) ((char*) mem->arch(this));
   _trace("%sdptr[%p] offset[%lu] size[%lu] host[%p]", tag, dptr, off[0], size, host);
 
   ze_event_handle_t zeevt;
@@ -160,7 +160,7 @@ int DeviceLevelZero::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *tile_
   err_ = ld_->zeEventCreate(zeevtpool_, &zeevt_desc, &zeevt);
   _zeerror(err_);
 
-  err_ = ld_->zeCommandListAppendMemoryCopy(zecml_, host, (const void*) dptr, size, zeevt, 0, nullptr);
+  err_ = ld_->zeCommandListAppendMemoryCopy(zecml_, (uint8_t *)host + off[0]*elem_size, (const void*) dptr, size, zeevt, 0, nullptr);
   _zeerror(err_);
 
   err_ = ld_->zeCommandListAppendSignalEvent(zecml_, zeevt);

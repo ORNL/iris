@@ -1,14 +1,14 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.5)
 
 project(ISaxpy)
 set(XILINX_VERSION 1)
 #set(XILINX_TARGET  "$ENV{XCL_EMULATION_MODE}")  # sw_emu, hw_emu, hw
-set(XILINX_LANGUAGE "opencl")
+set(XILINX_LANGUAGE "xilinx") # opencl, xilinx
 
 set(XILINX_OPENCL_SOURCES 
-    saxpy              kernel_stage  src/kernel.cl
    )
 set(XILINX_KERNEL_SOURCES 
+    saxpy              kernel_stage  src/kernel.xilinx.cpp
    )
 
 #set(EXTRACT_IRIS_KERNEL_SIGNATURES
@@ -27,8 +27,9 @@ set(CUDA_KERNEL_SOURCES
    )
 
 set(APP_SOURCES
-   src/saxpy.c
-   src/saxpy_ref.c
+   src/saxpy.cpp
+   src/saxpy.iris.cpp
+   src/saxpy_ref.cpp
    )
 
 set(HEXAGON_KERNEL_SOURCES 

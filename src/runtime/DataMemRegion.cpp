@@ -10,48 +10,15 @@
 namespace iris {
 namespace rt {
 
-DataMemRegion::DataMemRegion(DataMem *mem, int region, size_t *off, size_t *loff, size_t *host_size, size_t *dev_size, size_t elem_size, int dim, size_t dev_offset_from_root) : BaseMem(IRIS_DMEM_REGION, mem->platform()->ndevs()) 
+DataMemRegion::DataMemRegion(DataMem *mem, int region, size_t *off, size_t *loff, size_t *host_size, size_t *dev_size, size_t elem_size, int dim, size_t dev_offset_from_root) : DataMem(mem->platform(), NULL, off, host_size, dev_size, elem_size, dim) 
 {
-    region_ = region;
-    memcpy(off_, off, sizeof(size_t)*3);
-    memcpy(loff_, loff, sizeof(size_t)*3);
-    memcpy(dev_size_, dev_size, sizeof(size_t)*3);
-    memcpy(host_size_, host_size, sizeof(size_t)*3);
+    set_element_type(mem->element_type());
+    SetMemHandlerType(IRIS_DMEM_REGION);
     mem_ = mem;
-    elem_size_ = elem_size;
-    dim_ = dim;
+    region_ = region;
+    memcpy(loff_, loff, sizeof(size_t)*DMEM_MAX_DIM);
     dev_offset_from_root_ = dev_offset_from_root;
-    //host_dirty_flag_ = mem_->is_host_dirty();
-    host_dirty_flag_ = false;
-    dirty_flag_ = new bool[ndevs_];
-    pthread_mutex_init(&host_mutex_, NULL);
-    dev_mutex_ = new pthread_mutex_t[ndevs_];
-    for(int i=0;  i<ndevs_; i++) {
-        dirty_flag_[i] = true;
-        pthread_mutex_init(&dev_mutex_[i], NULL);
-    }
-    size_t size = elem_size;
-    for(int i=0; i<dim; i++) {
-        size = size * dev_size[i];
-    }
-    size_ = size;
     if (mem_->is_reset()) init_reset(true);
-}
-void DataMemRegion::init_reset(bool reset)
-{
-    reset_ = reset;
-    if (reset) {
-        host_dirty_flag_ = true;
-        for(int i=0;  i<ndevs_; i++) {
-            dirty_flag_[i] = false;
-        }
-    }
-    else {
-        host_dirty_flag_ = false;
-        for(int i=0;  i<ndevs_; i++) {
-            dirty_flag_[i] = true;
-        }
-    }
 }
 void *DataMemRegion::host_root_memory() { return mem_->host_memory(); }
 

@@ -5,7 +5,6 @@
 
 #include <queue>
 #include <mutex>
-
 namespace iris {
 namespace rt {
 using namespace std;
@@ -17,13 +16,13 @@ public:
   bool Peek(Task** task, int index);
   bool Enqueue(Task* task);
   bool Dequeue(Task** task);
-  virtual bool Dequeue(pair<unsigned long, Task*>* task);
+  bool Dequeue(Task** task, Device *device);
   size_t Size();
   bool Empty();
   void Print(int devno=-1);
 
 private:
-  std::deque<pair<unsigned long, Task*>> pqueue_, queue_;
+  std::deque<Task*> pqueue_, queue_, mqueue_;
   mutable std::mutex mutex_;
 };
 

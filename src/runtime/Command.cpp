@@ -5,7 +5,9 @@
 #include "Task.h"
 #include "Timer.h"
 #include "Mem.h"
+#include "Device.h"
 #include "DataMem.h"
+#include "AutoDAG.h"
 
 namespace iris {
 namespace rt {
@@ -32,23 +34,40 @@ void Command::set_params_map(int *pmap) {
     memcpy(params_map_, pmap, sizeof(int)*kernel_nargs_); 
 }
 
+void Command::set_time_start(Timer* d) {
+  time_start_ = d->Now();
+  ns_time_start_ = d->NowNS();
+}
+
+void Command::set_time_end(Timer* d) {
+  time_end_ = d->Now();
+  ns_time_end_ = d->NowNS();
+}
+
 void Command::Clear(bool init) {
+  n_mems_ = 0;
   host_ = NULL;
   params_map_ = NULL;
   kernel_ = NULL;
   task_ = NULL;
   mem_ = NULL;
+  dst_mem_ = NULL;
   platform_ = NULL;
   kernel_args_ = NULL;
   polymems_ = NULL;
   func_params_ = NULL;
+  func_ = NULL;
+  py_func_ = NULL;
+  func_params_id_ = 0;
   params_ = NULL;
-  type_name_ = NULL;
-  name_ = NULL;
+  type_name_ = std::string();
+  given_name_ = false;
+  name_ = "";
   selector_kernel_params_ = NULL;
   time_ = 0.0;
+  ns_time_start_ = 0;
+  ns_time_end_ = 0;
   internal_memory_transfer_ = false;
-  kernel_args_ = NULL;
   kernel_nargs_ = 0;
   last_ = false;
   selector_kernel_ = NULL;
@@ -56,7 +75,6 @@ void Command::Clear(bool init) {
   polymems_ = NULL;
   npolymems_ = 0;
   params_map_ = NULL;
-  name_ = NULL;
   off_[0] = 0; off_[1] = 0; off_[2] = 0;
   gws_[0] = 0; gws_[1] = 1; gws_[2] = 1;
   lws_[0] = 0; lws_[1] = 1; lws_[2] = 1;
@@ -66,6 +84,7 @@ void Command::Clear(bool init) {
     kernel_nargs_max_ = IRIS_CMD_KERNEL_NARGS_MAX;
     kernel_args_ = new KernelArg[kernel_nargs_max_];
     for (int i = 0; i < kernel_nargs_max_; i++) {
+      kernel_args_[i].proactive = false;
       kernel_args_[i].mem = NULL;
     }
   }
@@ -75,20 +94,26 @@ void Command::Set(Task* task, int type) {
   task_ = task;
   type_ = type;
   switch(type){
-    case IRIS_CMD_INIT:        type_name_= const_cast<char*>("Init");    break;
-    case IRIS_CMD_KERNEL:      type_name_= const_cast<char*>("Kernel");  break;
-    case IRIS_CMD_MALLOC:      type_name_= const_cast<char*>("Malloc");  break;
-    case IRIS_CMD_H2D:         type_name_= const_cast<char*>("H2D");     break;
-    case IRIS_CMD_D2D:         type_name_= const_cast<char*>("D2D");     break;
-    case IRIS_CMD_H2BROADCAST: type_name_= const_cast<char*>("H2Broadcast");     break;
-    case IRIS_CMD_H2DNP:       type_name_= const_cast<char*>("H2DNP");   break;
-    case IRIS_CMD_D2H:         type_name_= const_cast<char*>("D2H");     break;
-    case IRIS_CMD_MEM_FLUSH:   type_name_= const_cast<char*>("MemFlush");     break;
-    case IRIS_CMD_MAP:         type_name_= const_cast<char*>("Map");     break;
-    case IRIS_CMD_RELEASE_MEM: type_name_= const_cast<char*>("Release"); break;
-    case IRIS_CMD_HOST:        type_name_= const_cast<char*>("Host");    break;
-    case IRIS_CMD_CUSTOM:      type_name_= const_cast<char*>("Custom");  break;
-    case IRIS_CMD_RESET_INPUT: type_name_= const_cast<char*>("ResetMem");  break;
+    case IRIS_CMD_INIT:        type_name_= std::string("Init");    break;
+    case IRIS_CMD_KERNEL:      type_name_= std::string("Kernel");  break;
+    case IRIS_CMD_MALLOC:      type_name_= std::string("Malloc");  break;
+    case IRIS_CMD_H2D:         type_name_= std::string("H2D");     break;
+    case IRIS_CMD_D2D:         type_name_= std::string("D2D");     break;
+    case IRIS_CMD_H2BROADCAST: type_name_= std::string("H2Broadcast");     break;
+    case IRIS_CMD_H2DNP:       type_name_= std::string("H2DNP");   break;
+    case IRIS_CMD_D2H:         type_name_= std::string("D2H");     break;
+    case IRIS_CMD_MEM_FLUSH:   type_name_= std::string("MemFlush");     break;
+#ifdef AUTO_PAR
+#ifdef AUTO_SHADOW
+    case IRIS_CMD_MEM_FLUSH_TO_SHADOW:   type_name_= std::string("MemFlushToShadow");     break;
+#endif
+#endif
+    case IRIS_CMD_DMEM2DMEM_COPY:         type_name_= std::string("DMem2DMemCopy");     break;
+    case IRIS_CMD_MAP:         type_name_= std::string("Map");     break;
+    case IRIS_CMD_RELEASE_MEM: type_name_= std::string("Release"); break;
+    case IRIS_CMD_HOST:        type_name_= std::string("Host");    break;
+    case IRIS_CMD_CUSTOM:      type_name_= std::string("Custom");  break;
+    case IRIS_CMD_RESET_INPUT: type_name_= std::string("ResetMem");  break;
     default: _error("cmd type[0x%x]", type);
   }
   if (task->ncmds() == 0 && task->name()){ 
@@ -125,6 +150,7 @@ Command* Command::CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off,
   cmd->kernel_nargs_max_ = kernel->nargs();
   cmd->kernel_nargs_ = kernel->nargs();
   cmd->dim_ = dim;
+  kernel->set_task(task);
   for (int i = 0; i < dim; i++) {
     cmd->off_[i] = off ? off[i] : 0ULL;
     cmd->gws_[i] = gws[i];
@@ -142,6 +168,8 @@ Command* Command::CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off,
   Command* cmd = Create(task, IRIS_CMD_KERNEL);
   cmd->kernel_ = kernel;
   cmd->dim_ = dim;
+  cmd->name_ = kernel->name();
+  kernel->set_task(task);
   for (int i = 0; i < dim; i++) {
     cmd->off_[i] = off ? off[i] : 0ULL;
     cmd->gws_[i] = gws[i];
@@ -166,26 +194,54 @@ Command* Command::CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off,
     if (param_info > 0) {
       arg->mem = NULL;
       arg->off = 0ULL;
-      arg->size = param_info;
+      arg->size = param_info & 0xFFFF;
+      arg->data_type = param_info & 0xFFFF0000;
       if (param) memcpy(arg->value, param, arg->size);
       continue;
     }
     size_t mem_off = 0ULL;
     BaseMem* mem = cmd->platform_->GetMem(*((iris_mem*) param));
+#ifdef AUTO_PAR
+#ifdef AUTO_SHADOW
+    if (mem->GetMemHandlerType() == IRIS_DMEM){
+        if(((DataMem*)mem)->get_has_shadow()){
+            mem = (BaseMem*)(((DataMem*)mem)->get_current_dmem_shadow()); // need to fix this
+        }
+    }
+#endif
+
+    cmd->platform_->get_auto_dag()->create_dependency(cmd, task, param_info, mem, kernel, i);
+
+#ifdef AUTO_SHADOW
+    if (mem->GetMemHandlerType() == IRIS_DMEM){
+        if(((DataMem*)mem)->get_has_shadow()){
+            mem = (BaseMem*)(((DataMem*)mem)->get_current_dmem_shadow()); // need to fix this
+        }
+    }
+#endif
+#endif
+    //_trace_debug("Param %d", param_info);
     if (!mem) mem = cmd->platform_->GetMem(param, &mem_off);
     if (!mem) {
       _error("no mem[%p] task[%ld:%s]", ((iris_mem*) param), task->uid(), task->name());
       continue;
     }
+    if (mem->GetMemHandlerType() == IRIS_MEM) kernel->add_mem((Mem*)mem, i, param_info);
     if (mem->GetMemHandlerType() == IRIS_DMEM) kernel->add_dmem((DataMem *)mem, i, param_info);
     if (mem->GetMemHandlerType() == IRIS_DMEM_REGION) kernel->add_dmem_region((DataMemRegion *)mem, i, param_info);
     arg->mem = mem;
+    arg->mem_index = cmd->n_mems_; cmd->n_mems_++;
     arg->off = mem_off;
     if (params_off) arg->off = params_off[i];
     arg->mode = param_info;
     arg->mem_off = memranges ? memranges[i * 2] : 0;
     arg->mem_size = memranges ? memranges[i * 2 + 1] : mem->size();
   }
+
+#ifdef AUTO_PAR
+  cmd->platform_->get_auto_dag()->add_h2d_df_task(task, kernel);
+#endif
+
   return cmd;
 }
 
@@ -246,13 +302,56 @@ Command* Command::CreateMalloc(Task* task, Mem* mem) {
 Command* Command::CreateMemFlushOut(Task* task, DataMem* mem) {
   Command* cmd = Create(task, IRIS_CMD_MEM_FLUSH);
   cmd->mem_ = mem;
+#ifdef AUTO_PAR
+//#ifdef IGNORE_MANUAL
+    
+//#endif
+
+//#ifdef SANITY_CHECK
+//    task->platform()->get_auto_dag()->set_auto_dep();
+//#endif
+   // Fixed it
+   if (mem->get_current_writing_task() != NULL && mem->get_current_writing_task()->uid() != NULL
+        && mem->get_current_writing_task() != task)
+       task->AddDepend(mem->get_current_writing_task(), mem->get_current_writing_task()->uid());
+
+//#ifdef IGNORE_MANUAL
+//   task->platform()->get_auto_dag()->unset_auto_dep();
+//#endif
+
+//#ifdef SANITY_CHECK
+//   task->platform()->get_auto_dag()->unset_auto_dep();
+//#endif
+
+#endif
+
+
   return cmd;
 }
+
+#ifdef AUTO_PAR
+#ifdef AUTO_SHADOW
+Command* Command::CreateMemFlushOutToShadow(Task* task, DataMem* mem) {
+  Command* cmd = Create(task, IRIS_CMD_MEM_FLUSH_TO_SHADOW);
+  cmd->mem_ = mem;
+  return cmd;
+}
+#endif
+#endif
 
 Command* Command::CreateMemResetInput(Task* task, BaseMem *mem, uint8_t reset_value) {
   Command* cmd = Create(task, IRIS_CMD_RESET_INPUT);
   cmd->mem_ = mem;
-  cmd->reset_value_ = reset_value;
+  //cmd->reset_value_ = reset_value;
+  cmd->reset_data_.reset_type_ = iris_reset_memset;
+  cmd->reset_data_.value_.u8 = reset_value;
+  return cmd;
+}
+
+Command* Command::CreateMemResetInput(Task* task, BaseMem *mem, ResetData & data) {
+  Command* cmd = Create(task, IRIS_CMD_RESET_INPUT);
+  cmd->mem_ = mem;
+  cmd->reset_data_ = data;
   return cmd;
 }
 
@@ -271,6 +370,13 @@ Command* Command::CreateH2Broadcast(Task* task, Mem* mem, size_t *off, size_t *h
   cmd->size_ = size;
   cmd->host_ = host;
   cmd->exclusive_ = true;
+  return cmd;
+}
+
+Command* Command::CreateDMEM2DMEM(Task* task, DataMem* src_mem, DataMem *dst_mem) {
+  Command* cmd = Create(task, IRIS_CMD_DMEM2DMEM_COPY);
+  cmd->mem_ = src_mem;
+  cmd->dst_mem_ = dst_mem;
   return cmd;
 }
 
@@ -390,6 +496,13 @@ Command* Command::CreateReleaseMem(Task* task, Mem* mem) {
   return cmd;
 }
 
+Command* Command::CreateHost(Task* task, iris_host_python_task func, int64_t params_id) {
+  Command* cmd = Create(task, IRIS_CMD_HOST);
+  cmd->py_func_ = func;
+  cmd->func_params_id_ = params_id;
+  return cmd;
+}
+
 Command* Command::CreateHost(Task* task, iris_host_task func, void* params) {
   Command* cmd = Create(task, IRIS_CMD_HOST);
   cmd->func_ = func;
@@ -414,6 +527,17 @@ void Command::set_selector_kernel(iris_selector_kernel func, void* params, size_
   selector_kernel_params_ = malloc(params_size);
   memcpy(selector_kernel_params_, params, params_size);
 }
+
+void Command::set_name(std::string name) {
+  name_ = name;
+  given_name_ = true;
+}
+
+void Command::set_name(const char* name) {
+  name_ = std::string(name);
+  given_name_ = true;
+}
+
 
 } /* namespace rt */
 } /* namespace iris */

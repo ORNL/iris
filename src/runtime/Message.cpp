@@ -63,7 +63,7 @@ bool Message::WritePtr(void *ptr) {
 }
 
 bool Message::Write(const void* v, size_t size) {
-  if (offset_ + size >= IRIS_MSG_SIZE) return false;
+  if (offset_ + size > IRIS_MSG_SIZE) return false;
   memcpy(buf_ + offset_, v, size);
   offset_ += size;
   return true;

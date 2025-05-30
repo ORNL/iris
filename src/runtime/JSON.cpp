@@ -13,13 +13,12 @@
 #include <string.h>
 #include <unistd.h>
 #include <ctype.h>
-#include <bits/stdc++.h>
 #include "rapidjson/rapidjson.h"
 #include "rapidjson/document.h"
 #include "rapidjson/filewritestream.h"
 #include "rapidjson/writer.h"
 #include "rapidjson/error/en.h"
-#include <csignal>
+
 #ifdef RAPIDJSON_ALIGN
 #undef RAPIDJSON_ALIGN
 #endif //RAPIDJSON_ALIGN
@@ -33,11 +32,9 @@ rapidjson::Document iris_output_document_;
 
 JSON::JSON(Platform* platform){
   platform_ = platform;
-  timer_ = new Timer();
 }
 
 JSON::~JSON() {
-  delete timer_;
 }
 
 int JSON::Load(Graph* graph, const char* path, void** params) {
@@ -78,7 +75,6 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
   for (rapidjson::SizeType i = 0; i < iris_inputs_.Size(); i++){
     inputs_.push_back(iris_inputs_[i].GetString());
   }
-
   //load tasks
   if(!iris_graph_.HasMember("graph") or !iris_graph_["graph"].HasMember("tasks") or !iris_graph_["graph"]["tasks"].IsArray()){
     _error("malformed tasks in file[%s]", path);
@@ -87,7 +83,10 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
   }
   const rapidjson::Value& iris_tasks_ = iris_graph_["graph"]["tasks"];
   for (rapidjson::SizeType i = 0; i < iris_tasks_.Size(); i++){
-    Task* task = Task::Create(platform_, IRIS_TASK_PERM, NULL);
+    int ncmds = 0;
+    if (iris_tasks_[i].HasMember("commands"))
+        ncmds = (int)iris_tasks_[i]["commands"].Size();
+    Task* task = Task::Create(platform_, IRIS_TASK_PERM, NULL, ncmds);
     tasks_.push_back(task);
     //name
     if(!iris_tasks_[i].HasMember("name") or !iris_tasks_[i]["name"].IsString()){
@@ -105,7 +104,6 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
     for (rapidjson::SizeType j = 0; j < iris_tasks_[i]["depends"].Size(); j++){
       //auto tmp = iris_tasks_[i]["depends"][j].GetType();
       if(iris_tasks_[i]["depends"][j].IsNull()){
-        //raise(SIGINT);
         continue;
       }
       if(!iris_tasks_[i]["depends"][j].IsString()){
@@ -122,30 +120,54 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
       }
     }
     //target
-    if(!iris_tasks_[i].HasMember("target") or !iris_tasks_[i]["target"].IsString()){
+    if(!iris_tasks_[i].HasMember("target")){
       _error("malformed task target in file[%s]", path);
       platform_->IncrementErrorCount();
       return IRIS_ERROR;
     }
     int target = iris_default;
-    const char* target_str = iris_tasks_[i]["target"].GetString();
-    void* p_target = GetParameterInput(params,target_str);
-    if (p_target) target = (*(int*) p_target);
-    //device only policies
-    else if(strcmp(target_str, "cpu") == 0) target = iris_cpu;
-    else if(strcmp(target_str, "gpu") == 0) target = iris_gpu;
-    //iris policies
-    else if(strcmp(target_str, "all") == 0) target = iris_all;
-    else if(strcmp(target_str, "any") == 0) target = iris_any;
-    else if(strcmp(target_str, "data") == 0) target = iris_data;
-    else if(strcmp(target_str, "default")== 0) target = iris_default;
-    else if(strcmp(target_str, "depend") == 0) target = iris_depend;
-    else if(strcmp(target_str, "profile") == 0) target = iris_profile;
-    else if(strcmp(target_str, "random") == 0) target = iris_random;
-    else if(strcmp(target_str, "roundrobin") == 0) target = iris_roundrobin;
-    //the policy can also just be the actual device id!
-    else if(isdigit(target_str[0])){
-      target = atoi(target_str);
+    if(iris_tasks_[i]["target"].IsString()){
+      //the scheduled target can be passed in as an input parameter,
+      const char* target_str = iris_tasks_[i]["target"].GetString();
+      void* p_target = GetParameterInput(params,target_str);
+      if (p_target) target = (*(int*) p_target);
+      //or a string
+      //device only policies
+      else if(strcmp(target_str, "cpu") == 0) target = iris_cpu;
+      else if(strcmp(target_str, "gpu") == 0) target = iris_gpu;
+      //iris policies
+      else if(strcmp(target_str, "ftf") == 0) target = iris_ftf;
+      else if(strcmp(target_str, "sdq") == 0) target = iris_sdq;
+      else if(strcmp(target_str, "data") == 0) target = iris_data;
+      else if(strcmp(target_str, "default")== 0) target = iris_default;
+      else if(strcmp(target_str, "depend") == 0) target = iris_depend;
+      else if(strcmp(target_str, "profile") == 0) target = iris_profile;
+      else if(strcmp(target_str, "random") == 0) target = iris_random;
+      else if(strcmp(target_str, "roundrobin") == 0) target = iris_roundrobin;
+      //if custom is mentioned in the IRIS policy --- its a custom policy but we need to register it
+      else if(strcmp(target_str, "custom") == 0) {
+        target = iris_custom;
+      }
+      //the policy can also just be the actual device id!
+      else if(isdigit(target_str[0])){
+        target = atoi(target_str);
+      }
+    } else if (iris_tasks_[i]["target"].IsInt()) {
+      target = iris_tasks_[i]["target"].GetInt();
+    } else {
+      _error("malformed task target (not a string or int) in file[%s]", path);
+      platform_->IncrementErrorCount();
+      return IRIS_ERROR;
+    }
+
+    //if we have a custom policy we have one final string passed: the name of the previously registered custom policy
+    if (target == iris_custom){
+      //get the last input which is the custom_policy_name
+      //not strictly passed in the JSON we have to evaluate the last parameter explicitly.
+      //This is because the custom policies target string isn't **strictly** part of the schema
+      //this means we can change the target policy as a runtime argument.
+      const char* custom_policy_name = (char*) params[iris_inputs_.Size()];//it will always be the size of the number of expected input arguments (plus one).
+      task->set_opt(custom_policy_name);
     }
     task->set_brs_policy(target);
     //commands (populate each task with assigned commands)
@@ -204,16 +226,44 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
           //parameters (scalar)
           if (strcmp("scalar",param_["type"].GetString()) == 0){
             //name
-            if (!param_.HasMember("name")){
+            if (!param_.HasMember("value")){
               _error("malformed command kernel parameters scalar name in file[%s]", path);
               platform_->IncrementErrorCount();
               return IRIS_ERROR;
             }
-            kparams[l] = GetParameterInput(params,param_["name"].GetString());
-            //data_type
-            //value   
-            printf("parameter no:%i is scalar\n",l);
-            raise(SIGINT);
+            kparams[l] = GetParameterInput(params,param_["value"].GetString());
+            //if it isn't a string to look up or be resolved as an input, it could just be a value (garbled from the recording process) Don't panic! Let the kernel typecasting do the work!
+            if (!kparams[l]) kparams[l] = (void*)param_["value"].GetString();
+            //Note: the type of the scalar argument can be set 3 different ways--we can statically set the data_type (the data type used, expressed as a string), or data_size (integer denoting the number of bytes), or dynamically as an input argument (again as an integer to denote the number of bytes).
+            if (param_.HasMember("data_type") && param_["data_type"].IsString()) {
+              const char* data_type_str = param_["data_type"].GetString();
+              if (strcmp(data_type_str,"int") == 0) kparams_info[l] = sizeof(int);
+              else if(strcmp(data_type_str,"short") == 0) kparams_info[l] = sizeof(short);
+              else if(strcmp(data_type_str,"long") == 0) kparams_info[l] = sizeof(long);
+              else if(strcmp(data_type_str,"char") == 0) kparams_info[l] = sizeof(char);
+              else if(strcmp(data_type_str,"float") == 0) kparams_info[l] = sizeof(float);
+              else if(strcmp(data_type_str,"double") == 0) kparams_info[l] = sizeof(double);
+              else if(strcmp(data_type_str,"long double") == 0) kparams_info[l] = sizeof(long double);
+              else {
+                _error("malformed command kernel parameters scalar data_type in file[%s] -- we must know the number of bytes this data type uses!", path);
+                platform_->IncrementErrorCount();
+                return IRIS_ERROR;
+              }
+            } else if(param_.HasMember("data_size") && param_["data_size"].IsInt()){
+              kparams_info[l] = param_["data_size"].GetInt();
+            } else if(param_.HasMember("data_size") && param_["data_size"].IsString()){
+              //the dynamic option
+              kparams_info[l] = *(int*)GetParameterInput(params,param_["data_size"].GetString());
+              if(!kparams_info[l] && kparams_info[l] != 0){
+                _error("malformed command kernel parameters scalar data_size (dynamic) in file[%s]. Can be data_size (int, in bytes) when provided this way must be an **input** argument", path);
+                platform_->IncrementErrorCount();
+                return IRIS_ERROR;
+              }
+            } else {
+              _error("malformed command kernel parameters scalar data_type in file[%s]. Can be data_size (int, in bytes), or data_type (as a string)", path);
+              platform_->IncrementErrorCount();
+              return IRIS_ERROR;
+            }
           }
           //parameters (memory_object)
           else if (strcmp("memory_object",param_["type"].GetString()) == 0){
@@ -403,13 +453,6 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
       }
       else if (iris_tasks_[i]["commands"][j].HasMember("d2h")){
         const rapidjson::Value& d2h_ = iris_tasks_[i]["commands"][j]["d2h"];
-        //host_memory
-        if(!d2h_.HasMember("host_memory") or !d2h_["host_memory"].IsString()){
-          _error("malformed command d2h host_memory in file[%s]", path);
-          platform_->IncrementErrorCount();
-          return IRIS_ERROR;
-        }
-        void* host_mem = GetParameterInput(params, d2h_["host_memory"].GetString());
         //device_memory
         if(!d2h_.HasMember("device_memory") or !d2h_["device_memory"].IsString()){
           _error("malformed command d2h device_memory in file[%s]", path);
@@ -417,6 +460,30 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
           return IRIS_ERROR;
         }
         iris_mem *dev_mem = (iris_mem*) GetParameterInput(params, d2h_["device_memory"].GetString());
+        //if IRIS data memory --- break early
+        if(d2h_.HasMember("data-memory-flush")){
+          iris_mem *dev_mem = (iris_mem*) GetParameterInput(params, d2h_["device_memory"].GetString());
+          Command* cmd = Command::CreateMemFlushOut(task, (DataMem *)platform_->get_mem_object(*dev_mem));
+          if(d2h_.HasMember("name")){
+            if(!d2h_["name"].IsString()){
+              _error("malformed command d2h name in file[%s]", path);
+              platform_->IncrementErrorCount();
+              return IRIS_ERROR;
+            }
+            cmd->set_name(const_cast<char*>(d2h_["name"].GetString()));
+            if (!task->given_name()) task->set_name(cmd->name());
+          }
+          _trace("adding data_memory flush: %s\n",cmd->name());
+          task->AddCommand(cmd);
+          continue;
+        }
+        //host_memory
+        if(!d2h_.HasMember("host_memory") or !d2h_["host_memory"].IsString()){
+          _error("malformed command d2h host_memory in file[%s]", path);
+          platform_->IncrementErrorCount();
+          return IRIS_ERROR;
+        }
+        void* host_mem = GetParameterInput(params, d2h_["host_memory"].GetString());
         //offset
         if(!d2h_.HasMember("offset")){
           _error("missing command d2h offset in file[%s]", path);
@@ -472,6 +539,7 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
     }
     graph->AddTask(task, task->uid());
   }
+  graph->get_metadata()->set_json_url(path);
   return IRIS_SUCCESS;
 }
 
@@ -485,6 +553,15 @@ void* JSON::GetParameterInput(void** params, const char* buf){
 }
 
 int JSON::RecordFlush() {
+
+  for(vector<Task*>::iterator task = tracked_tasks_.begin(); task != tracked_tasks_.end(); task++){
+    ProcessTask(*task);
+  }
+  while (!tracked_tasks_.empty()){
+    tracked_tasks_.back()->Release();
+    tracked_tasks_.pop_back();
+  }
+
   rapidjson::Value json_d(rapidjson::kObjectType);
   rapidjson::Value iris_graph(rapidjson::kObjectType);
   //inputs
@@ -505,6 +582,7 @@ int JSON::RecordFlush() {
   tasks_.AddMember("tasks",iris_output_tasks_,iris_output_document_.GetAllocator());
   iris_graph.AddMember("graph",tasks_,iris_output_document_.GetAllocator());
   iris_output_document_.SetObject();
+  iris_output_document_.AddMember("$schema", SCHEMA, iris_output_document_.GetAllocator());
   iris_output_document_.AddMember("iris-graph",iris_graph,iris_output_document_.GetAllocator());
   struct Stream {
     std::ofstream of {"output.json"};
@@ -549,18 +627,16 @@ int JSON::UniqueUIDFromDevicePointer(Mem* dev_ptr){
 
 int JSON::RecordTask(Task* task) {
   if(task->ncmds() == 0) return IRIS_SUCCESS;//skip recording IRIS_MARKER tasks
+  task->Retain();
+  tracked_tasks_.push_back(task);
+  return IRIS_SUCCESS;
+}
+
+int JSON::ProcessTask(Task* task){
   rapidjson::Value _task(rapidjson::kObjectType);
   //name
-  //rapidjson::Value _name(rapidjson::StringRef(task->name()));
-  std::string nbuffer = std::string(task->name());
-  rapidjson::Value _name;
-  _name.SetString(nbuffer.c_str(),nbuffer.size(),iris_output_document_.GetAllocator());
-  if(_name == ""){
-    char buffer[64];
-    int len = sprintf(buffer, "task-%lu", task->uid()); // dynamically created string.
-    _name.SetString(buffer, len, iris_output_document_.GetAllocator());
-  }
-  _task.AddMember("name",_name,iris_output_document_.GetAllocator());
+  rapidjson::Value task_name_(task->name(),iris_output_document_.GetAllocator());
+  _task.AddMember("name",task_name_,iris_output_document_.GetAllocator());
   if (task->ncmds() == 0) {
     //it's and empty (likely checkpointing) task, so don't record it.
     //just discard empty tasks (tasks without any commands)
@@ -568,49 +644,45 @@ int JSON::RecordTask(Task* task) {
   }
   //command(s)
   rapidjson::Value _cmds(rapidjson::kArrayType);
-  rapidjson::Value tmp;//for calls to NameFromHostPointer and NameFromDeviceMem--where a simple StringRef goes out of scope and returns garbage collected junk.
   for (int i = 0; i < task->ncmds(); i++) {
     Command* cmd = task->cmd(i);
     if (cmd->type() == IRIS_CMD_H2D) {
       rapidjson::Value h2d_(rapidjson::kObjectType);
-      if (cmd->name()) h2d_.AddMember("name",rapidjson::StringRef(cmd->name()),iris_output_document_.GetAllocator());
+      rapidjson::Value h2d_name(cmd->name(),iris_output_document_.GetAllocator());
+      if (cmd->name()) h2d_.AddMember("name",h2d_name,iris_output_document_.GetAllocator());
       //host_memory
-      tmp.SetString(NameFromHostPointer(cmd->host()).c_str(),NameFromHostPointer(cmd->host()).length(),iris_output_document_.GetAllocator());
-      h2d_.AddMember("host_memory",tmp,iris_output_document_.GetAllocator());
+      rapidjson::Value host_memory_name_(NameFromHostPointer(cmd->host()).c_str(),NameFromHostPointer(cmd->host()).length(),iris_output_document_.GetAllocator());
+      h2d_.AddMember("host_memory",host_memory_name_,iris_output_document_.GetAllocator());
       //device_memory
-      tmp.SetString(NameFromDeviceMem(cmd->mem()).c_str(),iris_output_document_.GetAllocator());
-      h2d_.AddMember("device_memory",tmp,iris_output_document_.GetAllocator());
+      rapidjson::Value device_memory_name_(NameFromDeviceMem(cmd->mem()).c_str(),iris_output_document_.GetAllocator());
+      h2d_.AddMember("device_memory",device_memory_name_,iris_output_document_.GetAllocator());
       h2d_.AddMember("offset",rapidjson::Value(cmd->off(0)),iris_output_document_.GetAllocator());
       h2d_.AddMember("size",rapidjson::Value(cmd->size()),iris_output_document_.GetAllocator());
       rapidjson::Value cmd_(rapidjson::kObjectType);
       cmd_.AddMember("h2d",h2d_,iris_output_document_.GetAllocator());
       _cmds.PushBack(cmd_,iris_output_document_.GetAllocator());
-      printf("recorded h2d\n");
     }
     else if (cmd->type() == IRIS_CMD_D2H) {
       rapidjson::Value d2h_(rapidjson::kObjectType);
-      if (cmd->name()) d2h_.AddMember("name",rapidjson::StringRef(cmd->name()),iris_output_document_.GetAllocator());
+      rapidjson::Value command_name_(cmd->name(),iris_output_document_.GetAllocator());
+      d2h_.AddMember("name",command_name_,iris_output_document_.GetAllocator());
       //host_memory
-      tmp.SetString(NameFromHostPointer(cmd->host()).c_str(),iris_output_document_.GetAllocator());
-      d2h_.AddMember("host_memory",tmp,iris_output_document_.GetAllocator());
+      rapidjson::Value host_memory_name_(NameFromHostPointer(cmd->host()).c_str(),iris_output_document_.GetAllocator());
+      d2h_.AddMember("host_memory",host_memory_name_,iris_output_document_.GetAllocator());
       //device_memory
-      tmp.SetString(NameFromDeviceMem(cmd->mem()).c_str(),iris_output_document_.GetAllocator());
-      d2h_.AddMember("device_memory",tmp,iris_output_document_.GetAllocator());
+      rapidjson::Value device_memory_name_(NameFromDeviceMem(cmd->mem()).c_str(),iris_output_document_.GetAllocator());
+      d2h_.AddMember("device_memory",device_memory_name_,iris_output_document_.GetAllocator());
       d2h_.AddMember("offset",rapidjson::Value(cmd->off(0)),iris_output_document_.GetAllocator());
       d2h_.AddMember("size",rapidjson::Value(cmd->size()),iris_output_document_.GetAllocator());
       rapidjson::Value cmd_(rapidjson::kObjectType);
       cmd_.AddMember("d2h",d2h_,iris_output_document_.GetAllocator());
       _cmds.PushBack(cmd_,iris_output_document_.GetAllocator());
-      printf("recorded d2h\n");    }
+    }
     else if (cmd->type() == IRIS_CMD_KERNEL) {
       rapidjson::Value kernel_(rapidjson::kObjectType);
-      //kernel name (TODO: implement the long term solution issue #24)[https://code.ornl.gov/brisbane/iris/-/issues/24]
-      std::string buffer = std::string(cmd->name());
-      rapidjson::Value name_;
-      name_.SetString(buffer.c_str(),buffer.size(),iris_output_document_.GetAllocator());
-      kernel_.AddMember("name",name_,iris_output_document_.GetAllocator());
-      //raise(SIGINT);
-      //kernel_.AddMember("name",rapidjson::StringRef(cmd->name()),iris_output_document_.GetAllocator());
+      //name
+      rapidjson::Value kernel_name_(cmd->name(),iris_output_document_.GetAllocator());
+      kernel_.AddMember("name",kernel_name_,iris_output_document_.GetAllocator());
       //global_size
       rapidjson::Value gs_(rapidjson::kArrayType);
       for(int i = 0; i < cmd->dim(); i ++)
@@ -633,21 +705,20 @@ int JSON::RecordTask(Task* task) {
         KernelArg* arg = cmd->kernel_arg(i);
         if(arg->mem){//memory
           param_.AddMember("type",rapidjson::StringRef("memory_object"),iris_output_document_.GetAllocator());
-          tmp.SetString(NameFromDeviceMem((Mem *)arg->mem).c_str(),iris_output_document_.GetAllocator());
-          param_.AddMember("value",tmp,iris_output_document_.GetAllocator());
+          rapidjson::Value kernel_arg_mem_name_(NameFromDeviceMem((Mem *)arg->mem).c_str(),iris_output_document_.GetAllocator());
+          param_.AddMember("value",kernel_arg_mem_name_,iris_output_document_.GetAllocator());
           param_.AddMember("size_bytes",rapidjson::Value(arg->mem_size),iris_output_document_.GetAllocator());
           //permissions
           if (arg->mode == iris_r) param_.AddMember("permissions",rapidjson::StringRef("r"),iris_output_document_.GetAllocator());
           else if (arg->mode == iris_w) param_.AddMember("permissions",rapidjson::StringRef("w"),iris_output_document_.GetAllocator());
           else if (arg->mode == iris_rw) param_.AddMember("permissions",rapidjson::StringRef("rw"),iris_output_document_.GetAllocator());
           else _error("not valid mode[%d]", arg->mode);
-          //param_.AddMember("name",,iris_output_document_.GetAllocator());//we said this was optional. But currently the Mem.h class doesn't have a name member function. 
         }else{//scalar
-          param_.AddMember("type",rapidjson::StringRef("scalar"),iris_output_document_.GetAllocator());
-          _error("scalar support is currently unimplemented! @JSON.cpp : line %d", __LINE__);
-          //param_.AddMember("name",,iris_output_document_.GetAllocator());//again still optional
-          //param_.AddMember("data_type",,iris_output_document_.GetAllocator());
-          //param_.AddMember("value",,iris_output_document_.GetAllocator());
+          param_.AddMember("type","scalar",iris_output_document_.GetAllocator());
+          rapidjson::Value _value;
+          _value.SetString(arg->value,arg->size,iris_output_document_.GetAllocator());
+          param_.AddMember("value",_value,iris_output_document_.GetAllocator());
+          param_.AddMember("data_size",arg->size,iris_output_document_.GetAllocator());
         }
         params_.PushBack(param_,iris_output_document_.GetAllocator());
       }
@@ -655,19 +726,17 @@ int JSON::RecordTask(Task* task) {
       rapidjson::Value cmd_(rapidjson::kObjectType);
       cmd_.AddMember("kernel",kernel_,iris_output_document_.GetAllocator());
       _cmds.PushBack(cmd_,iris_output_document_.GetAllocator());
-      printf("recorded kernel\n");
     }
   }
   _task.AddMember("commands",_cmds,iris_output_document_.GetAllocator());
   //target
   rapidjson::Value _target;
   if (task->dev()) {
-    _target.SetString(rapidjson::StringRef(std::to_string(task->devno()).c_str()),iris_output_document_.GetAllocator());
+    _target.SetInt(task->devno());
   }
   else {
-    const char* tmp = task->brs_policy_string();
-    if(strcmp(tmp, "unknown") == 0) { _error("unknown policy in JSON file[%s]", tmp); return IRIS_ERROR; }//we should never hit this!
-    _target.SetString(rapidjson::StringRef(task->brs_policy_string()), iris_output_document_.GetAllocator());
+    if(strcmp(task->brs_policy_string(), "unknown") == 0) { _error("unknown policy in JSON file[%s]", task->brs_policy_string()); return IRIS_ERROR; }//we should never hit this!
+    _target.SetString(task->brs_policy_string(), iris_output_document_.GetAllocator());
   }
   _task.AddMember("target",_target,iris_output_document_.GetAllocator());
   //depends
@@ -675,12 +744,13 @@ int JSON::RecordTask(Task* task) {
   for (int i = 0; i < task->ndepends(); i++) {
     Task *dep = task->depend(i);
     if (dep != NULL) {
-        rapidjson::Value depend(rapidjson::StringRef(dep->name()));
-        _depends.PushBack(depend, iris_output_document_.GetAllocator());
+      rapidjson::Value depend(dep->name(),iris_output_document_.GetAllocator());
+      _depends.PushBack(depend, iris_output_document_.GetAllocator());
     }
   }
   _task.AddMember("depends",_depends,iris_output_document_.GetAllocator());
   iris_output_tasks_.PushBack(_task, iris_output_document_.GetAllocator());
+
   return IRIS_SUCCESS;
 }
 

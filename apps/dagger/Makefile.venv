@@ -1,0 +1,100 @@
+IRIS ?= $(HOME)/.iris
+
+SHELL=bash
+REPEATS ?= 10
+
+RUN_POLICY_OUT_DIR=$(shell pwd)/dagger-payloads/*.json
+TEST_CORRECTNESS_OUT_DIR=$(shell pwd)/dagger-payloads/*.json
+TEST_CORRECTNESS_OUT_DIR=$(shell pwd)/*-graph.json
+GIT_ROOT=$(shell git rev-parse --show-toplevel)
+
+setup:
+	python3 -m venv daggerpy
+	source daggerpy/bin/activate ; \
+	python3 -m pip install --upgrade pip; \
+	CC=gcc python3 -m pip install -r requirements.txt
+
+all: run-policy
+
+run-policy:
+	source daggerpy/bin/activate ; echo `pwd` ; IRIS_HISTORY=1 IRIS_INSTALL_ROOT=$(IRIS) SKIP_SETUP=1 REPEATS=$(REPEATS) bash ./run-policy-evaluation.sh 1> test-out.txt 2>&1 ;
+
+test-local-workgroup-sizes:
+	source daggerpy/bin/activate ; IRIS_HISTORY=1 IRIS_INSTALL_ROOT=$(IRIS) SKIP_SETUP=1 REPEATS=$(REPEATS) bash ./test_local_workgroup_sizes.sh 1> test-out.txt 2>&1 ;
+
+test-correctness:
+	source daggerpy/bin/activate ; IRIS_HISTORY=1 IRIS_INSTALL_ROOT=$(IRIS) SKIP_SETUP=1 bash ./test_correctness.sh 1> test-out.txt 2>&1 
+
+test-duplication:
+	source daggerpy/bin/activate ; IRIS_HISTORY=1 IRIS_INSTALL_ROOT=$(IRIS) SKIP_SETUP=1 bash ./test_duplication_feature.sh 1> test-out.txt 2>&1 
+
+validate-run-policy:
+	rm -rf errors.txt ; touch errors.txt ;
+	if [ -e test-out.txt ]; then \
+    grep -e '\[E\]' test-out.txt > errors.txt ; \
+    grep -e 'No such file or directory' test-out.txt | grep -v -e '\[W\]' >> errors.txt ; \
+    grep -e 'Segmentation fault' test-out.txt >> errors.txt ; \
+    grep -e 'EnvironmentLocationNotFound' test-out.txt >> errors.txt ; \
+    else \
+    echo 'No output' >> errors.txt ; \
+    fi ; \
+	for f in $(shell ls ${RUN_POLICY_OUT_DIR}); do \
+        echo "Validating Json Schema for file $${f}." \
+        $(GIT_ROOT)/utils/validate_schema.py -i $${f} -s $(GIT_ROOT)/schema/dagger.schema.json || echo Json Validation failed for $${f} >> errors.txt ; \
+    done ; \
+    echo "Finished: $$(date)" ; \
+    echo "Errors:" $$(wc -l < errors.txt)  ;
+
+validate-test-correctness:
+	rm -rf errors.txt ; touch errors.txt ;
+	if [ -e test-out.txt ]; then \
+	grep -e '\[E\]' test-out.txt > errors.txt ; \
+    grep -e 'No such file or directory' test-out.txt | grep -v -e '\[W\]' >> errors.txt ; \
+	grep -e 'Segmentation fault' test-out.txt >> errors.txt ; \
+	grep -e 'EnvironmentLocationNotFound' test-out.txt >> errors.txt ; \
+    else \
+    echo 'No output' >> errors.txt ; \
+    fi ; \
+	for f in $(shell ls ${TEST_CORRECTNESS_OUT_DIR}); do \
+        echo "Validating Json Schema for file $${f}." \
+        $(GIT_ROOT)/utils/validate_schema.py -i $${f} -s $(GIT_ROOT)/schema/dagger.schema.json || echo Json Validation failed for $${f} >> errors.txt ; \
+    done ; \
+    echo "Finished: $$(date)" ; \
+	echo "Errors:" $$(wc -l < errors.txt)  ;
+
+validate-test-duplication:
+	rm -rf errors.txt ; touch errors.txt ;
+	if [ -e test-out.txt ]; then \
+	grep -e '\[E\]' test-out.txt > errors.txt ; \
+    grep -e 'No such file or directory' test-out.txt >> errors.txt ; \
+	grep -e 'Segmentation fault' test-out.txt >> errors.txt ; \
+	grep -e 'EnvironmentLocationNotFound' test-out.txt >> errors.txt ; \
+    else \
+    echo 'No output' >> errors.txt ; \
+    fi ; \
+	for f in $(shell ls ${TEST_DUPLICATION_OUT_DIR}); do \
+        echo "Validating Json Schema for file $${f}." \
+        $(GIT_ROOT)/utils/validate_schema.py -i $${f} -s $(GIT_ROOT)/schema/dagger.schema.json || echo Json Validation failed for $${f} >> errors.txt ; \
+    done ; \
+    echo "Finished: $$(date)" ; \
+	echo "Errors:" $$(wc -l < errors.txt)  ;
+
+validate-local-workgroup-sizes:
+	rm -rf errors.txt ; touch errors.txt ;
+	if [ -e test-out.txt ]; then \
+	grep -e '\[E\]' test-out.txt > errors.txt ; \
+    grep -e 'No such file or directory' test-out.txt | grep -v -e '\[W\]' >> errors.txt ; \
+	grep -e 'Segmentation fault' test-out.txt >> errors.txt ; \
+	grep -e 'EnvironmentLocationNotFound' test-out.txt >> errors.txt ; \
+    else \
+    echo 'No output' >> errors.txt ; \
+    fi ; \
+	for f in $(shell ls ${TEST_CORRECTNESS_OUT_DIR}); do \
+        echo "Validating Json Schema for file $${f}." \
+        $(GIT_ROOT)/utils/validate_schema.py -i $${f} -s $(GIT_ROOT)/schema/dagger.schema.json || echo Json Validation failed for $${f} >> errors.txt ; \
+    done ; \
+    echo "Finished: $$(date)" ; \
+	echo "Errors:" $$(wc -l < errors.txt)  ;
+
+clean:
+	rm -rf dagger-payloads

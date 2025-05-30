@@ -25,5 +25,6 @@ int main(int argc, char** argv) {
     pthread_join(t[i], &rv);
     returnval += (int)(off_t)rv;
   }
+  printf("Errors:%d\n", returnval);
   return returnval;
 }

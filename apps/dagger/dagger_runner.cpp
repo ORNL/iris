@@ -9,7 +9,6 @@
 #include <vector>
 #include <string>
 #include <cstring>
-#include <signal.h>
 #include <cmath>
 #include <limits>
 #include <ctype.h>
@@ -17,47 +16,47 @@
 double t0, t1;
 
 void ShowUsage(){
-  printf("This runner will run the generated DAG from DAGGER on IRIS. It can be immediately after DAGGER has been run and accepts the same arguments as those supplied to DAGGER.\nThe required additional arguments include:\n\tthe size of the memory buffers to use in this IRIS test (\"--size\"),\n\tthe number of repeats (\"--repeats\"),\n\tand the location to log the timing results (\"--logfile\")");
-  printf("For instance:\n");
-  printf("./dagger_runner\t --kernels=\"process,ijk\"\n");
-  printf("\t\t --buffers-per-kernel=\"process: rw,ijk: r r w rw\"\n");
-  printf("\t\t --duplicates=\"2\"\n");
-  printf("\t\t --concurrent-kernels=**UNSUPPORTED**\"process:2,ijk:4\"\n");
-  //TODO: kernel-dimensions could be extended to support the actual work-group size, e.g. ijk:512,512
-  printf("\t\t --kernel-dimensions=\"ijk:2,process:1\"\n");
-  printf("\t\t --size=\"1024\"\n");
-  printf("\t\t --repeats=\"100\"\n");
-  printf("\t\t --logfile=\"log.csv\"\n");
-  printf("\t\t --scheduling-policy=\"roundrobin\"\t all options include (roundrobin, depend, profile, random, any, all, custom) or any integer [0-9] denoting the device id to run all tasks on\n");
-  printf("\t\t --num-tasks=\"6\"\t (optional) only used for throughput computation\n");
-  printf("\t\t --sandwich\t\t (optional) determines if there are the beginning and terminating nodes\n");
-
-  //printf("\t\t --kernel-split=\"70,30\"\n");//optional
+printf("This runner will run the generated DAG from DAGGER on IRIS. It can be immediately after DAGGER has been run and accepts the same arguments as those supplied to DAGGER.\nThe required additional arguments include:\n\tthe size of the memory buffers to use in this IRIS test (\"--size\"),\n\tthe number of repeats (\"--repeats\"),\n\tand the location to log the timing results (\"--logfile\")\n");
+printf("For instance:\n");
+printf("./dagger_runner\t --kernels=\"process,ijk\"\n");
+printf("\t\t --graph=\"linear10.json\"\n");
+printf("\t\t --buffers-per-kernel=\"process: rw,ijk: r r w rw\"\n");
+printf("\t\t --concurrent-kernels=\"process:2,ijk:4\"\n");
+printf("\t\t --kernel-dimensions=\"ijk:2,process:1\"\n");
+printf("\t\t --size=\"1024\"\n");
+printf("\t\t --repeats=\"100\"\n");
+printf("\t\t --logfile=\"log.csv\"\n");
+printf("\t\t --scheduling-policy=\"roundrobin\"\t all options include (roundrobin, depend, profile, random, sdq, ftf, custom) or any integer [0-9] denoting the device id to run all tasks on\n");
+//printf("\t\t --num-tasks=\"6\"\t (optional) only used for throughput computation\n");
+//printf("\t\t --sandwich\t\t (optional) determines if there are the beginning and terminating nodes\n");
+//printf("\t\t --kernel-split=\"70,30\"\t (optional) list of probabilities of each kernel being used\n");
+//printf("\t\t --num-memory-objects=\"5\"\t (optional) the total number of memory objects to be passed around in the DAG between tasks (allows greater task interactions).\n");
+printf("\t\t --use-data-memory=1 (optional) Enables the graph to use memory instead of the default explicit memory buffers. This results in final explicit flush events of buffers that are written.");
 }
 
 int main(int argc, char** argv) {
 
-  size_t SIZE;
-  int REPEATS;
-  char* POLICY;
-  char* LOGFILE = NULL;
-  FILE* LF_HANDLE;
-  char LOG_BUFFER[32];
+size_t SIZE;
+int REPEATS;
+char* POLICY;
+char* LOGFILE = NULL;
+char* GRAPHFILE = NULL;
+char LOG_BUFFER[32];
   LOG_BUFFER[0] = '\0';
-  double *A, *B;
   int retcode;
-  int task_target = -1;//this is set by setting the scheduling-policy e.g. --scheduling-policy="roundrobin"
+  int task_target = -1;//this is set in the scheduling-policy e.g. --scheduling-policy="roundrobin"
   int memory_task_target = iris_pending;
-  int duplicates = 0;
+  int duplicates = 1;
+  bool use_data_memory = false;
+  char* custom_policy_name = NULL;
+  char* custom_policy_liburl = NULL;
 
   std::map<std::string,bool> required_arguments_set = {
     {"kernels", false},
+    {"graph",false},
     {"buffers-per-kernel", false},
-    {"duplicates", false},
-    //{"concurrent-kernels", false},
     {"size", false},
     {"repeats", false},
-    {"logfile", false},
     {"kernel-dimensions", false},
     {"scheduling-policy", false}
   };
@@ -67,6 +66,7 @@ int main(int argc, char** argv) {
     std::vector<char*> buffers;
     int concurrency;
     int dimensions;
+    std::vector<size_t> lws;
   };
 
   std::map<std::string,int> scheduling_policy_lookup = {
@@ -75,21 +75,21 @@ int main(int argc, char** argv) {
     {"data", iris_data},
     {"profile", iris_profile},
     {"random", iris_random},
-    {"any",iris_any},
-    {"all", iris_all},
+    {"sdq",iris_sdq},
+    {"ftf", iris_ftf},
     {"custom", iris_custom}
   };
 
   std::vector<kernel_parameters> kernels;
   int num_kernels = 0;
   int num_tasks = 0;
-
   int opt_char;
   int option_index;
   static struct option long_options[] = {
+    {"graph", required_argument, 0, 'g'},
     {"kernels", required_argument, 0, 'k'},
     {"buffers-per-kernel", required_argument, 0, 'b'},
-    {"duplicates", required_argument, 0, 'z'},
+    {"duplicates", optional_argument, 0, 'z'},
     {"concurrent-kernels", optional_argument, 0, 'c'},
     {"size", required_argument, 0, 's'},
     {"repeats", required_argument, 0, 'r'},
@@ -104,16 +104,29 @@ int main(int argc, char** argv) {
     {"min-width", required_argument, 0, 'i'},
     {"max-width", required_argument, 0, 'x'},
     {"sandwich", no_argument, 0, 'y'},
+    {"num-memory-objects",required_argument, 0,'a'},
+    {"skips",required_argument,0,'q'},
+    {"use-data-memory",no_argument, 0,'f'},
+    {"local-sizes",required_argument, 0, 'w'}
   };
 
   while((opt_char = getopt_long(argc, argv, "s=", long_options, &option_index)) != -1) {
     switch(opt_char){
+
+      case (int)'g':{//graph_file
+          GRAPHFILE = optarg;
+          if (GRAPHFILE != NULL){
+            required_arguments_set["graph"] = true;
+          }
+        } break;
+
       case (int)'k':{//kernels
           //split all kernels by ,
           char* x = strtok(optarg,",");
           while(x){
             struct kernel_parameters kp;
             kp.name = x;
+            kp.concurrency = 0;
             kernels.push_back(kp);
             x = strtok(NULL, ",");
             num_kernels++;
@@ -250,16 +263,32 @@ int main(int argc, char** argv) {
 
       case (int)'l':{//logfile
           LOGFILE = optarg;
-          if (LOGFILE != NULL){
-            required_arguments_set["logfile"] = true;
-          }
+          setenv("IRIS_HISTORY","1",true);
+          setenv("IRIS_HISTORY_FILE",LOGFILE,true);
         } break;
 
       case (int)'t':{//scheduling-policy
           //if the policy requested by the user doesn't exist, fail.
-          if (scheduling_policy_lookup.find(optarg) != scheduling_policy_lookup.end()){
-            task_target = scheduling_policy_lookup[optarg]; //using only device #1 and 2
-            POLICY = optarg;
+          char* policy_name = strtok(optarg,":");
+          if (scheduling_policy_lookup.find(policy_name) != scheduling_policy_lookup.end()){
+            task_target = scheduling_policy_lookup[policy_name]; //using only device #1 and 2
+            POLICY = policy_name;
+            if (task_target == iris_custom){
+              custom_policy_name = new char[128];
+              custom_policy_liburl = new char[128];
+              //This is our only custom policy loader
+              char* cpn = strtok(NULL, ":");
+              char* cpl = strtok(NULL, ":");
+              if (cpn == NULL) task_target = -1; //fail if no policy name provided
+              strcpy(custom_policy_name,cpn);
+              //we need to record the name of the policy and lib.so filename
+              //but can't evaluate it until *after* IRIS has been initialized
+              if (cpl == NULL) task_target = -1;//fail if no libCustomPolicyName.so provided
+              strcpy(custom_policy_liburl,cpl);
+              //give it a shiny printed name
+              strcpy(POLICY,"custom:");
+              strcat(POLICY,custom_policy_name);
+            }
           } else if (isdigit(optarg[0])){//we also support assigning individual device ids.
             task_target = atoi(optarg);
           }
@@ -274,6 +303,56 @@ int main(int argc, char** argv) {
 
       case (int)'p'://kernel-split
         break;
+
+      case (int)'a'://num-memory-objects
+        break;
+
+      case (int)'w':{//local-sizes
+          printf("The --local-sizes argument provided to the runner currently doesn't override the DAG, instead whatever is passed to the generator is used.\n");
+          //sample: --local-sizes="ijk:256 256,process:128"
+          int num_kernels_with_lws_set = 0;
+
+          //split all kernels by ,
+          char* kernel_str = strtok(optarg,",");
+          std::vector<char*> kernel_strings;
+          while(kernel_str){
+            kernel_strings.push_back(kernel_str);
+            kernel_str = strtok(NULL, ",");
+          }
+          //for each kernel (key-value) string
+          for (auto & kernel_str : kernel_strings){
+            char* key_str = strtok(kernel_str,":");
+            char* val_str = strtok(NULL,":");
+            //find the matching kernel on which to add the lws arguments
+            for (auto & kernel : kernels){
+              if (strcmp(kernel.name,key_str) == 0){//found it!
+                //now split up the string of ints...
+                char* wgsize_buffer = strtok(val_str," ");
+                while(wgsize_buffer != NULL){
+                  size_t lws_val = strtol(wgsize_buffer,NULL,10);
+                  kernel.lws.push_back(lws_val);
+                  wgsize_buffer = strtok(NULL ," ");
+                }
+                //check to make sure at least one buffer was specified for this kernel
+                if (kernel.lws.size() != kernel.dimensions){
+                  printf("\033[41mError: Incorrect --local-sizes don't match the kernel dimensions.\n%s\033[0m",optarg);
+                }
+                else{
+                  num_kernels_with_lws_set ++;
+                }
+              }
+            }
+          }
+          //final check of goodness
+          if(num_kernels_with_lws_set == num_kernels){
+            printf("\033[41mError: Incorrect --local-sizes supplied.\n%s\033[0m",optarg);
+          }
+        } break;
+      //TODO: copy the previous chunk for gws and these could be passed as inputs for the graph
+
+      case (int)'f':{//use-data-memory
+        use_data_memory = true; 
+        } break;
     };
   }
 
@@ -289,7 +368,6 @@ int main(int argc, char** argv) {
 
   if(!all_good){
     printf("\033[43mNot all arguments were properly provided to the runner!\n\033[0m");
-    //TODO: tell the user which arguments weren't correctly supplied
     ShowUsage();
     return(EXIT_FAILURE);
   }
@@ -299,23 +377,18 @@ int main(int argc, char** argv) {
     duplicates = 1;
   }
 
-  /*
-  //TODO: delete this chunk (only for debugging)
-  //raise(SIGINT);
-  //just quickly eyeball that we've collected all the arguments (in the right format)
-  for (auto & kernel : kernels){
-    printf("kernel: %s\t has the following buffers specified: ",kernel.name);
-    for (auto & buffs : kernel.buffers){
-      printf("%s ",buffs);
-    }
-    printf(" and should have %i run concurrently\n",kernel.concurrency);
-  }
-  */
-
   iris_init(&argc, &argv, true);
+
+  if (custom_policy_name != NULL){
+    int errnum = iris_register_policy(custom_policy_liburl, custom_policy_name, (void*) 16);
+  }
+
+  iris_overview();
+
   printf("REPEATS:%d LOGFILE:%s POLICY:%s\n",REPEATS,LOGFILE,POLICY);
   for (int i = 0; i < num_kernels; i ++){
-    printf("KERNEL:%s available on %d devices concurrently\n",kernels[i].name,kernels[i].concurrency);
+    if (kernels[i].concurrency < 1) kernels[i].concurrency = 1;
+    printf("KERNEL:%s available has %d instances\n",kernels[i].name,kernels[i].concurrency);
   }
 
   for (int t = 0; t < REPEATS; t++) {
@@ -326,46 +399,52 @@ int main(int argc, char** argv) {
     std::vector<size_t> sizecb;
 
     for(auto & kernel : kernels){
-      //TODO: support concurrency here
-      for(auto concurrent_device = 0; concurrent_device < duplicates; concurrent_device++){
-        int argument_index = 0;
-        for(auto & buffer : kernel.buffers){
-          //create and add the host-side buffer based on it's type
-          std::string buf = std::string(buffer);
-          if(buf == "r"){
-            //create and populate memory
-            double* tmp = new double[(int)pow(SIZE,kernel.dimensions)];
-            for(int i = 0; i < pow(SIZE,kernel.dimensions); i++){
-              tmp[i] = i;
+      for(auto dup = 1; dup < duplicates+1; dup++){
+        for(auto concurrent_kernel_instance = 1; concurrent_kernel_instance < kernel.concurrency+1; concurrent_kernel_instance++){
+          int argument_index = 0;
+          for(auto & buffer : kernel.buffers){
+            //create and add the host-side buffer based on it's type
+            std::string buf = std::string(buffer);
+            if(buf == "r"){
+              //create and populate memory
+              double* tmp = new double[(int)pow(SIZE,kernel.dimensions)];
+              for(int i = 0; i < pow(SIZE,kernel.dimensions); i++){
+                tmp[i] = i;
+              }
+              host_mem.push_back(tmp);
+              num_buffers_used++;
+            } else if(buf == "w"){
+              double* tmp = new double[(int)pow(SIZE,kernel.dimensions)];
+              host_mem.push_back(tmp);
+              num_buffers_used++;
+            } else if(buf == "rw"){
+              //create and populate memory
+              double* tmp = new double[(int)pow(SIZE,kernel.dimensions)];
+              for(int i = 0; i < pow(SIZE,kernel.dimensions); i++){
+                tmp[i] = i;
+              }
+              host_mem.push_back(tmp);
+              num_buffers_used++;
+            } else {
+              printf("\033[41mInvalid memory argument! Kernel %s has a buffer of memory type %s but only r,w or rw are allowed.\n\033[0m",kernel.name,buf.c_str());
+              return(EXIT_FAILURE);
             }
-            host_mem.push_back(tmp);
-            num_buffers_used++;
-          } else if(buf == "w"){
-            double* tmp = new double[(int)pow(SIZE,kernel.dimensions)];
-            host_mem.push_back(tmp);
-            num_buffers_used++;
-          } else if(buf == "rw"){
-            //create and populate memory
-            double* tmp = new double[(int)pow(SIZE,kernel.dimensions)];
-            for(int i = 0; i < pow(SIZE,kernel.dimensions); i++){
-              tmp[i] = i;
+            //and create device memory of the same size
+            iris_mem x;
+            char buffer_name[80];
+            sprintf(buffer_name,"%s-%s-%d",kernel.name,buf.c_str(),argument_index);
+            if (use_data_memory){
+              retcode = iris_data_mem_create(&x,host_mem[0], (int)pow(SIZE,kernel.dimensions)*sizeof(double));
+              memory_task_target = iris_pending;
             }
-            host_mem.push_back(tmp);
-            num_buffers_used++;
-          } else {
-            printf("\033[41mInvalid memory argument! Kernel %s has a buffer of memory type %s but only r,w or rw are allowed.\n\033[0m",kernel.name,buf.c_str());
-            return(EXIT_FAILURE);
+           else
+              retcode = iris_mem_create( (int)pow(SIZE,kernel.dimensions)*sizeof(double), &x);//, (char*)buffer_name);
+           assert (retcode == IRIS_SUCCESS && "Failed to create IRIS memory buffer");
+           dev_mem.push_back(x);
+           //and update the count of buffers used
+           num_buffers_used++;
+           argument_index++;
           }
-          //and create device memory of the same size
-          iris_mem x;
-          char buffer_name[80];
-          sprintf(buffer_name,"%s-%s-%d",kernel.name,buf.c_str(),argument_index);
-          retcode = iris_mem_create( (int)pow(SIZE,kernel.dimensions)*sizeof(double), &x);//, (char*)buffer_name);
-          assert (retcode == IRIS_SUCCESS && "Failed to create IRIS memory buffer");
-          dev_mem.push_back(x);
-          //and update the count of buffers used
-          num_buffers_used++;
-          argument_index++;
         }
       }
       sizecb.push_back(pow(SIZE,kernel.dimensions) * sizeof(double));
@@ -373,9 +452,8 @@ int main(int argc, char** argv) {
     }
 
     //variable number of memory buffers can be provided into IRIS
-    void* json_inputs[4+num_buffers_used];
-int indexer = 0;
-    printf("TODO: support SIZE per kernel -- as with sizecb\n");
+    void* json_inputs[5+num_buffers_used];
+    int indexer = 0;
     json_inputs[indexer] = &SIZE; indexer++;
     for(auto & bytes : sizecb){
       json_inputs[indexer] = &bytes; indexer++;
@@ -388,9 +466,10 @@ int indexer = 0;
     }
     json_inputs[indexer] = &memory_task_target; indexer++;
     json_inputs[indexer] = &task_target; indexer++;
+    if (task_target == iris_custom){json_inputs[indexer] = custom_policy_name; indexer++;}
 
     iris_graph graph;
-    retcode = iris_graph_create_json("graph.json", json_inputs, &graph);
+    retcode = iris_graph_create_json(GRAPHFILE, json_inputs, &graph);
     assert(retcode == IRIS_SUCCESS && "Failed to create IRIS graph");
     for(auto i = 0; i < indexer; i++){
       json_inputs[i] = NULL;
@@ -398,7 +477,6 @@ int indexer = 0;
     t0 = now();
 
     iris_graph_submit(graph, iris_gpu, true);//iris_default in task-graph target is the only case that doesn't override the submission policy--so leave it as iris_gpu.
-    //**TODO**: deadlock ensues if we use synchronous mode with profiling enabled (BRISBANE_PROFILE=1 ./dagger_dgemm)
 
     retcode = iris_synchronize();
     assert(retcode == IRIS_SUCCESS && "Failed to synchronize IRIS");
@@ -435,20 +513,19 @@ int indexer = 0;
       }
     }
 */
-    //clean up host memory
-    for (auto & this_mem : host_mem){
-      delete this_mem;
-    }
     //clean up device memory
     for (auto& this_mem : dev_mem){
       iris_mem_release(this_mem);
     }
+    //clean up host memory
+    for (auto & this_mem : host_mem){
+      delete [] this_mem;
+    }
   }
 
-    iris_finalize();
-    
-    return(EXIT_SUCCESS);
-
-  return 0;
+  int num_errors = iris_error_count();
+  printf("dagger_runner finished with %i errors.\n", num_errors);
+  iris_finalize();
+  return(num_errors);
 }
 

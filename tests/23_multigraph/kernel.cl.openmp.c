@@ -53,7 +53,7 @@ int iris_openmp_setmem(int idx, void* mem) {
   return IRIS_ERROR;
 }
 
-int iris_openmp_launch(int dim, size_t off, size_t ndr) {
+int iris_openmp_launch(int dim, size_t *off, size_t *ndr) {
   switch (iris_openmp_kernel_idx) {
     case 0: ijk(ijk_args.C, ijk_args.A, ijk_args.B, off, ndr); break;
   }

@@ -4,6 +4,8 @@
 #include <string>
 #include <vector>
 
+#define SCHEMA "https://raw.githubusercontent.com/ORNL/iris/v2.0.0/schema/dagger.schema.json"
+
 namespace iris {
 namespace rt {
 
@@ -25,18 +27,15 @@ public:
   int RecordFlush();
 
 private:
-  int LoadInputs(char* src, void* tok, int i, int r);
-  int LoadTasks(Graph* graph, void** params, char* src, void* tok, int i, int r);
-  int LoadTask(Graph* graph, void** params, char* src, void* tok, int j, int r);
-
-private:
   void* GetParameterInput(void** params, const char* string_to_lookup);
   int UniqueUIDFromHostPointer(void*host_ptr);
   int UniqueUIDFromDevicePointer(Mem* dev_ptr);
   const std::string NameFromHostPointer(void*host_ptr);
   const std::string NameFromDeviceMem(Mem* dev_mem);
+  int ProcessTask(Task* task);
 
   Platform* platform_;
+  std::vector<Task*> tracked_tasks_;
   std::vector<const char*> inputs_;
   std::vector<Task*> tasks_;
   Timer* timer_;
