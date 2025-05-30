@@ -1,5 +1,7 @@
 # IRIS
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15556123.svg)](https://doi.org/10.5281/zenodo.15556123)
+
 IRIS is an intelligent runtime system for extremely heterogeneous architectures. IRIS discovers available functionality, manage multiple diverse programming
 systems (e.g., OpenMP, CUDA, HIP, Level Zero, OpenCL, Hexagon) simultaneously in the same application, represents data dependencies, orchestrates data movement proactively, and allows configurable work schedulers for diverse heterogeneous devices.
 
