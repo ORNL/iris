@@ -19,6 +19,8 @@ A summary of Development Versioning Specification is shown below.
 
 ## [Unreleased]
 
+## [3.0.0] - 2025-05-30
+
 ### Added
 
 #### New Capabilties
@@ -76,7 +78,8 @@ Moved documentation from external repo to be part of the code repo.
 Initial Release of IRIS, an intelligent runtime system for extremely heterogeneous architectures. IRIS discovers available functionality, manage multiple diverse programming
 systems (e.g., OpenMP, CUDA, HIP, Level Zero, OpenCL, Hexagon) simultaneously in the same application, represents data dependencies, orchestrates data movement proactively, and allows configurable work schedulers for diverse heterogeneous devices.
 
-[unreleased]: https://github.com/ORNL/iris/compare/v2.0.0...HEAD
+[unreleased]: https://github.com/ORNL/iris/compare/v3.0.0...HEAD
+[3.0.0]: https://github.com/ORNL/iris/compare/v2.0.0...v3.0.0
 [2.0.0]: https://github.com/ORNL/iris/compare/v1.0.1...v2.0.0
 [1.0.1]: https://github.com/ORNL/iris/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/ORNL/iris/releases/tag/v1.0.0
