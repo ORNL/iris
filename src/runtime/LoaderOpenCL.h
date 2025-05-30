@@ -8,18 +8,27 @@
 namespace iris {
 namespace rt {
 
+typedef void (*OpenCLCallBack)(cl_event, cl_int, void*);
 class LoaderOpenCL : public Loader {
 public:
   LoaderOpenCL();
   ~LoaderOpenCL();
 
-  const char* library() { return "libOpenCL.so"; }
+  const char* library();
   int LoadFunctions();
 
+CL_API_ENTRY cl_int CL_API_CALL
+(*clReleaseEvent)(cl_event event) CL_API_SUFFIX__VERSION_1_0;
 cl_int
 (*clGetPlatformIDs)(cl_uint          num_entries,
                  cl_platform_id * platforms,
                  cl_uint *        num_platforms) CL_API_SUFFIX__VERSION_1_0;
+
+CL_API_ENTRY cl_int CL_API_CALL
+(*clEnqueueMarkerWithWaitList)(cl_command_queue  command_queue,
+                            cl_uint           num_events_in_wait_list,
+                            const cl_event *  event_wait_list,
+                            cl_event *        event) CL_API_SUFFIX__VERSION_1_2;
 
 CL_API_ENTRY cl_int CL_API_CALL
 (*clGetPlatformInfo)(cl_platform_id   platform,
@@ -28,6 +37,12 @@ CL_API_ENTRY cl_int CL_API_CALL
                   void *           param_value,
                   size_t *         param_value_size_ret) CL_API_SUFFIX__VERSION_1_0;
 
+CL_API_ENTRY cl_int CL_API_CALL
+(*clGetEventProfilingInfo)(cl_event            event,
+                        cl_profiling_info   param_name,
+                        size_t              param_value_size,
+                        void *              param_value,
+                        size_t *            param_value_size_ret) CL_API_SUFFIX__VERSION_1_0;
 CL_API_ENTRY cl_int CL_API_CALL
 (*clGetDeviceIDs)(cl_platform_id   platform,
                cl_device_type   device_type,
@@ -53,6 +68,15 @@ CL_API_ENTRY cl_context CL_API_CALL
                 void *               user_data,
                 cl_int *             errcode_ret) CL_API_SUFFIX__VERSION_1_0;
 
+CL_API_ENTRY cl_int CL_API_CALL
+    (*clWaitForEvents)(cl_uint             num_events,
+            const cl_event *    event_list) CL_API_SUFFIX__VERSION_1_0;
+CL_API_ENTRY cl_int CL_API_CALL (*clEnqueueMarker)(	cl_command_queue command_queue,
+        cl_event *event);
+
+CL_API_ENTRY cl_int CL_API_CALL (*clEnqueueWaitForEvents)(	cl_command_queue command_queue,
+ 	cl_uint num_events,
+ 	const cl_event *event_list);
 CL_API_ENTRY cl_mem CL_API_CALL
 (*clCreateBuffer)(cl_context   context,
                cl_mem_flags flags,
@@ -62,6 +86,13 @@ CL_API_ENTRY cl_mem CL_API_CALL
 
 CL_API_ENTRY cl_int CL_API_CALL
 (*clReleaseMemObject)(cl_mem memobj) CL_API_SUFFIX__VERSION_1_0;
+
+CL_API_ENTRY cl_int CL_API_CALL
+(*clGetCommandQueueInfo)(cl_command_queue      command_queue,
+                      cl_command_queue_info param_name,
+                      size_t                param_value_size,
+                      void *                param_value,
+                      size_t *              param_value_size_ret) CL_API_SUFFIX__VERSION_1_0;
 
 CL_API_ENTRY cl_program CL_API_CALL
 (*clCreateProgramWithSource)(cl_context        context,
@@ -190,11 +221,30 @@ CL_API_ENTRY cl_int CL_API_CALL
                        const cl_event * event_wait_list,
                        cl_event *       event) CL_API_SUFFIX__VERSION_1_0;
 
+typedef cl_bitfield         cl_command_queue_properties;
 CL_API_ENTRY CL_EXT_PREFIX__VERSION_1_2_DEPRECATED cl_command_queue CL_API_CALL
 (*clCreateCommandQueue)(cl_context                     context,
                      cl_device_id                   device,
                      cl_command_queue_properties    properties,
                      cl_int *                       errcode_ret) CL_EXT_SUFFIX__VERSION_1_2_DEPRECATED;
+#ifdef CL_VERSION_2_0
+typedef cl_properties       cl_queue_properties;
+CL_API_ENTRY cl_command_queue CL_API_CALL
+(*clCreateCommandQueueWithProperties)(cl_context               context,
+                                   cl_device_id             device,
+                                   const cl_queue_properties *    properties,
+                                   cl_int *                 errcode_ret) CL_API_SUFFIX__VERSION_2_0;
+#else
+CL_API_ENTRY CL_EXT_PREFIX__VERSION_1_2_DEPRECATED cl_command_queue CL_API_CALL
+(*clCreateCommandQueue)(cl_context                     context,
+                     cl_device_id                   device,
+                     cl_command_queue_properties    properties,
+                     cl_int *                       errcode_ret) CL_EXT_SUFFIX__VERSION_1_2_DEPRECATED;
+#endif
+CL_API_ENTRY cl_int CL_API_CALL
+(*clReleaseContext)(cl_context context) CL_API_SUFFIX__VERSION_1_0;
+CL_API_ENTRY cl_int CL_API_CALL
+(*clReleaseCommandQueue)(cl_command_queue command_queue) CL_API_SUFFIX__VERSION_1_0;
 
 CL_API_ENTRY cl_int CL_API_CALL
 (*clSetEventCallback)(cl_event    event,
@@ -203,6 +253,16 @@ CL_API_ENTRY cl_int CL_API_CALL
                                                    cl_int   event_command_status,
                                                    void *   user_data),
                    void *      user_data) CL_API_SUFFIX__VERSION_1_1;
+CL_API_ENTRY cl_int CL_API_CALL
+    (*clEnqueueFillBuffer)(cl_command_queue   command_queue,
+            cl_mem             buffer,
+            const void *       pattern,
+            size_t             pattern_size,
+            size_t             offset,
+            size_t             size,
+            cl_uint            num_events_in_wait_list,
+            const cl_event *   event_wait_list,
+            cl_event *         event) CL_API_SUFFIX__VERSION_1_2;
 };
 
 } /* namespace rt */

@@ -31,8 +31,14 @@ int Profiler::OpenFD(const char *path) {
       strcpy(path_, path);
   } else {
       char s[64];
+      string app_path = platform_->app();
+      string app_base_name = app_path;
+      size_t last_slash = app_path.find_last_of("/\\");
+      if (last_slash != std::string::npos) {
+          app_base_name = app_path.substr(last_slash + 1);
+      } 
       strftime(s, 64, "%Y%m%d-%H%M%S", localtime(&t));
-      sprintf(path_, "%s-%s-%s.%s", platform_->app(), platform_->host(), s, FileExtension());
+      sprintf(path_, "%s-%s-%s.%s", app_base_name.c_str(), platform_->host(), s, FileExtension());
   }
   fd_ = open(path_, O_CREAT | O_WRONLY, 0666);
   if (fd_ == -1) {
@@ -51,15 +57,31 @@ int Profiler::Exit() {
   return IRIS_SUCCESS;
 }
 
-int Profiler::Write(const char* s, int tab) {
-  if (!msg_->WriteString(s)) {
-    Flush();
-    if (!msg_->WriteString(s)) {
-      _error("s[%s]", s);
-      return IRIS_ERROR;
-    }
+int Profiler::Write(string s, int tab) {
+  //Flush();
+  size_t space_left = msg_->free_buf_size();
+  while(space_left < s.length()) {
+     string s1 = s.substr(0, space_left);
+     s = s.substr(space_left);
+     if (!msg_->WriteString(s1.c_str())) {
+         _error("s[%s]", s.c_str());
+         return IRIS_ERROR;
+     }
+     Flush();
+     space_left = msg_->free_buf_size();
+  }
+  if (s.length() <= space_left) {
+      if (!msg_->WriteString(s.c_str())) {
+          _error("s[%s]", s.c_str());
+          return IRIS_ERROR;
+      }
   }
   return IRIS_SUCCESS;
+}
+
+int Profiler::Write(const char* s, int tab) {
+  string s_str = s;
+  return Write(s_str, tab);
 }
 
 int Profiler::Flush() {
@@ -78,7 +100,7 @@ int Profiler::CloseFD() {
   Flush();
   if (fd_ != -1) {
     int iret = close(fd_);
-    _info("Profiler %s output in file: %s", profiler_name_,  path_);
+    _printf("Profiler %s output in file: %s", profiler_name_,  path_);
     if (iret == -1) {
       _error("close profiler file[%s]", path_);
       perror("close");
@@ -99,16 +121,17 @@ const char* Profiler::policy_str(int policy) {
     case iris_fpga:       return "fpga";
     case iris_dsp:        return "dsp";
     case iris_roundrobin: return "roundrobin";
+    case iris_julia_policy: return "julia policy";
     case iris_depend:     return "depend";
     case iris_data:       return "data";
     case iris_profile:    return "profile";
     case iris_random:     return "random";
     case iris_pending:    return "pending";
-    case iris_any:        return "any";
+    case iris_sdq:        return "sdq";
     case iris_custom:     return "custom";
     default: break;
   }
-  return policy & iris_all ? "all" : "?";
+  return policy & iris_ftf ? "ftf" : "?";
 }
 
 } /* namespace rt */

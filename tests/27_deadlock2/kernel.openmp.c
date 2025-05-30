@@ -51,7 +51,7 @@ int iris_openmp_setmem(int idx, void* mem) {
   return IRIS_ERROR;
 }
 
-int iris_openmp_launch(int dim, size_t off, size_t ndr) {
+int iris_openmp_launch(int dim, size_t *off, size_t *ndr) {
   switch (iris_openmp_kernel_idx) {
     case 0: copy(copy_args.dst, copy_args.src, off, ndr); break;
   }

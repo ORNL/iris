@@ -8,6 +8,7 @@ namespace iris {
 namespace rt {
 
 class Task;
+class Device;
 
 class Queue {
 public:
@@ -15,7 +16,7 @@ public:
   virtual bool Peek(Task** task, int index) = 0;
   virtual bool Enqueue(Task* task) = 0;
   virtual bool Dequeue(Task** task) = 0;
-  virtual bool Dequeue(std::pair<unsigned long, Task*>* task) { return false; }
+  virtual bool Dequeue(Task** task, Device *dev) { return Dequeue(task); }
   virtual size_t Size() = 0;
   virtual bool Empty() = 0;
   virtual void Print(int devno=-1) { }

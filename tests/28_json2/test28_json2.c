@@ -37,7 +37,7 @@ int main(int argc, char** argv) {
   iris_graph graph;
   iris_graph_create_json("graph.json", json_inputs, &graph);
 
-  iris_graph_submit(graph, iris_any, 1);
+  iris_graph_submit(graph, iris_sdq, 1);
 
   iris_synchronize();
   int errs = 0;

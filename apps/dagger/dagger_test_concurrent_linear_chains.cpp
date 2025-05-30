@@ -9,7 +9,6 @@
 #include <vector>
 #include <string>
 #include <cstring>
-#include <signal.h>
 #include <cmath>
 #include <limits>
 #include <ctype.h>
@@ -23,7 +22,6 @@ void ShowUsage(){
   printf("\t\t --buffers-per-kernel=\"process: rw,ijk: r r w rw\"\n");
   printf("\t\t --duplicates=\"2\"\n");
   printf("\t\t --concurrent-kernels=**UNSUPPORTED**\"process:2,ijk:4\"\n");
-  //TODO: kernel-dimensions could be extended to support the actual work-group size, e.g. ijk:512,512
   printf("\t\t --kernel-dimensions=\"ijk:2,process:1\"\n");
   printf("\t\t --size=\"1024\"\n");
   printf("\t\t --repeats=\"100\"\n");
@@ -75,8 +73,8 @@ int main(int argc, char** argv) {
     {"data", iris_data},
     {"profile", iris_profile},
     {"random", iris_random},
-    {"any",iris_any},
-    {"all", iris_all},
+    {"sdq",iris_sdq},
+    {"ftf", iris_ftf},
     {"custom", iris_custom}
   };
 
@@ -114,6 +112,7 @@ int main(int argc, char** argv) {
           while(x){
             struct kernel_parameters kp;
             kp.name = x;
+            kp.concurrency = 0;
             kernels.push_back(kp);
             x = strtok(NULL, ",");
             num_kernels++;
@@ -289,7 +288,6 @@ int main(int argc, char** argv) {
 
   if(!all_good){
     printf("\033[43mNot all arguments were properly provided to the runner!\n\033[0m");
-    //TODO: tell the user which arguments weren't correctly supplied
     ShowUsage();
     return(EXIT_FAILURE);
   }
@@ -299,23 +297,13 @@ int main(int argc, char** argv) {
     duplicates = 1;
   }
 
-  /*
-  //TODO: delete this chunk (only for debugging)
-  //raise(SIGINT);
-  //just quickly eyeball that we've collected all the arguments (in the right format)
-  for (auto & kernel : kernels){
-    printf("kernel: %s\t has the following buffers specified: ",kernel.name);
-    for (auto & buffs : kernel.buffers){
-      printf("%s ",buffs);
-    }
-    printf(" and should have %i run concurrently\n",kernel.concurrency);
-  }
-  */
-
   iris_init(&argc, &argv, true);
+  iris_overview();
+
   printf("REPEATS:%d LOGFILE:%s POLICY:%s\n",REPEATS,LOGFILE,POLICY);
   for (int i = 0; i < num_kernels; i ++){
-    printf("KERNEL:%s available on %d devices concurrently\n",kernels[i].name,kernels[i].concurrency);
+    if (kernels[i].concurrency < 1) kernels[i].concurrency = 1;
+    printf("KERNEL:%s available has %d instances\n",kernels[i].name,kernels[i].concurrency);
   }
 
   for (int t = 0; t < REPEATS; t++) {
@@ -326,7 +314,6 @@ int main(int argc, char** argv) {
     std::vector<size_t> sizecb;
 
     for(auto & kernel : kernels){
-      //TODO: support concurrency here
       for(auto concurrent_device = 0; concurrent_device < duplicates; concurrent_device++){
         int argument_index = 0;
         for(auto & buffer : kernel.buffers){
@@ -376,7 +363,6 @@ int main(int argc, char** argv) {
     //void* json_inputs[3+sizecb.size()+num_buffers_used];
     void* json_inputs[4+num_buffers_used];
 int indexer = 0;
-    printf("TODO: support SIZE per kernel -- as with sizecb\n");
     json_inputs[indexer] = &SIZE; indexer++;
     for(auto & bytes : sizecb){
       json_inputs[indexer] = &bytes; indexer++;
@@ -399,7 +385,6 @@ int indexer = 0;
     t0 = now();
     iris_record_start();
     iris_graph_submit(graph, iris_gpu, true);//iris_default in task-graph target is the only case that doesn't override the submission policy--so leave it as iris_gpu.
-    //**TODO**: deadlock ensues if we use synchronous mode with profiling enabled (BRISBANE_PROFILE=1 ./dagger_dgemm)
 
     retcode = iris_synchronize();
     assert(retcode == IRIS_SUCCESS && "Failed to synchronize IRIS");
@@ -418,16 +403,14 @@ int indexer = 0;
         C[i] = i;
       }
       //reproduce test computation on the host
-      for (size_t z = 0; z < num_tasks; z++){
       for (size_t i = 0; i < SIZE; i++)
         for (size_t j = 0; j < SIZE; j++){
           double sum = 0.0;
             for (size_t k = 0; k < SIZE; k++) {
               sum += A[i * SIZE + k] * B[k * SIZE + j];
             }
-          C[i * SIZE + j] += sum;
+          C[i * SIZE + j] = sum;
         }
-      }
       double* D;
       for(auto concurrent_device = 0; concurrent_device < duplicates; concurrent_device++){
         printf("Validation on results, set no. %i with size = %zu\n",concurrent_device,SIZE);
@@ -478,11 +461,9 @@ int indexer = 0;
       iris_mem_release(this_mem);
     }
   }
+  int num_errors = iris_error_count();
+  iris_finalize();
+  return(num_errors);
 
-    iris_finalize();
-    
-    return(EXIT_SUCCESS);
-
-  return 0;
 }
 

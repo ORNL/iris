@@ -1547,7 +1547,7 @@ clEnqueueWriteBufferRect(cl_command_queue    command_queue,
 
 #endif
 
-#ifdef CL_VERSION_1_2
+//#ifdef CL_VERSION_1_2
 
 extern CL_API_ENTRY cl_int CL_API_CALL
 clEnqueueFillBuffer(cl_command_queue   command_queue,
@@ -1560,7 +1560,7 @@ clEnqueueFillBuffer(cl_command_queue   command_queue,
                     const cl_event *   event_wait_list,
                     cl_event *         event) CL_API_SUFFIX__VERSION_1_2;
 
-#endif
+//#endif
 
 extern CL_API_ENTRY cl_int CL_API_CALL
 clEnqueueCopyBuffer(cl_command_queue    command_queue,

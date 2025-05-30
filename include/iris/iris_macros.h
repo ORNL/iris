@@ -1,7 +1,33 @@
 #ifndef __IRIS_MACROS_H
 #define __IRIS_MACROS_H
 
+#define PARAM_MEM(X)              &(X)
+#define IRIS_PTR(X)               X *
+
 #ifndef UNDEF_IRIS_MACROS
+
+
+#define PARAM_EXPAND(...) __VA_ARGS__ //needed for MSVC compatibility
+
+#define PARAM_JOIN_EXPAND( a , b )     a##b
+#define PARAM_JOIN( a , b )            PARAM_JOIN_EXPAND( a , b )
+
+#define PARAM_SECOND_EXPAND( a , b , ... )    b
+#define PARAM_SECOND(...)                     PARAM_EXPAND( PARAM_SECOND_EXPAND( __VA_ARGS__ ) )
+
+#define PARAM_HIDDENfloat              unused,0
+#define PARAM_HIDDENdouble             unused,2
+#define PARAM_CHECK0( value )     PARAM_SECOND( PARAM_JOIN( PARAM_HIDDEN , value ) , 1 , unused )
+
+#define PARAM_DATATYPE0 iris_float
+#define PARAM_DATATYPE2 iris_double
+#define PARAM_DATATYPE1 0
+#define PARAM_DATATYPE( value )   PARAM_JOIN( PARAM_DATATYPE , PARAM_CHECK0( value ) )
+
+
+
+#define PARAM_DT_CODE(arg2)  PARAM_DATATYPE(arg2)
+
 #define CONCATENATE(arg1, arg2)   CONCATENATE1(arg1, arg2)
 #define CONCATENATE1(arg1, arg2)  CONCATENATE2(arg1, arg2)
 #define CONCATENATE2(arg1, arg2)  arg1##arg2
@@ -145,7 +171,7 @@
 #define CCONCATENATE1(arg1, arg2)  CCONCATENATE2(arg1, arg2)
 #define CCONCATENATE2(arg1, arg2)  arg1##arg2
 
-#define PMI_ARG_1(X)                        iris_all
+#define PMI_ARG_1(X)                        iris_ftf
 #define PMI_ARG_0(X)                        X 
 #define PMI_CORE(...)                       PCONCATENATE(PMI_ARG_, ISEMPTY(__VA_ARGS__))(__VA_ARGS__)
 
@@ -182,8 +208,8 @@
 #define IRIS_TASK_CONSTS(...)     \
                 FOR_EACH(ITC_REPLACE_PARAMS, __VA_ARGS__)
 
-#define PI_PARAM(NAME, DATA_TYPE ...)                                                       sizeof(NAME),
-#define PI_PARAM_CONST(NAME, DATA_TYPE ...)                                                 sizeof(IRIS_VAR(NAME)),
+#define PI_PARAM(NAME, DATA_TYPE, ...)                                                       (sizeof(NAME) | (PARAM_DT_CODE(DATA_TYPE))),
+#define PI_PARAM_CONST(NAME, DATA_TYPE, ...)                                                 (sizeof(IRIS_VAR(NAME)) | (PARAM_DT_CODE(DATA_TYPE))),
 #define PI_VEC_PARAM(NAME, DATA_TYPE ...)                                                   iris_r,
 #define PI_IN_TASK(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE ...)                  iris_r,
 #define PI_IN_TASK_DEV_OFFSET(IRIS_NAME, DATA_TYPE, ELEMENT_TYPE, VARIABLE, SIZE ...)       iris_r,

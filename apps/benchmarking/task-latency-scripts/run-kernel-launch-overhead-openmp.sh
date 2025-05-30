@@ -22,16 +22,16 @@ fi
 
 #<application name> <memory size> <number of kernels to queue> <number of statistical samples> <log file to store samples>
 #run CUDA baseline
-./task-latency-openmp 1 1 1000    kernellaunch-openmp-${MACHINE}-1.csv
-./task-latency-openmp 1 10 1000   kernellaunch-openmp-${MACHINE}-10.csv
-./task-latency-openmp 1 100 1000  kernellaunch-openmp-${MACHINE}-100.csv
-./task-latency-openmp 1 1000 1000 kernellaunch-openmp-${MACHINE}-1000.csv
+./task-latency-openmp 1 1 1000    kernellaunch-openmp-${HOST}-1.csv
+./task-latency-openmp 1 10 1000   kernellaunch-openmp-${HOST}-10.csv
+./task-latency-openmp 1 100 1000  kernellaunch-openmp-${HOST}-100.csv
+./task-latency-openmp 1 1000 1000 kernellaunch-openmp-${HOST}-1000.csv
 
 #run IRIS single device
-IRIS_ARCHS=openmp ./task-latency-iris 1 1 1000    kernellaunch-iris-openmp-${MACHINE}-1.csv
-IRIS_ARCHS=openmp ./task-latency-iris 1 10 1000   kernellaunch-iris-openmp-${MACHINE}-10.csv
-IRIS_ARCHS=openmp ./task-latency-iris 1 100 1000  kernellaunch-iris-openmp-${MACHINE}-100.csv
-IRIS_ARCHS=openmp ./task-latency-iris 1 1000 1000 kernellaunch-iris-openmp-${MACHINE}-1000.csv
+IRIS_ARCHS=openmp ./task-latency-iris 1 1 1000    kernellaunch-iris-openmp-${HOST}-1.csv
+IRIS_ARCHS=openmp ./task-latency-iris 1 10 1000   kernellaunch-iris-openmp-${HOST}-10.csv
+IRIS_ARCHS=openmp ./task-latency-iris 1 100 1000  kernellaunch-iris-openmp-${HOST}-100.csv
+IRIS_ARCHS=openmp ./task-latency-iris 1 1000 1000 kernellaunch-iris-openmp-${HOST}-1000.csv
 
 #run IRIS multi-device
 #multiple GPU requires pooling to be enabled in iris:
@@ -41,10 +41,10 @@ sed -i 's/#define IRIS_POOL_MAX_CMD     1100/#define IRIS_POOL_MAX_CMD     9999/
 
 source ./setup.sh
 
-IRIS_ARCHS=openmp ./task-latency-iris 1 1 1000    kernellaunch-multigpu-iris-openmp-${MACHINE}-1.csv
-IRIS_ARCHS=openmp ./task-latency-iris 1 10 1000   kernellaunch-multigpu-iris-openmp-${MACHINE}-10.csv
-IRIS_ARCHS=openmp ./task-latency-iris 1 100 1000  kernellaunch-multigpu-iris-openmp-${MACHINE}-100.csv
-IRIS_ARCHS=openmp ./task-latency-iris 1 1000 1000 kernellaunch-multigpu-iris-openmp-${MACHINE}-1000.csv
+IRIS_ARCHS=openmp ./task-latency-iris 1 1 1000    kernellaunch-multigpu-iris-openmp-${HOST}-1.csv
+IRIS_ARCHS=openmp ./task-latency-iris 1 10 1000   kernellaunch-multigpu-iris-openmp-${HOST}-10.csv
+IRIS_ARCHS=openmp ./task-latency-iris 1 100 1000  kernellaunch-multigpu-iris-openmp-${HOST}-100.csv
+IRIS_ARCHS=openmp ./task-latency-iris 1 1000 1000 kernellaunch-multigpu-iris-openmp-${HOST}-1000.csv
 
 #and back to single-gpu iris
 sed -i 's/#define IRIS_POOL_ENABLED     1/#define IRIS_POOL_ENABLED     0/g' ../../src/runtime/Pool.h

@@ -1,0 +1,6 @@
+sphinx
+breathe
+numpy
+sphinxcontrib-contentui
+sphinx_rtd_theme
+json-schema-for-humans

@@ -45,7 +45,7 @@ int main(int argc, char** argv) {
   iris_task_kernel_object(task0, kernel0, 1, NULL, &SIZE, NULL);
   
   iris_task_dmem_flush_out(task0,mem_C);
-  iris_task_submit(task0, iris_any, nullptr, true);
+  iris_task_submit(task0, iris_sdq, nullptr, true);
   iris_synchronize();
 
   for (int i = 0; i < SIZE; i++) {
@@ -54,7 +54,7 @@ int main(int argc, char** argv) {
   }
 
 
-  //the easy way:
+  //the (data-memory) easy way:
   iris_task task1;
   iris_task_create(&task1);
 
@@ -63,7 +63,7 @@ int main(int argc, char** argv) {
   iris_task_kernel(task1, "vecadd", 1, NULL, &SIZE, NULL, 3, params0, pinfo0);
 
   iris_task_dmem_flush_out(task1,mem_C);
-  iris_task_submit(task1, iris_any, nullptr, true);
+  iris_task_submit(task1, iris_sdq, nullptr, true);
   iris_synchronize();
 
   for (int i = 0; i < SIZE; i++) {

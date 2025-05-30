@@ -3,13 +3,17 @@ HIPCC					?= $(ROCM_PATH)/bin/hipcc
 CFLAGS				:= -O3
 CUDA_CFLAGS		?= -I$(CUDA_PATH)/include
 CUDA_LDFLAGS	?= -L$(CUDA_PATH)/lib -L$(CUDA_PATH)/lib64 -lcuda -lcudart
-HIP_CFLAGS		?= -I$(ROCM_PATH)/hip/include -I$(ROCM_PATH)/hsa/include
-HIP_LDFLAGS		?= -L$(ROCM_PATH)/hip/lib -lamdhip64
+#HIP_CFLAGS		?= -I$(ROCM_PATH)/include -I$(ROCM_PATH)/hip/include -I$(ROCM_PATH)/hsa/include
+#HIP_LDFLAGS		?= -L$(ROCM_PATH)/lib -L$(ROCM_PATH)/hip/lib -lamdhip64 -D__HIP_PLATFORM_AMD__
+-HIP_CFLAGS		?= -I$(ROCM_PATH)/include -I$(ROCM_PATH)/hip/include -I$(ROCM_PATH)/hsa/include
+-HIP_LDFLAGS	?= -L$(ROCM_PATH)/lib -L$(ROCM_PATH)/hip/lib -lamdhip64
 ##HIPCC_FLAGS		+= --targets gfx906
 OPENCL_CFLAGS			?= -I$(OPENCL_PATH)/include
 OPENCL_LDFLAGS		?= -L$(OPENCL_PATH)/lib -L$(OPENCL_PATH)/lib64 -lOpenCL
 IRIS					:=$(HOME)/.iris
 IRIS_LDFLAGS	:=-L$(IRIS)/lib -L$(IRIS)/lib64 -liris -lpthread -ldl
+CHARMSYCL 		:=$(HOME)/.charm-sycl
+CHARMSYCL_LDFLAGS	:=-L$(CHARMSYCL)/lib -L$(CHARMSYCL)/lib64 -lcharm -lpthread -ldl
 
 kernels: kernel.ptx kernel.hip kernel.openmp.so
 
@@ -42,6 +46,9 @@ compute-performance-iris: compute-performance-codes/flops-dgemm-iris-profiling.c
 
 memory-performance-iris: memory-performance-codes/membench-iris-profiling.cpp
 	$(CXX) -I$(IRIS)/include -o $@ $^ $(IRIS_LDFLAGS)
+
+memory-performance-sycl: memory-performance-codes/membench-charmsycl-profiling.cpp
+	$(CHARMSYCL)/bin/cscc --targets=cpu-c,nvidia-cuda -o $@ $^
 
 kernel.ptx: kernel.cu
 	$(NVCC) $(NVCC_FLAGS) -ptx $^

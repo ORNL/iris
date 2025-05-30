@@ -21,6 +21,11 @@ void Thread::Start() {
   pthread_create(&thread_, NULL, &Thread::ThreadFunc, this);
 }
 
+void Thread::StartWithOutThread() { 
+    set_running(true);
+    Run(); 
+}
+
 void Thread::Stop() {
   if (!thread_) return;
   running_ = false;

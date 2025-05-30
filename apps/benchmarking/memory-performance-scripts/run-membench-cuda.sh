@@ -1,26 +1,38 @@
 #!/bin/bash
-source ./setup.sh
 
+source ./setup.sh
+#ensure libiris.so is in the shared library path
+if [ ! -n "$IRIS_INSTALL_ROOT" ]; then
+	IRIS_INSTALL_ROOT="$HOME/.iris"
+fi
+echo "ADDING $IRIS_INSTALL_ROOT/lib64 to LD_LIBRARY_PATH"
+export LD_LIBRARY_PATH=$IRIS_INSTALL_ROOT/lib64:$IRIS_INSTALL_ROOT/lib:$LD_LIBRARY_PATH
 export WORKING_DIR=`pwd`
 
 make clean
-make memory-performance-iris-profiling kernel.ptx
+make memory-performance-iris kernel.ptx
 
 #exit if the last program run wasn't successful
 [ $? -ne 0 ] && exit
 
 #don't proceed if the target failed to build
-if ! [ -f memory-performance-iris-profiling ] || ! [ -f kernel.ptx ] ; then
+if ! [ -f memory-performance-iris ] || ! [ -f kernel.ptx ] ; then
   exit
 fi
 
-#ensure libiris.so is in the shared library path
-echo "ADDING $HOME/.local/lib64 to LD_LIBRARY_PATH"
-export LD_LIBRARY_PATH=$HOME/.local/lib64:$HOME/.local/lib:$LD_LIBRARY_PATH
+export RUNTIME=cuda
+export REPEATS=25
 
-if [ ! -n "$IRIS_INSTALL_ROOT" ]; then
-	IRIS_INSTALL_ROOT="$HOME/.local"
-fi
+# Final experiment: Lock the number of transfers and increase the buffer-size---starting from 1KiB onwards
+for SIZE in {1..26}
+do
+  ((ELEMENTS=2**${SIZE}))
+  echo ${ELEMENTS}
+  echo ${KIB}
+  IRIS_ARCHS=cuda ./memory-performance-iris ${ELEMENTS} ${REPEATS} 1000 membench-${RUNTIME}-${HOST}-${ELEMENTS}.csv
+done
+
+source ./setup.sh
 
 # Lock the number of transfers and increase the buffer-size---starting from 1KiB onwards
 #for SIZE in {1..25}
@@ -40,23 +52,6 @@ fi
 #  echo ${KIB}
 #  ./membench-iris-profiling ${ELEMENTS} 1 1000 membench-${RUNTIME}-${MACHINE}-${ELEMENTS}.csv
 #done
-
-#TODO: uncomment to trace segfault
-#IRIS_ARCHS=cuda gdb --args ./memory-performance-iris-profiling 1 1000 1000 membench-cuda-${MACHINE}-1.csv
-#exit
-export RUNTIME=cuda
-# Final experiment: Lock the number of transfers and increase the buffer-size---starting from 1KiB onwards
-for SIZE in {1..25}
-do
-  ((ELEMENTS=2**${SIZE}))
-  echo ${ELEMENTS}
-  echo ${KIB}
-  IRIS_ARCHS=cuda ./memory-performance-iris-profiling ${ELEMENTS} 1000 1000 membench-${RUNTIME}-${MACHINE}-${ELEMENTS}.csv
-done
-
-
-#mkdir -p extensive-transfer-size-results && mv membench-*.csv extensive-transfer-size-results
-
 
 ## Lock the number of transfers and increase the buffer-size---starting from 1KiB onwards
 #for SIZE in {8..18}
@@ -78,3 +73,5 @@ done
 #done
 #
 #mkdir -p number-of-transfers-results && mv membench-*.csv number-of-transfers-results
+
+

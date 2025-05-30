@@ -2,6 +2,7 @@
 #define IRIS_SRC_RT_LOADER_POLICY_H
 
 #include "Loader.h"
+#include <string>
 
 namespace iris {
 namespace rt {
@@ -18,10 +19,12 @@ public:
   const char* library();
   int LoadFunctions();
   void Init(void* arg);
+  const char *name() { return name_.c_str(); }
+  const char *lib() { return lib_.c_str(); }
 
 private:
-  char lib_[64];
-  char name_[64]; 
+  std::string lib_;
+  std::string name_;
 
   void* (*instance_)();
 };

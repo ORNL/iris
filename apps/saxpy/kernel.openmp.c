@@ -55,7 +55,7 @@ int iris_openmp_setmem(int idx, void* mem) {
   return IRIS_ERROR;
 }
 
-int iris_openmp_launch(int dim, size_t off, size_t ndr) {
+int iris_openmp_launch(int dim, size_t *off, size_t *ndr) {
   switch (iris_openmp_kernel_idx) {
     case 0: saxpy(saxpy_args.Z, saxpy_args.A, saxpy_args.X, saxpy_args.Y, off, ndr); break;
   }

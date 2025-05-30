@@ -6,10 +6,8 @@ namespace iris {
 namespace rt {
 
 LoaderPolicy::LoaderPolicy(const char* lib, const char* name) : Loader() {
-  memset(lib_, 0, sizeof(lib_));
-  memset(name_, 0, sizeof(name_));
-  strncpy(lib_, lib, strlen(lib));
-  strncpy(name_, name, strlen(name));
+  name_ = std::string(name);
+  lib_ = std::string(lib);
 }
 
 LoaderPolicy::~LoaderPolicy() {
@@ -20,12 +18,12 @@ Policy* LoaderPolicy::policy() {
 }
 
 const char* LoaderPolicy::library() {
-  return lib_;
+  return lib();
 }
 
 int LoaderPolicy::LoadFunctions() {
   char func[128];
-  sprintf(func, "%s_instance", name_);
+  sprintf(func, "%s_instance", name());
   *(void**) (&instance_) = dlsym(handle_, func);
   if (!instance_) {
     _error("%s", dlerror());

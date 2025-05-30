@@ -7,9 +7,18 @@
 #include <string.h>
 #include <math.h>
 
-#define IRIS_OPENMP_KERNEL_ARGS     size_t _off, size_t _ndr
-#define IRIS_OPENMP_KERNEL_BEGIN(i) for (i = _off; i < _off + _ndr; i++) {
+//#define IRIS_OPENMP_KERNEL_ARGS     size_t _off, size_t _ndr
+//#define IRIS_OPENMP_KERNEL_BEGIN(i) for (i = _off; i < _off + _ndr; i++) {
+//#define IRIS_OPENMP_KERNEL_END      }
+#define IRIS_OPENMP_KERNEL_ARGS     size_t *_off, size_t *_bws
+#define IRIS_OPENMP_KERNEL_BEGIN(i) for (i = _off[0]; i < _off[0] + _bws[0]; i++) {
 #define IRIS_OPENMP_KERNEL_END      }
+#define IRIS_OPENMP_KERNEL_BEGIN2D(i, j) \
+    for (i = _off[1]; i < _off[1]+_bws[1]; i++) { \
+        for (j = _off[0]; j < _off[0]+_bws[0]; j++) {
+#define IRIS_OPENMP_KERNEL_END2D      \
+        } \
+    } 
 
 #define __kernel
 #define __global

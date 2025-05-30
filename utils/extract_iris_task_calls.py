@@ -25,14 +25,16 @@ global_arguments_start_index=7
 valid_params = { 'PARAM' : 1, 'PARAM_CONST' : 1, 'IN_TASK' : 1, 'IN_TASK_OFFSET' : 1, 'OUT_TASK_OFFSET' : 1, 'OUT_TASK' : 1, 'IN_OUT_TASK' : 1, 'IN_OUT_TASK_OFFSET' : 1, 'VEC_PARAM' : 1, 'VS_CODE_GEN' : 1, 'TILED_CODE_GEN' : 1, 'CPP_TASK_TEMPLATE' : 1 }
 
 global_res= { 
-    "iris_all" : 0xFFFFFFFF, 
+    "iris_ftf" : 0xFFFFFFFF, 
     "iris_cpu"    : 0x01, 
     "iris_dsp"    : 0x02, 
     "iris_fpga"   : 0x04, 
     "iris_gpu"    : 0x08,
     "iris_cuda"   : 0x10,
+    "iris_cuda_host"   : 0x10,
     "iris_nvidia" : 0x10,
     "iris_hip"    : 0x20,
+    "iris_hip_host"    : 0x20,
     "iris_amd"    : 0x20,
     "iris_opencl" : 0x40,
 }
@@ -318,6 +320,7 @@ static int iris_kernel_idx = -1;
 #define iris_setarg iris_hexagon_setarg
 #define iris_setmem iris_hexagon_setmem
 #define iris_launch iris_hexagon_launch
+#define iris_get_kernel_ptr  iris_hexagon_get_kernel_ptr
 #define iris_kernel_with_obj iris_hexagon_kernel_with_obj
 #define iris_setarg_with_obj iris_hexagon_setarg_with_obj 
 #define iris_setmem_with_obj iris_hexagon_setmem_with_obj 
@@ -331,8 +334,10 @@ static int iris_kernel_idx = -1;
 #define HANDLETYPE uint64_t,
 #define DEVICE_NUM_TYPE 
 #define DEVICE_NUM
-#define StreamType
-#define STREAM_VAR
+#define StreamType void **
+#define STREAM_VAR stream,
+#define StreamTypeKernel void **
+#define STREAM_VAR_KERNEL stream,
 #endif //IRIS_HEXAGON
             ''')
     lines.append('''
@@ -355,6 +360,7 @@ static int iris_kernel_idx = -1;
 #define iris_setarg iris_openmp_setarg
 #define iris_setmem iris_openmp_setmem
 #define iris_launch iris_openmp_launch
+#define iris_get_kernel_ptr  iris_openmp_get_kernel_ptr
 #define iris_kernel_with_obj iris_openmp_kernel_with_obj
 #define iris_setarg_with_obj iris_openmp_setarg_with_obj 
 #define iris_setmem_with_obj iris_openmp_setmem_with_obj 
@@ -364,7 +370,10 @@ static int iris_kernel_idx = -1;
 #define HANDLETYPE 
 #define DEVICE_NUM
 #define DEVICE_NUM_TYPE 
-#define STREAM_VAR
+#define StreamType void **
+#define STREAM_VAR stream,
+#define StreamTypeKernel 
+#define STREAM_VAR_KERNEL 
             ''')
     for k,v in data_hash.items():
         lines.append("#define iris_kernel_"+k+" "+k)
@@ -380,18 +389,22 @@ static int iris_kernel_idx = -1;
 #define iris_setarg iris_host2opencl_setarg
 #define iris_setmem iris_host2opencl_setmem
 #define iris_launch iris_host2opencl_launch
+#define iris_get_kernel_ptr  iris_host2opencl_get_kernel_ptr
 #define iris_kernel_with_obj iris_host2opencl_kernel_with_obj
 #define iris_setarg_with_obj iris_host2opencl_setarg_with_obj 
 #define iris_setmem_with_obj iris_host2opencl_setmem_with_obj 
 #define iris_launch_with_obj iris_host2opencl_launch_with_obj
 #define iris_kernel_set_queue_with_obj iris_host2opencl_set_queue_with_obj
 #define iris_kernel_get_queue_with_obj iris_host2opencl_get_queue_with_obj
-#define HANDLE  iris_host2opencl_get_queue(), 
-#define HANDLE_WITH_OBJ iris_host2opencl_get_queue_with_obj(obj), 
-#define HANDLETYPE void *,
+#define HANDLE              //iris_host2opencl_get_queue(), 
+#define HANDLE_WITH_OBJ     //iris_host2opencl_get_queue_with_obj(obj), 
+#define HANDLETYPE          //void *,
 #define DEVICE_NUM devno,
 #define DEVICE_NUM_TYPE int,
-#define STREAM_VAR
+#define StreamType void **
+#define STREAM_VAR stream,
+#define StreamTypeKernel void **
+#define STREAM_VAR_KERNEL stream,
             ''')
     lines.append("#ifdef HOST2OPENCL")
     for k,v in data_hash.items():
@@ -405,12 +418,14 @@ static int iris_kernel_idx = -1;
     lines.append('''
 #ifdef ENABLE_IRIS_HOST2HIP_APIS 
 #include "iris/iris_host2hip.h"
+//#include "iris/hip/hip_runtime.h"
 #define iris_kernel_lock   iris_host2hip_lock
 #define iris_kernel_unlock iris_host2hip_unlock
 #define iris_kernel iris_host2hip_kernel
 #define iris_setarg iris_host2hip_setarg
 #define iris_setmem iris_host2hip_setmem
 #define iris_launch iris_host2hip_launch
+#define iris_get_kernel_ptr  iris_host2hip_get_kernel_ptr
 #define iris_kernel_with_obj iris_host2hip_kernel_with_obj
 #define iris_setarg_with_obj iris_host2hip_setarg_with_obj 
 #define iris_setmem_with_obj iris_host2hip_setmem_with_obj 
@@ -420,12 +435,10 @@ static int iris_kernel_idx = -1;
 #define HANDLETYPE 
 #define DEVICE_NUM devno,
 #define DEVICE_NUM_TYPE int,
-#ifndef IRIS_ENABLE_STREAMS
-#define STREAM_VAR
-#else
-#define StreamType hipStream_t
+#define StreamType hipStream_t *
 #define STREAM_VAR stream,
-#endif
+#define StreamTypeKernel hipStream_t *
+#define STREAM_VAR_KERNEL stream,
             ''')
     lines.append("#ifdef HOST2HIP")
     for k,v in data_hash.items():
@@ -439,12 +452,14 @@ static int iris_kernel_idx = -1;
     lines.append('''
 #ifdef ENABLE_IRIS_HOST2CUDA_APIS 
 #include "iris/iris_host2cuda.h"
+//#include "iris/cuda/cuda.h"
 #define iris_kernel_lock   iris_host2cuda_lock
 #define iris_kernel_unlock iris_host2cuda_unlock
 #define iris_kernel iris_host2cuda_kernel
 #define iris_setarg iris_host2cuda_setarg
 #define iris_setmem iris_host2cuda_setmem
 #define iris_launch iris_host2cuda_launch
+#define iris_get_kernel_ptr  iris_host2cuda_get_kernel_ptr
 #define iris_kernel_with_obj iris_host2cuda_kernel_with_obj
 #define iris_setarg_with_obj iris_host2cuda_setarg_with_obj 
 #define iris_setmem_with_obj iris_host2cuda_setmem_with_obj 
@@ -454,12 +469,10 @@ static int iris_kernel_idx = -1;
 #define HANDLETYPE 
 #define DEVICE_NUM devno,
 #define DEVICE_NUM_TYPE int,
-#ifndef IRIS_ENABLE_STREAMS
-#define STREAM_VAR
-#else
-#define StreamType CUstream
+#define StreamType CUstream *
 #define STREAM_VAR stream,
-#endif
+#define StreamTypeKernel CUstream *
+#define STREAM_VAR_KERNEL stream,
             ''')
     lines.append("#ifdef HOST2CUDA")
     for k,v in data_hash.items():
@@ -471,6 +484,14 @@ static int iris_kernel_idx = -1;
 #endif //ENABLE_IRIS_HOST2CUDA_APIS
             ''')
     appendKernelSignature(args, lines, data_hash, k_hash)
+    lines.append(f'''
+#ifdef DISABLE_DYNAMIC_LINKING
+            ''')
+    appendKernelSignature(args, lines, data_hash, k_hash, False)
+    appendGetKernelPtrFunction(args, lines, data_hash)
+    lines.append(f'''
+#endif
+            ''')
     sig_lines = []
     cu_type_lines = {}
     appendKernelSignatureHeaderFile(args, sig_lines, header_data_hash)
@@ -482,7 +503,7 @@ static int iris_kernel_idx = -1;
  * Author : Narasinga Rao Miniskar
  * Date   : Jun 16 2022
  * Contact for bug : miniskarnr@ornl.gov
- *
+ * File: app.h
  */
     """]
     k_sig_lines += [ "#pragma once"]
@@ -514,7 +535,7 @@ static int iris_kernel_idx = -1;
 def getKernelParamVairable(k):
     return "__k_"+k+"_args"
 
-def is_expression_satisfied(expr, constraint='iris_all'):
+def is_expression_satisfied(expr, constraint='iris_ftf'):
     global global_res
     res = global_res
     if not re.match(r'.*iris_', expr):
@@ -524,7 +545,7 @@ def is_expression_satisfied(expr, constraint='iris_all'):
     expr = expr + " & " + constraint
     #print("EXPR: "+expr)
     expr_eval = eval(expr, res.copy())
-    if expr_eval == res['iris_all']:
+    if expr_eval == res['iris_ftf']:
         return True
     cu_op = {}
     for k,v in res.items():
@@ -542,7 +563,7 @@ def is_expression_satisfied(expr, constraint='iris_all'):
         if k == constraint:
             return True
     return False
-def appendConditionalParameters(expr, fdt, params, lines, constraint='iris_all', macros_flag=True):
+def appendConditionalParameters(expr, fdt, params, lines, constraint='iris_ftf', macros_flag=True):
     global global_res
     res = global_res
     if not re.match(r'.*iris_', expr):
@@ -552,7 +573,7 @@ def appendConditionalParameters(expr, fdt, params, lines, constraint='iris_all',
     expr = re.sub('\&\&', ' & ', expr)
     #print("EXPR: "+expr)
     expr_eval = eval(expr, res.copy())
-    if expr_eval == res['iris_all']:
+    if expr_eval == res['iris_ftf']:
         params.append(fdt)
         return
     if len(params) > 0:
@@ -604,7 +625,7 @@ def appendConditionalParameters(expr, fdt, params, lines, constraint='iris_all',
             else:
                 lines.append("\t\t\t\t"+fdt+",")
 
-def get_parameter_types(v, lines=[], constraint='iris_all'):
+def get_parameter_types(v, lines=[], constraint='iris_ftf'):
     global valid_params, global_res
     arguments = []
     arguments_variable_hash = {}
@@ -634,11 +655,11 @@ def get_parameter_types(v, lines=[], constraint='iris_all'):
            f_param == 'CPP_TASK_TEMPLATE':
             i = i+1
             continue
-        expr = 'iris_all' 
+        expr = 'iris_ftf' 
         if expression_index[f_param] == -1 or len(f_details) > expression_index[f_param]:
             expr = getPyExprString(f_details[expression_index[f_param]])
             if expr not in global_res:
-                expr = 'iris_all'
+                expr = 'iris_ftf'
         if is_expression_satisfied(expr, constraint):
             elem_dt_index = elem_dt_type_index[f_param]
             dt_index = 1
@@ -769,7 +790,7 @@ def extract_parameters(tag_list, line):
             tag_data[tag] = tag_data_tag
     return tag_data
     
-def add_conditional_parameters_with_variables(hdr_type, kvar, k, v, params=[], lines=[], conditional=False, constraint='iris_all', macros_flag=True):
+def add_conditional_parameters_with_variables(hdr_type, kvar, k, v, params=[], lines=[], conditional=False, constraint='iris_ftf', macros_flag=True):
     global valid_params, global_res
     def InsertConditionalDeclarationsWithVariable(expr, fdt, fvar, params, lines):
         if conditional:
@@ -859,7 +880,7 @@ def generateTaskAPIs(args, cu_type_lines, header_data_hash):
         return param
     def get_headers(f_details, cu_type='iris_cpu', dtype_replace={}, start_index=1):
         include_headers = []
-        vs_params = extract_parameters(['INCLUDE', 'EXPR', 'DIM', 'ZIP', 'LOOP', 'GENERIC', 'MAP', 'CFUNC', 'LOOP', 'FULL_SIZE', 'TILE_SIZE', 'EXCLUDE'], ", ".join(f_details[start_index:]))
+        vs_params = extract_parameters(['INCLUDE', 'EXPR', 'DIM', 'ZIP', 'LOOP', 'GENERIC', 'MAP', 'CFUNC', 'LOOP', 'FULL_SIZE', 'TILE_SIZE', 'EXCLUDE', 'PRE_LOOP', 'POST_LOOP'], ", ".join(f_details[start_index:]))
         for k, vs_details in vs_params.items():
             if k == 'INCLUDE':
                 include_headers += [ f"#include <{f}>" for f in vs_details[0] ]
@@ -870,6 +891,8 @@ def generateTaskAPIs(args, cu_type_lines, header_data_hash):
             p = replace_datatypes(arg_data[2], dtype_replace) + " " + arg_data[0]
             params_decl.append(p)
         expression_stmts = []
+        pre_loop = []
+        post_loop = []
         for k, vs_details in vs_params.items():
             if k == 'EXPR':
                 for exprs in vs_details:
@@ -878,7 +901,21 @@ def generateTaskAPIs(args, cu_type_lines, header_data_hash):
                         expr_str = re.sub(r'\[\]\[\]', '[__id][__jd]', expr)
                         expr_str = re.sub(r'\[\]', '[__id]', expr)
                         expression_stmts.append(expr_str)
-        return vs_params, include_headers, params, params_decl, arguments, arguments_variable_hash, expression_stmts
+            if k == 'PRE_LOOP':
+                for exprs in vs_details:
+                    for expr in exprs:
+                        expr_str = re.sub(r'\[\]\[\]\[\]', '[__id][__jd][__kd]', expr)
+                        expr_str = re.sub(r'\[\]\[\]', '[__id][__jd]', expr)
+                        expr_str = re.sub(r'\[\]', '[__id]', expr)
+                        pre_loop.append(expr_str)
+            if k == 'POST_LOOP':
+                for exprs in vs_details:
+                    for expr in exprs:
+                        expr_str = re.sub(r'\[\]\[\]\[\]', '[__id][__jd][__kd]', expr)
+                        expr_str = re.sub(r'\[\]\[\]', '[__id][__jd]', expr)
+                        expr_str = re.sub(r'\[\]', '[__id]', expr)
+                        post_loop.append(expr_str)
+        return vs_params, include_headers, params, params_decl, arguments, arguments_variable_hash, expression_stmts, pre_loop, post_loop
     def generate_cuda_kernel(kvar, k, lines, v, f_details):
         func_name = kvar
         dtype_conversions={'int32_t' : 'int',
@@ -889,11 +926,13 @@ def generateTaskAPIs(args, cu_type_lines, header_data_hash):
                            'uint8_t'  : 'unsigned char',
                            'int64_t'  : 'long long',
                            'uint64_t'  : 'unsigned long long'}
-        vs_params, include_headers, params, params_decl, arguments, arguments_variable_hash, expression_stmts = get_headers(f_details, 'iris_cuda', dtype_conversions)
+        vs_params, include_headers, params, params_decl, arguments, arguments_variable_hash, expression_stmts, pre_loop, post_loop = get_headers(f_details, 'iris_cuda', dtype_conversions)
         include_headers_str = "\n".join(include_headers) 
         expressions_str = "\n          ".join(expression_stmts)
         params_decl = ",\n".join(params_decl)
         params_str = ", ".join(params)
+        pre_loop_stmt = "\n            ".join(pre_loop)
+        post_loop_stmt = "\n            ".join(post_loop)
         lines.append(f"""
 {include_headers_str}
 extern \"C\" __global__ void {func_name}(
@@ -913,7 +952,7 @@ extern \"C\" __global__ void {func_name}(
                            'uint8_t'  : 'unsigned char',
                            'int64_t'  : 'long long',
                            'uint64_t'  : 'unsigned long long'}
-        vs_params, include_headers, params, params_decl, arguments, arguments_variable_hash, expression_stmts = get_headers(f_details, 'iris_hip', dtype_conversions)
+        vs_params, include_headers, params, params_decl, arguments, arguments_variable_hash, expression_stmts, pre_loop, post_loop = get_headers(f_details, 'iris_hip', dtype_conversions)
         include_headers_str = "\n".join(include_headers) 
         expressions_str = "\n          ".join(expression_stmts)
         params_decl = ",\n".join(params_decl)
@@ -928,27 +967,62 @@ extern \"C\" __global__ void {func_name}(
     {expressions_str};
 }}
                 """)
-    def generate_openmp_kernel(kvar, k, lines, v, f_details):
+    def generate_host_kernel(kvar, k, lines, v, f_details, iris_tag='iris_cuda_host'):
         func_name = kvar
-        vs_params, include_headers, params, params_decl, arguments, arguments_variable_hash, expression_stmts = get_headers(f_details, 'iris_cpu')
+        vs_params, include_headers, params, params_decl, arguments, arguments_variable_hash, expression_stmts, pre_loop, post_loop = get_headers(f_details, iris_tag)
         include_headers_str = "\n".join(include_headers) 
         expressions_str = "\n          ".join(expression_stmts)
         params_decl = ",\n".join(params_decl)
         params_str = ", ".join(params)
+        pre_loop_stmt = "\n            ".join(pre_loop)
+        post_loop_stmt = "\n            ".join(post_loop)
+
+        stream_type = 'CUstream'
+        if iris_tag == 'iris_hip_host':
+            stream_type = 'hipStream_t'
+            lines.append('#define __HIP_PLATFORM_AMD__')
         lines.append(f"""
 {include_headers_str}
-extern \"C\" void {func_name}(
+extern \"C\" int {func_name}({stream_type} *stream, int nstreams_devno,
     {params_decl}, IRIS_OPENMP_KERNEL_ARGS)
 {{
-    size_t __id;
-    #pragma omp parallel for shared({params_str}) private(__id)
-    IRIS_OPENMP_KERNEL_BEGIN(__id)
-        {expressions_str};
-    IRIS_OPENMP_KERNEL_END
+    {pre_loop_stmt};
+    {expressions_str};
+    {post_loop_stmt};
+    return IRIS_SUCCESS;
+}}
+                """)
+    def generate_openmp_kernel(kvar, k, lines, v, f_details):
+        func_name = kvar
+        vs_params, include_headers, params, params_decl, arguments, arguments_variable_hash, expression_stmts, pre_loop, post_loop = get_headers(f_details, 'iris_cpu')
+        include_headers_str = "\n".join(include_headers) 
+        expressions_str = "\n          ".join(expression_stmts)
+        params_decl = ",\n".join(params_decl)
+        params_str = ", ".join(params)
+        expr_stmt = ""
+        if len(expression_stmts) > 0: 
+            expr_stmt = f"""
+        size_t __id;
+        #pragma omp parallel for shared({params_str}) private(__id)
+        IRIS_OPENMP_KERNEL_BEGIN(__id)
+            {expressions_str};
+        IRIS_OPENMP_KERNEL_END
+            """
+        pre_loop_stmt = "\n            ".join(pre_loop)
+        post_loop_stmt = "\n            ".join(post_loop)
+        lines.append(f"""
+{include_headers_str}
+extern \"C\" int {func_name}(
+    {params_decl}, IRIS_OPENMP_KERNEL_ARGS)
+{{
+    {pre_loop_stmt};
+    {expr_stmt}
+    {post_loop_stmt};
+    return IRIS_SUCCESS;
 }}
                 """)
     def generate_tiled_code(cpp_api_name, lines, v, data_details_hash, f_details, cpp_task_template):
-        vs_params, include_headers, params, params_decl, arguments, arguments_variable_hash, expression_stmts = get_headers(f_details, 'iris_all', start_index=0)
+        vs_params, include_headers, params, params_decl, arguments, arguments_variable_hash, expression_stmts, pre_loop, post_loop = get_headers(f_details, 'iris_ftf', start_index=0)
         include_headers_str = "\n".join(include_headers) 
         expressions_str = "\n          ".join(expression_stmts)
         params_str = ", ".join(params)
@@ -966,7 +1040,7 @@ extern \"C\" void {func_name}(
         excludes = [] 
         if 'EXCLUDE' in vs_params:
             excludes = vs_params['EXCLUDE'][0]
-        zip_params = vs_params['ZIP']
+        zip_params = vs_params['ZIP'][0]
         dim = int(vs_params['DIM'][0][0])
         zip_ds = []
         zip_ds_read = []
@@ -1005,6 +1079,8 @@ extern \"C\" void {func_name}(
             if vector_f_param:
                 cpp_params_decl.append(f"Tiling{dim}D<{x_type}> & {x}_tiling")
                 cpp_params_vars.append(f"{x}_tiling")
+                if x not in zip_params:
+                    continue
                 if vector_out_f_param:
                     zip_out_args.append(x)
                 zip_args.append(f"{x}_tile")
@@ -1051,48 +1127,57 @@ extern \"C\" void {func_name}(
             cpp_task_template = extract_parameters(['MAP'], data_details_hash['CPP_TASK_TEMPLATE'][1])
             cpp_call_fn_name = data_details_hash['CPP_TASK_TEMPLATE'][0]+"<"+cpp_task_template['MAP'][0][0]+">"
         cpp_call = cpp_call_fn_name+"("+", ".join(cpp_call_args)+")"
+        pre_loop_stmt = "\n            ".join(pre_loop)
+        post_loop_stmt = "\n            ".join(post_loop)
         lines.append(f"""
 {include_headers_str}
 #ifndef IRIS_API_DEFINITION
 #ifdef __cplusplus
-void {g_func_name}({cpp_params_decl_str});
-void {g_func_name}({params_decl_str});
+int {g_func_name}({cpp_params_decl_str});
+int {g_func_name}({params_decl_str});
 #endif // __cplusplus
 #ifdef __cplusplus
 extern \"C\"  {{
 #endif
-void {c_func_name}({params_decl_str});
+int {c_func_name}({params_decl_str});
 #ifdef __cplusplus
 }}
 #endif
 #else //IRIS_API_DEFINITION
 #ifdef __cplusplus
-void {g_func_name}({cpp_params_decl_str})
+int {g_func_name}({cpp_params_decl_str})
 {{
+    {pre_loop_stmt}
     {loop_stmt} {{
         {zip_ds_read_str}
         {expressions_str};
         iris_task task;
         iris_task_create_name(NULL, &task);
         {cpp_call};
+#ifdef IRIS_MANUAL_FLUSH
         {flush_cmds_str};
+#endif
         {task_set_metadata_str};
         iris_graph_task(graph, task, target_dev, NULL);
     }}
+    {post_loop_stmt}
+    return IRIS_SUCCESS;
 }}
-void {g_func_name}({params_decl_str})
+int {g_func_name}({params_decl_str})
 {{
     {zip_ds_decl_str}
     {g_func_name}({cpp_params_vars_str});
+    return IRIS_SUCCESS;
 }}
 #endif // __cplusplus
 #ifdef __cplusplus
 extern \"C\"  {{
 #endif
-void {c_func_name}({params_decl_str})
+int {c_func_name}({params_decl_str})
 {{
     {zip_ds_decl_str}
     {g_func_name}({cpp_params_vars_str});
+    return IRIS_SUCCESS;
 }}
 #ifdef __cplusplus
 }}
@@ -1100,7 +1185,7 @@ void {c_func_name}({params_decl_str})
 #endif //IRIS_API_DEFINITION
                 """)
     def generate_cpp_task_template_code(cpp_api_name, c_api_name, kvar_original, lines, v, f_details, kernel_apis):
-        vs_params, include_headers, params, params_decl, arguments, arguments_variable_hash, expression_stmts = get_headers(f_details, 'iris_all', start_index=0)
+        vs_params, include_headers, params, params_decl, arguments, arguments_variable_hash, expression_stmts, pre_loop, post_loop = get_headers(f_details, 'iris_ftf', start_index=0)
         include_headers_str = "\n".join(include_headers) 
         expressions_str = "\n          ".join(expression_stmts)
         params_str = ", ".join(params)
@@ -1163,7 +1248,12 @@ void {c_func_name}({params_decl_str})
                 unique_macro.append(x)
             else:
                 task_params.append(f"&{x}")
-                task_params_info.append(f"sizeof({x})")
+                if arg_data[2] == 'double':
+                    task_params_info.append(f"(sizeof({x}) | (iris_double))")
+                elif arg_data[2] == 'float':
+                    task_params_info.append(f"(sizeof({x}) | (iris_float))")
+                else:
+                    task_params_info.append(f"(sizeof({x}))")
                 cpp_call_args.append(x)
                 task_api_call_args.append(f"{x}")
                 cpp_call_args_irismem.append(f"{x}")
@@ -1222,47 +1312,63 @@ void {c_func_name}({params_decl_str})
         iris_mem_flush_stmts = flush_cmds_str
         task_api_call_args_str = ",\n       ".join(task_api_call_args)
         lines.append(f"""
-#pragma once
 #ifdef __cplusplus
+// Only C++ template APIs
 #ifndef {unique_macro_str}
 #define {unique_macro_str}
-template <typename {param_map_dtype}>
-void {func_name}({params_templ_decl_irismem_str})
-{{
-}}
-template <typename {param_map_dtype}>
-void {func_name}({params_templ_decl_template_str})
-{{
-}}
-#endif // {unique_macro_str}
 #ifndef IRIS_API_DEFINITION
+template <typename {param_map_dtype}>
+int {func_name}({params_templ_decl_irismem_str})
+{{
+    return IRIS_SUCCESS;
+}}
+template <typename {param_map_dtype}>
+int {func_name}({params_templ_decl_template_str})
+{{
+    return IRIS_SUCCESS;
+}}
+#else // IRIS_API_DEFINITION
+template <typename {param_map_dtype}>
+int {func_name}({params_templ_decl_irismem_str})
+{{
+    return IRIS_SUCCESS;
+}}
+template <typename {param_map_dtype}>
+int {func_name}({params_templ_decl_template_str})
+{{
+    return IRIS_SUCCESS;
+}}
+#endif // IRIS_API_DEFINITION
+#endif // {unique_macro_str}
+#endif // __cplusplus
+
+#ifndef IRIS_API_DEFINITION
+
+// C / C++ APIs
 #ifdef __cplusplus
 extern "C" {{
 #endif //__cplusplus
-void {c_task_api_name}({params_decl_irismem_str});
-void {c_core_api_name}({params_decl_str});
+int {c_task_api_name}({params_decl_irismem_str});
+int {c_core_api_name}({params_decl_str});
 #ifdef __cplusplus
 }}
 #endif //__cplusplus
+
+// C++ only APIs (function overloading)
 #ifdef __cplusplus
-void {cpp_api_name}({params_decl_irismem_str});
-void {cpp_api_name}({params_decl_str});
-template <>
-void {func_name}<{param_map_src_dtype}>({params_decl_irismem_str})
-{{
-    {cpp_api_name}({c_task_args_str});
-}}
-template <>
-void {func_name}<{param_map_src_dtype}>({params_decl_str})
-{{
-    {cpp_api_name}({c_core_args_str});
-}}
-#endif
+int {cpp_api_name}({params_decl_irismem_str});
+int {cpp_api_name}({params_decl_str});
+extern template int {func_name}<{param_map_src_dtype}>({params_decl_irismem_str});
+extern template int {func_name}<{param_map_src_dtype}>({params_decl_str});
+#endif // __cplusplus
+
 #else //IRIS_API_DEFINITION               
+
+// C / C++ APIs definition
 #ifdef __cplusplus
 extern "C" {{
 #endif //__cplusplus
-void {c_task_api_name}({params_decl_irismem_str})
+int {c_task_api_name}({params_decl_irismem_str})
 {{
     void* __task_params[] = {{ {task_params_str} }};
     int __task_params_info[] = {{ {task_params_info_str} }};
@@ -1272,14 +1378,9 @@ void {c_task_api_name}({params_decl_irismem_str})
     size_t *__st_lws = {lws};
     iris_task_kernel(task, "{kernel_name}", {dim}, __st_offset, __st_gws, __st_lws, sizeof(__task_params_info)/sizeof(int), __task_params, __task_params_info);
     iris_params_map(task, __task_params_device_map);
+    return IRIS_SUCCESS;
 }}
-#ifdef __cplusplus
-}}
-#endif //__cplusplus
-#ifdef __cplusplus
-extern "C" {{
-#endif //__cplusplus
-void {c_core_api_name}({params_decl_str})
+int {c_core_api_name}({params_decl_str})
 {{
     iris_task task;
     iris_task_create(&task);
@@ -1288,29 +1389,37 @@ void {c_core_api_name}({params_decl_str})
     {iris_mem_flush_stmts}
     iris_task_submit(task, target_dev, NULL, 1);
     {iris_mem_release_stmts}
+    return IRIS_SUCCESS;
 }}
 #ifdef __cplusplus
 }}
 #endif //__cplusplus
-void {cpp_api_name}({params_decl_irismem_str})
+
+// C++ only APIs (function overloading) definition
+#ifdef __cplusplus
+int {cpp_api_name}({params_decl_irismem_str})
 {{
     {c_task_api_name}({c_task_args_str});
+    return IRIS_SUCCESS;
 }}
-void {cpp_api_name}({params_decl_str})
+int {cpp_api_name}({params_decl_str})
 {{
     {c_core_api_name}({c_core_args_str});
+    return IRIS_SUCCESS;
 }}
 template <>
-void {func_name}<{param_map_src_dtype}>({params_decl_irismem_str})
+int {func_name}<{param_map_src_dtype}>({params_decl_irismem_str})
 {{
     {cpp_api_name}({c_task_args_str});
+    return IRIS_SUCCESS;
 }}
 template <>
-void {func_name}<{param_map_src_dtype}>({params_decl_str})
+int {func_name}<{param_map_src_dtype}>({params_decl_str})
 {{
     {cpp_api_name}({c_core_args_str});
+    return IRIS_SUCCESS;
 }}
-#endif // __cplusplus
+#endif //__cplusplus
 #endif // IRIS_API_DEFINITION
                 """)
     def insert_code(data_hash, key, lines):
@@ -1349,6 +1458,10 @@ int {func_name}("""
                 lines = []
                 if f_details[0] == 'iris_cpu':
                     generate_openmp_kernel(kvar_original, c_api_name, lines, v, f_details)
+                elif f_details[0] == 'iris_cuda_host':
+                    generate_host_kernel(kvar_original, c_api_name, lines, v, f_details)
+                elif f_details[0] == 'iris_hip_host':
+                    generate_host_kernel(kvar_original, c_api_name, lines, v, f_details, 'iris_hip_host')
                 elif f_details[0] == 'iris_cuda':
                     generate_cuda_kernel(kvar_original, c_api_name, lines, v, f_details)
                 elif f_details[0] == 'iris_hip':
@@ -1358,33 +1471,40 @@ int {func_name}("""
                 insert_code(cu_type_lines, f_details[0], lines)
             elif f_param == 'TILED_CODE_GEN':
                 lines = []
-                lines.append("#pragma once")
                 generate_tiled_code(cpp_api_name, lines, v, data_details_hash, f_details, cpp_task_template)
                 insert_code(cu_type_lines, "tiled", lines)
             elif f_param == 'CPP_TASK_TEMPLATE':
                 lines = []
                 generate_cpp_task_template_code(cpp_api_name, c_api_name, kvar_original, lines, v, f_details, kernel_apis)
                 insert_code(cu_type_lines, "cpp_task_template", lines)
-    def write_kernel_to_file(cu_type, filename):
-        if cu_type in cu_type_lines and len(cu_type_lines[cu_type])>0:
-            print(f"Writing {cu_type} kernels to file: {filename}")
-            lines = [ """
+    def write_kernel_to_file(cu_types, filename):
+        all_lines = []
+        lines = [ f"""
 /**
- * Author : Narasinga Rao Miniskar
- * Date   : Jun 16 2022
- * Contact for bug : miniskarnr@ornl.gov
- *
- */
-            """]
-            lines += cu_type_lines[cu_type]
+* Author : Narasinga Rao Miniskar
+* Date   : Jun 16 2022
+* Contact for bug : miniskarnr@ornl.gov
+* File: {filename}
+*/
+        """]
+        all_lines += lines
+        if re.search(r'\.h$', filename):
+            all_lines.append("#pragma once")
+        for cu_type in cu_types:
+            if cu_type in cu_type_lines and len(cu_type_lines[cu_type])>0:
+                print(f"Writing {cu_type} kernels to file: {filename}")
+                lines = cu_type_lines[cu_type]
+                all_lines += lines
+        if len(all_lines) > 0:
             with open(filename, 'w') as fh:
-                fh.write("\n".join(lines))
+                fh.write("\n".join(all_lines))
                 fh.close()
-    write_kernel_to_file('cpp_task_template', 'codegen_task_template.h')
-    write_kernel_to_file('tiled', 'codegen_tiled.h')
-    write_kernel_to_file('iris_cpu', 'codegen_openmp_kernels.h')
-    write_kernel_to_file('iris_cuda', 'codegen_cuda_kernels.cu')
-    write_kernel_to_file('iris_hip', 'codegen_hip_kernels.hip.cpp')
+    if not args.no_codegen:
+        write_kernel_to_file(['cpp_task_template'], 'codegen_task_template.h')
+        write_kernel_to_file(['tiled'], 'codegen_tiled.h')
+        write_kernel_to_file(['iris_cpu'], 'codegen_openmp_kernels.h')
+        write_kernel_to_file(['iris_cuda', 'iris_cuda_host'], 'codegen_cuda_kernels.cu')
+        write_kernel_to_file(['iris_hip', 'iris_hip_host'], 'codegen_hip_kernels.hip.cpp')
 
 def extract_header_data_details_hash(args, v):
     global valid_params, global_res
@@ -1436,7 +1556,7 @@ int {func_name}("""
         if hdr_type == CPP_CORE_API or hdr_type == CPP_TASK_API:
             lines.append("#endif // __cplusplus")
 
-def appendKernelSignature(args, lines, data_hash, k_hash):
+def appendKernelSignature(args, lines, data_hash, k_hash, dynamic_linking=True):
     global valid_params, global_res
     def InsertConditionalDeclarations(k, expr, fdt, params, lines):
         appendConditionalParameters(expr, fdt, params, lines)
@@ -1444,7 +1564,9 @@ def appendKernelSignature(args, lines, data_hash, k_hash):
         kvar = getKernelParamVairable(k)
         func_sig = "int iris_kernel_"+k+"(HANDLETYPE"
         if args.thread_safe:
-            func_sig = "typedef int (* __iris_kernel_"+k+"_ptr)(HANDLETYPE DEVICE_NUM_TYPE"
+            func_sig = "typedef int (* __iris_kernel_"+k+"_ptr)(HANDLETYPE StreamTypeKernel STREAM_VAR_KERNEL DEVICE_NUM_TYPE"
+        if not dynamic_linking:
+            func_sig = "int "+k+"(HANDLETYPE"
         params = []
         lines.append(func_sig)
         arguments_start_index = find_start_index(v)
@@ -1545,30 +1667,35 @@ def appendKernelSignature(args, lines, data_hash, k_hash):
         if len(params) > 0:
              lines.append("\t\t\t\t"+", \n\t\t\t\t".join(params)+",")
         lines.append("#ifndef ENABLE_IRIS_HEXAGON_APIS")
-        lines.append("size_t, size_t")
+        lines.append("size_t *, size_t *")
         lines.append("#else //ENABLE_IRIS_HEXAGON_APIS")
-        lines.append("int, int")
+        lines.append("int *, int *")
         lines.append("#endif //ENABLE_IRIS_HEXAGON_APIS")
         lines.append(");")
 
 def appendSetKernelWrapperFunctions(args, lines, data_hash, k_hash):
-    lines.append('''
-void iris_set_kernel_ptr_with_obj(void *obj, __iris_kernel_ptr ptr) {
+    print_stmt='printf("%s:%d (%s) is called\\n", __FILE__, __LINE__, __func__); printf("kernel:%p\\n", ptr);' 
+    lines.append(f"""
+void iris_set_kernel_ptr_with_obj(void *obj, __iris_kernel_ptr ptr) {{
     iris_base_pack *bobj = (iris_base_pack *)obj;
+    {f'{print_stmt}' if args.verbose else ''}
     bobj->__iris_kernel = ptr;
-}
-            ''')
+}}
+            """)
 
 def appendHandleWrapperFunctions(args, lines, data_hash, k_hash):
-    lines.append('''
-void iris_kernel_set_queue_with_obj(void *obj, void *queue) {
+    print_stmt='printf("%s:%d (%s) is called\\n", __FILE__, __LINE__, __func__);' 
+    lines.append(f'''
+void iris_kernel_set_queue_with_obj(void *obj, void *queue) {{
     iris_base_pack *bobj = (iris_base_pack *)obj;
+    {f'{print_stmt}' if args.verbose else ''}
     bobj->__iris_handle = queue;
-}
-void *iris_kernel_get_queue_with_obj(void *obj) {
+}}
+void *iris_kernel_get_queue_with_obj(void *obj) {{
     iris_base_pack *bobj = (iris_base_pack *)obj;
+    {f'{print_stmt}' if args.verbose else ''}
     return bobj->__iris_handle;
-}
+}}
             ''')
 
 def appendKernelNamesFunction(args, lines, data_hash, k_hash):
@@ -1640,6 +1767,8 @@ def appendKernelSetArgMemParamFunctions(args, lines, kernel, data):
     global valid_params
     kvar = getKernelParamVairable(kernel)
     lines.append("static int "+kernel+"_setarg(void *obj, int idx, size_t size, void* value) {")
+    if args.verbose:
+        lines.append('printf("%s:%d (%s) is called\\n", __FILE__, __LINE__, __func__);')
     lines.append('''
   switch (idx) {
     ''')
@@ -1665,7 +1794,9 @@ def appendKernelSetArgMemParamFunctions(args, lines, kernel, data):
     return IRIS_SUCCESS;
 }
         ''')
-    lines.append("static int "+kernel+"_setmem(void *obj, int idx, void *mem, int size) {")
+    lines.append("static int "+kernel+"_setmem(void *obj, int idx, void *mem, size_t size) {")
+    if args.verbose:
+        lines.append('printf("%s:%d (%s) is called\\n", __FILE__, __LINE__, __func__);')
     lines.append('''
   switch (idx) {
     ''')
@@ -1698,7 +1829,10 @@ def appendKernelSetArgMemGlobalFunctions(args, lines, data_hash, k_hash):
     if args.thread_safe == 1:
         lines.append('''
 int iris_setarg_with_obj(void *obj, int idx, size_t size, void* value) {
-  int kernel_idx = *((int *)obj); // First argument should be kernel index
+  int kernel_idx = *((int *)obj); // First argument should be kernel index''')
+        if args.verbose:
+            lines.append('printf("%s:%d (%s) is called\\n", __FILE__, __LINE__, __func__);')
+        lines.append('''
   switch (kernel_idx) {
         ''')
         for k,v in data_hash.items():
@@ -1710,8 +1844,11 @@ int iris_setarg_with_obj(void *obj, int idx, size_t size, void* value) {
 }
         ''')
         lines.append('''
-int iris_setmem_with_obj(void *obj, int idx, void *mem, int size) {
-  int kernel_idx = *((int *)obj); // First argument should be kernel index
+int iris_setmem_with_obj(void *obj, int idx, void *mem, size_t size) {
+  int kernel_idx = *((int *)obj); // First argument should be kernel index''')
+        if args.verbose:
+            lines.append('printf("%s:%d (%s) is called\\n", __FILE__, __LINE__, __func__);')
+        lines.append('''
   switch (kernel_idx) {
     ''')
         for k,v in data_hash.items():
@@ -1724,7 +1861,10 @@ int iris_setmem_with_obj(void *obj, int idx, void *mem, int size) {
         ''')
     else:
         lines.append('''
-int iris_setarg(int idx, size_t size, void* value) {
+int iris_setarg(int idx, size_t size, void* value) {''')
+        if args.verbose:
+            lines.append('printf("%s:%d (%s) is called\\n", __FILE__, __LINE__, __func__);')
+        lines.append('''
   switch (iris_kernel_idx) {
     ''')
         for k,v in data_hash.items():
@@ -1737,7 +1877,10 @@ int iris_setarg(int idx, size_t size, void* value) {
 }
         ''')
         lines.append('''
-int iris_setmem(int idx, void *mem, int size) {
+int iris_setmem(int idx, void *mem, size_t size) {''')
+        if args.verbose:
+            lines.append('printf("%s:%d (%s) is called\\n", __FILE__, __LINE__, __func__);')
+        lines.append('''
   switch (iris_kernel_idx) {
     ''')
         for k,v in data_hash.items():
@@ -1750,6 +1893,22 @@ int iris_setmem(int idx, void *mem, int size) {
 }
         ''')
 
+def appendGetKernelPtrFunction(args, lines, data_hash):
+    global valid_params
+    lines.append('''
+void *iris_get_kernel_ptr(const char* name) {
+    ''')
+    if args.verbose:
+        lines.append('printf("%s:%d (%s) is called\\n", __FILE__, __LINE__, __func__);')
+    for k,v in data_hash.items():
+        lines.append("\t if (strcmp(name, \""+k+"\") == 0) {")
+        lines.append("\t\t return (void *)"+k+";")
+        lines.append("\t }")
+    lines.append('''
+    return NULL;
+}
+        ''')
+
 def appendKernelLaunchFunction(args, lines, data_hash, k_hash):
     global valid_params
     if args.thread_safe == 1:
@@ -1757,6 +1916,8 @@ def appendKernelLaunchFunction(args, lines, data_hash, k_hash):
 int iris_kernel_with_obj(void *obj, const char* name) {
     int *kernel_idx_p = ((int *)obj); // First argument should be kernel index
     ''')
+        if args.verbose:
+            lines.append('printf("%s:%d (%s) is called\\n", __FILE__, __LINE__, __func__);')
         for k,v in data_hash.items():
             kvar = getKernelParamVairable(k)
             lines.append("\t if (strcmp(name, \""+k+"\") == 0) {")
@@ -1773,6 +1934,8 @@ int iris_kernel_with_obj(void *obj, const char* name) {
 int iris_kernel(const char* name) {
     iris_kernel_lock();
     ''')
+        if args.verbose:
+            lines.append('printf("%s:%d (%s) is called\\n", __FILE__, __LINE__, __func__);')
         for k,v in data_hash.items():
             lines.append("\t if (strcmp(name, \""+k+"\") == 0) {")
             lines.append("\t\t iris_kernel_idx = "+str(k_hash[k])+";")
@@ -1807,11 +1970,14 @@ int iris_kernel(const char* name) {
                 fn_name = "(kobj->__iris_kernel)"
             else:
                 kvar = kvar+"."
-            lines.append(f"\t\t\t  {fn_name}({handle_var} STREAM_VAR DEVICE_NUM")
+            if is_with_obj:
+                lines.append(f"\t\t\t  {fn_name}({handle_var} STREAM_VAR_KERNEL DEVICE_NUM")
+            else:
+                lines.append(f"\t\t\t  {fn_name}({handle_var}")
             add_conditional_parameters_to_kernel(kvar, k, v, lines)
             lines.append("#ifndef DISABLE_OFFSETS")
             lines.append("#ifdef ENABLE_IRIS_HEXAGON_APIS")
-            lines.append("\t\t\t\t(int)off, (int)ndr") 
+            lines.append("\t\t\t\toff, ndr") 
             lines.append("#else")
             #lines.append("#ifdef ENABLE_IRIS_OPENMP_APIS")
             lines.append("\t\t\t\toff, ndr") 
@@ -1827,13 +1993,14 @@ int iris_kernel(const char* name) {
     if args.thread_safe == 1:
         lines.append('''
 int iris_launch_with_obj(
-#ifdef IRIS_ENABLE_STREAMS
         StreamType  stream,
-#endif
         void *obj,
         int devno, 
-        int dim, size_t off, size_t ndr) {
+        int dim, size_t *off, size_t *ndr) {
         ''')
+        if args.verbose:
+            lines.append('printf("%s:%d (%s) is called\\n", __FILE__, __LINE__, __func__);')
+            lines.append('printf("kernel launch ptr:%p\\n", ((iris___k_saxpy_args*)obj)->__iris_kernel);')
         InsertKernelLaunchSwith(lines, data_hash, True)
         lines.append('''
         return IRIS_SUCCESS;
@@ -1842,11 +2009,11 @@ int iris_launch_with_obj(
     else:
         lines.append('''
 int iris_launch(
-#ifdef IRIS_ENABLE_STREAMS
         StreamType  stream,
-#endif
-        int dim, size_t off, size_t ndr) {
+        int dim, size_t *off, size_t *ndr) {
         ''')
+        if args.verbose:
+            lines.append('printf("%s:%d (%s) is called\\n", __FILE__, __LINE__, __func__);')
         InsertKernelLaunchSwith(lines, data_hash)
         lines.append('''
         iris_kernel_unlock();
@@ -1863,7 +2030,9 @@ def InitParser(parser):
     parser.add_argument("-input", dest="input", nargs='+', default=[])
     parser.add_argument("-output", dest="output", default="iris_app_cpu_dsp_interface.h")
     parser.add_argument("-extract", dest="extract", action="store_true")
+    parser.add_argument("-no_codegen", dest="no_codegen", action="store_true")
     parser.add_argument("-generate", dest="generate", action="store_true")
+    parser.add_argument("-verbose", dest="verbose", action="store_true")
     parser.add_argument("-thread_safe", dest="thread_safe", type=int, default=1)
     parser.add_argument("-compile_options", dest="compile_options", default="")
     parser.add_argument("-signature_file", dest="signature_file", default="app.h")
@@ -1903,20 +2072,20 @@ def ExtractIRISTaskAPIs(args=None, arg_string='', arg_dict={}, in_code_buffer=''
             args.__dict__['input'] = args.__dict__['input'] + [f.name+'.c']
         iris_calls = extractTaskCalls(args)
         output_lines = generateIrisInterfaceCode(args, iris_calls)
-        if write_output:
+        if write_output and not args.no_codegen:
             WriteFile(args.output, output_lines, tag="Consolidated CPU/DSP interface code for all kernels in header")
         if in_code_buffer != '':
             #os.unlink(f.name)
             None
     elif args.extract:
         iris_calls = extractTaskCalls(args)
-        if write_output:
+        if write_output and not args.no_codegen:
             WriteFile(args.output, iris_calls, tag='Generating metadata')
         output_lines = iris_calls
     elif args.generate:
         codes = read_metadata_file(args, args.input)
         output_lines = generateIrisInterfaceCode(args, codes)
-        if write_output:
+        if write_output and not args.no_codegen:
             WriteFile(args.output, output_lines, tag="Consolidated CPU/DSP interface code for all kernels in header")
     return output_lines
 

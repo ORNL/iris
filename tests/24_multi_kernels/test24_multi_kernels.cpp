@@ -14,7 +14,7 @@ int my_kernel_selector(iris_task task, void* params, char* kernel_name) {
   iris::rt::Command* c = t->cmd_kernel();
   iris::rt::Kernel* k = c->kernel();
   size_t ws = c->ws();
-  char* name = k->name();
+  const char* name = k->name();
   printf("[%s:%d] kernel[%s] ws[%lu] threshold[%lu]\n", __FILE__, __LINE__, name, ws, threshold);
   if (d->model() == iris_opencl && ws > threshold) {
     sprintf(kernel_name, "%s_v2", name);
@@ -28,14 +28,18 @@ int main(int argc, char** argv) {
 
   int ndevs;
   bool is_opencl_device=false;
+  bool is_cuda_device=false;
+  bool is_hip_device=false;
   iris_device_count(&ndevs);
   for (int d = 0; d < ndevs; d++){
     int backend_worker;
     iris_device_info(d, iris_backend, &backend_worker, nullptr);
     if (backend_worker == iris_opencl) is_opencl_device = true;
+    if (backend_worker == iris_cuda) is_cuda_device = true;
+    if (backend_worker == iris_hip) is_hip_device = true;
   }
-  if(!(is_opencl_device)){
-    printf("Skipping this test because it is only designed to test on OpenCL backends.\n");
+  if(!is_opencl_device && !is_cuda_device && !is_hip_device){
+    printf("Skipping this test because it is only designed to test on OpenCL or CUDA backends.\n");
     return 0;
   }
 
@@ -44,7 +48,7 @@ int main(int argc, char** argv) {
   int* A;
 
   SIZE = argc > 1 ? atol(argv[1]) : 8;
-  TARGET = argc > 2 ? atol(argv[2]) : iris_any;
+  TARGET = argc > 2 ? atol(argv[2]) : iris_sdq;
 
   printf("[%s:%d] SIZE[%zu] TARGET[%d]\n", __FILE__, __LINE__, SIZE, TARGET);
 
