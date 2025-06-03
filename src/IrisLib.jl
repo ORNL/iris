@@ -1079,6 +1079,14 @@ end
     return ccall(Libdl.dlsym(lib, :iris_data_mem_update_host_size), Int32, (IrisMem, Ptr{Csize_t}), mem, host)
 end
 
+@inline function iris_data_mem_update_host_size_no_strides(mem::IrisMem, host::Ptr{Csize_t})::Int32
+    return ccall(Libdl.dlsym(lib, :iris_data_mem_update_host_size_no_strides), Int32, (IrisMem, Ptr{Csize_t}), mem, host)
+end
+
+@inline function iris_data_mem_update_dev_size_no_strides(mem::IrisMem, dev_size::Ptr{Csize_t})::Int32
+    return ccall(Libdl.dlsym(lib, :iris_data_mem_update_dev_size_no_strides), Int32, (IrisMem, Ptr{Csize_t}), mem, dev_size)
+end
+
 @inline function iris_data_mem_update_dev_size(mem::IrisMem, dev_size::Ptr{Csize_t})::Int32
     return ccall(Libdl.dlsym(lib, :iris_data_mem_update_dev_size), Int32, (IrisMem, Ptr{Csize_t}), mem, dev_size)
 end

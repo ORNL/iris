@@ -129,6 +129,7 @@ public:
   }
   size_t *dev_off() { return dev_off_; }
   size_t *dev_size() { return dev_size_; }
+  size_t *dev_full_size() { return dev_full_size_; }
   size_t elem_size() { return elem_size_; }
   void enable_multi_dim_dev_offset() { multi_dim_dev_offset_ = true; }
   bool is_multi_dim_dev_offset() { return multi_dim_dev_offset_; }
@@ -225,7 +226,7 @@ protected:
 
   void end(size_t out[DMEM_MAX_DIM]) const {
       for (int i = 0; i < dim_; ++i)
-          out[i] = off_[i] + dev_size_[i];
+          out[i] = off_[i] + dev_full_size_[i];
   }
   void set_dev_off(size_t *dev_off) {
       memcpy(dev_off_, dev_off, dim_ * sizeof(size_t));
@@ -251,6 +252,7 @@ protected:
   size_t host_strides_[DMEM_MAX_DIM+1];
   size_t host_size_[DMEM_MAX_DIM];
   size_t dev_size_[DMEM_MAX_DIM];
+  size_t dev_full_size_[DMEM_MAX_DIM];
   size_t elem_size_;
   int dim_;
   Platform *platform_;

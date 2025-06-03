@@ -38,6 +38,7 @@ DataMem::DataMem(Platform* platform, void *host_ptr, size_t *host_size, int dim,
     Init(platform, host_ptr, size, dim);
     set_element_type(element_type);
     memcpy(dev_size_, host_size, sizeof(size_t)*dim_);
+    memcpy(dev_full_size_, host_size, sizeof(size_t)*dim_);
     memcpy(host_size_, host_size, sizeof(size_t)*dim_);
     elem_size_ = elem_size;
     compute_strides(host_strides_, host_size_);
@@ -70,6 +71,7 @@ DataMem::DataMem(Platform *platform, void *host_ptr, size_t *off, size_t *host_s
     dim_ = dim;
     memcpy(off_, off, sizeof(size_t)*dim_);
     memcpy(dev_size_, dev_size, sizeof(size_t)*dim_);
+    memcpy(dev_full_size_, dev_size, sizeof(size_t)*dim_);
     memcpy(host_size_, host_size, sizeof(size_t)*dim_);
     compute_strides(host_strides_, host_size_);
     compute_strides(dev_strides_,  dev_size_);
@@ -396,6 +398,15 @@ int DataMem::update_host_size(size_t *host_size, bool update_strides)
         }
         size_ = size;
     }
+    int n_regions = get_n_regions();
+    for (int i=0; i<n_regions; i++) {
+        size_t dev_size[DMEM_MAX_DIM];
+        memcpy(dev_size, dev_size_, sizeof(size_t)*DMEM_MAX_DIM);
+        dev_size[dim_-1] = 1;
+        ASSERT(regions_[i].first == regions_[i].second);
+        regions_[i].first->update_dev_size(dev_size, update_strides);
+        regions_[i].first->enable_multi_dim_dev_offset();
+    }
     //Print("After host update:");
     return IRIS_SUCCESS;
 }
@@ -515,6 +526,7 @@ void DataMem::Init(Platform *platform, void *host_ptr, size_t size, int dim)
     for(int i=0; i<DMEM_MAX_DIM; i++) {
         host_size_[i] = 1;
         dev_size_[i] = 1;
+        dev_full_size_[i] = 1;
         off_[i] = 0;
         dev_off_[i] = 0;
         host_strides_[i] = dev_strides_[i] = 1;

@@ -7,6 +7,10 @@ IrisHRT.init()
 hA = reshape(collect(1:64), 8, 8)
 
 hAA = IrisHRT.dmem(@view hA[3:6,3:6])
+iris_AA = IrisHRT.dmem(@view hA[2:6,3:5])
+println(Core.stdout, " IRIS AA: ", iris_AA)
+println(Core.stdout, " AA: ", @view hA[2:6, 3:5])
+
 
 hAAA = IrisHRT.reshape(hAA, 2, 8)
 

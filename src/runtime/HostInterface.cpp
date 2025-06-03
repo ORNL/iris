@@ -313,7 +313,7 @@ namespace iris {
                 element_size = (int) dmem->elem_size();
                 dim = dmem->dim();
                 //printf("Size DIM : %lu\n", dmem->dev_size()[0]);
-                julia_data->set_dim_sizes(dmem->dev_size(), dmem->dim());
+                julia_data->set_dim_sizes(dmem->dev_full_size(), dmem->dim());
             }
             //printf("setmem julia_data:%p kindex:%d arg_index:%d mem:%p dev:%p size:%ld element_size:%d\n", julia_data, kindex, julia_data->top(), mem, mem_ptr, size, element_size);
             julia_data->set_arg_type(iris_pointer | element_type | (element_size << 8) | dim);
