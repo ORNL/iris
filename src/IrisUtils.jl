@@ -138,11 +138,33 @@ function iris_get_julia_type(mem::IrisMem)
     return Ptr{Cvoid}
 end
 
-function call_stack()
-    println("Backtrace:")
+function call_stack(tag="")
+    println("Backtrace ", tag, ": ")
     for (i, bt) in enumerate(Base.stacktrace())
         println("[$i] ", bt)
     end
+end
+
+# function that inspects the stack trace and returns the immediate caller’s function and line number.
+function get_caller_info(; 
+        exclude_fns::AbstractSet{Symbol}=Set{Symbol}())
+    st = stacktrace()
+    # st[1] is get_caller_info itself; start from st[2].
+    exclude_files = Set( 
+        ["IrisHRT.jl", "IrisUtils.jl", "Kernel.jl"]
+    )
+    for frame in st[2:end]
+        fn_sym = frame.func
+        file_name = basename(String(frame.file))
+        if !(fn_sym in exclude_fns) && !(file_name in exclude_files)
+            return (
+                func   = fn_sym,
+                file   = frame.file,
+                line   = frame.line
+            )
+        end
+    end
+    return nothing
 end
 
 function iris_print_array(data::Ptr{T}, N::Int) where T

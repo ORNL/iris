@@ -139,6 +139,7 @@ mutable struct IRISHIPStream
     device::MyAMDGPU.HIPDevice
     ctx::MyAMDGPU.HIPContext
 end
+
 import Base: reshape
 import Base: reinterpret
 module IrisHRT
@@ -1548,7 +1549,7 @@ module IrisHRT
         dim_size_v = collect(dim_size)
         element_size = sizeof(T)
         host_cptr = C_NULL
-        #call_stack()
+        #call_stack("DMEM Create:")
         #println(Core.stdout, "Type of element: ", T, " dim:", dim, " Size:", host_size, " Element size:", element_size)
         element_type = get_iris_type(T)
         iris_mem = nothing
@@ -2576,7 +2577,7 @@ module IrisHRT
         return IrisHRT.task(;gws=N, parallel_for=true, kernel=f, args=Any[x...], eargs...) 
     end
 
-    function parallel_reduce_core(N::Union{Int64, UInt64, Tuple{Int64}, Tuple{UInt64}, NTuple{2, Integer}, NTuple{3, Integer}}, f::Union{Function,String}, x... ; result=nothing, buffer=nothing, task=nothing, submit=true, flush=false, policy=IrisHRT.iris_roundrobin, wait=true, auto_dependency=true, dependencies=[], metadata=nothing, op=nothing, init=nothing)
+    function parallel_reduce_core(N::Union{Int64, UInt64, Tuple{Int64}, Tuple{UInt64}, NTuple{2, Integer}, NTuple{3, Integer}}, f::Union{Function,String}, x... ; reuse=false, result=nothing, buffer=nothing, task=nothing, submit=true, flush=false, policy=IrisHRT.iris_roundrobin, wait=true, auto_dependency=true, dependencies=[], metadata=nothing, op=nothing, init=nothing)
         kernel_name = f
         if isa(f, Function) 
             kernel_name = String(Symbol(f))
@@ -2595,7 +2596,19 @@ module IrisHRT
             end
         end
         if out_mem == nothing
-            out_mem = dmem(IrisHRT.get_julia_type(first_x), 1)
+            caller_info = get_caller_info()
+            #println(Core.stdout, " Caller: ", caller_info)
+            if reuse && caller_info != nothing
+                map_key = (first_x.uid, -1 * hash(caller_info.func, UInt64(caller_info.line)))
+                if !haskey(Main.__iris_dmem_parallel_reduce_map, map_key)
+                    out_mem = dmem(IrisHRT.get_julia_type(first_x), 1)
+                    Main.__iris_dmem_parallel_reduce_map[map_key] = (out_mem, first_x)
+                else
+                    out_mem, tmp_x  = Main.__iris_dmem_parallel_reduce_map[map_key]
+                end
+            else
+                out_mem = dmem(IrisHRT.get_julia_type(first_x), 1)
+            end
         else
             out_mem = get_dmem_from_cache(out_mem)
         end
