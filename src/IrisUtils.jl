@@ -151,7 +151,7 @@ function get_caller_info(;
     st = stacktrace()
     # st[1] is get_caller_info itself; start from st[2].
     exclude_files = Set( 
-        ["IrisHRT.jl", "IrisUtils.jl", "Kernel.jl"]
+        ["IrisHRT.jl", "IrisUtils.jl", "IrisNativeKernels.jl", "IrisJuliaKernels.jl"]
     )
     for frame in st[2:end]
         fn_sym = frame.func

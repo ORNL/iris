@@ -1,11 +1,11 @@
 add_subdirectory(runtime)
 
 set(JULIA_SRC_FILES
-        IrisKernels.jl
         IrisLib.jl
         IrisUtils.jl
         IrisHRT.jl
-        Kernels.jl
+        IrisJuliaKernels.jl
+        IrisNativeKernels.jl
         Tiling1D.jl
         Tiling2D.jl
         Tiling3D.jl

@@ -356,7 +356,7 @@ module IrisHRT
 
     include("IrisUtils.jl")
     include("IrisLib.jl")
-    include("IrisKernels.jl")
+    include("IrisNativeKernels.jl")
     function convert_args(args_type::Ptr{Cint}, args::Ptr{Ptr{Cvoid}}, nparams::Cint, start_index::Cint)
         julia_args = []
         return julia_args
@@ -3393,4 +3393,4 @@ end
 include("Tiling1D.jl")
 include("Tiling2D.jl")
 include("Tiling3D.jl")
-include("Kernels.jl")
+include("IrisJuliaKernels.jl")
