@@ -1,0 +1,58 @@
+include(ENV["IRIS"] * "/src/IrisHRT.jl")
+using .IrisHRT
+using Test
+
+IrisHRT.init()
+
+function tryme(host::AbstractArray{T}) where T 
+    println(host)
+end
+
+A = reshape(collect(1:16), 4, 4)
+AA_reshape = reshape(A, 4, 2, 2)
+println(Core.stdout, " Original A: ", A, " type:", typeof(A), " size:", size(A))
+#A: [1 5 9 13; 
+#    2 6 10 14; 
+#    3 7 11 15; 
+#    4 8 12 16] 
+println(Core.stdout, " Original AA: ", AA_reshape, " ptr:", typeof(AA_reshape), " size:", size(AA_reshape))
+#AA:  [1 5; 
+#      2 6; 
+#      3 7; 
+#      4 8;;; 
+#
+#      9 13; 
+#      10 14; 
+#      11 15; 
+#      12 16]
+AA = IrisHRT.reshape(A, 4, 2, 2)
+IrisHRT.enable_regions(AA, 2)
+
+ARs = IrisHRT.regions(AA)
+#println(Core.stdout, "Before ARs[1]: ", ARs[1]) 
+# ARs[1] [1; 2; 3; 4;;; 9; 10; 11; 12]
+
++(ARs[1], ARs[1], ARs[1])
+#ARs[1]: [2; 4; 6; 8;;; 18; 20; 22; 24]
+
+IrisHRT.synchronize()
+println(Core.stdout, "ARs[1]: ", ARs[1]) 
+
+println(Core.stdout, " A: ", A, " type:", typeof(A), " size:", size(A))
+println(Core.stdout, " AA: ", AA, " ptr:", typeof(AA), " size:", size(AA))
+
+A_host = IrisHRT.valid_host(A)
+AA_host = IrisHRT.valid_host(AA)
+
+ARs1_host = IrisHRT.valid_host(ARs[1])
+ARs2_host = IrisHRT.valid_host(ARs[2])
+
+@testset "reshape_region2_1" begin
+    @test A_host == [2 5 18 13; 4 6 20 14; 6 7 22 15; 8 8 24 16]
+    @test AA_host == [2 5; 4 6; 6 7; 8 8;;; 18 13; 20 14; 22 15; 24 16]
+    @test ARs1_host == [2; 4; 6; 8;;; 18; 20; 22; 24] 
+    @test ARs2_host == [5; 6; 7; 8;;; 13; 14; 15; 16]
+end
+
+IrisHRT.finalize()
+

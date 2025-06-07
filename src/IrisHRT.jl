@@ -1549,7 +1549,7 @@ module IrisHRT
         dim_size_v = collect(dim_size)
         element_size = sizeof(T)
         host_cptr = C_NULL
-        #call_stack("DMEM Create:")
+        #call_stack("DMEM Create1:")
         #println(Core.stdout, "Type of element: ", T, " dim:", dim, " Size:", host_size, " Element size:", element_size)
         element_type = get_iris_type(T)
         iris_mem = nothing
@@ -1565,6 +1565,7 @@ module IrisHRT
             iris_mem = iris_data_mem_create_struct_nd(host_cptr, dim_size_v, dim, element_size, element_type)
             end
         end
+        #println(Core.stdout, "Create1 Mem:", iris_mem.uid, " Type of element: ", T, " dim:", dim, " Size:", host_size, " Element size:", element_size, " Call from:", get_caller_info())
         if isstructtype(T) 
             push_dmem_custom_type(iris_mem.uid, T)
         end
@@ -1580,7 +1581,10 @@ module IrisHRT
         host_root = host_cptr
         #println(Core.stdout, "Type of element: ", T, " Size:", size(host), " host size:", host_size, " host size type:", typeof(host_size), " Element size:", element_size, " pointer:", pointer(host))
         element_type = get_iris_type(T, iris_pointer)
+        #call_stack("DMEM Create2:")
         iris_mem = nothing
+        dev_size = host_size
+        offset = nothing
         if !isa(host, SubArray)
             #println(Core.stdout, "DMEM: ", host_cptr, ", ", size(host), ", ", element_size)
             GC.@preserve host_size begin
@@ -1598,6 +1602,16 @@ module IrisHRT
             iris_mem = iris_data_mem_create_tile_struct_with_type(host_cptr, pointer(offset), pointer(host_size), pointer(dev_size), element_size, dim, element_type)
             end
         end
+        #println(Core.stdout, "Create2 Mem:", iris_mem.uid, " Type of element: ", T, " dim:", dim, " Host Size:", host_size, " Dev Size:", dev_size, " Offset:", offset, " Element size:", element_size, " Call from:", get_caller_info())
+        if false && iris_mem.uid > 77000
+            free_bytes  = MyCUDA.free_memory()     # bytes free on the GPU
+            total_bytes = MyCUDA.total_memory()    # bytes total RAM on that device
+            used_bytes  = total_bytes - free_bytes
+
+            println(Core.stdout, "Total GPU memory: $(round(total_bytes/1024^3, digits=3)) GiB")
+            println(Core.stdout, "Free  GPU memory: $(round(free_bytes/1024^3, digits=3)) GiB")
+            println(Core.stdout, "Used  GPU memory: $(round(used_bytes/1024^3, digits=3)) GiB")
+        end
         if isstructtype(T) 
             push_dmem_custom_type(iris_mem.uid, T)
         end
@@ -1611,6 +1625,7 @@ module IrisHRT
         dim = length(host_size)
         element_size = Int32(sizeof(T))
         ptr = pointer(host)
+        #call_stack("DMEM Create3:")
         host_cptr = reinterpret(Ptr{Cvoid}, ptr)
         #println(Core.stdout, "DMEM: ", host_root, ", ", size(host), ", ", element_size, ", ", host_root, ", ", dev_size)
         #println(Core.stdout, "Type of element: ", T, " Size:", size(host), " Element size:", element_size)
@@ -1622,6 +1637,7 @@ module IrisHRT
         GC.@preserve offset host_size dev_size begin 
         iris_mem = iris_data_mem_create_tile_struct_with_type(host_cptr, pointer(offset), pointer(host_size), pointer(dev_size), element_size, dim, element_type)
         end
+        #println(Core.stdout, "Create3 Mem:", iris_mem.uid, " Type of element: ", T, " dim:", dim, " Size:", host_size, " Element size:", element_size, " Call from:", get_caller_info())
         if isstructtype(T) 
             push_dmem_custom_type(iris_mem.uid, T)
         end
@@ -2410,7 +2426,9 @@ module IrisHRT
         m = nothing
         offset = 0
         function convert_iris_mem(mem)
-            d = ndim(mem)
+            #d = ndim(mem)
+            d_dim = dev_size(mem)
+            d = length(d_dim) 
             if d == 1
                 return IrisMem1D{eltype(mem)}(mem)
             elseif d == 2
@@ -2597,10 +2615,10 @@ module IrisHRT
         end
         if out_mem == nothing
             caller_info = get_caller_info()
-            #println(Core.stdout, " Caller: ", caller_info)
             if reuse && caller_info != nothing
-                map_key = (first_x.uid, -1 * hash(caller_info.func, UInt64(caller_info.line)))
+                map_key = (-1, -1 * hash(caller_info.func, UInt64(caller_info.line)))
                 if !haskey(Main.__iris_dmem_parallel_reduce_map, map_key)
+                    #println(Core.stdout, " Caller: ", caller_info, " map: ", map_key)
                     out_mem = dmem(IrisHRT.get_julia_type(first_x), 1)
                     Main.__iris_dmem_parallel_reduce_map[map_key] = (out_mem, first_x)
                 else
@@ -2615,8 +2633,19 @@ module IrisHRT
         map_key = (first_x.uid, out_mem.uid)
         if tmp_mem == nothing
             if !haskey(Main.__iris_dmem_parallel_reduce_map, map_key)
-                tmp_mem = dmem(IrisHRT.get_julia_type(first_x), dev_size(first_x))
-                Main.__iris_dmem_parallel_reduce_map[map_key] = (tmp_mem, out_mem)
+                if reuse && caller_info != nothing
+                    map_key = (-1 * sizeof(first_x), -1 * hash(caller_info.func, UInt64(caller_info.line)))
+                    if !haskey(Main.__iris_dmem_parallel_reduce_map, map_key)
+                        #println(Core.stdout, " Caller2: ", caller_info, " map: ", map_key)
+                        tmp_mem = dmem(IrisHRT.get_julia_type(first_x), dev_size(first_x))
+                        Main.__iris_dmem_parallel_reduce_map[map_key] = (tmp_mem, out_mem)
+                    else
+                        tmp_mem, prev_mem = Main.__iris_dmem_parallel_reduce_map[map_key]
+                    end
+                else
+                    tmp_mem = dmem(IrisHRT.get_julia_type(first_x), dev_size(first_x))
+                    Main.__iris_dmem_parallel_reduce_map[map_key] = (tmp_mem, out_mem)
+                end
             else
                 tmp_mem, prev_mem = Main.__iris_dmem_parallel_reduce_map[map_key]
             end
