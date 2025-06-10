@@ -297,6 +297,11 @@ size_t *iris_dmem_get_host_size(iris_mem brs_mem) {
     return NULL;
 }
 
+size_t *iris_dmem_get_dev_full_size(iris_mem brs_mem) {
+    DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (mem != NULL) return mem->dev_full_size();
+    return NULL;
+}
 size_t *iris_dmem_get_dev_size(iris_mem brs_mem) {
     DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
     if (mem != NULL) return mem->dev_size();
@@ -599,6 +604,10 @@ unsigned long iris_task_get_uid(iris_task brs_task) {
 int iris_mem_create(size_t size, iris_mem* mem) {
   return Platform::GetPlatform()->MemCreate(size, mem);
 }
+size_t iris_mem_get_full_size(iris_mem mem) {
+  return Platform::GetPlatform()->get_mem_object(mem)->full_size();
+}
+
 size_t iris_mem_get_size(iris_mem mem) {
   return Platform::GetPlatform()->get_mem_object(mem)->size();
 }

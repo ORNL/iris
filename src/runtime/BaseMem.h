@@ -185,6 +185,7 @@ namespace rt {
             virtual void *get_arch(int devno) { return archs_[devno]; }
             virtual void set_arch(int devno, void *ptr) { archs_[devno] = ptr; }
             inline size_t size() { return size_; }
+            virtual size_t full_size() { return size_; }
             void dev_unlock(int devno) {
               device_map_[devno].Unlock();
             }

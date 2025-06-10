@@ -111,6 +111,8 @@ namespace iris {
                     julia_kernel_type_ = iris_julia_native;
                     param_size_ = NULL;
                     param_dim_size_ = NULL;
+                    param_dim_full_size_ = NULL;
+                    param_dim_off_ = NULL;
                 }
                 void reset() {
                     index_ = 0;
@@ -120,12 +122,16 @@ namespace iris {
                     args_capacity_ = 0;
                     param_size_ = NULL;
                     param_dim_size_ = NULL;
+                    param_dim_full_size_ = NULL;
+                    param_dim_off_ = NULL;
                 }
                 ~KernelJulia( ) {
                     if (args_ != NULL) free(args_);
                     if (values_ != NULL) free(values_);
                     if (param_size_ != NULL) free(param_size_);
                     if (param_dim_size_ != NULL) free(param_dim_size_);
+                    if (param_dim_full_size_ != NULL) free(param_dim_full_size_);
+                    if (param_dim_off_ != NULL) free(param_dim_off_);
                 }
                 void init(int nargs) {
                     args_ = NULL;
@@ -143,6 +149,10 @@ namespace iris {
                                 sizeof(size_t) * args_capacity_);
                     if (param_dim_size_ == NULL)
                         param_dim_size_ = (size_t *)malloc(args_capacity_ * sizeof(size_t) * DMEM_MAX_DIM);
+                    if (param_dim_full_size_ == NULL)
+                        param_dim_full_size_ = (size_t *)malloc(args_capacity_ * sizeof(size_t) * DMEM_MAX_DIM);
+                    if (param_dim_off_ == NULL)
+                        param_dim_off_ = (size_t *)malloc(args_capacity_ * sizeof(size_t) * DMEM_MAX_DIM);
                     index_  = 0;
                 }
                 void set_kernel(Kernel *kernel) { kernel_ = kernel; }
@@ -160,10 +170,20 @@ namespace iris {
                     values_[index_] = value;
                     //printf("         Values mem:%p mem_ptr:%p\n", values_ptr_[index_], values_[index_]); 
                 }
+                void set_dim_off(size_t *sizes, int dim) { 
+                    ASSERT(dim < DMEM_MAX_DIM);
+                    //printf("poor_dim_size[%d] %p dim:%d dev_size:%lu\n", index_, param_dim_size_ +index_*DMEM_MAX_DIM, dim, sizes[0]);
+                    memcpy(param_dim_off_ + index_*DMEM_MAX_DIM, sizes, sizeof(size_t)*dim);
+                }
                 void set_dim_sizes(size_t *sizes, int dim) { 
                     ASSERT(dim < DMEM_MAX_DIM);
                     //printf("poor_dim_size[%d] %p dim:%d dev_size:%lu\n", index_, param_dim_size_ +index_*DMEM_MAX_DIM, dim, sizes[0]);
                     memcpy(param_dim_size_ + index_*DMEM_MAX_DIM, sizes, sizeof(size_t)*dim);
+                }
+                void set_dim_full_sizes(size_t *sizes, int dim) { 
+                    ASSERT(dim < DMEM_MAX_DIM);
+                    //printf("poor_dim_size[%d] %p dim:%d dev_size:%lu\n", index_, param_dim_full_size_+index_*DMEM_MAX_DIM, dim, sizes[0]);
+                    memcpy(param_dim_full_size_+ index_*DMEM_MAX_DIM, sizes, sizeof(size_t)*dim);
                 }
                 void set_size(size_t size) {
                     param_size_[index_] = size;
@@ -172,6 +192,8 @@ namespace iris {
                 void set_iris_args(KernelArg *iris_args) { iris_args_ = iris_args; }
                 KernelArg *get_iris_arg(int kindex) { return iris_args_ + kindex; }
                 void **values() { return values_; }
+                size_t *param_dim_off() { return param_dim_off_; }
+                size_t *param_dim_full_size() { return param_dim_full_size_; }
                 size_t *param_dim_size() { return param_dim_size_; }
                 size_t *param_size() { return param_size_; }
                 int top() { return index_; }
@@ -206,7 +228,9 @@ namespace iris {
                 int32_t *args_;
                 void **values_;
                 size_t *param_size_;
+                size_t *param_dim_off_;
                 size_t *param_dim_size_;
+                size_t *param_dim_full_size_;
                 size_t *param_idx_;
                 void **streams_;
                 uint32_t dev_info_;
@@ -230,7 +254,7 @@ namespace iris {
                 int setarg(void *param_mem, int kindex, size_t size, void *value);
                 int setmem(void *param_mem, BaseMem *mem, int kindex, void *mem_ptr, size_t size);
                 int set_julia_kernel_type(void *param_mem, int type);
-                void launch_julia_kernel(unsigned long task_id, int julia_kernel_type, int target, int32_t devno, void *ctx, bool async, int32_t stream_index, void **stream, int32_t nstreams, int32_t *args, void **values, size_t *param_size, size_t *param_dim_size, int32_t nparams, size_t *gws, size_t *threads, size_t *blocks, size_t shared_mem_size, int dim, const char *name)
+                void launch_julia_kernel(unsigned long task_id, int julia_kernel_type, int target, int32_t devno, void *ctx, bool async, int32_t stream_index, void **stream, int32_t nstreams, int32_t *args, void **values, size_t *param_size, size_t *param_dim_size, size_t *param_dim_full_size, size_t *param_dim_off, int32_t nparams, size_t *gws, size_t *threads, size_t *blocks, size_t shared_mem_size, int dim, const char *name)
                 {
                     //printf("jl_is_initialized: %p jl_init:%p\n", jl_is_initialized, jl_init);
                     if (iris_get_julia_launch_func()!= NULL) {
@@ -240,7 +264,7 @@ namespace iris {
                         //for(int i=0; i<nparams; i++) {
                         //    printf("Values:i:%d arg:%d:%d values:%p\n", i, args[i], args[i]>>16, values[i]);
                         //}
-                        kernel_julia_wrapper(task_id, julia_kernel_type, target, devno, ctx, (int)async, stream_index, stream, nstreams, args, values, param_size, param_dim_size, nparams, gws, threads, blocks, shared_mem_size, dim, name);
+                        kernel_julia_wrapper(task_id, julia_kernel_type, target, devno, ctx, (int)async, stream_index, stream, nstreams, args, values, param_size, param_dim_size, param_dim_full_size, param_dim_off, nparams, gws, threads, blocks, shared_mem_size, dim, name);
                         //printf("Result: %d\n", result);
                         //(*jl_atexit_hook)(0);
                     }

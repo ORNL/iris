@@ -1,5 +1,6 @@
 #include "DeviceCUDA.h"
 #include "Debug.h"
+#include "signal.h"
 #include "Command.h"
 #include "History.h"
 #include "Kernel.h"
@@ -1448,6 +1449,11 @@ int DeviceCUDA::KernelSetArg(Kernel* kernel, int idx, int kindex, size_t size, v
 int DeviceCUDA::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, size_t off) {
   void **dev_alloc_ptr = mem->arch_ptr(this);
   void *dev_ptr = NULL;
+  if (false && kernel->task()->uid() == 431530) {
+    _printf("------Error with this issue:------ task:%lu", kernel->task()->uid());
+    ((DataMem *)mem)->Print();
+  }
+    //raise(SIGABRT);
   size_t size = mem->size() - off;
   if (off) {
       *(mem->archs_off() + devno_) = (void*) ((CUdeviceptr) *dev_alloc_ptr + off);
@@ -1624,6 +1630,11 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
   if (julia_if_ != NULL && kernel->enable_julia_if()) {
       size_t grid_s[3] =  { (size_t)grid[0],  (size_t)grid[1],  (size_t)grid[2] };
       size_t block_s[3] = { (size_t)block[0], (size_t)block[1], (size_t)block[2] };
+      if (false && kernel->task()->uid() == 431530) {
+        //raise(SIGABRT);
+        _printf("------Error with this issue:------ task:%lu", kernel->task()->uid());
+        _info("dev[%d][%s] kernel[%s:%s] dim[%d] grid[%d,%d,%d] off[%ld,%ld,%ld] block[%d,%d,%d] blockoff[%lu,%lu,%lu] max_arg_idx[%d] shared_mem_bytes[%u] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, grid[0], grid[1], grid[2], off[0], off[1], off[2], block[0], block[1], block[2], blockOff_x, blockOff_y, blockOff_z, max_arg_idx_, shared_mem_bytes_, stream_index);
+      }
       julia_if_->host_launch(kernel->task()->uid(), (void **)kstream, stream_index, (void *)&ctx_, async,
                   nstreams, kernel->name(), 
                   kernel->GetParamWrapperMemory(), ordinal_,

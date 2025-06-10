@@ -80,6 +80,16 @@ public:
     return off_;
   }
   virtual size_t *local_off() { return off(); }
+  size_t full_size() {
+    DataMem *source_mem = (DataMem*)get_source_mem();
+    if (source_mem != NULL) return source_mem->full_size();
+    size_t *dsize = dev_size();
+    size_t total = elem_size_;
+    for(int i=0; i<dim_; i++) {
+        total *= dsize[i];
+    }
+    return total;
+  }
   size_t *host_size() { 
     DataMem *source_mem = (DataMem*)get_source_mem();
     if (source_mem == NULL) return host_size_;

@@ -122,6 +122,7 @@ string DataMem::ToString(bool check_regions)
     dev_ptr << "]";
     string host_size_str = Utils::GetString(host_size_, dim());
     string dev_size_str = Utils::GetString(dev_size_, dim());
+    string dev_full_size_str = Utils::GetString(dev_full_size_, dim());
     string off_size_str = Utils::GetString(off_, dim());
     string dev_off_size_str = Utils::GetString(dev_off_, dim());
     string host_strides_size_str = Utils::GetString(host_strides_, dim()+1);
@@ -140,6 +141,7 @@ string DataMem::ToString(bool check_regions)
     output << " host_size:" << host_size_str;
     output << " host_off:" << off_size_str;
     output << " host_strides:" << host_strides_size_str;
+    output << " dev_full_size:" << dev_full_size_str;
     output << " dev_size:" << dev_size_str;
     output << " dev_off:" << dev_off_size_str;
     output << " dev_strides:" << dev_strides_size_str;

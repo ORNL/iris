@@ -276,7 +276,7 @@ namespace iris {
         {
             KernelJulia *julia_data = get_kernel_julia(param_mem);
             SetKernelPtr(param_mem, kname);
-            launch_julia_kernel(task_id, julia_data->julia_kernel_type(), target_, devno, ctx, async, stream_index, stream, nstreams, julia_data->args(), julia_data->values(), julia_data->param_size(), julia_data->param_dim_size(), julia_data->top(), gws, grid, block, shared_mem_size, dim, kname);
+            launch_julia_kernel(task_id, julia_data->julia_kernel_type(), target_, devno, ctx, async, stream_index, stream, nstreams, julia_data->args(), julia_data->values(), julia_data->param_size(), julia_data->param_dim_size(), julia_data->param_dim_full_size(), julia_data->param_dim_off(), julia_data->top(), gws, grid, block, shared_mem_size, dim, kname);
             return IRIS_SUCCESS;
         }
         int JuliaHostInterfaceLoader::setarg(void *param_mem, int kindex, size_t size, void *value)
@@ -313,7 +313,9 @@ namespace iris {
                 element_size = (int) dmem->elem_size();
                 dim = dmem->dim();
                 //printf("Size DIM : %lu\n", dmem->dev_size()[0]);
-                julia_data->set_dim_sizes(dmem->dev_full_size(), dmem->dim());
+                julia_data->set_dim_off(dmem->dev_off(), dmem->dim());
+                julia_data->set_dim_sizes(dmem->dev_size(), dmem->dim());
+                julia_data->set_dim_full_sizes(dmem->dev_full_size(), dmem->dim());
             }
             //printf("setmem julia_data:%p kindex:%d arg_index:%d mem:%p dev:%p size:%ld element_size:%d\n", julia_data, kindex, julia_data->top(), mem, mem_ptr, size, element_size);
             julia_data->set_arg_type(iris_pointer | element_type | (element_size << 8) | dim);
