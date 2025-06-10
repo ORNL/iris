@@ -441,6 +441,7 @@ int Platform::EnvironmentInit() {
   // Removed qiree 
   EnvironmentSet("ARCHS",  "openmp:cuda:hip:levelzero:hexagon:opencl",  false);
 #endif
+  EnvironmentSet("RUNTIME_KERNELS_PATH",  "./", false);
   EnvironmentSet("DEFAULT_OMP_KERNELS",  "default_cpu_gpu_kernels.cpp,iris_default_math_openmp_kernels.cpp", false);
   EnvironmentSet("DEFAULT_CUDA_KERNELS", "default_cpu_gpu_kernels.cpp,iris_default_math_cuda_kernels.cu", false);
   EnvironmentSet("DEFAULT_HIP_KERNELS",  "default_cpu_gpu_kernels.cpp,iris_default_math_hip_kernels.hip.cpp", false);

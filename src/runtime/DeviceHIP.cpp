@@ -751,22 +751,61 @@ int DeviceHIP::KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bo
       return IRIS_ERROR;
   }
   hipFunction_t* hipkernel = (hipFunction_t*) kernel_bin;
-  hipError_t err = ld_->hipModuleGetFunction(hipkernel, module_, name);
-  if (report_error) _hiperror(err);
-  if (err != hipSuccess){
-      if (report_error) {
-          _error("HIP kernel:%s not found !", name);
-          platform_obj()->IncrementErrorCount();
+  vector<string> kernel_parts;
+  Utils::ReadVector(kernel_parts, name, " :");
+  if (kernel_parts.size() <= 1) {
+      hipError_t err = ld_->hipModuleGetFunction(hipkernel, module_, name);
+      if (report_error) _hiperror(err);
+      if (err != hipSuccess){
+          if (report_error) {
+              _error("HIP kernel:%s not found !", name);
+              platform_obj()->IncrementErrorCount();
+          }
+          return IRIS_ERROR;
       }
-      return IRIS_ERROR;
+      char name_off[256];
+      memset(name_off, 0, sizeof(name_off));
+      sprintf(name_off, "%s_with_offsets", name);
+      hipFunction_t hipkernel_off;
+      err = ld_->hipModuleGetFunction(&hipkernel_off, module_, name_off);
+      if (err == hipSuccess) {
+          kernels_offs_.insert(std::pair<hipFunction_t, hipFunction_t>(*hipkernel, hipkernel_off));
+      }
   }
-  char name_off[256];
-  memset(name_off, 0, sizeof(name_off));
-  sprintf(name_off, "%s_with_offsets", name);
-  hipFunction_t hipkernel_off;
-  err = ld_->hipModuleGetFunction(&hipkernel_off, module_, name_off);
-  if (err == hipSuccess) {
-      kernels_offs_.insert(std::pair<hipFunction_t, hipFunction_t>(*hipkernel, hipkernel_off));
+  else {
+    char *runtime_path = NULL;
+    Platform::GetPlatform()->EnvironmentGet("RUNTIME_KERNELS_PATH", &runtime_path, NULL);
+    string mod_name = runtime_path + kernel_parts[0] + ".hip";
+    string kname = kernel_parts[1];
+    if (runtime_modules_.find(mod_name) == runtime_modules_.end()) {
+        char* path = (char *)mod_name.c_str();
+        char* src = NULL;
+        size_t srclen = 0;
+        if (Utils::ReadFile(path, &src, &srclen) == IRIS_ERROR) {
+          _error("dev[%d][%s] has no kernel file [%s]", devno_, name_, path);
+          //err = ld_->cuMemFree(0);
+          //_cuerror(err);
+          return IRIS_SUCCESS;
+        }
+        hipModule_t run_module;
+        _trace("loading dev[%d][%s] kernels[%s]", devno_, name_, path);
+        hipError_t err = ld_->hipModuleLoad(&run_module, path);
+        if (err != hipSuccess) {
+            if (report_error) _hiperror(err);
+            return IRIS_ERROR;
+        }
+        runtime_modules_.insert(make_pair(mod_name, run_module ));
+    }
+    hipModule_t run_module = runtime_modules_[mod_name];
+    hipError_t err = ld_->hipModuleGetFunction(hipkernel, run_module, kname.c_str());
+    if (report_error) _hiperror(err);
+    if (err != hipSuccess) {
+        if (report_error) {
+            _error("HIP kernel:%s not found in runtime module:%s!", kname.c_str(), mod_name.c_str());
+            platform_obj()->IncrementErrorCount();
+        }
+        return IRIS_ERROR;
+    }
   }
   return IRIS_SUCCESS;
 }

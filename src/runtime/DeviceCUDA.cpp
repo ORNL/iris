@@ -1424,7 +1424,9 @@ int DeviceCUDA::KernelGet(Kernel *kernel, void** kernel_bin, const char* name, b
       }
   }
   else {
-    string mod_name = kernel_parts[0] + ".ptx";
+    char *runtime_path = NULL;
+    Platform::GetPlatform()->EnvironmentGet("RUNTIME_KERNELS_PATH", &runtime_path, NULL);
+    string mod_name = runtime_path + kernel_parts[0] + ".ptx";
     string kname = kernel_parts[1];
     if (runtime_modules_.find(mod_name) == runtime_modules_.end()) {
         char* path = (char *)mod_name.c_str();
@@ -1440,7 +1442,7 @@ int DeviceCUDA::KernelGet(Kernel *kernel, void** kernel_bin, const char* name, b
         _trace("loading dev[%d][%s] kernels[%s]", devno_, name_, path);
         CUresult err = ld_->cuModuleLoad(&run_module, path);
         if (err != CUDA_SUCCESS) {
-            _cuerror(err);
+            if (report_error) _cuerror(err);
             return IRIS_ERROR;
         }
         runtime_modules_.insert(make_pair(mod_name, run_module ));
