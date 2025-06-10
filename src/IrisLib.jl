@@ -696,6 +696,10 @@ end
     return ccall(Libdl.dlsym(lib, :iris_task_get_cmd_kernel), Ptr{Cvoid}, (IrisTask,), task)
 end
 
+@inline function iris_mem_get_full_size(mem::IrisMem)::Csize_t
+    return ccall(Libdl.dlsym(lib, :iris_mem_get_full_size), Csize_t, (IrisMem,), mem)
+end
+
 @inline function iris_mem_get_size(mem::IrisMem)::Csize_t
     return ccall(Libdl.dlsym(lib, :iris_mem_get_size), Csize_t, (IrisMem,), mem)
 end
@@ -990,6 +994,11 @@ end
 
 @inline function iris_dmem_get_host_size(brs_mem::IrisMem)::Ptr{Csize_t}
     func = Libdl.dlsym(lib, :iris_dmem_get_host_size)
+    return ccall(func, Ptr{Csize_t}, (IrisMem,), brs_mem)
+end
+
+@inline function iris_dmem_get_dev_full_size(brs_mem::IrisMem)::Ptr{Csize_t}
+    func = Libdl.dlsym(lib, :iris_dmem_get_dev_full_size)
     return ccall(func, Ptr{Csize_t}, (IrisMem,), brs_mem)
 end
 
