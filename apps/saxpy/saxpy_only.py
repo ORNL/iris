@@ -16,8 +16,8 @@ s0 = np.arange(SIZE, dtype=np.float32)
 print('X', x)
 print('Y', y)
 
-task0 = iris.task("runtime_kernel:saxpy", 1, [], [SIZE], [], [
-        (s0, iris.iris_w, iris.iris_flush),
+task0 = iris.task("kernel:saxpy", 1, [], [SIZE], [], [
+        (s0, iris.iris_flush),
         A, 
         (x, iris.iris_r), 
         (y, iris.iris_r)
