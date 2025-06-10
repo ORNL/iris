@@ -80,11 +80,156 @@ end
 function __iris_dot_s_v(i, x, Y)
     @inbounds x * Y[i]
 end
+function __iris_jacc_log(i, j, Y, X)
+    @inbounds Y[i,j] = Base.log(X[i,j])
+end
+function __iris_jacc_log(i, j, Y, b::Int64, X)
+    @inbounds Y[i,j] = Base.log(b, X[i,j])
+end
+function __iris_jacc_log(i, j, Y, B, X)
+    @inbounds Y[i,j] = Base.log(B[i], X[i,j])
+end
+function __iris_jacc_ldexp(i, j, Y, X, n::Int64)
+    @inbounds Y[i,j] = Base.ldexp(X[i,j], n)
+end
+function __iris_jacc_ldexp(i, j, Y, X, n::Int64, alpha)
+    @inbounds Y[i,j] = alpha * Base.ldexp(X[i,j], n)
+end
+function __iris_jacc_ldexp(i, j, Y, X, N::AbstractArray{Int64})
+    @inbounds Y[i,j] = Base.ldexp(X[i,j], N[i])
+end
+function __iris_jacc_ldexp(i, j, Y, X, N::AbstractArray{Int64}, alpha)
+    @inbounds Y[i,j] = alpha * Base.ldexp(X[i,j], N[i])
+end
+function __iris_jacc_equal_v_v(i, j, Z, X, Y)
+    @inbounds X[i,j] == Y[i,j]
+end
+function __iris_jacc_not_equal_v_v(i, j, Z, X, Y)
+    @inbounds X[i,j] != Y[i,j]
+end
+function __iris_jacc_add_v_v(i, j, Z, X, Y)
+    @inbounds Z[i,j] = X[i,j] + Y[i,j]
+end
+function __iris_jacc_sub_v_v(i, j, Z, X, Y)
+    @inbounds Z[i,j] = X[i,j] - Y[i,j]
+end
+function __iris_jacc_mul_v_v(i, j, Z, X, Y)
+    @inbounds Z[i,j] = X[i,j] * Y[i,j]
+end
+function __iris_jacc_div_v_v(i, j, Z, X, Y)
+    @inbounds Z[i,j] = X[i,j] / Y[i,j]
+end
+function __iris_jacc_add_v_s(i, j, Z, X, Ys)
+    @inbounds Z[i,j] = X[i,j] + Ys
+end
+function __iris_jacc_sub_v_s(i, j, Z, X, Ys)
+    @inbounds Z[i,j] = X[i,j] - Ys
+end
+function __iris_jacc_mul_v_s(i, j, Z, X, Ys)
+    @inbounds Z[i,j] = X[i,j] * Ys
+end
+function __iris_jacc_div_v_s(i, j, Z, X, Ys)
+    @inbounds Z[i,j] = X[i,j] / Ys
+end
+function __iris_jacc_add_s_v(i, j, Z, Xs, Y)
+    @inbounds Z[i,j] = Xs + Y[i,j]
+end
+function __iris_jacc_sub_s_v(i, j, Z, Xs, Y)
+    @inbounds Z[i,j] = Xs - Y[i,j]
+end
+function __iris_jacc_mul_s_v(i, j, Z, Xs, Y)
+    @inbounds Z[i,j] = Xs * Y[i,j]
+end
+function __iris_jacc_div_s_v(i, j, Z, Xs, Y)
+    @inbounds Z[i,j] = Xs / Y[i,j]
+end
+function __iris_dot_v_v(i, j, X, Y)
+    @inbounds X[i,j] * Y[i,j]
+end
+function __iris_dot_v_s(i, j, X, y)
+    @inbounds X[i,j] * y
+end
+function __iris_dot_s_v(i, j, x, Y)
+    @inbounds x * Y[i,j]
+end
+function __iris_jacc_log(i, j, k, Y, X)
+    @inbounds Y[i,j,k] = Base.log(X[i,j,k])
+end
+function __iris_jacc_log(i, j, k, Y, b::Int64, X)
+    @inbounds Y[i,j,k] = Base.log(b, X[i,j,k])
+end
+function __iris_jacc_log(i, j, k, Y, B, X)
+    @inbounds Y[i,j,k] = Base.log(B[i], X[i,j,k])
+end
+function __iris_jacc_ldexp(i, j, k, Y, X, n::Int64)
+    @inbounds Y[i,j,k] = Base.ldexp(X[i,j,k], n)
+end
+function __iris_jacc_ldexp(i, j, k, Y, X, n::Int64, alpha)
+    @inbounds Y[i,j,k] = alpha * Base.ldexp(X[i,j,k], n)
+end
+function __iris_jacc_ldexp(i, j, k, Y, X, N::AbstractArray{Int64})
+    @inbounds Y[i,j,k] = Base.ldexp(X[i,j,k], N[i])
+end
+function __iris_jacc_ldexp(i, j, k, Y, X, N::AbstractArray{Int64}, alpha)
+    @inbounds Y[i,j,k] = alpha * Base.ldexp(X[i,j,k], N[i])
+end
+function __iris_jacc_equal_v_v(i, j, k, Z, X, Y)
+    @inbounds X[i,j,k] == Y[i,j,k]
+end
+function __iris_jacc_not_equal_v_v(i, j, k, Z, X, Y)
+    @inbounds X[i,j,k] != Y[i,j,k]
+end
+function __iris_jacc_add_v_v(i, j, k, Z, X, Y)
+    @inbounds Z[i,j,k] = X[i,j,k] + Y[i,j,k]
+end
+function __iris_jacc_sub_v_v(i, j, k, Z, X, Y)
+    @inbounds Z[i,j,k] = X[i,j,k] - Y[i,j,k]
+end
+function __iris_jacc_mul_v_v(i, j, k, Z, X, Y)
+    @inbounds Z[i,j,k] = X[i,j,k] * Y[i,j,k]
+end
+function __iris_jacc_div_v_v(i, j, k, Z, X, Y)
+    @inbounds Z[i,j,k] = X[i,j,k] / Y[i,j,k]
+end
+function __iris_jacc_add_v_s(i, j, k, Z, X, Ys)
+    @inbounds Z[i,j,k] = X[i,j,k] + Ys
+end
+function __iris_jacc_sub_v_s(i, j, k, Z, X, Ys)
+    @inbounds Z[i,j,k] = X[i,j,k] - Ys
+end
+function __iris_jacc_mul_v_s(i, j, k, Z, X, Ys)
+    @inbounds Z[i,j,k] = X[i,j,k] * Ys
+end
+function __iris_jacc_div_v_s(i, j, k, Z, X, Ys)
+    @inbounds Z[i,j,k] = X[i,j,k] / Ys
+end
+function __iris_jacc_add_s_v(i, j, k, Z, Xs, Y)
+    @inbounds Z[i,j,k] = Xs + Y[i,j,k]
+end
+function __iris_jacc_sub_s_v(i, j, k, Z, Xs, Y)
+    @inbounds Z[i,j,k] = Xs - Y[i,j,k]
+end
+function __iris_jacc_mul_s_v(i, j, k, Z, Xs, Y)
+    @inbounds Z[i,j,k] = Xs * Y[i,j,k]
+end
+function __iris_jacc_div_s_v(i, j, k, Z, Xs, Y)
+    @inbounds Z[i,j,k] = Xs / Y[i,j,k]
+end
+function __iris_dot_v_v(i, j, k, X, Y)
+    @inbounds X[i,j,k] * Y[i,j,k]
+end
+function __iris_dot_v_s(i, j, k, X, y)
+    @inbounds X[i,j,k] * y
+end
+function __iris_dot_s_v(i, j, k, x, Y)
+    @inbounds x * Y[i,j,k]
+end
+
 function __arith_kernel_v(kernel, a::IrisHRT.IrisMem; task=nothing, submit=true, wait=true, flush=false, jacc=true, result=nothing, eargs...)
     kernel_name = "__iris_jacc_" * kernel * "_v"
     #kernel_fn = IrisHRT.getFunction(kernel_name)
     #println(Core.stdout, "F call: ", kernel_name, " f:", kernel_fn)
-    sizes = IrisHRT.host_size(a)
+    sizes = IrisHRT.size(a)
     total_size = prod(sizes)
     jtype = IrisHRT.get_julia_type(a)
     type_str = IrisHRT.iris_get_type_string(a)
@@ -109,11 +254,15 @@ function __arith_kernel_v(kernel, a::IrisHRT.IrisMem; task=nothing, submit=true,
         push!(out_m, out)
     end
     if jacc
-        task = IrisHRT.parallel_for(Int64(total_size), kernel_name, out, a; in=[a], out=out_m, flush=flush_m, task=task, submit=submit, wait=wait, eargs...)
+        task = IrisHRT.parallel_for(sizes, kernel_name, out, a; in=[a], out=out_m, flush=flush_m, task=task, submit=submit, wait=wait, eargs...)
     else
+        s = sizes
+        if length(s) == 1
+            s = sizes[1]
+        end
         task = IrisHRT.task(in=[a], out=out_m, flush=flush_m, task=task, submit=submit, wait=wait, 
                 kernel=kernel_name,
-                args=[Int64(total_size), out, a],
+                args=[s, out, a],
                 eargs...)
     end
     if result == nothing
@@ -125,7 +274,7 @@ end
 function __arith_kernel_v_s(kernel, a::IrisHRT.IrisMem, b; task=nothing, submit=true, wait=true, flush=false, jacc=true, result=nothing, eargs...)
     kernel_name = "__iris_jacc_" * kernel * "_v_s"
     #kernel_fn = IrisHRT.getFunction("__iris_jacc_" * kernel * "_v_s")
-    sizes = IrisHRT.host_size(a)
+    sizes = IrisHRT.size(a)
     total_size = prod(sizes)
     jtype = IrisHRT.get_julia_type(a)
     type_str = IrisHRT.iris_get_type_string(a)
@@ -150,11 +299,15 @@ function __arith_kernel_v_s(kernel, a::IrisHRT.IrisMem, b; task=nothing, submit=
         push!(out_m, out)
     end
     if jacc
-        task = IrisHRT.parallel_for(Int64(total_size), kernel_name, out, a, b; in=[a], out=out_m, flush=flush_m, task=task, submit=submit, wait=wait, eargs...)
+        task = IrisHRT.parallel_for(sizes, kernel_name, out, a, b; in=[a], out=out_m, flush=flush_m, task=task, submit=submit, wait=wait, eargs...)
     else
+        s = sizes
+        if length(s) == 1
+            s = sizes[1]
+        end
         task = IrisHRT.task(in=[a], out=out_m, flush=flush_m, task=task, submit=submit, wait=wait, 
                 kernel=kernel_name,
-                args=[Int64(total_size), out, a, b],
+                args=[s, out, a, b],
                 eargs...)
     end
     if result == nothing
@@ -166,7 +319,7 @@ end
 function __arith_kernel_v_s_s(kernel, a::IrisHRT.IrisMem, scalar1, scalar2; task=nothing, submit=true, wait=true, flush=false, jacc=true, result=nothing, eargs...)
     kernel_name = "__iris_jacc_" * kernel * "_v_s_s"
     #kernel_fn = IrisHRT.getFunction("__iris_jacc_" * kernel * "_v_s_s")
-    sizes = IrisHRT.host_size(a)
+    sizes = IrisHRT.size(a)
     total_size = prod(sizes)
     jtype = IrisHRT.get_julia_type(a)
     type_str = IrisHRT.iris_get_type_string(a)
@@ -191,11 +344,15 @@ function __arith_kernel_v_s_s(kernel, a::IrisHRT.IrisMem, scalar1, scalar2; task
         push!(out_m, out)
     end
     if jacc
-        task = IrisHRT.parallel_for(Int64(total_size), kernel_name, out, a, scalar1, scalar2; in=[a], out=out_m, flush=flush_m, task=task, submit=submit, wait=wait, eargs...)
+        task = IrisHRT.parallel_for(sizes, kernel_name, out, a, scalar1, scalar2; in=[a], out=out_m, flush=flush_m, task=task, submit=submit, wait=wait, eargs...)
     else
+        s = sizes
+        if length(s) == 1
+            s = sizes[1]
+        end
         task = IrisHRT.task(in=[a], out=out_m, flush=flush_m, task=task, submit=submit, wait=wait, 
                 kernel=kernel_name,
-                args=[Int64(total_size), out, a, scalar1, scalar2],
+                args=[s, out, a, scalar1, scalar2],
                 eargs...)
     end
     if result == nothing
@@ -207,7 +364,7 @@ end
 function __arith_kernel_v_v(kernel, a::IrisHRT.IrisMem, b::IrisHRT.IrisMem; task=nothing, submit=true, wait=true, flush=false, jacc=true, result=nothing, parallel_for=true, parallel_reduce=false, parallel_reduce_op=+, eargs...)
     kernel_name = "__iris_jacc_" * kernel * "_v_v"
     #kernel_fn = IrisHRT.getFunction("__iris_jacc_" * kernel * "_v_v")
-    sizes = IrisHRT.host_size(a)
+    sizes = IrisHRT.size(a)
     total_size = prod(sizes)
     jtype = IrisHRT.get_julia_type(a)
     type_str = IrisHRT.iris_get_type_string(a)
@@ -237,14 +394,18 @@ function __arith_kernel_v_v(kernel, a::IrisHRT.IrisMem, b::IrisHRT.IrisMem; task
     #println(Core.stdout, "sizes: ", sizes, " total_size:", total_size, " type:", jtype, " wait:", wait, " submit:", submit, " task:", task)
     if jacc
         if parallel_for
-            task = IrisHRT.parallel_for(Int64(total_size), kernel_name, out, a, b; in=[a,b], out=out_m, flush=flush_m, task=task, submit=submit, wait=wait, eargs...)
+            task = IrisHRT.parallel_for(sizes, kernel_name, out, a, b; in=[a,b], out=out_m, flush=flush_m, task=task, submit=submit, wait=wait, eargs...)
         else
-            task = IrisHRT.parallel_reduce(Int64(total_size), parallel_reduce_op, kernel_name, a, b; in=[a,b], out=out_m, result=out, flush=flush_m, task=task, submit=submit, wait=wait, eargs...)
+            task = IrisHRT.parallel_reduce(sizes, parallel_reduce_op, kernel_name, a, b; in=[a,b], out=out_m, result=out, flush=flush_m, task=task, submit=submit, wait=wait, eargs...)
         end
     else
+        s = sizes
+        if length(s) == 1
+            s = sizes[1]
+        end
         task = IrisHRT.task(in=[a, b], out=out_m, flush=flush_m, task=task, submit=submit, wait=wait, 
                 kernel=kernel_name,
-                args=[Int64(total_size), out, a, b],
+                args=[s, out, a, b],
                 eargs...)
     end
     if result == nothing
@@ -256,7 +417,7 @@ end
 function __arith_kernel_v_v_s(kernel, a::IrisHRT.IrisMem, b::IrisHRT.IrisMem, scalar; task=nothing, submit=true, wait=true, flush=false, jacc=true, result=nothing, eargs...)
     kernel_name = "__iris_jacc_" * kernel * "_v_v_s"
     #kernel_fn = IrisHRT.getFunction("__iris_jacc_" * kernel * "_v_v_s")
-    sizes = IrisHRT.host_size(a)
+    sizes = IrisHRT.size(a)
     total_size = prod(sizes)
     jtype = IrisHRT.get_julia_type(a)
     type_str = IrisHRT.iris_get_type_string(a)
@@ -280,11 +441,15 @@ function __arith_kernel_v_v_s(kernel, a::IrisHRT.IrisMem, b::IrisHRT.IrisMem, sc
     end
     #println(Core.stdout, "sizes: ", sizes, " total_size:", total_size, " type:", jtype, " wait:", wait, " submit:", submit, " task:", task)
     if jacc
-        task = IrisHRT.parallel_for(Int64(total_size), kernel_name, out, a, b, scalar; in=[a,b], out=out_m, flush=flush_m, task=task, submit=submit, wait=wait, eargs...)
+        task = IrisHRT.parallel_for(sizes, kernel_name, out, a, b, scalar; in=[a,b], out=out_m, flush=flush_m, task=task, submit=submit, wait=wait, eargs...)
     else
+        s = sizes
+        if length(s) == 1
+            s = sizes[1]
+        end
         task = IrisHRT.task(in=[a, b], out=out_m, flush=flush_m, task=task, submit=submit, wait=wait, 
                 kernel=kernel_name,
-                args=[Int64(total_size), out, a, b, scalar],
+                args=[s, out, a, b, scalar],
                 eargs...)
     end
     if result == nothing
@@ -296,7 +461,7 @@ end
 function __arith_kernel_v_v_s_s(kernel, a::IrisHRT.IrisMem, b::IrisHRT.IrisMem, scalar1, scalar2; task=nothing, submit=true, wait=true, flush=false, jacc=true, result=nothing, eargs...)
     kernel_name = "__iris_jacc_" * kernel * "_v_v_s_s"
     #kernel_fn = IrisHRT.getFunction("__iris_jacc_" * kernel *"_v_v_s_s")
-    sizes = IrisHRT.host_size(a)
+    sizes = IrisHRT.size(a)
     total_size = prod(sizes)
     jtype = IrisHRT.get_julia_type(a)
     type_str = IrisHRT.iris_get_type_string(a)
@@ -320,11 +485,15 @@ function __arith_kernel_v_v_s_s(kernel, a::IrisHRT.IrisMem, b::IrisHRT.IrisMem, 
     end
     #println(Core.stdout, "sizes: ", sizes, " total_size:", total_size, " type:", jtype, " wait:", wait, " submit:", submit, " task:", task)
     if jacc
-        task = IrisHRT.parallel_for(Int64(total_size), kernel_name, out, a, b, scalar1, scalar2; in=[a,b], out=out_m, flush=flush_m, task=task, submit=submit, wait=wait, eargs...)
+        task = IrisHRT.parallel_for(sizes, kernel_name, out, a, b, scalar1, scalar2; in=[a,b], out=out_m, flush=flush_m, task=task, submit=submit, wait=wait, eargs...)
     else
+        s = sizes
+        if length(s) == 1
+            s = sizes[1]
+        end
         task = IrisHRT.task(in=[a, b], out=out_m, flush=flush_m, task=task, submit=submit, wait=wait, 
                 kernel=kernel_name,
-                args=[Int64(total_size), out, a, b, scalar1, scalar2],
+                args=[s, out, a, b, scalar1, scalar2],
                 eargs...)
     end
     if result == nothing
@@ -336,7 +505,7 @@ end
 function __arith_kernel_s_v(kernel, scalar, b::IrisHRT.IrisMem; task=nothing, submit=true, wait=true, flush=false, jacc=true, result=nothing, eargs...)
     kernel_name = "__iris_jacc_" * kernel * "_s_v"
     #kernel_fn = IrisHRT.getFunction("__iris_jacc_" * kernel * "_s_v")
-    sizes = IrisHRT.host_size(b)
+    sizes = IrisHRT.size(b)
     total_size = prod(sizes)
     jtype = IrisHRT.get_julia_type(b)
     type_str = IrisHRT.iris_get_type_string(b)
@@ -361,11 +530,15 @@ function __arith_kernel_s_v(kernel, scalar, b::IrisHRT.IrisMem; task=nothing, su
         push!(out_m, out)
     end
     if jacc
-        task = IrisHRT.parallel_for(Int64(total_size), kernel_name, out, scalar, b; in=[b], out=out_m, flush=flush_m, task=task, submit=submit, wait=wait, eargs...)
+        task = IrisHRT.parallel_for(sizes, kernel_name, out, scalar, b; in=[b], out=out_m, flush=flush_m, task=task, submit=submit, wait=wait, eargs...)
     else
+        s = sizes
+        if length(s) == 1
+            s = sizes[1]
+        end
         task = IrisHRT.task(in=[b], out=out_m, flush=flush_m, task=task, submit=submit, wait=wait, 
                 kernel=kernel_name,
-                args=[Int64(total_size), out, scalar, b],
+                args=[s, out, scalar, b],
                 eargs...)
     end
     if result == nothing
