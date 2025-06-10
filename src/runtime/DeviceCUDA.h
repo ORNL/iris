@@ -91,6 +91,7 @@ private:
   CUevent  single_start_time_event_;
   //CUevent  start_time_event_[IRIS_MAX_DEVICE_NQUEUES];
   CUmodule module_;
+  std::map<string, CUmodule> runtime_modules_;
   unsigned int shared_mem_bytes_;
   unsigned int shared_mem_offs_[IRIS_MAX_KERNEL_NARGS];
   void* params_[IRIS_MAX_KERNEL_NARGS];
