@@ -1018,8 +1018,13 @@ class task:
                 if hasattr(pobj[0], 'handle') and isinstance(pobj[0].handle, iris_mem):
                     self.params.append(pobj[0])
                     cparams[i] = ctypes.addressof(pobj[0].handle)
-                    params_info.append(pobj[1])
+                    if len(pobj) == 2 and pobj[1] == iris_flush:
+                        params_info.append(iris_w)
+                    else:
+                        params_info.append(pobj[1])
                     if len(pobj) == 3 and pobj[2] == iris_flush:
+                        flush_objs.append(pobj[0].handle)
+                    if len(pobj) == 2 and pobj[1] == iris_flush:
                         flush_objs.append(pobj[0].handle)
                 else:
                     # (NUMPY Object, modes of use, <optional flush>)
@@ -1028,7 +1033,12 @@ class task:
                     dobj = dmem(host)
                     self.params.append(dobj)
                     cparams[i] = ctypes.addressof(dobj.handle)
-                    params_info.append(pobj[1])
+                    if len(pobj) == 2 and pobj[1] == iris_flush:
+                        params_info.append(iris_w)
+                    else:
+                        params_info.append(pobj[1])
+                    if len(pobj) == 2 and pobj[1] == iris_flush:
+                        flush_objs.append(dobj.handle)
                     if len(pobj) == 3 and pobj[2] == iris_flush:
                         flush_objs.append(dobj.handle)
             elif pobj == None:
