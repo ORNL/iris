@@ -46,8 +46,8 @@ IrisHRT.finalize()
 
 @testset "reshape_region_2d_2" begin
     @test A_host ==  [2 11; 4 13; 6 15; 8 17] 
-    @test ARs1_host == [2; 4; 6; 8;;]
-    @test ARs2_host == [11; 13; 15; 17;;] 
+    @test ARs1_host == [2, 4, 6, 8]
+    @test ARs2_host == [11, 13, 15, 17] 
 end
 
 

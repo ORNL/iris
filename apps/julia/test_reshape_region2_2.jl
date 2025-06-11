@@ -36,8 +36,8 @@ ARs2_host = IrisHRT.valid_host(ARs[2])
 @testset "reshape_region2_2" begin
     @test A_host == [1 10 9 26; 2 12 10 28; 3 14 11 30; 4 16 12 32]
     @test AA_host == [1 10; 2 12; 3 14; 4 16;;; 9 26; 10 28; 11 30; 12 32]
-    @test ARs1_host == [1; 2; 3; 4;;; 9; 10; 11; 12]
-    @test ARs2_host == [10; 12; 14; 16;;; 26; 28; 30; 32]
+    @test ARs1_host == [1 9; 2 10; 3 11; 4 12]
+    @test ARs2_host == [10 26; 12 28; 14 30; 16 32]
 end
 
 IrisHRT.finalize()

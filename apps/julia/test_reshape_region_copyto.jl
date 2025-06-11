@@ -81,13 +81,13 @@ CRs2_host = IrisHRT.valid_host(CRs[2])
 IrisHRT.finalize()
 
 @testset "reshape_region_copyto" begin
-	@test CRs1_host == [1 5]
-	@test CRs2_host == [4 12]
+	@test CRs1_host == [1, 5]
+	@test CRs2_host == [4, 12]
 	@test DB == [10 14; 12 16]
 	@test B == [11 15; 13 17]
     @test A_host ==  [2 11; 4 13; 6 15; 8 17] 
-    @test ARs1_host == [2; 4; 6; 8;;]
-    @test ARs2_host == [11; 13; 15; 17;;] 
+    @test ARs1_host == [2, 4, 6, 8]
+    @test ARs2_host == [11, 13, 15, 17] 
 end
 
 
