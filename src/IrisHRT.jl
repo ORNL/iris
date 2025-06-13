@@ -121,6 +121,12 @@ end
 function __iris_jacc_elem_access(i, x)
     @inbounds x[i]
 end
+function __iris_jacc_elem_access(i, j, x)
+    @inbounds x[i,j]
+end
+function __iris_jacc_elem_access(i, j, k, x)
+    @inbounds x[i,j,k]
+end
 const __iris_jacc_add = __iris_jacc_elem_access
 const __iris_jacc_munus = __iris_jacc_elem_access
 const __iris_jacc_mul = __iris_jacc_elem_access
@@ -438,7 +444,7 @@ module IrisHRT
         return Int32(out)
     end
 
-    function kernel_julia_wrapper(task_id::Culong, julia_kernel_type::Cint, target::Cint, devno::Cint, ctx::Ptr{Cvoid}, async_flag_int::Cint, stream_index::Cint, stream::Ptr{Ptr{Cvoid}}, nstreams::Cint, args_type::Ptr{Cint}, args::Ptr{Ptr{Cvoid}}, param_size::Ptr{Csize_t}, param_dim_size::Ptr{Csize_t}, nparams::Cint, c_gws::Ptr{Csize_t}, c_blocks::Ptr{Csize_t}, c_threads::Ptr{Csize_t}, shared_mem_size::Csize_t, dim::Cint, kernel_name::Ptr{Cchar})::Cint
+    function kernel_julia_wrapper(task_id::Culong, julia_kernel_type::Cint, target::Cint, devno::Cint, ctx::Ptr{Cvoid}, async_flag_int::Cint, stream_index::Cint, stream::Ptr{Ptr{Cvoid}}, nstreams::Cint, args_type::Ptr{Cint}, args::Ptr{Ptr{Cvoid}}, param_size::Ptr{Csize_t}, param_dim_size::Ptr{Csize_t}, param_dim_full_size::Ptr{Csize_t}, param_dim_off::Ptr{Csize_t}, nparams::Cint, c_gws::Ptr{Csize_t}, c_blocks::Ptr{Csize_t}, c_threads::Ptr{Csize_t}, shared_mem_size::Csize_t, dim::Cint, kernel_name::Ptr{Cchar})::Cint
         # Array to hold the converted Julia values
         #julia_args = convert_args(args_type, args, nparams, 2)
         #iris_println("nstreams: $nstreams, steram:$stream ctx:$ctx stream_index:$stream_index")
@@ -463,6 +469,8 @@ module IrisHRT
             #GC.gc()
         end
         #iris_println("args_type:$args_type args:$args nparams:$nparams")
+        func_name = unsafe_string(kernel_name)
+        #println(Core.stdout, " ------ inside : ", func_name)
         #iris_print_array(param_size, Int(nparams))
         # Iterate through each argument
         dev_ptr_index = []
@@ -474,15 +482,30 @@ module IrisHRT
             element_size = Int((single_arg_type >> 8) & 0xFF)
             param_dim = Int(single_arg_type & 0xFF)
             full_size = UInt64(unsafe_load(param_size + i*sizeof(Csize_t)))
+            full_size_dims = []
+            for d in 0:(param_dim - 1)
+                value = unsafe_load(param_dim_full_size + i*sizeof(Csize_t)*DMEM_MAX_DIM + d * sizeof(Csize_t)) + 0
+                push!(full_size_dims, Int64(value))
+            end
             size_dims = [] 
             for d in 0:(param_dim - 1)
                 value = unsafe_load(param_dim_size + i*sizeof(Csize_t)*DMEM_MAX_DIM + d * sizeof(Csize_t)) + 0
                 push!(size_dims, Int64(value))
             end
+            off_dims = [] 
+            for d in 0:(param_dim - 1)
+                value = unsafe_load(param_dim_off + i*sizeof(Csize_t)*DMEM_MAX_DIM + d * sizeof(Csize_t)) + 0
+                push!(off_dims, Int64(value))
+            end
+            off_dims = remove_trailing_ones2(off_dims)
+            off_dims = Tuple(off_dims)
             size_dims = remove_trailing_ones2(size_dims)
             size_dims = Tuple(size_dims)
+            full_size_dims = remove_trailing_ones2(full_size_dims)
+            full_size_dims = Tuple(full_size_dims)
             # Load the pointer to the actual argument
             arg_ptr = unsafe_load(Ptr{Ptr{Cvoid}}(args + i*sizeof(Ptr{Cvoid})))
+            arg_original_ptr = arg_ptr
             #iris_println("I:$i type:$current_type ptr:$arg_ptr is_pointer:$is_pointer element_size:$element_size dim:$dim Size:$full_size SizeDim:$size_dims")
             # Convert based on the type
             if is_pointer != Int(iris_pointer)
@@ -557,21 +580,44 @@ module IrisHRT
                     #push!(julia_args, jptr)
                     if Int(target) == Int(iris_cuda)
                         arg_ptr = cuda_reinterpret(task_id, i-start_index+1, arg_ptr, current_type)
-                        #println(Core.stdout, "Index: $i target arg:$arg_ptr size:$size_dims")
-                        arg_ptr = unsafe_wrap(MyCUDA.CuArray, arg_ptr, size_dims, own=false)
+                        #println(Core.stdout, "Index: $i target arg:$arg_ptr size:$full_size_dims")
+                        arg_ptr = unsafe_wrap(MyCUDA.CuArray, arg_ptr, full_size_dims, own=false)
                         #iris_println("After Pointer $arg_ptr")
                     elseif Int(target) == Int(iris_hip)
                         arg_ptr = ptr_reinterpret(task_id, i-start_index+1, 0, arg_ptr, current_type)
-                        #iris_println("Index: $i target arg:$arg_ptr size:$size_dims")
-                        arg_ptr = unsafe_wrap(MyAMDGPU.ROCArray, arg_ptr, size_dims, lock=false)
+                        #iris_println("Index: $i target arg:$arg_ptr size:$full_size_dims")
+                        arg_ptr = unsafe_wrap(MyAMDGPU.ROCArray, arg_ptr, full_size_dims, lock=false)
                         #iris_println("After Pointer $arg_ptr")
                     elseif Int(target) == Int(iris_openmp)
                         arg_ptr = ptr_reinterpret(task_id, i-start_index+1, 0, arg_ptr, current_type)
-                        #iris_println("Index: $i target arg:$arg_ptr size:$size_dims")
-                        arg_ptr = unsafe_wrap(Array, arg_ptr, size_dims, own=false)
+                        #iris_println("Index: $i target arg:$arg_ptr size:$full_size_dims")
+                        arg_ptr = unsafe_wrap(Array, arg_ptr, full_size_dims, own=false)
                         #iris_println("After Pointer $arg_ptr")
                     else
                         iris_println("[Julia-IrisHRT-Error] Unknown target to handle arguments")
+                    end
+                    if full_size_dims != size_dims
+                        prev_size = size(arg_ptr)
+                        arg_ptr = get_tile(arg_ptr, off_dims, size_dims) 
+                        if false && task_id == 431530
+                            later_size = size(arg_ptr)
+                            j_threads = []
+                            j_blocks = []
+                            j_gws = []
+                            # Iterate through each argument
+                            #println(Core.stdout, " dim:", dim)
+                            for i in 0:(dim - 1)
+                                # Load the type of the current argument
+                                push!(j_gws, UInt64(unsafe_load(c_gws+i*sizeof(Csize_t)))+0)
+                                push!(j_threads, UInt64(unsafe_load(c_threads+i*sizeof(Csize_t)))+0)
+                                push!(j_blocks, UInt64(unsafe_load(c_blocks+i*sizeof(Csize_t)))+0)
+                            end
+                            j_gws = Tuple(j_gws)
+                            j_threads = Tuple(j_threads)
+                            j_blocks = Tuple(j_blocks)
+                            func_name = unsafe_string(kernel_name)
+                            println(Core.stdout, " arg: off_dims:", off_dims, " size:", size_dims, " full_size:", full_size_dims, " task id:", task_id, " gws:", j_gws, " threads:", j_threads, " blocks:", j_blocks, " prev_size:", prev_size, " later_size:", later_size, "ptr:", arg_original_ptr, " kernel:", func_name)
+                        end
                     end
                     push!(julia_args, arg_ptr)
                 catch e 
@@ -632,7 +678,7 @@ module IrisHRT
             if julia_kernel_type == iris_julia_kernel_abstraction 
                 call_cuda_kernel_ka(julia_kernel_type, devno, func_name, j_threads, j_blocks, cu_ctx, cu_stream, julia_args, b_async_flag)
             elseif (julia_kernel_type & 0xFFFF) == iris_julia_jacc
-                call_cuda_kernel_jacc(julia_kernel_type, devno, dim, func_name, j_gws, j_threads, j_blocks, cu_ctx, cu_stream, julia_args, b_async_flag, shared_mem_size)
+                call_cuda_kernel_jacc(task_id, julia_kernel_type, devno, dim, func_name, j_gws, j_threads, j_blocks, cu_ctx, cu_stream, julia_args, b_async_flag, shared_mem_size)
             else
                 call_cuda_kernel(julia_kernel_type, devno, func_name, j_threads, j_blocks, cu_ctx, cu_stream, all_streams, julia_args, b_async_flag)
             end
@@ -699,7 +745,7 @@ module IrisHRT
         ENV["LD_LIBRARY_PATH"] =  Main.iris_path * "/lib64:" * Main.iris_path * "/lib:" * ENV["LD_LIBRARY_PATH"]
         policy_ptr = @cfunction(task_policy_handler, Cint, (IrisTask, Ptr{Cchar}, Ptr{IrisDevice}, Int32, Ptr{Int32}))
         global stored_policy_ptr = policy_ptr
-        func_ptr = @cfunction(kernel_julia_wrapper, Cint, (Culong, Cint, Cint,        Cint,        Ptr{Cvoid}, Cint, Cint,               Ptr{Ptr{Cvoid}},         Cint,           Ptr{Cint},       Ptr{Ptr{Cvoid}},         Ptr{Csize_t},  Ptr{Csize_t}, Cint,          Ptr{Csize_t}, Ptr{Csize_t},          Ptr{Csize_t}, Csize_t,        Cint,      Ptr{Cchar}))
+        func_ptr = @cfunction(kernel_julia_wrapper, Cint, (Culong, Cint, Cint,        Cint,        Ptr{Cvoid}, Cint, Cint,               Ptr{Ptr{Cvoid}},         Cint,           Ptr{Cint},       Ptr{Ptr{Cvoid}},         Ptr{Csize_t},  Ptr{Csize_t}, Ptr{Csize_t}, Ptr{Csize_t}, Cint,          Ptr{Csize_t}, Ptr{Csize_t},          Ptr{Csize_t}, Csize_t,        Cint,      Ptr{Cchar}))
         global stored_func_ptr = func_ptr
         use_julia_threads = false
         if use_julia_threads
@@ -838,7 +884,7 @@ module IrisHRT
 
     # Call Julia kernel 
     # CUDA kernel wrapper (KernelAbstraction kernels)
-    function call_cuda_kernel_jacc(julia_kernel_type::Any, devno::Any, dim, func_name::String, j_gws::Any, threads::Any, blocks::Any, ctx::Any, stream::Any, args::Any, async_flag::Bool=false, shared_mem_size=0)
+    function call_cuda_kernel_jacc(task_id, julia_kernel_type::Any, devno::Any, dim, func_name::String, j_gws::Any, threads::Any, blocks::Any, ctx::Any, stream::Any, args::Any, async_flag::Bool=false, shared_mem_size=0)
         if !Main.cuda_available
             error("CUDA device not available.")
         end
@@ -882,8 +928,22 @@ module IrisHRT
             init, out_mem, buffer = args_tuple[2:4]
             spec.ret = out_mem
             spec.buffer = buffer
-            #println(Core.stdout, " op: ", op, " init:", init, " ret:", spec.ret, " buffer:", spec.buffer, " gws:", gws, " func:", func)
-            JACC.parallel_reduce(spec, gws, op, func, args_tuple[5:end]...; init)
+            #println(Core.stdout, " op: ", op, " init:", init, " ret:size", size(spec.ret), " size-buffer:", size(spec.buffer), " gws:", gws, " func:", func, " args size:", size(args_tuple[5]), " task id:", task_id)
+            try
+                #if !isa(gws, Union{AbstractArray,Tuple}) && sizeof(args_tuple[5:end]) > gws 
+                #    throw(DomainError(x, "gws and tuple sizes are not matching"))
+                #end
+                JACC.parallel_reduce(spec, gws, op, func, args_tuple[5:end]...; init)
+            catch e
+                println(Core.stdout, " op: ", op, " init:", init, " ret:size", size(spec.ret), " buffer:", spec.buffer, " gws:", gws, " func:", func, " args size:", size(args_tuple[5]), " spec:", spec, " task id:", task_id)
+                println(Core.stdout, " args:  pointer:", pointer(args_tuple[5]))
+                if e isa CUDA.KernelException
+                    @error "GPU kernel failed: $e"
+                    # handle or recover…
+                else
+                    rethrow(e)
+                end
+            end
         end
         #synchronize(blocking = true)
     end
@@ -1566,6 +1626,10 @@ module IrisHRT
             end
         end
         #println(Core.stdout, "Create1 Mem:", iris_mem.uid, " Type of element: ", T, " dim:", dim, " Size:", host_size, " Element size:", element_size, " Call from:", get_caller_info())
+        #if iris_mem.uid == 36172
+        #    println(Core.stdout, "Create1 Mem:", iris_mem.uid, " Type of element: ", T, " dim:", dim, " Size:", host_size, " Element size:", element_size, " Call from:", get_caller_info())
+        #    call_stack("DMEM Create1")
+        #end
         if isstructtype(T) 
             push_dmem_custom_type(iris_mem.uid, T)
         end
@@ -1603,15 +1667,6 @@ module IrisHRT
             end
         end
         #println(Core.stdout, "Create2 Mem:", iris_mem.uid, " Type of element: ", T, " dim:", dim, " Host Size:", host_size, " Dev Size:", dev_size, " Offset:", offset, " Element size:", element_size, " Call from:", get_caller_info())
-        if false && iris_mem.uid > 77000
-            free_bytes  = MyCUDA.free_memory()     # bytes free on the GPU
-            total_bytes = MyCUDA.total_memory()    # bytes total RAM on that device
-            used_bytes  = total_bytes - free_bytes
-
-            println(Core.stdout, "Total GPU memory: $(round(total_bytes/1024^3, digits=3)) GiB")
-            println(Core.stdout, "Free  GPU memory: $(round(free_bytes/1024^3, digits=3)) GiB")
-            println(Core.stdout, "Used  GPU memory: $(round(used_bytes/1024^3, digits=3)) GiB")
-        end
         if isstructtype(T) 
             push_dmem_custom_type(iris_mem.uid, T)
         end
@@ -1638,6 +1693,10 @@ module IrisHRT
         iris_mem = iris_data_mem_create_tile_struct_with_type(host_cptr, pointer(offset), pointer(host_size), pointer(dev_size), element_size, dim, element_type)
         end
         #println(Core.stdout, "Create3 Mem:", iris_mem.uid, " Type of element: ", T, " dim:", dim, " Size:", host_size, " Element size:", element_size, " Call from:", get_caller_info())
+        #if iris_mem.uid == 36172
+        #    println(Core.stdout, "Create1 Mem:", iris_mem.uid, " Type of element: ", T, " dim:", dim, " Size:", host_size, " Element size:", element_size, " Call from:", get_caller_info())
+        #    call_stack("DMEM Create3")
+        #end
         if isstructtype(T) 
             push_dmem_custom_type(iris_mem.uid, T)
         end
@@ -1678,6 +1737,15 @@ module IrisHRT
             return iris_mem
         end
     end
+
+	function print_dmem(mem::Union{IrisHRT.IrisMem, IrisHRT.IrisTaskMem}, tag::String)
+		iris_data_mem_print(field_dmem(mem), tag)
+	end
+
+	function print_dmem(host::AbstractArray{T}, tag::String) where T
+		mem = get_dmem_from_cache(host)
+		iris_data_mem_print(mem, tag)
+	end
 
     function print_dmem(mem::Union{IrisHRT.IrisMem, IrisHRT.IrisTaskMem})
         iris_data_mem_print(field_dmem(mem))
@@ -1937,6 +2005,15 @@ module IrisHRT
         return Tuple(tr_size)
     end
 
+    function dev_full_size(bmem::Union{IrisMem, IrisTaskMem})
+        mem = field_dmem(bmem)
+        size_ptr = iris_dmem_get_dev_full_size(mem)
+        dim = iris_dmem_get_dim(mem)
+        dims_array = unsafe_wrap(Array, size_ptr, dim)
+        tr_size = remove_trailing_ones2(Int.(dims_array))
+        return Tuple(tr_size)
+    end
+
     function dev_size(bmem::Union{IrisMem, IrisTaskMem})
         mem = field_dmem(bmem)
         size_ptr = iris_dmem_get_dev_size(mem)
@@ -2178,6 +2255,14 @@ module IrisHRT
         return idx === nothing ? Int[1] : arr[1:idx]
     end
 
+	function get_init_task(;task=nothing)
+		task0 = task
+		if task0 == nothing
+			task0 = iris_task_create_struct()
+		end
+		return task0
+	end
+
     function get_init_task_dmem(::Type{T}, dims...; task=nothing, dmem=nothing) where T
         task0 = task
         if task0 == nothing
@@ -2328,6 +2413,85 @@ module IrisHRT
         end
         return (task=task0, dmem=dmem0)
     end
+
+	function rand_task(dmem0::UMem; task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true) 
+		task0 = get_init_task(task=task)
+		dmem0 = field_dmem(dmem0)
+		T = get_julia_type(dmem0)
+		iris_task_cmd_init_reset_random_uniform_seq(task0, dmem0, seed, T(0), T(1))
+		if submit
+			iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
+		end
+		return task0
+	end
+
+	function zeros_task(dmem0::UMem; task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true) 
+		task0 = get_init_task(task=task)
+		dmem0 = field_dmem(dmem0)
+		T = get_julia_type(dmem0)
+		iris_task_cmd_init_reset_assign(task0, dmem0, T(0))
+		if submit
+			iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
+		end
+		return task0
+	end
+
+	function fill_task(dmem0::UMem, data; task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true)
+		task0 = get_init_task(task=task)
+		dmem0 = field_dmem(dmem0)
+		T = get_julia_type(dmem0)
+		#println(Core.stdout, " T:", T, " data:", data, " type-of-data:", typeof(data))
+		iris_task_cmd_init_reset_assign(task0, dmem0, T(data))
+		if submit
+			iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
+		end
+		return task0
+	end
+
+	function ones_task(dmem0::UMem; task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true) 
+		task0 = get_init_task(task=task)
+		dmem0 = field_dmem(dmem0)
+		T = get_julia_type(dmem0)
+		iris_task_cmd_init_reset_assign(task0, dmem0, T(1))
+		if submit
+			iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
+		end
+		return task0
+	end
+
+	function arange_task(dmem0::UMem; task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true) 
+		task0 = get_init_task(task=task)
+		dmem0 = field_dmem(dmem0)
+		T = get_julia_type(dmem0)
+		iris_task_cmd_init_reset_arith_seq(task0, dmem0, T(0), T(1))
+		if submit
+			iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
+		end
+		return task0
+	end
+
+	function linspace_task(dmem0::UMem; task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true) 
+		task0 = get_init_task(task=task)
+		dmem0 = field_dmem(dmem0)
+		T = get_julia_type(dmem0)
+		iris_task_cmd_init_reset_arith_seq(task0, dmem0, T(start), T(step))
+		if submit
+			iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
+		end
+		return task0
+	end
+
+	function geomspace_task(dmem0::UMem; task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true) 
+		task0 = get_init_task(task=task)
+		dmem0 = field_dmem(dmem0)
+		T = get_julia_type(dmem0)
+		iris_task_cmd_init_reset_geom_seq(task0, dmem0, T(start), T(step))
+		if submit
+			iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
+		end
+		return task0
+	end
+
 
 
     function find_shared_vars(julia_kernel_type, gws, kernel, args...)
@@ -2595,6 +2759,15 @@ module IrisHRT
         return IrisHRT.task(;gws=N, parallel_for=true, kernel=f, args=Any[x...], eargs...) 
     end
 
+    function parallel_for((N,)::Union{Tuple{Int64,},Tuple{UInt64,}}, f::Union{Function,String}, x... ; eargs...)
+        return IrisHRT.task(;gws=N, parallel_for=true, kernel=f, args=Any[x...], eargs...) 
+    end
+
+	function full_sizeof(mem::Union{IrisHRT.IrisMem, IrisHRT.IrisTaskMem})
+		dmem = field_dmem(mem)
+		return iris_mem_get_full_size(dmem)
+	end
+
     function parallel_reduce_core(N::Union{Int64, UInt64, Tuple{Int64}, Tuple{UInt64}, NTuple{2, Integer}, NTuple{3, Integer}}, f::Union{Function,String}, x... ; reuse=false, result=nothing, buffer=nothing, task=nothing, submit=true, flush=false, policy=IrisHRT.iris_roundrobin, wait=true, auto_dependency=true, dependencies=[], metadata=nothing, op=nothing, init=nothing)
         kernel_name = f
         if isa(f, Function) 
@@ -2634,16 +2807,20 @@ module IrisHRT
         if tmp_mem == nothing
             if !haskey(Main.__iris_dmem_parallel_reduce_map, map_key)
                 if reuse && caller_info != nothing
-                    map_key = (-1 * sizeof(first_x), -1 * hash(caller_info.func, UInt64(caller_info.line)))
+                    fsize = full_sizeof(first_x)
+                    map_key = (-1 * fsize, -1 * hash(caller_info.func, UInt64(caller_info.line)))
                     if !haskey(Main.__iris_dmem_parallel_reduce_map, map_key)
-                        #println(Core.stdout, " Caller2: ", caller_info, " map: ", map_key)
+                        #println(Core.stdout, " Caller2: ", caller_info, " map: ", map_key, " full_size:", fsize)
                         tmp_mem = dmem(IrisHRT.get_julia_type(first_x), dev_size(first_x))
                         Main.__iris_dmem_parallel_reduce_map[map_key] = (tmp_mem, out_mem)
                     else
                         tmp_mem, prev_mem = Main.__iris_dmem_parallel_reduce_map[map_key]
                     end
                 else
-                    tmp_mem = dmem(IrisHRT.get_julia_type(first_x), dev_size(first_x))
+                    tmp_mem = dmem(IrisHRT.get_julia_type(first_x), dev_full_size(first_x))
+                    #println(Core.stdout, " in tmp mem create: size:", size(first_x), " full_size:", dev_full_size(first_x))
+                    #print_dmem(tmp_mem)
+                    #print_dmem(out_mem)
                     Main.__iris_dmem_parallel_reduce_map[map_key] = (tmp_mem, out_mem)
                 end
             else
@@ -2669,13 +2846,15 @@ module IrisHRT
         if init == nothing
             init = get_jacc_init(op, out_mem)
         end
-        IrisHRT.fill(out_mem, init)
-        IrisHRT.refresh(out_mem)
-        IrisHRT.fill(tmp_mem, init)
-        IrisHRT.refresh(tmp_mem)
+		task0 = IrisHRT.fill_task(out_mem, init; task=task, submit=false)
+		task0 = IrisHRT.fill_task(tmp_mem, init; task=task0, submit=false)
+        #IrisHRT.fill(out_mem, init)
+        #IrisHRT.refresh(out_mem)
+        #IrisHRT.fill(tmp_mem, init)
+        #IrisHRT.refresh(tmp_mem)
         iris_op = convert_jacc_op_2_iris_op(op)
         #println(Core.stdout, "Creating task: gws:", N, " iris_op:", iris_op, " func:", f, " init:", init, " out_mem.uid:", out_mem.uid, " args=", x...)
-        task0 = IrisHRT.task(gws=N, task=task, parallel_reduce=true, 
+        task0 = IrisHRT.task(;gws=N, task=task0, parallel_reduce=true, 
                     in=d_in, out=d_out, submit=submit, policy=policy, 
                     wait=wait, flush=d_flush, 
                     auto_dependency=auto_dependency, 
@@ -2711,6 +2890,12 @@ module IrisHRT
     function parallel_reduce(N::Integer, f::Union{Callable,String}, x...; eargs...)
         return parallel_reduce_core(N, f, x...; eargs...)
     end
+    function parallel_reduce((N,)::Tuple{Integer,}, f::Union{Callable,String}, x...; eargs...)
+        return parallel_reduce_core(N, f, x...; eargs...)
+    end
+    function parallel_reduce((N,)::Tuple{Integer,}, op::Callable, f::Union{Callable,String}, x...; eargs...)
+        return parallel_reduce_core(N, f, x...; op=op, eargs...)
+    end
     function parallel_reduce(
             (M, N)::NTuple{2, Integer}, op::Callable, f::Union{Callable,String}, x...;
             eargs...)
@@ -2744,12 +2929,11 @@ module IrisHRT
     end
     function parallel_reduce(A::AbstractArray; args...)
         s = size(A)
-        kernel = get_iris_jacc_elem_access(+)
         if length(s) == 1
-            return parallel_reduce_core(s[1], kernel, A; op=+, args...)
-        else
-            return parallel_reduce_core(s, kernel, A; op=+, args...)
+            s = s[1]
         end
+        kernel = get_iris_jacc_elem_access(+)
+        return parallel_reduce_core(s, kernel, A; op=+, args...)
     end
     function parallel_reduce(A::Union{IrisMem,IrisTaskMem}; args...)
         kernel = get_iris_jacc_elem_access(+)
@@ -2881,12 +3065,27 @@ module IrisHRT
             tile_size = adjust_tuple(tile_size, length(offset), pad=1)
         end
         #println(Core.stdout, " offset:", offset, " tile:", tile_size, " size:", size(host))
-        index_ranges = tuple(((offset[i]+1 : (offset[i] + tile_size[i])) for i in 1:length(offset))...)
-        #println(Core.stdout, " indexes:", index_ranges)        
+        #index_ranges = tuple(((offset[i]+1 : (offset[i] + tile_size[i])) for i in 1:length(offset))...)
+        index_ranges = ntuple(
+          i -> tile_size[i] == 1
+                 ? offset[i] + 1
+                 : (offset[i] + 1):(offset[i] + tile_size[i]),
+          length(offset)
+        )
+
         # Slice the host array using the generated ranges.
+        if all(x -> x isa Integer, index_ranges)
+            if length(index_ranges) >= 2 
+                index_ranges = (index_ranges[1]:index_ranges[1], index_ranges[2:end]...)
+            else
+                index_ranges = (index_ranges[1]:index_ranges[1], )
+
+            end
+        end
         tile = @view host[index_ranges...]
+        # if its last dim is singleton, drop that dim by reshaping instead of dropdims
         # Print the tile.
-        #println("Tile:", tile)
+        #println("size Tile:", size(tile), " range:", index_ranges)
         return tile
     end
 
@@ -2894,12 +3093,20 @@ module IrisHRT
         dmem = field_dmem(mem)
         host = IrisHRT.valid_host_root(dmem; flush=true)
         hsize = IrisHRT.host_size(dmem)
+        hfull_size = IrisHRT.dev_full_size(dmem)
         dsize = IrisHRT.dev_size(dmem)
         offs = IrisHRT.offsets(dmem)
-        if hsize != dsize
-            p = get_source(dmem)
-            #println(Core.stdout, " host:", size(host), " hsize:", hsize, " dsize:", dsize, " offs:", offs, " p-uid:", p.uid, " class:", p.class_obj)
+		p = get_source(dmem)
+		hsizeof = Base.prod(hsize)
+		dsizeof = Base.prod(dsize)
+		#IrisHRT.print_dmem(dmem, "in get_host_4_dmem: ---- ")
+		#println(Core.stdout, " 1: host:", size(host), " hsize:", hsize, " dsize:", dsize, " offs:", offs, " p-uid:", p.uid, " class:", p.class_obj, " hsizeof:", hsizeof, " dsizeof:", dsizeof)
+		if hsize == dsize
+			return host, dsize
+        elseif hsize != dsize
+			#println(Core.stdout, " 2: ----host:", size(host), " hsize:", hsize, " dsize:", dsize, " offs:", offs, " p-uid:", p.uid, " class:", p.class_obj, " hsizeof:", hsizeof, " dsizeof:", dsizeof)
             if p.class_obj != C_NULL
+				#println(Core.stdout, "3: --- trying to callnow")
                 p_host, p_dsize = get_host_4_dmem(p)
                 if p_dsize != dsize
                     host = Base.reshape(p_host, dsize)
@@ -2907,6 +3114,7 @@ module IrisHRT
                     host = p_host
                 end
             else
+				#println(Core.stdout, "3: --- trying to get tile")
                 host = get_tile(host, offs, dsize)
             end
         end
@@ -3015,14 +3223,14 @@ module IrisHRT
         return task0
     end
 
-    function copy(src; eargs...)
+    function copy(src; flush=false, eargs...)
         if !isa(src, Union{IrisMem, IrisTaskMem})
             src = get_dmem_from_cache(src)
         else
             src = field_dmem(src)
         end
         dst = iris_data_mem_copy(src)
-        host = valid_host_root(dst)
+        host = valid_host_root(dst; flush=flush)
         Main.__iris_dmem_map[pointer(host)] = dst
         task0 = copyto!(dst, src; eargs...)
         return IrisTaskMem(task0, dst)
@@ -3119,10 +3327,10 @@ module IrisHRT
         for larray in vcat(in, auto_in)
             p_dmem = get_dmem_from_cache(larray)
             if !haskey(mem_params, p_dmem)
-                #println(Core.stdout, "---- in inserting iris_r p_mem: ", p_dmem, " type:", typeof(larray))
+                #println(Core.stdout, "---- in inserting iris_r p_mem: ", p_dmem.uid, " type:", typeof(larray))
                 mem_params[p_dmem] = IrisHRT.iris_r
             else
-                #println(Core.stdout, " in inserting iris_rw p_mem: ", p_dmem, " type:", typeof(larray))
+                #println(Core.stdout, " in inserting iris_rw p_mem: ", p_dmem.uid, " type:", typeof(larray))
                 mem_params[p_dmem] = IrisHRT.iris_rw
             end
         end
@@ -3135,7 +3343,7 @@ module IrisHRT
         params_info = Int32[]
         params = []
         kernel_params = []
-        #println(Core.stdout, "--------------")
+        #println(Core.stdout, "-------------- task:", task0.uid)
         #println(Core.stdout, "content: ", mem_params)
         #println(Core.stdout, "--------------")
         for (index, arg) in enumerate(call_args)
@@ -3301,6 +3509,11 @@ end
 function sizeof(mem::Union{IrisHRT.IrisMem, IrisHRT.IrisTaskMem})
     dmem = IrisHRT.field_dmem(mem)
     return IrisHRT.iris_mem_get_size(dmem)
+end
+
+function full_sizeof(mem::Union{IrisHRT.IrisMem, IrisHRT.IrisTaskMem})
+    dmem = IrisHRT.field_dmem(mem)
+    return IrisHRT.iris_mem_get_full_size(dmem)
 end
 
 function size(mem::Union{IrisHRT.IrisMem, IrisHRT.IrisTaskMem})
