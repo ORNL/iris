@@ -882,6 +882,11 @@ void iris_data_mem_print(iris_mem src_mem)
   DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(src_mem);
   mem->Print();
 }
+void iris_data_mem_print_with_tag(iris_mem src_mem, const char *tag)
+{
+  DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(src_mem);
+  mem->Print(tag);
+}
 int iris_unregister_pin_memory(void *host) {
   return Platform::GetPlatform()->UnRegisterPin(host);
 }
@@ -936,7 +941,7 @@ int iris_data_mem_enable_regions(iris_mem brs_mem, int axis) {
 }
 int iris_data_mem_set_valid_regions(iris_mem brs_mem, int regions) {
   DataMem *mem= (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
-  mem->SetValidRegions(regions);
+  mem->set_valid_regions(regions);
   return IRIS_SUCCESS;
 }
 iris_mem iris_get_dmem_for_region(iris_mem brs_mem) {

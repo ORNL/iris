@@ -155,7 +155,7 @@ public:
 #ifdef AUTO_SHADOW
   void* get_host_ptr_shadow(){return host_ptr_shadow_;}
   void set_host_ptr_shadow(void* host_ptr_shadow){
-	  host_ptr_shadow_ = host_ptr_shadow;}
+      host_ptr_shadow_ = host_ptr_shadow;}
   bool is_host_shadow_dirty() { 
       DataMem *source_mem = (DataMem*)get_source_mem();
       if (source_mem == NULL) return host_dirty_flag_;
@@ -192,15 +192,65 @@ public:
   void *tmp_host_memory();
   void lock_host_region(int region);
   void unlock_host_region(int region);
-  int get_n_regions() { return valid_n_regions_; }
-  bool is_regions_enabled() { return valid_n_regions_ != 0; }
+  int get_n_regions() { 
+      DataMem *source_mem = (DataMem *)get_source_mem();
+      if (source_mem != NULL) 
+          return source_mem->get_n_regions();
+      return valid_n_regions_; 
+  }
+  bool is_regions_enabled() { 
+      DataMem *source_mem = (DataMem *)get_source_mem();
+      if (source_mem != NULL) 
+          return source_mem->is_regions_enabled();
+      return valid_n_regions_ != 0; 
+  }
+  void set_valid_regions(int valid_regions) { 
+      DataMem *source_mem = (DataMem *)get_source_mem();
+      if (source_mem != NULL) 
+          source_mem->set_valid_regions(valid_regions);
+      else {
+          ASSERT(valid_regions <= n_regions_);
+          valid_n_regions_ = valid_regions; 
+      }
+  }
+  void set_n_regions(int regions) {
+      DataMem *source_mem = (DataMem *)get_source_mem();
+      if (source_mem != NULL) 
+          source_mem->set_n_regions(regions);
+      else
+          n_regions_ = regions;
+  }
+  void increment_n_regions() {
+      DataMem *source_mem = (DataMem *)get_source_mem();
+      if (source_mem != NULL) 
+          source_mem->increment_n_regions();
+      else {
+          n_regions_++;
+      }
+  }
+  void increment_valid_regions() {
+      DataMem *source_mem = (DataMem *)get_source_mem();
+      if (source_mem != NULL) 
+          source_mem->increment_valid_regions();
+      else {
+          valid_n_regions_++;
+      }
+  }
   bool is_dynamic_regions() { return dynamic_regions_; }
+  vector<pair<DataMemRegion*, DataMemRegion*> > & get_regions() { 
+    DataMem *source_mem = (DataMem *)get_source_mem();
+    if (source_mem != NULL) 
+        return source_mem->get_regions();
+    return regions_;
+  }
   DataMemRegion *get_region(int i, bool dev_region=true) {
-    ASSERT((size_t)i < regions_.size()); 
+    vector<pair<DataMemRegion*, DataMemRegion*> > & regions = 
+        get_regions();
+    ASSERT((size_t)i < regions.size()); 
     if (dev_region)
-        return regions_[i].second;
+        return regions[i].second;
     else
-        return regions_[i].first;
+        return regions[i].first;
   }
   virtual void* arch(int devno, void *host=NULL);
   virtual void* arch(Device* dev, void *host=NULL);
@@ -219,16 +269,12 @@ public:
   void set_pin_memory(bool flag=true) { is_pin_memory_ = flag; }
   bool tile_enabled() { return tile_enabled_; }
   void Print(bool check_regions=true);
-  void Print(const char *tag);
+  void Print(const char *tag, bool check_regions=true);
   void Print(bool check_regions, const char *tag);
   string ToString(bool check_regions=true);
   void EnableRegions(int axis);
   string GetSizeString(size_t *data, int dim);
   string GetPtrString(void **data, int dim);
-  void SetValidRegions(int valid_regions) { 
-        ASSERT(valid_regions <= n_regions_);
-        valid_n_regions_ = valid_regions;
-  }
 protected:
   void start(size_t out[DMEM_MAX_DIM]) const {
       memcpy(out, off_, dim_ * sizeof(size_t));

@@ -176,11 +176,11 @@ void DataMem::Print(bool check_regions)
     string output = ToString(check_regions);
     _printf("%s", output.c_str());
 }
-void DataMem::Print(const char *tag)
+void DataMem::Print(const char *tag, bool check_regions)
 {
     char const_tag[] = "";
     if (tag == NULL) tag = const_tag;
-    string output = ToString(false);
+    string output = ToString(check_regions);
     _printf("%s%s", tag, output.c_str());
 }
 void DataMem::Print(bool check_regions, const char *tag)
@@ -200,9 +200,9 @@ bool DataMem::is_host_dirty(bool check_regions) {
     DataMem *source_mem = (DataMem*)get_source_mem();
     if (source_mem != NULL) 
         return source_mem->is_host_dirty(check_regions);
-    if (!check_regions) return host_dirty_flag_;
-    if (valid_n_regions_ == 0) 
-        return host_dirty_flag_; 
+    if (!check_regions || valid_n_regions_ == 0) {
+        return host_dirty_flag_;
+    } 
     for(int i=0; i<valid_n_regions_; i++) {
         if (regions_[i].first->is_host_dirty())
             return true;
@@ -216,6 +216,7 @@ void DataMem::clear_host_dirty() {
     else if (valid_n_regions_ == 0) 
         host_dirty_flag_ = false; 
     else {
+        host_dirty_flag_ = false; 
         for(int i=0; i<valid_n_regions_; i++) {
             regions_[i].first->clear_host_dirty();
         }
@@ -237,8 +238,7 @@ bool DataMem::is_dev_dirty(int devno, bool check_regions) {
     DataMem *source_mem = (DataMem*)get_source_mem();
     if (source_mem != NULL) 
         return source_mem->is_dev_dirty(devno, check_regions);
-    if (!check_regions) return dirty_flag_[devno];
-    if (valid_n_regions_ == 0) 
+    if (!check_regions || valid_n_regions_ == 0) 
         return dirty_flag_[devno]; 
     for(int i=0; i<valid_n_regions_; i++) {
         if (regions_[i].first->is_dev_dirty(devno))
@@ -250,9 +250,7 @@ void DataMem::set_dev_dirty(int devno, bool flag, bool check_regions) {
     DataMem *source_mem = (DataMem*)get_source_mem();
     if (source_mem != NULL) 
         source_mem->set_dev_dirty(devno, flag);
-    else if (!check_regions)  
-        dirty_flag_[devno] = flag; 
-    else if (valid_n_regions_ == 0) 
+    else if (!check_regions || valid_n_regions_ == 0) 
         dirty_flag_[devno] = flag; 
     else {
         for(int i=0; i<valid_n_regions_; i++) {
@@ -335,6 +333,9 @@ void DataMem::set_dirty_all(bool flag, bool check_regions) {
         }
     } 
     else {
+        for(int i=0; i<ndevs_; i++) {
+            dirty_flag_[i] = flag;
+        }
         for(int i=0; i<valid_n_regions_; i++) {
             regions_[i].first->set_dirty_all(flag);
             if (regions_[i].first != regions_[i].second) 
@@ -401,13 +402,15 @@ int DataMem::update_host_size(size_t *host_size, bool update_strides)
         size_ = size;
     }
     int n_regions = get_n_regions();
+    vector<pair<DataMemRegion*, DataMemRegion*> > & regions = 
+        get_regions();
     for (int i=0; i<n_regions; i++) {
         size_t dev_size[DMEM_MAX_DIM];
         memcpy(dev_size, dev_size_, sizeof(size_t)*DMEM_MAX_DIM);
         dev_size[dim_-1] = 1;
-        ASSERT(regions_[i].first == regions_[i].second);
-        regions_[i].first->update_dev_size(dev_size, update_strides);
-        regions_[i].first->enable_multi_dim_dev_offset();
+        ASSERT(regions[i].first == regions[i].second);
+        regions[i].first->update_dev_size(dev_size, update_strides);
+        regions[i].first->enable_multi_dim_dev_offset();
     }
     //Print("After host update:");
     return IRIS_SUCCESS;
@@ -420,6 +423,7 @@ int DataMem::update_dev_size(size_t *dev_size, bool update_strides) {
     if (update_strides)
         compute_strides(dev_strides_,  dev_size_);
     //Print("After dev update:");
+    set_dirty_all();
     return IRIS_SUCCESS;
 }
 void DataMem::FetchDataFromDevice(void *dst_host_ptr)
@@ -750,11 +754,12 @@ void *DataMem::host_memory() {
 }
 void DataMem::EnableOuterDimensionRegions()
 {
-    if (regions_.size() != 0) return;
+    vector<pair<DataMemRegion*, DataMemRegion *> > & regions = 
+        get_regions();
+    if (regions.size() != 0) return;
     int outer_dim = dev_size_[dim_-1];
-    n_regions_ = outer_dim;
-	valid_n_regions_ = outer_dim;
-    //regions_ = new DataMemRegion*[n_regions_];
+    set_n_regions(outer_dim);
+	set_valid_regions(outer_dim);
     size_t dev_size[DMEM_MAX_DIM], off[DMEM_MAX_DIM], loff[DMEM_MAX_DIM];
     memcpy(dev_size, dev_size_, sizeof(size_t)*DMEM_MAX_DIM);
     memcpy(off, off_, sizeof(size_t)*DMEM_MAX_DIM);
@@ -763,28 +768,29 @@ void DataMem::EnableOuterDimensionRegions()
     size_t dev_offset = 1;
     for(int i=0; i<dim_-1; i++) 
         dev_offset *= dev_size_[i];
-    for(int i=0; i<valid_n_regions_; i++) {
+    for(int i=0; i<outer_dim; i++) {
         off[dim_-1] = off_[dim_-1]+i; 
         loff[dim_-1] = 0;
         size_t dev_offset_from_root = i * dev_offset * elem_size_;
         DataMemRegion *region = new DataMemRegion(this, i, off, loff, host_size_, dev_size, elem_size_, dim_, dev_offset_from_root);
         region->compute_dev_strides(host_size_);
-        regions_.push_back(make_pair(region, region));
+        regions.push_back(make_pair(region, region));
     }
 }
 
 void DataMem::EnableRegions(int axis)
 {
-    if (regions_.size() != 0) return;
+    vector<pair<DataMemRegion*, DataMemRegion *> > & regions = 
+        get_regions();
+    if (regions.size() != 0) return;
     ASSERT(axis < dim_);
     //if (axis == dim_-1) {
     //    EnableOuterDimensionRegions();
     //    return;
     //}
     int outer_dim = dev_size_[axis];
-    n_regions_ = outer_dim;
-	valid_n_regions_ = outer_dim;
-    //regions_ = new DataMemRegion*[n_regions_];
+    set_n_regions(outer_dim);
+    set_valid_regions(outer_dim);
     size_t dev_size[DMEM_MAX_DIM], off[DMEM_MAX_DIM], loff[DMEM_MAX_DIM];
     size_t dev_off[DMEM_MAX_DIM];
     memcpy(dev_size, dev_size_, sizeof(size_t)*DMEM_MAX_DIM);
@@ -792,7 +798,8 @@ void DataMem::EnableRegions(int axis)
     memcpy(off, off_, sizeof(size_t)*DMEM_MAX_DIM);
     memcpy(loff, off_, sizeof(size_t)*DMEM_MAX_DIM);
     dev_size[axis] = 1;
-    for(int i=0; i<valid_n_regions_; i++) {
+    int valid_n_regions = get_n_regions();
+    for(int i=0; i<valid_n_regions; i++) {
         off[axis] = off_[axis]+i; 
         loff[axis] = 0;
         dev_off[axis] = off_[axis] + i;
@@ -804,7 +811,7 @@ void DataMem::EnableRegions(int axis)
         region->enable_multi_dim_dev_offset();
         region->set_dirty_all(true, false);
         region->set_own_dev_memory();
-        regions_.push_back(make_pair(full_region, region));
+        regions.push_back(make_pair(full_region, region));
         //full_region->Print(false);
         //region->Print(false);
     }
@@ -822,8 +829,10 @@ iris_mem DataMem::CreateRegion(size_t *off, size_t *size)
         return iris_mem{NULL, 0};
     }
     int index;
+    vector<pair<DataMemRegion*, DataMemRegion *> > & regions = 
+        get_regions();
     if ((index = check_overlap(off, size)) != -1) {
-        DataMemRegion *region = regions_[index].second;
+        DataMemRegion *region = regions[index].second;
         string off_str = Utils::GetString(off, dim_);
         string size_str = Utils::GetString(size, dim_);
         string roff_str = Utils::GetString(region->off(), dim_);
@@ -831,7 +840,7 @@ iris_mem DataMem::CreateRegion(size_t *off, size_t *size)
         _error("Requested region (offset:%s, size: %s) create overlaps with another region of global DMEM (offset:%s, size:%s)", off_str.c_str(), size_str.c_str(), roff_str.c_str(), rsize_str.c_str());
         return iris_mem{NULL, 0};
     }
-    index = static_cast<int>(regions_.size());
+    index = static_cast<int>(regions.size());
     DataMemRegion *full_region = new DataMemRegion(this, index, off, off, host_size_, size, elem_size_, dim_, 0);
     full_region->set_dev_off(off);
     full_region->enable_multi_dim_dev_offset();
@@ -840,15 +849,17 @@ iris_mem DataMem::CreateRegion(size_t *off, size_t *size)
     region->enable_multi_dim_dev_offset();
     region->set_own_dev_memory();
     dynamic_regions_ = true;
-    regions_.push_back(make_pair(full_region, region));
-    n_regions_++;
-	valid_n_regions_++;
+    regions.push_back(make_pair(full_region, region));
+    increment_n_regions();
+    increment_valid_regions();
     return *(region->struct_obj());
 }
 
 int DataMem::check_overlap(size_t *off, size_t *size) {
+    vector<pair<DataMemRegion*, DataMemRegion *> > & regions = 
+        get_regions();
     int index=0;
-    for (const auto& region : regions_) {
+    for (const auto& region : regions) {
         if (region.second->overlaps_with(off, size)) {
             return index;
         }
@@ -958,8 +969,10 @@ vector<UncoveredRegion> DataMem::find_uncovered_tiles()
             out[i] = a[i] + b[i];
     };
 
+    vector<pair<DataMemRegion*, DataMemRegion *> > & regions = 
+        get_regions();
     // Mark existing tiles as covered
-    for (const auto& tile_pair : regions_) {
+    for (const auto& tile_pair : regions) {
         auto & tile = tile_pair.second;
         size_t start[DMEM_MAX_DIM], end[DMEM_MAX_DIM];
         tile->start(start);
