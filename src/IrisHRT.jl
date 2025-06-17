@@ -596,8 +596,12 @@ module IrisHRT
                     else
                         iris_println("[Julia-IrisHRT-Error] Unknown target to handle arguments")
                     end
+                    #func_name = unsafe_string(kernel_name)
+                    #println(Core.stdout, " arg: off_dims:", off_dims, " size:", size_dims, " full_size:", full_size_dims, " task id:", task_id, " prev_size:", size(arg_ptr), "ptr:", arg_original_ptr, " kernel:", func_name)
                     if full_size_dims != size_dims
                         prev_size = size(arg_ptr)
+                        #func_name = unsafe_string(kernel_name)
+                        #println(Core.stdout, " arg: off_dims:", off_dims, " size:", size_dims, " full_size:", full_size_dims, " task id:", task_id, " prev_size:", prev_size, "ptr:", arg_original_ptr, " kernel:", func_name)
                         arg_ptr = get_tile(arg_ptr, off_dims, size_dims) 
                         if false && task_id == 431530
                             later_size = size(arg_ptr)
@@ -1294,11 +1298,17 @@ module IrisHRT
     end
 
     function is_dmem_in_cache(data)
-        return haskey(Main.__iris_dmem_map, pointer(data))
+        return haskey(Main.__iris_dmem_map, Ptr{Cvoid}(pointer(data)))
     end 
+    function insert_dmem_in_cache(data, d_mem)
+        Main.__iris_dmem_map[Ptr{Cvoid}(pointer(data))] = d_mem
+    end 
+    function get_dmem_from_cache_core(data)
+        return Main.__iris_dmem_map[Ptr{Cvoid}(pointer(data))]
+    end
 
     function get_dmem_from_cache(data, new=false, create=true; name="", region_axis=-1, region_outer_dim=false)
-        if isa(data, Union{IrisMem, IrisTaskMem})
+        if isa(data, UMem)
             return field_dmem(data)
         else
             if isa(data, SubArray)
@@ -1330,12 +1340,12 @@ module IrisHRT
                     end
                 end   
             end 
-            if !new && haskey(Main.__iris_dmem_map, pointer(data))
-                return Main.__iris_dmem_map[pointer(data)]
+            if !new && is_dmem_in_cache(data) 
+                return get_dmem_from_cache_core(data)
             else
                 if create
                     d_mem = iris_data_mem(data)
-                    Main.__iris_dmem_map[pointer(data)] = d_mem
+                    insert_dmem_in_cache(data, d_mem)
                     if region_axis != -1
                         IrisHRT.enable_regions(d_mem, region_axis)
                     elseif region_outer_dim
@@ -1392,7 +1402,7 @@ module IrisHRT
     end
 
     function dmem_finalizer(array_obj)
-        p_array = pointer(array_obj)
+        p_array = Ptr{Cvoid}(pointer(array_obj))
         if haskey(Main.__iris_dmem_map, p_array)
             #println(Core.stdout, ">>>>>>> releasing memory: $p_array <<<<<<<<<<<")
             IrisHRT.iris_mem_release(Main.__iris_dmem_map[p_array])
@@ -1400,6 +1410,12 @@ module IrisHRT
         end
     end
 
+    function host_dim(mem::UMem)
+        return iris_dmem_get_host_dim(field_dmem(mem))
+    end
+    function dev_dim(mem::UMem)
+        return iris_dmem_get_dev_dim(field_dmem(mem))
+    end
     function dim(mem::UMem)
         return iris_dmem_get_dim(field_dmem(mem))
     end
@@ -1518,7 +1534,7 @@ module IrisHRT
         return iris_task_wait_all(Int32(length(tasks)), pointer(tasks))
     end
     
-    function wait(mem::Union{IrisMem, IrisTaskMem})::Int32
+    function wait(mem::UMem)::Int32
         dmem = field_dmem(mem)
         if haskey(Main.__iris_dmem_2_task, dmem)
             task = Main.__iris_dmem_2_task[dmem]
@@ -1548,7 +1564,7 @@ module IrisHRT
         return dmem
     end
 
-    function zeros(mem::Union{IrisMem, IrisTaskMem})
+    function zeros(mem::UMem)
         dmem = field_dmem(mem)
         T = get_julia_type(dmem)
         iris_mem_init_reset_assign(dmem, T(0))
@@ -1560,7 +1576,7 @@ module IrisHRT
         return dmem
     end
 
-    function fill(mem::Union{IrisMem, IrisTaskMem}, data)
+    function fill(mem::UMem, data)
         dmem = field_dmem(mem)
         T = get_julia_type(dmem)
         iris_mem_init_reset_assign(dmem, T(data))
@@ -1572,7 +1588,7 @@ module IrisHRT
         return dmem
     end
 
-    function ones(mem::Union{IrisMem, IrisTaskMem})
+    function ones(mem::UMem)
         dmem = field_dmem(mem)
         T = get_julia_type(dmem)
         iris_mem_init_reset_assign(dmem, T(1))
@@ -1738,14 +1754,23 @@ module IrisHRT
         end
     end
 
-	function print_dmem(mem::Union{IrisHRT.IrisMem, IrisHRT.IrisTaskMem}, tag::String)
-		iris_data_mem_print(field_dmem(mem), tag)
-	end
+    function print_dmem(mem::Union{IrisHRT.IrisMem, IrisHRT.IrisTaskMem}, tag::String)
+        iris_data_mem_print(field_dmem(mem), tag)
+    end
 
-	function print_dmem(host::AbstractArray{T}, tag::String) where T
-		mem = get_dmem_from_cache(host)
-		iris_data_mem_print(mem, tag)
-	end
+    function print_dmem(host::AbstractArray{T}, tag::String) where T
+        mem = get_dmem_from_cache(host)
+        iris_data_mem_print(mem, tag)
+    end
+
+    function print_dmem(tag::String, mem::Union{IrisHRT.IrisMem, IrisHRT.IrisTaskMem})
+        iris_data_mem_print(field_dmem(mem), tag)
+    end
+
+    function print_dmem(tag::String, host::AbstractArray{T}) where T
+        mem = get_dmem_from_cache(host)
+        iris_data_mem_print(mem, tag)
+    end
 
     function print_dmem(mem::Union{IrisHRT.IrisMem, IrisHRT.IrisTaskMem})
         iris_data_mem_print(field_dmem(mem))
@@ -1813,7 +1838,7 @@ module IrisHRT
         return mem_list
     end
 
-    function region(mem::Union{IrisMem, IrisTaskMem}, i::Int)
+    function region(mem::UMem, i::Int)
         return iris_data_mem_create_region_struct(mem, i-1)
     end
 
@@ -1829,27 +1854,42 @@ module IrisHRT
         return iris_data_mem(host, dev_size, offset)
     end
 
-    function reshape(bmem::Union{IrisMem, IrisTaskMem}, dims...; region_axis=-1, region_outer_dim=false) 
+    function reshape(bmem::UMem, dims...; region_axis=-1, region_outer_dim=false) 
         mem = field_dmem(bmem)
         host_cptr = iris_get_dmem_host(mem)
+        hsize = host_size(mem)
+        htile_size = host_tile_size(mem)
+        hoff = offsets(mem)
         host_cptr = reinterpret(Ptr{Cvoid}, host_cptr)
         elem_size = element_size(mem) 
         elem_type = element_type(mem)
         dim_size = dims
-        #println(Core.stdout, "Type of element: ", " dim:", dims)
         if length(dims) == 1 && isa(dims[1], Tuple)
             dim_size = dims[1]
         end
-        host_size = prod(dim_size) * elem_size
         dim_size_v = collect(dim_size)
+        dim = length(dim_size)
+        host_dim = host_ndim(mem)
+        if all(==(0), hoff) && Base.prod(hsize) == Base.prod(htile_size) 
+            hsize = dim_size_v
+            htile_size = dim_size_v
+            host_dim = dim
+            hoff = ntuple(_ -> 0, host_dim)
+        end
+        #println(Core.stdout, "Type of element: ", " dim:", dims)
+        #println(Core.stdout, "Type of element: ", " dim:", dims, " hsize:", hsize, " htile_size:", htile_size, " off:", hoff)
+        #host_size = prod(dim_size) * elem_size
         key = (mem.uid, dim_size_v, elem_size, elem_type)
         if haskey(Main.__iris_dmem_mirrors_map, key)
             return Main.__iris_dmem_mirrors_map[key]
         end 
-        dim = length(dim_size)
         iris_mem=nothing
         GC.@preserve dim_size_v begin 
             iris_mem = iris_data_mem_create_struct_nd(host_cptr, pointer(dim_size_v), dim, elem_size, elem_type)
+            update_host_dim(iris_mem, host_dim)
+            update_host_size(iris_mem, hsize)
+            update_host_tile_size(iris_mem, htile_size)
+            update_host_offs(iris_mem, hoff)
         end
         #println(Core.stdout, "Type of element: ", " HostSize:", host_size, " Dims:", dim_size_v, " N-dims:", dim, " Element size:", elem_size, " pointer:", host_cptr, " uid:", iris_mem.uid)
         #print_dmem(iris_mem)
@@ -1874,7 +1914,7 @@ module IrisHRT
     end
 
     isdivisible(m, n) = iszero(m % n)
-    function Base.reinterpret(::Type{T}, bmem::Union{IrisMem, IrisTaskMem}) where T
+    function Base.reinterpret(::Type{T}, bmem::UMem) where T
         mem = field_dmem(bmem)
         host_cptr = iris_get_dmem_host(mem)
         host_cptr = reinterpret(Ptr{Cvoid}, host_cptr)
@@ -1887,7 +1927,7 @@ module IrisHRT
         if !isdivisible(elem_size, dst_elem_size) && !isdivisible(dst_elem_size, elem_size)
             error("ArgumentError: cannot reinterpret an `$elem_type` array to `$T`")
         end
-        hsize = collect(dev_size(mem))
+        hsize = collect(dev_tile_size(mem))
         dst_host_size = hsize
         if !isdivisible(hsize[1] * elem_size, dst_elem_size)
             error("ArgumentError: cannot reinterpret an `$elem_type` array to `$T` for the source array of size: $hsize")
@@ -1909,6 +1949,10 @@ module IrisHRT
         iris_mem=nothing
         GC.@preserve dst_host_size begin 
             iris_mem = iris_data_mem_create_struct_nd(host_cptr, pointer(dst_host_size), dim, dst_elem_size, dst_elem_type)
+            update_host_dim(iris_mem, host_ndim(mem))
+            update_host_size(iris_mem, host_size(mem))
+            update_host_tile_size(iris_mem, host_tile_size(mem))
+            update_host_offs(iris_mem, offsets(mem))
         end
         #println(Core.stdout, "Type of element: ", " HostSize:", dst_host_size, " N-dims:", dim, " Element size:", dst_elem_size, " pointer:", host_cptr, " hT:", hT, " uid:", iris_mem.uid)
         if dst_elem_type == iris_custom_type 
@@ -1924,7 +1968,7 @@ module IrisHRT
         return reinterpret(T1, source_mem)
     end
 
-    function host_ptr(mem::Union{IrisMem, IrisTaskMem})
+    function host_ptr(mem::UMem)
         return iris_get_dmem_host(field_dmem(mem))
     end
 
@@ -1933,7 +1977,7 @@ module IrisHRT
         return host_ptr(source_mem)
     end
 
-    function uid(mem::Union{IrisMem, IrisTaskMem})
+    function uid(mem::UMem)
         return iris_mem_get_uid(field_dmem(mem))
     end
 
@@ -1942,8 +1986,8 @@ module IrisHRT
         return uid(source_mem)
     end
 
-    function host(bmem::Union{IrisMem, IrisTaskMem}; flush=false)
-        host, dsize = get_host_4_dmem(bmem)
+    function host(bmem::UMem; flush=false)
+        host = valid_host_root(bmem; flush=flush)
         return host
     end
 
@@ -1952,7 +1996,7 @@ module IrisHRT
         return host(source_mem)
     end
 
-    function valid_host_root(bmem::Union{IrisMem, IrisTaskMem}; flush=false)
+    function valid_host_root(bmem::UMem; flush=true)
         mem = field_dmem(bmem)
         arg_ptr = iris_get_dmem_valid_host(mem)
         if arg_ptr == C_NULL
@@ -1961,43 +2005,74 @@ module IrisHRT
         if flush
             IrisHRT.flush(mem)
         end
-        size = host_size(mem)
+        hfull_size = host_size(mem)
+        hsize = host_tile_size(mem)
+        dsize = dev_tile_size(mem)
+        offs = offsets(mem)
         j_ptr = ptr_reinterpret(mem.uid, 0, 1, arg_ptr, get_type(mem))
-        return unsafe_wrap(Array, j_ptr, size, own=false)
+        full_host = unsafe_wrap(Array, j_ptr, hfull_size, own=false)
+        if hsize == hfull_size && hsize == dsize
+            #println(Core.stdout, "Case 1")
+            return full_host
+        elseif hsize == hfull_size && Base.prod(hsize) == Base.prod(dsize)
+            #println(Core.stdout, "Case 2")
+            return Base.reshape(full_host, dsize)
+        elseif hsize != hfull_size && Base.prod(hsize) == Base.prod(dsize)
+            #println(Core.stdout, "Case 3")
+            #println(Core.stdout, " full_host:", full_host, " size:", size(full_host))
+            #println(Core.stdout, " hsize:", hsize)
+            #println(Core.stdout, " offs:", offs)
+            #println(Core.stdout, " dsize:", dsize)
+            tile = get_tile(full_host, offs, hsize) 
+            #println(Core.stdout, " tile:", tile, " size:", size(tile))
+            if hsize == dsize
+                return tile
+            else
+                return Base.reshape(tile, dsize)
+            end
+        elseif hsize == hfull_size && Base.prod(hsize) != Base.prod(dsize)
+            #println(Core.stdout, "Case 4")
+            tile = get_tile(full_host, offs, dsize)
+            return tile
+        else
+            print_dmem(mem)
+            error(Core.stdout, "[Error] 1st cut host:", size(full_host), " hsize:", hsize, " dsize:", dsize, " offs:", offs)
+            return full_host
+        end
     end
 
-    function valid_host(bmem::Union{IrisMem, IrisTaskMem}; flush=false)
-        host, dsize = get_host_4_dmem(bmem)
+    function valid_host(bmem::UMem; flush=true)
+        host = valid_host_root(bmem; flush=flush)
         return host
     end
 
-    function valid_host(host::AbstractArray{T}; flush=false) where T
+    function valid_host(host::AbstractArray{T}; flush=true) where T
         source_mem = get_dmem_from_cache(host)
-        return valid_host(source_mem)
+        return valid_host(source_mem; flush=flush)
     end
 
 
-    function get_type(mem::Union{IrisMem, IrisTaskMem})
+    function get_type(mem::UMem)
         return iris_get_mem_element_type(field_dmem(mem))
     end
 
-    function get_julia_type(mem::Union{IrisMem, IrisTaskMem})
+    function get_julia_type(mem::UMem)
         element_type = iris_get_julia_type(field_dmem(mem))
         return element_type
     end
     
-    function host_ndim(mem::Union{IrisMem, IrisTaskMem})
-        return iris_dmem_get_host_size_dim(field_dmem(mem))
+    function host_ndim(mem::UMem)
+        return iris_dmem_get_host_dim(field_dmem(mem))
     end
 
-    function ndim(mem::Union{IrisMem, IrisTaskMem})
+    function ndim(mem::UMem)
         return iris_dmem_get_dim(field_dmem(mem))
     end
 
-    function host_size(bmem::Union{IrisMem, IrisTaskMem}, trail=true)
+    function host_size(bmem::UMem, trail=true)
         mem = field_dmem(bmem)
         size_ptr = iris_dmem_get_host_size(mem)
-        dim = iris_dmem_get_host_size_dim(mem)
+        dim = iris_dmem_get_host_dim(mem)
         dims_array = unsafe_wrap(Array, size_ptr, dim)
         if trail
             tr_size = remove_trailing_ones2(Int.(dims_array))
@@ -2005,25 +2080,34 @@ module IrisHRT
         return Tuple(tr_size)
     end
 
-    function dev_full_size(bmem::Union{IrisMem, IrisTaskMem})
+    function host_tile_size(bmem::UMem)
         mem = field_dmem(bmem)
-        size_ptr = iris_dmem_get_dev_full_size(mem)
-        dim = iris_dmem_get_dim(mem)
+        size_ptr = iris_dmem_get_host_tile_size(mem)
+        dim = iris_dmem_get_host_dim(mem)
         dims_array = unsafe_wrap(Array, size_ptr, dim)
         tr_size = remove_trailing_ones2(Int.(dims_array))
         return Tuple(tr_size)
     end
 
-    function dev_size(bmem::Union{IrisMem, IrisTaskMem})
+    function dev_size(bmem::UMem)
         mem = field_dmem(bmem)
         size_ptr = iris_dmem_get_dev_size(mem)
-        dim = iris_dmem_get_dim(mem)
+        dim = iris_dmem_get_dev_dim(mem)
         dims_array = unsafe_wrap(Array, size_ptr, dim)
         tr_size = remove_trailing_ones2(Int.(dims_array))
         return Tuple(tr_size)
     end
 
-    function offsets(bmem::Union{IrisMem, IrisTaskMem})
+    function dev_tile_size(bmem::UMem)
+        mem = field_dmem(bmem)
+        size_ptr = iris_dmem_get_dev_tile_size(mem)
+        dim = iris_dmem_get_dev_dim(mem)
+        dims_array = unsafe_wrap(Array, size_ptr, dim)
+        tr_size = remove_trailing_ones2(Int.(dims_array))
+        return Tuple(tr_size)
+    end
+
+    function offsets(bmem::UMem)
         mem = field_dmem(bmem)
         size_ptr = iris_dmem_get_offsets_from_host(mem)
         dim = iris_dmem_get_dim(mem)
@@ -2031,11 +2115,11 @@ module IrisHRT
         return Tuple(Int.(dims_array))
     end
 
-    function element_type(mem::Union{IrisMem, IrisTaskMem})
+    function element_type(mem::UMem)
         return iris_dmem_get_elem_type(field_dmem(mem))
     end
 
-    function element_size(mem::Union{IrisMem, IrisTaskMem})
+    function element_size(mem::UMem)
         return iris_dmem_get_elem_size(field_dmem(mem))
     end
 
@@ -2047,82 +2131,67 @@ module IrisHRT
         return iris_data_mem_set_pin_flag(false)
     end
 
-    function copy_host(mem::Union{IrisMem, IrisTaskMem}, host::AbstractArray)
+    function copy_host(mem::UMem, host::AbstractArray)
         host_ptr = reinterpret(Ptr{Cvoid}, pointer(host))
         return iris_data_mem_copyto_host(field_dmem(mem), host_ptr)
     end
 
-    function refresh(mem::Union{IrisMem, IrisTaskMem})
+    function refresh(mem::UMem)
         return iris_data_mem_refresh(field_dmem(mem))
     end
 
-    function get_source(mem::Union{IrisMem, IrisTaskMem})
+    function get_source(mem::UMem)
         return iris_dmem_get_source(field_dmem(mem))
     end
 
-    function update_size(mem::Union{IrisMem, IrisTaskMem}, host_size)
+    function update_dim(mem::UMem, d)
+        GC.@preserve vec begin 
+        iris_data_mem_update_dim(field_dmem(mem), d)
+        end
+    end
+    function update_host_dim(mem::UMem, d)
+        GC.@preserve vec begin 
+        iris_data_mem_update_host_dim(field_dmem(mem), d)
+        end
+    end
+
+    function update_host_offs(mem::UMem, offs)
+        vec = collect(Csize_t, offs)
+        GC.@preserve vec begin 
+        iris_data_mem_update_host_offs(field_dmem(mem), pointer(vec))
+        end
+    end
+
+    function update_dev_tile_size(mem::UMem, host_size)
+        vec = collect(Csize_t, host_size)
+        GC.@preserve vec begin 
+        iris_data_mem_update_dev_tile_size(field_dmem(mem), pointer(vec))
+        end
+    end
+
+    function update_host_tile_size(mem::UMem, host_size)
+        vec = collect(Csize_t, host_size)
+        GC.@preserve vec begin 
+        iris_data_mem_update_host_tile_size(field_dmem(mem), pointer(vec))
+        end
+    end
+
+    function update_host_size(mem::UMem, host_size)
         vec = collect(Csize_t, host_size)
         GC.@preserve vec begin 
         iris_data_mem_update_host_size(field_dmem(mem), pointer(vec))
-        end
-    end
-
-    function update_size_no_strides(mem::Union{IrisMem, IrisTaskMem}, host_size)
-        vec = collect(Csize_t, host_size)
-        GC.@preserve vec begin 
-        iris_data_mem_update_host_size_no_strides(field_dmem(mem), pointer(vec))
-        end
-    end
-
-    function update_host_size(mem::Union{IrisMem, IrisTaskMem}, host_size)
-        vec = collect(Csize_t, host_size)
-        GC.@preserve vec begin 
-        iris_data_mem_update_host_size(field_dmem(mem), pointer(vec))
-        end
-    end
-
-    function update_host_size_no_strides(mem::Union{IrisMem, IrisTaskMem}, host_size)
-        vec = collect(Csize_t, host_size)
-        GC.@preserve vec begin 
-        iris_data_mem_update_host_size_no_strides(field_dmem(mem), pointer(vec))
-        end
-    end
-
-    function update_dev_size_no_strides(mem::Union{IrisMem, IrisTaskMem}, dev_size)
-        vec = collect(Csize_t, dev_size)
-        GC.@preserve vec begin 
-        iris_data_mem_update_dev_size_no_strides(field_dmem(mem), pointer(vec))
-        end
-    end
-
-    function update_dev_size(mem::Union{IrisMem, IrisTaskMem}, dev_size)
-        vec = collect(Csize_t, dev_size)
-        GC.@preserve vec begin 
-        iris_data_mem_update_dev_size(field_dmem(mem), pointer(vec))
-        end
-    end
-
-    function update_size(host::AbstractArray{T}, host_size) where T
-        mem = get_dmem_from_cache(host)
-        vec = collect(Csize_t, host_size)
-        GC.@preserve vec begin 
-        iris_data_mem_update_host_size(field_dmem(mem), pointer(vec))
-        end
-    end
-
-    function update_size_no_strides(host::AbstractArray{T}, host_size) where T
-        mem = get_dmem_from_cache(host)
-        vec = collect(Csize_t, host_size)
-        GC.@preserve vec begin 
-        iris_data_mem_update_host_size_no_strides(field_dmem(mem), pointer(vec))
         end
     end
 
     function update_host_size(host::AbstractArray{T}, host_size) where T
         mem = get_dmem_from_cache(host)
+        update_host_size(mem, host_size)
+    end
+
+    function update_host_size_no_strides(mem::UMem, host_size)
         vec = collect(Csize_t, host_size)
         GC.@preserve vec begin 
-        iris_data_mem_update_host_size(field_dmem(mem), pointer(vec))
+        iris_data_mem_update_host_size_no_strides(field_dmem(mem), pointer(vec))
         end
     end
 
@@ -2134,32 +2203,62 @@ module IrisHRT
         end
     end
 
-    function update_dev_size_no_strides(host::AbstractArray{T}, dev_size) where T
-        mem = get_dmem_from_cache(host)
+    function update_dev_size_no_strides(mem::UMem, dev_size)
         vec = collect(Csize_t, dev_size)
         GC.@preserve vec begin 
         iris_data_mem_update_dev_size_no_strides(field_dmem(mem), pointer(vec))
         end
     end
 
-    function update_dev_size(host::AbstractArray{T}, dev_size) where T
-        mem = get_dmem_from_cache(host)
+    function update_dev_size(mem::UMem, dev_size)
         vec = collect(Csize_t, dev_size)
         GC.@preserve vec begin 
         iris_data_mem_update_dev_size(field_dmem(mem), pointer(vec))
         end
     end
 
+    function update_dev_size_no_strides(host::AbstractArray{T}, dev_size) where T
+        mem = get_dmem_from_cache(host)
+        update_dev_size_no_strides(mem, dev_size)
+    end
 
-    function update_off(mem::Union{IrisMem, IrisTaskMem}, off)
+    function update_dev_size(host::AbstractArray{T}, dev_size) where T
+        mem = get_dmem_from_cache(host)
+        update_dev_size(mem, dev_size)
+    end
+
+    function update_size(mem::UMem, host_size)
+        update_host_size(mem, host_size)
+        update_dev_size(mem, host_size)
+    end
+
+    function update_size(host::AbstractArray{T}, host_size) where T
+        mem = get_dmem_from_cache(host)
+        update_size(mem, host_size)
+    end
+
+    function update_tile_size(mem::UMem, host_size)
+        #print_dmem(mem, " Before tile adjustment: ")
+        update_host_tile_size(mem, host_size)
+        update_dev_tile_size(mem, host_size)
+        #print_dmem(mem, " After tile adjustment: ")
+    end
+
+    function update_tile_size(host::AbstractArray{T}, host_size) where T
+        mem = get_dmem_from_cache(host)
+        update_tile_size(mem, host_size)
+    end
+
+
+    function update_off(mem::UMem, off)
         vec = collect(Csize_t, off)
         GC.@preserve vec begin 
         iris_data_mem_update_off(field_dmem(mem), pointer(vec))
         end
     end
 
-    function release(mem::Union{IrisMem, IrisTaskMem})::Int32
-        host_cptr = host_ptr(mem)
+    function release(mem::UMem)::Int32
+        host_cptr = Ptr{Cvoid}(host_ptr(mem))
         if host_cptr == C_NULL
             return iris_mem_release(field_dmem(mem))
         else
@@ -2246,7 +2345,7 @@ module IrisHRT
             #println(Core.stdout, " hsize", hsize)
             #println(Core.stdout, " prev elems: ", total_elements)
             #println(Core.stdout, " current elems: ", array_elements)
-            update_host_size(mem, size(larray))
+            update_size(mem, size(larray))
         end
     end
 
@@ -2255,13 +2354,13 @@ module IrisHRT
         return idx === nothing ? Int[1] : arr[1:idx]
     end
 
-	function get_init_task(;task=nothing)
-		task0 = task
-		if task0 == nothing
-			task0 = iris_task_create_struct()
-		end
-		return task0
-	end
+    function get_init_task(;task=nothing)
+        task0 = task
+        if task0 == nothing
+            task0 = iris_task_create_struct()
+        end
+        return task0
+    end
 
     function get_init_task_dmem(::Type{T}, dims...; task=nothing, dmem=nothing) where T
         task0 = task
@@ -2414,83 +2513,83 @@ module IrisHRT
         return (task=task0, dmem=dmem0)
     end
 
-	function rand_task(dmem0::UMem; task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true) 
-		task0 = get_init_task(task=task)
-		dmem0 = field_dmem(dmem0)
-		T = get_julia_type(dmem0)
-		iris_task_cmd_init_reset_random_uniform_seq(task0, dmem0, seed, T(0), T(1))
-		if submit
-			iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
-		end
-		return task0
-	end
+    function rand_task(dmem0::UMem; task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true) 
+        task0 = get_init_task(task=task)
+        dmem0 = field_dmem(dmem0)
+        T = get_julia_type(dmem0)
+        iris_task_cmd_init_reset_random_uniform_seq(task0, dmem0, seed, T(0), T(1))
+        if submit
+            iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
+        end
+        return task0
+    end
 
-	function zeros_task(dmem0::UMem; task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true) 
-		task0 = get_init_task(task=task)
-		dmem0 = field_dmem(dmem0)
-		T = get_julia_type(dmem0)
-		iris_task_cmd_init_reset_assign(task0, dmem0, T(0))
-		if submit
-			iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
-		end
-		return task0
-	end
+    function zeros_task(dmem0::UMem; task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true) 
+        task0 = get_init_task(task=task)
+        dmem0 = field_dmem(dmem0)
+        T = get_julia_type(dmem0)
+        iris_task_cmd_init_reset_assign(task0, dmem0, T(0))
+        if submit
+            iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
+        end
+        return task0
+    end
 
-	function fill_task(dmem0::UMem, data; task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true)
-		task0 = get_init_task(task=task)
-		dmem0 = field_dmem(dmem0)
-		T = get_julia_type(dmem0)
-		#println(Core.stdout, " T:", T, " data:", data, " type-of-data:", typeof(data))
-		iris_task_cmd_init_reset_assign(task0, dmem0, T(data))
-		if submit
-			iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
-		end
-		return task0
-	end
+    function fill_task(dmem0::UMem, data; task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true)
+        task0 = get_init_task(task=task)
+        dmem0 = field_dmem(dmem0)
+        T = get_julia_type(dmem0)
+        #println(Core.stdout, " T:", T, " data:", data, " type-of-data:", typeof(data))
+        iris_task_cmd_init_reset_assign(task0, dmem0, T(data))
+        if submit
+            iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
+        end
+        return task0
+    end
 
-	function ones_task(dmem0::UMem; task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true) 
-		task0 = get_init_task(task=task)
-		dmem0 = field_dmem(dmem0)
-		T = get_julia_type(dmem0)
-		iris_task_cmd_init_reset_assign(task0, dmem0, T(1))
-		if submit
-			iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
-		end
-		return task0
-	end
+    function ones_task(dmem0::UMem; task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true) 
+        task0 = get_init_task(task=task)
+        dmem0 = field_dmem(dmem0)
+        T = get_julia_type(dmem0)
+        iris_task_cmd_init_reset_assign(task0, dmem0, T(1))
+        if submit
+            iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
+        end
+        return task0
+    end
 
-	function arange_task(dmem0::UMem; task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true) 
-		task0 = get_init_task(task=task)
-		dmem0 = field_dmem(dmem0)
-		T = get_julia_type(dmem0)
-		iris_task_cmd_init_reset_arith_seq(task0, dmem0, T(0), T(1))
-		if submit
-			iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
-		end
-		return task0
-	end
+    function arange_task(dmem0::UMem; task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true) 
+        task0 = get_init_task(task=task)
+        dmem0 = field_dmem(dmem0)
+        T = get_julia_type(dmem0)
+        iris_task_cmd_init_reset_arith_seq(task0, dmem0, T(0), T(1))
+        if submit
+            iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
+        end
+        return task0
+    end
 
-	function linspace_task(dmem0::UMem; task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true) 
-		task0 = get_init_task(task=task)
-		dmem0 = field_dmem(dmem0)
-		T = get_julia_type(dmem0)
-		iris_task_cmd_init_reset_arith_seq(task0, dmem0, T(start), T(step))
-		if submit
-			iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
-		end
-		return task0
-	end
+    function linspace_task(dmem0::UMem; task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true) 
+        task0 = get_init_task(task=task)
+        dmem0 = field_dmem(dmem0)
+        T = get_julia_type(dmem0)
+        iris_task_cmd_init_reset_arith_seq(task0, dmem0, T(start), T(step))
+        if submit
+            iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
+        end
+        return task0
+    end
 
-	function geomspace_task(dmem0::UMem; task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true) 
-		task0 = get_init_task(task=task)
-		dmem0 = field_dmem(dmem0)
-		T = get_julia_type(dmem0)
-		iris_task_cmd_init_reset_geom_seq(task0, dmem0, T(start), T(step))
-		if submit
-			iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
-		end
-		return task0
-	end
+    function geomspace_task(dmem0::UMem; task=nothing, submit=true, policy=IrisHRT.iris_roundrobin, wait=true) 
+        task0 = get_init_task(task=task)
+        dmem0 = field_dmem(dmem0)
+        T = get_julia_type(dmem0)
+        iris_task_cmd_init_reset_geom_seq(task0, dmem0, T(start), T(step))
+        if submit
+            iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
+        end
+        return task0
+    end
 
 
 
@@ -2591,7 +2690,7 @@ module IrisHRT
         offset = 0
         function convert_iris_mem(mem)
             #d = ndim(mem)
-            d_dim = dev_size(mem)
+            d_dim = dev_tile_size(mem)
             d = length(d_dim) 
             if d == 1
                 return IrisMem1D{eltype(mem)}(mem)
@@ -2763,10 +2862,10 @@ module IrisHRT
         return IrisHRT.task(;gws=N, parallel_for=true, kernel=f, args=Any[x...], eargs...) 
     end
 
-	function full_sizeof(mem::Union{IrisHRT.IrisMem, IrisHRT.IrisTaskMem})
-		dmem = field_dmem(mem)
-		return iris_mem_get_full_size(dmem)
-	end
+    function full_sizeof(mem::Union{IrisHRT.IrisMem, IrisHRT.IrisTaskMem})
+        dmem = field_dmem(mem)
+        return iris_mem_get_full_size(dmem)
+    end
 
     function parallel_reduce_core(N::Union{Int64, UInt64, Tuple{Int64}, Tuple{UInt64}, NTuple{2, Integer}, NTuple{3, Integer}}, f::Union{Function,String}, x... ; reuse=false, result=nothing, buffer=nothing, task=nothing, submit=true, flush=false, policy=IrisHRT.iris_roundrobin, wait=true, auto_dependency=true, dependencies=[], metadata=nothing, op=nothing, init=nothing)
         kernel_name = f
@@ -2817,8 +2916,8 @@ module IrisHRT
                         tmp_mem, prev_mem = Main.__iris_dmem_parallel_reduce_map[map_key]
                     end
                 else
-                    tmp_mem = dmem(IrisHRT.get_julia_type(first_x), dev_full_size(first_x))
-                    #println(Core.stdout, " in tmp mem create: size:", size(first_x), " full_size:", dev_full_size(first_x))
+                    tmp_mem = dmem(IrisHRT.get_julia_type(first_x), dev_size(first_x))
+                    #println(Core.stdout, " in tmp mem create: size:", size(first_x), " full_size:", dev_size(first_x))
                     #print_dmem(tmp_mem)
                     #print_dmem(out_mem)
                     Main.__iris_dmem_parallel_reduce_map[map_key] = (tmp_mem, out_mem)
@@ -2846,8 +2945,8 @@ module IrisHRT
         if init == nothing
             init = get_jacc_init(op, out_mem)
         end
-		task0 = IrisHRT.fill_task(out_mem, init; task=task, submit=false)
-		task0 = IrisHRT.fill_task(tmp_mem, init; task=task0, submit=false)
+        task0 = IrisHRT.fill_task(out_mem, init; task=task, submit=false)
+        task0 = IrisHRT.fill_task(tmp_mem, init; task=task0, submit=false)
         #IrisHRT.fill(out_mem, init)
         #IrisHRT.refresh(out_mem)
         #IrisHRT.fill(tmp_mem, init)
@@ -2925,7 +3024,7 @@ module IrisHRT
     end
     function parallel_reduce(op::Base.Callable, A::Union{IrisMem,IrisTaskMem}; args...)
         kernel = get_iris_jacc_elem_access(op)
-        return parallel_reduce_core(dev_size(A), kernel, A; op=op, args...)
+        return parallel_reduce_core(dev_tile_size(A), kernel, A; op=op, args...)
     end
     function parallel_reduce(A::AbstractArray; args...)
         s = size(A)
@@ -2937,7 +3036,7 @@ module IrisHRT
     end
     function parallel_reduce(A::Union{IrisMem,IrisTaskMem}; args...)
         kernel = get_iris_jacc_elem_access(+)
-        return parallel_reduce_core(dev_size(A), kernel, A; op=+, args...)
+        return parallel_reduce_core(dev_tile_size(A), kernel, A; op=+, args...)
     end
     function parallel_reduce(A::AbstractMatrix; args...)
         kernel = get_iris_jacc_elem_access(+)
@@ -3023,7 +3122,7 @@ module IrisHRT
 
     function custom_print(im::UMem)
         #println(Core.stdout, " flushed now!")
-        host, dsize = get_host_4_dmem(im)
+        host = valid_host_root(im)
         return host #"IrisMem with data: " * join(host, ", ")
     end
 
@@ -3089,43 +3188,12 @@ module IrisHRT
         return tile
     end
 
-    function get_host_4_dmem(mem::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem})
-        dmem = field_dmem(mem)
-        host = IrisHRT.valid_host_root(dmem; flush=true)
-        hsize = IrisHRT.host_size(dmem)
-        hfull_size = IrisHRT.dev_full_size(dmem)
-        dsize = IrisHRT.dev_size(dmem)
-        offs = IrisHRT.offsets(dmem)
-		p = get_source(dmem)
-		hsizeof = Base.prod(hsize)
-		dsizeof = Base.prod(dsize)
-		#IrisHRT.print_dmem(dmem, "in get_host_4_dmem: ---- ")
-		#println(Core.stdout, " 1: host:", size(host), " hsize:", hsize, " dsize:", dsize, " offs:", offs, " p-uid:", p.uid, " class:", p.class_obj, " hsizeof:", hsizeof, " dsizeof:", dsizeof)
-		if hsize == dsize
-			return host, dsize
-        elseif hsize != dsize
-			#println(Core.stdout, " 2: ----host:", size(host), " hsize:", hsize, " dsize:", dsize, " offs:", offs, " p-uid:", p.uid, " class:", p.class_obj, " hsizeof:", hsizeof, " dsizeof:", dsizeof)
-            if p.class_obj != C_NULL
-				#println(Core.stdout, "3: --- trying to callnow")
-                p_host, p_dsize = get_host_4_dmem(p)
-                if p_dsize != dsize
-                    host = Base.reshape(p_host, dsize)
-                else
-                    host = p_host
-                end
-            else
-				#println(Core.stdout, "3: --- trying to get tile")
-                host = get_tile(host, offs, dsize)
-            end
-        end
-        return host, dsize
-    end
-
     # Custom getindex: Accepts exactly N indices 
     # (which can be integers, ranges, or other index types)
-    function Base.getindex(mem::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}, inds::Vararg{Any, N}) where N
+    function Base.getindex(mem::UMem, inds::Vararg{Any, N}) where N
         # Add any custom behavior before/after element access if desired
-        host, dsize = IrisHRT.get_host_4_dmem(mem)
+        host = IrisHRT.valid_host_root(mem)
+        println(Core.stdout, " Host size:", size(host))
         return Base.getindex(host, inds...)
     end
     function Base.lastindex(mem::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem})
@@ -3191,12 +3259,12 @@ module IrisHRT
         else
             task0 = field_task(task)
         end
-        if !isa(src, Union{IrisMem, IrisTaskMem})
+        if !isa(src, UMem)
             src = get_dmem_from_cache(src)
         else
             src = field_dmem(src)
         end
-        if !isa(dst, Union{IrisMem, IrisTaskMem})
+        if !isa(dst, UMem)
             dst = get_dmem_from_cache(dst)
         else
             dst = field_dmem(dst)
@@ -3224,14 +3292,14 @@ module IrisHRT
     end
 
     function copy(src; flush=false, eargs...)
-        if !isa(src, Union{IrisMem, IrisTaskMem})
+        if !isa(src, UMem)
             src = get_dmem_from_cache(src)
         else
             src = field_dmem(src)
         end
         dst = iris_data_mem_copy(src)
-        host = valid_host_root(dst; flush=flush)
-        Main.__iris_dmem_map[pointer(host)] = dst
+        arg_ptr = iris_get_dmem_valid_host(dst)
+        Main.__iris_dmem_map[Ptr{Cvoid}(arg_ptr)] = dst
         task0 = copyto!(dst, src; eargs...)
         return IrisTaskMem(task0, dst)
     end
@@ -3239,7 +3307,7 @@ module IrisHRT
     function add_auto_dependencies(task0, in_list, out_list)
         n_dependencies = IrisHRT.IrisTask[]
         for mem in in_list
-            if isa(mem, Union{IrisMem, IrisTaskMem})
+            if isa(mem, UMem)
                 mem_obj = IrisHRT.field_dmem(mem)
                 if haskey(Main.__iris_dmem_2_task, mem_obj)
                     dep_task = Main.__iris_dmem_2_task[mem_obj]
@@ -3258,7 +3326,7 @@ module IrisHRT
             end
         end
         for mem in out_list
-            if isa(mem, Union{IrisMem, IrisTaskMem})
+            if isa(mem, UMem)
                Main.__iris_dmem_2_task[field_dmem(mem)] = task0
             else
                mem_obj = get_dmem_from_cache(mem) 
@@ -3486,6 +3554,16 @@ function uid(mem::Union{IrisHRT.IrisMem, IrisHRT.IrisTaskMem})
     return IrisHRT.uid(dmem)
 end
 
+function dev_tile_size(mem::Union{IrisHRT.IrisMem, IrisHRT.IrisTaskMem})
+    dmem = IrisHRT.field_dmem(mem)
+    return IrisHRT.dev_tile_size(dmem)
+end
+
+function dev_tile_size(mem::Union{IrisHRT.IrisMem, IrisHRT.IrisTaskMem}, index::Int64)
+    dmem = IrisHRT.field_dmem(mem)
+    return IrisHRT.dev_tile_size(dmem)[index]
+end
+
 function dev_size(mem::Union{IrisHRT.IrisMem, IrisHRT.IrisTaskMem})
     dmem = IrisHRT.field_dmem(mem)
     return IrisHRT.dev_size(dmem)
@@ -3518,12 +3596,12 @@ end
 
 function size(mem::Union{IrisHRT.IrisMem, IrisHRT.IrisTaskMem})
     dmem = IrisHRT.field_dmem(mem)
-    return IrisHRT.dev_size(dmem)
+    return IrisHRT.dev_tile_size(dmem)
 end
 
 function size(mem::Union{IrisHRT.IrisMem, IrisHRT.IrisTaskMem}, index::Int64)
     dmem = IrisHRT.field_dmem(mem)
-    return IrisHRT.dev_size(dmem)[index]
+    return IrisHRT.dev_tile_size(dmem)[index]
 end
 
 function axes(mem::Union{IrisHRT.IrisMem, IrisHRT.IrisTaskMem})
@@ -3541,24 +3619,30 @@ function axes(mem::Union{IrisHRT.IrisMem, IrisHRT.IrisTaskMem}, index::Int64)
 end
 
 function Base.length(mem::Union{IrisHRT.IrisMem, IrisHRT.IrisTaskMem})
-    size = dev_size(mem)
+    size = dev_tile_size(mem)
     s = Base.prod(size)
     return s
 end
 function Base.getindex(mem::IrisHRT.UMem, i::Int)
     dmem = IrisHRT.field_dmem(mem)
-    n_regions = IrisHRT.regions_count(dmem)
-    if i > n_regions
-        error("Region index($(i)) > regions_count($(n_regions)) for mem:$(dmem.uid)")
-        return nothing
-    end
-    r = IrisHRT.region(dmem, i)
-    return r
+    host = IrisHRT.valid_host_root(dmem)
+    return host[i]
+end
+
+function Base.getindex(mem::IrisHRT.UMem, i::Int, j::Int)
+    dmem = IrisHRT.field_dmem(mem)
+    host = IrisHRT.valid_host_root(dmem)
+    return host[i,j]
+end
+function Base.getindex(mem::IrisHRT.UMem, i::Int, j::Int, k::Int)
+    dmem = IrisHRT.field_dmem(mem)
+    host = IrisHRT.valid_host_root(dmem)
+    return host[i,j,k]
 end
 
 function Base.pointer(mem::Union{IrisHRT.IrisMem, IrisHRT.IrisTaskMem})
     dmem = IrisHRT.field_dmem(mem)
-    host, dsize = IrisHRT.get_host_4_dmem(dmem)
+    host = IrisHRT.valid_host_root(dmem)
     return pointer(host)
 end
 
@@ -3612,12 +3696,12 @@ end
 
 function Base.iterate(v::IrisHRT.UMem) 
     dmem = IrisHRT.field_dmem(v)
-    host, dsize = IrisHRT.get_host_4_dmem(dmem)
+    host = IrisHRT.valid_host_root(dmem)
     return iterate(host)
 end
 function Base.iterate(v::IrisHRT.UMem, state) 
     dmem = IrisHRT.field_dmem(v)
-    host, dsize = IrisHRT.get_host_4_dmem(dmem)
+    host = IrisHRT.valid_host_root(dmem)
     return iterate(host, state)
 end
 function parallel_for((L, M, N)::Union{Tuple{Int64, Int64, Int64},Tuple{UInt64, UInt64, UInt64}}, f::Union{Function,String}, x... ; eargs...)

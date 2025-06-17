@@ -38,8 +38,9 @@ DataMem::DataMem(Platform* platform, void *host_ptr, size_t *host_size, int dim,
     Init(platform, host_ptr, size, dim);
     set_element_type(element_type);
     memcpy(dev_size_, host_size, sizeof(size_t)*dim_);
-    memcpy(dev_full_size_, host_size, sizeof(size_t)*dim_);
+    memcpy(dev_tile_size_, host_size, sizeof(size_t)*dim_);
     memcpy(host_size_, host_size, sizeof(size_t)*dim_);
+    memcpy(host_tile_size_, host_size, sizeof(size_t)*dim_);
     elem_size_ = elem_size;
     compute_strides(host_strides_, host_size_);
     compute_strides(dev_strides_,  dev_size_);
@@ -71,8 +72,9 @@ DataMem::DataMem(Platform *platform, void *host_ptr, size_t *off, size_t *host_s
     dim_ = dim;
     memcpy(off_, off, sizeof(size_t)*dim_);
     memcpy(dev_size_, dev_size, sizeof(size_t)*dim_);
-    memcpy(dev_full_size_, dev_size, sizeof(size_t)*dim_);
+    memcpy(dev_tile_size_, dev_size, sizeof(size_t)*dim_);
     memcpy(host_size_, host_size, sizeof(size_t)*dim_);
+    memcpy(host_tile_size_, dev_size, sizeof(size_t)*dim_); // This should tile
     compute_strides(host_strides_, host_size_);
     compute_strides(dev_strides_,  dev_size_);
     elem_size_ = elem_size;
@@ -120,9 +122,10 @@ string DataMem::ToString(bool check_regions)
     }
     dev_dirty << "]";
     dev_ptr << "]";
-    string host_size_str = Utils::GetString(host_size_, dim());
+    string host_tile_size_str = Utils::GetString(host_tile_size_, dim());
     string dev_size_str = Utils::GetString(dev_size_, dim());
-    string dev_full_size_str = Utils::GetString(dev_full_size_, dim());
+    string dev_tile_size_str = Utils::GetString(dev_tile_size_, dim());
+    string host_size_str = Utils::GetString(host_size_, dim());
     string off_size_str = Utils::GetString(off_, dim());
     string dev_off_size_str = Utils::GetString(dev_off_, dim());
     string host_strides_size_str = Utils::GetString(host_strides_, dim()+1);
@@ -138,10 +141,11 @@ string DataMem::ToString(bool check_regions)
     output << " element_size:" << elem_size_;
     if (get_n_regions() > 0) 
         output << " regions:" << get_n_regions();
-    output << " host_size:" << host_size_str;
     output << " host_off:" << off_size_str;
     output << " host_strides:" << host_strides_size_str;
-    output << " dev_full_size:" << dev_full_size_str;
+    output << " host_tile_size:" << host_tile_size_str;
+    output << " host_size:" << host_size_str;
+    output << " dev_tile_size:" << dev_tile_size_str;
     output << " dev_size:" << dev_size_str;
     output << " dev_off:" << dev_off_size_str;
     output << " dev_strides:" << dev_strides_size_str;
@@ -219,6 +223,8 @@ void DataMem::clear_host_dirty() {
         host_dirty_flag_ = false; 
         for(int i=0; i<valid_n_regions_; i++) {
             regions_[i].first->clear_host_dirty();
+            // Secondary is not required as the secodary always depends on 
+            // first object for host dirty flag management.
         }
     }
 }
@@ -229,6 +235,7 @@ void DataMem::set_host_dirty(bool flag) {
     else if (valid_n_regions_ == 0) 
         host_dirty_flag_ = flag; 
     else {
+        host_dirty_flag_ = flag; 
         for(int i=0; i<valid_n_regions_; i++) {
             regions_[i].first->set_host_dirty(flag);
         }
@@ -240,10 +247,12 @@ bool DataMem::is_dev_dirty(int devno, bool check_regions) {
         return source_mem->is_dev_dirty(devno, check_regions);
     if (!check_regions || valid_n_regions_ == 0) 
         return dirty_flag_[devno]; 
-    for(int i=0; i<valid_n_regions_; i++) {
+    if (check_regions) for(int i=0; i<valid_n_regions_; i++) {
         if (regions_[i].first->is_dev_dirty(devno))
             return true;
     }
+    else
+        return dirty_flag_[devno];
     return false;
 }
 void DataMem::set_dev_dirty(int devno, bool flag, bool check_regions) { 
@@ -253,7 +262,8 @@ void DataMem::set_dev_dirty(int devno, bool flag, bool check_regions) {
     else if (!check_regions || valid_n_regions_ == 0) 
         dirty_flag_[devno] = flag; 
     else {
-        for(int i=0; i<valid_n_regions_; i++) {
+        dirty_flag_[devno] = flag; 
+        if (check_regions) for(int i=0; i<valid_n_regions_; i++) {
             regions_[i].first->set_dev_dirty(devno, flag);
             if (regions_[i].first != regions_[i].second) 
                 regions_[i].second->set_dev_dirty(devno, flag);
@@ -282,6 +292,7 @@ void DataMem::clear_dev_dirty(int devno) {
     else if (valid_n_regions_ == 0) 
         dirty_flag_[devno] = false; 
     else {
+        dirty_flag_[devno] = false; 
         for(int i=0; i<valid_n_regions_; i++) {
             regions_[i].first->clear_dev_dirty(devno);
             if (regions_[i].first != regions_[i].second) 
@@ -293,7 +304,7 @@ void DataMem::set_dirty_except(int devno, bool check_regions) {
     DataMem *source_mem = (DataMem*)get_source_mem();
     if (source_mem != NULL) 
         source_mem->set_dirty_except(devno);
-    else if (valid_n_regions_ <= 0) {
+    else if (!check_regions || valid_n_regions_ <= 0) {
         for(int i=0; i<ndevs_; i++) {
             if (i != devno) dirty_flag_[i] = true;
         }
@@ -306,7 +317,11 @@ void DataMem::set_dirty_except(int devno, bool check_regions) {
         }
     } 
     else {
-        for(int i=0; i<valid_n_regions_; i++) {
+        for(int i=0; i<ndevs_; i++) {
+            if (i != devno) dirty_flag_[i] = true;
+        }
+        dirty_flag_[devno] = false;
+        if (check_regions) for(int i=0; i<valid_n_regions_; i++) {
             regions_[i].first->set_dirty_except(devno);
             if (regions_[i].first != regions_[i].second)  {
                 // We shouldn't update the device copy as we requested to update the whole host
@@ -383,47 +398,116 @@ bool DataMem::is_dirty_all() {
     }
     return all;
 }
-int DataMem::update_host_size(size_t *host_size, bool update_strides) 
+int DataMem::update_host_offs(size_t *offs, int dim) 
 {
-    //Print("Before host update:");
-    if (dim_ > 1)
-        multi_dim_dev_offset_ = true;
-    memcpy(host_size_, host_size, sizeof(size_t)*dim_);
-    if (update_strides)
-        compute_strides(host_strides_, host_size_);
-    if (!tile_enabled_) {
-        memcpy(dev_size_, host_size, sizeof(size_t)*dim_);
-        if (update_strides)
-            compute_strides(dev_strides_,  dev_size_);
-        size_t size = elem_size_;
-        for(int i=0; i<dim_; i++) {
-            size = size * host_size[i];
-        }
-        size_ = size;
-    }
-    int n_regions = get_n_regions();
-    vector<pair<DataMemRegion*, DataMemRegion*> > & regions = 
-        get_regions();
-    for (int i=0; i<n_regions; i++) {
-        size_t dev_size[DMEM_MAX_DIM];
-        memcpy(dev_size, dev_size_, sizeof(size_t)*DMEM_MAX_DIM);
-        dev_size[dim_-1] = 1;
-        ASSERT(regions[i].first == regions[i].second);
-        regions[i].first->update_dev_size(dev_size, update_strides);
-        regions[i].first->enable_multi_dim_dev_offset();
-    }
-    //Print("After host update:");
+    if (dim == -1)
+        dim = host_dim_;
+    memcpy(off_, offs, sizeof(size_t)*dim);
+    for(int i=dim; i<IRIS_MAX(host_dim_, dim_); i++)
+        off_[i] = 0;
     return IRIS_SUCCESS;
 }
-int DataMem::update_dev_size(size_t *dev_size, bool update_strides) { 
-    if (dim_ > 1)
-        multi_dim_dev_offset_ = true;
-    //Print("Before dev update:");
-    memcpy(dev_size_, dev_size, sizeof(size_t)*dim_); 
+int DataMem::update_host_size(size_t *host_size, bool update_strides, int dim) 
+{
+    if (dim == -1)
+        dim = host_dim_;
+    memcpy(host_size_, host_size, sizeof(size_t)*dim);
+    for(int i=dim; i<IRIS_MAX(host_dim_, dim_); i++)
+        host_size_[i] = 1;
     if (update_strides)
-        compute_strides(dev_strides_,  dev_size_);
+        compute_strides(host_strides_, host_size_, IRIS_MAX(dim, IRIS_MAX(host_dim_, dim_)));
+    return IRIS_SUCCESS;
+}
+int DataMem::update_host_tile_size(size_t *host_size, int dim) 
+{
+    //Print("Before host update:");
+    if (dim == -1)
+        dim = host_dim_;
+    if (dim > 1)
+        multi_dim_dev_offset_ = true;
+    memcpy(host_tile_size_, host_size, sizeof(size_t)*dim);
+    for(int i=dim; i<IRIS_MAX(host_dim_, dim_); i++)
+        host_tile_size_[i] = 1;
+    //Print("After host update:");
+    int n_regions = get_n_regions();
+    if (n_regions > 0) {
+        vector<pair<DataMemRegion*, DataMemRegion*> > & regions = 
+            get_regions();
+        for (int i=0; i<n_regions; i++) {
+            size_t lhost_size[DMEM_MAX_DIM];
+            memcpy(lhost_size, host_size, sizeof(size_t)*dim);
+            lhost_size[dim-1] = 1;
+            ASSERT(regions[i].first == regions[i].second);
+            regions[i].first->update_host_tile_size(lhost_size, dim);
+            regions[i].first->enable_multi_dim_dev_offset();
+        }
+    }
+    return IRIS_SUCCESS;
+}
+int DataMem::update_dev_tile_size(size_t *dev_size, int dim) 
+{
+    //Print("Before host update:");
+    if (dim == -1)
+        dim = host_dim_;
+    if (dim > 1)
+        multi_dim_dev_offset_ = true;
+    memcpy(dev_tile_size_, dev_size, sizeof(size_t)*dim);
+    for(int i=dim; i<IRIS_MAX(host_dim_, dim_); i++)
+        dev_tile_size_[i] = 1;
+    //Print("After host update:");
+    size_t size = elem_size_;
+    for(int i=0; i<dim; i++) {
+        size = size * dev_size[i];
+    }
+    size_ = size;
     //Print("After dev update:");
     set_dirty_all();
+    int n_regions = get_n_regions();
+    if (n_regions > 0) {
+        vector<pair<DataMemRegion*, DataMemRegion*> > & regions = 
+            get_regions();
+        for (int i=0; i<n_regions; i++) {
+            size_t ldev_size[DMEM_MAX_DIM];
+            memcpy(ldev_size, dev_size, sizeof(size_t)*dim);
+            ldev_size[dim-1] = 1;
+            ASSERT(regions[i].first == regions[i].second);
+            regions[i].first->update_dev_tile_size(ldev_size, dim);
+            regions[i].first->enable_multi_dim_dev_offset();
+        }
+    }
+    return IRIS_SUCCESS;
+}
+int DataMem::update_dev_size(size_t *dev_size, bool update_strides, int dim) {
+    if (dim == -1)
+        dim = dim_; 
+    if (dim > 1)
+        multi_dim_dev_offset_ = true;
+    //Print("Before dev update:");
+    memcpy(dev_size_, dev_size, sizeof(size_t)*dim); 
+    for(int i=dim; i<IRIS_MAX(host_dim_, dim_); i++)
+        dev_size_[i] = 1;
+    if (update_strides)
+        compute_strides(dev_strides_,  dev_size_, IRIS_MAX(dim, IRIS_MAX(host_dim_, dim_)));
+    size_t size = elem_size_;
+    for(int i=0; i<dim; i++) {
+        size = size * dev_size[i];
+    }
+    size_ = size;
+    //Print("After dev update:");
+    set_dirty_all();
+    int n_regions = get_n_regions();
+    if (n_regions > 0) {
+        vector<pair<DataMemRegion*, DataMemRegion*> > & regions = 
+            get_regions();
+        for (int i=0; i<n_regions; i++) {
+            size_t ldev_size[DMEM_MAX_DIM];
+            memcpy(ldev_size, dev_size, sizeof(size_t)*dim);
+            ldev_size[dim-1] = 1;
+            ASSERT(regions[i].first == regions[i].second);
+            regions[i].first->update_dev_size(ldev_size, update_strides, dim);
+            regions[i].first->enable_multi_dim_dev_offset();
+        }
+    }
     return IRIS_SUCCESS;
 }
 void DataMem::FetchDataFromDevice(void *dst_host_ptr)
@@ -499,6 +583,7 @@ void DataMem::FetchDataFromDevice(void *dst_host_ptr, size_t size)
 void DataMem::Init(Platform *platform, void *host_ptr, size_t size, int dim)
 {
     dim_ = dim;
+    host_dim_ = dim;
     multi_dim_dev_offset_ = false;
     source_mem_ = NULL;
     tile_enabled_ = false;
@@ -532,7 +617,8 @@ void DataMem::Init(Platform *platform, void *host_ptr, size_t size, int dim)
     for(int i=0; i<DMEM_MAX_DIM; i++) {
         host_size_[i] = 1;
         dev_size_[i] = 1;
-        dev_full_size_[i] = 1;
+        dev_tile_size_[i] = 1;
+        host_tile_size_[i] = 1;
         off_[i] = 0;
         dev_off_[i] = 0;
         host_strides_[i] = dev_strides_[i] = 1;

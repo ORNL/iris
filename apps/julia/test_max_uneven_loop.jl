@@ -13,10 +13,10 @@ m2 = Float32[0f0]
 test_out = Float32[129.0f0, 193.0f0]
 x_d = IrisHRT.dmem(x; region_outer_dim=true)
 
-@testset "max" begin
+@testset "max_uneven_loop" begin
 m1 = Float32[0f0]
 for (index, i) in enumerate([1, 65])
-    IrisHRT.update_size_no_strides(x, [i, 4])
+    IrisHRT.update_tile_size(x, [i, 4])
     regions = IrisHRT.regions(x) 
     IrisHRT.parallel_reduce(max, regions[2]; result=m1)
     IrisHRT.flush(m1)

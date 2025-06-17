@@ -297,9 +297,14 @@ size_t *iris_dmem_get_host_size(iris_mem brs_mem) {
     return NULL;
 }
 
-size_t *iris_dmem_get_dev_full_size(iris_mem brs_mem) {
+size_t *iris_dmem_get_host_tile_size(iris_mem brs_mem) {
     DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
-    if (mem != NULL) return mem->dev_full_size();
+    if (mem != NULL) return mem->host_tile_size();
+    return NULL;
+}
+size_t *iris_dmem_get_dev_tile_size(iris_mem brs_mem) {
+    DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (mem != NULL) return mem->dev_tile_size();
     return NULL;
 }
 size_t *iris_dmem_get_dev_size(iris_mem brs_mem) {
@@ -357,13 +362,19 @@ int iris_dmem_get_dim(iris_mem brs_mem) {
     return 0;
 }
 
-int iris_dmem_get_host_size_dim(iris_mem brs_mem) {
+int iris_dmem_get_dev_dim(iris_mem brs_mem) {
+    DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (mem != NULL) return mem->dev_dim();
+    return 0;
+}
+
+int iris_dmem_get_host_dim(iris_mem brs_mem) {
     DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
     if (mem == NULL) return 0;
-    DataMem *source_mem = (DataMem*)mem->get_source_mem();
-    if (source_mem != NULL)
-        return source_mem->dim();
-    return mem->dim();
+    //DataMem *source_mem = (DataMem*)mem->get_source_mem();
+    //if (source_mem != NULL)
+    //    return source_mem->dim();
+    return mem->host_dim();
 }
 
 void *iris_get_dmem_valid_host(iris_mem brs_mem) {
@@ -846,6 +857,14 @@ int iris_data_mem_refresh(iris_mem brs_mem) {
   mem->RefreshHost();
   return IRIS_SUCCESS;
 }
+int iris_data_mem_update_host_offs(iris_mem brs_mem, size_t *offsets) {
+  DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  return mem->update_host_offs(offsets);
+}
+int iris_data_mem_update_host_tile_size(iris_mem brs_mem, size_t *host_size) {
+  DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  return mem->update_host_tile_size(host_size);
+}
 int iris_data_mem_update_host_size(iris_mem brs_mem, size_t *host_size) {
   DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
   return mem->update_host_size(host_size);
@@ -854,9 +873,17 @@ int iris_data_mem_update_host_size_no_strides(iris_mem brs_mem, size_t *host_siz
   DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
   return mem->update_host_size(host_size, false);
 }
+int iris_data_mem_update_host_dim(iris_mem brs_mem, int dim) {
+  DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  return mem->update_host_dim(dim);
+}
 int iris_data_mem_update_dim(iris_mem brs_mem, int dim) {
   DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
   return mem->update_dim(dim);
+}
+int iris_data_mem_update_dev_tile_size(iris_mem brs_mem, size_t *host_size) {
+  DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  return mem->update_dev_tile_size(host_size);
 }
 int iris_data_mem_update_dev_size(iris_mem brs_mem, size_t *dev_size) {
   DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);

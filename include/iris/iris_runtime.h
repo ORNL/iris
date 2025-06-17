@@ -1279,6 +1279,7 @@ extern int iris_data_mem_init_reset(iris_mem mem, int reset);
  * @return void 
  */
 extern void iris_data_mem_print(iris_mem mem);
+extern void iris_data_mem_print_with_tag(iris_mem mem, const char *tag);
 
 /**@brief Get DMem element type
  *
@@ -1502,7 +1503,23 @@ extern iris_mem iris_data_mem_copy(iris_mem src_mem);
  */
 extern int iris_data_mem_refresh(iris_mem mem);
 
-/**@brief data memory object update for a task
+/**@brief update host offsets for DMME object 
+ *
+ * @param mem memory object
+ * @param offsets host size pointer to the array
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_data_mem_update_host_offs(iris_mem mem, size_t *offsets);
+
+/**@brief update host tile size for DMME object 
+ *
+ * @param mem memory object
+ * @param host_size host size pointer to the array
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_data_mem_update_host_tile_size(iris_mem mem, size_t *host_size);
+
+/**@brief data memory object update with host size
  *
  * @param mem memory object
  * @param host_size host size pointer to the array
@@ -1510,7 +1527,7 @@ extern int iris_data_mem_refresh(iris_mem mem);
  */
 extern int iris_data_mem_update_host_size(iris_mem mem, size_t *host_size);
 
-/**@brief data memory object update for a task
+/**@brief data memory object update with host size but do not touch strides
  *
  * @param mem memory object
  * @param host_size host size pointer to the array. It do not update strides. Only for expert users.
@@ -1518,13 +1535,20 @@ extern int iris_data_mem_update_host_size(iris_mem mem, size_t *host_size);
  */
 extern int iris_data_mem_update_host_size_no_strides(iris_mem mem, size_t *host_size);
 
-/**@brief data memory object update for a task
+/**@brief data memory object update device size
  *
  * @param mem memory object
  * @param dev_size device size pointer to the array
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_data_mem_update_dev_size(iris_mem mem, size_t *dev_size);
+/**@brief data memory object update device size tile
+ *
+ * @param mem memory object
+ * @param dev_size device size pointer to the array
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_data_mem_update_dev_tile_size(iris_mem mem, size_t *dev_size);
 
 /**@brief data memory object update for a task
  *
@@ -1542,7 +1566,14 @@ extern int iris_data_mem_update_dev_size_no_strides(iris_mem mem, size_t *dev_si
  */
 extern int iris_data_mem_update_off(iris_mem mem, size_t *off);
 
-/**@brief data memory object update for a task
+/**@brief data memory object update host dimension
+ *
+ * @param mem memory object
+ * @param dim is dimension of memory object 
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_data_mem_update_host_dim(iris_mem mem, int dim);
+/**@brief data memory object update dimension
  *
  * @param mem memory object
  * @param dim is dimension of memory object 
@@ -1964,12 +1995,14 @@ extern int iris_mem_init_reset_random_log_normal_sobol_seq(iris_mem brs_mem, IRI
 
 // DMem Memory member access
 extern int iris_dmem_get_dim(iris_mem mem);
-extern int iris_dmem_get_host_size_dim(iris_mem mem);
+extern int iris_dmem_get_dev_dim(iris_mem mem);
+extern int iris_dmem_get_host_dim(iris_mem mem);
 extern int iris_dmem_get_elem_size(iris_mem mem);
 extern int iris_dmem_get_elem_type(iris_mem mem);
 extern size_t *iris_dmem_get_host_size(iris_mem mem);
 extern size_t *iris_dmem_get_dev_size(iris_mem mem);
-extern size_t *iris_dmem_get_dev_full_size(iris_mem mem);
+extern size_t *iris_dmem_get_host_tile_size(iris_mem mem);
+extern size_t *iris_dmem_get_dev_tile_size(iris_mem mem);
 extern size_t *iris_dmem_get_offsets(iris_mem mem);
 extern size_t *iris_dmem_get_offsets_from_host(iris_mem mem);
 extern iris_mem iris_get_dmem_for_region(iris_mem dmem_region_obj);

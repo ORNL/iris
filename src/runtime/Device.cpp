@@ -1288,8 +1288,6 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
 {
     int nddevs[IRIS_MAX_NDEVS+1];
     Kernel *kernel = cmd->kernel();
-    size_t *gws = mem->host_size();
-    size_t *lws = mem->dev_size();
     size_t elem_size = mem->elem_size();
     int dim = mem->dim();
     size_t size = mem->size();
@@ -1364,7 +1362,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
             if (!mem->is_multi_dim_dev_offset() && !src_mem->is_multi_dim_dev_offset())
                 MemD2D(task, src_dev, mem, dst_arch, src_arch, mem->size());
             else
-                MemD2D(task, mem, mem->dim(), dst_arch, mem->host_size(), mem->dev_size(), mem->dev_off(), mem->dev_strides(IRIS_MAX(src_mem->dim(), mem->dim())), src_mem->dim(), src_arch, src_mem->host_size(), src_mem->dev_size(), src_mem->dev_off(), src_mem->dev_strides(IRIS_MAX(src_mem->dim(), mem->dim())), mem->dev_size(), mem->elem_size());
+                MemD2D(task, mem, mem->dev_dim(), dst_arch, mem->dev_tile_size(), mem->dev_off(), mem->dev_strides(IRIS_MAX(src_mem->dev_dim(), mem->dev_dim())), src_mem->dev_dim(), src_arch, src_mem->dev_tile_size(), src_mem->dev_off(), src_mem->dev_strides(IRIS_MAX(src_mem->dim(), mem->dim())), mem->dev_tile_size(), mem->elem_size());
                 //int MemD2D(Task *task, BaseMem *mem, int dim, void *dst, size_t *dst_off, size_t *dst_strides, void *src, size_t *src_off, size_t *src_strides, size_t *tile_size, size_t elem_size);
         }
         double end = timer_->Now();
@@ -1414,7 +1412,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
             if (!mem->is_multi_dim_dev_offset() && !src_mem->is_multi_dim_dev_offset())
                 errid_ = MemH2D(task, mem, src_mem->local_off(), src_mem->host_size(), mem->dev_size(), elem_size, src_mem->dim(), size, host);
             else
-                errid_ = MemH2D(task, mem, mem->dim(), dst_arch, mem->host_size(), mem->dev_size(), mem->dev_off(), mem->dev_strides(IRIS_MAX(src_mem->dim(), mem->dim())), src_mem->dim(), host, src_mem->host_size(), src_mem->dev_size(), src_mem->off(), src_mem->host_strides(IRIS_MAX(src_mem->dim(), mem->dim())), mem->dev_size(), mem->elem_size());
+                errid_ = MemH2D(task, mem, mem->dev_dim(), dst_arch, mem->dev_tile_size(), mem->dev_off(), mem->dev_strides(IRIS_MAX(src_mem->host_dim(), mem->dev_dim())), src_mem->host_dim(), host, src_mem->host_tile_size(), src_mem->off(), src_mem->host_strides(IRIS_MAX(src_mem->host_dim(), mem->dev_dim())), mem->dev_tile_size(), mem->elem_size());
         }
         double end = timer_->Now();
         if (cmd_host != NULL && mem->host_ptr() != cmd_host) {
@@ -1474,7 +1472,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
                 MemH2D(task, mem, off, host_sizes, dev_sizes, 1, 1, mem->size(), src_arch, "OpenMP2DEV ");
             else {
                 void *dst_arch = mem->arch(this, src_arch);
-                MemH2D(task, mem, mem->dim(), dst_arch, mem->host_size(), mem->dev_size(), mem->dev_off(), mem->dev_strides(IRIS_MAX(src_mem->dim(), mem->dim())), src_mem->dim(), src_arch, src_mem->host_size(), src_mem->dev_size(), src_mem->dev_off(), src_mem->dev_strides(IRIS_MAX(src_mem->dim(), mem->dim())), mem->dev_size(), mem->elem_size());
+                MemH2D(task, mem, mem->dev_dim(), dst_arch, mem->dev_tile_size(), mem->dev_off(), mem->dev_strides(IRIS_MAX(src_mem->dev_dim(), mem->dev_dim())), src_mem->dim(), src_arch, src_mem->dev_tile_size(), src_mem->dev_off(), src_mem->dev_strides(IRIS_MAX(src_mem->dev_dim(), mem->dev_dim())), mem->dev_tile_size(), mem->elem_size());
             }
         }
         double end = timer_->Now();
@@ -1532,7 +1530,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
             if (!mem->is_multi_dim_dev_offset() && !src_mem->is_multi_dim_dev_offset())
                 src_dev->MemD2H(task, src_mem, off, host_sizes, dev_sizes, 1, 1, mem->size(), dst_host, "DEV2OpenMP ");
             else {
-                src_dev->MemD2H(task, mem, mem->dim(), dst_host, mem->host_size(), mem->dev_size(), mem->dev_off(), mem->dev_strides(IRIS_MAX(src_mem->dim(), mem->dim())), src_mem->dim(), src_mem->arch(this), src_mem->host_size(), src_mem->dev_size(), src_mem->dev_off(), src_mem->dev_strides(IRIS_MAX(src_mem->dim(), mem->dim())), mem->dev_size(), mem->elem_size());
+                src_dev->MemD2H(task, mem, mem->dev_dim(), dst_host, mem->dev_tile_size(), mem->dev_off(), mem->dev_strides(IRIS_MAX(src_mem->dim(), mem->dev_dim())), src_mem->dim(), src_mem->arch(this), src_mem->dev_tile_size(), src_mem->dev_off(), src_mem->dev_strides(IRIS_MAX(src_mem->dev_dim(), mem->dev_dim())), mem->dev_tile_size(), mem->elem_size());
             }
         }
         double end = timer_->Now();
@@ -1575,11 +1573,8 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         if (select_src_dev != -1) { //If it is -1, there is no valid data in any place
             int mem_stream = GetStream(task, mem, true); 
 			DMemType *select_mem = src_mem;
-            int select_dim = select_mem->dim();
 			if (mem->tile_enabled()) {
 				select_mem = mem;
-                if (select_dim < mem->dim())
-                    select_dim = mem->dim();
 			}
 #ifndef HALT_UNTIL
             mem_stream = 0; mem->set_recommended_stream(devno(), mem_stream);
@@ -1616,10 +1611,10 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
                     if (!mem->is_multi_dim_dev_offset() && !src_mem->is_multi_dim_dev_offset())
                         errid_ = src_dev->MemD2H(task, src_mem, select_mem->local_off(), 
                                 select_mem->host_size(), select_mem->dev_size(), select_mem->elem_size(), 
-                                select_dim, select_mem->size(), host, "D2H->H2D(1) ");
+                                select_mem->dim(), select_mem->size(), host, "D2H->H2D(1) ");
                     else 
-                        errid_ = src_dev->MemD2H(task, src_mem, select_dim, host, select_mem->host_size(), select_mem->dev_size(), select_mem->off(), select_mem->host_strides(IRIS_MAX(src_mem->dim(), select_mem->dim())), 
-                                src_mem->dim(), src_mem->arch(this), src_mem->host_size(), src_mem->dev_size(), src_mem->dev_off(), src_mem->dev_strides(IRIS_MAX(src_mem->dim(), select_mem->dim())), src_mem->dev_size(), select_mem->elem_size());
+                        errid_ = src_dev->MemD2H(task, src_mem, select_mem->host_dim(), host, select_mem->host_tile_size(), select_mem->off(), select_mem->host_strides(IRIS_MAX(src_mem->dev_dim(), select_mem->host_dim())), 
+                                src_mem->dev_dim(), src_mem->arch(this), src_mem->dev_tile_size(), src_mem->dev_off(), src_mem->dev_strides(IRIS_MAX(src_mem->dev_dim(), select_mem->host_dim())), src_mem->dev_tile_size(), select_mem->elem_size());
                 }
 
                 if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
@@ -1654,10 +1649,10 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
             if (!platform_obj_->is_data_transfers_disabled()) {
                 if (!mem->is_multi_dim_dev_offset() && !src_mem->is_multi_dim_dev_offset())
                     errid_ = MemH2D(task, mem, select_mem->local_off(), 
-                            select_mem->host_size(), lws, elem_size, select_dim, size, host, "D2H->H2D(2) ");
+                            select_mem->host_size(), mem->dev_size(), elem_size, select_mem->dim(), size, host, "D2H->H2D(2) ");
                 else
-                    errid_ = MemH2D(task, mem, mem->dim(), mem->arch(this), mem->host_size(), mem->dev_size(), mem->off(), mem->host_strides(), mem->dim(), host, 
-                            mem->host_size(), mem->dev_size(), mem->dev_off(), mem->dev_strides(), select_mem->dev_size(), mem->elem_size());
+                    errid_ = MemH2D(task, mem, mem->dev_dim(), mem->arch(this), mem->dev_tile_size(), mem->off(), mem->dev_strides(IRIS_MAX(select_mem->host_dim(), mem->dev_dim())), 
+                            select_mem->host_dim(), host, select_mem->host_tile_size(), select_mem->dev_off(), select_mem->host_strides(IRIS_MAX(select_mem->host_dim(), mem->dev_dim())), mem->dev_tile_size(), mem->elem_size());
             }
             double end = timer_->Now();
             _event_debug("   MemD2H -> MemH2D done");
@@ -1725,6 +1720,9 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
                         "mem:%ld and destination mem:%ld data invalidity "
                         "state. There should be some valid data "
                         "when the kernel reads the memory.", kernel->name(), src_mem->uid(), mem->uid());
+                src_mem->Print("src_mem:");
+                mem->Print("mem:");
+                Utils::PrintStackTrace();
             }
         }
     }
@@ -1949,8 +1947,6 @@ int Device::BringDataToHost(Task *task, DataMem *mem,
         void *host, const char *tag) 
 {
     size_t *ptr_off = mem->off();
-    size_t *gws = mem->host_size();
-    size_t *lws = mem->dev_size();
     size_t elem_size = mem->elem_size();
     int dim = mem->dim();
     size_t size = mem->size();
@@ -1974,10 +1970,10 @@ int Device::BringDataToHost(Task *task, DataMem *mem,
             if (!platform_obj_->is_data_transfers_disabled()) {
                 if (!mem->is_multi_dim_dev_offset()) {
                     errid = MemD2H(task, mem, ptr_off, 
-                            gws, lws, elem_size, dim, size, host, "MemFlushOut ");
+                            mem->host_size(), mem->dev_size(), elem_size, dim, size, host, "MemFlushOut ");
                 }
                 else {
-                    errid = MemD2H(task, mem, mem->dim(), host, mem->host_size(), mem->dev_size(), mem->off(), mem->host_strides(), mem->dim(), mem->arch(this), mem->host_size(), mem->dev_size(), mem->dev_off(), mem->dev_strides(), mem->dev_size(), mem->elem_size());
+                    errid = MemD2H(task, mem, mem->host_dim(), host, mem->host_tile_size(), mem->off(), mem->host_strides(), mem->dev_dim(), mem->arch(this), mem->dev_tile_size(), mem->dev_off(), mem->dev_strides(), mem->dev_tile_size(), mem->elem_size());
                 }
             }
             if (async && platform_obj_->is_event_profile_enabled()) {
@@ -2048,14 +2044,16 @@ void Device::ExecuteMemOut(Task *task, Command* cmd) {
         if (params_map != NULL && 
                 (params_map[idx] & iris_all) == 0 && 
                 !(params_map[idx] & type_) ) continue;
-        if (mem->get_source_mem() != NULL) mem = (DataMem*)mem->get_source_mem();
+        //if (mem->get_source_mem() != NULL) mem = (DataMem*)mem->get_source_mem();
         if (mem->GetMemHandlerType() == IRIS_DMEM ||
                 mem->GetMemHandlerType() == IRIS_DMEM_REGION) {
             DataMem *dmem = (DataMem *)mem;
             //printf("ExecuteMemOut mem:%lu dev:%d set_dirty_except:%d host_dirty:True\n", dmem->uid(), devno_, devno_);
+            //dmem->Print("Before dirty set: ");
             dmem->set_dirty_except(devno_);
             dmem->set_host_dirty();
             dmem->disable_reset();
+            //dmem->Print(); dmem->Print("After dirty set: ");
         }
         if (is_async(task)) {
             int mem_stream = GetStream(task);
@@ -2080,7 +2078,8 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
     }
     DataMem* mem = (DataMem *)cmd->mem();
 	//_printf("Inside flush of mem: %lu\n", mem->uid());
-    if (mem->get_source_mem() != NULL) mem = (DataMem*)mem->get_source_mem();
+    //if (mem->get_source_mem() != NULL) mem = (DataMem*)mem->get_source_mem();
+    //mem->Print("Flush out:");
     if (mem->is_host_dirty()) {
         void* host = mem->host_memory(); // It should work even if host_ptr is null
         //printf("Pointer offset mem:%lu %lu, gws %lu lws %lu elem_size %lu dim %d size %lu host:%p\n", 
@@ -2094,6 +2093,7 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
         Task *task = cmd->task();
         bool async = is_async(task);
         Device *src_dev = this;
+        //mem->Print("BringDataToHost: ");
         if (mem->get_n_regions() <=0 && mem->is_dev_dirty(devno_)) {
             int cpu_dev = -1;
             int non_cpu_dev = -1;

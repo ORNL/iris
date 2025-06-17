@@ -27,15 +27,23 @@ AAA = IrisHRT.reshape(AA, 2, 8)
 AAAA = IrisHRT.reshape(AAA, 8, 2)
 
 
+#println(Core.stdout, "--------------------------------")
+#IrisHRT.print_dmem(A, "A: ")
 A_host = IrisHRT.valid_host(A)
+#println(Core.stdout, "--------------------------------")
+#IrisHRT.print_dmem(AA, "AA: ")
 AA_host = IrisHRT.valid_host(AA)
+#println(Core.stdout, "--------------------------------")
+#IrisHRT.print_dmem(AAA, "AAA: ")
 AAA_host = IrisHRT.valid_host(AAA)
+#println(Core.stdout, "--------------------------------")
+#IrisHRT.print_dmem(AAAA, "AAAA: ")
 AAAA_host = IrisHRT.valid_host(AAAA)
 
-println(A_host)
-println(AA_host)
-println(AAA_host)
-println(AAAA_host)
+#println("A:", A_host)
+#println("AA:", AA_host)
+#println("AAA:", AAA_host)
+#println("AAAA:", AAAA_host)
 
 @testset "reshape_view_reshape" begin
 	@test A_host == hA

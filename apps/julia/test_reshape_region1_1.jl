@@ -15,9 +15,13 @@ println(Core.stdout, " Original AA: ", AA_reshape, " ptr:", typeof(AA_reshape), 
 
 AA = IrisHRT.reshape(A, 4, 2, 2)
 
+#IrisHRT.print_dmem("A dmem: ", A)
+#IrisHRT.print_dmem("AA dmem: ", AA)
+
 IrisHRT.enable_regions(AA, 1)
 
 ARs = IrisHRT.regions(AA)
+#IrisHRT.print_dmem("Aregion1: ", ARs[1])
 
 +(ARs[1], ARs[1], ARs[1])
 

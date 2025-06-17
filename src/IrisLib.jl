@@ -434,6 +434,10 @@ end
     ccall(Libdl.dlsym(lib, :iris_data_mem_print), Cvoid, (IrisMem,), mem)
 end
 
+@inline function iris_data_mem_print(mem::IrisMem, tag::String)::Cvoid
+    ccall(Libdl.dlsym(lib, :iris_data_mem_print_with_tag), Cvoid, (IrisMem, Ptr{Cchar}), mem, pointer(tag))
+end
+
 @inline function iris_task_cmd_init_reset_assign(task::IrisTask, mem::IrisMem, element::Any)::Int32
     ivalue = flat_in_buffer(element)
     return ccall(Libdl.dlsym(lib, :iris_task_cmd_init_reset_assign), Int32, (IrisTask, IrisMem, IRISValue), task, mem, ivalue)
@@ -982,13 +986,18 @@ end
     return ccall(func, Cint, (IrisMem,), brs_mem)
 end
 
+@inline function iris_dmem_get_dev_dim(brs_mem::IrisMem)::Cint
+    func = Libdl.dlsym(lib, :iris_dmem_get_dev_dim)
+    return ccall(func, Cint, (IrisMem,), brs_mem)
+end
+
 @inline function iris_dmem_get_dim(brs_mem::IrisMem)::Cint
     func = Libdl.dlsym(lib, :iris_dmem_get_dim)
     return ccall(func, Cint, (IrisMem,), brs_mem)
 end
 
-@inline function iris_dmem_get_host_size_dim(brs_mem::IrisMem)::Cint
-    func = Libdl.dlsym(lib, :iris_dmem_get_host_size_dim)
+@inline function iris_dmem_get_host_dim(brs_mem::IrisMem)::Cint
+    func = Libdl.dlsym(lib, :iris_dmem_get_host_dim)
     return ccall(func, Cint, (IrisMem,), brs_mem)
 end
 
@@ -997,8 +1006,13 @@ end
     return ccall(func, Ptr{Csize_t}, (IrisMem,), brs_mem)
 end
 
-@inline function iris_dmem_get_dev_full_size(brs_mem::IrisMem)::Ptr{Csize_t}
-    func = Libdl.dlsym(lib, :iris_dmem_get_dev_full_size)
+@inline function iris_dmem_get_host_tile_size(brs_mem::IrisMem)::Ptr{Csize_t}
+    func = Libdl.dlsym(lib, :iris_dmem_get_host_tile_size)
+    return ccall(func, Ptr{Csize_t}, (IrisMem,), brs_mem)
+end
+
+@inline function iris_dmem_get_dev_tile_size(brs_mem::IrisMem)::Ptr{Csize_t}
+    func = Libdl.dlsym(lib, :iris_dmem_get_dev_tile_size)
     return ccall(func, Ptr{Csize_t}, (IrisMem,), brs_mem)
 end
 
@@ -1082,6 +1096,26 @@ end
 
 @inline function iris_data_mem_refresh(mem::IrisMem)::Int32
     return ccall(Libdl.dlsym(lib, :iris_data_mem_refresh), Int32, (IrisMem, ), mem)
+end
+
+@inline function iris_data_mem_update_host_dim(mem::IrisMem, d::Number)::Int32
+    return ccall(Libdl.dlsym(lib, :iris_data_mem_update_host_dim), Int32, (IrisMem, Int32,), mem, Int32(d))
+end
+
+@inline function iris_data_mem_update_dim(mem::IrisMem, d::Number)::Int32
+    return ccall(Libdl.dlsym(lib, :iris_data_mem_update_dim), Int32, (IrisMem, Int32,), mem, Int32(d))
+end
+
+@inline function iris_data_mem_update_host_offs(mem::IrisMem, offs::Ptr{Csize_t})::Int32
+    return ccall(Libdl.dlsym(lib, :iris_data_mem_update_host_offs), Int32, (IrisMem, Ptr{Csize_t}), mem, offs)
+end
+
+@inline function iris_data_mem_update_dev_tile_size(mem::IrisMem, host::Ptr{Csize_t})::Int32
+    return ccall(Libdl.dlsym(lib, :iris_data_mem_update_dev_tile_size), Int32, (IrisMem, Ptr{Csize_t}), mem, host)
+end
+
+@inline function iris_data_mem_update_host_tile_size(mem::IrisMem, host::Ptr{Csize_t})::Int32
+    return ccall(Libdl.dlsym(lib, :iris_data_mem_update_host_tile_size), Int32, (IrisMem, Ptr{Csize_t}), mem, host)
 end
 
 @inline function iris_data_mem_update_host_size(mem::IrisMem, host::Ptr{Csize_t})::Int32

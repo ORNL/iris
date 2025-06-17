@@ -36,10 +36,10 @@ public:
   void MemCpy3D(CUdeviceptr dev, uint8_t *host, size_t *off, 
           size_t *dev_sizes, size_t *host_sizes, 
           size_t elem_size, bool host_2_dev, bool async, int stream_index);
-  int MemCpy(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t *dst_host_size, size_t *dst_size, size_t *dst_off, size_t *dst_strides, int src_dim, void *src, size_t *src_host_size, size_t *src_size, size_t *src_off, size_t *src_strides, size_t *tile_size, size_t elem_size, int src_type, int dst_type, const char *tag);
-  int MemD2D(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t *dst_host_size, size_t *dst_size, size_t *dst_off, size_t *dst_strides, int src_dim, void *src, size_t *src_host_size, size_t *src_size, size_t *src_off, size_t *src_strides, size_t *tile_size, size_t elem_size);
-  int MemH2D(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t *dst_host_size, size_t *dst_size, size_t *dst_off, size_t *dst_strides, int src_dim, void *src, size_t *src_host_size, size_t *src_size, size_t *src_off, size_t *src_strides, size_t *tile_size, size_t elem_size);
-  int MemD2H(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t *dst_host_size, size_t *dst_size, size_t *dst_off, size_t *dst_strides, int src_dim, void *src, size_t *src_host_size, size_t *src_size, size_t *src_off, size_t *src_strides, size_t *tile_size, size_t elem_size);
+  int MemCpy(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t *dst_size, size_t *dst_off, size_t *dst_strides, int src_dim, void *src, size_t *src_size, size_t *src_off, size_t *src_strides, size_t *tile_size, size_t elem_size, int src_type, int dst_type, const char *tag);
+  int MemD2D(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t *dst_size, size_t *dst_off, size_t *dst_strides, int src_dim, void *src, size_t *src_size, size_t *src_off, size_t *src_strides, size_t *tile_size, size_t elem_size);
+  int MemH2D(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t *dst_size, size_t *dst_off, size_t *dst_strides, int src_dim, void *src, size_t *src_size, size_t *src_off, size_t *src_strides, size_t *tile_size, size_t elem_size);
+  int MemD2H(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t *dst_size, size_t *dst_off, size_t *dst_strides, int src_dim, void *src, size_t *src_size, size_t *src_off, size_t *src_strides, size_t *tile_size, size_t elem_size);
   bool IsAddrValidForD2D(BaseMem *mem, void *ptr);
   int MemD2D(Task *task, Device *src_dev, BaseMem *mem, void *dst, void *src, size_t size);
   int MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag="");

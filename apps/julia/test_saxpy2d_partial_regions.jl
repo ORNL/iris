@@ -36,8 +36,8 @@ function example_left()
     dhX = IrisHRT.dmem(hX; region_outer_dim=true)
     dhZ = IrisHRT.dmem(hZ; region_outer_dim=true)
     
-    IrisHRT.update_size_no_strides(dhX, [L, N])
-    IrisHRT.update_size_no_strides(dhZ, [L, N])
+    IrisHRT.update_tile_size(dhX, [L, N])
+    IrisHRT.update_tile_size(dhZ, [L, N])
     
     IrisHRT.parallel_for((len_col, N), Main.saxpy2d_left_kernel_jacc, a, dhX, dhZ, len_col; flush=[dhZ]) 
 

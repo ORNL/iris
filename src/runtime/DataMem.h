@@ -91,31 +91,32 @@ public:
     return total;
   }
   size_t *host_size() { 
-    DataMem *source_mem = (DataMem*)get_source_mem();
-    if (source_mem == NULL) return host_size_;
-    return source_mem->host_size(); 
+    //DataMem *source_mem = (DataMem*)get_source_mem();
+    //if (source_mem == NULL) 
+        return host_size_;
+    //return source_mem->host_size(); 
   }
   size_t *dev_strides(int dim=-1) { 
-    DataMem *source_mem = (DataMem*)get_source_mem();
-    if (source_mem == NULL) {
+    //DataMem *source_mem = (DataMem*)get_source_mem();
+    //if (source_mem == NULL) {
         if (dim == -1 || dim == dim_) return dev_strides_;
         else {
             compute_strides(dev_strides_, dev_size_, dim);
             return dev_strides_;
         }
-    }
-    return source_mem->dev_strides(dim); 
+    //}
+    //return source_mem->dev_strides(dim); 
   }
   size_t *host_strides(int dim=-1) { 
-    DataMem *source_mem = (DataMem*)get_source_mem();
-    if (source_mem == NULL) {
+    //DataMem *source_mem = (DataMem*)get_source_mem();
+    //if (source_mem == NULL) {
         if (dim == -1 || dim == dim_) return host_strides_;
         else {
             compute_strides(host_strides_, host_size_, dim);
             return host_strides_;
         }
-    }
-    return source_mem->host_strides(dim); 
+    //}
+    //return source_mem->host_strides(dim); 
   }
   virtual void** archs() { 
       DataMem *source_mem = (DataMem*)get_source_mem();
@@ -139,11 +140,15 @@ public:
   }
   size_t *dev_off() { return dev_off_; }
   size_t *dev_size() { return dev_size_; }
-  size_t *dev_full_size() { return dev_full_size_; }
+  size_t *host_tile_size() { return host_tile_size_; }
+  size_t *dev_tile_size() { return dev_tile_size_; }
   size_t elem_size() { return elem_size_; }
   void enable_multi_dim_dev_offset() { multi_dim_dev_offset_ = true; }
   bool is_multi_dim_dev_offset() { return multi_dim_dev_offset_; }
   int update_dim(int dim) { dim_ = dim; return IRIS_SUCCESS; }
+  int update_host_dim(int dim) { host_dim_ = dim; return IRIS_SUCCESS; }
+  int host_dim() { return host_dim_; }
+  int dev_dim() { return dim_; }
   int dim() { return dim_; }
   void *host_ptr() { 
       DataMem *source_mem = (DataMem*)get_source_mem();
@@ -256,8 +261,11 @@ public:
   virtual void* arch(Device* dev, void *host=NULL);
   virtual void** arch_ptr(int devno, void *host=NULL);
   virtual void** arch_ptr(Device *dev, void *host=NULL);
-  int update_host_size(size_t *host_size, bool update_strides=true);
-  int update_dev_size(size_t *dev_size, bool update_strides=true);
+  int update_host_offs(size_t *off, int dim=-1);
+  int update_host_size(size_t *host_size, bool update_strides=true, int dim=-1);
+  int update_dev_size(size_t *dev_size, bool update_strides=true, int dim=-1);
+  int update_host_tile_size(size_t *host_size, int dim=-1);
+  int update_dev_tile_size(size_t *dev_size, int dim=-1);
   void realllocate_space(size_t size);
   int update_off(size_t *off) { 
       memcpy(off_, off, sizeof(size_t)*dim_); 
@@ -282,7 +290,7 @@ protected:
 
   void end(size_t out[DMEM_MAX_DIM]) const {
       for (int i = 0; i < dim_; ++i)
-          out[i] = off_[i] + dev_full_size_[i];
+          out[i] = off_[i] + dev_size_[i];
   }
   void set_dev_off(size_t *dev_off) {
       memcpy(dev_off_, dev_off, dim_ * sizeof(size_t));
@@ -308,8 +316,10 @@ protected:
   size_t host_strides_[DMEM_MAX_DIM+1];
   size_t host_size_[DMEM_MAX_DIM];
   size_t dev_size_[DMEM_MAX_DIM];
-  size_t dev_full_size_[DMEM_MAX_DIM];
+  size_t host_tile_size_[DMEM_MAX_DIM];
+  size_t dev_tile_size_[DMEM_MAX_DIM];
   size_t elem_size_;
+  int host_dim_;
   int dim_;
   Platform *platform_;
 #ifdef AUTO_PAR

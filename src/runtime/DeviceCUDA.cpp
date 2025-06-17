@@ -1088,7 +1088,7 @@ int DeviceCUDA::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
   }
   return IRIS_SUCCESS;
 }
-int DeviceCUDA::MemCpy(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t *dst_host_size, size_t *dst_size, size_t *dst_off, size_t *dst_strides, int src_dim, void *src, size_t *src_host_size, size_t *src_size, size_t *src_off, size_t *src_strides, size_t *tile_size, size_t elem_size, int src_type, int dst_type, const char *tag) 
+int DeviceCUDA::MemCpy(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t *dst_size, size_t *dst_off, size_t *dst_strides, int src_dim, void *src, size_t *src_size, size_t *src_off, size_t *src_strides, size_t *tile_size, size_t elem_size, int src_type, int dst_type, const char *tag) 
 {
   int dim = IRIS_MAX(dst_dim, src_dim);
   if (mem->is_usm(devno()) || (dst == src) ) return IRIS_SUCCESS;
@@ -1360,17 +1360,17 @@ int DeviceCUDA::MemCpy(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t 
   }
   return IRIS_SUCCESS;
 }
-int DeviceCUDA::MemD2D(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t *dst_host_size, size_t *dst_size, size_t *dst_off, size_t *dst_strides, int src_dim, void *src, size_t *src_host_size, size_t *src_size, size_t *src_off, size_t *src_strides, size_t *tile_size, size_t elem_size) 
+int DeviceCUDA::MemD2D(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t *dst_size, size_t *dst_off, size_t *dst_strides, int src_dim, void *src, size_t *src_size, size_t *src_off, size_t *src_strides, size_t *tile_size, size_t elem_size) 
 {
-	return MemCpy(task, mem, dst_dim, dst, dst_host_size, dst_size, dst_off, dst_strides, src_dim, src, src_host_size, src_size, src_off, src_strides, tile_size, elem_size, CU_MEMORYTYPE_DEVICE, CU_MEMORYTYPE_DEVICE, "D2D"); 
+	return MemCpy(task, mem, dst_dim, dst, dst_size, dst_off, dst_strides, src_dim, src, src_size, src_off, src_strides, tile_size, elem_size, CU_MEMORYTYPE_DEVICE, CU_MEMORYTYPE_DEVICE, "D2D"); 
 }
-int DeviceCUDA::MemH2D(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t *dst_host_size, size_t *dst_size, size_t *dst_off, size_t *dst_strides, int src_dim, void *src, size_t *src_host_size, size_t *src_size, size_t *src_off, size_t *src_strides, size_t *tile_size, size_t elem_size) 
+int DeviceCUDA::MemH2D(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t *dst_size, size_t *dst_off, size_t *dst_strides, int src_dim, void *src, size_t *src_size, size_t *src_off, size_t *src_strides, size_t *tile_size, size_t elem_size) 
 {
-	return MemCpy(task, mem, dst_dim, dst, dst_host_size, dst_size, dst_off, dst_strides, src_dim, src, src_host_size, src_size, src_off, src_strides, tile_size, elem_size, CU_MEMORYTYPE_HOST, CU_MEMORYTYPE_DEVICE, "H2D"); 
+	return MemCpy(task, mem, dst_dim, dst, dst_size, dst_off, dst_strides, src_dim, src, src_size, src_off, src_strides, tile_size, elem_size, CU_MEMORYTYPE_HOST, CU_MEMORYTYPE_DEVICE, "H2D"); 
 }
-int DeviceCUDA::MemD2H(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t *dst_host_size, size_t *dst_size, size_t *dst_off, size_t *dst_strides, int src_dim, void *src, size_t *src_host_size, size_t *src_size, size_t *src_off, size_t *src_strides, size_t *tile_size, size_t elem_size) 
+int DeviceCUDA::MemD2H(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t *dst_size, size_t *dst_off, size_t *dst_strides, int src_dim, void *src, size_t *src_size, size_t *src_off, size_t *src_strides, size_t *tile_size, size_t elem_size) 
 {
-	return MemCpy(task, mem, dst_dim, dst, dst_host_size, dst_size, dst_off, dst_strides, src_dim, src, src_host_size, src_size, src_off, src_strides, tile_size, elem_size, CU_MEMORYTYPE_DEVICE, CU_MEMORYTYPE_HOST, "D2H"); 
+	return MemCpy(task, mem, dst_dim, dst, dst_size, dst_off, dst_strides, src_dim, src, src_size, src_off, src_strides, tile_size, elem_size, CU_MEMORYTYPE_DEVICE, CU_MEMORYTYPE_HOST, "D2H"); 
 }
 
 int DeviceCUDA::KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bool report_error) {
