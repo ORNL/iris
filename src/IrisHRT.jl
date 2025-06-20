@@ -2205,15 +2205,15 @@ module IrisHRT
         return iris_dmem_get_source(field_dmem(mem))
     end
 
+    function update_host(mem::UMem, host)
+        return iris_data_mem_update(field_dmem(mem), pointer(host))
+    end
+
     function update_dim(mem::UMem, d)
-        GC.@preserve vec begin 
-        iris_data_mem_update_dim(field_dmem(mem), d)
-        end
+        return iris_data_mem_update_dim(field_dmem(mem), d)
     end
     function update_host_dim(mem::UMem, d)
-        GC.@preserve vec begin 
-        iris_data_mem_update_host_dim(field_dmem(mem), d)
-        end
+        return iris_data_mem_update_host_dim(field_dmem(mem), d)
     end
 
     function update_host_offs(mem::UMem, offs)
