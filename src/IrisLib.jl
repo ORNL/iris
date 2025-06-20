@@ -1098,6 +1098,10 @@ end
     return ccall(Libdl.dlsym(lib, :iris_data_mem_refresh), Int32, (IrisMem, ), mem)
 end
 
+@inline function iris_data_mem_fresh_device_data(mem::IrisMem)::Int32
+    return ccall(Libdl.dlsym(lib, :iris_data_mem_fresh_device_data), Int32, (IrisMem, ), mem)
+end
+
 @inline function iris_data_mem_update_host_dim(mem::IrisMem, d::Number)::Int32
     return ccall(Libdl.dlsym(lib, :iris_data_mem_update_host_dim), Int32, (IrisMem, Int32,), mem, Int32(d))
 end
@@ -1136,6 +1140,10 @@ end
 
 @inline function iris_data_mem_update_off(mem::IrisMem, dev_size::Ptr{Csize_t})::Int32
     return ccall(Libdl.dlsym(lib, :iris_data_mem_update_off), Int32, (IrisMem, Ptr{Csize_t}), mem, dev_size)
+end
+
+@inline function iris_data_mem_is_size_preserved(mem::IrisMem)::Int32
+    return ccall(Libdl.dlsym(lib, :iris_data_mem_is_size_preserved), Int32, (IrisMem, ), mem)
 end
 
 @inline function iris_julia_init(func_ptr::Ptr{Cvoid}, flag::Number)::Int32

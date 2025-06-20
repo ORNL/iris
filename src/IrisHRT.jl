@@ -162,6 +162,9 @@ module IrisHRT
     using Libdl
     using JACC
     cwd = pwd()
+	const IRIS_SUCCESS          =  0
+	const IRIS_ERROR            = -1
+	const IRIS_WARNING          = -2
     const cuda_available = Main.cuda_available
     const MyCUDA = Main.MyCUDA
     const MyAMDGPU = Main.MyAMDGPU
@@ -259,7 +262,7 @@ module IrisHRT
     const iris_unsigned_long = 15 << 16
     const iris_bool          = 16 << 16
     const iris_custom_type   = 17 << 16
-    const iris_pointer       = 16384 << 16
+    const iris_pointer       = 64 << 16
 
     const iris_normal = 1 << 10
     const iris_reduction = 1 << 11
@@ -477,13 +480,15 @@ module IrisHRT
         for i in start_index:(nparams - 1)
             single_arg_type = unsafe_load(args_type + i*sizeof(Cint))
             # Load the type of the current argument
-            current_type = Int(single_arg_type & 0x3FFF0000)
-            is_pointer = Int(single_arg_type & 0x40000000)
-            element_size = Int((single_arg_type >> 8) & 0xFF)
+            preserve_size_flag = Int((single_arg_type >> 31) & 0x1)
+            current_type = Int(single_arg_type & 0x3F000000) >> 8
+            is_pointer = Int(single_arg_type & 0x40000000) >> 8
+            element_size = Int((single_arg_type >> 16) & 0xFF)
+            param_host_dim = Int((single_arg_type >> 8) & 0xFF)
             param_dim = Int(single_arg_type & 0xFF)
             full_size = UInt64(unsafe_load(param_size + i*sizeof(Csize_t)))
             full_size_dims = []
-            for d in 0:(param_dim - 1)
+            for d in 0:(param_host_dim - 1)
                 value = unsafe_load(param_dim_full_size + i*sizeof(Csize_t)*DMEM_MAX_DIM + d * sizeof(Csize_t)) + 0
                 push!(full_size_dims, Int64(value))
             end
@@ -493,19 +498,20 @@ module IrisHRT
                 push!(size_dims, Int64(value))
             end
             off_dims = [] 
-            for d in 0:(param_dim - 1)
+            for d in 0:(param_host_dim - 1)
                 value = unsafe_load(param_dim_off + i*sizeof(Csize_t)*DMEM_MAX_DIM + d * sizeof(Csize_t)) + 0
                 push!(off_dims, Int64(value))
             end
-            off_dims = remove_trailing_ones2(off_dims)
+            #off_dims = remove_trailing_ones2(off_dims)
             off_dims = Tuple(off_dims)
-            size_dims = remove_trailing_ones2(size_dims)
+            #size_dims = remove_trailing_ones2(size_dims)
             size_dims = Tuple(size_dims)
-            full_size_dims = remove_trailing_ones2(full_size_dims)
+            #full_size_dims = remove_trailing_ones2(full_size_dims)
             full_size_dims = Tuple(full_size_dims)
             # Load the pointer to the actual argument
             arg_ptr = unsafe_load(Ptr{Ptr{Cvoid}}(args + i*sizeof(Ptr{Cvoid})))
             arg_original_ptr = arg_ptr
+            #println(Core.stdout, "             fullsize:", full_size_dims, " size_dims:", size_dims)
             #iris_println("I:$i type:$current_type ptr:$arg_ptr is_pointer:$is_pointer element_size:$element_size dim:$dim Size:$full_size SizeDim:$size_dims")
             # Convert based on the type
             if is_pointer != Int(iris_pointer)
@@ -540,7 +546,9 @@ module IrisHRT
                     error("Unsupported type: ", typeof(current_type))
                 end
             else # Assuming 3 is for Char
-                #println(Core.stdout, "I is a pointer:", i, " arg_ptr:", arg_ptr)
+				#if func_name == "Llama2:rmsnorm_jacc_core1"
+                #	println(Core.stdout, "I is a pointer:", i, " arg_ptr:", arg_ptr, " task_id:", task_id)
+				#end
                 push!(dev_ptr_index, i+1-start_index)
                 if current_type == Int(iris_float)
                     arg_ptr = Ptr{Cfloat}(arg_ptr)
@@ -574,8 +582,8 @@ module IrisHRT
                     iris_println("[Julia-IrisHRT-Error] No type present")
                 end
                 try 
-                    #jptr = unsafe_wrap(CUDA.Array, arg_ptr, size_dims, own=false)
-                    #jptr = unsafe_wrap(CuDeviceArray{Float32, 1}, arg_ptr, size_dims, own=false)
+                    #jptr = unsafe_wrap(CUDA.Array, arg_ptr, full_size_dims, own=false)
+                    #jptr = unsafe_wrap(CuDeviceArray{Float32, 1}, arg_ptr, full_size_dims, own=false)
                     #iris_println("After Pointer $arg_ptr $jptr")
                     #push!(julia_args, jptr)
                     if Int(target) == Int(iris_cuda)
@@ -596,14 +604,17 @@ module IrisHRT
                     else
                         iris_println("[Julia-IrisHRT-Error] Unknown target to handle arguments")
                     end
+					#if func_name == "Llama2:rmsnorm_jacc_core1" && i==3
+					#	println(Core.stdout, "full_size_dims: ", full_size_dims, " size_dims:", size_dims, " temp data:", Array(arg_ptr)[1:10], " size:", size(arg_ptr))
+					#end
                     #func_name = unsafe_string(kernel_name)
-                    #println(Core.stdout, " arg: off_dims:", off_dims, " size:", size_dims, " full_size:", full_size_dims, " task id:", task_id, " prev_size:", size(arg_ptr), "ptr:", arg_original_ptr, " kernel:", func_name)
+                    #println(Core.stdout, " ------ arg: off_dims:", off_dims, " size:", size_dims, " full_size:", full_size_dims, " task id:", task_id, " prev_size:", size(arg_ptr), "ptr:", arg_original_ptr, " kernel:", func_name, " param_dim:", param_dim)
                     if full_size_dims != size_dims
                         prev_size = size(arg_ptr)
                         #func_name = unsafe_string(kernel_name)
                         #println(Core.stdout, " arg: off_dims:", off_dims, " size:", size_dims, " full_size:", full_size_dims, " task id:", task_id, " prev_size:", prev_size, "ptr:", arg_original_ptr, " kernel:", func_name)
-                        arg_ptr = get_tile(arg_ptr, off_dims, size_dims) 
-                        if false && task_id == 431530
+                        arg_ptr = get_tile(arg_ptr, off_dims, size_dims, preserve_size_flag) 
+                        if false #&& task_id == 36158
                             later_size = size(arg_ptr)
                             j_threads = []
                             j_blocks = []
@@ -620,7 +631,7 @@ module IrisHRT
                             j_threads = Tuple(j_threads)
                             j_blocks = Tuple(j_blocks)
                             func_name = unsafe_string(kernel_name)
-                            println(Core.stdout, " arg: off_dims:", off_dims, " size:", size_dims, " full_size:", full_size_dims, " task id:", task_id, " gws:", j_gws, " threads:", j_threads, " blocks:", j_blocks, " prev_size:", prev_size, " later_size:", later_size, "ptr:", arg_original_ptr, " kernel:", func_name)
+                            println(Core.stdout, " arg: off_dims:", off_dims, " size:", size_dims, " full_size:", full_size_dims, " task id:", task_id, " gws:", j_gws, " threads:", j_threads, " blocks:", j_blocks, " prev_size:", prev_size, " later_size:", later_size, " ptr:", arg_original_ptr, " kernel:", func_name)
                         end
                     end
                     push!(julia_args, arg_ptr)
@@ -902,6 +913,10 @@ module IrisHRT
         #gws = map(*, threads, blocks)
         gws = j_gws
         #println(Core.stdout, "IrisHRT threads:", threads, " blocks:", blocks, " gws:", gws)
+		#if func_name == "Llama2:rmsnorm_jacc_core1"
+		#	println(Core.stdout, " task_id:", task_id)
+		#	println(Core.stdout, "IrisHRT args:", args_tuple)
+		#end
         #println(Core.stdout, "IrisHRT args:", args_tuple)
         if length(threads)==1
             threads = threads[1]
@@ -909,6 +924,9 @@ module IrisHRT
         if length(blocks)==1
             blocks = blocks[1]
         end
+        #if func_name == "Llama2:attention_weights_jacc"
+        #    println(Core.stdout, " task_id:", task_id)
+        #end
         shmem = shared_mem_size 
         backend = MyCUDA.CUDAKernels.CUDABackend(false, false)
         spec = JACC.LaunchSpec{MyCUDA.CUDAKernels.CUDABackend}(stream=stream, threads=threads, blocks=blocks, shmem_size=shmem, sync=true)
@@ -1507,19 +1525,35 @@ module IrisHRT
     end
 
     function submit(task::IrisTask, device_policy::Int64, opt::Ptr{Int8}, sync::Int64)::Int32
+		if task == nothing
+			return IRIS_ERROR
+		end
         return iris_task_submit(task, device_policy, opt, sync)
     end
 
     function submit(task::IrisTask, device_policy::Int64, sync::Int64)::Int32
+		if task == nothing
+			return IRIS_ERROR
+		end
         return iris_task_submit(task, device_policy, Ptr{Int8}(C_NULL), sync)
     end
 
     function submit(task::IrisTask, device_policy::Int64)::Int32
+		if task == nothing
+			return IRIS_ERROR
+		end
         return iris_task_submit(task, device_policy, Ptr{Int8}(C_NULL), 1)
     end
 
-    function submit(task::IrisTask)::Int32
-        return iris_task_submit(task, iris_default, Ptr{Int8}(C_NULL), 1)
+	function submit(task::IrisTask)::Int32
+		if task == nothing
+			return IRIS_ERROR
+		end
+		return iris_task_submit(task, iris_default, Ptr{Int8}(C_NULL), 1)
+	end
+
+    function submit(::Nothing)::Int32
+		return IRIS_ERROR
     end
 
     function async_submit(task::IrisTask)::Int32
@@ -1646,6 +1680,10 @@ module IrisHRT
         #    println(Core.stdout, "Create1 Mem:", iris_mem.uid, " Type of element: ", T, " dim:", dim, " Size:", host_size, " Element size:", element_size, " Call from:", get_caller_info())
         #    call_stack("DMEM Create1")
         #end
+		if iris_mem.uid == 36149
+			call_stack("DMEM Create1:")
+			print_dmem("DMEM Create1: ", iris_mem)
+		end
         if isstructtype(T) 
             push_dmem_custom_type(iris_mem.uid, T)
         end
@@ -1682,6 +1720,10 @@ module IrisHRT
             iris_mem = iris_data_mem_create_tile_struct_with_type(host_cptr, pointer(offset), pointer(host_size), pointer(dev_size), element_size, dim, element_type)
             end
         end
+		if iris_mem.uid == 36149
+			call_stack("DMEM Create2:")
+			print_dmem("DMEM Create2: ", iris_mem)
+		end
         #println(Core.stdout, "Create2 Mem:", iris_mem.uid, " Type of element: ", T, " dim:", dim, " Host Size:", host_size, " Dev Size:", dev_size, " Offset:", offset, " Element size:", element_size, " Call from:", get_caller_info())
         if isstructtype(T) 
             push_dmem_custom_type(iris_mem.uid, T)
@@ -1713,6 +1755,10 @@ module IrisHRT
         #    println(Core.stdout, "Create1 Mem:", iris_mem.uid, " Type of element: ", T, " dim:", dim, " Size:", host_size, " Element size:", element_size, " Call from:", get_caller_info())
         #    call_stack("DMEM Create3")
         #end
+		if iris_mem.uid == 36149
+			call_stack("DMEM Create3:")
+			print_dmem("DMEM Create3: ", iris_mem)
+		end
         if isstructtype(T) 
             push_dmem_custom_type(iris_mem.uid, T)
         end
@@ -1890,6 +1936,9 @@ module IrisHRT
             update_host_size(iris_mem, hsize)
             update_host_tile_size(iris_mem, htile_size)
             update_host_offs(iris_mem, hoff)
+			if iris_mem.uid == 36149
+				call_stack("DMEM reshape1:$(iris_mem.uid)")
+			end
         end
         #println(Core.stdout, "Type of element: ", " HostSize:", host_size, " Dims:", dim_size_v, " N-dims:", dim, " Element size:", elem_size, " pointer:", host_cptr, " uid:", iris_mem.uid)
         #print_dmem(iris_mem)
@@ -1949,10 +1998,10 @@ module IrisHRT
         iris_mem=nothing
         GC.@preserve dst_host_size begin 
             iris_mem = iris_data_mem_create_struct_nd(host_cptr, pointer(dst_host_size), dim, dst_elem_size, dst_elem_type)
-            update_host_dim(iris_mem, host_ndim(mem))
-            update_host_size(iris_mem, host_size(mem))
-            update_host_tile_size(iris_mem, host_tile_size(mem))
-            update_host_offs(iris_mem, offsets(mem))
+            #update_host_dim(iris_mem, host_ndim(mem))
+            #update_host_size(iris_mem, host_size(mem))
+            #update_host_tile_size(iris_mem, host_tile_size(mem))
+            #update_host_offs(iris_mem, offsets(mem))
         end
         #println(Core.stdout, "Type of element: ", " HostSize:", dst_host_size, " N-dims:", dim, " Element size:", dst_elem_size, " pointer:", host_cptr, " hT:", hT, " uid:", iris_mem.uid)
         if dst_elem_type == iris_custom_type 
@@ -2003,13 +2052,17 @@ module IrisHRT
             return nothing
         end
         if flush
+            #println(Core.stdout, "valid_host_root: mem flush: ", mem.uid)
             IrisHRT.flush(mem)
+		else
+			#println(Core.stdout, "valid_host_root: mem not doing flush: ", mem.uid)
         end
         hfull_size = host_size(mem)
         hsize = host_tile_size(mem)
         dsize = dev_tile_size(mem)
         offs = offsets(mem)
         j_ptr = ptr_reinterpret(mem.uid, 0, 1, arg_ptr, get_type(mem))
+        #println("Inside valid host\n")
         full_host = unsafe_wrap(Array, j_ptr, hfull_size, own=false)
         if hsize == hfull_size && hsize == dsize
             #println(Core.stdout, "Case 1")
@@ -2020,14 +2073,18 @@ module IrisHRT
         elseif hsize != hfull_size && Base.prod(hsize) == Base.prod(dsize)
             #println(Core.stdout, "Case 3")
             #println(Core.stdout, " full_host:", full_host, " size:", size(full_host))
+            #println(Core.stdout, " hfull_size", hfull_size)
             #println(Core.stdout, " hsize:", hsize)
             #println(Core.stdout, " offs:", offs)
             #println(Core.stdout, " dsize:", dsize)
-            tile = get_tile(full_host, offs, hsize) 
+            preserve_size_flag = iris_data_mem_is_size_preserved(mem)
+            tile = get_tile(full_host, offs, hsize, preserve_size_flag) 
             #println(Core.stdout, " tile:", tile, " size:", size(tile))
             if hsize == dsize
+                #println(Core.stdout, " returning tile:", tile)
                 return tile
             else
+                #println(Core.stdout, " reshaping tile:", tile)
                 return Base.reshape(tile, dsize)
             end
         elseif hsize == hfull_size && Base.prod(hsize) != Base.prod(dsize)
@@ -2110,7 +2167,7 @@ module IrisHRT
     function offsets(bmem::UMem)
         mem = field_dmem(bmem)
         size_ptr = iris_dmem_get_offsets_from_host(mem)
-        dim = iris_dmem_get_dim(mem)
+        dim = iris_dmem_get_host_dim(mem)
         dims_array = unsafe_wrap(Array, size_ptr, dim)
         return Tuple(Int.(dims_array))
     end
@@ -2136,8 +2193,12 @@ module IrisHRT
         return iris_data_mem_copyto_host(field_dmem(mem), host_ptr)
     end
 
-    function refresh(mem::UMem)
-        return iris_data_mem_refresh(field_dmem(mem))
+	function refresh(mem::UMem)
+		return iris_data_mem_refresh(field_dmem(mem))
+	end
+
+    function fresh_device_data(mem::UMem)
+        return iris_data_mem_fresh_device_data(field_dmem(mem))
     end
 
     function get_source(mem::UMem)
@@ -3157,13 +3218,13 @@ module IrisHRT
         end
     end
 
-    function get_tile(host, offset, tile_size)
+    function get_tile(host, offset, tile_size, preserve_size_flag=0)
         # Build index ranges for each dimension.
         # For each dimension, the range starts at offset[i] and ends at offset[i] + tile_size[i] - 1.
         if length(offset) > length(tile_size)
             tile_size = adjust_tuple(tile_size, length(offset), pad=1)
         end
-        #println(Core.stdout, " offset:", offset, " tile:", tile_size, " size:", size(host))
+        #println(Core.stdout, " offset:", offset, " tile:", tile_size, " size:", size(host), " preserve_size_flag:", preserve_size_flag)
         #index_ranges = tuple(((offset[i]+1 : (offset[i] + tile_size[i])) for i in 1:length(offset))...)
         index_ranges = ntuple(
           i -> tile_size[i] == 1
@@ -3171,16 +3232,24 @@ module IrisHRT
                  : (offset[i] + 1):(offset[i] + tile_size[i]),
           length(offset)
         )
-
-        # Slice the host array using the generated ranges.
-        if all(x -> x isa Integer, index_ranges)
-            if length(index_ranges) >= 2 
-                index_ranges = (index_ranges[1]:index_ranges[1], index_ranges[2:end]...)
-            else
-                index_ranges = (index_ranges[1]:index_ranges[1], )
-
+        if preserve_size_flag == 1
+            index_ranges = ntuple(i -> begin
+                                    start_idx = offset[i] + 1
+                                    end_idx = offset[i] + tile_size[i]
+                                    start_idx:end_idx
+                                    end, length(offset))
+        else
+            # Slice the host array using the generated ranges.
+            if all(x -> x isa Integer, index_ranges)
+                if length(index_ranges) >= 2 
+                    index_ranges = (index_ranges[1]:index_ranges[1], index_ranges[2:end]...)
+                else
+                    index_ranges = (index_ranges[1]:index_ranges[1], )
+        
+                end
             end
         end
+        #println(Core.stdout, " --- index_ranges:", index_ranges)
         tile = @view host[index_ranges...]
         # if its last dim is singleton, drop that dim by reshaping instead of dropdims
         # Print the tile.
@@ -3193,7 +3262,7 @@ module IrisHRT
     function Base.getindex(mem::UMem, inds::Vararg{Any, N}) where N
         # Add any custom behavior before/after element access if desired
         host = IrisHRT.valid_host_root(mem)
-        println(Core.stdout, " Host size:", size(host))
+        #println(Core.stdout, " Host size:", size(host))
         return Base.getindex(host, inds...)
     end
     function Base.lastindex(mem::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem})
@@ -3343,7 +3412,7 @@ module IrisHRT
         return task(;kernel=f, args=x, predef_task=true, eargs...)
     end
 
-    function task(; in=Any[], out=Any[], flush=Any[], refresh=[], auto_in_out=false, lws=Int64[], gws=Int64[], off=Int64[], policy=IrisHRT.iris_roundrobin, wait=true, core=false, ka=false, parallel_reduce=false, parallel_for=false, host=false, predef_task=false, auto_dependency=true, task=nothing, metadata=nothing, kernel="kernel", args=[], submit=true, dependencies=[])
+    function task(; in=Any[], out=Any[], flush=Any[], refresh=[], fresh_device_data=[], auto_in_out=false, lws=Int64[], gws=Int64[], off=Int64[], policy=IrisHRT.iris_roundrobin, wait=true, core=false, ka=false, parallel_reduce=false, parallel_for=false, host=false, predef_task=false, auto_dependency=true, task=nothing, metadata=nothing, kernel="kernel", args=[], submit=true, dependencies=[])
         call_args = args
         mem_params = Dict{Any, Any}()
         t_args = args
@@ -3437,6 +3506,10 @@ module IrisHRT
                 push!(params, Ref(arg))
             end
         end
+		for mem in fresh_device_data
+			p_dmem = get_dmem_from_cache(mem)
+			IrisHRT.fresh_device_data(p_dmem)
+		end
         for mem in refresh
             p_dmem = get_dmem_from_cache(mem)
             IrisHRT.refresh(p_dmem)
@@ -3639,6 +3712,21 @@ function Base.getindex(mem::IrisHRT.UMem, i::Int, j::Int, k::Int)
     host = IrisHRT.valid_host_root(dmem)
     return host[i,j,k]
 end
+function Base.getindex(mem::IrisHRT.UMem, r::UnitRange{Int})
+	dmem = IrisHRT.field_dmem(mem)
+	host = IrisHRT.valid_host_root(dmem)
+	return host[r]
+end
+function Base.lastindex(mem::IrisHRT.UMem)
+	# Add any custom behavior before/after element access if desired
+	dmem = IrisHRT.field_dmem(mem)
+	dsize = IrisHRT.host_size(dmem)
+	if length(dsize) == 1
+		return dsize[1]
+	end
+	return dsize
+end
+
 
 function Base.pointer(mem::Union{IrisHRT.IrisMem, IrisHRT.IrisTaskMem})
     dmem = IrisHRT.field_dmem(mem)

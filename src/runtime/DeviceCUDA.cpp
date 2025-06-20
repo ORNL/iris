@@ -443,15 +443,15 @@ int DeviceCUDA::Init() {
       }
   }
   if (platform_obj()->is_default_kernels_load()) {
-	  char flags[128];
-	  sprintf(flags, "-shared -x cu -g -Xcompiler -fPIC -DENABLE_IRIS_HOST2CUDA_APIS ");
-	  string ld_default_path = CompileDefaultKernelLibrary("DEFAULT_CUDA_KERNELS", flags);
-	  if (Utils::Exist(ld_default_path.c_str())) {
-		  ld_default_ = new LoaderHost2CUDA(ld_default_path);
-		  if (ld_default_->Load() != IRIS_SUCCESS) {
-			_trace("%s", "skipping Host2CUDA wrapper calls");
-		  }
-	  }
+      char flags[128];
+      sprintf(flags, "-shared -x cu -g -Xcompiler -fPIC -DENABLE_IRIS_HOST2CUDA_APIS ");
+      string ld_default_path = CompileDefaultKernelLibrary("DEFAULT_CUDA_KERNELS", flags);
+      if (Utils::Exist(ld_default_path.c_str())) {
+          ld_default_ = new LoaderHost2CUDA(ld_default_path);
+          if (ld_default_->Load() != IRIS_SUCCESS) {
+            _trace("%s", "skipping Host2CUDA wrapper calls");
+          }
+      }
   }
 
   host2cuda_ld_->init(devno());
@@ -527,9 +527,9 @@ int DeviceCUDA::ResetMemory(Task *task, Command *cmd, BaseMem *mem) {
                 mem->GetMemHandlerType() == IRIS_DMEM_REGION) {
             size_t elem_size = ((DataMem*)mem)->elem_size();
             if (async)
-                CallMemReset(mem, mem->size(), cmd->reset_data(), streams_[stream_index]);
+                CallMemReset(mem, mem->size()/elem_size, cmd->reset_data(), streams_[stream_index]);
             else
-                CallMemReset(mem, mem->size(), cmd->reset_data(), NULL);
+                CallMemReset(mem, mem->size()/elem_size, cmd->reset_data(), NULL);
         }
         else {
             _error("Unknow reset type for memory:%lu\n", mem->uid());
@@ -800,7 +800,7 @@ int DeviceCUDA::MemD2D(Task *task, Device *src_dev, BaseMem *mem, void *dst, voi
       //_cuerror(err);
       //err = ld_->cuMemcpyDtoD(dst_cumem, src_cumem, size);
 #if 1
-	  err = ld_->cuMemcpyDtoD_v2(dst_cumem, src_cumem, size);
+      err = ld_->cuMemcpyDtoD_v2(dst_cumem, src_cumem, size);
 #else
       err = ld_->cudaMemcpy((void *)dst_cumem, (void *)src_cumem, size, cudaMemcpyDeviceToDevice);
 #endif
@@ -855,7 +855,7 @@ int DeviceCUDA::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
       MemCpy3DDirect(cumem, (uint8_t *)host, off, dev_sizes, host_sizes, elem_size, true, async, stream_index);
   }
   else if (dim == 2) {
-      _debug2("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu,%lu,%lu] host_sizes[%lu,%lu,%lu] dev_sizes[%lu,%lu,%lu] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, off[0], off[1], off[2], host_sizes[0], host_sizes[1], host_sizes[2], dev_sizes[0], dev_sizes[1], dev_sizes[2], size, host, stream_index);
+      _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu,%lu,%lu] host_sizes[%lu,%lu,%lu] dev_sizes[%lu,%lu,%lu] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, off[0], off[1], off[2], host_sizes[0], host_sizes[1], host_sizes[2], dev_sizes[0], dev_sizes[1], dev_sizes[2], size, host, stream_index);
        size_t host_row_pitch = elem_size * host_sizes[0];
        void *host_start = (uint8_t *)host + off[0]*elem_size + off[1] * host_row_pitch;
        if (!async) {
@@ -903,7 +903,8 @@ int DeviceCUDA::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
 #endif
   }
   else {
-      _debug2("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, off[0], size, host, stream_index);
+      _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, off[0], size, host, stream_index);
+      //Utils::PrintStackTrace();
       if (!async) {
           err = ld_->cuMemcpyHtoD(cumem, (uint8_t *)host + off[0] * elem_size, size);
           _cuerror(err);
@@ -927,7 +928,7 @@ int DeviceCUDA::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
   _event_prof_debug("Completed H2D DT of %sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] size[%lu] host[%p] q[%d]\n", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, size, host, stream_index);
   _debug2("Completed H2D DT of %sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, size, host, stream_index);
   //if (error_occured) {
-	//Utils::PrintStackTrace();
+    //Utils::PrintStackTrace();
     //DataMem *dmem = (DataMem *)mem;
     //dmem->Print();
     //printf("\n\n");
@@ -1057,6 +1058,7 @@ int DeviceCUDA::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes
   }
   else {
       _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] q[%d]", tag, devno_, name_, task->uid(), task->name(), mem->uid(), (void *)cumem, off[0], size, host, stream_index);
+      //Utils::PrintStackTrace();
       if (!async) {
           err = ld_->cuMemcpyDtoH((uint8_t *)host + off[0]*elem_size, cumem, size);
           _cuerror(err);
@@ -1093,9 +1095,9 @@ int DeviceCUDA::MemCpy(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t 
   int dim = IRIS_MAX(dst_dim, src_dim);
   if (mem->is_usm(devno()) || (dst == src) ) return IRIS_SUCCESS;
   if (IsContextChangeRequired()) {
-	  _trace("CUDA context switch dev[%d][%s] task[%ld:%s] mem[%lu] self:%p thread:%p", devno_, name_, task->uid(), task->name(), mem->uid(), (void *)worker()->self(), (void *)worker()->thread());
-	  CUresult err = ld_->cuCtxSetCurrent(ctx_);
-	  _cuerror(err);
+      _trace("CUDA context switch dev[%d][%s] task[%ld:%s] mem[%lu] self:%p thread:%p", devno_, name_, task->uid(), task->name(), mem->uid(), (void *)worker()->self(), (void *)worker()->thread());
+      CUresult err = ld_->cuCtxSetCurrent(ctx_);
+      _cuerror(err);
   }
   size_t tile_size0 = tile_size[0];
   size_t tile_size1 = tile_size[1];
@@ -1114,52 +1116,52 @@ int DeviceCUDA::MemCpy(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t 
   size_t dst_strides2 = dst_strides[2];
   int stream_index = 0;
   if ( src_size[0] != dst_size[0] || src_size[1] != dst_size[1] || 
-		  src_size[2] != dst_size[2] ) {
-	  bool is_src_continuous = Utils::IsTileContiguous(src_strides, src_size, dim);
-	  bool is_dst_continuous = Utils::IsTileContiguous(dst_strides, dst_size, dim);
+          src_size[2] != dst_size[2] ) {
+      bool is_src_continuous = Utils::IsTileContiguous(src_strides, src_size, dim);
+      bool is_dst_continuous = Utils::IsTileContiguous(dst_strides, dst_size, dim);
       //printf(" is continuous:%d,%d == %d,%d\n", src_dim, is_src_continuous, dst_dim, is_dst_continuous);
       // tile_size is with respect to destination device size
-	  if (!is_src_continuous && !is_dst_continuous) {
-		((DataMem *)mem)->Print();
-		string src_size_str = Utils::GetString(src_size, dim);
-		string dst_size_str = Utils::GetString(dst_size, dim);
-		string src_off_str = Utils::GetString(src_off, dim);
-		string dst_off_str = Utils::GetString(dst_off, dim);
-		string src_strides_str = Utils::GetString(src_strides, dim+1);
-		string dst_strides_str = Utils::GetString(dst_strides, dim+1);
-		string tile_size_str = Utils::GetString(tile_size, dim);
-		_error("\n\n %s couldn't handle the dim:%d tile copy for DMEM dev[%d][%s] task[%ld:%s] elem_size:%lu mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] src_size:%s dst_size:%s src_off:%s dst_off:%s src_strides:%s dst_strides:%s tile_size:%s [%d]", tag, dim, devno_, name_, task->uid(), task->name(), elem_size, mem->uid(), dst, src, src_size_str.c_str(), dst_size_str.c_str(), src_off_str.c_str(), dst_off_str.c_str(), src_strides_str.c_str(), dst_strides_str.c_str(), tile_size_str.c_str(), stream_index);
-		Utils::PrintStackTrace();
+      if (!is_src_continuous && !is_dst_continuous) {
+        ((DataMem *)mem)->Print();
+        string src_size_str = Utils::GetString(src_size, dim);
+        string dst_size_str = Utils::GetString(dst_size, dim);
+        string src_off_str = Utils::GetString(src_off, dim);
+        string dst_off_str = Utils::GetString(dst_off, dim);
+        string src_strides_str = Utils::GetString(src_strides, dim+1);
+        string dst_strides_str = Utils::GetString(dst_strides, dim+1);
+        string tile_size_str = Utils::GetString(tile_size, dim);
+        _error("\n\n %s couldn't handle the dim:%d tile copy for DMEM dev[%d][%s] task[%ld:%s] elem_size:%lu mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] src_size:%s dst_size:%s src_off:%s dst_off:%s src_strides:%s dst_strides:%s tile_size:%s [%d]", tag, dim, devno_, name_, task->uid(), task->name(), elem_size, mem->uid(), dst, src, src_size_str.c_str(), dst_size_str.c_str(), src_off_str.c_str(), dst_off_str.c_str(), src_strides_str.c_str(), dst_strides_str.c_str(), tile_size_str.c_str(), stream_index);
+        Utils::PrintStackTrace();
       }
-	  else if (is_src_continuous) {
-		size_t offset = 0;
-		for (int i=0; i<dim; i++) {
-			offset += src_off[i] * src_strides[i];
-		}
-		src = reinterpret_cast<void *>(reinterpret_cast<uint8_t*>(src) + offset * elem_size);
-		src_off0 = 0;
-		src_off1 = 0;
-		src_off2 = 0;
-		src_strides0 = 1;	
-		src_strides1 = tile_size0;
-		src_strides2 = tile_size0 * tile_size1;
-	  }
-	  else { // is_dst_continuous 
-		size_t offset = 0;
-		for (int i=0; i<dim; i++) {
-			offset += dst_off[i] * dst_strides[i];
-		}
-		dst = reinterpret_cast<void *>(reinterpret_cast<uint8_t*>(dst) + offset * elem_size);
-		dst_off0 = 0;
-		dst_off1 = 0;
-		dst_off2 = 0;
-		tile_size0 = src_size[0];
-		tile_size1 = src_size[1];
-		tile_size2 = src_size[2];
-		dst_strides0 = 1;	
-		dst_strides1 = tile_size0;
-		dst_strides2 = tile_size0 * tile_size1;
-	  }
+      else if (is_src_continuous) {
+        size_t offset = 0;
+        for (int i=0; i<dim; i++) {
+            offset += src_off[i] * src_strides[i];
+        }
+        src = reinterpret_cast<void *>(reinterpret_cast<uint8_t*>(src) + offset * elem_size);
+        src_off0 = 0;
+        src_off1 = 0;
+        src_off2 = 0;
+        src_strides0 = 1;    
+        src_strides1 = tile_size0;
+        src_strides2 = tile_size0 * tile_size1;
+      }
+      else { // is_dst_continuous 
+        size_t offset = 0;
+        for (int i=0; i<dim; i++) {
+            offset += dst_off[i] * dst_strides[i];
+        }
+        dst = reinterpret_cast<void *>(reinterpret_cast<uint8_t*>(dst) + offset * elem_size);
+        dst_off0 = 0;
+        dst_off1 = 0;
+        dst_off2 = 0;
+        tile_size0 = src_size[0];
+        tile_size1 = src_size[1];
+        tile_size2 = src_size[2];
+        dst_strides0 = 1;    
+        dst_strides1 = tile_size0;
+        dst_strides2 = tile_size0 * tile_size1;
+      }
   }
   CUdeviceptr src_cumem = (CUdeviceptr) src;
   CUdeviceptr dst_cumem = (CUdeviceptr) dst;
@@ -1169,72 +1171,72 @@ int DeviceCUDA::MemCpy(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t 
   //err = ld_->cuCtxSetCurrent(ctx_);
   bool async = false;
   if (is_async(task)) {
-	  stream_index = GetStream(task, mem); //task->uid() % nqueues_; 
-	  async = true;
-	  if (stream_index == DEFAULT_STREAM_INDEX) { async = false; stream_index = 0; }
+      stream_index = GetStream(task, mem); //task->uid() % nqueues_; 
+      async = true;
+      if (stream_index == DEFAULT_STREAM_INDEX) { async = false; stream_index = 0; }
   }
   _event_debug("dev[%d][%s] task[%ld:%s] mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] q[%d] async:%d", devno_, name_, task->uid(), task->name(), mem->uid(), dst, src, stream_index, async);
   ASSERT(src_strides0 == 1);
   ASSERT(dst_strides0 == 1);
   if (dim == 3) {
-	  //if (src_off0 == 0 && src_off1 == 0 && src_off2 == 0 && dst_off0 == 0 & dst_off1 == 0 & dst_off2 ==0) {
+      //if (src_off0 == 0 && src_off1 == 0 && src_off2 == 0 && dst_off0 == 0 & dst_off1 == 0 & dst_off2 ==0) {
 
-	  //}
-	  CUDA_MEMCPY3D cd = {};
+      //}
+      CUDA_MEMCPY3D cd = {};
       memset(&cd, 0, sizeof(CUDA_MEMCPY3D));
       cd.srcLOD           = cd.dstLOD = 0;
       cd.srcArray = nullptr;
       cd.dstArray = nullptr;
       cd.srcDevice = (CUdeviceptr)nullptr;
       cd.dstDevice = (CUdeviceptr)nullptr;
-	  //cd.srcMemoryType    = CU_MEMORYTYPE_DEVICE;
-	  cd.srcMemoryType    = (CUmemorytype) src_type;
+      //cd.srcMemoryType    = CU_MEMORYTYPE_DEVICE;
+      cd.srcMemoryType    = (CUmemorytype) src_type;
       if (src_type == CU_MEMORYTYPE_DEVICE) {
           cd.srcDevice    = src_cumem;
-		  cd.srcHost      = NULL;
+          cd.srcHost      = NULL;
       }
       else {
           cd.srcHost      = src;
-		  cd.srcDevice = (CUdeviceptr) NULL;
+          cd.srcDevice = (CUdeviceptr) NULL;
       }
-	  cd.srcPitch         = src_strides1 * elem_size;
-	  cd.srcHeight        = src_strides2 / src_strides1; //src_size[1]; 
-	  cd.srcXInBytes      = src_off0 * elem_size;
-	  cd.srcY             = src_off1;
-	  cd.srcZ             = src_off2;
+      cd.srcPitch         = src_strides1 * elem_size;
+      cd.srcHeight        = src_strides2 / src_strides1; //src_size[1]; 
+      cd.srcXInBytes      = src_off0 * elem_size;
+      cd.srcY             = src_off1;
+      cd.srcZ             = src_off2;
 
-	  //cd.dstMemoryType    = CU_MEMORYTYPE_DEVICE;
-	  cd.dstMemoryType    = (CUmemorytype) dst_type;
+      //cd.dstMemoryType    = CU_MEMORYTYPE_DEVICE;
+      cd.dstMemoryType    = (CUmemorytype) dst_type;
       if (dst_type == CU_MEMORYTYPE_DEVICE) {
           cd.dstDevice    = dst_cumem;
       }
       else {
           cd.dstHost      = dst;
       }
-	  cd.dstPitch         = dst_strides1 * elem_size;
-	  cd.dstHeight        = dst_strides2 / dst_strides1; //dst_size[1];
-	  cd.dstXInBytes      = dst_off0 * elem_size;
-	  cd.dstY             = dst_off1;
-	  cd.dstZ             = dst_off2;
+      cd.dstPitch         = dst_strides1 * elem_size;
+      cd.dstHeight        = dst_strides2 / dst_strides1; //dst_size[1];
+      cd.dstXInBytes      = dst_off0 * elem_size;
+      cd.dstY             = dst_off1;
+      cd.dstZ             = dst_off2;
 
-	  cd.WidthInBytes     = tile_size0 * elem_size;
-	  cd.Height           = tile_size1;
-	  cd.Depth            = tile_size2;
+      cd.WidthInBytes     = tile_size0 * elem_size;
+      cd.Height           = tile_size1;
+      cd.Depth            = tile_size2;
 
-	  // perform the copy
-	  CUresult err;
-	  if (async) {
-		  assert(stream_index >= 0);
-		  err = ld_->cuMemcpy3DAsync_v2(&cd, streams_[stream_index]);
-	  } else {
-		  err = ld_->cuMemcpy3D_v2(&cd);
-	  }
-	  _cuerror(err);
+      // perform the copy
+      CUresult err;
+      if (async) {
+          assert(stream_index >= 0);
+          err = ld_->cuMemcpy3DAsync_v2(&cd, streams_[stream_index]);
+      } else {
+          err = ld_->cuMemcpy3D_v2(&cd);
+      }
+      _cuerror(err);
       if (err != CUDA_SUCCESS) error_occured = true;
       if (err != CUDA_SUCCESS) {
           ((DataMem *)mem)->Print();
-		  string src_size_str = Utils::GetString(src_size, dim);
-		  string dst_size_str = Utils::GetString(dst_size, dim);
+          string src_size_str = Utils::GetString(src_size, dim);
+          string dst_size_str = Utils::GetString(dst_size, dim);
           string src_off_str = Utils::GetString(src_off, dim);
           string dst_off_str = Utils::GetString(dst_off, dim);
           string src_strides_str = Utils::GetString(src_strides, dim+1);
@@ -1251,57 +1253,65 @@ int DeviceCUDA::MemCpy(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t 
       }
   }
   else if (dim == 2) {
-	  // 6) Build the 2D copy descriptor
-	  CUDA_MEMCPY2D cd = {};
+      // 6) Build the 2D copy descriptor
+      CUDA_MEMCPY2D cd = {};
       cd.srcArray = nullptr;
       cd.dstArray = nullptr;
-	  cd.srcMemoryType  = (CUmemorytype) src_type; 
+      cd.srcMemoryType  = (CUmemorytype) src_type; 
       if (src_type == CU_MEMORYTYPE_DEVICE) {
           cd.srcDevice  = src_cumem;
-		  cd.srcHost    = nullptr;
+          cd.srcHost    = nullptr;
       }
       else {
           cd.srcHost    = src;
-	      cd.srcDevice = (CUdeviceptr) NULL;
+          cd.srcDevice = (CUdeviceptr) NULL;
       }
-	  cd.srcPitch       = src_strides1 * elem_size;
-	  cd.srcXInBytes    = src_off0 * elem_size;
-	  cd.srcY           = src_off1;
+      cd.srcPitch       = src_strides1 * elem_size;
+      cd.srcXInBytes    = src_off0 * elem_size;
+      cd.srcY           = src_off1;
 
-	  cd.dstMemoryType  = (CUmemorytype) dst_type;
+      cd.dstMemoryType  = (CUmemorytype) dst_type;
       if (dst_type == CU_MEMORYTYPE_DEVICE) {
           cd.dstDevice  = dst_cumem;
-		  cd.dstHost    = nullptr;
+          cd.dstHost    = nullptr;
       }
       else {
           cd.dstHost    = dst;
       }
-	  cd.dstPitch       = dst_strides1 * elem_size;
-	  cd.dstXInBytes    = dst_off0 * elem_size;
-	  cd.dstY           = dst_off1;
+      cd.dstPitch       = dst_strides1 * elem_size;
+      cd.dstXInBytes    = dst_off0 * elem_size;
+      cd.dstY           = dst_off1;
 
-	  cd.WidthInBytes   = tile_size0 * elem_size;
-	  cd.Height         = tile_size1;
-	  //_cuerror(cuMemcpy2D(&cd));
-	  if (async) {
-		  ASSERT(stream_index >= 0);
-		  err = ld_->cuMemcpy2DAsync_v2(&cd, streams_[stream_index]);
-	  }
-	  else {
-		  err = ld_->cuMemcpy2D_v2(&cd);
-	  }
-	  _cuerror(err);
-	  if (err != CUDA_SUCCESS) error_occured = true;
+      cd.WidthInBytes   = tile_size0 * elem_size;
+      cd.Height         = tile_size1;
+      //_cuerror(cuMemcpy2D(&cd));
+      if (async) {
+          ASSERT(stream_index >= 0);
+          err = ld_->cuMemcpy2DAsync_v2(&cd, streams_[stream_index]);
+      }
+      else {
+          err = ld_->cuMemcpy2D_v2(&cd);
+      }
+      _cuerror(err);
+      if (err != CUDA_SUCCESS) error_occured = true;
       if (err != CUDA_SUCCESS) {
           ((DataMem *)mem)->Print();
-		  string src_size_str = Utils::GetString(src_size, dim);
-		  string dst_size_str = Utils::GetString(dst_size, dim);
+          string src_size_str = Utils::GetString(src_size, dim);
+          string dst_size_str = Utils::GetString(dst_size, dim);
           string src_off_str = Utils::GetString(src_off, dim);
           string dst_off_str = Utils::GetString(dst_off, dim);
           string src_strides_str = Utils::GetString(src_strides, dim+1);
           string dst_strides_str = Utils::GetString(dst_strides, dim+1);
           string tile_size_str = Utils::GetString(tile_size, dim);
-          _error("\n\n %s couldn't handle the dim:%d tile copy for DMEM dev[%d][%s] task[%ld:%s] elem_size:%lu mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] src_size:%s dst_size:%s src_off:%s dst_off:%s src_strides:%s dst_strides:%s tile_size:%s [%d]", tag, dim, devno_, name_, task->uid(), task->name(), elem_size, mem->uid(), dst, src, src_size_str.c_str(), dst_size_str.c_str(), src_off_str.c_str(), dst_off_str.c_str(), src_strides_str.c_str(), dst_strides_str.c_str(), tile_size_str.c_str(), stream_index);
+          string src_str = "Host"; 
+          string dst_str = "Host"; 
+          if (dst_type == CU_MEMORYTYPE_DEVICE) {
+              dst_str = "DEV"; 
+          }
+          if (src_type == CU_MEMORYTYPE_DEVICE) {
+              src_str = "DEV"; 
+          }
+          _error("\n\n %s couldn't handle the dim:%d tile copy for DMEM dev[%d][%s] task[%ld:%s] elem_size:%lu mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] src_size:%s dst_size:%s src_off:%s dst_off:%s src_strides:%s dst_strides:%s tile_size:%s [%d] [%s -> %s]", tag, dim, devno_, name_, task->uid(), task->name(), elem_size, mem->uid(), dst, src, src_size_str.c_str(), dst_size_str.c_str(), src_off_str.c_str(), dst_off_str.c_str(), src_strides_str.c_str(), dst_strides_str.c_str(), tile_size_str.c_str(), stream_index, src_str.c_str(), dst_str.c_str());
           Utils::PrintStackTrace();
 #if 0
           if (dst_type == CU_MEMORYTYPE_DEVICE) {
@@ -1311,23 +1321,26 @@ int DeviceCUDA::MemCpy(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t 
               iris::PrintArrayFull<int64_t>((int64_t *)src, 4, 4, " Src:");
               iris::PrintArrayFull<int64_t>((int64_t *)data, 4, 4, " Dst:");
           }
+          else if (src_type == CU_MEMORYTYPE_DEVICE) {
+            iris::PrintArrayFull<float>((float*)dst, 4, 8, " Dst:");
+          }
 #endif      
       }
   }
   else if (dim == 1) {
-	  if (async) {
-		  ASSERT(stream_index >= 0);
-		  err = ld_->cuMemcpyAsync(dst_cumem + dst_off0*elem_size, src_cumem+src_off0*elem_size, tile_size0 * elem_size, streams_[stream_index]);
-	  }
-	  else {
-		  err = ld_->cuMemcpy(dst_cumem + dst_off0*elem_size, src_cumem+src_off0*elem_size, tile_size0 * elem_size);
-	  }
-	  _cuerror(err);
-	  if (err != CUDA_SUCCESS) error_occured = true;
+      if (async) {
+          ASSERT(stream_index >= 0);
+          err = ld_->cuMemcpyAsync(dst_cumem + dst_off0*elem_size, src_cumem+src_off0*elem_size, tile_size0 * elem_size, streams_[stream_index]);
+      }
+      else {
+          err = ld_->cuMemcpy(dst_cumem + dst_off0*elem_size, src_cumem+src_off0*elem_size, tile_size0 * elem_size);
+      }
+      _cuerror(err);
+      if (err != CUDA_SUCCESS) error_occured = true;
       if (err != CUDA_SUCCESS) {
           ((DataMem *)mem)->Print();
-		  string src_size_str = Utils::GetString(src_size, dim);
-		  string dst_size_str = Utils::GetString(dst_size, dim);
+          string src_size_str = Utils::GetString(src_size, dim);
+          string dst_size_str = Utils::GetString(dst_size, dim);
           string src_off_str = Utils::GetString(src_off, dim);
           string dst_off_str = Utils::GetString(dst_off, dim);
           string src_strides_str = Utils::GetString(src_strides, dim+1);
@@ -1339,15 +1352,15 @@ int DeviceCUDA::MemCpy(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t 
       }
   }
   else {
-	  string src_size_str = Utils::GetString(src_size, dim);
-	  string dst_size_str = Utils::GetString(dst_size, dim);
+      string src_size_str = Utils::GetString(src_size, dim);
+      string dst_size_str = Utils::GetString(dst_size, dim);
       string src_off_str = Utils::GetString(src_off, dim);
       string dst_off_str = Utils::GetString(dst_off, dim);
       string src_strides_str = Utils::GetString(src_strides, dim+1);
       string dst_strides_str = Utils::GetString(dst_strides, dim+1);
       string tile_size_str = Utils::GetString(tile_size, dim);
-	  _error(" %s couldn't handle the dim:%d tile copy for DMEM dev[%d][%s] task[%ld:%s] elem_size:%lu mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] src_size:%s dst_size:%s src_off:%s dst_off:%s src_strides:%s dst_strides:%s tile_size:%s [%d]", tag, dim, devno_, name_, task->uid(), task->name(), elem_size, mem->uid(), dst, src, src_size_str.c_str(), dst_size_str.c_str(), src_off_str.c_str(), dst_off_str.c_str(), src_strides_str.c_str(), dst_strides_str.c_str(), tile_size_str.c_str(), stream_index);
-	  Utils::PrintStackTrace();
+      _error(" %s couldn't handle the dim:%d tile copy for DMEM dev[%d][%s] task[%ld:%s] elem_size:%lu mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] src_size:%s dst_size:%s src_off:%s dst_off:%s src_strides:%s dst_strides:%s tile_size:%s [%d]", tag, dim, devno_, name_, task->uid(), task->name(), elem_size, mem->uid(), dst, src, src_size_str.c_str(), dst_size_str.c_str(), src_off_str.c_str(), dst_off_str.c_str(), src_strides_str.c_str(), dst_strides_str.c_str(), tile_size_str.c_str(), stream_index);
+      Utils::PrintStackTrace();
   }
   _trace("dev[%d][%s] task[%ld:%s] elem_size:%lu mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] size[%lu] q[%d]", devno_, name_, task->uid(), task->name(), elem_size, mem->uid(), dst, src, size, stream_index);
   if (error_occured) {
@@ -1355,22 +1368,22 @@ int DeviceCUDA::MemCpy(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t 
   }
   //ASSERT(!error_occured && "CUDA Error occured");
   if (error_occured) {
-	  platform_obj()->IncrementErrorCount();
-	  return IRIS_ERROR;
+      platform_obj()->IncrementErrorCount();
+      return IRIS_ERROR;
   }
   return IRIS_SUCCESS;
 }
 int DeviceCUDA::MemD2D(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t *dst_size, size_t *dst_off, size_t *dst_strides, int src_dim, void *src, size_t *src_size, size_t *src_off, size_t *src_strides, size_t *tile_size, size_t elem_size) 
 {
-	return MemCpy(task, mem, dst_dim, dst, dst_size, dst_off, dst_strides, src_dim, src, src_size, src_off, src_strides, tile_size, elem_size, CU_MEMORYTYPE_DEVICE, CU_MEMORYTYPE_DEVICE, "D2D"); 
+    return MemCpy(task, mem, dst_dim, dst, dst_size, dst_off, dst_strides, src_dim, src, src_size, src_off, src_strides, tile_size, elem_size, CU_MEMORYTYPE_DEVICE, CU_MEMORYTYPE_DEVICE, "D2D"); 
 }
 int DeviceCUDA::MemH2D(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t *dst_size, size_t *dst_off, size_t *dst_strides, int src_dim, void *src, size_t *src_size, size_t *src_off, size_t *src_strides, size_t *tile_size, size_t elem_size) 
 {
-	return MemCpy(task, mem, dst_dim, dst, dst_size, dst_off, dst_strides, src_dim, src, src_size, src_off, src_strides, tile_size, elem_size, CU_MEMORYTYPE_HOST, CU_MEMORYTYPE_DEVICE, "H2D"); 
+    return MemCpy(task, mem, dst_dim, dst, dst_size, dst_off, dst_strides, src_dim, src, src_size, src_off, src_strides, tile_size, elem_size, CU_MEMORYTYPE_HOST, CU_MEMORYTYPE_DEVICE, "H2D"); 
 }
 int DeviceCUDA::MemD2H(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t *dst_size, size_t *dst_off, size_t *dst_strides, int src_dim, void *src, size_t *src_size, size_t *src_off, size_t *src_strides, size_t *tile_size, size_t elem_size) 
 {
-	return MemCpy(task, mem, dst_dim, dst, dst_size, dst_off, dst_strides, src_dim, src, src_size, src_off, src_strides, tile_size, elem_size, CU_MEMORYTYPE_DEVICE, CU_MEMORYTYPE_HOST, "D2H"); 
+    return MemCpy(task, mem, dst_dim, dst, dst_size, dst_off, dst_strides, src_dim, src, src_size, src_off, src_strides, tile_size, elem_size, CU_MEMORYTYPE_DEVICE, CU_MEMORYTYPE_HOST, "D2H"); 
 }
 
 int DeviceCUDA::KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bool report_error) {
@@ -1668,11 +1681,11 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
   if (julia_if_ != NULL && kernel->enable_julia_if()) {
       size_t grid_s[3] =  { (size_t)grid[0],  (size_t)grid[1],  (size_t)grid[2] };
       size_t block_s[3] = { (size_t)block[0], (size_t)block[1], (size_t)block[2] };
-      if (false && kernel->task()->uid() == 431530) {
+      //if (false && kernel->task()->uid() == 431530) {
         //raise(SIGABRT);
-        _printf("------Error with this issue:------ task:%lu", kernel->task()->uid());
-        _info("dev[%d][%s] kernel[%s:%s] dim[%d] grid[%d,%d,%d] off[%ld,%ld,%ld] block[%d,%d,%d] blockoff[%lu,%lu,%lu] max_arg_idx[%d] shared_mem_bytes[%u] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, grid[0], grid[1], grid[2], off[0], off[1], off[2], block[0], block[1], block[2], blockOff_x, blockOff_y, blockOff_z, max_arg_idx_, shared_mem_bytes_, stream_index);
-      }
+      //  _printf("------Error with this issue:------ task:%lu", kernel->task()->uid());
+      //  _info("dev[%d][%s] kernel[%s:%s] dim[%d] grid[%d,%d,%d] off[%ld,%ld,%ld] block[%d,%d,%d] blockoff[%lu,%lu,%lu] max_arg_idx[%d] shared_mem_bytes[%u] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, grid[0], grid[1], grid[2], off[0], off[1], off[2], block[0], block[1], block[2], blockOff_x, blockOff_y, blockOff_z, max_arg_idx_, shared_mem_bytes_, stream_index);
+      //}
       julia_if_->host_launch(kernel->task()->uid(), (void **)kstream, stream_index, (void *)&ctx_, async,
                   nstreams, kernel->name(), 
                   kernel->GetParamWrapperMemory(), ordinal_,

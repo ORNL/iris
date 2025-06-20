@@ -857,6 +857,11 @@ int iris_data_mem_refresh(iris_mem brs_mem) {
   mem->RefreshHost();
   return IRIS_SUCCESS;
 }
+int iris_data_mem_fresh_device_data(iris_mem brs_mem) {
+  DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  mem->set_dirty_all();
+  return IRIS_SUCCESS;
+}
 int iris_data_mem_update_host_offs(iris_mem brs_mem, size_t *offsets) {
   DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
   return mem->update_host_offs(offsets);
@@ -1021,6 +1026,12 @@ int iris_kernel_set_shared_memory_size(iris_kernel brs_kernel, size_t size)
   Kernel *kernel = brs_kernel.class_obj;
   kernel->set_shared_mem_size(size);
   return IRIS_SUCCESS;
+}
+
+int iris_data_mem_is_size_preserved(iris_mem brs_mem) {
+  DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem != NULL) return mem->preserve_size_flag();
+  return 0;
 }
 
 int iris_kernel_setarg(iris_kernel kernel, int idx, size_t size, void* value) {

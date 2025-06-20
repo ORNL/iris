@@ -273,7 +273,7 @@ iris_int64            =  (12 << 16)
 iris_uint64           =  (13 << 16)
 iris_long             =  (14 << 16)
 iris_unsigned_long    =  (15 << 16)
-iris_pointer          =  (0x4000 << 16)
+iris_pointer          =  (0x40 << 16)
 
 iris_normal     =   (1 << 10)
 iris_reduction  =   (1 << 11)

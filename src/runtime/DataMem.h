@@ -147,8 +147,11 @@ public:
   bool is_multi_dim_dev_offset() { return multi_dim_dev_offset_; }
   int update_dim(int dim) { dim_ = dim; return IRIS_SUCCESS; }
   int update_host_dim(int dim) { host_dim_ = dim; return IRIS_SUCCESS; }
+  int update_dev_dim(int dim) { dev_dim_ = dim; return IRIS_SUCCESS; }
+  int update_dev_tile_dim(int dim) { dev_tile_dim_ = dim; return IRIS_SUCCESS; }
   int host_dim() { return host_dim_; }
-  int dev_dim() { return dim_; }
+  int dev_dim() { return dev_dim_; }
+  int dev_tile_dim() { return dev_tile_dim_; }
   int dim() { return dim_; }
   void *host_ptr() { 
       DataMem *source_mem = (DataMem*)get_source_mem();
@@ -283,18 +286,22 @@ public:
   void EnableRegions(int axis);
   string GetSizeString(size_t *data, int dim);
   string GetPtrString(void **data, int dim);
+  bool preserve_size_flag() { return preserve_size_flag_; }
+  void update_preserve_size_flag() { preserve_size_flag_ = true; }
+  void reset_preserve_size_flag() { preserve_size_flag_ = false; }
 protected:
   void start(size_t out[DMEM_MAX_DIM]) const {
-      memcpy(out, off_, dim_ * sizeof(size_t));
+      memcpy(out, off_, host_dim_ * sizeof(size_t));
   }
 
   void end(size_t out[DMEM_MAX_DIM]) const {
-      for (int i = 0; i < dim_; ++i)
-          out[i] = off_[i] + dev_size_[i];
+      for (int i = 0; i < host_dim_; ++i)
+          out[i] = off_[i] + host_tile_size_[i];
   }
   void set_dev_off(size_t *dev_off) {
       memcpy(dev_off_, dev_off, dim_ * sizeof(size_t));
   }
+  bool preserve_size_flag_;
   bool host_dirty_flag_;
   bool  *dirty_flag_;
   bool dynamic_regions_;
@@ -320,6 +327,8 @@ protected:
   size_t dev_tile_size_[DMEM_MAX_DIM];
   size_t elem_size_;
   int host_dim_;
+  int dev_dim_;
+  int dev_tile_dim_;
   int dim_;
   Platform *platform_;
 #ifdef AUTO_PAR

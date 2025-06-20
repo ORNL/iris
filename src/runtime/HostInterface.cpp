@@ -285,15 +285,15 @@ namespace iris {
             KernelArg *arg = julia_data->get_iris_arg(kindex);
             //printf("setarg julia_data:%p kindex:%d arg_index:%d size:%lu value:%p\n", julia_data, kindex, julia_data->top(), size, value);
             if (arg->data_type != iris_unknown) 
-                julia_data->set_arg_type(arg->data_type);
+                julia_data->set_arg_type(arg->data_type << 8);
             else if (size == 1) 
-                julia_data->set_arg_type(iris_uint8);
+                julia_data->set_arg_type(iris_uint8 << 8);
             else if (size == 2) 
-                julia_data->set_arg_type(iris_uint16);
+                julia_data->set_arg_type(iris_uint16 << 8);
             else if (size == 4) 
-                julia_data->set_arg_type(iris_uint32);
+                julia_data->set_arg_type(iris_uint32 << 8);
             else if (size == 8) 
-                julia_data->set_arg_type(iris_uint64);
+                julia_data->set_arg_type(iris_uint64 << 8);
             else {
                 _error("Unknown argument size:%lu at index for kernel:%s", size, julia_data->kernel()->name());
             }
@@ -308,17 +308,23 @@ namespace iris {
             MemHandlerType h_type = mem->GetMemHandlerType();
             int element_size = 0;
             int dim = 1;
+            int dev_tile_dim = 1;
+            int preserve_size_flag = 0;
             if (h_type == IRIS_DMEM_REGION || h_type == IRIS_DMEM) {
                 DataMem *dmem = (DataMem *)mem;
                 element_size = (int) dmem->elem_size();
                 dim = dmem->dim();
+                if (dmem->preserve_size_flag()) {
+                    preserve_size_flag = 1 << 23;
+                }
+                dev_tile_dim = dmem->dev_tile_dim();
                 //printf("Size DIM : %lu\n", dmem->dev_size()[0]);
                 julia_data->set_dim_off(dmem->dev_off(), dmem->dim());
-                julia_data->set_dim_sizes(dmem->dev_tile_size(), dmem->dim());
+                julia_data->set_dim_sizes(dmem->dev_tile_size(), dmem->dev_dim());
                 julia_data->set_dim_full_sizes(dmem->dev_size(), dmem->dim());
             }
             //printf("setmem julia_data:%p kindex:%d arg_index:%d mem:%p dev:%p size:%ld element_size:%d\n", julia_data, kindex, julia_data->top(), mem, mem_ptr, size, element_size);
-            julia_data->set_arg_type(iris_pointer | element_type | (element_size << 8) | dim);
+            julia_data->set_arg_type((preserve_size_flag | iris_pointer | element_type) << 8 | (element_size << 16) | (dim << 8) | dev_tile_dim);
             julia_data->set_value_ptr(mem_ptr);
             julia_data->set_size(size/element_size);
             julia_data->increment();

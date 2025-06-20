@@ -15,8 +15,6 @@ println(Core.stdout, " Original AA: ", AA_reshape, " ptr:", typeof(AA_reshape), 
 
 AA = IrisHRT.reshape(A, 4, 2, 2; region_outer_dim=true)
 
-#IrisHRT.enable_regions(AA, 3)
-
 ARs = IrisHRT.regions(AA)
 #println(Core.stdout, "ARs[1]: ", ARs[1], " size:", size(ARs[1])) 
 #println(Core.stdout, "ARs[2]: ", ARs[2], " size:", size(ARs[2])) 
@@ -24,6 +22,7 @@ ARs = IrisHRT.regions(AA)
 +(ARs[2], ARs[2], ARs[2])
 
 IrisHRT.synchronize()
+println(Core.stdout, "ARs[2]: ", ARs[2]) 
 println(Core.stdout, "ARs[1]: ", ARs[1]) 
 
 println(Core.stdout, " A: ", A, " type:", typeof(A), " size:", size(A))

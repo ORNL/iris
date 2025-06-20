@@ -159,7 +159,7 @@ namespace iris {
                 void set_arg_type(int32_t arg_type) {
                     assert(index_ < args_capacity_);
                     args_[index_] = arg_type;
-                    //printf("Args:%p %d %d\n", args_, index_, arg_type);
+                    //printf("Args:%p %d 0x%x\n", args_, index_, arg_type);
                 }
                 void set_value(void *value) { 
                     assert(index_ < args_capacity_);

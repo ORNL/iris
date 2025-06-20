@@ -6,8 +6,14 @@
 #include <stdint.h>
 
 #define DMEM_MAX_DIM 6
-#define IRIS_MAX(X, Y)    (((X) > (Y)) ? (X) : (Y))
-#define IRIS_MIN(X, Y)    (((X) < (Y)) ? (X) : (Y))
+#define IRIS_MAX(X, Y)        (((X) > (Y)) ? (X) : (Y))
+#define IRIS_MIN(X, Y)        (((X) < (Y)) ? (X) : (Y))
+#define IRIS_MAX3(X, Y, Z)    (IRIS_MAX(IRIS_MAX(X,Y), Z))
+#define IRIS_MIN3(X, Y, Z)    (IRIS_MIN(IRIS_MIN(X,Y), Z))
+#define IRIS_MAX4(X, Y, Z, U) (IRIS_MAX(IRIS_MAX(X,Y), IRIS_MAX(Z,U)))
+#define IRIS_MIN4(X, Y, Z, U) (IRIS_MIN(IRIS_MIN(X,Y), IRIS_MIN(Z,U)))
+#define IRIS_MAX5(X, Y, Z, U, V) (IRIS_MAX(IRIS_MAX3(X,Y,Z), IRIS_MAX(U,V)))
+#define IRIS_MIN5(X, Y, Z, U, V) (IRIS_MIN(IRIS_MIN3(X,Y,Z), IRIS_MIN(U,V)))
 
 
 #ifdef __cplusplus
@@ -180,7 +186,7 @@ typedef enum DeviceModel DeviceModel;
 #define iris_unsigned_long      (15 << 16)
 #define iris_bool               (16 << 16)
 #define iris_custom_type        (17 << 16)
-#define iris_pointer            (0x4000 << 16)
+#define iris_pointer            (0x40 << 16)
 
 #define iris_reset_memset                      0
 #define iris_reset_assign                      1 
@@ -1496,12 +1502,19 @@ extern int iris_data_mem_copyto_host(iris_mem mem, void *src_host);
  */
 extern iris_mem iris_data_mem_copy(iris_mem src_mem);
 
-/**@brief data memory object refresh for a task. It will make host copy valid and device copies invalid
+/**@brief data memory object refresh. It will make host copy valid and device copies invalid
  *
  * @param mem memory object
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_data_mem_refresh(iris_mem mem);
+
+/**@brief data memory object to refresh DMEM device copies. It will make all device copies dirty 
+ *
+ * @param mem memory object
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_data_mem_fresh_device_data(iris_mem mem);
 
 /**@brief update host offsets for DMME object 
  *
@@ -1681,6 +1694,7 @@ extern iris_mem iris_data_mem_create_tile_struct_with_type(void *host, size_t *o
 extern iris_mem *iris_data_mem_create_tile_ptr(void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim);
 extern int iris_data_mem_update_bc(iris_mem mem, int bc, int row, int col);
 extern int iris_data_mem_get_rr_bc_dev(iris_mem mem);
+extern int iris_data_mem_is_size_preserved(iris_mem mem);
 
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 extern int iris_data_mem_n_regions(iris_mem brs_mem);

@@ -36,14 +36,15 @@ DataMem::DataMem(Platform* platform, void *host_ptr, size_t *host_size, int dim,
         size = size * host_size[i];
     }
     Init(platform, host_ptr, size, dim);
+    int max_dim = IRIS_MAX4(dim_, host_dim_, dev_dim_, dev_tile_dim_);
     set_element_type(element_type);
-    memcpy(dev_size_, host_size, sizeof(size_t)*dim_);
-    memcpy(dev_tile_size_, host_size, sizeof(size_t)*dim_);
-    memcpy(host_size_, host_size, sizeof(size_t)*dim_);
-    memcpy(host_tile_size_, host_size, sizeof(size_t)*dim_);
+    memcpy(dev_size_, host_size, sizeof(size_t)*max_dim);
+    memcpy(dev_tile_size_, host_size, sizeof(size_t)*max_dim);
+    memcpy(host_size_, host_size, sizeof(size_t)*max_dim);
+    memcpy(host_tile_size_, host_size, sizeof(size_t)*max_dim);
     elem_size_ = elem_size;
-    compute_strides(host_strides_, host_size_);
-    compute_strides(dev_strides_,  dev_size_);
+    compute_strides(host_strides_, host_size_, host_dim_);
+    compute_strides(dev_strides_,  dev_size_, dev_dim_);
     //_printf("2DataMem uid:%lu ptr:%p host_ptr:%p host_size:%ld elem_size:%ld dim:%d size:%ld off:%p", uid(), this, host_ptr, host_size[0], elem_size, dim, size, off_);
     //Print();
 }
@@ -69,14 +70,14 @@ DataMem::DataMem(Platform *platform, void *host_ptr, size_t *off, size_t *host_s
     set_element_type(element_type);
     if (hsize != size)
         tile_enabled_ = true;
-    dim_ = dim;
-    memcpy(off_, off, sizeof(size_t)*dim_);
-    memcpy(dev_size_, dev_size, sizeof(size_t)*dim_);
-    memcpy(dev_tile_size_, dev_size, sizeof(size_t)*dim_);
-    memcpy(host_size_, host_size, sizeof(size_t)*dim_);
-    memcpy(host_tile_size_, dev_size, sizeof(size_t)*dim_); // This should tile
-    compute_strides(host_strides_, host_size_);
-    compute_strides(dev_strides_,  dev_size_);
+    int max_dim = IRIS_MAX4(dim_, host_dim_, dev_dim_, dev_tile_dim_);
+    memcpy(off_, off, sizeof(size_t)*max_dim);
+    memcpy(dev_size_, dev_size, sizeof(size_t)*max_dim);
+    memcpy(dev_tile_size_, dev_size, sizeof(size_t)*max_dim);
+    memcpy(host_size_, host_size, sizeof(size_t)*max_dim);
+    memcpy(host_tile_size_, dev_size, sizeof(size_t)*max_dim); // This should tile
+    compute_strides(host_strides_, host_size_, host_dim_);
+    compute_strides(dev_strides_,  dev_size_, dev_dim_);
     elem_size_ = elem_size;
     //Print();
 }
@@ -100,11 +101,11 @@ size_t DataMem::get_alloc_size(size_t *strides)
 }
 void DataMem::compute_dev_strides(size_t *size)
 {
-    compute_strides(dev_strides_, size);
+    compute_strides(dev_strides_, size, dev_dim_);
 }
 void DataMem::compute_host_strides(size_t *size)
 {
-    compute_strides(host_strides_, size);
+    compute_strides(host_strides_, size, host_dim_);
 }
 string DataMem::ToString(bool check_regions)
 {
@@ -138,6 +139,10 @@ string DataMem::ToString(bool check_regions)
         output << " DMEM";
     output << " uid:" << uid();
     output << " dim:" << dim_;
+    output << " host_dim:" << host_dim_;
+    output << " dev_dim:" << dev_dim_;
+    output << " dev_tile_dim:" << dev_tile_dim_;
+    output << " preserve_size_flag:" << preserve_size_flag_;
     output << " element_size:" << elem_size_;
     if (get_n_regions() > 0) 
         output << " regions:" << get_n_regions();
@@ -198,6 +203,9 @@ DataMem *DataMem::Copy()
 {
     DataMem *dmem = new DataMem(platform_, NULL, off_, host_size_, dev_size_, elem_size_, dim_, element_type_);
     dmem->tile_enabled_ = tile_enabled_;
+    dmem->dev_dim_ = dev_dim_;
+    dmem->dev_tile_dim_ = dev_tile_dim_;
+    dmem->host_dim_ = host_dim_;
     return dmem;
 }
 bool DataMem::is_host_dirty(bool check_regions) { 
@@ -403,7 +411,7 @@ int DataMem::update_host_offs(size_t *offs, int dim)
     if (dim == -1)
         dim = host_dim_;
     memcpy(off_, offs, sizeof(size_t)*dim);
-    for(int i=dim; i<IRIS_MAX(host_dim_, dim_); i++)
+    for(int i=dim; i<IRIS_MAX4(host_dim_, dev_dim_, dev_tile_dim_, dim_); i++)
         off_[i] = 0;
     return IRIS_SUCCESS;
 }
@@ -412,10 +420,10 @@ int DataMem::update_host_size(size_t *host_size, bool update_strides, int dim)
     if (dim == -1)
         dim = host_dim_;
     memcpy(host_size_, host_size, sizeof(size_t)*dim);
-    for(int i=dim; i<IRIS_MAX(host_dim_, dim_); i++)
+    for(int i=dim; i<IRIS_MAX4(host_dim_, dev_dim_, dev_tile_dim_, dim_); i++)
         host_size_[i] = 1;
     if (update_strides)
-        compute_strides(host_strides_, host_size_, IRIS_MAX(dim, IRIS_MAX(host_dim_, dim_)));
+        compute_strides(host_strides_, host_size_, IRIS_MAX5(dim, dev_dim_, dev_tile_dim_, host_dim_, dim_));
     return IRIS_SUCCESS;
 }
 int DataMem::update_host_tile_size(size_t *host_size, int dim) 
@@ -426,7 +434,7 @@ int DataMem::update_host_tile_size(size_t *host_size, int dim)
     if (dim > 1)
         multi_dim_dev_offset_ = true;
     memcpy(host_tile_size_, host_size, sizeof(size_t)*dim);
-    for(int i=dim; i<IRIS_MAX(host_dim_, dim_); i++)
+    for(int i=dim; i<IRIS_MAX4(host_dim_, dev_dim_, dev_tile_dim_, dim_); i++)
         host_tile_size_[i] = 1;
     //Print("After host update:");
     int n_regions = get_n_regions();
@@ -451,8 +459,9 @@ int DataMem::update_dev_tile_size(size_t *dev_size, int dim)
         dim = host_dim_;
     if (dim > 1)
         multi_dim_dev_offset_ = true;
+    preserve_size_flag_ = true;
     memcpy(dev_tile_size_, dev_size, sizeof(size_t)*dim);
-    for(int i=dim; i<IRIS_MAX(host_dim_, dim_); i++)
+    for(int i=dim; i<IRIS_MAX4(host_dim_, dev_dim_, dev_tile_dim_, dim_); i++)
         dev_tile_size_[i] = 1;
     //Print("After host update:");
     size_t size = elem_size_;
@@ -473,6 +482,7 @@ int DataMem::update_dev_tile_size(size_t *dev_size, int dim)
             ASSERT(regions[i].first == regions[i].second);
             regions[i].first->update_dev_tile_size(ldev_size, dim);
             regions[i].first->enable_multi_dim_dev_offset();
+            regions[i].first->reset_preserve_size_flag();
         }
     }
     return IRIS_SUCCESS;
@@ -484,10 +494,10 @@ int DataMem::update_dev_size(size_t *dev_size, bool update_strides, int dim) {
         multi_dim_dev_offset_ = true;
     //Print("Before dev update:");
     memcpy(dev_size_, dev_size, sizeof(size_t)*dim); 
-    for(int i=dim; i<IRIS_MAX(host_dim_, dim_); i++)
+    for(int i=dim; i<IRIS_MAX4(host_dim_, dev_dim_, dev_tile_dim_, dim_); i++)
         dev_size_[i] = 1;
     if (update_strides)
-        compute_strides(dev_strides_,  dev_size_, IRIS_MAX(dim, IRIS_MAX(host_dim_, dim_)));
+        compute_strides(dev_strides_,  dev_size_, IRIS_MAX5(dim, host_dim_, dev_tile_dim_, dev_dim_, dim_));
     size_t size = elem_size_;
     for(int i=0; i<dim; i++) {
         size = size * dev_size[i];
@@ -582,7 +592,10 @@ void DataMem::FetchDataFromDevice(void *dst_host_ptr, size_t size)
 }
 void DataMem::Init(Platform *platform, void *host_ptr, size_t size, int dim)
 {
+    preserve_size_flag_ = false;
     dim_ = dim;
+    dev_tile_dim_ = dim;
+    dev_dim_ = dim;
     host_dim_ = dim;
     multi_dim_dev_offset_ = false;
     source_mem_ = NULL;
@@ -860,6 +873,7 @@ void DataMem::EnableOuterDimensionRegions()
         size_t dev_offset_from_root = i * dev_offset * elem_size_;
         DataMemRegion *region = new DataMemRegion(this, i, off, loff, host_size_, dev_size, elem_size_, dim_, dev_offset_from_root);
         region->compute_dev_strides(host_size_);
+        region->update_dev_tile_dim(dim_-1);
         regions.push_back(make_pair(region, region));
     }
 }
