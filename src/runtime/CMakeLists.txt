@@ -64,7 +64,9 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wno-unused-parameter -Wno
 if (CMAKE_VERSION VERSION_LESS "3.1")
   set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 else()
-  set(CMAKE_CXX_STANDARD 11)
+  if(NOT DEFINED CMAKE_CXX_STANDARD)
+    set(CMAKE_CXX_STANDARD 11)
+  endif()
 endif()
 if (COVERAGE)
    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage")
@@ -139,7 +141,7 @@ function(extractIRISAPIs)
         get_filename_component(SRC_FILE_PATH ${first} ABSOLUTE BASE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
         list(APPEND src_include_paths "-I${SRC_DIR_PATH}")
         add_custom_command(OUTPUT  ${CMAKE_BINARY_DIR}/${rule_name}.iris 
-            COMMAND ${IRIS_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/extract_iris_task_calls.py -input ${SRC_FILE_PATH} -compile_options "${APP_FLAGS}" -output ${CMAKE_BINARY_DIR}/${rule_name}.iris -extract  -codegen_file_tag iris_default_math
+            COMMAND ${IRIS_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/extract_iris_task_calls.py -input ${SRC_FILE_PATH} -compile_options "${APP_FLAGS} ${CMAKE_CXX_FLAGS}" -output ${CMAKE_BINARY_DIR}/${rule_name}.iris -extract  -codegen_file_tag iris_default_math
             DEPENDS ${SRC_FILE_PATH}
         )
         #message(STATUS " RULE: ${rule_name}")
@@ -404,7 +406,7 @@ install(FILES
 find_package(OpenMP REQUIRED)
 add_library(cpu_default default_cpu_gpu_kernels.cpp ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_openmp_kernels.cpp)
 add_dependencies(cpu_default iris_default_math_boilerplate_h)
-target_compile_options(cpu_default PRIVATE -Wall -fopenmp -DENABLE_IRIS_OPENMP_APIS)
+target_compile_options(cpu_default PRIVATE -Wall -fopenmp -DENABLE_IRIS_OPENMP_APIS ${CMAKE_CXX_FLAGS})
 target_link_libraries(cpu_default PRIVATE OpenMP::OpenMP_CXX)
 install(TARGETS cpu_default DESTINATION ${CMAKE_INSTALL_PREFIX}/default)
 

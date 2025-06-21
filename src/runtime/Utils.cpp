@@ -463,6 +463,10 @@ void Utils::Datetime(char* str) {
   strftime(str, 256, "%Y%m%d%H%M%S", tm);
 }
 
+#ifdef __APPLE__
+#include <mach/thread_policy.h>
+#include <mach/mach.h>
+#endif
 int Utils::CPUCoresCount() {
     unsigned int num_cores = std::thread::hardware_concurrency();
     return num_cores;
@@ -475,7 +479,7 @@ void Utils::SetThreadAffinity(unsigned int core_id) {
 #ifdef _WIN32
     DWORD_PTR mask = 1ULL << lcore_id;
     SetThreadAffinityMask(GetCurrentThread(), mask);
-#else //_WIN32
+#elif defined(__linux__)   
     cpu_set_t cpuset;
     CPU_ZERO(&cpuset);
     CPU_SET(lcore_id, &cpuset);
@@ -489,7 +493,15 @@ void Utils::SetThreadAffinity(unsigned int core_id) {
     if (s != 0)
         _error("CPU affinity set to %u is failed with pthread_setaffinity_np", core_id);
 #endif
-#endif // _WIN32
+#elif defined(__APPLE__)
+    // NOTE: macOS does not support explicit core binding.
+    // This sets an affinity tag (only groups threads; not pinned to a core).
+    thread_affinity_policy_data_t policy = { static_cast<integer_t>(lcore_id) };
+    thread_port_t mach_thread = pthread_mach_thread_np(pthread_self());
+    thread_policy_set(mach_thread, THREAD_AFFINITY_POLICY,
+                      (thread_policy_t)&policy,
+                      THREAD_AFFINITY_POLICY_COUNT);
+#endif
 }
 
 } /* namespace rt */

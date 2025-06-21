@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <malloc.h>
 #include "iris/verify.h"
 #include "iris/gettime.h"
 #include "iris/iris_macros.h"

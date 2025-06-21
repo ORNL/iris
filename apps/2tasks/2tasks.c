@@ -1,6 +1,6 @@
 #include <iris/iris.h>
 #include <stdio.h>
-#include <malloc.h>
+#include <stdlib.h>
 
 int main(int argc, char** argv) {
   iris_init(&argc, &argv, 1);

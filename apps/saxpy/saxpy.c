@@ -1,7 +1,6 @@
 #include <iris/iris.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <malloc.h>
 #include <time.h>
 
 int main(int argc, char** argv) {

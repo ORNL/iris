@@ -48,17 +48,10 @@ add_custom_command(
   OUTPUT ${CMAKE_BINARY_DIR}/setup.source
   WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
   COMMAND echo "SCRIPT_FILE=\${BASH_SOURCE[0]}" > ${CMAKE_BINARY_DIR}/setup.source VERBATIM
-  COMMAND echo "PYTHON_EXE=python" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
-  COMMAND echo "version=\$(python -V 2>&1 | grep -Po '(?<=Python )(.+)')" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
-  COMMAND echo "if [[ -z \"\$version\" ]]" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
-  COMMAND echo "then" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
-  COMMAND echo "    PYTHON_EXE=python3" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
-  COMMAND echo "    version=\$(python3 -V 2>&1 | grep -Po '(?<=Python )(.+)')" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
-  COMMAND echo "    if [[ -z \"\$version\" ]]" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
-  COMMAND echo "    then" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
+  COMMAND echo "PYTHON_EXE=$(command -v python || command -v python3)" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
+  COMMAND echo "if [[ -z \"\$PYTHON_EXE\" ]]; then" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
   COMMAND echo "    echo \"No Python is detected! Cannot source\" " >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
   COMMAND echo "    return" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
-  COMMAND echo "    fi" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
   COMMAND echo "fi" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
   COMMAND echo "SCRIPT=$(\$PYTHON_EXE -c \"import os,sys; print(os.path.realpath(os.path.expanduser(sys.argv[1])))\" \${SCRIPT_FILE})" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
   COMMAND echo "export IRIS=$(dirname -- \${SCRIPT})" >> ${CMAKE_BINARY_DIR}/setup.source
@@ -66,7 +59,7 @@ add_custom_command(
   COMMAND echo "export CPATH=\$IRIS/include:\$CPATH" >> ${CMAKE_BINARY_DIR}/setup.source
   COMMAND echo "export PYTHONPATH=\$IRIS:\$PYTHONPATH" >> ${CMAKE_BINARY_DIR}/setup.source
   COMMAND echo "export SYSTEM=\$(hostname|cut -d . -f 1|sed 's/[0-9]*//g')" >>  ${CMAKE_BINARY_DIR}/setup.source
-  COMMAND echo "export MACHINE=\${SYSTEM^}" >>  ${CMAKE_BINARY_DIR}/setup.source
+  COMMAND echo "export MACHINE=$(echo \"\$SYSTEM\" | awk '{print toupper(substr(\$0,1,1)) tolower(substr(\$0,2))}')" >>  ${CMAKE_BINARY_DIR}/setup.source
   COMMAND echo "echo \"*********************** IRIS Environent *********************\"" >> ${CMAKE_BINARY_DIR}/setup.source
   COMMAND echo "echo \"IRIS: \$IRIS\"" >> ${CMAKE_BINARY_DIR}/setup.source
   COMMAND echo "echo \"*************************************************************\"" >> ${CMAKE_BINARY_DIR}/setup.source
@@ -90,6 +83,7 @@ add_custom_command(
   COMMAND echo "SCRIPT=$(\$PYTHON_EXE -c \"import os,sys; print(os.path.realpath(os.path.expanduser(sys.argv[1])))\" \${SCRIPT_FILE})" >> ${CMAKE_BINARY_DIR}/setup.zsh VERBATIM
   COMMAND echo "export IRIS=$(dirname -- \${SCRIPT})" >> ${CMAKE_BINARY_DIR}/setup.zsh
   COMMAND echo "export LD_LIBRARY_PATH=.:\$IRIS/lib:\$IRIS/lib64:\$LD_LIBRARY_PATH" >> ${CMAKE_BINARY_DIR}/setup.zsh
+  COMMAND echo "export DYLD_LIBRARY_PATH=.:\$IRIS/lib:\$DYLD_LIBRARY_PATH" >> ${CMAKE_BINARY_DIR}/setup.zsh
   COMMAND echo "export LIBRARY_PATH=.:\$IRIS/lib:\$IRIS/lib64:\$LIBRARY_PATH" >> ${CMAKE_BINARY_DIR}/setup.zsh
   COMMAND echo "export CPATH=\$IRIS/include:\$CPATH" >> ${CMAKE_BINARY_DIR}/setup.zsh
   COMMAND echo "export PYTHONPATH=\$IRIS:\$PYTHONPATH" >> ${CMAKE_BINARY_DIR}/setup.zsh
