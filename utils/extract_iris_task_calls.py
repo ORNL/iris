@@ -346,7 +346,9 @@ static int iris_kernel_idx = -1;
 #ifndef ENABLE_IRIS_HOST2HIP_APIS
 #ifndef ENABLE_IRIS_HOST2CUDA_APIS
 #ifndef ENABLE_IRIS_HOST2OPENCL_APIS
+#ifndef ENABLE_IRIS_OPENMP_APIS
 #define ENABLE_IRIS_OPENMP_APIS
+#endif
 #endif
 #endif
 #endif
