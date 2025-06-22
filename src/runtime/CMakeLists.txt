@@ -406,7 +406,10 @@ install(FILES
 find_package(OpenMP REQUIRED)
 add_library(cpu_default default_cpu_gpu_kernels.cpp ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_openmp_kernels.cpp)
 add_dependencies(cpu_default iris_default_math_boilerplate_h)
-target_compile_options(cpu_default PRIVATE -Wall -fopenmp -DENABLE_IRIS_OPENMP_APIS ${CMAKE_CXX_FLAGS})
+target_compile_options(cpu_default PRIVATE -Wall -fopenmp -DENABLE_IRIS_OPENMP_APIS)
+if(APPLE)
+    target_compile_options(cpu_default PRIVATE  ${CMAKE_CXX_FLAGS})
+endif()
 target_link_libraries(cpu_default PRIVATE OpenMP::OpenMP_CXX)
 install(TARGETS cpu_default DESTINATION ${CMAKE_INSTALL_PREFIX}/default)
 
