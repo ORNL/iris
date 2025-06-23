@@ -12,6 +12,15 @@ Base.Experimental.make_io_thread()
 if !haskey(ENV, "IRIS_ARCHS")
     ENV["IRIS_ARCHS"] = "cuda:hip:openmp"
 end
+if !haskey(ENV, "JULIRIS_DEBUG")
+    const __juliris_debug_flag = false
+else
+    if ENV["JULIRIS_DEBUG"] == "1"
+        const __juliris_debug_flag = true
+    else
+        const __juliris_debug_flag = false
+    end
+end
 and(a, b) = a && b
 or(a, b) = a || b
 const ARRAY_TO_DMEM_MAP = Dict{Any, Any}()
@@ -153,6 +162,10 @@ module IrisHRT
     __precompile__()
     import Base: Callable
     import Base: show
+    export @timeblock
+    export @itask
+    export @iparallel_for
+    export @iparallel_reduce
 
     using InteractiveUtils
     using Requires
@@ -1098,6 +1111,7 @@ module IrisHRT
         else
             MyAMDGPU.context!(ctx)
             spec.stream = JACC.default_stream(MyAMDGPU.ROCBackend)
+            spec.sync = false
         end
         backend = MyAMDGPU.ROCBackend()
         #gws = Tuple(remove_trailing_ones2(collect(gws)))
@@ -3412,7 +3426,7 @@ module IrisHRT
         return task(;kernel=f, args=x, predef_task=true, eargs...)
     end
 
-    function task(; in=Any[], out=Any[], flush=Any[], refresh=[], fresh_device_data=[], auto_in_out=false, lws=Int64[], gws=Int64[], off=Int64[], policy=IrisHRT.iris_roundrobin, wait=true, core=false, ka=false, parallel_reduce=false, parallel_for=false, host=false, predef_task=false, auto_dependency=true, task=nothing, metadata=nothing, kernel="kernel", args=[], submit=true, dependencies=[])
+    function task(; in=Any[], out=Any[], flush=Any[], refresh=[], fresh_device_data=[], auto_in_out=false, lws=Int64[], gws=Int64[], off=Int64[], policy=IrisHRT.iris_roundrobin, wait=true, core=false, ka=false, parallel_reduce=false, parallel_for=false, host=false, predef_task=false, auto_dependency=true, task=nothing, graph=nothing, metadata=nothing, kernel="kernel", args=[], submit=true, dependencies=[])
         call_args = args
         mem_params = Dict{Any, Any}()
         t_args = args
@@ -3601,14 +3615,185 @@ module IrisHRT
         policy = IrisHRT.set_julia_policy(task0, policy)
         #println(Core.stdout, "IRIS task submit")
         if submit
-            IrisHRT.iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
+            if graph == nothing
+                IrisHRT.iris_task_submit(task0, policy, Ptr{Int8}(C_NULL), Int64(wait))
+            else
+                IrisHRT.add_task(graph, task0, policy)
+            end
         else
             IrisHRT.iris_task_set_policy(task0, Int32(policy))
         end
         return task0
+    end 
+
+    function get_ka_dict(args, is_kernel_mandatory=true)
+        kw_dict = Dict{Symbol, Any}()
+        kernel_expr = nothing
+        for arg in args
+            #println("  ------ arg = ", arg.head); dump(arg)
+            if arg isa Expr && arg.head == :(=)  # e.g. host=true
+                #println(" inside =")
+                kw_dict[Symbol(arg.args[1])] = esc(arg.args[2])
+            elseif arg isa Expr && arg.head == :tuple
+                #println(" inside tuple"); dump(arg)
+                for sub_arg in arg.args
+                    if sub_arg isa Expr && sub_arg.head == :(=)
+                        kw_dict[sub_arg.args[1]] = esc(sub_arg.args[2])
+                    elseif sub_arg isa Expr && sub_arg.head == :call
+                        #println(" inside sub call:")
+                        if sub_arg.args[1] isa Symbol && sub_arg.args[1] == :(:)
+                            kw_dict[sub_arg.args[2]] = esc(sub_arg.args[3])
+                            #println(" ----- inside sub sub call with :"); dump(sub_arg)
+                        elseif sub_arg.args[1] isa Symbol 
+                            kernel_expr = sub_arg
+                            #println(" ===== inside sample call with :"); dump(sub_arg)
+                        end
+                    end
+                end
+            elseif arg isa Pair                  # e.g. host:true
+                #println(" inside pair:")
+                kw_dict[Symbol(arg.first)] = arg.second
+            elseif arg isa Expr && arg.head == :call  # e.g. sample(x, y)
+                #println(" inside call:")
+                if arg.args[1] isa Symbol && arg.args[1] == :(:)
+                    kw_dict[arg.args[2]] = esc(arg.args[3])
+                    #println(" ----- inside sub sub call with :"); dump(arg)
+                elseif arg.args[1] isa Symbol 
+                    kernel_expr = arg
+                    #println(" ===== inside sample call with :"); dump(arg)
+                end
+            else
+                error("Invalid macro argument: $arg")
+            end
+        end
+        if is_kernel_mandatory && kernel_expr === nothing
+            println("Missing required function call, like: sample(x, y)")
+            # Add kernel and args to kwargs
+            kw_dict[:kernel] = nothing
+            kw_dict[:args] = nothing
+        else
+            #println(" ===== inside sample call with :"); dump(kernel_expr)
+            # Extract kernel function name and args
+            func_name = kernel_expr.args[1]
+            func_args = [x isa Number ? x : esc(x) for x in kernel_expr.args[2:end]]
+            # Add kernel and args to kwargs
+            kw_dict[:kernel] = string(func_name)
+            kw_dict[:args] = Expr(:vect, func_args...)
+        end
+
+        #for (k, v) in kw_dict
+        #    println("   ", k, " => ", repr(v))
+        #end
+        return kw_dict
     end
+
+    # Usage:
+    #@itask (in:Any[x], out:Any[x], host:true, sample(x, y))
+    #@itask (host=true, in=Any[x], out=Any[x], sample(x, y))
+    #@itask host:true, in:Any[x], out:Any[x], flush:Any[x], sample(x, y)
+    macro itask(args...)
+        kw_dict = get_ka_dict(args)
+        # Turn dict into keyword splat via Dict + (; __kw__...)
+        return quote
+            local __kw__ = Dict{Symbol, Any}($(map(kv -> :($(QuoteNode(kv[1])) => $(kv[2])), collect(kw_dict))...))
+            #println(Core.stdout, "-------Inside @itask, __kw__ contains:")
+            #for (k, v) in __kw__
+            #    println("  ", k, " => ", v)
+            #end
+            IrisHRT.task(; __kw__...)
+        end
+    end
+
+    #@iparallel_for 
+    macro iparallel_for(args...)
+        kw_dict = get_ka_dict(args)
+        # Turn dict into keyword splat via Dict + (; __kw__...)
+        if !haskey(kw_dict, :size)
+            _error("iparallel_for macro doesn't have size parameter!\nexample: iparallel_for size=<size-tuple>")
+        else 
+            kw_dict[:gws] = kw_dict[:size]
+            delete!(kw_dict, :size)       
+        end
+        #for (k, v) in kw_dict
+        #    println("   ", k, " => ", repr(v))
+        #end
+        return quote
+            local __kw__ = Dict{Symbol, Any}($(map(kv -> :($(QuoteNode(kv[1])) => $(kv[2])), collect(kw_dict))...))
+            #println(Core.stdout, "-------Inside @itask, __kw__ contains:")
+            #for (k, v) in __kw__
+            #    println("  ", k, " => ", v)
+            #end
+            IrisHRT.task(;parallel_for=true, __kw__...)
+        end
+    end
+     
+    #@iparallel_reduce
+    macro iparallel_reduce(args...)
+        kw_dict = get_ka_dict(args, false)
+        # Turn dict into keyword splat via Dict + (; __kw__...)
+        all_args = []
+        if haskey(kw_dict, :size)
+            push!(all_args, kw_dict[:size])
+            delete!(kw_dict, :size)       
+        end
+        if haskey(kw_dict, :kernel) && kw_dict[:kernel] != nothing
+            push!(all_args, kw_dict[:kernel])
+            delete!(kw_dict, :kernel)       
+        end
+        if haskey(kw_dict, :args) && kw_dict[:args] != nothing
+            func_args = kw_dict[:args].args
+            push!(all_args, func_args...)
+            delete!(kw_dict, :args) 
+        end
+        #for (k, v) in kw_dict
+        #    println("   ", k, " => ", repr(v))
+        #end
+        return quote
+            local __kw__ = Dict{Symbol, Any}($(map(kv -> :($(QuoteNode(kv[1])) => $(kv[2])), collect(kw_dict))...))
+            local __args__ = [$(all_args...)] 
+            IrisHRT.parallel_reduce(__args__...; __kw__...)
+        end
+    end
+     
     function describe_backend(backend::IRISBackend)
         println(Core.stdout, "Backend Name: ", backend.backend_name)
+    end
+
+    if Main.__juliris_debug_flag
+        macro timeblock(arg1, block)
+            # Parse the optional label
+            if arg1.head == :(=) && arg1.args[1] == :name
+                label_expr = arg1.args[2]
+            else
+                error("Expected syntax: @timeblock name=\"Label\" begin ... end")
+            end
+
+            quote
+                let
+                    __start = time_ns()
+                    __result = begin
+                        $(esc(block))  # runs in caller's scope
+                    end
+                    __end = time_ns()
+                    println("[", $(esc(label_expr)), "] took ",
+                            round((__end - __start) / 1e9, digits=6), " seconds")
+                    __result
+                end
+            end
+        end
+    else
+        macro timeblock(arg1, block)
+            # Just run the code block without timing
+            if arg1.head == :(=) && arg1.args[1] == :name
+                block_expr = block
+            else
+                error("Expected syntax: @timeblock name=\"Label\" begin ... end")
+            end
+
+            quote
+                $(esc(block_expr))
+            end
+        end
     end
 
 end  # module Iris
@@ -3801,6 +3986,73 @@ end
 
 function parallel_for(N::Union{Int64,UInt64}, f::Union{Function,String}, x... ; eargs...)
     return IrisHRT.parallel_for(N, f, x...; eargs...)
+end
+
+function parallel_for((N,)::Union{Tuple{Int64,},Tuple{UInt64,}}, f::Union{Function,String}, x... ; eargs...)
+    return IrisHRT.parallel_for(N, f, x...; eargs...)
+end
+function parallel_reduce(N::Integer, op::Base.Callable, f::Union{Base.Callable,String}, x...; eargs...)
+    return IrisHRT.parallel_reduce_core(N, f, x...; op=op, eargs...)
+end
+function parallel_reduce(N::Integer, f::Union{Base.Callable,String}, x...; eargs...)
+    return IrisHRT.parallel_reduce_core(N, f, x...; eargs...)
+end
+function parallel_reduce((N,)::Tuple{Integer,}, f::Union{Base.Callable,String}, x...; eargs...)
+    return IrisHRT.parallel_reduce_core(N, f, x...; eargs...)
+end
+function parallel_reduce((N,)::Tuple{Integer,}, op::Base.Callable, f::Union{Base.Callable,String}, x...; eargs...)
+    return IrisHRT.parallel_reduce_core(N, f, x...; op=op, eargs...)
+end
+function parallel_reduce(
+        (M, N)::NTuple{2, Integer}, op::Base.Callable, f::Union{Base.Callable,String}, x...;
+        eargs...)
+    return IrisHRT.parallel_reduce_core((M, N), f, x...; op=op, init=init)
+end
+function parallel_reduce(
+        (M, N)::NTuple{2, Integer}, f::Union{Base.Callable,String}, x...;
+        eargs...)
+    return IrisHRT.parallel_reduce_core((M, N), f, x...; init=init)
+end
+function parallel_reduce(op::Base.Callable, A::AbstractArray; args...)
+    s = size(A)
+    kernel = get_iris_jacc_elem_access(op)
+    if length(s) == 1
+        return IrisHRT.parallel_reduce_core(s[1], kernel, A; op=op, args...)
+    else
+        return IrisHRT.parallel_reduce_core(s, kernel, A; op=op, args...)
+    end
+end
+function parallel_reduce(op::Base.Callable, A::AbstractVector; args...)
+    kernel = get_iris_jacc_elem_access(op)
+    return IrisHRT.parallel_reduce_core(length(A), kernel, A; op=op, args...)
+end
+function parallel_reduce(op::Base.Callable, A::AbstractMatrix; args...)
+    kernel = get_iris_jacc_elem_access(op)
+    return IrisHRT.parallel_reduce_core(size(A), kernel, A; op=op, args...)
+end
+function parallel_reduce(op::Base.Callable, A::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}; args...)
+    kernel = get_iris_jacc_elem_access(op)
+    return IrisHRT.parallel_reduce_core(dev_tile_size(A), kernel, A; op=op, args...)
+end
+function parallel_reduce(A::AbstractArray; args...)
+    s = size(A)
+    if length(s) == 1
+        s = s[1]
+    end
+    kernel = get_iris_jacc_elem_access(+)
+    return IrisHRT.parallel_reduce_core(s, kernel, A; op=+, args...)
+end
+function parallel_reduce(A::Union{IrisHRT.IrisMem,IrisHRT.IrisTaskMem}; args...)
+    kernel = get_iris_jacc_elem_access(+)
+    return IrisHRT.parallel_reduce_core(dev_tile_size(A), kernel, A; op=+, args...)
+end
+function parallel_reduce(A::AbstractMatrix; args...)
+    kernel = get_iris_jacc_elem_access(+)
+    return IrisHRT.parallel_reduce_core(size(A), kernel, A; op=+, args...)
+end
+function parallel_reduce(A::AbstractVector; args...)
+    kernel = get_iris_jacc_elem_access(+)
+    return IrisHRT.parallel_reduce_core(length(A), kernel, A; op=+, args...)
 end
 
 

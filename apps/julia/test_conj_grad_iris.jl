@@ -74,24 +74,24 @@ while cond[1, 1] >= 1e-14 && index < iterations_max
 		task = IrisHRT.empty_task()
 	end
     IrisHRT.copyto!(r_old, r; task=task, submit=submit, wait=wait)
-    IrisHRT.parallel_for(SIZE, matvecmul, a0, a1, a2, p, s, SIZE; task=task, submit=submit, wait=wait)
+	@iparallel_for(size:SIZE, task:task, submit:submit, wait:wait, matvecmul(a0, a1, a2, p, s, SIZE))
 
-    alpha0 = IrisHRT.parallel_reduce(SIZE, dot, r, r; result=alpha0, task=task, submit=submit, wait=wait) 
-    alpha1 = IrisHRT.parallel_reduce(SIZE, dot, p, s; result=alpha1, task=task, submit=submit, wait=wait)
+	alpha0 = @iparallel_reduce(size=SIZE, result=alpha0, task=task, submit=submit, wait=wait, dot(r, r)) 
+    alpha1 = parallel_reduce(SIZE, dot, p, s; result=alpha1, task=task, submit=submit, wait=wait)
 
     /(alpha, alpha0, alpha1; task=task, submit=submit, wait=wait) # alpha = alpha0/alpha1
     *(negative_alpha, alpha, -1.0; task=task, submit=submit, wait=wait)
 
-    IrisHRT.parallel_for(SIZE, axpy, negative_alpha, r, s; task=task, submit=submit, wait=wait)
-    IrisHRT.parallel_for(SIZE, axpy, alpha, x, p; task=task, submit=submit, wait=wait)
-    beta1 = IrisHRT.parallel_reduce(SIZE, dot, r_old, r_old; result=beta1, task=task, submit=submit, wait=wait)
-    beta0 = IrisHRT.parallel_reduce(SIZE, dot, r, r; result=beta0, task=task, submit=submit, wait=wait)
+    parallel_for(SIZE, axpy, negative_alpha, r, s; task=task, submit=submit, wait=wait)
+    parallel_for(SIZE, axpy, alpha, x, p; task=task, submit=submit, wait=wait)
+    beta1 = parallel_reduce(SIZE, dot, r_old, r_old; result=beta1, task=task, submit=submit, wait=wait)
+    beta0 = parallel_reduce(SIZE, dot, r, r; result=beta0, task=task, submit=submit, wait=wait)
     /(beta, beta0, beta1; task=task, submit=submit, wait=wait)
 
     IrisHRT.copyto!(r_aux, r; task=task, submit=submit, wait=wait)
 
-    IrisHRT.parallel_for(SIZE, axpy, beta, r_aux, p; task=task, submit=submit, wait=wait)
-    ccond = IrisHRT.parallel_reduce(SIZE, dot, r, r; result=ccond, task=task, submit=submit, wait=wait)
+    parallel_for(SIZE, axpy, beta, r_aux, p; task=task, submit=submit, wait=wait)
+    ccond = parallel_reduce(SIZE, dot, r, r; result=ccond, task=task, submit=submit, wait=wait)
     IrisHRT.copyto!(p, r_aux; task=task, submit=submit, wait=wait)
     if task != nothing
         IrisHRT.submit(task)
