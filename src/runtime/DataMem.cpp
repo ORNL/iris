@@ -158,6 +158,9 @@ string DataMem::ToString(bool check_regions)
     output << " dev_ptr:" << dev_ptr.str();
     output << " host_dirty:" << is_host_dirty(check_regions);
     output << " dev_dirty:" << dev_dirty.str();
+    output << " reset:" << reset_;
+    output << " enable_reset:" << enable_reset_;
+    output << " reset_type:" << reset_data_.reset_type_;
     if (GetMemHandlerType() == IRIS_DMEM_REGION) {
         DataMemRegion *rmem = (DataMemRegion *)this;
         output << " own_dev_memory:" << rmem->own_dev_memory();
