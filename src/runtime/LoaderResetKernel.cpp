@@ -28,6 +28,7 @@ int LoaderResetKernel::LoadFunctions() {
   LOADFUNC(iris_reset_u32);
   LOADFUNC(iris_reset_u16);
   LOADFUNC(iris_reset_u8);
+  LOADFUNC(iris_reset_b);
   LOADFUNC(iris_reset_f32);
   LOADFUNC(iris_reset_f64);
 
@@ -39,6 +40,7 @@ int LoaderResetKernel::LoadFunctions() {
   LOADFUNC(iris_arithmetic_seq_u32);
   LOADFUNC(iris_arithmetic_seq_u16);
   LOADFUNC(iris_arithmetic_seq_u8);
+  LOADFUNC(iris_arithmetic_seq_b);
   LOADFUNC(iris_arithmetic_seq_f32);
   LOADFUNC(iris_arithmetic_seq_f64);
 
@@ -50,6 +52,7 @@ int LoaderResetKernel::LoadFunctions() {
   LOADFUNC(iris_geometric_seq_u32);
   LOADFUNC(iris_geometric_seq_u16);
   LOADFUNC(iris_geometric_seq_u8);
+  LOADFUNC(iris_geometric_seq_b);
   LOADFUNC(iris_geometric_seq_f32);
   LOADFUNC(iris_geometric_seq_f64);
 
@@ -59,6 +62,7 @@ int LoaderResetKernel::LoadFunctions() {
   LOADFUNC(iris_random_uniform_seq_u32);
   LOADFUNC(iris_random_uniform_seq_u16);
   LOADFUNC(iris_random_uniform_seq_u8);
+  LOADFUNC(iris_random_uniform_seq_b);
   LOADFUNC(iris_random_uniform_seq_i64);
   LOADFUNC(iris_random_uniform_seq_i32);
   LOADFUNC(iris_random_uniform_seq_i16);
@@ -70,6 +74,7 @@ int LoaderResetKernel::LoadFunctions() {
   LOADFUNC(iris_random_normal_seq_u32);
   LOADFUNC(iris_random_normal_seq_u16);
   LOADFUNC(iris_random_normal_seq_u8);
+  LOADFUNC(iris_random_normal_seq_b);
   LOADFUNC(iris_random_normal_seq_i64);
   LOADFUNC(iris_random_normal_seq_i32);
   LOADFUNC(iris_random_normal_seq_i16);
@@ -92,6 +97,7 @@ int LoaderResetKernel::LoadFunctions() {
   LOADFUNC(iris_random_uniform_sobol_seq_u32);
   LOADFUNC(iris_random_uniform_sobol_seq_u16);
   LOADFUNC(iris_random_uniform_sobol_seq_u8);
+  LOADFUNC(iris_random_uniform_sobol_seq_b);
   LOADFUNC(iris_random_uniform_sobol_seq_i64);
   LOADFUNC(iris_random_uniform_sobol_seq_i32);
   LOADFUNC(iris_random_uniform_sobol_seq_i16);
@@ -103,6 +109,7 @@ int LoaderResetKernel::LoadFunctions() {
   LOADFUNC(iris_random_normal_sobol_seq_u32);
   LOADFUNC(iris_random_normal_sobol_seq_u16);
   LOADFUNC(iris_random_normal_sobol_seq_u8);
+  LOADFUNC(iris_random_normal_sobol_seq_b);
   LOADFUNC(iris_random_normal_sobol_seq_i64);
   LOADFUNC(iris_random_normal_sobol_seq_i32);
   LOADFUNC(iris_random_normal_sobol_seq_i16);

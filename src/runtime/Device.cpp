@@ -123,6 +123,7 @@ void Device::CallMemReset(BaseMem *mem, size_t size, ResetData & reset_data, voi
     if (reset_type == iris_reset_assign) {
 #define RESET_SEQ(IT, T, M)  case IT: ld_reset_->iris_reset_ ## M(static_cast<T*>(arch), reset_data.value_.M, size, stream); break;
         switch(elem_type) {
+            RESET_SEQ(iris_bool,   bool,  b);
             RESET_SEQ(iris_uint8,  uint8_t,  u8);
             RESET_SEQ(iris_uint16, uint16_t, u16);
             RESET_SEQ(iris_uint32, uint32_t, u32);
@@ -140,6 +141,7 @@ void Device::CallMemReset(BaseMem *mem, size_t size, ResetData & reset_data, voi
     else if (reset_type == iris_reset_arith_seq) {
 #define ARITH_SEQ(IT, T, M)  case IT: ld_reset_->iris_arithmetic_seq_ ## M(static_cast<T*>(arch), reset_data.start_.M, reset_data.step_.M, size, stream); break;
         switch(elem_type) {
+            ARITH_SEQ(iris_bool,   bool,  b);
             ARITH_SEQ(iris_uint8,  uint8_t,  u8);
             ARITH_SEQ(iris_uint16, uint16_t, u16);
             ARITH_SEQ(iris_uint32, uint32_t, u32);
@@ -157,6 +159,7 @@ void Device::CallMemReset(BaseMem *mem, size_t size, ResetData & reset_data, voi
     else if (reset_type == iris_reset_geom_seq) {
 #define GEOM_SEQ(IT, T, M)  case IT: ld_reset_->iris_geometric_seq_ ## M(static_cast<T*>(arch), reset_data.start_.M, reset_data.step_.M, size, stream); break;
         switch(elem_type) {
+            GEOM_SEQ(iris_bool,  bool,  b);
             GEOM_SEQ(iris_uint8,  uint8_t,  u8);
             GEOM_SEQ(iris_uint16, uint16_t, u16);
             GEOM_SEQ(iris_uint32, uint32_t, u32);
@@ -174,6 +177,7 @@ void Device::CallMemReset(BaseMem *mem, size_t size, ResetData & reset_data, voi
 #define RANDOM_SEQ(IT, RTYPE, T, M)  case IT: ld_reset_->iris_random_ ## RTYPE ## _seq_ ## M(static_cast<T*>(arch), reset_data.seed_, reset_data.p1_.M, reset_data.p2_.M, size, stream); break;
     else if (reset_type == iris_reset_random_uniform_seq) {
         switch(elem_type) {
+            RANDOM_SEQ(iris_bool ,  uniform, bool,  b);
             RANDOM_SEQ(iris_uint8,  uniform, uint8_t,  u8);
             RANDOM_SEQ(iris_uint16, uniform, uint16_t, u16);
             RANDOM_SEQ(iris_uint32, uniform, uint32_t, u32);
@@ -190,6 +194,7 @@ void Device::CallMemReset(BaseMem *mem, size_t size, ResetData & reset_data, voi
     }
     else if (reset_type == iris_reset_random_normal_seq) {
         switch(elem_type) {
+            RANDOM_SEQ(iris_bool,  normal, bool,  b);
             RANDOM_SEQ(iris_uint8,  normal, uint8_t,  u8);
             RANDOM_SEQ(iris_uint16, normal, uint16_t, u16);
             RANDOM_SEQ(iris_uint32, normal, uint32_t, u32);
@@ -222,6 +227,7 @@ void Device::CallMemReset(BaseMem *mem, size_t size, ResetData & reset_data, voi
     }
     else if (reset_type == iris_reset_random_uniform_sobol_seq) {
         switch(elem_type) {
+            RANDOM_SEQ(iris_bool,  uniform_sobol, bool,  b);
             RANDOM_SEQ(iris_uint8,  uniform_sobol, uint8_t,  u8);
             RANDOM_SEQ(iris_uint16, uniform_sobol, uint16_t, u16);
             RANDOM_SEQ(iris_uint32, uniform_sobol, uint32_t, u32);
@@ -238,6 +244,7 @@ void Device::CallMemReset(BaseMem *mem, size_t size, ResetData & reset_data, voi
     }
     else if (reset_type == iris_reset_random_normal_sobol_seq) {
         switch(elem_type) {
+            RANDOM_SEQ(iris_bool,  normal_sobol, bool,  b);
             RANDOM_SEQ(iris_uint8,  normal_sobol, uint8_t,  u8);
             RANDOM_SEQ(iris_uint16, normal_sobol, uint16_t, u16);
             RANDOM_SEQ(iris_uint32, normal_sobol, uint32_t, u32);

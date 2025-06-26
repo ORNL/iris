@@ -251,6 +251,7 @@ typedef int (*hook_command)(void* command);
 typedef int (*iris_selector_kernel)(iris_task task, void* params, char* kernel_name);
 
 typedef union _IRISValue {
+    bool     b;
     int8_t   i8;
     int16_t  i16;
     int32_t  i32;

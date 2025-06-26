@@ -357,6 +357,7 @@ IRIS_RANDOM_SEQ(log_normal_sobol, uint64_t, u64)
 IRIS_RANDOM_SEQ(log_normal_sobol, uint32_t, u32)
 IRIS_RANDOM_SEQ(log_normal_sobol, uint16_t, u16)
 IRIS_RANDOM_SEQ(log_normal_sobol, uint8_t,  u8)
+IRIS_RANDOM_SEQ(log_normal_sobol, bool,  b)
 
 IRIS_RANDOM_SEQ(normal_sobol, float,    f32)
 IRIS_RANDOM_SEQ(normal_sobol, double,   f64)
@@ -368,6 +369,7 @@ IRIS_RANDOM_SEQ(normal_sobol, uint64_t, u64)
 IRIS_RANDOM_SEQ(normal_sobol, uint32_t, u32)
 IRIS_RANDOM_SEQ(normal_sobol, uint16_t, u16)
 IRIS_RANDOM_SEQ(normal_sobol, uint8_t,  u8)
+IRIS_RANDOM_SEQ(normal_sobol, bool,  b)
 
 IRIS_RANDOM_SEQ(uniform_sobol, float,    f32)
 IRIS_RANDOM_SEQ(uniform_sobol, double,   f64)
@@ -379,6 +381,7 @@ IRIS_RANDOM_SEQ(uniform_sobol, uint64_t, u64)
 IRIS_RANDOM_SEQ(uniform_sobol, uint32_t, u32)
 IRIS_RANDOM_SEQ(uniform_sobol, uint16_t, u16)
 IRIS_RANDOM_SEQ(uniform_sobol, uint8_t,  u8)
+IRIS_RANDOM_SEQ(uniform_sobol, bool,  b)
 
 IRIS_RANDOM_SEQ(log_normal, float,    f32)
 IRIS_RANDOM_SEQ(log_normal, double,   f64)
@@ -401,6 +404,7 @@ IRIS_RANDOM_SEQ(normal, uint64_t, u64)
 IRIS_RANDOM_SEQ(normal, uint32_t, u32)
 IRIS_RANDOM_SEQ(normal, uint16_t, u16)
 IRIS_RANDOM_SEQ(normal, uint8_t,  u8)
+IRIS_RANDOM_SEQ(normal, bool,  b)
 
 IRIS_RANDOM_SEQ(uniform, float,    f32)
 IRIS_RANDOM_SEQ(uniform, double,   f64)
@@ -412,6 +416,7 @@ IRIS_RANDOM_SEQ(uniform, uint64_t, u64)
 IRIS_RANDOM_SEQ(uniform, uint32_t, u32)
 IRIS_RANDOM_SEQ(uniform, uint16_t, u16)
 IRIS_RANDOM_SEQ(uniform, uint8_t,  u8)
+IRIS_RANDOM_SEQ(uniform, bool,  b)
 
 
 #define IRIS_RESET(T, TAG)   \
@@ -428,6 +433,7 @@ IRIS_RESET(uint64_t, u64)
 IRIS_RESET(uint32_t, u32)
 IRIS_RESET(uint16_t, u16)
 IRIS_RESET(uint8_t,  u8)
+IRIS_RESET(bool,  b)
 
 #define IRIS_ARITHMATIC_SEQ(T, TAG)   \
 extern "C" void iris_arithmetic_seq_ ## TAG(T *arr, T start, T increment, size_t size, void *stream) { \
@@ -444,6 +450,7 @@ IRIS_ARITHMATIC_SEQ(uint64_t, u64)
 IRIS_ARITHMATIC_SEQ(uint32_t, u32)
 IRIS_ARITHMATIC_SEQ(uint16_t, u16)
 IRIS_ARITHMATIC_SEQ(uint8_t,  u8)
+IRIS_ARITHMATIC_SEQ(bool,  b)
 
 #define IRIS_GEOMETRIC_SEQ(T, TAG)   \
 extern "C" void iris_geometric_seq_ ## TAG(T *arr, T start, T ratio, size_t size, void *stream) { \
@@ -459,3 +466,4 @@ IRIS_GEOMETRIC_SEQ(uint64_t, u64)
 IRIS_GEOMETRIC_SEQ(uint32_t, u32)
 IRIS_GEOMETRIC_SEQ(uint16_t, u16)
 IRIS_GEOMETRIC_SEQ(uint8_t,  u8)
+IRIS_GEOMETRIC_SEQ(bool,  b)
