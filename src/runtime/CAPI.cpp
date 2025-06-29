@@ -516,6 +516,7 @@ int iris_task_release_mem(iris_task task, iris_mem mem) {
 
 void iris_task_set_name(iris_task brs_task, const char *name) {
    Task *task = Platform::GetPlatform()->get_task_object(brs_task);
+   assert(task != NULL && "Task shouldn't be null! May be it is called after task completion.");
    task->set_name(name);
 }
 
@@ -532,6 +533,7 @@ int iris_task_disable_consistency(iris_task brs_task) {
 
 const char *iris_task_get_name(iris_task brs_task) {
     Task *task = Platform::GetPlatform()->get_task_object(brs_task);
+    assert(task != NULL && "Task shouldn't be null! May be it is called after task completion.");
     return const_cast<char*>(task->name());
 }
 
