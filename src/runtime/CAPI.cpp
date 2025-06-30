@@ -328,7 +328,7 @@ size_t *iris_dmem_get_offsets_from_host(iris_mem brs_mem) {
 iris_mem iris_dmem_get_source(iris_mem brs_mem)
 {
     BaseMem* mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
-    BaseMem *source = mem->get_source_mem(false);
+    BaseMem *source = mem->get_source_mem(true);
     if (source == NULL) {
         iris_mem rmem = { NULL, 0UL };
         return rmem;
@@ -520,6 +520,11 @@ void iris_task_set_name(iris_task brs_task, const char *name) {
    task->set_name(name);
 }
 
+void iris_mem_set_name(iris_mem brs_mem, const char *name) {
+   BaseMem * mem = (BaseMem*)Platform::GetPlatform()->get_mem_object(brs_mem);
+   mem->set_name(name);
+}
+
 const char *iris_kernel_get_name(iris_kernel brs_kernel) {
     Kernel *k= Platform::GetPlatform()->get_kernel_object(brs_kernel);
     return k->name();
@@ -533,8 +538,14 @@ int iris_task_disable_consistency(iris_task brs_task) {
 
 const char *iris_task_get_name(iris_task brs_task) {
     Task *task = Platform::GetPlatform()->get_task_object(brs_task);
-    assert(task != NULL && "Task shouldn't be null! May be it is called after task completion.");
+    if (task == NULL) return NULL;
     return const_cast<char*>(task->name());
+}
+
+const char *iris_mem_get_name(iris_mem brs_mem) {
+    BaseMem * mem = (BaseMem*)Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (mem == NULL) return NULL;
+    return const_cast<char*>(mem->name());
 }
 
 int iris_task_get_dependency_count(iris_task brs_task) {
@@ -979,8 +990,13 @@ int iris_data_mem_set_valid_regions(iris_mem brs_mem, int regions) {
   return IRIS_SUCCESS;
 }
 iris_mem iris_get_dmem_for_region(iris_mem brs_mem) {
-    DataMemRegion *obj = (DataMemRegion*)Platform::GetPlatform()->get_mem_object(brs_mem);
-    return *(obj->get_dmem()->struct_obj());
+    DataMem *obj = (DataMem*)Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (obj->GetMemHandlerType() == IRIS_DMEM_REGION) {
+        DataMemRegion *robj = (DataMemRegion *)obj;
+        return *(robj->get_dmem()->struct_obj());
+    }
+    iris_mem dmem = { NULL, 0UL };
+    return dmem;
 }
 
 int iris_mem_arch(iris_mem mem, int device, void** arch) {

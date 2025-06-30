@@ -1924,6 +1924,15 @@ extern const char *iris_kernel_get_name(iris_kernel brs_kernel);
  */
 extern const char *iris_task_get_name(iris_task brs_task);
 
+/**@brief Retruns a memory name
+ *
+ * This function returns a memory name
+ *
+ * @param brs_mem memory object
+ * @return This function returns name of the memory
+ */
+extern const char *iris_mem_get_name(iris_mem brs_mem);
+
 
 
 /**@brief Sets a task name
@@ -1934,6 +1943,15 @@ extern const char *iris_task_get_name(iris_task brs_task);
  * @param name name of the task
  */
 extern void iris_task_set_name(iris_task brs_task, const char *name);
+
+/**@brief Sets a memory name
+ *
+ * This function Sets a memory name
+ *
+ * @param brs_mem memory object
+ * @param name name of the memory
+ */
+extern void iris_mem_set_name(iris_mem brs_mem, const char *name);
 
 
 /**@brief Gets dependency counts for a task

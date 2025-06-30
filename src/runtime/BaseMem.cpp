@@ -3,6 +3,12 @@
 
 namespace iris {
 namespace rt {
+void BaseMem::set_name(const char* name) {
+  name_ = name;
+}
+void BaseMem::set_name(std::string name) {
+  name_ = name;
+}
 void BaseMem::HostRecordEvent(int devno, int stream) 
 {
     Device *dev = archs_dev_[devno];

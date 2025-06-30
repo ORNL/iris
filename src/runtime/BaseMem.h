@@ -10,6 +10,7 @@
 
 #include "AsyncData.h"
 #include <utility>
+#include <string>
 using namespace std;
 
 namespace iris {
@@ -29,6 +30,7 @@ namespace rt {
     class BaseMem : public Retainable<struct _iris_mem, BaseMem> {
         public:
             BaseMem(MemHandlerType type, int ndevs) {
+                name_ = "MEM";
                 source_mem_ = NULL;
                 handler_type_ = type;
                 reset_ = false;
@@ -298,6 +300,9 @@ namespace rt {
         pair<bool, int8_t> IsResetPossibleWithMemset();
         pair<bool, int8_t> IsResetPossibleWithMemset(ResetData & reset_data);
         virtual void set_source_mem(BaseMem *mem) { source_mem_ = mem; }
+        const char* name() { return name_.c_str(); }
+        void set_name(const char* name);
+        void set_name(string name);
         BaseMem *get_source_mem(bool deep=true) { 
             if (source_mem_ != NULL && deep) {
                 if (source_mem_->get_source_mem() == NULL)
@@ -326,6 +331,7 @@ namespace rt {
             int write_dev_;
             void **write_event_;
             void **d2h_events_;
+            string name_;
             pthread_mutex_t host_mutex_;
             pthread_mutex_t host_write_lock_[IRIS_MAX_NDEVS];
 #ifdef AUTO_PAR
