@@ -93,7 +93,7 @@ public:
   virtual float GetEventTime(void *event, int stream) { return 0.0f; }
   virtual void CreateEvent(void **event, int flags);
   virtual void RecordEvent(void **event, int stream, int event_creation_flag=iris_event_disable_timing);
-  virtual void WaitForEvent(void *event, int stream, int flags=0);
+  virtual int WaitForEvent(void *event, int stream, int flags=0);
   virtual void DestroyEvent(void *event);
   virtual void DestroyEvent(BaseMem *mem, void *event);
   virtual void EventSynchronize(void *event);

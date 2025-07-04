@@ -786,13 +786,19 @@ void DeviceOpenCL::RecordEvent(void **event, int stream, int event_creation_flag
     err = ld_->clEnqueueMarker(clcmdq_[stream], (cl_event*)event);
     _clerror(err);
 }
-void DeviceOpenCL::WaitForEvent(void *event, int stream, int flags)
+int DeviceOpenCL::WaitForEvent(void *event, int stream, int flags)
 {
     cl_event event_arr[1];
     event_arr[0] = (cl_event) event;
     cl_int err;
     err = ld_->clEnqueueWaitForEvents(clcmdq_[stream], 1, event_arr);
     _clerror(err);
+    if (err != CL_SUCCESS){
+        platform_obj()->IncrementErrorCount();
+        Utils::PrintStackTrace();
+        return IRIS_ERROR;
+    }
+    return IRIS_SUCCESS;
 }
 void DeviceOpenCL::DestroyEvent(void *event)
 {

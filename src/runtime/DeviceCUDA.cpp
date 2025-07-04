@@ -1830,7 +1830,7 @@ void DeviceCUDA::RecordEvent(void **event, int stream, int event_creation_flag)
     }
     _event_debug("Recorded dev:[%d]:[%s] event:%p stream:%d err_id:%d", devno(), name(), *event, stream, err);
 }
-void DeviceCUDA::WaitForEvent(void *event, int stream, int flags)
+int DeviceCUDA::WaitForEvent(void *event, int stream, int flags)
 {
     if (IsContextChangeRequired()) {
         ld_->cuCtxSetCurrent(ctx_);
@@ -1840,7 +1840,9 @@ void DeviceCUDA::WaitForEvent(void *event, int stream, int flags)
     if (err != CUDA_SUCCESS) {
         platform_obj()->IncrementErrorCount();
         Utils::PrintStackTrace();
+        return IRIS_ERROR;
     }
+    return IRIS_SUCCESS;
 }
 void DeviceCUDA::DestroyEvent(void *event)
 {

@@ -1784,9 +1784,12 @@ void Device::ExecuteMemInDMemIn(Task *task, Command* cmd, DataMem *mem) {
                     int written_stream = rmem->GetWriteStream(devno());
                     void *event = rmem->GetWriteDeviceEvent(devno());
                     if (mem_stream != written_stream) {
-                        WaitForEvent(event, mem_stream, iris_event_wait_default);
+                        int status = WaitForEvent(event, mem_stream, iris_event_wait_default);
                         _event_debug(" WaitForEvent parent mem:%lu(non-dirty)  dmem:%lu written_stream:%d mem_stream:%d, event:%p dev[%d][%s]\n",
                                mem->uid(), rmem->uid(), written_stream, mem_stream, event, devno(), name()); 
+						if (status == IRIS_ERROR) {
+							rmem->Print("Region memory: ");
+						}
                     }
                 }
                 //if (is_async(task)) WaitForDataAvailability<DataMemRegion>(devno_, task, rmem);
@@ -2532,12 +2535,13 @@ void Device::RecordEvent(void **event, int stream, int event_creation_flag) {
     //CPUEvent *levent = (CPUEvent *)event;
     //levent->Record();
 }
-void Device::WaitForEvent(void *event, int stream, int flags) {
+int Device::WaitForEvent(void *event, int stream, int flags) {
     _error("Device:%d:%s Invalid function call!", devno_, name()); 
     worker_->platform()->IncrementErrorCount();
     Utils::PrintStackTrace();
     //CPUEvent *levent = (CPUEvent *)event;
     //levent->Wait();
+	return IRIS_ERROR;
 }
 void Device::DestroyEvent(BaseMem *mem, void *event) {
     _event_debug(" Mem:%ld event:%p destroy now", mem->uid(), event);

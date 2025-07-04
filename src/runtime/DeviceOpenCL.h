@@ -43,7 +43,7 @@ private:
   int CreateProgram(const char* suffix, char** src, size_t* srclen);
   void CreateEvent(void **event, int flags);
   void RecordEvent(void **event, int stream, int event_creation_flag=iris_event_disable_timing);
-  void WaitForEvent(void *event, int stream, int flags);
+  int WaitForEvent(void *event, int stream, int flags);
   void DestroyEvent(void *event);
   float GetEventTime(void *event, int stream);
   void EventSynchronize(void *event);

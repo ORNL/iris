@@ -2007,8 +2007,10 @@ extern int iris_task_kernel_dmem_fetch_order(iris_task brs_task, int *order);
 extern int iris_task_disable_consistency(iris_task brs_task);
 extern int iris_task_is_cmd_kernel_exists(iris_task brs_task);
 extern void *iris_task_get_cmd_kernel(iris_task brs_task);
+extern int iris_task_is_alive(iris_task brs_task);
 
 // Memory member access
+extern int iris_mem_is_alive(iris_mem brs_task);
 extern size_t iris_mem_get_size(iris_mem mem);
 extern size_t iris_mem_get_full_size(iris_mem mem);
 extern int iris_mem_get_type(iris_mem mem);

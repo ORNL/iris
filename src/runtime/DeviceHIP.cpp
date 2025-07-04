@@ -1118,7 +1118,7 @@ void DeviceHIP::RecordEvent(void **event, int stream, int event_creation_flag)
         platform_obj()->IncrementErrorCount();
     _event_debug("Recorded dev:[%d]:[%s] event:%p stream:%d err:%d", devno(), name(), *event, stream, err);
 }
-void DeviceHIP::WaitForEvent(void *event, int stream, int flags)
+int DeviceHIP::WaitForEvent(void *event, int stream, int flags)
 {
     _trace(" event:%p stream:%d flags:%d", event, stream, flags);
     if (IsContextChangeRequired()) {
@@ -1127,8 +1127,12 @@ void DeviceHIP::WaitForEvent(void *event, int stream, int flags)
     ASSERT(event != NULL && "Event shouldn't be null");
     hipError_t err = ld_->hipStreamWaitEvent(streams_[stream], (hipEvent_t)event, flags);
     _hiperror(err);
-    if (err != hipSuccess)
+    if (err != hipSuccess) {
         platform_obj()->IncrementErrorCount();
+        Utils::PrintStackTrace();
+        return IRIS_ERROR;
+    }
+    return IRIS_SUCCESS;
 }
 void DeviceHIP::DestroyEvent(void *event)
 {

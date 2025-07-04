@@ -542,6 +542,20 @@ const char *iris_task_get_name(iris_task brs_task) {
     return const_cast<char*>(task->name());
 }
 
+int iris_task_is_alive(iris_task brs_task) {
+    Task *task = Platform::GetPlatform()->get_task_object(brs_task);
+    if (task == NULL) return IRIS_ERROR;
+    return IRIS_SUCCESS;
+
+}
+
+int iris_mem_is_alive(iris_mem brs_mem) {
+    BaseMem * mem = (BaseMem*)Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (mem == NULL) return IRIS_ERROR;
+    return IRIS_SUCCESS;
+
+}
+
 const char *iris_mem_get_name(iris_mem brs_mem) {
     BaseMem * mem = (BaseMem*)Platform::GetPlatform()->get_mem_object(brs_mem);
     if (mem == NULL) return NULL;
