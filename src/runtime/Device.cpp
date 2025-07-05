@@ -471,7 +471,8 @@ void Device::Execute(Task* task) {
       task->CreateProfileEvent(task, devno(), PROFILE_INIT, this, (float)execute_start, (float)execute_end);
   }
   if (is_async(task) && task->user()) AddCallback(task);
-  task->set_time_end(timer_);
+  if (!is_async(task) || !task->user()) 
+	  task->set_time_end(timer_);
   _debug2("Task %s:%lu refcnt:%d\n", task->name(), task->uid(), task->ref_cnt());
   TaskPost(task);
   if (hook_task_post_) hook_task_post_(task);
@@ -505,6 +506,7 @@ void Device::Callback(void *stream, int status, void* data) {
   //printf("----Function is callbacked stream:%p status:%d data:%p\n", stream, status, data);
   unsigned long uid = task->uid();
   string tname = task->name();
+  task->set_time_end(timer_);
   task->dev()->FreeActiveTask();
   _event_prof_debug(" ------ Just before completed task stream_ptr:%p task:%p:%s:%lu status:%d data:%p\n", stream, task, tname.c_str(), uid, status, data);
   _event_debug(" ------ Just before completed task stream_ptr:%p task:%p:%s:%lu status:%d data:%p\n", stream, task, tname.c_str(), uid, status, data);
