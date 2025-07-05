@@ -1789,6 +1789,8 @@ void Device::ExecuteMemInDMemIn(Task *task, Command* cmd, DataMem *mem) {
                                mem->uid(), rmem->uid(), written_stream, mem_stream, event, devno(), name()); 
 						if (status == IRIS_ERROR) {
 							rmem->Print("Region memory: ");
+							_error(" WaitForEvent parent task:%s mem:%lu(non-dirty):%s  dmem:%lu:%s written_stream:%d mem_stream:%d, event:%p dev[%d][%s]\n",
+								   task->name(), mem->uid(), mem->name(), rmem->uid(), rmem->name(), written_stream, mem_stream, event, devno(), name()); 
 						}
                     }
                 }
@@ -2075,6 +2077,30 @@ void Device::ExecuteMemOut(Task *task, Command* cmd) {
             mem->SetWriteDeviceEvent(devno(), k_event);
             //mem->RecordEvent(devno(), mem_stream, true); //It should create new entry of event instead of using existing one
             _event_debug("Rewrite back RecordEvent mem set stream   task:[%lu][%s] output dmem:%lu stream:%d, dev:%d event:%p mem_ptr:%p\n", task->uid(), task->name(), mem->uid(), mem_stream, devno(), k_event, mem->get_arch(devno()));
+			if (mem->GetMemHandlerType() == IRIS_DMEM ||
+					mem->GetMemHandlerType() == IRIS_DMEM_REGION) {
+				DataMem *dmem = (DataMem *)mem;
+				if (dmem->is_regions_enabled()) {
+					// If regisions are enabled
+					int n_regions = dmem->get_n_regions();
+					for (int i=0; i<n_regions; i++) {
+						DataMemRegion *rmem = (DataMemRegion *)dmem->get_region(i, false);
+						rmem->clear_d2h_events();
+						rmem->clear_streams();
+						rmem->SetWriteStream(devno(), mem_stream);
+						rmem->SetWriteDevice(devno());
+						rmem->SetWriteDeviceEvent(devno(), k_event);
+					}
+					for (int i=0; i<n_regions; i++) {
+						DataMemRegion *rmem = (DataMemRegion *)dmem->get_region(i, false);
+						DataMemRegion *dev_rmem = (DataMemRegion *)dmem->get_region(i, true);
+						if (dev_rmem != rmem) {
+							rmem->clear_d2h_events();
+							rmem->clear_streams();
+						}
+					}
+				}
+			}
         }
     }
 }
