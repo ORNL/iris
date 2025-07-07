@@ -506,7 +506,7 @@ void Device::Callback(void *stream, int status, void* data) {
   //printf("----Function is callbacked stream:%p status:%d data:%p\n", stream, status, data);
   unsigned long uid = task->uid();
   string tname = task->name();
-  task->set_time_end(timer_);
+  task->set_time_end(task->dev()->timer());
   task->dev()->FreeActiveTask();
   _event_prof_debug(" ------ Just before completed task stream_ptr:%p task:%p:%s:%lu status:%d data:%p\n", stream, task, tname.c_str(), uid, status, data);
   _event_debug(" ------ Just before completed task stream_ptr:%p task:%p:%s:%lu status:%d data:%p\n", stream, task, tname.c_str(), uid, status, data);

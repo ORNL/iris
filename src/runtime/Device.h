@@ -236,6 +236,7 @@ public:
   StreamPolicy stream_policy(Task *task);
   StreamPolicy stream_policy() { return stream_policy_; }
   double Now() { return timer_->Now(); }
+  Timer *timer() { return timer_; }
   const char *kernel_path() { return kernel_path_.c_str(); }
 protected:
   LoaderResetKernel* ld_reset() { return ld_reset_; }

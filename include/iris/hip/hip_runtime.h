@@ -66,6 +66,65 @@ typedef struct hipMemcpy3DParms {
     enum hipMemcpyKind kind;
 } hipMemcpy3DParms;
 
+typedef enum hipMemoryType {
+    hipMemoryTypeUnregistered = 0,  ///< Unregistered memory
+    hipMemoryTypeHost         = 1,  ///< Memory is physically located on host
+    hipMemoryTypeDevice       = 2,  ///< Memory is physically located on device. (see deviceId for
+                                    ///< specific device)
+    hipMemoryTypeManaged      = 3,  ///< Managed memory, automaticallly managed by the unified
+                                    ///< memory system
+                                    ///< place holder for new values.
+    hipMemoryTypeArray        = 10, ///< Array memory, physically located on device. (see deviceId for
+                                    ///< specific device)
+    hipMemoryTypeUnified      = 11  ///< unified address space
+
+} hipMemoryType;
+typedef void* hipDeviceptr_t;
+typedef struct hip_Memcpy2D {
+    size_t srcXInBytes;
+    size_t srcY;
+    hipMemoryType srcMemoryType;
+    const void* srcHost;
+    hipDeviceptr_t srcDevice;
+    hipArray_t srcArray;
+    size_t srcPitch;
+    size_t dstXInBytes;
+    size_t dstY;
+    hipMemoryType dstMemoryType;
+    void* dstHost;
+    hipDeviceptr_t dstDevice;
+    hipArray_t dstArray;
+    size_t dstPitch;
+    size_t WidthInBytes;
+    size_t Height;
+} hip_Memcpy2D;
+#define HIP_MEMCPY2D hip_Memcpy2D
+typedef struct HIP_MEMCPY3D {
+  size_t srcXInBytes;
+  size_t srcY;
+  size_t srcZ;
+  size_t srcLOD;
+  hipMemoryType srcMemoryType;
+  const void* srcHost;
+  hipDeviceptr_t srcDevice;
+  hipArray_t srcArray;
+  size_t srcPitch;
+  size_t srcHeight;
+  size_t dstXInBytes;
+  size_t dstY;
+  size_t dstZ;
+  size_t dstLOD;
+  hipMemoryType dstMemoryType;
+  void* dstHost;
+  hipDeviceptr_t dstDevice;
+  hipArray_t dstArray;
+  size_t dstPitch;
+  size_t dstHeight;
+  size_t WidthInBytes;
+  size_t Height;
+  size_t Depth;
+} HIP_MEMCPY3D;
+
 //Flags that can be used with hipStreamCreateWithFlags.
 /** Default stream creation flags. These are used with hipStreamCreate().*/
 #define hipStreamDefault  0x00
@@ -296,6 +355,12 @@ hipError_t hipSetDevice(int deviceId);
 hipError_t hipGetDevice(int* deviceId);
 hipError_t hipGetDeviceCount(int* count);
 hipError_t hipDeviceGetAttribute(int* pi, hipDeviceAttribute_t attr, int deviceId);
+hipError_t hipMemcpy(void* dst, const void* src, size_t sizeBytes, hipMemcpyKind kind);
+hipError_t hipMemcpyAsync(void* dst, const void* src, size_t sizeBytes, hipMemcpyKind kind, hipStream_t stream __dparm(0));
+hipError_t hipMemcpyParam2D(const hip_Memcpy2D* pCopy);
+hipError_t hipMemcpyParam2DAsync(const hip_Memcpy2D* pCopy, hipStream_t stream __dparm(0));
+hipError_t hipDrvMemcpy3D(const HIP_MEMCPY3D* pCopy);
+hipError_t hipDrvMemcpy3DAsync(const HIP_MEMCPY3D* pCopy, hipStream_t stream);
 hipError_t hipDeviceEnablePeerAccess(int peerDevice, unsigned int flags);
 hipError_t hipDeviceCanAccessPeer(int *canaccess, int device, int peerDevice);
 hipError_t hipCtxEnablePeerAccess(hipCtx_t peerCtx, unsigned int flags);

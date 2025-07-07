@@ -296,7 +296,7 @@ void *DeviceCUDA::GetSymbol(const char *name)  {
     if (ptr == NULL) {
         string fn_symbol = name;
         fn_symbol = "get_symbol_"+fn_symbol;
-        void *sptr = (void *) host2cuda_ld_->GetSymbol("cData");
+        //void *sptr = (void *) host2cuda_ld_->GetSymbol("cData");
         SymbolFn fptr = (SymbolFn) host2cuda_ld_->GetSymbol(fn_symbol.c_str());
         void *dev_var_ptr = fptr();
         //ld_->cudaGetSymbolAddress((void **)&ptr, dev_var_ptr);
@@ -601,6 +601,11 @@ int DeviceCUDA::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset)
                   err = ld_->cudaMemsetAsync((void *)(*cumem), out.second, size, streams_[stream]);
               else
                   err = ld_->cudaMemset((void *)(*cumem), out.second, size);
+			  _cuerror(err);
+			  if (err != CUDA_SUCCESS){
+				  platform_obj()->IncrementErrorCount();
+				  return IRIS_ERROR;
+			  }
           }
           else if (mem->GetMemHandlerType() == IRIS_DMEM || 
                   mem->GetMemHandlerType() == IRIS_DMEM_REGION) {
@@ -638,6 +643,10 @@ int DeviceCUDA::MemFree(BaseMem *mem, void* mem_addr) {
   //else
       err = ld_->cuMemFree(cumem);
   _cuerror(err);
+  if (err != CUDA_SUCCESS){
+	  platform_obj()->IncrementErrorCount();
+	  return IRIS_ERROR;
+  }
 #endif
   return IRIS_SUCCESS;
 }
@@ -1500,11 +1509,6 @@ int DeviceCUDA::KernelSetArg(Kernel* kernel, int idx, int kindex, size_t size, v
 int DeviceCUDA::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, size_t off) {
   void **dev_alloc_ptr = mem->arch_ptr(this);
   void *dev_ptr = NULL;
-  if (false && kernel->task()->uid() == 431530) {
-    _printf("------Error with this issue:------ task:%lu", kernel->task()->uid());
-    ((DataMem *)mem)->Print();
-  }
-    //raise(SIGABRT);
   size_t size = mem->size() - off;
   if (off) {
       *(mem->archs_off() + devno_) = (void*) ((CUdeviceptr) *dev_alloc_ptr + off);

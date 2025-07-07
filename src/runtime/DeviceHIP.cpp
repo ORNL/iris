@@ -65,10 +65,10 @@ DeviceHIP::DeviceHIP(LoaderHIP* ld, LoaderHost2HIP *host2hip_ld, hipDevice_t dev
 DeviceHIP::~DeviceHIP() {
     _trace("HIP device:%d is getting destroyed", devno());
     host2hip_ld_->finalize(devno());
-    if (julia_if_ != NULL) julia_if_->finalize(devno());
     if (ld_default_ != NULL)
         ld_default_->finalize(devno());
     if (ld_default_ != NULL) delete ld_default_;
+    if (julia_if_ != NULL) julia_if_->finalize(devno());
     for (int i = 0; i < nqueues_; i++) {
       if (streams_[i] != NULL) {
         hipError_t err = ld_->hipStreamDestroy(streams_[i]);
@@ -94,12 +94,6 @@ bool DeviceHIP::IsAddrValidForD2D(BaseMem *mem, void *ptr)
     err = ld_->hipPointerGetAttribute(&data, HIP_POINTER_ATTRIBUTE_DEVICE_POINTER, ptr);
     if (err == hipSuccess) return true;
     return false;
-}
-bool DeviceHIP::IsD2DPossible(Device *target)
-{
-  if (peer_access_ == NULL) return true;
-  if (peer_access_[((DeviceHIP *)target)->dev_]) return true;
-  return false;
 }
 void DeviceHIP::SetPeerDevices(int *peers, int count)
 {
@@ -131,6 +125,12 @@ void DeviceHIP::EnablePeerAccess()
             _hiperror(err);
         }
     }
+}
+bool DeviceHIP::IsD2DPossible(Device *target)
+{
+  if (peer_access_ == NULL) return true;
+  if (peer_access_[((DeviceHIP *)target)->dev_]) return true;
+  return false;
 }
 int DeviceHIP::Compile(char* src, const char *out, const char *flags) {
   char default_comp_flags[] = "--genco";
@@ -188,7 +188,9 @@ int DeviceHIP::Init() {
       string ld_default_path = CompileDefaultKernelLibrary("DEFAULT_HIP_KERNELS", flags);
       if (Utils::Exist(ld_default_path.c_str())) {
           ld_default_ = new LoaderHost2HIP(ld_default_path);
-          ld_default_->Load();
+          if (ld_default_->Load() != IRIS_SUCCESS) {
+            _trace("%s", "skipping Host2HIP wrapper calls");
+          }
       }
   }
 
@@ -196,6 +198,8 @@ int DeviceHIP::Init() {
   _hiperror(err);
   //host2hip_ld_->set_dev(devno(), model());
   host2hip_ld_->init(devno());
+  if (ld_default_ != NULL)
+    ld_default_->init(devno());
   err = ld_->hipDeviceGetAttribute(&tb, hipDeviceAttributeMaxThreadsPerBlock, devid_);
   err = ld_->hipDeviceGetAttribute(&mc, hipDeviceAttributeMultiprocessorCount, devid_);
   err = ld_->hipDeviceGetAttribute(&bx, hipDeviceAttributeMaxBlockDimX, devid_);
@@ -249,7 +253,8 @@ int DeviceHIP::ResetMemory(Task *task, Command *cmd, BaseMem *mem) {
         if (stream_index == DEFAULT_STREAM_INDEX) { async = false; stream_index = 0; }
     }
     if (IsContextChangeRequired()) {
-        ld_->hipCtxSetCurrent(ctx_);
+        err = ld_->hipCtxSetCurrent(ctx_);
+        _hiperror(err);
     }
 
     ResetData & reset_data = cmd->reset_data();
@@ -299,7 +304,9 @@ int DeviceHIP::ResetMemory(Task *task, Command *cmd, BaseMem *mem) {
 
 void DeviceHIP::RegisterPin(void *host, size_t size)
 {
-    hipError_t err = ld_->hipHostRegister(host, size, hipHostRegisterDefault);
+    hipError_t err = ld_->hipCtxSetCurrent(ctx_);
+    _hiperror(err);
+    err = ld_->hipHostRegister(host, size, hipHostRegisterDefault);
     //_printf("Registering mem:%p size:%lu err:%d\n", host, size, err);
     _hipwarning(err);
     //ld_->hipHostRegister(host, size, hipHostRegisterMapped);
@@ -307,7 +314,9 @@ void DeviceHIP::RegisterPin(void *host, size_t size)
 
 void DeviceHIP::UnRegisterPin(void *host)
 {
-    hipError_t err = ld_->hipHostUnregister(host);
+    hipError_t err = ld_->hipCtxSetCurrent(ctx_);
+    _hiperror(err);
+    err = ld_->hipHostUnregister(host);
     //_printf("Registering mem:%p err:%d\n", host, err);
     _hipwarning(err);
     //ld_->hipHostRegister(host, size, hipHostRegisterMapped);
@@ -325,7 +334,7 @@ void *DeviceHIP::GetSharedMemPtr(void* mem, size_t size)
     hipError_t err;
     void** hipmem = NULL;
     err = ld_->hipHostRegister(mem, size, hipHostRegisterDefault);
-    _hiperror(err);
+    //_hiperror(err);
     err = ld_->hipHostGetDevicePointer((void **)&hipmem, mem, 0); 
     _hiperror(err);
     ASSERT(hipmem != NULL);
@@ -530,6 +539,43 @@ void DeviceHIP::MemCpy3DDirect(void *dev, uint8_t *host, size_t *off,
         err = ld_->hipMemcpy3D(&copyParams);
     _hiperror(err);
 }
+void DeviceHIP::MemCpy3D(void * dev, uint8_t *host, size_t *off, 
+        size_t *dev_sizes, size_t *host_sizes, 
+        size_t elem_size, bool host_2_dev, bool async, int stream_index)
+{
+    size_t host_row_pitch = elem_size * host_sizes[0];
+    size_t host_slice_pitch   = host_sizes[1] * host_row_pitch;
+    size_t dev_row_pitch = elem_size * dev_sizes[0];
+    size_t dev_slice_pitch = dev_sizes[1] * dev_row_pitch;
+    uint8_t *host_start = host + off[0]*elem_size + off[1] * host_row_pitch + off[2] * host_slice_pitch;
+    size_t dev_off[3] = {  0, 0, 0 };
+    void * dev_start = dev + dev_off[0] * elem_size + dev_off[1] * dev_row_pitch + dev_off[2] * dev_slice_pitch;
+    //printf("Host:%p Dest:%p\n", host_start, dev_start);
+    for(size_t i=0; i<dev_sizes[2]; i++) {
+        uint8_t *z_host = host_start + i * host_slice_pitch;
+        void * z_dev = dev_start + i * dev_slice_pitch;
+        for(size_t j=0; j<dev_sizes[1]; j++) {
+            uint8_t *y_host = z_host + j * host_row_pitch;
+            void * d_dev = z_dev + j * dev_row_pitch;
+            if (host_2_dev) {
+                //printf("(%d:%d) Host:%p Dest:%p Size:%d\n", i, j, y_host, d_dev, dev_sizes[0]);
+                if (async) {
+                    hipError_t err = ld_->hipMemcpyHtoDAsync(d_dev, y_host, dev_sizes[0]*elem_size, streams_[stream_index]); _hiperror(err);
+                } else {
+                    hipError_t err = ld_->hipMemcpyHtoD(d_dev, y_host, dev_sizes[0]*elem_size); _hiperror(err);
+                }
+            }
+            else {
+                //printf("(%d:%d) Host:%p Dest:%p Size:%d\n", i, j, y_host, d_dev, dev_sizes[0]);
+                if (async) {
+                    hipError_t err = ld_->hipMemcpyDtoHAsync(y_host, d_dev, dev_sizes[0]*elem_size, streams_[stream_index]); _hiperror(err);
+                } else {
+                    hipError_t err = ld_->hipMemcpyDtoH(y_host, d_dev, dev_sizes[0]*elem_size); _hiperror(err);
+                }
+            }
+        }
+    }
+}
 int DeviceHIP::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag) {
   bool error_occured = false;
   hipError_t err;
@@ -711,6 +757,310 @@ int DeviceHIP::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,
     return IRIS_ERROR;
   }
   return IRIS_SUCCESS;
+}
+
+int DeviceHIP::MemCpy(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t *dst_size, size_t *dst_off, size_t *dst_strides, int src_dim, void *src, size_t *src_size, size_t *src_off, size_t *src_strides, size_t *tile_size, size_t elem_size, int src_type, int dst_type, const char *tag) 
+{
+  int dim = IRIS_MAX(dst_dim, src_dim);
+  if (mem->is_usm(devno()) || (dst == src) ) return IRIS_SUCCESS;
+  if (IsContextChangeRequired()) {
+      _trace("HIP context switch dev[%d][%s] task[%ld:%s] mem[%lu] self:%p thread:%p", devno_, name_, task->uid(), task->name(), mem->uid(), (void *)worker()->self(), (void *)worker()->thread());
+      hipError_t err = ld_->hipCtxSetCurrent(ctx_);
+      _hiperror(err);
+  }
+  size_t tile_size0 = tile_size[0];
+  size_t tile_size1 = tile_size[1];
+  size_t tile_size2 = tile_size[2];
+  size_t src_off0 = src_off[0];
+  size_t src_off1 = src_off[1];
+  size_t src_off2 = src_off[2];
+  size_t dst_off0 = dst_off[0];
+  size_t dst_off1 = dst_off[1];
+  size_t dst_off2 = dst_off[2];
+  size_t src_strides0 = src_strides[0];
+  size_t src_strides1 = src_strides[1];
+  size_t src_strides2 = src_strides[2];
+  size_t dst_strides0 = dst_strides[0];
+  size_t dst_strides1 = dst_strides[1];
+  size_t dst_strides2 = dst_strides[2];
+  int stream_index = 0;
+  if ( src_size[0] != dst_size[0] || src_size[1] != dst_size[1] || 
+          src_size[2] != dst_size[2] ) {
+      bool is_src_continuous = Utils::IsTileContiguous(src_strides, src_size, dim);
+      bool is_dst_continuous = Utils::IsTileContiguous(dst_strides, dst_size, dim);
+      //printf(" is continuous:%d,%d == %d,%d\n", src_dim, is_src_continuous, dst_dim, is_dst_continuous);
+      // tile_size is with respect to destination device size
+      if (!is_src_continuous && !is_dst_continuous) {
+        ((DataMem *)mem)->Print();
+        string src_size_str = Utils::GetString(src_size, dim);
+        string dst_size_str = Utils::GetString(dst_size, dim);
+        string src_off_str = Utils::GetString(src_off, dim);
+        string dst_off_str = Utils::GetString(dst_off, dim);
+        string src_strides_str = Utils::GetString(src_strides, dim+1);
+        string dst_strides_str = Utils::GetString(dst_strides, dim+1);
+        string tile_size_str = Utils::GetString(tile_size, dim);
+        _error("\n\n %s couldn't handle the dim:%d tile copy for DMEM dev[%d][%s] task[%ld:%s] elem_size:%lu mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] src_size:%s dst_size:%s src_off:%s dst_off:%s src_strides:%s dst_strides:%s tile_size:%s [%d]", tag, dim, devno_, name_, task->uid(), task->name(), elem_size, mem->uid(), dst, src, src_size_str.c_str(), dst_size_str.c_str(), src_off_str.c_str(), dst_off_str.c_str(), src_strides_str.c_str(), dst_strides_str.c_str(), tile_size_str.c_str(), stream_index);
+        Utils::PrintStackTrace();
+      }
+      else if (is_src_continuous) {
+        size_t offset = 0;
+        for (int i=0; i<dim; i++) {
+            offset += src_off[i] * src_strides[i];
+        }
+        src = reinterpret_cast<void *>(reinterpret_cast<uint8_t*>(src) + offset * elem_size);
+        src_off0 = 0;
+        src_off1 = 0;
+        src_off2 = 0;
+        src_strides0 = 1;    
+        src_strides1 = tile_size0;
+        src_strides2 = tile_size0 * tile_size1;
+      }
+      else { // is_dst_continuous 
+        size_t offset = 0;
+        for (int i=0; i<dim; i++) {
+            offset += dst_off[i] * dst_strides[i];
+        }
+        dst = reinterpret_cast<void *>(reinterpret_cast<uint8_t*>(dst) + offset * elem_size);
+        dst_off0 = 0;
+        dst_off1 = 0;
+        dst_off2 = 0;
+        tile_size0 = src_size[0];
+        tile_size1 = src_size[1];
+        tile_size2 = src_size[2];
+        dst_strides0 = 1;    
+        dst_strides1 = tile_size0;
+        dst_strides2 = tile_size0 * tile_size1;
+      }
+  }
+  hipDeviceptr_t src_hipmem = (hipDeviceptr_t) src;
+  hipDeviceptr_t  dst_hipmem = (hipDeviceptr_t) dst;
+  bool error_occured = false;
+  hipError_t err = hipSuccess;
+  _hiperror(err);
+  bool async = false;
+  if (is_async(task)) {
+      stream_index = GetStream(task, mem); //task->uid() % nqueues_; 
+      async = true;
+      if (stream_index == DEFAULT_STREAM_INDEX) { async = false; stream_index = 0; }
+  }
+  _event_debug("dev[%d][%s] task[%ld:%s] mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] q[%d] async:%d", devno_, name_, task->uid(), task->name(), mem->uid(), dst, src, stream_index, async);
+  ASSERT(src_strides0 == 1);
+  ASSERT(dst_strides0 == 1);
+  if (dim == 3) {
+      //if (src_off0 == 0 && src_off1 == 0 && src_off2 == 0 && dst_off0 == 0 & dst_off1 == 0 & dst_off2 ==0) {
+
+      //}
+      HIP_MEMCPY3D cd = {};
+      memset(&cd, 0, sizeof(HIP_MEMCPY3D));
+      cd.srcLOD           = cd.dstLOD = 0;
+      cd.srcArray = nullptr;
+      cd.dstArray = nullptr;
+      cd.srcDevice = (hipDeviceptr_t)nullptr;
+      cd.dstDevice = (hipDeviceptr_t)nullptr;
+      //cd.srcMemoryType    = HIP_MEMORYTYPE_DEVICE;
+      cd.srcMemoryType    = (hipMemoryType) src_type;
+      if (src_type == hipMemoryTypeDevice) {
+          cd.srcDevice    = src_hipmem;
+          cd.srcHost      = NULL;
+      }
+      else {
+          cd.srcHost      = src;
+          cd.srcDevice = (hipDeviceptr_t) NULL;
+      }
+      cd.srcPitch         = src_strides1 * elem_size;
+      cd.srcHeight        = src_strides2 / src_strides1; //src_size[1]; 
+      cd.srcXInBytes      = src_off0 * elem_size;
+      cd.srcY             = src_off1;
+      cd.srcZ             = src_off2;
+
+      //cd.dstMemoryType    = HIP_MEMORYTYPE_DEVICE;
+      cd.dstMemoryType    = (hipMemoryType) dst_type;
+      if (dst_type == hipMemoryTypeDevice) {
+          cd.dstDevice    = dst_hipmem;
+      }
+      else {
+          cd.dstHost      = dst;
+      }
+      cd.dstPitch         = dst_strides1 * elem_size;
+      cd.dstHeight        = dst_strides2 / dst_strides1; //dst_size[1];
+      cd.dstXInBytes      = dst_off0 * elem_size;
+      cd.dstY             = dst_off1;
+      cd.dstZ             = dst_off2;
+
+      cd.WidthInBytes     = tile_size0 * elem_size;
+      cd.Height           = tile_size1;
+      cd.Depth            = tile_size2;
+
+      // perform the copy
+      hipError_t err;
+      if (async) {
+          assert(stream_index >= 0);
+          err = ld_->hipDrvMemcpy3DAsync(&cd, streams_[stream_index]);
+      } else {
+          err = ld_->hipDrvMemcpy3D(&cd);
+      }
+      _hiperror(err);
+      if (err != hipSuccess) error_occured = true;
+      if (err != hipSuccess) {
+          ((DataMem *)mem)->Print();
+          string src_size_str = Utils::GetString(src_size, dim);
+          string dst_size_str = Utils::GetString(dst_size, dim);
+          string src_off_str = Utils::GetString(src_off, dim);
+          string dst_off_str = Utils::GetString(dst_off, dim);
+          string src_strides_str = Utils::GetString(src_strides, dim+1);
+          string dst_strides_str = Utils::GetString(dst_strides, dim+1);
+          string tile_size_str = Utils::GetString(tile_size, dim);
+          _error(" %s couldn't handle the dim:%d ptr:%p tile copy for DMEM dev[%d][%s] task[%ld:%s] elem_size:%lu mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] src_size:%s dst_size:%s src_off:%s dst_off:%s src_strides:%s dst_strides:%s tile_size:%s elem_size:%lu [%d]", tag, dim, ld_->hipDrvMemcpy3D, devno_, name_, task->uid(), task->name(), elem_size, mem->uid(), dst, src, src_size_str.c_str(), dst_size_str.c_str(), src_off_str.c_str(), dst_off_str.c_str(), src_strides_str.c_str(), dst_strides_str.c_str(), tile_size_str.c_str(), elem_size, stream_index);
+          /*if (src_type == HIP_MEMORYTYPE_HOST) {
+              iris::PrintArrayFull<int64_t>((int64_t *)src, src_size[2], src_size[1], src_size[0], " Src:");
+          }
+          if (dst_type == HIP_MEMORYTYPE_HOST) {
+              iris::PrintArrayFull<int64_t>((int64_t *)dst, dst_size[2], dst_size[1], dst_size[0], " Dst:");
+          }*/
+          Utils::PrintStackTrace();
+      }
+  }
+  else if (dim == 2) {
+      // 6) Build the 2D copy descriptor
+      HIP_MEMCPY2D cd = {};
+      cd.srcArray = nullptr;
+      cd.dstArray = nullptr;
+      cd.srcMemoryType  = (hipMemoryType) src_type; 
+      if (src_type == hipMemoryTypeDevice ) {
+          cd.srcDevice  = src_hipmem;
+          cd.srcHost    = nullptr;
+      }
+      else {
+          cd.srcHost    = src;
+          cd.srcDevice = (hipDeviceptr_t) NULL;
+      }
+      cd.srcPitch       = src_strides1 * elem_size;
+      cd.srcXInBytes    = src_off0 * elem_size;
+      cd.srcY           = src_off1;
+
+      cd.dstMemoryType  = (hipMemoryType) dst_type;
+      if (dst_type == hipMemoryTypeDevice) {
+          cd.dstDevice  = dst_hipmem;
+          cd.dstHost    = nullptr;
+      }
+      else {
+          cd.dstHost    = dst;
+      }
+      cd.dstPitch       = dst_strides1 * elem_size;
+      cd.dstXInBytes    = dst_off0 * elem_size;
+      cd.dstY           = dst_off1;
+
+      cd.WidthInBytes   = tile_size0 * elem_size;
+      cd.Height         = tile_size1;
+      //_hiperror(hipMemcpy2D(&cd));
+      if (async) {
+          ASSERT(stream_index >= 0);
+          err = ld_->hipMemcpyParam2DAsync(&cd, streams_[stream_index]);
+      }
+      else {
+          err = ld_->hipMemcpyParam2D(&cd);
+      }
+      _hiperror(err);
+      if (err != hipSuccess) error_occured = true;
+      if (err != hipSuccess) {
+          ((DataMem *)mem)->Print();
+          string src_size_str = Utils::GetString(src_size, dim);
+          string dst_size_str = Utils::GetString(dst_size, dim);
+          string src_off_str = Utils::GetString(src_off, dim);
+          string dst_off_str = Utils::GetString(dst_off, dim);
+          string src_strides_str = Utils::GetString(src_strides, dim+1);
+          string dst_strides_str = Utils::GetString(dst_strides, dim+1);
+          string tile_size_str = Utils::GetString(tile_size, dim);
+          string src_str = "Host"; 
+          string dst_str = "Host"; 
+          if (dst_type == hipMemoryTypeDevice) {
+              dst_str = "DEV"; 
+          }
+          if (src_type == hipMemoryTypeDevice) {
+              src_str = "DEV"; 
+          }
+          _error("\n\n %s couldn't handle the dim:%d tile copy for DMEM dev[%d][%s] task[%ld:%s] elem_size:%lu mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] src_size:%s dst_size:%s src_off:%s dst_off:%s src_strides:%s dst_strides:%s tile_size:%s [%d] [%s -> %s]", tag, dim, devno_, name_, task->uid(), task->name(), elem_size, mem->uid(), dst, src, src_size_str.c_str(), dst_size_str.c_str(), src_off_str.c_str(), dst_off_str.c_str(), src_strides_str.c_str(), dst_strides_str.c_str(), tile_size_str.c_str(), stream_index, src_str.c_str(), dst_str.c_str());
+          Utils::PrintStackTrace();
+#if 0
+          if (dst_type == HIP_MEMORYTYPE_DEVICE) {
+              size_t total_size=128;
+              int64_t data[16];
+              ld_->hipMemcpyDtoH((uint8_t*)data, dst_hipmem, total_size);
+              iris::PrintArrayFull<int64_t>((int64_t *)src, 4, 4, " Src:");
+              iris::PrintArrayFull<int64_t>((int64_t *)data, 4, 4, " Dst:");
+          }
+          else if (src_type == HIP_MEMORYTYPE_DEVICE) {
+            iris::PrintArrayFull<float>((float*)dst, 4, 8, " Dst:");
+          }
+#endif      
+      }
+  }
+  else if (dim == 1) {
+      hipMemcpyKind kind = hipMemcpyDeviceToDevice;
+      if (src_type == hipMemoryTypeDevice && dst_type == hipMemoryTypeDevice)
+         kind = hipMemcpyDeviceToDevice;
+      else if (src_type == hipMemoryTypeHost && dst_type == hipMemoryTypeDevice)
+          kind = hipMemcpyHostToDevice;
+      else if (src_type == hipMemoryTypeDevice && dst_type == hipMemoryTypeHost)
+         kind = hipMemcpyDeviceToHost;
+      else if (src_type == hipMemoryTypeHost && dst_type == hipMemoryTypeHost)
+         kind = hipMemcpyHostToHost;
+      if (async) {
+          ASSERT(stream_index >= 0);
+          err = ld_->hipMemcpyAsync(dst_hipmem + dst_off0*elem_size, src_hipmem+src_off0*elem_size, tile_size0 * elem_size, kind, streams_[stream_index]);
+      }
+      else {
+          err = ld_->hipMemcpy(dst_hipmem + dst_off0*elem_size, src_hipmem+src_off0*elem_size, tile_size0 * elem_size, kind);
+      }
+      _hiperror(err);
+      if (err != hipSuccess) error_occured = true;
+      if (err != hipSuccess) {
+          ((DataMem *)mem)->Print();
+          string src_size_str = Utils::GetString(src_size, dim);
+          string dst_size_str = Utils::GetString(dst_size, dim);
+          string src_off_str = Utils::GetString(src_off, dim);
+          string dst_off_str = Utils::GetString(dst_off, dim);
+          string src_strides_str = Utils::GetString(src_strides, dim+1);
+          string dst_strides_str = Utils::GetString(dst_strides, dim+1);
+          string tile_size_str = Utils::GetString(tile_size, dim);
+          _error(" %s couldn't handle the dim:%d tile copy for DMEM dev[%d][%s] task[%ld:%s] elem_size:%lu mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] src_size:%s dst_size:%s src_off:%s dst_off:%s src_strides:%s dst_strides:%s tile_size:%s [%d]", tag, dim, devno_, name_, task->uid(), task->name(), elem_size, mem->uid(), dst, src, src_size_str.c_str(), dst_size_str.c_str(), src_off_str.c_str(), dst_off_str.c_str(), src_strides_str.c_str(), dst_strides_str.c_str(), tile_size_str.c_str(), stream_index);
+          Utils::PrintStackTrace();
+        
+      }
+  }
+  else {
+      string src_size_str = Utils::GetString(src_size, dim);
+      string dst_size_str = Utils::GetString(dst_size, dim);
+      string src_off_str = Utils::GetString(src_off, dim);
+      string dst_off_str = Utils::GetString(dst_off, dim);
+      string src_strides_str = Utils::GetString(src_strides, dim+1);
+      string dst_strides_str = Utils::GetString(dst_strides, dim+1);
+      string tile_size_str = Utils::GetString(tile_size, dim);
+      _error(" %s couldn't handle the dim:%d tile copy for DMEM dev[%d][%s] task[%ld:%s] elem_size:%lu mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] src_size:%s dst_size:%s src_off:%s dst_off:%s src_strides:%s dst_strides:%s tile_size:%s [%d]", tag, dim, devno_, name_, task->uid(), task->name(), elem_size, mem->uid(), dst, src, src_size_str.c_str(), dst_size_str.c_str(), src_off_str.c_str(), dst_off_str.c_str(), src_strides_str.c_str(), dst_strides_str.c_str(), tile_size_str.c_str(), stream_index);
+      Utils::PrintStackTrace();
+  }
+  _trace("dev[%d][%s] task[%ld:%s] elem_size:%lu mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] size[%lu] q[%d]", devno_, name_, task->uid(), task->name(), elem_size, mem->uid(), dst, src, size, stream_index);
+  if (error_occured) {
+  _event_debug("Error dev[%d][%s] task[%ld:%s] mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] size[%lu] q[%d]", devno_, name_, task->uid(), task->name(), mem->uid(), dst, src, size, stream_index);
+  }
+  //ASSERT(!error_occured && "HIP Error occured");
+  if (error_occured) {
+      platform_obj()->IncrementErrorCount();
+      return IRIS_ERROR;
+  }
+  return IRIS_SUCCESS;
+}
+int DeviceHIP::MemD2D(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t *dst_size, size_t *dst_off, size_t *dst_strides, int src_dim, void *src, size_t *src_size, size_t *src_off, size_t *src_strides, size_t *tile_size, size_t elem_size) 
+{
+    return MemCpy(task, mem, dst_dim, dst, dst_size, dst_off, dst_strides, src_dim, src, src_size, src_off, src_strides, tile_size, elem_size, hipMemoryTypeDevice, hipMemoryTypeDevice, "D2D"); 
+}
+int DeviceHIP::MemH2D(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t *dst_size, size_t *dst_off, size_t *dst_strides, int src_dim, void *src, size_t *src_size, size_t *src_off, size_t *src_strides, size_t *tile_size, size_t elem_size) 
+{
+    return MemCpy(task, mem, dst_dim, dst, dst_size, dst_off, dst_strides, src_dim, src, src_size, src_off, src_strides, tile_size, elem_size, hipMemoryTypeHost, hipMemoryTypeDevice, "H2D"); 
+}
+int DeviceHIP::MemD2H(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t *dst_size, size_t *dst_off, size_t *dst_strides, int src_dim, void *src, size_t *src_size, size_t *src_off, size_t *src_strides, size_t *tile_size, size_t elem_size) 
+{
+    return MemCpy(task, mem, dst_dim, dst, dst_size, dst_off, dst_strides, src_dim, src, src_size, src_off, src_strides, tile_size, elem_size, hipMemoryTypeDevice, hipMemoryTypeHost, "D2H"); 
 }
 
 int DeviceHIP::KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bool report_error) {
@@ -943,7 +1293,8 @@ int DeviceHIP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, s
   }
   _event_prof_debug("kernel start dev[%d][%s] kernel[%s:%s] dim[%d] q[%d]\n", devno_, name_, kernel->name(), kernel->get_task_name(), dim, stream_index);
   if (kernel->is_vendor_specific_kernel(devno_)) {
-     if (host2hip_ld_->host_launch((void **)kstream, stream_index, nstreams, kernel->name(), 
+     if (host2hip_ld_->host_launch((void **)kstream, stream_index, 
+                nstreams, kernel->name(), 
                  kernel->GetParamWrapperMemory(), devno(), 
                  dim, off, gws) == IRIS_SUCCESS) {
          if (!async) {
@@ -1050,6 +1401,17 @@ int DeviceHIP::Synchronize() {
     platform_obj()->IncrementErrorCount();
     return IRIS_ERROR;
   }
+  return IRIS_SUCCESS;
+}
+
+int DeviceHIP::Custom(int tag, char* params) {
+  if (!cmd_handlers_.count(tag)) {
+    _error("unknown tag[0x%x]", tag);
+    platform_obj()->IncrementErrorCount();
+    return IRIS_ERROR;
+  }
+  command_handler handler = cmd_handlers_[tag];
+  handler(params, this);
   return IRIS_SUCCESS;
 }
 

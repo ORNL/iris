@@ -50,8 +50,14 @@ int LoaderHIP::LoadFunctions() {
   LOADFUNC(hipDeviceEnablePeerAccess);
   LOADFUNC(hipStreamCreate);
   LOADFUNC(hipStreamDestroy);
+  LOADFUNC(hipMemcpy);
+  LOADFUNC(hipMemcpyAsync);
   LOADFUNC(hipMemcpy2D);
   LOADFUNC(hipMemcpy3D);
+  LOADFUNC(hipMemcpyParam2D);
+  LOADFUNC(hipMemcpyParam2DAsync);
+  LOADFUNC(hipDrvMemcpy3D);
+  LOADFUNC(hipDrvMemcpy3DAsync);
   LOADFUNC(hipHostGetDevicePointer);
   LOADFUNC(hipSetDeviceFlags);
   LOADFUNC(hipMemcpy2DAsync);
