@@ -1299,11 +1299,10 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
     Kernel *kernel = cmd->kernel();
     size_t elem_size = mem->elem_size();
     int dim = mem->dim();
-    size_t size = mem->size();
     //bool is_src_mem_different = false;
     if (src_mem != NULL) {
         //ASSERT(src_mem->dim() == mem->dim());This condition cannot be satisfied now
-        ASSERT(src_mem->size() == mem->size());
+        ASSERT(src_mem->size() <= mem->size());
         ASSERT(src_mem->elem_size() == mem->elem_size());
         //is_src_mem_different = true;
 		if (!disable_dirty_update) {
@@ -1314,6 +1313,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
     else {
         src_mem = mem;
     }
+	size_t size = IRIS_MIN(mem->size(), src_mem->size());
     cmd->set_devno(devno_);
 	bool is_host_dirty = src_mem->is_host_dirty();
     void *cmd_host = cmd->host();
@@ -1367,9 +1367,10 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
 
         _event_debug("D2D: src:%d dest:%d src_arch:%p dst_arch:%p mem_stream:%d\n\n", src_dev->devno(), this->devno(), src_arch, dst_arch, mem_stream);
         // Now do D2D
+		size_t copy_size = IRIS_MIN(mem->size(), src_mem->size());
         if (!platform_obj_->is_data_transfers_disabled()) {
             if (!mem->is_multi_dim_dev_offset() && !src_mem->is_multi_dim_dev_offset())
-                MemD2D(task, src_dev, mem, dst_arch, src_arch, mem->size());
+                MemD2D(task, src_dev, mem, dst_arch, src_arch, copy_size);
             else
                 MemD2D(task, mem, mem->dev_dim(), dst_arch, mem->dev_tile_size(), mem->dev_off(), mem->dev_strides(IRIS_MAX(src_mem->dev_dim(), mem->dev_dim())), src_mem->dev_dim(), src_arch, src_mem->dev_tile_size(), src_mem->dev_off(), src_mem->dev_strides(IRIS_MAX(src_mem->dim(), mem->dim())), mem->dev_tile_size(), mem->elem_size());
                 //int MemD2D(Task *task, BaseMem *mem, int dim, void *dst, size_t *dst_off, size_t *dst_strides, void *src, size_t *src_off, size_t *src_strides, size_t *tile_size, size_t elem_size);
@@ -1413,13 +1414,14 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         if (cmd_host != NULL && host != cmd_host) {
             host = cmd_host;
         }
+		size_t copy_size = IRIS_MIN(mem->size(), src_mem->size());
 
         ResolveH2DStartEvents(task, mem, async, src_mem);
         void *dst_arch = mem->arch(this);
         double start = timer_->Now();
         if (!platform_obj_->is_data_transfers_disabled()) {
             if (!mem->is_multi_dim_dev_offset() && !src_mem->is_multi_dim_dev_offset())
-                errid_ = MemH2D(task, mem, src_mem->local_off(), src_mem->host_size(), mem->dev_size(), elem_size, src_mem->dim(), size, host);
+                errid_ = MemH2D(task, mem, src_mem->local_off(), src_mem->host_size(), mem->dev_size(), elem_size, src_mem->dim(), copy_size, host);
             else
                 errid_ = MemH2D(task, mem, mem->dev_dim(), dst_arch, mem->dev_tile_size(), mem->dev_off(), mem->dev_strides(IRIS_MAX(src_mem->host_dim(), mem->dev_dim())), src_mem->host_dim(), host, src_mem->host_tile_size(), src_mem->off(), src_mem->host_strides(IRIS_MAX(src_mem->host_dim(), mem->dev_dim())), mem->dev_tile_size(), mem->elem_size());
         }
@@ -1460,8 +1462,9 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         _event_debug("explore Device(OpenMP)2Device (O2D) dev[%d][%s] task[%ld:%s] mem[%lu]", devno_, name_, task->uid(), task->name(), mem->uid());
         Device *src_dev = Platform::GetPlatform()->device(cpu_dev);
         size_t off[3] = { 0 };
-        size_t host_sizes[3] = { mem->size() };
-        size_t dev_sizes[3] = { mem->size() };
+		size_t copy_size = IRIS_MIN(mem->size(), src_mem->size());
+        size_t host_sizes[3] = { copy_size };
+        size_t dev_sizes[3] = { copy_size };
         // Though we use H2D command for transfer, 
         // it is still a device to device transfer
         // You do not need offsets as they correspond to host pointer
@@ -1478,7 +1481,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         double start = timer_->Now();
         if (!platform_obj_->is_data_transfers_disabled()) {
             if (!mem->is_multi_dim_dev_offset() && !src_mem->is_multi_dim_dev_offset())
-                MemH2D(task, mem, off, host_sizes, dev_sizes, 1, 1, mem->size(), src_arch, "OpenMP2DEV ");
+                MemH2D(task, mem, off, host_sizes, dev_sizes, 1, 1, copy_size, src_arch, "OpenMP2DEV ");
             else {
                 void *dst_arch = mem->arch(this, src_arch);
                 MemH2D(task, mem, mem->dev_dim(), dst_arch, mem->dev_tile_size(), mem->dev_off(), mem->dev_strides(IRIS_MAX(src_mem->dev_dim(), mem->dev_dim())), src_mem->dim(), src_arch, src_mem->dev_tile_size(), src_mem->dev_off(), src_mem->dev_strides(IRIS_MAX(src_mem->dev_dim(), mem->dev_dim())), mem->dev_tile_size(), mem->elem_size());
@@ -1517,8 +1520,9 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         int mem_stream=0;
         Device *src_dev = Platform::GetPlatform()->device(non_cpu_dev);
         size_t off[3] = { 0 };
-        size_t host_sizes[3] = { mem->size() };
-        size_t dev_sizes[3] = { mem->size() };
+		size_t copy_size = IRIS_MIN(mem->size(), src_mem->size());
+        size_t host_sizes[3] = { copy_size };
+        size_t dev_sizes[3] = { copy_size };
         // Though we use H2D command for transfer, 
         // it is still a device to device transfer
         // You do not need offsets as they correspond to host pointer
@@ -1537,7 +1541,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         void* dst_host = mem->arch(this);
         if (!platform_obj_->is_data_transfers_disabled()) {
             if (!mem->is_multi_dim_dev_offset() && !src_mem->is_multi_dim_dev_offset())
-                src_dev->MemD2H(task, src_mem, off, host_sizes, dev_sizes, 1, 1, mem->size(), dst_host, "DEV2OpenMP ");
+                src_dev->MemD2H(task, src_mem, off, host_sizes, dev_sizes, 1, 1, copy_size, dst_host, "DEV2OpenMP ");
             else {
                 src_dev->MemD2H(task, mem, mem->dev_dim(), dst_host, mem->dev_tile_size(), mem->dev_off(), mem->dev_strides(IRIS_MAX(src_mem->dim(), mem->dev_dim())), src_mem->dim(), src_mem->arch(this), src_mem->dev_tile_size(), src_mem->dev_off(), src_mem->dev_strides(IRIS_MAX(src_mem->dev_dim(), mem->dev_dim())), mem->dev_tile_size(), mem->elem_size());
             }
@@ -1655,10 +1659,11 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
             }
             double start = timer_->Now();
             mem->arch(this);
+			size_t copy_size = IRIS_MIN(select_mem->size(), mem->size());
             if (!platform_obj_->is_data_transfers_disabled()) {
                 if (!mem->is_multi_dim_dev_offset() && !src_mem->is_multi_dim_dev_offset())
                     errid_ = MemH2D(task, mem, select_mem->local_off(), 
-                            select_mem->host_size(), mem->dev_size(), elem_size, select_mem->dim(), size, host, "D2H->H2D(2) ");
+                            select_mem->host_size(), mem->dev_size(), elem_size, select_mem->dim(), copy_size, host, "D2H->H2D(2) ");
                 else
                     errid_ = MemH2D(task, mem, mem->dev_dim(), mem->arch(this), mem->dev_tile_size(), mem->off(), mem->dev_strides(IRIS_MAX(select_mem->host_dim(), mem->dev_dim())), 
                             select_mem->host_dim(), host, select_mem->host_tile_size(), select_mem->dev_off(), select_mem->host_strides(IRIS_MAX(select_mem->host_dim(), mem->dev_dim())), mem->dev_tile_size(), mem->elem_size());
