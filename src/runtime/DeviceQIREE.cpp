@@ -110,7 +110,7 @@ int DeviceQIREE::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_size
 #endif
       }
       else {
-          _trace("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] elem_size:%ld", tag, devno_, name_, task->uid(), task->name(), mem->uid(), mpmem, off[0], size, host, elem_size);
+          _info("%sdev[%d][%s] task[%ld:%s] mem[%lu] dptr[%p] off[%lu] size[%lu] host[%p] elem_size:%ld", tag, devno_, name_, task->uid(), task->name(), mem->uid(), mpmem, off[0], size, host, elem_size);
           memcpy((char*) mpmem, (char *)host+off[0]*elem_size, size);
 #if 0
           printf("H2D: ");
@@ -237,15 +237,17 @@ int DeviceQIREE::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem,
   size_t size = mem->size() - off;
   if (off) {
       *(mem->archs_off() + devno_) = (void*) ((uint8_t *) *dev_alloc_ptr + off);
-      params_[idx] = mem->archs_off() + devno_;
       dev_ptr = *(mem->archs_off() + devno_);
+      params_[idx] = dev_ptr;
   } else {
-      params_[idx] = dev_alloc_ptr;
       dev_ptr = *dev_alloc_ptr; 
+      params_[idx] = dev_ptr;
   }
   if (idx == 0) {
-      char const *data = (char const *)params_[0];
-      size_t data_len = strlen(data);
+      const char *data = (const char *)params_[0];
+      size_t data_len = mem->size();
+      //((DataMem *)mem)->Print();
+      //printf("Data: %p: %p : %p : %s length:%lu\n", data, dev_ptr, dev_alloc_ptr, data, data_len);
       RUN_QIREE(qiree_load_module_from_memory, manager_, (char const *)params_[0], data_len); 
       RUN_QIREE(qiree_num_quantum_reg, manager_, &nquant_results_);
       RUN_QIREE(qiree_num_classical_reg, manager_, &nclass_results_);

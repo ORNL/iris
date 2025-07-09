@@ -769,15 +769,15 @@ class dmem_region(dmem_base):
   
 class dmem_infile(dmem_base):
     def __init__(self, file_path):
-        data = self.read_file(file_path)
-        args = data
+        data, text_content = self.read_file(file_path)
+        args = text_content
         super().__init__(True, args)
     def read_file(self, file_path):
         try:
             with open(file_path, 'r') as file:
                 text_content = file.read()
                 char_array = np.array(list(text_content), dtype='<U1')
-                return char_array
+                return char_array, text_content
         except FileNotFoundError:
             print(f"Error: File not found at '{file_path}'")
             return None
