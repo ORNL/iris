@@ -5,7 +5,7 @@ import pdb
 import os
 
 os.environ["IRIS_ARCHS"] = "openmp:qiree"
-
+os.system("make")
 iris.init()
 
 # This is the home folder where the built QIR-EE repo lies
