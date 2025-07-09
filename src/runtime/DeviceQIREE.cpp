@@ -29,6 +29,8 @@ namespace rt {
 DeviceQIREE::DeviceQIREE(LoaderQIREE* ld, int devno, int platform) : Device(devno, platform) {
   ld_ = ld;
   manager_ = NULL;
+  type_ = iris_qpu;
+  model_ = iris_qiree;
   //type_ = iris_qiree;
   //model_ = iris_qiree;
   strcpy(name_, "QIREE");

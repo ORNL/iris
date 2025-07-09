@@ -4,6 +4,8 @@ import iris
 import pdb
 import os
 
+os.environ["IRIS_ARCHS"] = "openmp:qiree"
+
 iris.init()
 
 # This is the home folder where the built QIR-EE repo lies
@@ -35,7 +37,7 @@ for i in range(n):
         (output[i], iris.iris_w),
         (backend, iris.iris_r)
     ])
-    tasks[i].submit(iris.iris_default, sync=0)
+    tasks[i].submit(iris.iris_qpu, sync=0)
 
 # Classical compute task to do post-processing
 result = iris.dmem()

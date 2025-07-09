@@ -127,6 +127,7 @@ typedef enum StreamPolicy StreamPolicy;
 #define iris_block_cycle        (1 << 27)
 #define iris_custom             (1 << 28)
 #define iris_julia_policy       (1 << 29)
+#define iris_qpu                (1 << 30)
 #define iris_all                0x7FFFFFFF
 
 enum DeviceModel {

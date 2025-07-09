@@ -54,6 +54,7 @@ Policy* Policies::GetPolicy(int brs_policy, const char* opt) {
   if (brs_policy &  iris_roundrobin) return policy_roundrobin_;
   if (brs_policy &  iris_julia_policy) return policy_julia_;
   if (brs_policy &  iris_cpu    ||
+      brs_policy &  iris_qpu    ||
       brs_policy &  iris_nvidia ||
       brs_policy &  iris_amd    ||
       brs_policy &  iris_gpu    ||
