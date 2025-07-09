@@ -16,7 +16,7 @@ if not os.path.exists(home):
 num_shots = 128
 backend = iris.dmem("qsim")
 
-num_cuts = 64
+num_cuts = 2
 # Running in parallel
 n = num_cuts
 
@@ -43,7 +43,7 @@ post_process_task = iris.task("qiree_post_processing", 1, [], [1], [],
         [(output[i], iris.iris_r) for i in range(n)] + [ (result, iris.iris_w) ]
 )
 post_process_task.depends(tasks)
-post_process.submit(iris.cpu, sync=0)
+post_process_task.submit(iris.iris_cpu, sync=0)
 
 iris.synchronize()
 print("Result:", result)
