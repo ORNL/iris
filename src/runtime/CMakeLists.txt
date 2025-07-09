@@ -1,5 +1,6 @@
 option(BUILD_SHARED_LIBS "Build shared libs" ON)
 
+message(STATUS "CXX STD: ${CMAKE_CXX_STANDARD}")
 if (ENABLE_FFI) 
 include(CPM.cmake)
 if (CMAKE_C_COMPILER MATCHES "nvc$")

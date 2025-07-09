@@ -21,7 +21,7 @@ mkdir -p $BUILD_DIR_NAME
 cd $BUILD_DIR_NAME
 CC=${CC:-gcc}
 CXX=${CXX:-g++}
-CXX_STD=${CXX_STD:11}
+CXX_STD=${CXX_STD:-11}
 IRIS_FLAGS="-I/opt/homebrew/opt/gcc/include/c++/15/ -I/opt/homebrew/opt/gcc/include/c++/15/aarch64-apple-darwin24/"
 #FC=gfortran
 # cmake -G "Ninja" -DCMAKE_GENERATOR:INTERNAL=Ninja  -DCMAKE_INSTALL_PREFIX=${IRIS_INSTALL_ROOT}${IRIS_TAG} -DCMAKE_C_COMPILER=$CC -DCMAKE_CXX_COMPILER=$CXX -DCMAKE_BUILD_TYPE=RELEASE -DTRACE_DISABLE=ON  .. $@
