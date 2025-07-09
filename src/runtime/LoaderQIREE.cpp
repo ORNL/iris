@@ -13,9 +13,11 @@ LoaderQIREE::LoaderQIREE() : HostInterfaceClass("LIB_QIREE") {
     qiree_num_quantum_reg = NULL;
     qiree_num_classical_reg = NULL;
     qiree_sizeof_result = NULL;
+    qiree_num_results = NULL;
     qiree_setup_executor = NULL;
     qiree_execute = NULL;
     qiree_save_result = NULL;
+    qiree_get_result = NULL;
 }
 
 LoaderQIREE::~LoaderQIREE() {
@@ -33,9 +35,11 @@ int LoaderQIREE::LoadFunctions() {
   LOADFUNC(qiree_num_classical_reg);
   LOADFUNC(qiree_num_quantum_reg);
   LOADFUNC(qiree_sizeof_result);
+  LOADFUNC(qiree_num_results);
   LOADFUNC(qiree_setup_executor);
   LOADFUNC(qiree_execute);
   LOADFUNC(qiree_save_result);
+  LOADFUNC(qiree_get_result);
   return IRIS_SUCCESS;
 }
 
