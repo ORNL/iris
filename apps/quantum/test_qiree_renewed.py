@@ -4,7 +4,7 @@ import iris
 import pdb
 import os
 
-# Step1: MLIR circuit cutting pass (Richard, Sharmin, Daniel, Ealine, Narasinga)
+# Step1: MLIR circuit cutting pass (Richard, Sharmin, Daniel, Elaine, Narasinga)
 ## will generate one MLIR file each fragment 
 ## Generate Metadata.cpp and Metadata.txt files for dependencies and validity functions 
 ## Optional: Generate Post-processing function post_processing.cpp
@@ -28,7 +28,7 @@ iris.init()
 
 # This is the home folder where the built QIR-EE repo lies
 home = os.getenv("QIREE")
-if not os.path.exists(home):
+if not (home and os.path.exists(home)):
     home = os.path.join(os.getenv("HOME"), "/qiree")
 # Parameters should be a list of strings: [executable, LL file, name of accelerator to use, number of shots]
 
