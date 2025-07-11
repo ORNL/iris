@@ -4,6 +4,24 @@ import iris
 import pdb
 import os
 
+# Step1: MLIR circuit cutting pass (Richard, Sharmin, Daniel, Ealine, Narasinga)
+## will generate one MLIR file each fragment 
+## Generate Metadata.cpp and Metadata.txt files for dependencies and validity functions 
+## Optional: Generate Post-processing function post_processing.cpp
+# Step2: Pennylane tool to convert MLIR file to QIR file (Sharmin, Daniel)
+# Step3: Post-processing function manually written (Richard, Vicente)
+
+
+#Metadata.cpp: To provide validity functions for task invokation
+#bool cond1(<state-of-circuit>)
+#{
+#    return true;
+#}
+
+#Metadata.txt : to represent dependencies
+# fragment5: fragment1[<cond1>], fragment2[<cond1>]
+# 
+
 os.environ["IRIS_ARCHS"] = "openmp:qiree"
 os.system("make")
 iris.init()
