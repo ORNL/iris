@@ -44,9 +44,16 @@ DeviceQIREE::~DeviceQIREE() {
   manager_ = NULL;
 }
 
+void DeviceQIREE::CreateCQiree()
+{
+    // TODO: Reuse manager_ object which is parsed for same QIR file 
+    if (manager_ != NULL) 
+        RUN_QIREE(qiree_destroy, manager_);
+    RUN_QIREE_OUT(manager_, NULL, qiree_create);
+}
+
 int DeviceQIREE::Init() {
   //ld_->iris_hexagon_init();
-  RUN_QIREE_OUT(manager_, NULL, qiree_create);
   return IRIS_SUCCESS;
 }
 
@@ -250,6 +257,7 @@ int DeviceQIREE::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem,
       size_t data_len = mem->size();
       //((DataMem *)mem)->Print();
       //printf("Data: %p: %p : %p : %s length:%lu\n", data, dev_ptr, dev_alloc_ptr, data, data_len);
+      CreateCQiree();
       RUN_QIREE(qiree_load_module_from_memory, manager_, (char const *)params_[0], data_len); 
       RUN_QIREE(qiree_num_quantum_reg, manager_, &nquant_results_);
       RUN_QIREE(qiree_num_classical_reg, manager_, &nclass_results_);

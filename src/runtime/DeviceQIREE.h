@@ -25,6 +25,7 @@ public:
   int Synchronize();
   int AddCallback(Task* task);
   bool SupportJIT() { return false; }
+  void CreateCQiree();
 
 private:
   CQiree *manager_;
