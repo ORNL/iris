@@ -37,7 +37,7 @@ private:
   int nclass_results_;
   int num_shots_;
   const char *backend_;
-  int result_bytes_;
+  int result_items_;
   uint64_t *encoded_;
 
   //float* Z;

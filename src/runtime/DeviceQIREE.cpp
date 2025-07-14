@@ -202,7 +202,7 @@ int DeviceQIREE::KernelSetArg(Kernel* kernel, int idx, int kindex, size_t size, 
   }
   if (idx == 1) {
       num_shots_ = *((int *)value);
-      RUN_QIREE(qiree_sizeof_result, manager_, num_shots_, &result_bytes_);
+      RUN_QIREE(qiree_max_result_items, manager_, num_shots_, &result_items_);
   }
   if (max_arg_idx_ < idx) max_arg_idx_ = idx;
   if (julia_if_ != NULL && kernel->enable_julia_if()) {
@@ -232,7 +232,7 @@ int DeviceQIREE::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem,
   if (idx == 2) {
       // Now allocate space. 
       // It is the output memory
-      ((DataMem *)mem)->realllocate_space(result_bytes_);
+      ((DataMem *)mem)->realllocate_space((result_items_+1)*2);
   }
   void **dev_alloc_ptr = mem->arch_ptr(this);
   void *dev_ptr = NULL;
@@ -258,7 +258,9 @@ int DeviceQIREE::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem,
       encoded_ = (uint64_t *) dev_ptr;
   }
   else if (idx == 3) {
+      const char *config_json = NULL;
       backend_ = (const char *)params_[idx]; 
+      RUN_QIREE(qiree_setup_executor, manager_, backend_, config_json);
   }
   _debug2("task:%lu:%s idx:%d::%d off:%lu dev_ptr:%p dev_alloc_ptr:%p", 
           kernel->task()->uid(), kernel->task()->name(),
@@ -287,10 +289,9 @@ int DeviceQIREE::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws,
   //parse_input_c(4, (char**)argv);
   //printf("nparams: %d\n", qiree_nparams_);
   const char *config_json = NULL;
-  RUN_QIREE(qiree_setup_executor, manager_, backend_, config_json);
   RUN_QIREE(qiree_execute, manager_, num_shots_);
   int max_results = (int) (QIREE_MAX(nquant_results_, nclass_results_));
-  RUN_QIREE(qiree_save_result, manager_, max_results, encoded_);
+  RUN_QIREE(qiree_save_result_items, manager_, result_items_, encoded_);
   //ld_->parse_input_c(qiree_nparams_, (char**)qiree_params_);
   //return ld_->parse_input_c(4, (char**)argv);
   return IRIS_SUCCESS;
