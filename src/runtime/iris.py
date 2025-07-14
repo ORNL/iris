@@ -648,6 +648,13 @@ class dmem_base:
         mem_handle_2_pobj[self.handle.uid] = []
     mem_handle_2_pobj[self.handle.uid].append(self)
 
+  def host_data(self, dtype):
+    ptr = dll.call_ret_ptr(dll.iris_get_dmem_valid_host, self.handle)
+    buf_ptr = ctypes.cast(ptr, ctypes.POINTER(ret_type))
+    np_array = np.ctypeslib.as_array(buf_ptr, shape=(length,))
+    np_array = np_array.view(dtype)
+    return np_array
+
   def dmem_create(self, reuse, *args):
     if len(args) == 1:
       c_host = None

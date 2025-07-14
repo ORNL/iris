@@ -239,7 +239,7 @@ int DeviceQIREE::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem,
   if (idx == 2) {
       // Now allocate space. 
       // It is the output memory
-      ((DataMem *)mem)->realllocate_space((result_items_+1)*2);
+      ((DataMem *)mem)->realllocate_space((result_items_+1)*2*sizeof(uint64_t));
   }
   void **dev_alloc_ptr = mem->arch_ptr(this);
   void *dev_ptr = NULL;
@@ -299,7 +299,7 @@ int DeviceQIREE::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws,
   const char *config_json = NULL;
   RUN_QIREE(qiree_execute, manager_, num_shots_);
   int max_results = (int) (QIREE_MAX(nquant_results_, nclass_results_));
-  RUN_QIREE(qiree_save_result_items, manager_, result_items_, encoded_);
+  RUN_QIREE(qiree_save_result_items, manager_, encoded_, result_items_);
   //ld_->parse_input_c(qiree_nparams_, (char**)qiree_params_);
   //return ld_->parse_input_c(4, (char**)argv);
   return IRIS_SUCCESS;
