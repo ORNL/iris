@@ -47,8 +47,9 @@ DeviceQIREE::~DeviceQIREE() {
 void DeviceQIREE::CreateCQiree()
 {
     // TODO: Reuse manager_ object which is parsed for same QIR file 
-    if (manager_ != NULL) 
+    if (manager_ != NULL)  {
         RUN_QIREE(qiree_destroy, manager_);
+    }
     RUN_QIREE_OUT(manager_, NULL, qiree_create);
 }
 
