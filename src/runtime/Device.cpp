@@ -77,6 +77,7 @@ void Device::HandleMemReset(bool async, Command *cmd, Kernel *kernel, Task *task
     double start = timer_->Now();
     if (async && platform_obj_->is_event_profile_enabled()) {
         ProfileEvent & prof_event = task->CreateProfileEvent(mem, devno(), PROFILE_DMEM2DMEM_FILL, this, mem_stream);
+        _event_debug("Profiling record start: task[%lu][%s]", task->uid(), task->name());
         prof_event.RecordStartEvent(); 
     }
     void **stream_ptr_ptr = (void **)get_stream(mem_stream);
@@ -90,6 +91,7 @@ void Device::HandleMemReset(bool async, Command *cmd, Kernel *kernel, Task *task
     double end = timer_->Now();
     if (async && platform_obj_->is_event_profile_enabled()) {
         ProfileEvent & prof_event = task->LastProfileEvent();
+       _event_debug("Profiling record end: task[%lu][%s]", task->uid(), task->name());
         prof_event.RecordEndEvent(); 
     }
     if (async) {
@@ -364,6 +366,7 @@ int Device::GetStream(Task *task, BaseMem *mem, bool new_stream) {
         int stream = GetStream(task);
         if (mem->get_source_mem() != NULL) mem = (DataMem*)mem->get_source_mem();
         mem->set_recommended_stream(devno(), stream);
+        task->set_recommended_stream(stream);
         return stream;
     }
     int stream = mem->recommended_stream(devno());
@@ -372,6 +375,7 @@ int Device::GetStream(Task *task, BaseMem *mem, bool new_stream) {
         stream = get_new_copy_stream_queue();
         if (mem->get_source_mem() != NULL) mem = (DataMem*)mem->get_source_mem();
         mem->set_recommended_stream(devno(), stream);
+        task->set_recommended_stream(stream);
     }
 #else
     if (task->cmd_kernel() != NULL &&
@@ -772,6 +776,7 @@ void Device::ResolveH2DEndEvents(Task *task, BaseMem *mem, bool async)
     if (async && platform_obj_->is_event_profile_enabled()) {
         ProfileEvent & prof_event = task->LastProfileEvent();
         _event_debug("prof_event ptr:%p\n", prof_event.start_event_ptr());
+        _event_debug("Profiling record end: task[%lu][%s]", task->uid(), task->name());
         prof_event.RecordEndEvent(); 
     }
     if (async) {
@@ -788,6 +793,7 @@ void Device::ResolveH2DStartEvents(Task *task, BaseMem *mem, bool async, BaseMem
     ResetContext();
     if (async && platform_obj_->is_event_profile_enabled()) {
         ProfileEvent & prof_event = task->CreateProfileEvent(mem, -1, PROFILE_H2D, this, mem_stream);
+        _event_debug("Profiling record start: task[%lu][%s]", task->uid(), task->name());
         prof_event.RecordStartEvent(); 
         _event_debug("prof_event ptr:%p %p task:%lu:%s mem:%lu\n", prof_event.start_event_ptr(), prof_event.start_event(), task->uid(), task->name(), mem->uid());
     }
@@ -1006,11 +1012,13 @@ void Device::ExecuteKernel(Command* cmd) {
       _debug2("Launching kernel:%s:%lu task:%s:%lu stream:%d", kernel->name(), kernel->uid(), task->name(), task->uid(), stream_index);
       if (async_launch && platform_obj_->is_event_profile_enabled()) {
           ProfileEvent &prof_event = task->CreateProfileEvent(task, devno(), PROFILE_KERNEL, this, stream_index);
+          _event_debug("Profiling record start: task[%lu][%s]", task->uid(), task->name());
           prof_event.RecordStartEvent(); 
       }
       errid_ = KernelLaunch(kernel, dim, off, gws, lws[0] > 0 ? lws : NULL);
       if (async_launch && platform_obj_->is_event_profile_enabled()) {
           ProfileEvent &prof_event = task->LastProfileEvent();
+          _event_debug("Profiling record end: task[%lu][%s]", task->uid(), task->name());
           prof_event.RecordEndEvent(); 
       }
       _debug2("Completed kernel:%s:%lu task:%s:%lu", kernel->name(), kernel->uid(), task->name(), task->uid());
@@ -1347,6 +1355,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
     // Check if it is still dirty
     if (!Platform::GetPlatform()->is_d2d_disabled() && d2d_dev >= 0) { 
         int mem_stream = GetStream(task, mem, true);
+        _event_debug("***** Task:[%lu][%s] D2D recommended stream:%d task_stream:%d\n", task->uid(), task->name(), mem_stream, task->recommended_stream());
         // May be transfer directly from peer device is best 
         // Do D2D communication
         // Keep host data dirty as it is
@@ -1358,6 +1367,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
 
         if (async && platform_obj_->is_event_profile_enabled()) {
             ProfileEvent & prof_event = task->CreateProfileEvent(mem, src_dev->devno(), PROFILE_D2D, this, mem_stream);
+            _event_debug("Profiling record start: task[%lu][%s]", task->uid(), task->name());
             prof_event.RecordStartEvent(); 
         }
         double start = timer_->Now();
@@ -1378,8 +1388,9 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         double end = timer_->Now();
         // If device is not asynchronous, you don't need to record event in CUDA/HIP device
         if (async && platform_obj_->is_event_profile_enabled()) {
-                ProfileEvent & prof_event = task->LastProfileEvent();
-                prof_event.RecordEndEvent(); 
+            ProfileEvent & prof_event = task->LastProfileEvent();
+            _event_debug("Profiling record end : task[%lu][%s]", task->uid(), task->name());
+            prof_event.RecordEndEvent(); 
         }
         if (async) {
             mem->RecordEvent(devno(), mem_stream, true);
@@ -1474,6 +1485,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
 
         if (async && platform_obj_->is_event_profile_enabled()) {
             ProfileEvent & prof_event = task->CreateProfileEvent(mem, src_dev->devno(), PROFILE_O2D, this, mem_stream);
+            _event_debug("Profiling record start: task[%lu][%s]", task->uid(), task->name());
             prof_event.RecordStartEvent(); 
         }
 
@@ -1490,6 +1502,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         double end = timer_->Now();
         if (async && platform_obj_->is_event_profile_enabled()) {
             ProfileEvent & prof_event = task->LastProfileEvent();
+            _event_debug("Profiling record end: task[%lu][%s]", task->uid(), task->name());
             prof_event.RecordEndEvent(); 
         }
         if (async) {
@@ -1536,6 +1549,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         double start = timer_->Now();
         if (async && platform_obj_->is_event_profile_enabled()) {
             ProfileEvent & prof_event = task->CreateProfileEvent(mem, devno(), PROFILE_D2O, src_dev, src_mem_stream);
+            _event_debug("Profiling record start: task[%lu][%s]", task->uid(), task->name());
             prof_event.RecordStartEvent(); 
         }
         void* dst_host = mem->arch(this);
@@ -1550,6 +1564,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
 
         if (async && platform_obj_->is_event_profile_enabled()) {
             ProfileEvent & prof_event = task->LastProfileEvent();
+            _event_debug("Profiling record end: task[%lu][%s]", task->uid(), task->name());
             prof_event.RecordEndEvent(); 
         }
         ResetContext(); //This is must. Otherwise, it may still point to src_dev context
@@ -1615,6 +1630,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
                 src_dev->ResetContext();
                 if (async && src_async && platform_obj_->is_event_profile_enabled()) {
                     ProfileEvent & prof_event = task->CreateProfileEvent(select_mem, -1, PROFILE_D2HH2D_D2H, src_dev, src_mem_stream);
+                    _event_debug("Profiling record start: task[%lu][%s]", task->uid(), task->name());
                     prof_event.RecordStartEvent(); 
                 }
                 _event_debug("In mem:[%lu] src_mem_stream:%d src_dev:%d dev:%d host_write_dev:%d", select_mem->uid(), src_mem_stream, src_dev->devno(), devno(), host_write_dev);
@@ -1634,6 +1650,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
                 d2htime = timer_->Now() - d2h_start;
                 if (async && src_async && platform_obj_->is_event_profile_enabled()) {
                     ProfileEvent & prof_event = task->LastProfileEvent();
+                    _event_debug("Profiling record end: task[%lu][%s]", task->uid(), task->name());
                     prof_event.RecordEndEvent(); 
                 }
                 if (async && src_async) { 
@@ -1655,6 +1672,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
             // H2D should be issued from this current device
             if (async && platform_obj_->is_event_profile_enabled()) {
                 ProfileEvent & prof_event = task->CreateProfileEvent(mem, -1, PROFILE_D2HH2D_H2D, this, mem_stream);
+                _event_debug("Profiling record start: task[%lu][%s]", task->uid(), task->name());
                 prof_event.RecordStartEvent(); 
             }
             double start = timer_->Now();
@@ -1672,6 +1690,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
             _event_debug("   MemD2H -> MemH2D done");
             if (async && platform_obj_->is_event_profile_enabled()) {
                 ProfileEvent & prof_event = task->LastProfileEvent();
+                _event_debug("Profiling record end: task[%lu][%s]", task->uid(), task->name());
                 prof_event.RecordEndEvent(); 
             }
             if (async) {
@@ -1984,6 +2003,7 @@ int Device::BringDataToHost(Task *task, DataMem *mem,
             ResetContext();
             if (async && platform_obj_->is_event_profile_enabled()) {
                 ProfileEvent & prof_event = task->CreateProfileEvent(mem, -1, PROFILE_D2H, this , mem_stream);
+                _event_debug("Profiling record start: task[%lu][%s]", task->uid(), task->name());
                 prof_event.RecordStartEvent(); 
             }
             if (!platform_obj_->is_data_transfers_disabled()) {
@@ -1997,6 +2017,7 @@ int Device::BringDataToHost(Task *task, DataMem *mem,
             }
             if (async && platform_obj_->is_event_profile_enabled()) {
                 ProfileEvent & prof_event = task->LastProfileEvent();
+                _event_debug("Profiling record end: task[%lu][%s]", task->uid(), task->name());
                 prof_event.RecordEndEvent(); 
             }
             if (async) {

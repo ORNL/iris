@@ -601,11 +601,11 @@ int DeviceCUDA::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset)
                   err = ld_->cudaMemsetAsync((void *)(*cumem), out.second, size, streams_[stream]);
               else
                   err = ld_->cudaMemset((void *)(*cumem), out.second, size);
-			  _cuerror(err);
-			  if (err != CUDA_SUCCESS){
-				  platform_obj()->IncrementErrorCount();
-				  return IRIS_ERROR;
-			  }
+              _cuerror(err);
+              if (err != CUDA_SUCCESS){
+                  platform_obj()->IncrementErrorCount();
+                  return IRIS_ERROR;
+              }
           }
           else if (mem->GetMemHandlerType() == IRIS_DMEM || 
                   mem->GetMemHandlerType() == IRIS_DMEM_REGION) {
@@ -644,8 +644,8 @@ int DeviceCUDA::MemFree(BaseMem *mem, void* mem_addr) {
       err = ld_->cuMemFree(cumem);
   _cuerror(err);
   if (err != CUDA_SUCCESS){
-	  platform_obj()->IncrementErrorCount();
-	  return IRIS_ERROR;
+      platform_obj()->IncrementErrorCount();
+      return IRIS_ERROR;
   }
 #endif
   return IRIS_SUCCESS;
@@ -1371,9 +1371,9 @@ int DeviceCUDA::MemCpy(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t 
       _error(" %s couldn't handle the dim:%d tile copy for DMEM dev[%d][%s] task[%ld:%s] elem_size:%lu mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] src_size:%s dst_size:%s src_off:%s dst_off:%s src_strides:%s dst_strides:%s tile_size:%s [%d]", tag, dim, devno_, name_, task->uid(), task->name(), elem_size, mem->uid(), dst, src, src_size_str.c_str(), dst_size_str.c_str(), src_off_str.c_str(), dst_off_str.c_str(), src_strides_str.c_str(), dst_strides_str.c_str(), tile_size_str.c_str(), stream_index);
       Utils::PrintStackTrace();
   }
-  _trace("dev[%d][%s] task[%ld:%s] elem_size:%lu mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] size[%lu] q[%d]", devno_, name_, task->uid(), task->name(), elem_size, mem->uid(), dst, src, size, stream_index);
+  _trace("dev[%d][%s] task[%ld:%s] elem_size:%lu mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] size[%lu] q[%d]", devno_, name_, task->uid(), task->name(), elem_size, mem->uid(), dst, src, mem->size(), stream_index);
   if (error_occured) {
-  _event_debug("Error dev[%d][%s] task[%ld:%s] mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] size[%lu] q[%d]", devno_, name_, task->uid(), task->name(), mem->uid(), dst, src, size, stream_index);
+  _event_debug("Error dev[%d][%s] task[%ld:%s] mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] size[%lu] q[%d]", devno_, name_, task->uid(), task->name(), mem->uid(), dst, src, mem->size(), stream_index);
   }
   //ASSERT(!error_occured && "CUDA Error occured");
   if (error_occured) {
@@ -1795,6 +1795,7 @@ void DeviceCUDA::CreateEvent(void **event, int flags)
     _cuerror(err);
     if (err != CUDA_SUCCESS)
         platform_obj()->IncrementErrorCount();
+    //Utils::PrintStackTrace();
     _event_debug("Create dev:%d event_ptr:%p event:%p err_id:%d", devno(), event, *event, err);
 }
 float DeviceCUDA::GetEventTime(void *event, int stream) 
@@ -1809,9 +1810,10 @@ float DeviceCUDA::GetEventTime(void *event, int stream)
         _cuerror(err);
         if (err != 0) {
         //_event_prof_debug("Elapsed:%f single_start_time_event:%p start_time_event:%p event:%p\n", elapsed, single_start_time_event_, start_time_event_[stream], event);
-        _event_prof_debug("Dev:%d:%s Elapsed:%f single_start_time_event:%p event:%p stream:%d\n", devno(), name(), elapsed, single_start_time_event_, event, stream);
+        _error("Dev:%d:%s Elapsed:%f single_start_time_event:%p event:%p stream:%d\n", devno(), name(), elapsed, single_start_time_event_, event, stream);
         }
     }
+    _event_prof_debug("Dev:%d:%s Elapsed:%f single_start_time_event:%p event:%p stream:%d\n", devno(), name(), elapsed, single_start_time_event_, event, stream);
     return elapsed; 
 }
 void DeviceCUDA::RecordEvent(void **event, int stream, int event_creation_flag)
@@ -1831,6 +1833,7 @@ void DeviceCUDA::RecordEvent(void **event, int stream, int event_creation_flag)
     if (err != CUDA_SUCCESS) {
         platform_obj()->IncrementErrorCount();
         Utils::PrintStackTrace();
+        _error("Recorded dev:[%d]:[%s] event:%p stream:%d err_id:%d", devno(), name(), *event, stream, err);
     }
     _event_debug("Recorded dev:[%d]:[%s] event:%p stream:%d err_id:%d", devno(), name(), *event, stream, err);
 }
