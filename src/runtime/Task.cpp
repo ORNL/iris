@@ -26,6 +26,7 @@ void ProfileEvent::Clean() {
 float ProfileEvent::GetStartTime() {
     if (!event_fetch_flag_) return start_time_; 
     float etime =0.0;
+    _event_prof_debug(" start uid:%lu start_event:%p stream:%d\n", uid(), start_event_, stream_);
     if (start_event_ != NULL && event_dev_ != NULL) 
         etime = event_dev_->GetEventTime(start_event_, stream_);
     return etime;
@@ -33,6 +34,7 @@ float ProfileEvent::GetStartTime() {
 float ProfileEvent::GetEndTime() {
     if (!event_fetch_flag_) return end_time_; 
     float etime =0.0;
+    _event_prof_debug(" end uid:%lu end_event:%p stream:%d\n", uid(), end_event_, stream_);
     if (end_event_ != NULL && event_dev_ != NULL) 
         etime = event_dev_->GetEventTime(end_event_, stream_);
     return etime;
@@ -345,6 +347,7 @@ void Task::set_pending() {
 
 void Task::Complete() {
   _debug2(" task:%lu:%s is completed ref_cnt:%d", uid(), name(), ref_cnt());
+  _event_debug(" task:%lu:%s is completed ref_cnt:%d", uid(), name(), ref_cnt());
   bool is_user_task = user_;
   bool platform_release_flag = platform_->release_task_flag();
   if (dev_ && type() != IRIS_MARKER) set_devno(dev_->devno());
