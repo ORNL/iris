@@ -1,6 +1,4 @@
-include(ENV["IRIS"]*"/include/iris/IrisHRT.jl")
-
-using .IrisHRT
+using Julius
 using Base.Threads
 using KernelAbstractions
 
@@ -9,13 +7,12 @@ using KernelAbstractions
 ## PIM specific intrinsics identification
 
 function saxpy(i, Z, A, X, Y)
-    if i <= length(Z)
-        @inbounds Z[i] = A*X[i] + Y[i]
-    end
+   @inbounds Z[i] = A*X[i] + Y[i]
 end
 function call(SIZE, A, X, Y, Z)
     julia_start = time()
-    task0 = IrisHRT.parallel_for(SIZE, saxpy, Z, A, X, Y, flush=[Z])
+    #task0 = Julius.parallel_for(SIZE, saxpy, Z, A, X, Y, flush=[Z])
+    task0 = Julius.@jparallel_for size:[SIZE], flush:[Z], saxpy(Z, A, X, Y)
     julia_time = time() - julia_start
     println("Julia time: ", julia_time)
     return Z
@@ -28,22 +25,22 @@ function main(SIZE)
     println("--------------")
     #SIZE=8
     A=2.0f0
-    IrisHRT.init()
-    X = IrisHRT.ones(Float32, SIZE)
-    Y = IrisHRT.ones(Float32, SIZE)
-    Z = IrisHRT.dmem(Float32, SIZE)
+    Julius.init()
+    X = Julius.ones(Float32, SIZE)
+    Y = Julius.ones(Float32, SIZE)
+    Z = Julius.dmem(Float32, SIZE)
 
-    println("NDim:", IrisHRT.ndim(X))
-    println("Type:", IrisHRT.get_type(X))
-    println("Size:", IrisHRT.host_size(X))
-    #println("Data:", IrisHRT.valid_host(X))
+    println("NDim:", Julius.ndim(X))
+    println("Type:", Julius.get_type(X))
+    println("Size:", Julius.host_size(X))
+    #println("Data:", Julius.valid_host(X))
     call(SIZE, A, X, Y, Z)
 
-    Z_host = IrisHRT.host(Z)
+    Z_host = Julius.host(Z)
     println(Core.stdout, "Z    :", Z_host)
     println(Core.stdout, "Z    :", Z_host[1:min(SIZE, 9)])
 
-    IrisHRT.finalize()
+    Julius.finalize()
 end
 
 main(SIZE)
