@@ -153,6 +153,16 @@ int iris_device_synchronize(int ndevs, int* devices) {
   return Platform::GetPlatform()->DeviceSynchronize(ndevs, devices);
 }
 
+void *iris_device_malloc(int devno, size_t size, void *stream, int reset) {
+  void *mem_addr;
+  Platform::GetPlatform()->DeviceMalloc(devno, &mem_addr, size, stream, reset); 
+  return mem_addr;
+}
+
+void iris_device_free(int devno, void *mem_addr, void *stream) {
+  static_cast<void>(Platform::GetPlatform()->DeviceFree(devno, mem_addr, stream)); 
+}
+
 int iris_register_policy(const char* lib, const char* name, void* params) {
   return Platform::GetPlatform()->PolicyRegister(lib, name, params);
 }

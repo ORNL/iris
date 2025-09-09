@@ -558,6 +558,39 @@ void *DeviceCUDA::GetSharedMemPtr(void* mem, size_t size)
     ASSERT(cumem != NULL);
     return cumem; 
 }
+int DeviceCUDA::MemAlloc(void** mem_addr, size_t size, void *v_stream, bool reset) {
+    if (IsContextChangeRequired()) {
+        CUresult err=ld_->cuCtxSetCurrent(ctx_);
+        _cuerror(err);
+    }
+    CUstream stream = (CUstream) v_stream;
+    CUdeviceptr* cumem = (CUdeviceptr*) mem_addr;
+    bool async = (is_async(false) && stream != NULL);
+    bool l_async = platform_obj_->is_malloc_async() && async;
+    //double mtime = timer_->Now();
+    CUresult err;
+    if (l_async)
+        err = ld_->cuMemAllocAsync(cumem, size, stream);
+    else
+        err = ld_->cuMemAlloc(cumem, size);
+    //mtime = timer_->Now() - mtime;
+    _cuerror(err);
+    if (err != CUDA_SUCCESS){
+        platform_obj()->IncrementErrorCount();
+        return IRIS_ERROR;
+    }
+    _event_debug("CUDA MemAlloc dev:%d:%s size:%zu ptr:%p async:%d stream:%p\n", devno_, name_, size, (void *)*cumem, async, stream);
+    _trace("CUDA MemAlloc dev:%d:%s size:%zu ptr:%p async:%d stream:%p\n", devno_, name_, size, (void *)*cumem, async, stream);
+    if (reset)  {
+        //printf("Resetting memory\n");
+        if (l_async) 
+            err = ld_->cudaMemsetAsync((void *)(*cumem), 0, size, stream);
+        else
+            err = ld_->cudaMemset((void *)(*cumem), 0, size);
+        _cuerror(err);
+    }
+    return IRIS_SUCCESS;
+}
 int DeviceCUDA::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset) {
   if (IsContextChangeRequired()) {
       CUresult err=ld_->cuCtxSetCurrent(ctx_);
@@ -648,6 +681,25 @@ int DeviceCUDA::MemFree(BaseMem *mem, void* mem_addr) {
       return IRIS_ERROR;
   }
 #endif
+  return IRIS_SUCCESS;
+}
+
+int DeviceCUDA::MemFree(void* mem_addr, void *v_stream)
+{
+  CUdeviceptr cumem = (CUdeviceptr) mem_addr;
+  CUstream stream = (CUstream) v_stream;
+  CUresult err;
+  bool async = (is_async(false) && stream != NULL);
+  bool l_async = platform_obj_->is_malloc_async() && async;
+  if (l_async)
+      err = ld_->cuMemFreeAsync(cumem, stream);
+  else
+      err = ld_->cuMemFree(cumem);
+  _cuerror(err);
+  if (err != CUDA_SUCCESS){
+      platform_obj()->IncrementErrorCount();
+      return IRIS_ERROR;
+  }
   return IRIS_SUCCESS;
 }
 

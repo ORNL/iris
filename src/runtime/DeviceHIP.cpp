@@ -340,6 +340,34 @@ void *DeviceHIP::GetSharedMemPtr(void* mem, size_t size)
     ASSERT(hipmem != NULL);
     return hipmem; 
 }
+int DeviceHIP::MemAlloc(void** mem_addr, size_t size, void *stream_v, bool reset) {
+    if (IsContextChangeRequired()) {
+        hipError_t err = ld_->hipCtxSetCurrent(ctx_);
+        _hiperror(err);
+    }
+    hipStream_t stream = (hipStream_t) stream_v;
+    void** hipmem = mem_addr;
+    bool async = (is_async(false) && stream != NULL);
+    bool l_async = platform_obj_->is_malloc_async() && async;
+    hipError_t err;
+    if (l_async)
+       err = ld_->hipMallocAsync(hipmem, size, stream);
+    else
+       err = ld_->hipMalloc(hipmem, size);
+    _hiperror(err);
+    if (err != hipSuccess) {
+       platform_obj()->IncrementErrorCount();
+       return IRIS_ERROR;
+    }
+    if (reset)  {
+        if (l_async)
+            err = ld_->hipMemsetAsync(*hipmem, 0, size, stream);
+        else
+            err = ld_->hipMemset(*hipmem, 0, size);
+        _hiperror(err);
+    }
+    return IRIS_SUCCESS;
+}
 int DeviceHIP::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset) {
   if (IsContextChangeRequired()) {
       hipError_t err = ld_->hipCtxSetCurrent(ctx_);
@@ -405,6 +433,24 @@ int DeviceHIP::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset) 
   return IRIS_SUCCESS;
 }
 
+int DeviceHIP::MemFree(void* mem_addr, void *stream_v) {
+  void* hipmem = mem_addr;
+  hipStream_t stream = (hipStream_t) stream_v;
+  bool async = (is_async(false) && stream != NULL);
+  bool l_async = platform_obj_->is_malloc_async() && async;
+  hipError_t err;
+  //printf("Addr: %p free async:%d\n", mem_addr, async);
+  if (l_async) 
+      err = ld_->hipFreeAsync(hipmem, stream);
+  else
+      err = ld_->hipFree(hipmem);
+  _hiperror(err);
+  if (err != hipSuccess){
+    platform_obj()->IncrementErrorCount();
+    return IRIS_ERROR;
+  }
+  return IRIS_SUCCESS;
+}
 int DeviceHIP::MemFree(BaseMem *mem, void* mem_addr) {
   void* hipmem = mem_addr;
   int stream = mem->recommended_stream(devno());
@@ -549,14 +595,14 @@ void DeviceHIP::MemCpy3D(void * dev, uint8_t *host, size_t *off,
     size_t dev_slice_pitch = dev_sizes[1] * dev_row_pitch;
     uint8_t *host_start = host + off[0]*elem_size + off[1] * host_row_pitch + off[2] * host_slice_pitch;
     size_t dev_off[3] = {  0, 0, 0 };
-    void * dev_start = dev + dev_off[0] * elem_size + dev_off[1] * dev_row_pitch + dev_off[2] * dev_slice_pitch;
+    void * dev_start = static_cast<char*>(dev) + dev_off[0] * elem_size + dev_off[1] * dev_row_pitch + dev_off[2] * dev_slice_pitch;
     //printf("Host:%p Dest:%p\n", host_start, dev_start);
     for(size_t i=0; i<dev_sizes[2]; i++) {
         uint8_t *z_host = host_start + i * host_slice_pitch;
-        void * z_dev = dev_start + i * dev_slice_pitch;
+        void * z_dev = static_cast<char*>(dev_start) + i * dev_slice_pitch;
         for(size_t j=0; j<dev_sizes[1]; j++) {
             uint8_t *y_host = z_host + j * host_row_pitch;
-            void * d_dev = z_dev + j * dev_row_pitch;
+            void * d_dev = static_cast<char*>(z_dev) + j * dev_row_pitch;
             if (host_2_dev) {
                 //printf("(%d:%d) Host:%p Dest:%p Size:%d\n", i, j, y_host, d_dev, dev_sizes[0]);
                 if (async) {
@@ -1007,10 +1053,10 @@ int DeviceHIP::MemCpy(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t *
          kind = hipMemcpyHostToHost;
       if (async) {
           ASSERT(stream_index >= 0);
-          err = ld_->hipMemcpyAsync(dst_hipmem + dst_off0*elem_size, src_hipmem+src_off0*elem_size, tile_size0 * elem_size, kind, streams_[stream_index]);
+          err = ld_->hipMemcpyAsync(static_cast<char*>(dst_hipmem) + dst_off0*elem_size, static_cast<char*>(src_hipmem)+src_off0*elem_size, tile_size0 * elem_size, kind, streams_[stream_index]);
       }
       else {
-          err = ld_->hipMemcpy(dst_hipmem + dst_off0*elem_size, src_hipmem+src_off0*elem_size, tile_size0 * elem_size, kind);
+          err = ld_->hipMemcpy(static_cast<char*>(dst_hipmem) + dst_off0*elem_size, static_cast<char*>(src_hipmem)+src_off0*elem_size, tile_size0 * elem_size, kind);
       }
       _hiperror(err);
       if (err != hipSuccess) error_occured = true;

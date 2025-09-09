@@ -451,6 +451,25 @@ extern void iris_set_enable_profiler(int flag);
  */
 extern int iris_device_count(int* ndevs);
 
+/**@brief Creates device specific memory allocation
+ *
+ * @param devno Device number 
+ * @param size Size of memory allocation
+ * @param stream Stream pointer either it could be NULL or device specific stream pointer
+ * @param reset Reset flag (if enabled, it will set 0s in memory)
+ * @return Pointer of memory location where the device malloc is created
+ */
+extern void *iris_device_malloc(int devno, size_t size, void *stream, int reset);
+
+/**@brief Frees device specific memory 
+ *
+ * @param devno Device number 
+ * @param Pointer of memory location where the device malloc is created
+ * @param stream Stream pointer either it could be NULL or device specific stream pointer
+ * @return nothing
+ */
+extern void iris_device_free(int devno, void *mem_addr, void *stream);
+
 /**@brief Returns the number of devices
  *
  * @return This function returns an integer indicating number of devices

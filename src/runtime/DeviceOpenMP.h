@@ -16,6 +16,8 @@ public:
   void TaskPre(Task* task);
   int ResetMemory(Task *task, Command *cmd, BaseMem *mem);
   int MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset=false);
+  int MemAlloc(void** mem_addr, size_t size, void *stream_v, bool reset=false);
+  int MemFree(void* mem_addr, void *stream_v);
   int MemFree(BaseMem *mem, void* mem_addr);
   int MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag="");
   int MemD2D(Task *task, Device *src_dev, BaseMem *mem, void *dst, void *src, size_t size);

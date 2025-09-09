@@ -88,6 +88,8 @@ public:
   int DeviceSetDefault(int device);
   int DeviceGetDefault(int* device);
   int DeviceSynchronize(int ndevs, int* devices);
+  int DeviceMalloc(int devno, void **mem_addr, size_t size, void *stream, int reset);
+  int DeviceFree(int devno, void *mem_addr, void *stream);
 
   int PolicyRegister(const char* lib, const char* name, void* params);
   int RegisterCommand(int tag, int device, command_handler handler);

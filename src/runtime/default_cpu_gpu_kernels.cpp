@@ -42,7 +42,7 @@ __device__ T generate_normal_random(RNGState* state, T mean, T stddev) {
 
 template <typename T, typename RNGState>
 __device__ T generate_log_normal_random(RNGState* state, T mean, T stddev) {
-    return gpurand_log_normal(state, mean, stddev);  // Log-normal random
+    return (T) gpurand_log_normal(state, mean, stddev);  // Log-normal random
 }
 
 template <typename T>
@@ -101,7 +101,7 @@ __global__ void  iris_random_log_normal_seq_sobol_core(T *arr, unsigned long lon
     if (idx < size) {
         gpurandStateSobol32 state;
         gpurand_init(NULL, (unsigned int)idx, &state);
-        arr[idx] = generate_log_normal_random<T>(&state, p1, p2);
+        arr[idx] = (T)generate_log_normal_random<T>(&state, p1, p2);
     }
 }
 

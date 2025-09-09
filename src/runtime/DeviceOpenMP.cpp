@@ -169,6 +169,20 @@ int DeviceOpenMP::ResetMemory(Task *task, Command *cmd, BaseMem *mem)
     return IRIS_SUCCESS;
 }
 
+int DeviceOpenMP::MemAlloc(void** mem_addr, size_t size, void *stream_v, bool reset)
+{
+    void** mpmem = mem_addr;
+    if (posix_memalign(mpmem, 0x1000, size) != 0) {
+        _error("%s", "posix_memalign");
+        platform_obj()->IncrementErrorCount();
+        return IRIS_ERROR;
+    }
+    _trace("Allocated mem:%lu addr:%p, size:%lu reset:%d", mem->uid(), *mem_addr, size, reset);
+    if (reset) {
+        memset(*mpmem, 0, size);
+    }
+    return IRIS_SUCCESS;
+}
 int DeviceOpenMP::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset) {
   void** mpmem = mem_addr;
   if (posix_memalign(mpmem, 0x1000, size) != 0) {
@@ -196,6 +210,12 @@ int DeviceOpenMP::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool rese
           }
       }
   }
+  return IRIS_SUCCESS;
+}
+
+int DeviceOpenMP::MemFree(void* mem_addr, void *stream_v) {
+  void* mpmem = mem_addr;
+  if (mpmem) free(mpmem);
   return IRIS_SUCCESS;
 }
 

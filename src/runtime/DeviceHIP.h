@@ -24,6 +24,8 @@ public:
   void *GetSharedMemPtr(void* mem, size_t size);
   bool IsD2DPossible(Device *target);
   int MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset);
+  int MemAlloc(void** mem_addr, size_t size, void *stream_v, bool reset=false);
+  int MemFree(void* mem_addr, void *stream_v);
   int MemFree(BaseMem *mem, void* mem_addr);
   void MemCpy3D(void * dev, uint8_t *host, size_t *off, 
           size_t *dev_sizes, size_t *host_sizes, 

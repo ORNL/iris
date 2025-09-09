@@ -1176,6 +1176,20 @@ int Platform::DeviceSynchronize(int ndevs, int* devices) {
   task->Release();
   return IRIS_SUCCESS;
 }
+int Platform::DeviceMalloc(int devno, void **mem_addr, size_t size, void *stream, int reset)
+{
+    if (devno>= ndevs_ || devno < 0) return IRIS_ERROR;
+    Device* dev = devs_[devno];
+    dev->MemAlloc(mem_addr, size, stream, reset);
+    return IRIS_SUCCESS;
+}
+int Platform::DeviceFree(int devno, void *mem_addr, void *stream)
+{
+    if (devno>= ndevs_ || devno < 0) return IRIS_ERROR;
+    Device* dev = devs_[devno];
+    dev->MemFree(mem_addr, stream);
+    return IRIS_SUCCESS;
+}
 
 int Platform::PolicyRegister(const char* lib, const char* name, void* params) {
   return scheduler_->policies()->Register(lib, name, params);
