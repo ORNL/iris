@@ -113,7 +113,9 @@ public:
   void ExecuteMemInDMemIn(Task *task, Command* cmd, DataMem *mem);
   void ExecuteMemInDMemRegionIn(Task *task, Command* cmd, DataMemRegion *mem);
   void ExecuteMemOut(Task *task, Command* cmd);
-  void ExecuteMemFlushOut(Command* cmd);
+  void ExecuteMemFlushOut(Command* cmd, BaseMem *target_mem=NULL, Task *task=NULL);
+  bool IsConditionSatisfied(Task *task, Command *cmd, DataMem *mem);
+  void ConditionalSubmitGraphAgain(Task *task);
 #ifdef AUTO_PAR
 #ifdef AUTO_SHADOW
   void ExecuteMemFlushOutToShadow(Command* cmd);

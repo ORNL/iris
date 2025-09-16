@@ -167,6 +167,13 @@ int iris_register_policy(const char* lib, const char* name, void* params) {
   return Platform::GetPlatform()->PolicyRegister(lib, name, params);
 }
 
+void iris_task_kernel_set_condition(iris_task brs_task, iris_mem brs_mem, int flag)
+{
+    Task *task = Platform::GetPlatform()->get_task_object(brs_task);
+    BaseMem * mem = Platform::GetPlatform()->get_mem_object(brs_mem);
+    task->set_kernel_condition(mem, flag);   
+}
+
 iris_task iris_task_create_struct() {
   iris_task task;
   Platform::GetPlatform()->TaskCreate(NULL, false, &task);
@@ -1170,6 +1177,14 @@ int iris_graph_submit_with_order_and_time(iris_graph graph, int *order, double *
     Platform::GetPlatform()->TimerNow(&end_time);
     *time = end_time - st_time;
     return status;
+}
+int iris_graph_submit_again(iris_graph brs_graph, iris_mem brs_mem, int max_tries, int condition_flag)
+{
+    iris_graph_retain(brs_graph, true);
+    Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
+    BaseMem * mem = Platform::GetPlatform()->get_mem_object(brs_mem);
+    graph->set_submit_again(mem, max_tries, condition_flag);
+    return IRIS_SUCCESS;
 }
 int iris_graph_wait_all(int ngraphs, iris_graph* graphs) {
   return Platform::GetPlatform()->GraphWaitAll(ngraphs, graphs);

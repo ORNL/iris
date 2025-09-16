@@ -390,6 +390,35 @@ int Device::GetStream(Task *task, BaseMem *mem, bool new_stream) {
     return stream;
 }
 
+bool Device::IsConditionSatisfied(Task *task, Command *cmd, DataMem *mem)
+{
+    ExecuteMemFlushOut(cmd, mem, task);
+    bool condition_flag = cmd->condition_flag();
+    bool *host = (bool *)mem->host_ptr();
+    if (host == NULL) return true;
+    return (condition_flag == *host);
+}
+void Device::ConditionalSubmitGraphAgain(Task *task)
+{
+    if (task->submit_graph_again() && task->graph() != NULL) {
+        Graph *graph = task->graph();
+        bool condition_flag = graph->condition_flag();
+        DataMem *condition_mem = (DataMem *)graph->condition_mem();
+        ExecuteMemFlushOut(NULL, condition_mem, task);
+        bool *host = (bool *)condition_mem->host_ptr();
+        bool host_data = true; 
+        if (host != NULL) host_data = *host;
+        bool condition_satisfied = (host_data == condition_flag);
+        int max_tries = graph->submit_max_tries();
+        int index = graph->submit_index()+1;
+        bool is_with_in_index = (max_tries == -1) ? true : (index < max_tries);
+        if (condition_satisfied && is_with_in_index) {
+            platform_obj_->GraphSubmit(graph, iris_default, 0); 
+            graph->submit_index_increment();
+        }
+    }
+}
+
 void Device::Execute(Task* task) {
   //TODO: Clear the proile event created here
   _event_debug("Inside device execute and calling free destroy events %lu:%s %lf\n", task->uid(), task->name(), timer_->Now());
@@ -424,14 +453,22 @@ void Device::Execute(Task* task) {
       }
   }
   HandleHiddenDMemIns(task);
+  bool is_kernel_skipped = false;
   for (int i = 0; i < task->ncmds(); i++) {
     //printf("Inside device cmd:%d execute and calling free destroy events %lu:%s %lf\n", i, task->uid(), task->name(), timer_->Now());
     Command* cmd = task->cmd(i);
+    DataMem *condition_mem = (DataMem *)cmd->condition_mem();
     if (hook_command_pre_) hook_command_pre_(cmd);
     cmd->set_time_start(timer_);
     switch (cmd->type()) {
       case IRIS_CMD_INIT:         ExecuteInit(cmd);       break;
       case IRIS_CMD_KERNEL:       {
+                                      if (condition_mem != NULL && 
+                                              !IsConditionSatisfied(task, cmd, 
+                                                  condition_mem)) {
+                                          is_kernel_skipped = true;
+                                          break;
+                                      }
                                       ExecuteMemIn(task, cmd);
                                       ExecuteKernel(cmd);     
                                       ExecuteMemOut(task, cmd);
@@ -470,12 +507,16 @@ void Device::Execute(Task* task) {
   }
   HandleHiddenDMemOuts(task);
   task->update_status(IRIS_SUBMITTED);
-  if (platform_obj_->is_event_profile_enabled()) {
+  bool disable_profile = false;
+  if (task->ncmds() == 1 && is_kernel_skipped) 
+      disable_profile = true;
+  task->set_disable_profiling(disable_profile);
+  if (platform_obj_->is_event_profile_enabled() && !disable_profile) {
       double execute_end = (timer_->Now()-first_event_cpu_mid_point_time())*1000.0;
       task->CreateProfileEvent(task, devno(), PROFILE_INIT, this, (float)execute_start, (float)execute_end);
   }
   if (is_async(task) && task->user()) AddCallback(task);
-  if (!is_async(task) || !task->user()) 
+  if ((!is_async(task) || !task->user())  && !disable_profile)
 	  task->set_time_end(timer_);
   _debug2("Task %s:%lu refcnt:%d\n", task->name(), task->uid(), task->ref_cnt());
   TaskPost(task);
@@ -483,7 +524,11 @@ void Device::Execute(Task* task) {
   if (!task->system()) _trace("task[%lu:%s] complete dev[%d][%s] time[%lf] end:[%lf]", task->uid(), task->name(), devno(), name(), task->time(), task->time_end());
   _debug2("Task %s:%lu refcnt:%d\n", task->name(), task->uid(), task->ref_cnt());
   if (task->cmd_kernel() != NULL) ProactiveTransfers(task, task->cmd_kernel());
-  if (!is_async(task) || !task->user()) { FreeActiveTask(); task->Complete(); }
+  if (!is_async(task) || !task->user()) { 
+      FreeActiveTask(); 
+      task->Complete(); 
+      ConditionalSubmitGraphAgain(task);
+  }
   busy_ = false;
 }
 
@@ -515,6 +560,7 @@ void Device::Callback(void *stream, int status, void* data) {
   _event_prof_debug(" ------ Just before completed task stream_ptr:%p task:%p:%s:%lu status:%d data:%p\n", stream, task, tname.c_str(), uid, status, data);
   _event_debug(" ------ Just before completed task stream_ptr:%p task:%p:%s:%lu status:%d data:%p\n", stream, task, tname.c_str(), uid, status, data);
   task->Complete();
+  task->dev()->ConditionalSubmitGraphAgain(task);
   _event_prof_debug(" ------ Completed and Safe return from callback task stream_ptr:%p task:%p:%s:%lu status:%d data:%p\n", stream, task, tname.c_str(), uid, status, data);
 }
 void Device::ResolveDeviceWrite(Task *task, BaseMem *mem, Device *input_dev, bool instant_wait, BaseMem *src_mem)
@@ -2132,15 +2178,19 @@ void Device::ExecuteMemOut(Task *task, Command* cmd) {
         }
     }
 }
-void Device::ExecuteMemFlushOut(Command* cmd) {
+void Device::ExecuteMemFlushOut(Command* cmd, BaseMem *target_mem, Task *task) {
     int nddevs[IRIS_MAX_NDEVS+1];
-    BaseMem* bmem = (BaseMem *)cmd->mem();
+    if (target_mem == NULL)
+        target_mem = cmd->mem();
+    if (task == NULL)
+        task = cmd->task();
+    BaseMem* bmem = (BaseMem *)target_mem;
     if (bmem->GetMemHandlerType() != IRIS_DMEM &&
         bmem->GetMemHandlerType() != IRIS_DMEM_REGION) {
-        _error("Flush out is called for unsupported memory handler task:%ld:%s\n", cmd->task()->uid(), cmd->task()->name());
+        _error("Flush out is called for unsupported memory handler task:%ld:%s\n", task->uid(), task->name());
         return;
     }
-    DataMem* mem = (DataMem *)cmd->mem();
+    DataMem* mem = (DataMem *)target_mem;
 	//_printf("Inside flush of mem: %lu\n", mem->uid());
     //if (mem->get_source_mem() != NULL) mem = (DataMem*)mem->get_source_mem();
     //mem->Print("Flush out:");
@@ -2149,12 +2199,11 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
         //printf("Pointer offset mem:%lu %lu, gws %lu lws %lu elem_size %lu dim %d size %lu host:%p\n", 
         //    mem->uid(), *ptr_off, *gws, *lws, elem_size, dim, size, host);
         bool update_host_flag = true;
-        if (cmd->host() != NULL) {
+        if (cmd != NULL && cmd->host() != NULL) {
             update_host_flag = false;
             host = cmd->host();
         }
         double start = timer_->Now();
-        Task *task = cmd->task();
         bool async = is_async(task);
         Device *src_dev = this;
         //mem->Print("BringDataToHost: ");
@@ -2195,7 +2244,7 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
             mem->clear_host_dirty();
         double end = timer_->Now();
         double d2htime = end - start;
-        Command* cmd_kernel = cmd->task()->cmd_kernel();
+        Command* cmd_kernel = task->cmd_kernel();
         size_t size = mem->size();
         if (cmd_kernel) cmd_kernel->kernel()->history()->AddD2H(cmd_kernel, src_dev, d2htime, size);
         else Platform::GetPlatform()->null_kernel()->history()->AddD2H(cmd, this, d2htime, size);
@@ -2204,14 +2253,14 @@ void Device::ExecuteMemFlushOut(Command* cmd) {
         }
         if (!async && Platform::GetPlatform()->is_scheduling_history_enabled()){
           //TODO: clean up
-          string cmd_name = "Internal-D2H(" + string(cmd->task()->name()) + ")-from-" + to_string(src_dev->devno());// + "-to-" + string(this->name());
-          cmd->task()->set_dev(src_dev);
+          string cmd_name = "Internal-D2H(" + string(task->name()) + ")-from-" + to_string(src_dev->devno());// + "-to-" + string(this->name());
+          task->set_dev(src_dev);
           Platform::GetPlatform()->scheduling_history()->Add(cmd, cmd_name, "MemFlushOut", start,end);
         }
 
     }
     else {
-        _trace("MemFlushout is skipped as host already having valid data for task:%ld:%s\n", cmd->task()->uid(), cmd->task()->name());
+        _trace("MemFlushout is skipped as host already having valid data for task:%ld:%s\n", task->uid(), task->name());
     }
 }
 #ifdef AUTO_PAR

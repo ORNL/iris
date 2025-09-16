@@ -31,11 +31,17 @@ Graph::Graph(Platform* platform) {
   platform_ = platform;
   retain_tasks_ = false;
   graph_metadata_ = nullptr;
+  condition_mem_ = NULL;
+  condition_flag_ = true;
+  submit_again_ = false;
+  submit_max_tries_ = -1;
+  submit_index_ = 0;
   scheduler_ = NULL;
   if (platform) scheduler_ = platform_->scheduler();
   status_ = IRIS_NONE;
 
   end_ = Task::Create(platform_, IRIS_TASK_PERM, "Graph");
+  end_->set_graph(this);
   end_brs_task_ = *(end_->struct_obj());
   tasks_.push_back(end_);
 
@@ -50,6 +56,14 @@ Graph::Graph(Platform* platform) {
 
   set_object_track(platform_->graph_track_ptr());
   platform_->graph_track().TrackObject(this, uid());
+}
+void Graph::set_submit_again(BaseMem *mem, int max_tries, bool condition_flag) {
+  condition_mem_ = mem;
+  condition_flag_ = condition_flag;
+  submit_again_ = true;
+  submit_index_ = 0;
+  submit_max_tries_ = max_tries;
+  end_->set_submit_graph_again(true);
 }
 
 void Graph::enable_retainable() 
@@ -139,11 +153,7 @@ void Graph::AddTask(Task* task, unsigned long uid) {
 #endif
 
 
-#ifdef AUTO_PAR
-#ifdef AUTO_FLUSH
   task->set_graph(this);
-#endif
-#endif
 }
 
 void Graph::Submit() {

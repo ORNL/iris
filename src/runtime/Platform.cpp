@@ -2187,8 +2187,7 @@ int Platform::GraphRetain(iris_graph brs_graph, bool flag) {
   return IRIS_SUCCESS;
 }
 
-int Platform::GraphSubmit(iris_graph brs_graph, int brs_policy, int sync) {
-  Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
+int Platform::GraphSubmit(Graph *graph, int brs_policy, int sync) {
   if (graph == NULL) { if (sync) return Synchronize(); else return IRIS_SUCCESS; }
   graph->Retain();
   std::vector<Task*>* tasks = graph->tasks();
@@ -2230,7 +2229,10 @@ int Platform::GraphSubmit(iris_graph brs_graph, int brs_policy, int sync) {
 #endif
   return IRIS_SUCCESS;
 }
-
+int Platform::GraphSubmit(iris_graph brs_graph, int brs_policy, int sync) {
+  Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
+  return GraphSubmit(graph, brs_policy, sync);
+}
 int Platform::GraphSubmit(iris_graph brs_graph, int *order, int brs_policy, int sync) {
   Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
   if (graph == NULL) { if (sync) return Synchronize(); else return IRIS_SUCCESS; }

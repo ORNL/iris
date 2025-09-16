@@ -52,6 +52,8 @@ void Command::Clear(bool init) {
   task_ = NULL;
   mem_ = NULL;
   dst_mem_ = NULL;
+  condition_mem_ = NULL;
+  condition_flag_ = true;
   platform_ = NULL;
   kernel_args_ = NULL;
   polymems_ = NULL;

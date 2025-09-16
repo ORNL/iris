@@ -654,6 +654,16 @@ extern int iris_kernel_setmem_off(iris_kernel kernel, int idx, iris_mem mem, siz
  */
 extern int iris_kernel_release(iris_kernel kernel);
 
+/**@brief Sets a task name
+ *
+ * This function Sets a task name
+ *
+ * @param brs_task task object
+ * @param brs_mem DMEM object (bool type where condition is present)
+ * @param flag the last task kernel will be executed if flag == brs_mem[0]
+ * @param name name of the task
+ */
+extern void iris_task_kernel_set_condition(iris_task brs_task, iris_mem brs_mem, int flag);
 
 /**@brief Creates a new task.
  *
@@ -1881,6 +1891,16 @@ extern int iris_graph_wait(iris_graph graph);
   * @return This functions return an error value. IRIS_SUCCESS, IRIS_ERROR
   */
 extern int iris_graph_wait_all(int ngraphs, iris_graph* graphs);
+
+/**@brief Submit the graph agaain and again some condition is met
+  *
+  * @param graph iris_graph (IRIS Graph) object
+  * @param mem iris_mem (IRIS DMEM) boolean object of array size of 1
+  * @param max_tries integer to indicate maximum number of tries. -1 indicates unlimited until condition is satisfied
+  * @param condition_Flag flag to be equal with iris_mem (mem) object to call graph again
+  * @return This functions return an error value. IRIS_SUCCESS, IRIS_ERROR
+  */
+extern int iris_graph_submit_again(iris_graph graph, iris_mem mem, int max_tries, int condition_flag);
 
 /**@brief Start recording task graph to generate JSON graph
   *

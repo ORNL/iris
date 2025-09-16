@@ -31,6 +31,7 @@ class Scheduler;
 class Graph;
 class AutoDAG;
 class Device; 
+class BaseMem;
 
 enum ProfileRecordType 
 { 
@@ -137,6 +138,7 @@ public:
   void set_user(bool flag=true) { user_ = flag; }
   bool disable_consistency() { return disable_consistency_; }
   bool set_disable_consistency(bool flag=true) { return disable_consistency_ = flag; }
+  void set_disable_profiling(bool flag=true) { disable_profiling_ = flag; }
   bool system() { return system_; }
   void set_system() { system_ = true; }
   bool marker() { return type_ == IRIS_MARKER; }
@@ -234,15 +236,17 @@ public:
   int nchilds() { return nchilds_; }
   void AddChild(unsigned long uid);
   void AddAllChilds();
- 
+  Graph* get_graph(){return graph_;}
+  Graph* graph(){return graph_;}
+  void set_graph(Graph* graph){ graph_ = graph; }
+  bool submit_graph_again() { return submit_graph_again_; }
+  void set_submit_graph_again(bool flag) { submit_graph_again_ = flag; }
 #ifdef AUTO_PAR
   std::vector<BaseMem*>* get_write_list() { return &write_list_; }
   std::vector<BaseMem*>* get_read_list() { return &read_list_; }
   void add_to_read_list(BaseMem* mem) { read_list_.push_back(mem); }
   void add_to_write_list(BaseMem* mem) { write_list_.push_back(mem); }
 #ifdef AUTO_FLUSH
-  Graph* get_graph(){return graph_;}
-  void set_graph(Graph* graph){graph_ = graph;}
   //void EraseDepend();
   void ReplaceDependFlushTask(Task * task);
 #endif
@@ -279,12 +283,11 @@ private:
   Scheduler* scheduler_;
   std::vector<Task*> subtasks_;
   std::vector<Command *> reset_mems_;
+  Graph* graph_;
+  bool submit_graph_again_;
 #ifdef AUTO_PAR
   std::vector<BaseMem*> write_list_;
   std::vector<BaseMem*> read_list_;
-#ifdef AUTO_FLUSH
-  Graph* graph_;
-#endif
 #ifdef AUTO_SHADOW
   bool shadow_dep_added_;
 #endif
@@ -318,6 +321,7 @@ private:
   bool user_;
   bool system_;
   bool disable_consistency_;
+  bool disable_profiling_;
   bool internal_memory_transfer_;
   bool is_kernel_launch_disabled_;
   bool profile_data_transfers_;
@@ -366,6 +370,7 @@ public:
   bool IsKernelSupported(Device *dev);
   int last_cmd_stream_;
   Device *last_cmd_device_;
+  void set_kernel_condition(BaseMem *mem, bool flag);
   void set_enable_julia_if() { enable_julia_if_ = true; }
   bool enable_julia_if() { return enable_julia_if_; }
   bool enable_julia_if_;

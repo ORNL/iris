@@ -184,6 +184,7 @@ public:
   int GraphFree(iris_graph brs_graph);
   int GraphCreateJSON(const char* json, void** params,  iris_graph* brs_graph);
   int GraphTask(iris_graph brs_graph, iris_task brs_task, int brs_policy, const char* opt);
+  int GraphSubmit(Graph *graph, int brs_policy, int sync);
   int GraphSubmit(iris_graph brs_graph, int brs_policy, int sync);
   int GraphRetain(iris_graph brs_graph, bool flag);
   int GraphSubmit(iris_graph brs_graph, int *order, int brs_policy, int sync);

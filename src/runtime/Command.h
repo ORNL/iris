@@ -78,6 +78,9 @@ public:
   DataMem* datamem() { return (DataMem *)mem_; }
   Mem* mem() { return (Mem *)mem_; }
   DataMem* dst_mem() { return (DataMem *)dst_mem_; }
+  BaseMem* condition_mem() { return (BaseMem *)condition_mem_; }
+  bool condition_flag() { return condition_flag_; }
+  void set_condition_mem(BaseMem *mem, bool flag) { condition_mem_ = mem; condition_flag_ = flag; }
   Task* task() { return task_; }
   bool last() { return last_; }
   void set_last() { last_ = true; }
@@ -135,6 +138,8 @@ private:
   Kernel* kernel_;
   BaseMem* mem_;
   BaseMem* dst_mem_;
+  BaseMem* condition_mem_;
+  bool condition_flag_;
   Task* task_;
   Platform* platform_;
   double time_;

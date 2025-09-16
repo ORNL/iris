@@ -64,6 +64,7 @@ Task::Task(Platform* platform, int type, const char* name, int max_cmds) {
   max_cmds_ = (max_cmds < IRIS_TASK_MAX_CMDS) ? IRIS_TASK_MAX_CMDS : max_cmds;
   ncmds_ = 0;
   disable_consistency_ = false;
+  disable_profiling_ = false;
   //cmds_ = new Command *[max_cmds_];
   cmd_kernel_ = NULL;
   cmd_last_ = NULL;
@@ -110,10 +111,9 @@ Task::Task(Platform* platform, int type, const char* name, int max_cmds) {
   pthread_mutex_init(&mutex_subtasks_, NULL);
   //pthread_cond_init(&complete_cond_, NULL);
   brs_policy_ = iris_default;
-#ifdef AUTO_PAR
-#ifdef AUTO_FLUSH
   graph_ = NULL;
-#endif
+  submit_graph_again_ = false;
+#ifdef AUTO_PAR
 #ifdef AUTO_SHADOW
   shadow_dep_added_ = false;
 #endif
@@ -345,6 +345,18 @@ void Task::set_pending() {
     }
 }
 
+void Task::set_kernel_condition(BaseMem *mem, bool flag)
+{
+    // Apply it to last kernel command
+    for (int i = ncmds_-1; i >=0 ; i--) {
+        Command* cmd = cmds_[i];
+        if (cmd->type_kernel()) {
+            cmd->set_condition_mem(mem, flag);
+            break;
+        }
+    }
+}
+
 void Task::Complete() {
   _debug2(" task:%lu:%s is completed ref_cnt:%d", uid(), name(), ref_cnt());
   _event_debug(" task:%lu:%s is completed ref_cnt:%d", uid(), name(), ref_cnt());
@@ -360,7 +372,7 @@ void Task::Complete() {
   //pthread_cond_broadcast(&complete_cond_);
   //pthread_mutex_unlock(&mutex_complete_);
   //printf("calling profile events\n");
-  if (user_) platform_->ProfileCompletedTask(this);
+  if (user_ && !disable_profiling_) platform_->ProfileCompletedTask(this);
   // For task with subtasks, the parent task is not in any worker queue. 
   // However, it has to call the completion of parent task each time.
   // Parent marker task was never go through Worker::Execute.
