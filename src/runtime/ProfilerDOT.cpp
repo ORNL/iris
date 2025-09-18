@@ -125,7 +125,14 @@ int ProfilerDOT::CompleteTask(Task* task) {
   }
   return IRIS_SUCCESS;
 }
-
+void ProfilerDOT::AddLoopDependency(unsigned long st_id, std::vector<unsigned long> dest_tasks)
+{
+    char s[64];
+    for(unsigned long st_task : dest_tasks) {
+        sprintf(s, "task%lu -> task%lu\n", st_id, st_task);
+        Write(s);
+    }
+}
 const char* ProfilerDOT::FileExtension() {
   return "dot";
 }

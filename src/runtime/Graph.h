@@ -31,6 +31,8 @@ public:
   void Complete();
   void Wait();
   void ResetMemories();
+  void AddGraphStartTask(std::vector<unsigned long> & start_tasks);
+  void AddProfileStartDependencies();
 
   int enable_mem_profiling();
   Platform* platform() { return platform_; }
@@ -39,6 +41,8 @@ public:
   std::vector<Task*> formatted_tasks();
   int iris_tasks(iris_task *pv);
   void set_submit_again(BaseMem *mem, int max_tries=-1, bool condition_flag=true);
+  void set_brs_policy(int policy) { brs_policy_ = policy; }
+  int brs_policy() { return brs_policy_; }
   BaseMem *condition_mem() { return condition_mem_; }
   bool condition_flag() { return condition_flag_; }
   bool submit_again() { return submit_again_; }
@@ -56,6 +60,7 @@ private:
   Platform* platform_;
   Scheduler* scheduler_;
   std::vector<Task*> tasks_;
+  map<unsigned long, Task *> task_uid_hash_;
 
   //Task* start_;
   Task* end_;
@@ -63,6 +68,7 @@ private:
 
   bool retain_tasks_;
   int status_;
+  int brs_policy_;
   
   pthread_mutex_t mutex_complete_;
   pthread_cond_t complete_cond_;

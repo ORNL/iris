@@ -17,6 +17,7 @@ public:
   virtual ~ProfilerDOT();
 
   virtual int CompleteTask(Task* task);
+  virtual void AddLoopDependency(unsigned long st_id, std::vector<unsigned long> dest_tasks);
 
 protected:
   virtual int Main();

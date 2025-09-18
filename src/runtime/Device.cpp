@@ -398,7 +398,7 @@ bool Device::IsConditionSatisfied(Task *task, Command *cmd, DataMem *mem)
     if (host == NULL) return true;
     return (condition_flag == *host);
 }
-void Device::ConditionalSubmitGraphAgain(Task *task)
+bool Device::IsConditionalSubmitGraphAgain(Task *task)
 {
     if (task->submit_graph_again() && task->graph() != NULL) {
         Graph *graph = task->graph();
@@ -413,10 +413,10 @@ void Device::ConditionalSubmitGraphAgain(Task *task)
         int index = graph->submit_index()+1;
         bool is_with_in_index = (max_tries == -1) ? true : (index < max_tries);
         if (condition_satisfied && is_with_in_index) {
-            platform_obj_->GraphSubmit(graph, iris_default, 0); 
-            graph->submit_index_increment();
+            return true;
         }
     }
+    return false;
 }
 
 void Device::Execute(Task* task) {
@@ -526,8 +526,15 @@ void Device::Execute(Task* task) {
   if (task->cmd_kernel() != NULL) ProactiveTransfers(task, task->cmd_kernel());
   if (!is_async(task) || !task->user()) { 
       FreeActiveTask(); 
-      task->Complete(); 
-      ConditionalSubmitGraphAgain(task);
+      bool cond = IsConditionalSubmitGraphAgain(task);
+      if (cond) {
+          Graph *graph = task->graph();
+          graph->AddProfileStartDependencies();
+          platform_obj_->GraphSubmit(graph, graph->brs_policy(), 0); 
+          graph->submit_index_increment(); 
+      } else {
+          task->Complete(); 
+      }
   }
   busy_ = false;
 }
@@ -559,8 +566,16 @@ void Device::Callback(void *stream, int status, void* data) {
   task->dev()->FreeActiveTask();
   _event_prof_debug(" ------ Just before completed task stream_ptr:%p task:%p:%s:%lu status:%d data:%p\n", stream, task, tname.c_str(), uid, status, data);
   _event_debug(" ------ Just before completed task stream_ptr:%p task:%p:%s:%lu status:%d data:%p\n", stream, task, tname.c_str(), uid, status, data);
-  task->Complete();
-  task->dev()->ConditionalSubmitGraphAgain(task);
+  bool cond = task->dev()->IsConditionalSubmitGraphAgain(task);
+  if (cond) {
+      Graph *graph = task->graph();
+      graph->AddProfileStartDependencies();
+      task->dev()->platform_obj_->GraphSubmit(graph, graph->brs_policy(), 0); 
+      graph->submit_index_increment(); 
+  } 
+  else {
+      task->Complete();
+  }
   _event_prof_debug(" ------ Completed and Safe return from callback task stream_ptr:%p task:%p:%s:%lu status:%d data:%p\n", stream, task, tname.c_str(), uid, status, data);
 }
 void Device::ResolveDeviceWrite(Task *task, BaseMem *mem, Device *input_dev, bool instant_wait, BaseMem *src_mem)

@@ -1190,6 +1190,12 @@ int iris_graph_wait_all(int ngraphs, iris_graph* graphs) {
   return Platform::GetPlatform()->GraphWaitAll(ngraphs, graphs);
 }
 
+iris_task iris_graph_end_task(iris_graph brs_graph) {
+  Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
+  Task *end = graph->end();
+  return *(end->struct_obj());
+}
+
 int iris_graph_free(iris_graph brs_graph) {
   return Platform::GetPlatform()->GraphFree(brs_graph);
 }

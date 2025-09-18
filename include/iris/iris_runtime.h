@@ -1788,6 +1788,13 @@ extern int iris_graph_create_null(iris_graph* graph);
  */
 extern int iris_is_graph_null(iris_graph graph);
 
+/**@brief Get IRIS graph end task
+ *
+ * @param graph graph object
+ * @return This function returns an iris_task object 
+ */
+extern iris_task iris_graph_end_task(iris_graph graph);
+
 /**@brief Frees a graph
  *
  * @param graph graph object

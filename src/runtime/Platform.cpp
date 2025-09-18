@@ -1649,6 +1649,13 @@ void Platform::ProfileCompletedTask(Task *task)
     }
 }
 
+void Platform::AddLoopDependency(Task *task, unsigned long st_id, std::vector<unsigned long> end_ids)
+{
+    if (!task->marker()){
+        for (int i = 0; i < nprofilers_; i++) profilers_[i]->AddLoopDependency(st_id, end_ids);
+    }
+}
+
 void Platform::IncrementErrorCount(){
   nfailures_++;
 }
@@ -2190,6 +2197,7 @@ int Platform::GraphRetain(iris_graph brs_graph, bool flag) {
 int Platform::GraphSubmit(Graph *graph, int brs_policy, int sync) {
   if (graph == NULL) { if (sync) return Synchronize(); else return IRIS_SUCCESS; }
   graph->Retain();
+  graph->set_brs_policy(brs_policy);
   std::vector<Task*>* tasks = graph->tasks();
   //graph->RecordStartTime(devs_[0]->Now());
   for (std::vector<Task*>::iterator I = tasks->begin(), E = tasks->end(); I != E; ++I) {
@@ -2237,6 +2245,7 @@ int Platform::GraphSubmit(iris_graph brs_graph, int *order, int brs_policy, int 
   Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
   if (graph == NULL) { if (sync) return Synchronize(); else return IRIS_SUCCESS; }
   graph->Retain();
+  graph->set_brs_policy(brs_policy);
   std::vector<Task*> & tasks = graph->tasks_list();
   //graph->RecordStartTime(devs_[0]->Now());
   for(size_t i=0; i<tasks.size(); i++) {

@@ -290,6 +290,7 @@ public:
   bool is_kernel_launch_disabled() { return disable_kernel_launch_; }
   void set_kernel_launch_disabled(bool flag) { disable_kernel_launch_ = flag; }
   void ProfileCompletedTask(Task *task); 
+  void AddLoopDependency(Task *task, unsigned long st_id, std::vector<unsigned long> end_ids);
   hook_task hook_task_pre() { return hook_task_pre_; }
   hook_task hook_task_post() { return hook_task_post_; }
   hook_command hook_command_pre() { return hook_command_pre_; }

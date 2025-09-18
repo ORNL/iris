@@ -37,10 +37,11 @@ Graph::Graph(Platform* platform) {
   submit_max_tries_ = -1;
   submit_index_ = 0;
   scheduler_ = NULL;
+  brs_policy_ = iris_default;
   if (platform) scheduler_ = platform_->scheduler();
   status_ = IRIS_NONE;
 
-  end_ = Task::Create(platform_, IRIS_TASK_PERM, "Graph");
+  end_ = Task::Create(platform_, IRIS_TASK_PERM, "GraphSync");
   end_->set_graph(this);
   end_brs_task_ = *(end_->struct_obj());
   tasks_.push_back(end_);
@@ -105,6 +106,7 @@ Graph::~Graph() {
         task->ForceRelease();
   }
 #endif
+  task_uid_hash_.clear();
   _trace("graph released");
 }
 void Graph::GraphRelease(void *data) {
@@ -137,6 +139,8 @@ void Graph::AddTask(Task* task, unsigned long uid) {
       //printf("Graph:%lu Retaining Task:%lu:%s Is retainable:%d task->release:%d ref_cnt:%d\n", this->uid(), task->uid(), task->name(), is_retainable(), task->IsRelease(), task->ref_cnt());
   }
   tasks_.push_back(task);
+  if (submit_again_)
+    task_uid_hash_[task->uid()] = task;
 
 #ifdef AUTO_PAR
 #ifdef IGNORE_MANUAL
@@ -156,6 +160,30 @@ void Graph::AddTask(Task* task, unsigned long uid) {
   task->set_graph(this);
 }
 
+void Graph::AddGraphStartTask(std::vector<unsigned long> & start_tasks)
+{
+    for(size_t i=1; i<tasks_.size(); i++) {
+        Task *task = tasks_[i];
+        unsigned long *deps = task->depends();
+        int ndepends = task->ndepends();
+        bool intermediate_node = false;
+        for (int j = 0; j < ndepends; j++) {
+            unsigned long duid = deps[j];
+            if (task_uid_hash_.find(duid) != task_uid_hash_.end()) {
+                intermediate_node = true; break;
+            }
+        }
+        if (!intermediate_node) {
+            start_tasks.push_back(task->uid());
+        }
+    }
+}
+void Graph::AddProfileStartDependencies()
+{
+    std::vector<unsigned long> start_tasks;
+    AddGraphStartTask(start_tasks);
+    platform_->AddLoopDependency(end_, end_->uid(), start_tasks);
+}
 void Graph::Submit() {
   status_ = IRIS_SUBMITTED;
 }
