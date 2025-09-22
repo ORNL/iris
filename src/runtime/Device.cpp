@@ -505,23 +505,29 @@ void Device::Execute(Task* task) {
     cmd->set_time_end(timer_);
     if (hook_command_post_) hook_command_post_(cmd);
   }
+  _trace("Task %s:%lu time now:%lf\n", task->name(), task->uid(), timer_->Now());
   HandleHiddenDMemOuts(task);
+  _trace("Task %s:%lu time now:%lf\n", task->name(), task->uid(), timer_->Now());
   task->update_status(IRIS_SUBMITTED);
   bool disable_profile = false;
   if (task->ncmds() == 1 && is_kernel_skipped) 
       disable_profile = true;
+  _trace("Task %s:%lu time now:%lf\n", task->name(), task->uid(), timer_->Now());
   task->set_disable_profiling(disable_profile);
   if (platform_obj_->is_event_profile_enabled() && !disable_profile) {
       double execute_end = (timer_->Now()-first_event_cpu_mid_point_time())*1000.0;
       task->CreateProfileEvent(task, devno(), PROFILE_INIT, this, (float)execute_start, (float)execute_end);
   }
+  _trace("Task %s:%lu time now:%lf\n", task->name(), task->uid(), timer_->Now());
   if (is_async(task) && task->user()) AddCallback(task);
   if ((!is_async(task) || !task->user())  && !disable_profile)
 	  task->set_time_end(timer_);
+  _trace("Task %s:%lu time now:%lf\n", task->name(), task->uid(), timer_->Now());
   _debug2("Task %s:%lu refcnt:%d\n", task->name(), task->uid(), task->ref_cnt());
   TaskPost(task);
   if (hook_task_post_) hook_task_post_(task);
-  if (!task->system()) _trace("task[%lu:%s] complete dev[%d][%s] time[%lf] end:[%lf]", task->uid(), task->name(), devno(), name(), task->time(), task->time_end());
+  if (!task->system()) _trace("task[%lu:%s] complete dev[%d][%s] time[%lf] now[%lf] end:[%lf]", task->uid(), task->name(), devno(), name(), task->time(), timer_->Now(), task->time_end());
+  _trace("Task %s:%lu time now:%lf\n", task->name(), task->uid(), timer_->Now());
   _debug2("Task %s:%lu refcnt:%d\n", task->name(), task->uid(), task->ref_cnt());
   if (task->cmd_kernel() != NULL) ProactiveTransfers(task, task->cmd_kernel());
   if (!is_async(task) || !task->user()) { 
@@ -564,8 +570,8 @@ void Device::Callback(void *stream, int status, void* data) {
   string tname = task->name();
   task->set_time_end(task->dev()->timer());
   task->dev()->FreeActiveTask();
-  _event_prof_debug(" ------ Just before completed task stream_ptr:%p task:%p:%s:%lu status:%d data:%p\n", stream, task, tname.c_str(), uid, status, data);
-  _event_debug(" ------ Just before completed task stream_ptr:%p task:%p:%s:%lu status:%d data:%p\n", stream, task, tname.c_str(), uid, status, data);
+  _event_prof_debug(" ------ Just before completed task stream_ptr:%p task:%p:%s:%lu time[%lf] now:[%lf] status:%d data:%p\n", stream, task, tname.c_str(), uid, task->time_end(), task->dev()->timer_->Now(), status, data);
+  _event_debug(" ------ Just before completed task stream_ptr:%p task:%p:%s:%lu time[%lf] now:[%lf] status:%d data:%p\n", stream, task, tname.c_str(), uid, task->time_end(), task->dev()->timer_->Now(), status, data);
   bool cond = task->dev()->IsConditionalSubmitGraphAgain(task);
   if (cond) {
       Graph *graph = task->graph();

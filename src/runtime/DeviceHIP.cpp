@@ -1085,7 +1085,7 @@ int DeviceHIP::MemCpy(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t *
       _error(" %s couldn't handle the dim:%d tile copy for DMEM dev[%d][%s] task[%ld:%s] elem_size:%lu mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] src_size:%s dst_size:%s src_off:%s dst_off:%s src_strides:%s dst_strides:%s tile_size:%s [%d]", tag, dim, devno_, name_, task->uid(), task->name(), elem_size, mem->uid(), dst, src, src_size_str.c_str(), dst_size_str.c_str(), src_off_str.c_str(), dst_off_str.c_str(), src_strides_str.c_str(), dst_strides_str.c_str(), tile_size_str.c_str(), stream_index);
       Utils::PrintStackTrace();
   }
-  _trace("dev[%d][%s] task[%ld:%s] elem_size:%lu mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] size[%lu] q[%d]", devno_, name_, task->uid(), task->name(), elem_size, mem->uid(), dst, src, size, stream_index);
+  _trace("dev[%d][%s] task[%ld:%s] elem_size:%lu mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] size[%lu] q[%d]", devno_, name_, task->uid(), task->name(), elem_size, mem->uid(), dst, src, mem->size(), stream_index);
   if (error_occured) {
   _event_debug("Error dev[%d][%s] task[%ld:%s] mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] size[%lu] q[%d]", devno_, name_, task->uid(), task->name(), mem->uid(), dst, src, mem->size(), stream_index);
   }

@@ -612,8 +612,8 @@ int DeviceCUDA::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset)
     platform_obj()->IncrementErrorCount();
     return IRIS_ERROR;
   }
-  _event_debug("CUDA MemAlloc dev:%d:%s mem:%lu size:%zu ptr:%p async:%d stream:%d\n", devno_, name_, mem->uid(), size, (void *)*cumem, async, stream);
-  _trace("CUDA MemAlloc dev:%d:%s mem:%lu size:%zu ptr:%p async:%d stream:%d\n", devno_, name_, mem->uid(), size, (void *)*cumem, async, stream);
+  _event_debug("CUDA MemAlloc dev:%d:%s mem:%lu size:%zu ptr:%p async:%d l_async:%d stream:%d\n", devno_, name_, mem->uid(), size, (void *)*cumem, async, l_async, stream);
+  _trace("CUDA MemAlloc dev:%d:%s mem:%lu size:%zu ptr:%p async:%d l_async:%d stream:%d\n", devno_, name_, mem->uid(), size, (void *)*cumem, async, l_async, stream);
   if (reset)  {
       if (mem->reset_data().reset_type_ == iris_reset_memset) {
           //printf("Resetting memory\n");
@@ -691,6 +691,7 @@ int DeviceCUDA::MemFree(void* mem_addr, void *v_stream)
   CUresult err;
   bool async = (is_async(false) && stream != NULL);
   bool l_async = platform_obj_->is_malloc_async() && async;
+  _trace(" async:%d l_async:%d mem_addr:%p stream:%p", async, l_async, mem_addr, v_stream);
   if (l_async)
       err = ld_->cuMemFreeAsync(cumem, stream);
   else
