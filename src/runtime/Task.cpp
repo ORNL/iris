@@ -357,6 +357,20 @@ void Task::set_kernel_condition(BaseMem *mem, bool flag)
     }
 }
 
+iris_kernel Task::get_last_cmd_kernel()
+{
+    // Apply it to last kernel command
+    for (int i = ncmds_-1; i >=0 ; i--) {
+        Command* cmd = cmds_[i];
+        if (cmd->type_kernel()) {
+            Kernel *kernel = cmd->kernel();
+            return *(kernel->struct_obj());
+        }
+    }
+    iris_kernel kernel = {NULL, (unsigned long)(-1)};
+    return kernel;
+}
+
 void Task::Complete() {
   _debug2(" task:%lu:%s is completed ref_cnt:%d", uid(), name(), ref_cnt());
   _event_debug(" task:%lu:%s is completed ref_cnt:%d", uid(), name(), ref_cnt());

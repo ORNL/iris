@@ -636,6 +636,11 @@ iris_kernel iris_task_get_kernel(iris_task brs_task)
     Task *task = Platform::GetPlatform()->get_task_object(brs_task);
     return *(task->cmd_kernel()->kernel()->struct_obj());
 }
+iris_kernel iris_task_get_last_cmd_kernel(iris_task brs_task)
+{
+    Task *task = Platform::GetPlatform()->get_task_object(brs_task);
+    return task->get_last_cmd_kernel();
+}
 int iris_task_is_cmd_kernel_exists(iris_task brs_task)
 {
     Task *task = Platform::GetPlatform()->get_task_object(brs_task);

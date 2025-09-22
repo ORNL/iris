@@ -2050,6 +2050,7 @@ extern unsigned long iris_kernel_get_uid(iris_kernel brs_kernel);
  * @return This function returns the kernel object extracted from a given task
  */
 extern iris_kernel iris_task_get_kernel(iris_task brs_task);
+extern iris_kernel iris_task_get_last_cmd_kernel(iris_task brs_task);
 extern int iris_task_kernel_dmem_fetch_order(iris_task brs_task, int *order);
 extern int iris_task_disable_consistency(iris_task brs_task);
 extern int iris_task_is_cmd_kernel_exists(iris_task brs_task);
