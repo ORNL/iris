@@ -726,9 +726,6 @@ class dmem_base:
     return c_host
   def mem(self):
     return self.mem
-  def release(self):
-    mem_release(self.handle)
-  
 
 class dmem(dmem_base):
   def __init__(self, *args):
