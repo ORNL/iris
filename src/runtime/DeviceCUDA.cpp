@@ -1751,7 +1751,7 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
   }
   //printf("Shared mem bytes: %d\n", shared_mem_bytes_);
   if (!async) {
-      err = ld_->cuLaunchKernel(cukernel, grid[0], grid[1], grid[2], block[0], block[1], block[2], shared_mem_bytes_, 0, params_, NULL);
+      err = ld_->cuLaunchKernel(cukernel, grid[0], grid[1], grid[2], block[0], block[1], block[2], kernel->shared_mem_size(), 0, params_, NULL);
       _cuerror(err);
       if (err != CUDA_SUCCESS){
           platform_obj()->IncrementErrorCount();
@@ -1765,7 +1765,7 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
       }
   }
   else {
-      err = ld_->cuLaunchKernel(cukernel, grid[0], grid[1], grid[2], block[0], block[1], block[2], shared_mem_bytes_, streams_[stream_index], params_, NULL);
+      err = ld_->cuLaunchKernel(cukernel, grid[0], grid[1], grid[2], block[0], block[1], block[2], kernel->shared_mem_size(), streams_[stream_index], params_, NULL);
       _cuerror(err);
       if (err != CUDA_SUCCESS){
           platform_obj()->IncrementErrorCount();

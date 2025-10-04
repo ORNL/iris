@@ -1412,7 +1412,7 @@ int DeviceHIP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, s
       return IRIS_SUCCESS;
   }
   if (!async) {
-      err = ld_->hipModuleLaunchKernel(func, grid[0], grid[1], grid[2], block[0], block[1], block[2], shared_mem_bytes_, 0, params_, NULL);
+      err = ld_->hipModuleLaunchKernel(func, grid[0], grid[1], grid[2], block[0], block[1], block[2], kernel->shared_mem_size(), 0, params_, NULL);
       _hiperror(err);
       if (err != hipSuccess){
         platform_obj()->IncrementErrorCount();
@@ -1426,7 +1426,7 @@ int DeviceHIP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, s
       }
   }
   else {
-      err = ld_->hipModuleLaunchKernel(func, grid[0], grid[1], grid[2], block[0], block[1], block[2], shared_mem_bytes_, streams_[stream_index], params_, NULL);
+      err = ld_->hipModuleLaunchKernel(func, grid[0], grid[1], grid[2], block[0], block[1], block[2], kernel->shared_mem_size(), streams_[stream_index], params_, NULL);
       _hiperror(err);
       if (err != hipSuccess){
           platform_obj()->IncrementErrorCount();
