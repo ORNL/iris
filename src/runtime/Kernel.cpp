@@ -3,6 +3,7 @@
 #include "Debug.h"
 #include "Device.h"
 #include "History.h"
+#include "Command.h"
 #include "BaseMem.h"
 #include "DataMem.h"
 #include "DataMemRegion.h"
@@ -16,6 +17,7 @@ Kernel::Kernel(const char* name, Platform* platform) {
   name_ = string(name);
   //size_t len = strlen(name);
   //strncpy(name_, name, len);
+  cmd_ = NULL;
   task_name_ = name_;
   shared_mem_size_ = 0;
   task_ = NULL;
@@ -66,6 +68,24 @@ int Kernel::set_order(int *order) {
   return IRIS_SUCCESS;
 }
 
+void Kernel::update_arg(int index, void *val)
+{
+    if (cmd_ != NULL)  {
+        cmd_->update_arg(index, val);
+    }
+    else {
+        _error("This case is not handled");
+    }
+}
+void Kernel::update_mem(int index, BaseMem *mem)
+{
+    if (cmd_ != NULL)  {
+        cmd_->update_mem(index, mem);
+    }
+    else {
+        _error("This case is not handled");
+    }
+}
 void Kernel::set_task(Task *task) { 
     task_ = task; 
     if (task->enable_julia_if()) { 

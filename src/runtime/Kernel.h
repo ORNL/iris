@@ -21,6 +21,7 @@ class History;
 class MemHistory;
 class DataMem;
 class DataMemRegion;
+class Command;
 typedef struct _KernelArg {
   size_t size;
   char value[1024];
@@ -108,6 +109,10 @@ public:
   int julia_kernel_type() { return julia_kernel_type_; }
   void set_shared_mem_size(size_t size) { shared_mem_size_ = size; }
   size_t shared_mem_size() { return shared_mem_size_; }
+  void update_arg(int index, void *val);
+  void update_mem(int index, BaseMem *mem);
+  void set_cmd(Command *cmd) { cmd_ = cmd; }
+  Command *get_cmd() { return cmd_; }
 /*
 #ifdef AUTO_PAR
 #ifdef AUTO_SHADOW
@@ -123,6 +128,7 @@ private:
   std::string name_;
   std::string task_name_;
   Task *task_;
+  Command *cmd_;
   std::map<int, KernelArg*> args_;
   void* archs_[IRIS_MAX_NDEVS];
   Device* archs_devs_[IRIS_MAX_NDEVS];

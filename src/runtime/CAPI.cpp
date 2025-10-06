@@ -7,6 +7,7 @@
 #include "Task.h"
 #include "Utils.h"
 #include "Kernel.h"
+#include "Command.h"
 #include "BaseMem.h"
 #include "DataMem.h"
 #include "DataMemRegion.h"
@@ -641,6 +642,11 @@ iris_kernel iris_task_get_last_cmd_kernel(iris_task brs_task)
     Task *task = Platform::GetPlatform()->get_task_object(brs_task);
     return task->get_last_cmd_kernel();
 }
+iris_command iris_task_get_last_cmd(iris_task brs_task)
+{
+    Task *task = Platform::GetPlatform()->get_task_object(brs_task);
+    return task->get_last_cmd();
+}
 int iris_task_is_cmd_kernel_exists(iris_task brs_task)
 {
     Task *task = Platform::GetPlatform()->get_task_object(brs_task);
@@ -651,6 +657,44 @@ void *iris_task_get_cmd_kernel(iris_task brs_task)
 {
     Task *task = Platform::GetPlatform()->get_task_object(brs_task);
     return task->cmd_kernel();
+}
+int iris_kernel_update_arg(iris_kernel brs_kernel, int index, void *ptr)
+{
+    Kernel *kernel = brs_kernel.class_obj;
+    kernel->update_arg(index, ptr);
+    return IRIS_SUCCESS;
+}
+int iris_kernel_update_mem(iris_kernel brs_kernel, int index, iris_mem brs_mem)
+{
+    Kernel *kernel = brs_kernel.class_obj;
+    BaseMem * mem = (BaseMem*)Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (mem != NULL) {
+        kernel->update_mem(index, mem);
+        return IRIS_SUCCESS;
+    }
+    return IRIS_ERROR;
+}
+
+int iris_copyto_cmd_update_src(iris_command brs_command, iris_mem brs_mem)
+{
+    Command *cmd = brs_command.class_obj;
+    BaseMem * mem = (BaseMem*)Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (mem != NULL) {
+        cmd->update_src(mem);
+        return IRIS_SUCCESS;
+    }
+    return IRIS_ERROR;
+}
+
+int iris_copyto_cmd_update_dst(iris_command brs_command, iris_mem brs_mem)
+{
+    Command *cmd = brs_command.class_obj;
+    BaseMem * mem = (BaseMem*)Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (mem != NULL) {
+        cmd->update_dst(mem);
+        return IRIS_SUCCESS;
+    }
+    return IRIS_ERROR;
 }
 
 unsigned long iris_kernel_get_uid(iris_kernel brs_kernel)

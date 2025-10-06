@@ -357,6 +357,16 @@ void Task::set_kernel_condition(BaseMem *mem, bool flag)
     }
 }
 
+iris_command Task::get_last_cmd()
+{
+    if (ncmds_ > 0) {
+        Command *cmd = cmds_[ncmds_-1];
+        return *(cmd->struct_obj());
+    }
+    iris_command cmd = { NULL, (unsigned long)-1 };
+    // Apply it to last kernel command
+    return cmd;
+}
 iris_kernel Task::get_last_cmd_kernel()
 {
     // Apply it to last kernel command

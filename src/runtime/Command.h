@@ -4,6 +4,7 @@
 #include <iris/iris_poly_types.h>
 #include "BaseMem.h"
 #include "Kernel.h"
+#include "Retainable.h"
 #include "Timer.h"
 #include "Graph.h"
 #include <stddef.h>
@@ -44,7 +45,7 @@ class Task;
 class Graph;
 class Device;
 
-class Command {
+class Command : public Retainable<struct _iris_command, Command>{
 public:
   Command();
   Command(Task* task, int type);
@@ -171,6 +172,10 @@ private:
   //uint8_t reset_value_;
   ResetData reset_data_;
 public:
+  void update_arg(int index, void *val);
+  void update_mem(int index, BaseMem *mem);
+  void update_src(BaseMem *mem);
+  void update_dst(BaseMem *mem);
   ResetData & reset_data() { return reset_data_; }
   static Command* Create(Task* task, int type);
   static Command* CreateInit(Task* task);

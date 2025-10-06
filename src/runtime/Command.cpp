@@ -147,6 +147,7 @@ Command* Command::CreateInit(Task* task) {
 Command* Command::CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws) {
   Command* cmd = Create(task, IRIS_CMD_KERNEL);
   cmd->kernel_ = kernel;
+  kernel->set_cmd(cmd);
   if (cmd->kernel_args_) delete[] cmd->kernel_args_;
   cmd->kernel_args_ = kernel->ExportArgs();
   cmd->kernel_nargs_max_ = kernel->nargs();
@@ -169,6 +170,7 @@ Command* Command::CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off,
 Command* Command::CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, size_t* params_off, int* params_info, size_t* memranges) {
   Command* cmd = Create(task, IRIS_CMD_KERNEL);
   cmd->kernel_ = kernel;
+  kernel->set_cmd(cmd);
   cmd->dim_ = dim;
   cmd->name_ = kernel->name();
   kernel->set_task(task);
@@ -255,6 +257,7 @@ Command* Command::CreateKernelPolyMem(Task* task, Command* pcmd, size_t* off, si
 
   Command* cmd = Create(task, IRIS_CMD_KERNEL);
   cmd->kernel_ = kernel;
+  kernel->set_cmd(cmd);
   cmd->dim_ = dim;
   for (int i = 0; i < dim; i++) {
     cmd->off_[i] = off[i];
@@ -522,6 +525,30 @@ Command* Command::CreateCustom(Task* task, int tag, void* params, size_t params_
 
 void Command::Release(Command* cmd) {
   delete cmd;
+}
+
+void Command::update_arg(int index, void *val)
+{
+    ASSERT(index < kernel_nargs_);
+    KernelArg *arg = &kernel_args_[index];
+    memcpy(arg->value, val, arg->size);
+}
+
+void Command::update_mem(int index, BaseMem *mem)
+{
+    ASSERT(index < kernel_nargs_);
+    KernelArg *arg = &kernel_args_[index];
+    arg->mem = mem;
+}
+
+void Command::update_src(BaseMem *mem)
+{
+    mem_ = mem;
+}
+
+void Command::update_dst(BaseMem *mem)
+{
+    dst_mem_ = mem;
 }
 
 void Command::set_selector_kernel(iris_selector_kernel func, void* params, size_t params_size) {

@@ -20,6 +20,7 @@
 namespace iris {
 namespace rt {
 class Kernel;
+class Command;
 class BaseMem;
 class Mem;
 class Task;
@@ -45,6 +46,17 @@ struct __attribute__ ((packed)) _iris_kernel {
 #endif // DOXYGEN_SHOULD_SKIP_THIS
 #ifdef __cplusplus
   iris::rt::Kernel* class_obj;
+#else
+  void *class_obj;
+#endif
+  unsigned long uid;
+};
+
+#ifndef DOXYGEN_SHOULD_SKIP_THIS
+struct __attribute__ ((packed)) _iris_command {
+#endif // DOXYGEN_SHOULD_SKIP_THIS
+#ifdef __cplusplus
+  iris::rt::Command* class_obj;
 #else
   void *class_obj;
 #endif
@@ -240,6 +252,7 @@ typedef enum DeviceModel DeviceModel;
 typedef struct _iris_task      iris_task;
 typedef struct _iris_mem       iris_mem;
 typedef struct _iris_kernel    iris_kernel;
+typedef struct _iris_command   iris_command;
 typedef struct _iris_graph     iris_graph;
 typedef struct _iris_device    iris_device;
 
@@ -736,6 +749,9 @@ extern int iris_task_cmd_init_reset_random_uniform_sobol_seq(iris_task brs_task,
 extern int iris_task_cmd_init_reset_random_normal_sobol_seq(iris_task brs_task, iris_mem brs_mem, IRISValue mean, IRISValue stddev);
 extern int iris_task_cmd_init_reset_random_log_normal_sobol_seq(iris_task brs_task, iris_mem brs_mem, IRISValue mean, IRISValue stddev);
 
+// Update Task kernel Command arguments
+extern int iris_kernel_update_arg(iris_kernel brs_kernel, int index, void *ptr);
+extern int iris_kernel_update_mem(iris_kernel brs_kernel, int index, iris_mem mem);
 
 /**@brief set task level IRIS stream policy type 
  *
@@ -2049,8 +2065,11 @@ extern unsigned long iris_kernel_get_uid(iris_kernel brs_kernel);
  * @param brs_task kernel object
  * @return This function returns the kernel object extracted from a given task
  */
+extern iris_command iris_task_get_last_cmd(iris_task brs_task);
 extern iris_kernel iris_task_get_kernel(iris_task brs_task);
 extern iris_kernel iris_task_get_last_cmd_kernel(iris_task brs_task);
+extern int iris_copyto_cmd_update_dst(iris_command brs_command, iris_mem brs_mem);
+extern int iris_copyto_cmd_update_src(iris_command brs_command, iris_mem brs_mem);
 extern int iris_task_kernel_dmem_fetch_order(iris_task brs_task, int *order);
 extern int iris_task_disable_consistency(iris_task brs_task);
 extern int iris_task_is_cmd_kernel_exists(iris_task brs_task);

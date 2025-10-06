@@ -294,13 +294,15 @@ int Platform::Init(int* argc, char*** argv, int sync) {
   if (polyhedral_available_)
     filter_task_split_ = new FilterTaskSplit(polyhedral_, this);
 
-  if (enable_profiler_) {
+  if (enable_profiler_ || event_profile_enabled_) {
     profilers_[nprofilers_++] = new ProfilerDOT(this);
     profilers_[nprofilers_++] = new ProfilerGoogleCharts(this);
     profilers_[nprofilers_++] = new ProfilerGoogleCharts(this, true);
   }
-  if (event_profile_enabled_) 
+  if (event_profile_enabled_) {
+    enable_profiler_ = true;
     profilers_[nprofilers_++] = new ProfilerEventRecord(this);
+  }
 
   if (enable_scheduling_history_) scheduling_history_ = new SchedulingHistory(this);
 
@@ -1644,14 +1646,14 @@ shared_ptr<History> Platform::CreateHistory(string kname)
 }
 void Platform::ProfileCompletedTask(Task *task)
 {
-    if (!task->marker()){
+    if (!task->marker() && enable_profiler_){
         for (int i = 0; i < nprofilers_; i++) profilers_[i]->CompleteTask(task);
     }
 }
 
 void Platform::AddLoopDependency(Task *task, unsigned long st_id, std::vector<unsigned long> end_ids)
 {
-    if (!task->marker()){
+    if (!task->marker() && enable_profiler_){
         for (int i = 0; i < nprofilers_; i++) profilers_[i]->AddLoopDependency(st_id, end_ids);
     }
 }
