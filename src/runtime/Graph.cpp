@@ -148,6 +148,7 @@ void Graph::AddTask(Task* task, unsigned long uid) {
 #endif
 #endif
 
+  task->set_graph(this);
   end_->AddDepend(task, uid);
 
 #ifdef AUTO_PAR
@@ -157,7 +158,6 @@ void Graph::AddTask(Task* task, unsigned long uid) {
 #endif
 
 
-  task->set_graph(this);
 }
 
 void Graph::AddGraphStartTask(std::vector<unsigned long> & start_tasks)
@@ -441,7 +441,7 @@ void GraphMetadata::map_task_inputs_outputs()
         vector<unsigned long> flush_input_mems;
         vector<unsigned long> output_mems;
         for(int di=0; di<task->ndepends(); di++) {
-            unsigned long duid = task->depend(di)->uid();
+            unsigned long duid = task->depend_uid(di);
             if (output_tasks_map_.find(duid) == output_tasks_map_.end()) 
                 output_tasks_map_.insert(make_pair(duid, vector<unsigned long>()));
             output_tasks_map_[duid].push_back(uid);
@@ -653,6 +653,7 @@ void GraphMetadata::get_dependency_matrix(int8_t *dep_matrix, bool adj_matrix) {
       //printf("Tasks %s\n", task->name());
       for(int i=0; i<task->ndepends(); i++) {
           Task *dtask = task->depend(i);
+          if (dtask == NULL) continue;
           //printf("Tasks %s depend %s depend index %lu task index %d\n", task->name(), dtask->name(), task_uid_2_index_hash_[dtask->uid()], task_uid_2_index_hash_[task->uid()]);
           //printf("Depend %d\n", task == graph_->end());
           //printf("Map %d\n", output_tasks_map_[dtask->uid()].size());
@@ -702,29 +703,29 @@ void GraphMetadata::level_order_traversal(int8_t s, int ntasks, int8_t* dep_matr
     int max_level = 0;
     for ( int i = 1; i < ntasks; i++) v_level.at(i) = 0;
     /*for (auto& a : v_level) {
-	
+    
     }*/
     v_level.at(0) = 0; 
     for ( int j = 1; j < ntasks; j++) {
-    	for ( int i = 1; i < ntasks; i++) {
+        for ( int i = 1; i < ntasks; i++) {
             if (dep_matrix[i * ntasks + j] !=  0) {
-		 v_level.at(i-1) = v_level.at(j-1) + 1;
+                v_level.at(i-1) = v_level.at(j-1) + 1;
                  //std::cout << "I : " << i-1 << " j " << j-1 <<  "\n";
                  //std::cout << "here i=" << i-1 <<" cur level i : " << v_level.at(i-1) << " here j=" <<j-1 << " cur level j " << v_level.at(j-1) <<  "\n";
             //if (dep_matrix[i * ntasks + v + 1] !=  0 && !visited[i-1]) {
-	    }
-	}
+            }
+        }
     }
     max_level_ = 0; 
     for ( auto & i : v_level) 
-	    if (max_level_ < i) max_level_ = i;
+        if (max_level_ < i) max_level_ = i;
     //vector<unsigned long> vec;
     for ( int i = 0; i < max_level_; i++) {
-    	for ( int j = 1; j < ntasks; j++) {
-           if (v_level.at(j-1) == i) vec.push_back(j-1);	    
-	}
+        for ( int j = 1; j < ntasks; j++) {
+           if (v_level.at(j-1) == i) vec.push_back(j-1);        
+    	}
         levels_dag_.push_back(vec);
-	vec.clear();
+    	vec.clear();
     }
 
     //max_level_ = i-1; 
@@ -761,14 +762,14 @@ void GraphMetadata::level_order_traversal(int8_t s, int ntasks, int8_t* dep_matr
                 q.push(-1);
  
             // Print a newline character
-	    levels += 1;
-	    levels_dag_.push_back(vec);
-	    vec.clear();
+        levels += 1;
+        levels_dag_.push_back(vec);
+        vec.clear();
             continue;
         }
  
         // store the current vertex
-	vec.push_back(v);
+    vec.push_back(v);
         //cout << task_index_2_uid_hash_[v] << " ";
         //cout << task_uid_hash_[task_index_2_uid_hash_[v]]->name() << " ";
  
@@ -788,11 +789,11 @@ void GraphMetadata::level_order_traversal(int8_t s, int ntasks, int8_t* dep_matr
 */
 
 bool GraphMetadata::exists_edge(unsigned long u, 
-	unsigned long v, int8_t * dep_matrix, int ntasks){
-   if ( dep_matrix[(u + 1) * ntasks + (v + 1)] > 0) return true;	
-   if ( dep_matrix[(v + 1) * ntasks + (u + 1)] > 0) return true;	
+		unsigned long v, int8_t * dep_matrix, int ntasks){
+	if ( dep_matrix[(u + 1) * ntasks + (v + 1)] > 0) return true;    
+	if ( dep_matrix[(v + 1) * ntasks + (u + 1)] > 0) return true;    
 
-   return false;
+	return false;
 } 
 
 int GraphMetadata::get_max_parallelism()
@@ -803,10 +804,10 @@ int GraphMetadata::get_max_parallelism()
   int8_t * dep_matrix = (int8_t *)calloc(ntasks*ntasks, sizeof(int8_t));
   get_dependency_matrix(dep_matrix, true);
   for (int i = 0 ; i < ntasks; i++) {
-  	for (int j = 0 ; j < ntasks; j++) {
-  		printf("%d ", dep_matrix[i * ntasks + j]);
-	}
-  	printf("\n");
+      for (int j = 0 ; j < ntasks; j++) {
+          printf("%d ", dep_matrix[i * ntasks + j]);
+    }
+      printf("\n");
   }
   level_order_traversal(0, ntasks, dep_matrix);
 
@@ -815,69 +816,69 @@ int GraphMetadata::get_max_parallelism()
   for (auto& i : levels_dag_){
       std::cout << "Level " << l++ << " : ";
       for (auto& j : i) {
-	  std::cout <<  j << " ";
+      std::cout <<  j << " ";
           //cout << task_uid_hash_[task_index_2_uid_hash_[j]]->name() << " ";
       }
       std::cout << "\n";
   }
-	
+    
   vector<unsigned long> merged_dag;
   int count_level = 0 ; 
   int total_parallelism = 0 ; 
   double average_parallelism = 0 ; 
   for (auto& i : levels_dag_){
       for (auto& j : i) {
-	  //std::cout << "for value "  << j << " and size of merged_dag " << merged_dag.size() << " \n";
-	  if(std::find(merged_dag.begin(), merged_dag.end(), j) 
-		                   != merged_dag.end()) {
-	       continue;
-	  }
+      //std::cout << "for value "  << j << " and size of merged_dag " << merged_dag.size() << " \n";
+      if(std::find(merged_dag.begin(), merged_dag.end(), j) 
+                           != merged_dag.end()) {
+           continue;
+      }
 
-	  int count = 0 ;
+      int count = 0 ;
           for (auto& k : merged_dag) {
-	      //std::cout << "here j " << j << " k " << k << " \n";
+          //std::cout << "here j " << j << " k " << k << " \n";
               if(exists_edge(j, k, dep_matrix, ntasks)) {
-		  merged_dag.erase(merged_dag.begin() + count);
-	          //std::cout << "erased k  " << k << " \n";
-		  count--;
-	      }
-	      count++;
-	  }
- 	  merged_dag.push_back(j);
-	  //std::cout << "pushed j  " << j << " \n";
-	
- /*	
+          merged_dag.erase(merged_dag.begin() + count);
+              //std::cout << "erased k  " << k << " \n";
+          count--;
+          }
+          count++;
+      }
+       merged_dag.push_back(j);
+      //std::cout << "pushed j  " << j << " \n";
+    
+ /*    
           if (merged_dag.size() != 0) {
-	      int count = 0 ;
+          int count = 0 ;
               for (auto& k : merged_dag) {
-		  //std::cout << "value of k " << k << " \n";
-		  //std::cout << "type of k " << typeid(k).name() << " \n";
-		  std::cout << "here j " << j << " k " << k << " \n";
+          //std::cout << "value of k " << k << " \n";
+          //std::cout << "type of k " << typeid(k).name() << " \n";
+          std::cout << "here j " << j << " k " << k << " \n";
                   if(exists_edge(j, k, dep_matrix, ntasks)) {
-		      //merged_dag.erase(k); 
-		      merged_dag.erase(merged_dag.begin() + count);
-		      std::cout << "erased k " << k << " \n";
-	 	      if(std::find(merged_dag.begin(), merged_dag.end(), j) 
-		                   == merged_dag.end()) {
- 	                  merged_dag.push_back(j);
-		          std::cout << "pushed j " << j << " \n";
+              //merged_dag.erase(k); 
+              merged_dag.erase(merged_dag.begin() + count);
+              std::cout << "erased k " << k << " \n";
+               if(std::find(merged_dag.begin(), merged_dag.end(), j) 
+                           == merged_dag.end()) {
+                       merged_dag.push_back(j);
+                  std::cout << "pushed j " << j << " \n";
                           count++; 
-		      } else  {
+              } else  {
                           count++; 
-		          continue;
-		      }
- 		  } else {
-		  }	
+                  continue;
+              }
+           } else {
+          }    
               } // for 
-	  } else {
- 	      merged_dag.push_back(j);
-	      std::cout << "pushed j int empty " << j << " \n";
-	  }
-	*/
+      } else {
+           merged_dag.push_back(j);
+          std::cout << "pushed j int empty " << j << " \n";
+      }
+    */
       }
       /*std::cout << "After merging Level :  " << count_level++ << "\n" ;
       for (auto& k : merged_dag)
-	  std::cout << k << " " ;
+      std::cout << k << " " ;
       std::cout << " \n" ; */
       if (max_par < merged_dag.size()) max_par = merged_dag.size();
       total_parallelism += merged_dag.size();
@@ -909,6 +910,7 @@ void GraphMetadata::get_2d_comm_adj_matrix(size_t *comm_task_adj_matrix)
         set<unsigned long> all_covered_mem;
         for(int di=0; di<each_task->ndepends(); di++) {
             Task *d_task = each_task->depend(di);
+            if (d_task == NULL) continue;
 #ifdef PRUNE_EDGES 
             if (each_task == graph_->end() && 
                     mem_flash_task_2_mem_ids_.find(d_task->uid()) ==  
@@ -1051,6 +1053,7 @@ void GraphMetadata::get_3d_comm_data()
         set<unsigned long> all_covered_mem;
         for(int di=0; di<each_task->ndepends(); di++) {
             Task *d_task = each_task->depend(di);
+            if (d_task == NULL) continue;
 #ifdef PRUNE_EDGES 
             if (each_task == graph_->end() && 
                     mem_flash_task_2_mem_ids_.find(d_task->uid()) ==  

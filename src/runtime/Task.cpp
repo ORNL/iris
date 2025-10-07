@@ -104,6 +104,7 @@ Task::Task(Platform* platform, int type, const char* name, int max_cmds) {
   if (name) name_ = std::string(name);
   status_ = IRIS_NONE;
 
+  pthread_mutex_init(&depend_mutex_, NULL);
   pthread_mutex_init(&stream_mutex_, NULL);
   pthread_mutex_init(&mutex_pending_, NULL);
   pthread_mutex_init(&mutex_executable_, NULL);
@@ -139,6 +140,7 @@ Task::~Task() {
   cmds_.clear();
   //delete [] cmds_;
   if (depends_uids_) delete [] depends_uids_;
+  pthread_mutex_destroy(&depend_mutex_);
   pthread_mutex_destroy(&stream_mutex_);
   pthread_mutex_destroy(&mutex_pending_);
   pthread_mutex_destroy(&mutex_executable_);
@@ -471,14 +473,14 @@ bool Task::HasSubtasks() {
 // If it is released, it might have been allocated for some other task. 
 // Hence, validate the parent task not only from whether object exists or not, but also by
 // comparing the actual parent task uid.
-void Task::AddDepend(Task* task, unsigned long uid) {
+void Task::AddDepend(Task* task, unsigned long p_uid) {
 #ifdef AUTO_PAR
 #ifdef IGNORE_MANUAL
   if ( task->platform()->get_auto_dag()->get_auto_dep() == false) return;
 #endif
 
 #ifdef SANITY_CHECK
-  if(std::string(this->name()).find("Graph") == std::string::npos){  
+  if(std::string(this->name()).find("GraphSync") == std::string::npos){  
     std::string full_dep = std::string(this->name()) + "->" + std::string(task->name());
     std::cout << full_dep << std::endl;
     if (task->platform()->get_auto_dag()->get_auto_dep() == false){
@@ -494,30 +496,105 @@ void Task::AddDepend(Task* task, unsigned long uid) {
 
 #endif
 
+  pthread_mutex_lock(&depend_mutex_);
   if (depends_uids_ == NULL) {
       depends_uids_ = new unsigned long[depends_max_];
   }
-  for (int i = 0; i < ndepends_; i++) if (uid == depends_uids_[i]) return;
-  if (ndepends_ == depends_max_ - 1) {
+  bool flag = false;
+  for (int i = 0; i < ndepends_; i++) {
+      if (p_uid == depends_uids_[i]) {
+        flag = true; break;
+      }
+  }
+  if (!flag && ndepends_ == depends_max_ - 1) {
     unsigned long *old_uids = depends_uids_;
     depends_max_ *= 2;
     depends_uids_ = new unsigned long[depends_max_];
     memcpy(depends_uids_, old_uids, ndepends_*sizeof(unsigned long));
     delete [] old_uids;
-  } 
-  depends_uids_[ndepends_] = uid;
+  }
+  if (!flag) {
+    depends_uids_[ndepends_] = p_uid;
+    ndepends_++;
+  }
+  pthread_mutex_unlock(&depend_mutex_);
   if(platform_->get_enable_proactive() 
-		&& std::string(this->name()).find("Graph") == std::string::npos  
+		&& std::string(this->name()).find("GraphSync") == std::string::npos  
 		&& std::string(this->name()).find("flush-out") == std::string::npos ) {
       unsigned long this_uid = this->uid();
-      platform_->task_track().CallBackIfObjectExists(uid, 
+      platform_->task_track().CallBackIfObjectExists(p_uid, 
               [](void *data, void *lhs, void *rhs) {
                 Task *parent_task = (Task *)data;
                 unsigned long child_uid = *((unsigned long *)rhs);
                 parent_task->AddChild(child_uid);
-              }, &uid, &this_uid);
+              }, &p_uid, &this_uid);
   }
-  ndepends_++;
+  if (task != NULL && task->graph() != NULL && graph() != NULL) {
+      Task *src_end = task->graph()->end();
+      Task *dst_end = graph()->end();
+      if (src_end == dst_end) {
+          if (uid() != dst_end->uid() ) { // Not END node
+              // Remove source uid from graph end
+              /* This handles case
+                Create T1
+                Create T2
+                ADD T1 to G
+                ADD T2 to G
+                T1->T2 => Trigger (P1)
+              */
+              //printf("Removed P1 here uid:%lu:%s:%p:%lu p_uid:%lu:%s:%p:%lu\n", uid(), name(), graph(), dst_end->uid(), p_uid, task->name(), task->graph(), src_end->uid());
+              src_end->RemoveDepend(p_uid);
+          }
+          else if (uid() == dst_end->uid()) { // If uid_ END node
+              /* This can handle two cases
+                Create T1
+                Create T2
+                ADD T1 to G
+                T1->T2
+                ADD T2 to G => Trigger(P2)
+
+                Create T1
+                Create T2
+                T1->T2
+                ADD T1 to G
+                ADD T2 to G => Trigger(P2)
+              */
+              for(int i=0; i<task->ndepends_; i++) {
+                 if (task->depends_uids_[i] != (unsigned long)-1) {
+                    Task *dep_task = platform_->get_task_object(task->depends_uids_[i]);
+                     //printf("Removed P2 here uid:%lu:%s:%p:%lu p_uid:%lu:%s:%p:%lu rm:%lu:%s\n", uid(), name(), graph(), dst_end->uid(), p_uid, task->name(), task->graph(), src_end->uid(), dep_task->uid(), dep_task->name());
+                     dst_end->RemoveDepend(task->depends_uids_[i]);
+                 }
+              }
+              /* TODO: Not handled case
+                Create T1
+                Create T2
+                T1->T2
+                ADD T2 to G
+                ADD T1 to G => Trigger(P3)
+
+                
+                Create T1
+                Create T2
+                ADD T2 to G
+                T1->T2
+                ADD T1 to G => Trigger(P3)
+              */
+          }
+      }
+  }
+}
+void Task::RemoveDepend(unsigned long uid) 
+{
+  int j = 0;
+  pthread_mutex_lock(&depend_mutex_);
+  for (int i = 0; i < ndepends_; i++) {
+      if (depends_uids_[i] != uid) {
+        depends_uids_[j++] = depends_uids_[i];
+      }
+  }
+  ndepends_ = j;
+  pthread_mutex_unlock(&depend_mutex_);
 }
 
 void Task::AddChild(unsigned long uid) {

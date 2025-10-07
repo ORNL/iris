@@ -586,8 +586,11 @@ int iris_task_get_dependency_count(iris_task brs_task) {
 }
 void iris_task_get_dependencies(iris_task brs_task, iris_task *tasks) {
     Task *task = Platform::GetPlatform()->get_task_object(brs_task);
+    iris_task empty_task = { NULL, (unsigned long)-1 };
     for(int i=0; i<task->ndepends(); i++) {
-        tasks[i] = *(task->depend(i)->struct_obj());
+        Task *dtask = task->depend(i);
+        if (dtask == NULL) tasks[i] = empty_task;
+        else tasks[i] = *(dtask->struct_obj());
     }
 }
 int iris_cmd_kernel_get_nargs(void *cmd_p) {

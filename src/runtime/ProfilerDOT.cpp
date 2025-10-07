@@ -68,7 +68,7 @@ int ProfilerDOT::CompleteTask(Task* task) {
   pthread_mutex_unlock(&dot_lock_);
   char s[1024];
 #ifndef PER_TASK_COLOR
-  sprintf(s, "task%lu[style=filled, fillcolor=%s, label=\"%s (%s)\\n%lf\"]\n", tid,
+  sprintf(s, "task%lu[shape=box, style=filled, fillcolor=%s, label=\"%s (%s)\\n%lf\"]\n", tid,
       type & iris_cpu ? "cyan" : type & iris_gpu ? "green" : "purple", task->name(), policy_str(policy), time);
   pthread_mutex_lock(&dot_lock_);
   Write(s);
@@ -89,8 +89,8 @@ int ProfilerDOT::CompleteTask(Task* task) {
     }
     //std::cout << short_task_name << " " << current_color << std::endl; 
   }
-  if ( short_task_name != "Graph"){
-    sprintf(s, "task%lu[style=filled, fillcolor=%s, label=\"%s\"]\n", tid,
+  if ( short_task_name != "GraphSync"){
+    sprintf(s, "task%lu[shape=box, style=filled, fillcolor=%s, label=\"%s\"]\n", tid,
     //sprintf(s, "task%lu[style=filled, fillcolor=%s, label=\"%s (%s)\\n%lf\"]\n", tid,
       current_color.c_str(), short_task_name.c_str());
       //current_color.c_str(), short_task_name.c_str(), policy_str(policy), time);
@@ -115,7 +115,7 @@ int ProfilerDOT::CompleteTask(Task* task) {
       sprintf(s, "task%lu -> task%lu\n", duid, tid);
       Write(s);
 #else
-      if ( short_task_name != "Graph"){
+      if ( short_task_name != "GraphSync"){
         sprintf(s, "task%lu -> task%lu\n", duid, tid);
         Write(s);
       }

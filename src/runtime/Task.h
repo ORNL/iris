@@ -114,6 +114,7 @@ public:
   void AddSubtask(Task* subtask);
   bool HasSubtasks();
 
+  void RemoveDepend(unsigned long uid);
   void AddDepend(Task* task, unsigned long uid);
 //  void RemoveDepend(Task* task);
 
@@ -203,6 +204,7 @@ public:
   void set_ndepends(int n) { ndepends_ = n; }
   //Task** depends() { return depends_; }
   unsigned long* depends() { return depends_uids_; }
+  unsigned long depend_uid(int i) { ASSERT(i < ndepends_); return depends_uids_[i]; }
   Task* depend(int i) { return platform_->get_task_object(depends_uids_[i]); }
   void* arch() { return arch_; }
   void set_stream_policy(StreamPolicy policy) { stream_policy_ = policy; }
@@ -337,6 +339,7 @@ private:
   size_t ns_time_submit_;
   size_t ns_time_start_;
   size_t ns_time_end_;
+  pthread_mutex_t depend_mutex_;
   pthread_mutex_t stream_mutex_;
   pthread_mutex_t mutex_pending_;
   pthread_mutex_t mutex_executable_;
