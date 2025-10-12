@@ -110,8 +110,15 @@ public:
   void set_shared_mem_size(size_t size) { shared_mem_size_ = size; }
   size_t shared_mem_size() { return shared_mem_size_; }
   void update_arg(int index, void *val);
+  void update_arg_core(int index, void *val);
   void update_mem(int index, BaseMem *mem);
+  void update_mem_core(int index, BaseMem *mem);
+  void update_map(int index, BaseMem *mem, std::map<BaseMem*, int> & mem2index);
   void set_cmd(Command *cmd) { cmd_ = cmd; }
+  void set_gws_dynamic_from_dmem(DataMem *mem);
+  DataMem *get_gws_dynamic_from_dmem() { 
+      return gws_dynamic_from_dmem_; 
+  }
   Command *get_cmd() { return cmd_; }
 /*
 #ifdef AUTO_PAR
@@ -151,6 +158,7 @@ private:
   std::map<int, DataMem *> data_mems_out_;
   std::map<int, DataMemRegion *> data_mem_regions_out_;
   KernelAsyncData async_data_;
+  DataMem *gws_dynamic_from_dmem_;
 };
 
 } /* namespace rt */

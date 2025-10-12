@@ -463,6 +463,10 @@ iris_kernel iris_task_kernel_struct(iris_task task, const char* kernel, int dim,
   return Platform::GetPlatform()->TaskKernelStruct(task, kernel, dim, off, gws, lws, nparams, params, NULL, params_info, NULL);
 }
 
+iris_kernel iris_task_kernel_struct_with_position(iris_task task, const char* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, int* params_info, int position) {
+  return Platform::GetPlatform()->TaskKernelStruct(task, kernel, dim, off, gws, lws, nparams, params, NULL, params_info, NULL, position);
+}
+
 int iris_task_kernel_v2(iris_task task, const char* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, size_t* params_off, int* params_info) {
   return Platform::GetPlatform()->TaskKernel(task, kernel, dim, off, gws, lws, nparams, params, params_off, params_info, NULL);
 }
@@ -667,12 +671,42 @@ int iris_kernel_update_arg(iris_kernel brs_kernel, int index, void *ptr)
     kernel->update_arg(index, ptr);
     return IRIS_SUCCESS;
 }
+int iris_command_update_arg(iris_command brs_cmd, int index, void *ptr)
+{
+    Command *cmd = brs_cmd.class_obj;
+    cmd->update_arg(index, ptr);
+    return IRIS_SUCCESS;
+}
+int iris_command_set_gws(iris_command brs_cmd, size_t *gws, int dim)
+{
+    Command *cmd = brs_cmd.class_obj;
+    cmd->set_gws(gws, dim);
+    return IRIS_SUCCESS;
+}
+int iris_kernel_set_gws_dynamic_from_dmem(iris_kernel brs_kernel, iris_mem brs_mem)
+{
+    Kernel *kernel = brs_kernel.class_obj;
+    DataMem* mem = (DataMem*)Platform::GetPlatform()->get_mem_object(brs_mem);
+    kernel->set_gws_dynamic_from_dmem(mem);
+    return IRIS_SUCCESS;
+}
 int iris_kernel_update_mem(iris_kernel brs_kernel, int index, iris_mem brs_mem)
 {
     Kernel *kernel = brs_kernel.class_obj;
     BaseMem * mem = (BaseMem*)Platform::GetPlatform()->get_mem_object(brs_mem);
     if (mem != NULL) {
         kernel->update_mem(index, mem);
+        return IRIS_SUCCESS;
+    }
+    return IRIS_ERROR;
+}
+
+int iris_command_update_mem(iris_command brs_cmd, int index, iris_mem brs_mem)
+{
+    Command *cmd= brs_cmd.class_obj;
+    BaseMem * mem = (BaseMem*)Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (mem != NULL) {
+        cmd->update_mem(index, mem);
         return IRIS_SUCCESS;
     }
     return IRIS_ERROR;
@@ -1145,6 +1179,12 @@ int iris_kernel_setmem(iris_kernel kernel, int idx, iris_mem mem, size_t mode) {
 
 int iris_kernel_setmem_off(iris_kernel kernel, int idx, iris_mem mem, size_t off, size_t mode) {
   return Platform::GetPlatform()->KernelSetMem(kernel, idx, mem, off, mode);
+}
+
+iris_command iris_kernel_cmd(iris_kernel brs_kernel) {
+  Kernel *kernel = brs_kernel.class_obj;
+  Command *cmd = kernel->get_cmd();
+  return *(cmd->struct_obj());
 }
 
 int iris_kernel_release(iris_kernel kernel) {

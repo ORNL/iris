@@ -531,14 +531,25 @@ void Command::update_arg(int index, void *val)
 {
     ASSERT(index < kernel_nargs_);
     KernelArg *arg = &kernel_args_[index];
+    //printf(" Value:%d %p size:%lu nargs:%d\n", *((int64_t *)val), val, arg->size, kernel_nargs_);
     memcpy(arg->value, val, arg->size);
+    kernel_->update_arg_core(index, val);
 }
 
 void Command::update_mem(int index, BaseMem *mem)
 {
-    ASSERT(index < kernel_nargs_);
-    KernelArg *arg = &kernel_args_[index];
-    arg->mem = mem;
+    if (type_ == IRIS_CMD_KERNEL) {
+        ASSERT(index < kernel_nargs_);
+        KernelArg *arg = &kernel_args_[index];
+        arg->mem = mem;
+        if (kernel_ != NULL) kernel_->update_mem_core(index, mem);
+    }
+    else if (type_ == IRIS_CMD_MEM_FLUSH) {
+        mem_ = mem;       
+    }
+    else {
+        _error("Unsupported type:%d for this function for index:%d mem:%lu:%s", type_, index, mem->uid(), mem->name());
+    }
 }
 
 void Command::update_src(BaseMem *mem)

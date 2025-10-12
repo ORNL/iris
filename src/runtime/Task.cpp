@@ -5,6 +5,7 @@
 #include "Device.h"
 #include "Kernel.h"
 #include "Mem.h"
+#include "Utils.h"
 #include "DataMem.h"
 #include "Pool.h"
 #include "Scheduler.h"
@@ -246,10 +247,14 @@ int Task::get_device_affinity() {
     }
     return -1;
 }
-void Task::AddCommand(Command* cmd) {
+void Task::AddCommand(Command* cmd, int position) {
   //if (ncmds_ >= max_cmds_) _error("ncmds[%d]", ncmds_);
   //cmds_[ncmds_++] = cmd;
-  cmds_.push_back(cmd); ncmds_++;
+  if (position == -1)
+      cmds_.push_back(cmd); 
+  else
+      Utils::insert_at(cmds_, position, cmd);
+  ncmds_++;
   if (cmd->type() == IRIS_CMD_KERNEL) {
     //if (cmd_kernel_) _error("kernel[%s] is already set", cmd->kernel()->name());
     if (!given_name_) {

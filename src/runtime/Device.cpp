@@ -969,9 +969,13 @@ void Device::ExecuteKernel(Command* cmd) {
   timer_->Start(IRIS_TIMER_KERNEL);
   cmd->set_time_start(timer_);
   Kernel* kernel = ExecuteSelectorKernel(cmd);
+  DataMem *gws_dynamic_from_dmem = kernel->get_gws_dynamic_from_dmem();
   int dim = cmd->dim();
   size_t* off = cmd->off();
   size_t* gws = cmd->gws();
+  if (gws_dynamic_from_dmem != NULL) {
+    gws = gws_dynamic_from_dmem->dev_size();
+  }
   //size_t gws0 = gws[0];
   size_t* lws = cmd->lws();
   //bool reduction = false;
@@ -1182,6 +1186,7 @@ void Device::ExecuteDMEM2DMEM(Task *task, Command *cmd) {
              dst_mem->GetMemHandlerType() == IRIS_DMEM_REGION)) {
         DataMem *dsrc_mem = (DataMem*)src_mem;
         DataMem *ddst_mem = (DataMem*)dst_mem;
+        //printf(" task:%lu:%s src:%lu:%s dst:%lu:%s\n", task->uid(), task->name(), dsrc_mem->uid(), dsrc_mem->name(), ddst_mem->uid(), ddst_mem->name());
         if (dsrc_mem->get_source_mem() != NULL) dsrc_mem = (DataMem*)dsrc_mem->get_source_mem();
         if (ddst_mem->get_source_mem() != NULL) ddst_mem = (DataMem*)ddst_mem->get_source_mem();
 
@@ -1816,10 +1821,11 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
                 //printf(" now doing call memreset mem:%lu\n", mem->uid());
             }
             else {
-                _warning("Kernel:%s Didn't handle this situation of all source "
+                _warning("Task:%s Kernel:%s Didn't handle this situation of all source "
                         "mem:%ld and destination mem:%ld data invalidity "
                         "state. There should be some valid data "
-                        "when the kernel reads the memory.", kernel->name(), src_mem->uid(), mem->uid());
+                        "when the kernel reads the memory.", 
+                        task->name(), kernel->name(), src_mem->uid(), mem->uid());
                 src_mem->Print("src_mem:");
                 mem->Print("mem:");
                 Utils::PrintStackTrace();

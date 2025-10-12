@@ -617,6 +617,19 @@ extern iris_kernel iris_kernel_create_struct(const char* name);
  */
 extern int iris_kernel_get(const char* name, iris_kernel* kernel);
 
+/**@brief Get Kernel command from given kernel
+ * @param kernel is iris_kernel type
+ * @return Return iris_command (Kernel Command)
+ */
+extern iris_command iris_kernel_cmd(iris_kernel brs_kernel);
+
+/**@brief Sets the DMEM to set the GWS dynamically
+ *
+ * @param kernel a kernel object
+ * @param mem a DMEM object
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_kernel_set_gws_dynamic_from_dmem(iris_kernel brs_kernel, iris_mem brs_mem);
 
 /**@brief Sets the shared memory size for a given kernel
  *
@@ -752,6 +765,9 @@ extern int iris_task_cmd_init_reset_random_log_normal_sobol_seq(iris_task brs_ta
 // Update Task kernel Command arguments
 extern int iris_kernel_update_arg(iris_kernel brs_kernel, int index, void *ptr);
 extern int iris_kernel_update_mem(iris_kernel brs_kernel, int index, iris_mem mem);
+extern int iris_command_set_gws(iris_command brs_cmd, size_t *gws, int dim);
+extern int iris_command_update_arg(iris_command brs_command, int index, void *ptr);
+extern int iris_command_update_mem(iris_command brs_command, int index, iris_mem mem);
 
 /**@brief set task level IRIS stream policy type 
  *
@@ -1074,6 +1090,8 @@ extern int iris_task_kernel_object(iris_task task, iris_kernel kernel, int dim, 
  * @return IRIS kernel 
  */
 extern iris_kernel iris_task_kernel_struct(iris_task task, const char* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, int* params_info);
+extern iris_kernel iris_task_kernel_struct_with_position(iris_task task, const char* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, int* params_info, int position);
+
 
 /**@brief Launches a kernel
  *

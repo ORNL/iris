@@ -107,7 +107,7 @@ public:
   Task(Platform* platform, int type = IRIS_TASK, const char* name = NULL, int max_cmds=IRIS_TASK_MAX_CMDS);
   virtual ~Task();
 
-  void AddCommand(Command* cmd);
+  void AddCommand(Command* cmd, int position=-1);
   void AddMemResetCommand(Command* cmd);
   void ClearCommands();
 

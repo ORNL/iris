@@ -8,6 +8,8 @@
 #include "DataMem.h"
 #include "DataMemRegion.h"
 #include <string.h>
+#include <vector>
+#include <algorithm> 
 
 using namespace std;
 namespace iris {
@@ -22,6 +24,7 @@ Kernel::Kernel(const char* name, Platform* platform) {
   shared_mem_size_ = 0;
   task_ = NULL;
   n_mems_ = 0;
+  gws_dynamic_from_dmem_ = NULL;
   //name_[len] = 0;
   enable_julia_if_ = false;
   julia_kernel_type_ = iris_julia_native;
@@ -46,11 +49,9 @@ Kernel::~Kernel() {
   //Platform::GetPlatform()->kernel_track().UntrackObject(this, uid());
   data_mems_in_.clear();
   data_mems_in_order_.clear();
-  data_mem_regions_in_.clear();
   mem_track_.clear();
   out_mem_track_.clear();
   in_mem_track_.clear();
-  data_mems_in_.clear();
   data_mems_out_.clear();
   data_mem_regions_in_.clear();
   data_mem_regions_out_.clear();
@@ -68,6 +69,11 @@ int Kernel::set_order(int *order) {
   return IRIS_SUCCESS;
 }
 
+void Kernel::set_gws_dynamic_from_dmem(DataMem *mem)
+{
+    gws_dynamic_from_dmem_ = mem;
+}
+
 void Kernel::update_arg(int index, void *val)
 {
     if (cmd_ != NULL)  {
@@ -77,6 +83,13 @@ void Kernel::update_arg(int index, void *val)
         _error("This case is not handled");
     }
 }
+void Kernel::update_arg_core(int index, void *val)
+{
+    if (args_.find(index) != args_.end()) {
+        KernelArg *arg = args_[index];
+        memcpy(arg->value, val, arg->size);
+    }
+}
 void Kernel::update_mem(int index, BaseMem *mem)
 {
     if (cmd_ != NULL)  {
@@ -84,6 +97,55 @@ void Kernel::update_mem(int index, BaseMem *mem)
     }
     else {
         _error("This case is not handled");
+    }
+}
+void Kernel::update_map(int index, BaseMem *mem, std::map<BaseMem*, int> & mem2index)
+{
+    bool found = false;
+    for (auto it = mem2index.begin(); it != mem2index.end();) {
+        if (it->second == index) {
+            auto next = it; ++next;   // save next before erase
+            int val = it->second;     // copy or move value
+            mem2index.erase(it);
+            it = next;
+            found = true;
+        } else {
+            ++it;
+        }
+    }
+    if (found)
+        mem2index.insert(std::make_pair(mem, index));
+}
+void Kernel::update_mem_core(int index, BaseMem *mem)
+{
+    BaseMem *old_mem = NULL;
+    if (args_.find(index) != args_.end()) {
+        old_mem = args_[index]->mem;
+        args_[index]->mem = mem;
+    }
+    update_map(index, mem, in_mem_track_);
+    update_map(index, mem, out_mem_track_);
+    update_map(index, mem, mem_track_);
+    if (data_mems_in_.find(index) != data_mems_in_.end()) {
+        old_mem = data_mems_in_[index];
+        data_mems_in_[index] = (DataMem *)mem;
+    }
+    if (data_mems_out_.find(index) != data_mems_out_.end()) {
+        data_mems_out_[index] = (DataMem *)mem;
+    }
+    if (data_mem_regions_in_.find(index) != data_mem_regions_in_.end()) {
+        old_mem = data_mem_regions_in_[index];
+        data_mem_regions_in_[index] = (DataMemRegion *)mem;
+    }
+    if (data_mem_regions_out_.find(index) != data_mem_regions_out_.end()) {
+        data_mem_regions_out_[index] = (DataMemRegion *)mem;
+    }
+    auto it = std::find(all_data_mems_in_.begin(), all_data_mems_in_.end(), old_mem);
+    if (it != all_data_mems_in_.end())
+        *it = mem;
+    if (old_mem != NULL && gws_dynamic_from_dmem_ != NULL 
+            && old_mem == gws_dynamic_from_dmem_) {
+        gws_dynamic_from_dmem_ = (DataMem*)mem;
     }
 }
 void Kernel::set_task(Task *task) { 

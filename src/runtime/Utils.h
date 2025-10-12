@@ -86,6 +86,11 @@ namespace iris {
                     ss << "]";
                     return ss.str();
                 }
+                template<class T>
+                static void insert_at(std::vector<T>& v, std::size_t pos, const T& value) {
+                    if (pos > v.size()) throw std::out_of_range("pos out of range");
+                    v.insert(v.begin() + pos, value);   // shifts [pos..end) to the right by 1
+                }
                 static bool IsTileContiguous( const size_t strides[3],   
                         const size_t tile_size[3], int dims);              
         };
