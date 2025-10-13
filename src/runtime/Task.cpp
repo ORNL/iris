@@ -525,6 +525,7 @@ void Task::AddDepend(Task* task, unsigned long p_uid) {
   pthread_mutex_unlock(&depend_mutex_);
   if(platform_->get_enable_proactive() 
 		&& std::string(this->name()).find("GraphSync") == std::string::npos  
+        && std::string(this->name()).find("flush") == std::string::npos  
 		&& std::string(this->name()).find("flush-out") == std::string::npos ) {
       unsigned long this_uid = this->uid();
       platform_->task_track().CallBackIfObjectExists(p_uid, 

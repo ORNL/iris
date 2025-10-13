@@ -548,7 +548,7 @@ void Command::update_mem(int index, BaseMem *mem)
         mem_ = mem;       
     }
     else {
-        _error("Unsupported type:%d for this function for index:%d mem:%lu:%s", type_, index, mem->uid(), mem->name());
+        _error("Command:%lu Unsupported type:%d for this function for index:%d mem:%lu:%s task:%lu:%s", uid(), type_, index, mem->uid(), mem->name(), task_->uid(), task_->name());
     }
 }
 

@@ -1186,7 +1186,7 @@ void Device::ExecuteDMEM2DMEM(Task *task, Command *cmd) {
              dst_mem->GetMemHandlerType() == IRIS_DMEM_REGION)) {
         DataMem *dsrc_mem = (DataMem*)src_mem;
         DataMem *ddst_mem = (DataMem*)dst_mem;
-        //printf(" task:%lu:%s src:%lu:%s dst:%lu:%s\n", task->uid(), task->name(), dsrc_mem->uid(), dsrc_mem->name(), ddst_mem->uid(), ddst_mem->name());
+        //_printf(" task:%lu:%s src:%lu:%s dst:%lu:%s\n", task->uid(), task->name(), dsrc_mem->uid(), dsrc_mem->name(), ddst_mem->uid(), ddst_mem->name());
         if (dsrc_mem->get_source_mem() != NULL) dsrc_mem = (DataMem*)dsrc_mem->get_source_mem();
         if (ddst_mem->get_source_mem() != NULL) ddst_mem = (DataMem*)ddst_mem->get_source_mem();
 
@@ -1448,6 +1448,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         void* dst_arch = mem->arch(this);
 
         _event_debug("D2D: src:%d dest:%d src_arch:%p dst_arch:%p mem_stream:%d\n\n", src_dev->devno(), this->devno(), src_arch, dst_arch, mem_stream);
+        _printf("D2D: task:%lu:%s smem:%lu:%s dmem:%lu:%s src:%d dest:%d src_arch:%p dst_arch:%p mem_stream:%d\n\n", task->uid(), task->name(), src_mem->uid(), src_mem->name(), mem->uid(), mem->name(), src_dev->devno(), this->devno(), src_arch, dst_arch, mem_stream);
         // Now do D2D
 		size_t copy_size = IRIS_MIN(mem->size(), src_mem->size());
         if (!platform_obj_->is_data_transfers_disabled()) {
