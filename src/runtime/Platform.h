@@ -273,6 +273,8 @@ public:
   SchedulingHistory* scheduling_history() { return scheduling_history_; }
   double time_app() { return time_app_; }
   double time_init() { return time_init_; }
+  bool enable_dot_profiler() { return enable_dot_profiler_; }
+  void set_enable_dot_profiler(bool profiler) { enable_dot_profiler_ = profiler; }
   bool enable_profiler() { return enable_profiler_; }
   void set_enable_profiler(bool profiler) { enable_profiler_ = profiler; }
   int nstreams() { return nstreams_; }
@@ -396,6 +398,7 @@ private:
 
   bool recording_;
 
+  bool enable_dot_profiler_;
   bool enable_profiler_;
   Profiler* profilers_[8];
   int nprofilers_;

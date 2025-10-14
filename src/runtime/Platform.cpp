@@ -117,6 +117,7 @@ void Platform::Reset() {
   is_malloc_async_ = false;
   recording_ = false;
   enable_profiler_ = false;
+  enable_dot_profiler_ = false;
   enable_scheduling_history_ = false; 
   nprofilers_ = 0;
   time_app_ = 0.0;
@@ -302,6 +303,9 @@ int Platform::Init(int* argc, char*** argv, int sync) {
   if (event_profile_enabled_) {
     enable_profiler_ = true;
     profilers_[nprofilers_++] = new ProfilerEventRecord(this);
+  }
+  if (enable_profiler_) {
+    enable_dot_profiler_ = true;
   }
 
   if (enable_scheduling_history_) scheduling_history_ = new SchedulingHistory(this);

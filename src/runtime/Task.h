@@ -266,6 +266,7 @@ public:
   iris_command get_last_cmd();
   iris_kernel get_last_cmd_kernel();
   Device *last_cmd_device() { return last_cmd_device_; }
+  int execute_instance() { return execute_instance_; }
 private:
   void CompleteSub();
 
@@ -390,6 +391,7 @@ public:
   }
   bool j_policy_flag_;
   string j_policy_;
+  int execute_instance_;
 };
 
 } /* namespace rt */

@@ -57,6 +57,10 @@ void iris_set_enable_profiler(int flag) {
   Platform::GetPlatform()->set_enable_profiler((bool)flag);
 }
 
+void iris_set_enable_dot_profiler(int flag) {
+  Platform::GetPlatform()->set_enable_dot_profiler((bool)flag);
+}
+
 int iris_synchronize() {
   return Platform::GetPlatform()->Synchronize();
 }
@@ -680,6 +684,7 @@ int iris_command_update_arg(iris_command brs_cmd, int index, void *ptr)
 int iris_command_set_gws(iris_command brs_cmd, size_t *gws, int dim)
 {
     Command *cmd = brs_cmd.class_obj;
+    //_printf("GWS: cmd:%lu gws:%lu:%lu, dim:%d\n", brs_cmd.uid, gws[0], gws[1], dim);
     cmd->set_gws(gws, dim);
     return IRIS_SUCCESS;
 }

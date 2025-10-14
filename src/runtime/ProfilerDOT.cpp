@@ -3,7 +3,8 @@
 #include "Device.h"
 #include "Platform.h"
 #include "Task.h"
-
+#include <sstream>
+using namespace std;
 #define PROFILER_DOT_HEADER "digraph {\n" \
                             "start[shape=Mdiamond, label=\"main\"]\n"
 
@@ -55,6 +56,7 @@ int ProfilerDOT::Exit() {
 }
 
 int ProfilerDOT::CompleteTask(Task* task) {
+  if (!platform_->enable_dot_profiler()) return IRIS_SUCCESS;
   no_task_ = false;
   unsigned long tid = task->uid();
   Device* dev = task->dev();
@@ -66,12 +68,24 @@ int ProfilerDOT::CompleteTask(Task* task) {
   if (tasks_exit_.find(tid) == tasks_exit_.end())
       tasks_exit_.insert(tid);
   pthread_mutex_unlock(&dot_lock_);
-  char s[1024];
+  bool include_execute_instance = false;
+  if (task->graph() != NULL)        include_execute_instance = true;
+  if (task->execute_instance() > 0) include_execute_instance = true;
+  stringstream ss;
+  ss << "task" << tid << "[shape=box, style=filled,";
 #ifndef PER_TASK_COLOR
+  ss << " fillcolor="<< ((type & iris_cpu) ? "cyan" : (type & iris_gpu) ? "green" : "purple");
+  ss << " label=\""<<task->name();
+  if (include_execute_instance)
+    ss << "-I" << task->execute_instance();
+  ss <<" ("<<policy_str(policy)<<")\\n" << time << "\"";
+  ss << "]\n";
+  #if 0
   sprintf(s, "task%lu[shape=box, style=filled, fillcolor=%s, label=\"%s (%s)\\n%lf\"]\n", tid,
       type & iris_cpu ? "cyan" : type & iris_gpu ? "green" : "purple", task->name(), policy_str(policy), time);
+  #endif
   pthread_mutex_lock(&dot_lock_);
-  Write(s);
+  Write(ss.str());
   pthread_mutex_unlock(&dot_lock_);
 #else
   std::string current_color = "green";
@@ -90,16 +104,22 @@ int ProfilerDOT::CompleteTask(Task* task) {
     //std::cout << short_task_name << " " << current_color << std::endl; 
   }
   if ( short_task_name != "GraphSync"){
+    ss << " fillcolor=" << current_color;
+    ss << " label=\""<<short_task_name <<"\"";
+    ss << "]\n";
+#if 0
     sprintf(s, "task%lu[shape=box, style=filled, fillcolor=%s, label=\"%s\"]\n", tid,
     //sprintf(s, "task%lu[style=filled, fillcolor=%s, label=\"%s (%s)\\n%lf\"]\n", tid,
       current_color.c_str(), short_task_name.c_str());
       //current_color.c_str(), short_task_name.c_str(), policy_str(policy), time);
       //current_color.c_str(), task->name(), policy_str(policy), time);
+#endif
     pthread_mutex_lock(&dot_lock_);
-    Write(s);
+    Write(ss.str());
     pthread_mutex_unlock(&dot_lock_);
   }
 #endif
+  char s[1024];
   int ndepends = task->ndepends();
   if (ndepends == 0) {
     sprintf(s, "start -> task%lu\n", tid);

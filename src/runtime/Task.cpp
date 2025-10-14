@@ -62,6 +62,7 @@ Task::Task(Platform* platform, int type, const char* name, int max_cmds) {
   type_ = type;
   recommended_stream_ = -1;
   recommended_dev_ = -1;
+  execute_instance_ = -1;
   max_cmds_ = (max_cmds < IRIS_TASK_MAX_CMDS) ? IRIS_TASK_MAX_CMDS : max_cmds;
   ncmds_ = 0;
   disable_consistency_ = false;
@@ -129,7 +130,7 @@ Task::Task(Platform* platform, int type, const char* name, int max_cmds) {
 }
 
 Task::~Task() {
-  //printf("Releasedd task:%lu:%s released ptr:%p ref_cnt:%d\n", uid(), name(), this, ref_cnt());
+  //_printf("Releasedd task:%lu:%s released ptr:%p ref_cnt:%d\n", uid(), name(), this, ref_cnt());
   //Platform::GetPlatform()->task_track().UntrackObject(this, uid());
   _trace("Task deleted %lu %s %p ref_cnt:%d", uid(), name(), this, ref_cnt());
   //printf("Trying to delete profile events\n");
@@ -660,6 +661,7 @@ void Task::RemoveDepend(Task* task) {
 void Task::Submit(int brs_policy, const char* opt, int sync) {
   status_ = IRIS_NONE;
   set_brs_policy(brs_policy);
+  execute_instance_++;
   //if the submitted task is pending but it is a d2h transfer, then, default to a data movement minimization policy.
   if (brs_policy == iris_pending){
     if (!cmd_last_ || cmd_last_->type_d2h() || cmd_last_->type_memflush()){

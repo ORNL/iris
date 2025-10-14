@@ -450,6 +450,12 @@ extern int iris_mem_disable_usm(iris_mem mem, DeviceModel type);
  */
 extern int iris_mem_disable_usm_all(iris_mem mem);
 
+/**@brief Enable/disable DOT profiler
+ *
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern void iris_set_enable_dot_profiler(int flag);
+
 /**@brief Enable/disable profiler
  *
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .

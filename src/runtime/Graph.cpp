@@ -133,6 +133,7 @@ void Graph::GraphRelease(void *data) {
 }
 void Graph::AddTask(Task* task, unsigned long uid) {
   //printf("Graph:%lu Task:%lu:%s Is retainable:%d task->release:%d\n", this->uid(), task->uid(), task->name(), is_retainable(), task->IsRelease());
+  if (std::find(tasks_.begin(), tasks_.end(), task) != tasks_.end()) return;
   if (is_retainable() && task->IsRelease()) { 
       task->Retain(); 
       task->DisableRelease(); 

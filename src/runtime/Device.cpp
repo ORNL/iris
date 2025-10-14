@@ -993,6 +993,7 @@ void Device::ExecuteKernel(Command* cmd) {
   int arg_idx = 0;
   int stream_index = 0;
   Task *task = cmd->task();
+  string tname = task->name();
   bool async_launch = is_async(cmd->task());
   if (async_launch) {
       WaitForTaskInputAvailability(devno(), cmd->task(), cmd);
@@ -1447,8 +1448,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         ResetContext();
         void* dst_arch = mem->arch(this);
 
-        _event_debug("D2D: src:%d dest:%d src_arch:%p dst_arch:%p mem_stream:%d\n\n", src_dev->devno(), this->devno(), src_arch, dst_arch, mem_stream);
-        _printf("D2D: task:%lu:%s smem:%lu:%s dmem:%lu:%s src:%d dest:%d src_arch:%p dst_arch:%p mem_stream:%d\n\n", task->uid(), task->name(), src_mem->uid(), src_mem->name(), mem->uid(), mem->name(), src_dev->devno(), this->devno(), src_arch, dst_arch, mem_stream);
+        _event_debug("D2D: task:%lu:%s smem:%lu:%s dmem:%lu:%s src:%d dest:%d src_arch:%p dst_arch:%p mem_stream:%d\n\n", task->uid(), task->name(), src_mem->uid(), src_mem->name(), mem->uid(), mem->name(), src_dev->devno(), this->devno(), src_arch, dst_arch, mem_stream);
         // Now do D2D
 		size_t copy_size = IRIS_MIN(mem->size(), src_mem->size());
         if (!platform_obj_->is_data_transfers_disabled()) {

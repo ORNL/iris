@@ -60,6 +60,7 @@ Kernel::~Kernel() {
   for (std::map<int, KernelArg*>::iterator I = args_.begin(), E = args_.end(); I != E; ++I)
     delete I->second;
   _trace(" kernel:%lu:%s is destroyed", uid(), name());
+  //_printf(" kernel:%lu:%s is destroyed", uid(), name());
 }
 
 int Kernel::set_order(int *order) {
@@ -87,7 +88,8 @@ void Kernel::update_arg_core(int index, void *val)
 {
     if (args_.find(index) != args_.end()) {
         KernelArg *arg = args_[index];
-        memcpy(arg->value, val, arg->size);
+        if (arg != NULL) 
+            memcpy(arg->value, val, arg->size);
     }
 }
 void Kernel::update_mem(int index, BaseMem *mem)
@@ -120,8 +122,14 @@ void Kernel::update_mem_core(int index, BaseMem *mem)
 {
     BaseMem *old_mem = NULL;
     if (args_.find(index) != args_.end()) {
-        old_mem = args_[index]->mem;
-        args_[index]->mem = mem;
+        KernelArg *arg = args_[index];
+        //string kname = name();
+        //    _printf(" kname:%s index:%d arg:%p mem:%lu:%s\n", kname, index, 
+        //            arg, mem->uid(), mem->name());
+        if (arg != NULL) {
+            old_mem = arg->mem;
+            arg->mem = mem;
+        }
     }
     update_map(index, mem, in_mem_track_);
     update_map(index, mem, out_mem_track_);
