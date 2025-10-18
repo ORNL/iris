@@ -82,10 +82,12 @@ int ProfilerGoogleCharts::CompleteTask(Task* task) {
           pthread_mutex_unlock(&chart_lock_);
       }
       else if (task->cmd_kernel() != NULL){
+          Command *first_kernel = task->get_first_cmd_kernel().class_obj->get_cmd();
+          Command *last_kernel = task->get_last_cmd_kernel().class_obj->get_cmd();
           if (include_execute_instance)
-            sprintf(s, "[ '%s %d', '%s-I%d (%s)', %lf, %lf ],\n", dev->name(), dev->devno(), task->name(), task->execute_instance(), policy_str(policy), (task->cmd_kernel()->time_start() * 1.e+3) - first_task_, (task->cmd_kernel()->time_end() * 1.e+3) - first_task_);
+            sprintf(s, "[ '%s %d', '%s-I%d (%s)', %lf, %lf ],\n", dev->name(), dev->devno(), task->name(), task->execute_instance(), policy_str(policy), (first_kernel->time_start() * 1.e+3) - first_task_, (last_kernel->time_end() * 1.e+3) - first_task_);
           else
-            sprintf(s, "[ '%s %d', '%s (%s)', %lf, %lf ],\n", dev->name(), dev->devno(), task->name(), policy_str(policy), (task->cmd_kernel()->time_start() * 1.e+3) - first_task_, (task->cmd_kernel()->time_end() * 1.e+3) - first_task_);
+            sprintf(s, "[ '%s %d', '%s (%s)', %lf, %lf ],\n", dev->name(), dev->devno(), task->name(), policy_str(policy), (first_kernel->time_start() * 1.e+3) - first_task_, (last_kernel->time_end() * 1.e+3) - first_task_);
           pthread_mutex_lock(&chart_lock_);
           Write(s);
           pthread_mutex_unlock(&chart_lock_);

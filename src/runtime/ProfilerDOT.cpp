@@ -15,6 +15,7 @@ namespace rt {
 
 ProfilerDOT::ProfilerDOT(Platform* platform) : Profiler(platform, "DOT") {
   no_task_ = true;
+  first_task_ = 0.0;
   OpenFD();
   Main();
 
@@ -71,6 +72,14 @@ int ProfilerDOT::CompleteTask(Task* task) {
   bool include_execute_instance = false;
   if (task->graph() != NULL)        include_execute_instance = true;
   if (task->execute_instance() > 0) include_execute_instance = true;
+  double start_time = (task->time_start() * 1.e+3) - first_task_; 
+  double end_time = (task->time_end() * 1.e+3) - first_task_;
+  if (task->cmd_kernel() != NULL){
+      Command *first_kernel = task->get_first_cmd_kernel().class_obj->get_cmd();
+      Command *last_kernel = task->get_last_cmd_kernel().class_obj->get_cmd();
+      start_time = (first_kernel->time_start() * 1.e+3) - first_task_; 
+      end_time = (last_kernel->time_end() * 1.e+3) - first_task_;
+  }
   stringstream ss;
   ss << "task" << tid << "[shape=box, style=filled,";
 #ifndef PER_TASK_COLOR
@@ -78,7 +87,9 @@ int ProfilerDOT::CompleteTask(Task* task) {
   ss << " label=\""<<task->name();
   if (include_execute_instance)
     ss << "-I" << task->execute_instance();
-  ss <<" ("<<policy_str(policy)<<")\\n" << time << "\"";
+  ss <<" ("<<policy_str(policy)<<")\\n";
+  ss << "("<<std::fixed<<std::setprecision(3)<<start_time<<", "<<end_time<<")\\n";
+  ss << time << "\"";
   ss << "]\n";
   #if 0
   sprintf(s, "task%lu[shape=box, style=filled, fillcolor=%s, label=\"%s (%s)\\n%lf\"]\n", tid,
@@ -105,8 +116,9 @@ int ProfilerDOT::CompleteTask(Task* task) {
   }
   if ( short_task_name != "GraphSync"){
     ss << " fillcolor=" << current_color;
-    ss << " label=\""<<short_task_name <<"\"";
-    ss << "]\n";
+    ss << " label=\""<<short_task_name ;
+    ss << "\\n("<<std::fixed<<std::setprecision(3)<<start_time<<", "<<end_time<<")";
+    ss << "\"]\n";
 #if 0
     sprintf(s, "task%lu[shape=box, style=filled, fillcolor=%s, label=\"%s\"]\n", tid,
     //sprintf(s, "task%lu[style=filled, fillcolor=%s, label=\"%s (%s)\\n%lf\"]\n", tid,

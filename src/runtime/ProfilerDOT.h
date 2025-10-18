@@ -27,6 +27,7 @@ protected:
 private:
   std::set<unsigned long> tasks_exit_;
   pthread_mutex_t   dot_lock_;
+  double first_task_;
   bool no_task_;
 #ifdef PER_TASK_COLOR
   std::vector<std::string> list_color;

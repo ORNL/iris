@@ -44,6 +44,7 @@ public:
   void set_brs_policy(int policy) { brs_policy_ = policy; }
   int brs_policy() { return brs_policy_; }
   BaseMem *condition_mem() { return condition_mem_; }
+  void validate_profile();
   bool condition_flag() { return condition_flag_; }
   bool submit_again() { return submit_again_; }
   int submit_index() { return submit_index_; }

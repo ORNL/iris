@@ -1111,6 +1111,13 @@ int iris_data_mem_set_valid_regions(iris_mem brs_mem, int regions) {
   mem->set_valid_regions(regions);
   return IRIS_SUCCESS;
 }
+int iris_dmem_is_region(iris_mem brs_mem) {
+    DataMem *obj = (DataMem*)Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (obj->GetMemHandlerType() == IRIS_DMEM_REGION) {
+        return 1;
+    }
+    return 0;
+}
 iris_mem iris_get_dmem_for_region(iris_mem brs_mem) {
     DataMem *obj = (DataMem*)Platform::GetPlatform()->get_mem_object(brs_mem);
     if (obj->GetMemHandlerType() == IRIS_DMEM_REGION) {

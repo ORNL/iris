@@ -1,14 +1,6 @@
 add_subdirectory(runtime)
 
 set(JULIA_SRC_FILES
-        IrisLib.jl
-        IrisUtils.jl
-        IrisHRT.jl
-        IrisJuliaKernels.jl
-        IrisNativeKernels.jl
-        Tiling1D.jl
-        Tiling2D.jl
-        Tiling3D.jl
    )
 
 foreach(file ${JULIA_SRC_FILES})

@@ -264,6 +264,7 @@ public:
   int last_cmd_stream() { return last_cmd_stream_; }
   void set_last_cmd_device(Device *dev) { last_cmd_device_ = dev; }
   iris_command get_last_cmd();
+  iris_kernel get_first_cmd_kernel();
   iris_kernel get_last_cmd_kernel();
   Device *last_cmd_device() { return last_cmd_device_; }
   int execute_instance() { return execute_instance_; }

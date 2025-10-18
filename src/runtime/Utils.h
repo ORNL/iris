@@ -9,6 +9,15 @@
 #include <vector>
 #include <set>
 #include <map>
+#if defined(_WIN32)
+#  include <windows.h>
+#else
+#  include <unistd.h>
+#endif
+
+#include <cstdint>
+#include <utility>
+
 using namespace std;
 namespace iris {
     namespace rt {
@@ -93,6 +102,37 @@ namespace iris {
                 }
                 static bool IsTileContiguous( const size_t strides[3],   
                         const size_t tile_size[3], int dims);              
+
+#if defined(_WIN32)
+                static size_t PageSize() { 
+                    SYSTEM_INFO si; GetSystemInfo(&si); return (size_t)si.dwPageSize; 
+                }
+#else
+                static size_t PageSize() { 
+                    return (size_t)sysconf(_SC_PAGESIZE); 
+                }
+#endif
+                static inline std::pair<void*, size_t>
+                    PageAligned(void* host, size_t bytes)
+                    {
+                        const size_t pgsz  = PageSize(); // your function: e.g., sysconf(_SC_PAGESIZE)
+                        const uintptr_t p  = reinterpret_cast<uintptr_t>(host);
+                        const uintptr_t b  = p & ~(static_cast<uintptr_t>(pgsz) - 1u); // align down
+                        const size_t    d  = static_cast<size_t>(p - b);               // head fragment
+                        const size_t    n  = bytes + d;                                // bytes to cover
+                        const size_t    regsz = (n + (pgsz - 1)) & ~(pgsz - 1);        // round up to page
+
+                        return { reinterpret_cast<void*>(b), regsz };
+                    }
+                static inline void*
+                    PageAligned(void* host)
+                    {
+                        const size_t pgsz  = PageSize(); // your function: e.g., sysconf(_SC_PAGESIZE)
+                        const uintptr_t p  = reinterpret_cast<uintptr_t>(host);
+                        const uintptr_t b  = p & ~(static_cast<uintptr_t>(pgsz) - 1u); // align down
+                        return (void *)b;
+                    }
+
         };
 
     } /* namespace rt */

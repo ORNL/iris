@@ -241,20 +241,26 @@ void DeviceCUDA::RegisterPin(void *host, size_t size)
     ld_->cuCtxSetCurrent(ctx_);
     //printf("Host:%p size:%lu, flags:%d\n", host, size, 0);
     //int mem_type = CheckPinnedMemory(host);
-    //printf("Host:%p size:%lu, flags:%d mem:%d\n", host, size, 0, mem_type);
-    if (CheckPinnedMemory(host) != 1) {
-        CUresult err = ld_->cuMemHostRegister_v2(host, size, 0);
+    //auto [base, regsz] = Utils::PageAligned(host, size);
+    void *base = host; size_t regsz = size;
+    //printf("Host:%p size:%lu, flags:%d base:%p regsz:%lu\n", host, size, 0, base, regsz);
+    if (CheckPinnedMemory(base) != 1) 
+    {
+        CUresult err = ld_->cuMemHostRegister_v2(base, regsz, 0);
         _cuwarning(err);
     }
 }
 
 void DeviceCUDA::UnRegisterPin(void *host)
 {
+    void *base = host; //Utils::PageAligned(host);
+    //printf(" Unregister Pin: host:%p base:%p\n", host, base);
     //ld_->cudaHostRegister(host, size, cudaHostRegisterMapped);
     //CUresult err = ld_->cudaHostUnregister(host);
     ld_->cuCtxSetCurrent(ctx_);
-    if (CheckPinnedMemory(host) == 1) {
-        CUresult err = ld_->cuMemHostUnregister(host); 
+    if (CheckPinnedMemory(base) == 1) 
+    {
+        CUresult err = ld_->cuMemHostUnregister(base); 
         _cuwarning(err);
     }
 }

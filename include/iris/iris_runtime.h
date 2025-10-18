@@ -2131,6 +2131,7 @@ extern size_t *iris_dmem_get_host_tile_size(iris_mem mem);
 extern size_t *iris_dmem_get_dev_tile_size(iris_mem mem);
 extern size_t *iris_dmem_get_offsets(iris_mem mem);
 extern size_t *iris_dmem_get_offsets_from_host(iris_mem mem);
+extern int iris_dmem_is_region(iris_mem dmem_region_obj);
 extern iris_mem iris_get_dmem_for_region(iris_mem dmem_region_obj);
 extern iris_mem iris_dmem_get_source(iris_mem brs_mem);
 extern int iris_dmem_set_source(iris_mem brs_mem, iris_mem source_mem);
