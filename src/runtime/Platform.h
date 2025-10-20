@@ -135,8 +135,9 @@ public:
   int TaskMapFromFull(iris_task brs_task, void* host);
   int SetTaskPolicy(iris_task brs_task, int brs_policy);
   int GetTaskPolicy(iris_task brs_task);
-  int TaskSubmit(iris_task brs_task, int brs_policy, const char* opt, int wait);
-  int TaskSubmit(Task *task, int brs_policy, const char* opt, int wait);
+  int TaskSubmit(iris_task brs_task, int brs_policy=iris_default, const char* opt=NULL, int wait=1);
+  int TaskSubmit(Task *task, int brs_policy=iris_default, const char* opt=NULL, int wait=1);
+  void GraphTaskSubmit(Task *task, int brs_policy=iris_default, int wait=1);
   void TaskSafeRetain(iris_task brs_task);
   void TaskSafeRetain(unsigned long uid);
   static void TaskSafeRetainStatic(void *data);

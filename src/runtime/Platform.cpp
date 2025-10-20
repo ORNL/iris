@@ -1673,6 +1673,25 @@ int Platform::NumErrors(){
   return nfailures_;
 }
 
+void Platform::GraphTaskSubmit(Task *task, int brs_policy, int sync) {
+    /*    for(int i = 0; i < task->nchilds(); i++)
+          printf("    Childs %d - %s\n", i, task->Child(i)->name());
+    */ 
+    //printf("Task name %s depend count %d\n", task->name(), task->ndepends());
+    //for(int i = 0; i < task->ndepends(); i++)
+    //    printf("    depend %d - %s\n", i, task->depend(i)->name());
+    if (task->brs_policy() == iris_default) {
+        task->set_brs_policy(brs_policy);
+    }
+    _debug2("Graph submit task:%lu:%s retained ref_cnt:%d", task->uid(), task->name(), task->ref_cnt());
+    task->Retain();
+    task->set_time_submit(timer_);
+    task->Submit(task->brs_policy(), task->opt(), sync);
+    if (recording_) json_->RecordTask(task);
+    if (scheduler_) scheduler_->Enqueue(task);
+    else { task->Retain(); workers_[0]->Enqueue(task); }
+}
+
 int Platform::TaskSubmit(iris_task brs_task, int brs_policy, const char* opt, int sync) {
   if (ndevs_ == 0) {
     _error("Cannot submit task:%lu due to no devices found on this system!", brs_task.uid);
@@ -2209,33 +2228,20 @@ int Platform::GraphSubmit(Graph *graph, int brs_policy, int sync) {
   graph->set_brs_policy(brs_policy);
   std::vector<Task*>* tasks = graph->tasks();
   //graph->RecordStartTime(devs_[0]->Now());
-  for (std::vector<Task*>::iterator I = tasks->begin(), E = tasks->end(); I != E; ++I) {
-    Task* task = *I;
+  if (!tasks->empty()) {
+      for (std::vector<Task*>::iterator I = tasks->begin()+1, E = tasks->end(); I != E; ++I) {
+          Task* task = *I;
 
 #ifdef PRINT_TASK_DEP
-    printf("Task: %s task id %d\n", task->name(), task->uid());
-    for(int i = 0; i < task->ndepends(); i++)
-        printf("    Parents %d - %s task id %d\n", i, task->depend(i)->name(), task->depend(i)->uid());
-    for(int i = 0; i < task->nchilds(); i++)
-        printf("    Childs %d - %s task id %d\n", i, task->Child(i)->name(), task->Child(i)->uid());
+          printf("Task: %s task id %d\n", task->name(), task->uid());
+          for(int i = 0; i < task->ndepends(); i++)
+              printf("    Parents %d - %s task id %d\n", i, task->depend(i)->name(), task->depend(i)->uid());
+          for(int i = 0; i < task->nchilds(); i++)
+              printf("    Childs %d - %s task id %d\n", i, task->Child(i)->name(), task->Child(i)->uid());
 #endif
-/*    for(int i = 0; i < task->nchilds(); i++)
-        printf("    Childs %d - %s\n", i, task->Child(i)->name());
-*/ 
-    //printf("Task name %s depend count %d\n", task->name(), task->ndepends());
-    //for(int i = 0; i < task->ndepends(); i++)
-    //    printf("    depend %d - %s\n", i, task->depend(i)->name());
-    //preference is to honour the policy embedded in the task-graph.
-    if (task->brs_policy() == iris_default) {
-      task->set_brs_policy(brs_policy);
-    }
-    _debug2("Graph submit task:%lu:%s retained ref_cnt:%d", task->uid(), task->name(), task->ref_cnt());
-    task->Retain();
-    task->set_time_submit(timer_);
-    task->Submit(task->brs_policy(), task->opt(), sync);
-    if (recording_) json_->RecordTask(task);
-    if (scheduler_) scheduler_->Enqueue(task);
-    else { task->Retain(); workers_[0]->Enqueue(task); }
+          GraphTaskSubmit(task, brs_policy, sync);
+      }
+      GraphTaskSubmit(tasks->front(), brs_policy, sync);
   }
   if (sync) graph->Wait();
 #ifdef AUTO_PAR
@@ -2259,17 +2265,7 @@ int Platform::GraphSubmit(iris_graph brs_graph, int *order, int brs_policy, int 
   //graph->RecordStartTime(devs_[0]->Now());
   for(size_t i=0; i<tasks.size(); i++) {
     Task* task = tasks[order[i]];
-    //preference is to honour the policy embedded in the task-graph.
-    if (task->brs_policy() == iris_default) {
-      task->set_brs_policy(brs_policy);
-    }
-    _debug2("Graph submit task:%lu:%s retained ref_cnt:%d", task->uid(), task->name(), task->ref_cnt());
-    task->Retain();
-    task->set_time_submit(timer_);
-    task->Submit(task->brs_policy(), task->opt(), sync);
-    if (recording_) json_->RecordTask(task);
-    if (scheduler_) scheduler_->Enqueue(task);
-    else { task->Retain(); workers_[0]->Enqueue(task); }
+    GraphTaskSubmit(task, brs_policy, sync);
   }
   if (sync) graph->Wait();
   return IRIS_SUCCESS;
