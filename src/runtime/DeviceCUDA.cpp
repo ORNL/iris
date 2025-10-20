@@ -1633,6 +1633,7 @@ int DeviceCUDA::KernelLaunchInit(Command *cmd, Kernel* kernel) {
 }
 
 int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws) {
+    Command *cmd = kernel->command();
 #ifndef TRACE_DISABLE
     CUcontext ctx;
     ld_->cuCtxGetCurrent(&ctx);
@@ -1749,7 +1750,7 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
       //  _printf("------Error with this issue:------ task:%lu", kernel->task()->uid());
       //  _info("dev[%d][%s] kernel[%s:%s] dim[%d] grid[%d,%d,%d] off[%ld,%ld,%ld] block[%d,%d,%d] blockoff[%lu,%lu,%lu] max_arg_idx[%d] shared_mem_bytes[%u] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, grid[0], grid[1], grid[2], off[0], off[1], off[2], block[0], block[1], block[2], blockOff_x, blockOff_y, blockOff_z, max_arg_idx_, shared_mem_bytes_, stream_index);
       //}
-      julia_if_->host_launch(kernel->task()->uid(), (void **)kstream, stream_index, (void *)&ctx_, async,
+      julia_if_->host_launch(kernel->task()->uid(), cmd->uid(), (void **)kstream, stream_index, (void *)&ctx_, async,
                   nstreams, kernel->name(), 
                   kernel->GetParamWrapperMemory(), ordinal_,
                   dim, gws, grid_s, block_s, kernel->shared_mem_size());

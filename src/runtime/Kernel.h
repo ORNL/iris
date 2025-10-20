@@ -120,6 +120,7 @@ public:
       return gws_dynamic_from_dmem_; 
   }
   Command *get_cmd() { return cmd_; }
+  Command *command() { return cmd_; }
 /*
 #ifdef AUTO_PAR
 #ifdef AUTO_SHADOW

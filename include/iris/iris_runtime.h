@@ -2611,7 +2611,7 @@ extern int iris_read_int_env(const char *env_name);
 
 typedef int32_t (*julia_policy_t)(iris_task task, const char *policy_name, iris_device *devs, int32_t ndevs, int32_t *out_dev); 
 // Define a type for the Julia kernel launch function call pointer
-typedef int32_t (*julia_kernel_t)(unsigned long task_id, int32_t julia_kernel_type, int32_t target, int32_t devno, void *ctx, int async, int32_t stream_index, void **stream, int32_t nstreams, int32_t *args, void **values, size_t *param_size, size_t *param_dim_size, size_t *param_dim_full_size, size_t *param_dim_off, int32_t nparams, size_t *gws, size_t *threads, size_t *blocks, size_t shared_mem_size, int dim, const char *kernel_name);
+typedef int32_t (*julia_kernel_t)(unsigned long task_id, unsigned long cmd_id, int32_t julia_kernel_type, int32_t target, int32_t devno, void *ctx, int async, int32_t stream_index, void **stream, int32_t nstreams, int32_t *args, void **values, size_t *param_size, size_t *param_dim_size, size_t *param_dim_full_size, size_t *param_dim_off, int32_t nparams, size_t *gws, size_t *threads, size_t *blocks, size_t shared_mem_size, int dim, const char *kernel_name);
 
 /* API to initialize Julia interfacea
  * @param kernel_launch_func Kernel launch Julia function 

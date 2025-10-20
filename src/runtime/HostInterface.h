@@ -250,11 +250,11 @@ namespace iris {
                 KernelJulia * get_kernel_julia(void *param_mem);
                 int launch_init(int model, int devno, int stream_index, int nstreams, void **stream, void *param_mem, Command *cmd);
                 int SetKernelPtr(void *obj, const char *kernel_name);
-                int host_launch(unsigned long task_id, void **stream, int stream_index, void *ctx, bool async, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *gws, size_t *off, size_t *bws, size_t shared_mem_size);
+                int host_launch(unsigned long task_id, unsigned long cmd_id, void **stream, int stream_index, void *ctx, bool async, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *gws, size_t *off, size_t *bws, size_t shared_mem_size);
                 int setarg(void *param_mem, int kindex, size_t size, void *value);
                 int setmem(void *param_mem, BaseMem *mem, int kindex, void *mem_ptr, size_t size);
                 int set_julia_kernel_type(void *param_mem, int type);
-                void launch_julia_kernel(unsigned long task_id, int julia_kernel_type, int target, int32_t devno, void *ctx, bool async, int32_t stream_index, void **stream, int32_t nstreams, int32_t *args, void **values, size_t *param_size, size_t *param_dim_size, size_t *param_dim_full_size, size_t *param_dim_off, int32_t nparams, size_t *gws, size_t *threads, size_t *blocks, size_t shared_mem_size, int dim, const char *name)
+                void launch_julia_kernel(unsigned long task_id, unsigned long cmd_id, int julia_kernel_type, int target, int32_t devno, void *ctx, bool async, int32_t stream_index, void **stream, int32_t nstreams, int32_t *args, void **values, size_t *param_size, size_t *param_dim_size, size_t *param_dim_full_size, size_t *param_dim_off, int32_t nparams, size_t *gws, size_t *threads, size_t *blocks, size_t shared_mem_size, int dim, const char *name)
                 {
                     //printf("jl_is_initialized: %p jl_init:%p\n", jl_is_initialized, jl_init);
                     if (iris_get_julia_launch_func()!= NULL) {
@@ -264,7 +264,7 @@ namespace iris {
                         //for(int i=0; i<nparams; i++) {
                         //    printf("Values:i:%d arg:%d:%d values:%p\n", i, args[i], args[i]>>16, values[i]);
                         //}
-                        kernel_julia_wrapper(task_id, julia_kernel_type, target, devno, ctx, (int)async, stream_index, stream, nstreams, args, values, param_size, param_dim_size, param_dim_full_size, param_dim_off, nparams, gws, threads, blocks, shared_mem_size, dim, name);
+                        kernel_julia_wrapper(task_id, cmd_id, julia_kernel_type, target, devno, ctx, (int)async, stream_index, stream, nstreams, args, values, param_size, param_dim_size, param_dim_full_size, param_dim_off, nparams, gws, threads, blocks, shared_mem_size, dim, name);
                         //printf("Result: %d\n", result);
                         //(*jl_atexit_hook)(0);
                     }
