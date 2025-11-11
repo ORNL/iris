@@ -43,7 +43,7 @@ enum ProfileRecordType
     PROFILE_KERNEL = 5,
     PROFILE_O2D = 6,
     PROFILE_D2O = 7,
-    PROFILE_DMEM2DMEM_FILL = 8,
+    PROFILE_RESET = 8,
     PROFILE_INIT = 9,
 }; 
 class ProfileEvent {
@@ -369,6 +369,9 @@ public:
   }
   ProfileEvent & LastProfileEvent() {
       return profile_events_.back();
+  }
+  void clear_profile_events() {
+      profile_events_.clear();
   }
   static Task* Create(Platform* platform, int type, const char* name, int max_cmds=IRIS_TASK_MAX_CMDS);
   static Task* Create(Platform* platform, int type, std::string name, int max_cmds=IRIS_TASK_MAX_CMDS) {

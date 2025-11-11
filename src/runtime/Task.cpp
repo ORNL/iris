@@ -418,7 +418,10 @@ void Task::Complete() {
   //pthread_cond_broadcast(&complete_cond_);
   //pthread_mutex_unlock(&mutex_complete_);
   //printf("calling profile events\n");
-  if (user_ && !disable_profiling_) platform_->ProfileCompletedTask(this);
+  if (user_ && !disable_profiling_) {
+      platform_->ProfileCompletedTask(this);
+      clear_profile_events();
+  }
   // For task with subtasks, the parent task is not in any worker queue. 
   // However, it has to call the completion of parent task each time.
   // Parent marker task was never go through Worker::Execute.

@@ -76,7 +76,7 @@ void Device::HandleMemReset(bool async, Command *cmd, Kernel *kernel, Task *task
     int mem_stream = GetStream(task, mem, true);
     double start = timer_->Now();
     if (async && platform_obj_->is_event_profile_enabled()) {
-        ProfileEvent & prof_event = task->CreateProfileEvent(mem, devno(), PROFILE_DMEM2DMEM_FILL, this, mem_stream);
+        ProfileEvent & prof_event = task->CreateProfileEvent(mem, devno(), PROFILE_RESET, this, mem_stream);
         _event_debug("Profiling record start: task[%lu][%s]", task->uid(), task->name());
         prof_event.RecordStartEvent(); 
     }
