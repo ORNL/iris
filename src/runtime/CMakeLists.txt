@@ -404,12 +404,12 @@ install(FILES
   ${IRIS_BIN_DIR}/runtime/Config.h
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/iris/rt)
 
+message(STATUS "NVCC: ${CUDA_NVCC_EXECUTABLE}")
+message(STATUS "CMAKE_CXX_COMPILER_ID: ${CMAKE_CXX_COMPILER_ID}")
 if (CMAKE_CUDA_COMPILER)
 else()
 find_package(OpenMP REQUIRED)
 endif()
-message(STATUS "NVCC: ${CUDA_NVCC_EXECUTABLE}")
-message(STATUS "CMAKE_CXX_COMPILER_ID: ${CMAKE_CXX_COMPILER_ID}")
 message(STATUS "OpenMP_CXX_FOUND: ${OpenMP_CXX_FOUND}")
 add_library(cpu_default default_cpu_gpu_kernels.cpp ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_openmp_kernels.cpp)
 add_dependencies(cpu_default iris_default_math_boilerplate_h)
