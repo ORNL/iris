@@ -116,6 +116,7 @@ void Platform::Reset() {
   ncopy_streams_ = IRIS_MAX_DEVICE_NCOPY_STREAMS;
   is_malloc_async_ = false;
   recording_ = false;
+  scheduler_dispatch_fcfs_ = false;
   enable_profiler_ = false;
   enable_dot_profiler_ = false;
   enable_scheduling_history_ = false; 
@@ -234,6 +235,7 @@ int Platform::Init(int* argc, char*** argv, int sync) {
 
   EnvironmentBoolRead("DEFAULT_KERNELS", enable_default_kernels_load_);
   EnvironmentBoolRead("DISABLE_KERNEL_LAUNCH", disable_kernel_launch_);
+  EnvironmentBoolRead("SCHEDULER_DISPATCH_FCFS", scheduler_dispatch_fcfs_);
   EnvironmentBoolRead("PROFILE", enable_profiler_);
   EnvironmentBoolRead("HISTORY", enable_scheduling_history_);
   EnvironmentBoolRead("EVENT_PROFILE", event_profile_enabled_);

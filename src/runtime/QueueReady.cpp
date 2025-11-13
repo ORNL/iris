@@ -44,7 +44,7 @@ bool QueueReady::Enqueue(Task* task) {
     _trace("Pushed marker task:%lu:%s to queue pq:%lu q:%lu", task->uid(), task->name(), pqueue_.size(), mqueue_.size());
   }
 #ifdef FLUSH_INDEPENDENT_QUEUE
-  else if (task->ncmds_memcpy() == task->ncmds()) {
+  else if (task->ncmds_memcpy() == task->ncmds() && (task->ncmds() != 0)) {
     pqueue_.push_back(task);
     _trace("Pushed task:%lu:%s to pqueue pq:%lu q:%lu", task->uid(), task->name(), pqueue_.size(), queue_.size());
   }
@@ -63,16 +63,22 @@ bool QueueReady::Dequeue(Task **task) {
     auto &data = pqueue_.front();
     *task = data;
     _trace("Popped task:%lu:%s to pqueue pq:%lu q:%lu", (*task)->uid(), (*task)->name(), pqueue_.size(), queue_.size());
-    pqueue_.pop_front();
-    return true;
+    if ((*task)->Dispatchable(false)) {
+        _trace("Popped task:%lu:%s to pqueue pq:%lu q:%lu", (*task)->uid(), (*task)->name(), pqueue_.size(), queue_.size());
+        pqueue_.pop_front();
+        return true;
+    }
   }
 #endif
   if (!queue_.empty()){
     auto &data = queue_.front();
     *task = data;
-    _trace("Popped task:%lu:%s to queue pq:%lu q:%lu", (*task)->uid(), (*task)->name(), pqueue_.size(), queue_.size());
-    queue_.pop_front();
-    return true;
+    _trace("Popped task:%lu:%s to pqueue pq:%lu q:%lu", (*task)->uid(), (*task)->name(), pqueue_.size(), queue_.size());
+    if ((*task)->Dispatchable(false)) {
+        _trace("Popped task:%lu:%s to queue pq:%lu q:%lu", (*task)->uid(), (*task)->name(), pqueue_.size(), queue_.size());
+        queue_.pop_front();
+        return true;
+    }
   }
   if (!mqueue_.empty()){
     auto &data = mqueue_.front();
@@ -89,17 +95,23 @@ bool QueueReady::Dequeue(Task **task, Device *device) {
   if (!pqueue_.empty()){
     auto &data = pqueue_.front();
     *task = data; //(Task*) data.second;
-    _trace("Popped task:%lu:%s to pqueue pq:%lu q:%lu", data->uid(), data->name(), pqueue_.size(), queue_.size());
-    pqueue_.pop_front();
-    return true;
+    _trace("Trying Popped task:%lu:%s to pqueue pq:%lu q:%lu", data->uid(), data->name(), pqueue_.size(), queue_.size());
+    if ((*task)->Dispatchable(false)) {
+        _trace("Popped task:%lu:%s to pqueue pq:%lu q:%lu", data->uid(), data->name(), pqueue_.size(), queue_.size());
+        pqueue_.pop_front();
+        return true;
+    }
   }
 #endif
   if (!queue_.empty()){
     auto &data = queue_.front();
     *task = data; //(Task*) data.second;
-    _trace("Popped task:%lu:%s to queue pq:%lu q:%lu", data->uid(), data->name(), pqueue_.size(), queue_.size());
-    queue_.pop_front();
-    return true;
+    _trace("Trying to Popped task:%lu:%s to queue pq:%lu q:%lu", data->uid(), data->name(), pqueue_.size(), queue_.size());
+    if ((*task)->Dispatchable(false)) {
+        _trace("Popped task:%lu:%s to queue pq:%lu q:%lu", data->uid(), data->name(), pqueue_.size(), queue_.size());
+        queue_.pop_front();
+        return true;
+    }
   }
   if (!mqueue_.empty() && device->IsFree()){
     auto &data = mqueue_.front();

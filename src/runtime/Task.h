@@ -120,7 +120,7 @@ public:
 
   void Submit(int brs_policy, const char* opt, int sync);
 
-  bool Dispatchable();
+  bool Dispatchable(bool is_async_soft_touch=true);
   bool Executable();
   void Complete();
   void Wait();
@@ -268,6 +268,7 @@ public:
   iris_kernel get_last_cmd_kernel();
   Device *last_cmd_device() { return last_cmd_device_; }
   int execute_instance() { return execute_instance_; }
+  void enable_task_enqueued_in_multiple_devices() { is_task_enqueued_in_multiple_devices_ = true; }
 private:
   void CompleteSub();
 
@@ -396,6 +397,7 @@ public:
   bool j_policy_flag_;
   string j_policy_;
   int execute_instance_;
+  bool is_task_enqueued_in_multiple_devices_;
 };
 
 } /* namespace rt */

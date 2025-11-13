@@ -169,10 +169,14 @@ void Scheduler::SubmitTask(Task* task) {
   }
   //if any dependencies were pending, time to process them now.
   if (!task->Dispatchable()) task->DispatchDependencies();
-
+  
+  if (ndevs > 1) {
+    task->enable_task_enqueued_in_multiple_devices();
+  }
   for (int i = 0; i < ndevs; i++) {
       task->Retain();
   }
+  _trace("Enquing task:%lu:%s to devices\n", task->uid(), task->name());
   for (int i = 0; i < ndevs; i++) {
     devs[i]->worker()->Enqueue(task);
     if (hub_available_) hub_client_->TaskInc(devs[i]->devno(), 1);

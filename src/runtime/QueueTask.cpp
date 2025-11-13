@@ -52,7 +52,13 @@ bool QueueTask::Dequeue(Task** task) {
   for (std::list<Task*>::iterator I = tasks_.begin(), E = tasks_.end(); I != E; ++I) {
     Task* t = *I;
     _debug2("Checking task dispatchable for task:%lu:%s", t->uid(), t->name());
-    if (!t->Dispatchable()) continue;
+    if (!t->Dispatchable()) {
+        if (platform_->is_scheduler_dispatch_fcfs()) {
+            pthread_mutex_unlock(&mutex_);
+            return false;
+        }
+        continue;
+    }
     if (t->marker() && I != tasks_.begin()) continue;
     *task = t;
     tasks_.erase(I);

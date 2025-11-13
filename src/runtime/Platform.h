@@ -312,7 +312,7 @@ public:
   void set_dmem_register_pin_flag(bool flag) { dmem_register_pin_flag_ = flag; }
   bool dmem_register_pin_flag() { return dmem_register_pin_flag_; }
   void enable_default_kernels_load(bool flag) { enable_default_kernels_load_ = flag; }
-
+  bool is_scheduler_dispatch_fcfs()  { return scheduler_dispatch_fcfs_; }
 #ifdef AUTO_PAR
   AutoDAG* get_auto_dag(){return auto_dag_;}
   void set_auto_dag(AutoDAG* auto_dag){auto_dag_ = auto_dag;}
@@ -438,7 +438,8 @@ private:
   bool disable_init_devices_;
   bool disable_init_scheduler_;
   bool disable_init_workers_;
-  bool enable_default_kernels_load_;
+  bool enable_default_kernels_load_; 
+  bool scheduler_dispatch_fcfs_;
   StreamPolicy stream_policy_;
 private:
   iris_task init_tasks_[IRIS_MAX_NDEVS];
