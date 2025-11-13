@@ -274,7 +274,8 @@ void Task::AddCommand(Command* cmd, int position) {
 void Task::print_incomplete_tasks()
 {
   if (depends_uids_ == NULL) return;
-  printf("Task Name: %ld:%s\n", uid(), name());
+  double time_start = Timer::GetCurrentTime();
+  printf("Task Name: %ld:%s time:%lf\n", uid(), name(), time_start);
   for (int i = 0; i < ndepends_; i++) {
     Task *dep= depend(i);
     if (dep!= NULL) 

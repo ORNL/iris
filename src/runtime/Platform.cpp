@@ -2233,7 +2233,7 @@ int Platform::GraphSubmit(Graph *graph, int brs_policy, int sync) {
           Task* task = *I;
 
 #ifdef PRINT_TASK_DEP
-          printf("Task: %s task id %d\n", task->name(), task->uid());
+          printf("Graph submit Task: %s task id %d\n", task->name(), task->uid());
           for(int i = 0; i < task->ndepends(); i++)
               printf("    Parents %d - %s task id %d\n", i, task->depend(i)->name(), task->depend(i)->uid());
           for(int i = 0; i < task->nchilds(); i++)
