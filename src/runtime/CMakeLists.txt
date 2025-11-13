@@ -404,14 +404,18 @@ install(FILES
   ${IRIS_BIN_DIR}/runtime/Config.h
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/iris/rt)
 
+if (CMAKE_CUDA_COMPILER_ID NOT STREQUAL "NVIDIA")
 find_package(OpenMP REQUIRED)
+endif()
 add_library(cpu_default default_cpu_gpu_kernels.cpp ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_openmp_kernels.cpp)
 add_dependencies(cpu_default iris_default_math_boilerplate_h)
 target_compile_options(cpu_default PRIVATE -Wall -fopenmp -DENABLE_IRIS_OPENMP_APIS)
 if(APPLE)
     target_compile_options(cpu_default PRIVATE  ${CMAKE_CXX_FLAGS})
 endif()
+if (CMAKE_CUDA_COMPILER_ID NOT STREQUAL "NVIDIA")
 target_link_libraries(cpu_default PRIVATE OpenMP::OpenMP_CXX)
+endif()
 install(TARGETS cpu_default DESTINATION ${CMAKE_INSTALL_PREFIX}/default)
 
 find_package(CUDAToolkit QUIET)
