@@ -27,6 +27,7 @@ void PolicyDepend::GetDevices(Task* task, Device** devs, int* ndevs) {
         continue;
     }
     Device* dev = dep->dev();
+    if (dev == NULL) dev = dep->dep_dev();
     bool found = false;
     for (int j = 0; j < ntargets; j++) {
       if (devs[j] == dev) {

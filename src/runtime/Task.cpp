@@ -75,6 +75,7 @@ Task::Task(Platform* platform, int type, const char* name, int max_cmds) {
   platform_ = platform;
   if (platform) scheduler_ = platform_->scheduler();
   dev_ = NULL;
+  dep_dev_ = NULL;
   parent_ = 0;
   parent_exist_ = false;
   subtasks_complete_ = 0;

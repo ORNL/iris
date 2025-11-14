@@ -150,9 +150,11 @@ public:
   Command* cmd_kernel() { return cmd_kernel_; }
   Command* cmd_last() { return cmd_last_; }
   void TryReleaseTask();
+  void set_dep_dev(Device* dev) { dep_dev_ = dev; }
   void set_dev(Device* dev) { dev_ = dev; }
   Platform* platform() { return platform_; }
   Device* dev() { return dev_; }
+  Device* dep_dev() { return dep_dev_; }
   void set_devno(int devno) { devno_ = devno; }
   int devno() { return devno_; }
   int ncmds() { return ncmds_; }
@@ -283,6 +285,7 @@ private:
   Command* cmd_kernel_;
   Command* cmd_last_;
   Device* dev_;
+  Device* dep_dev_;
   int meta_data_[8];
   int n_meta_data_;
   int devno_;

@@ -177,6 +177,7 @@ void Scheduler::SubmitTask(Task* task) {
       task->Retain();
   }
   _trace("Enquing task:%lu:%s to devices\n", task->uid(), task->name());
+  task->set_dep_dev(devs[0]);
   for (int i = 0; i < ndevs; i++) {
     devs[i]->worker()->Enqueue(task);
     if (hub_available_) hub_client_->TaskInc(devs[i]->devno(), 1);
