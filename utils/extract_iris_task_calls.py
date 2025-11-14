@@ -68,7 +68,8 @@ def getPyExprString(l):
 
 def extractTaskCallsCore(filename, args):
     f = tempfile.NamedTemporaryFile(delete=False)
-    compile_options = re.sub(r'-pfo', '', args.compile_options)
+    compile_options = re.sub(r'-Mpfo', '', args.compile_options)
+    compile_options = re.sub(r'-Mprof=dwarf', '', compile_options)
     print(f"[Cmd] g++ -x c++ -E -P {filename} -Uiris_cpu -Uiris_dsp -o {f.name} {compile_options} -DUNDEF_IRIS_MACROS -DEXTRACT_MACROS -std=c++11")
     os.system(f"g++ -x c++ -E -P {filename} -Uiris_cpu -Uiris_dsp -o {f.name} {compile_options} -DUNDEF_IRIS_MACROS -DEXTRACT_MACROS -std=c++11")
     if not os.path.exists(f.name):
