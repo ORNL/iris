@@ -14,6 +14,7 @@ install(FILES
   iris_host2cuda.h
   iris_host2hip.h
   iris_gpu.h
+  qiree.h
   gettime.h
   verify.h
   iris_macros.h

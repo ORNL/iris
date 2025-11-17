@@ -3,6 +3,7 @@
 
 #include "Device.h"
 #include "LoaderQIREE.h"
+#include "iris/qiree.h"
 
 namespace iris {
 namespace rt {
@@ -39,7 +40,7 @@ private:
   int num_shots_;
   const char *backend_;
   int result_items_;
-  uint64_t *encoded_;
+  CQireeResultRecord *encoded_;
 
   //float* Z;
   //float* X;

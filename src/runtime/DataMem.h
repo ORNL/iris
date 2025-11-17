@@ -269,7 +269,7 @@ public:
   int update_dev_size(size_t *dev_size, bool update_strides=true, int dim=-1);
   int update_host_tile_size(size_t *host_size, int dim=-1);
   int update_dev_tile_size(size_t *dev_size, int dim=-1);
-  void realllocate_space(size_t size);
+  void realllocate_space(size_t elem_size, size_t total);
   int update_off(size_t *off) { 
       memcpy(off_, off, sizeof(size_t)*dim_); 
       return IRIS_SUCCESS;

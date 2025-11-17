@@ -712,14 +712,16 @@ void DataMem::UpdateHost(void *host_ptr)
     }
     if (is_pin_memory_ && old_host_ptr != host_ptr) platform_->DataMemRegisterPin(this);
 }
-void DataMem::realllocate_space(size_t size)
+void DataMem::realllocate_space(size_t elem_size, size_t total)
 {
+    size_t size = elem_size * total;
     // Supported only for one dim
     DataMem *source_mem = (DataMem *)get_source_mem();
     if (source_mem != NULL) {
-        source_mem->realllocate_space(size);
+        source_mem->realllocate_space(elem_size, total);
         return;
     }
+    elem_size_ = elem_size;
     ASSERT(dim_ == 1);
     ASSERT(valid_n_regions_ <= 0);
     if (size > size_) { 
@@ -737,8 +739,8 @@ void DataMem::realllocate_space(size_t size)
             }
         }
     }
-    update_host_size(&size);
-    update_dev_size(&size);
+    update_host_size(&total);
+    update_dev_size(&total);
 }
 void DataMem::CopyToHost(void *host)
 {
