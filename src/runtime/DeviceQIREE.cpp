@@ -268,7 +268,7 @@ int DeviceQIREE::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem,
       RUN_QIREE(qiree_load_module_from_memory, manager_, (char const *)params_[0], data_len); 
       RUN_QIREE(qiree_num_quantum_reg, manager_, &nquant_results_);
       RUN_QIREE(qiree_num_classical_reg, manager_, &nclass_results_);
-      printf(" nquant_results:%d nclass_results:%d\n", nquant_results_, nclass_results_);
+      //printf(" nquant_results:%d nclass_results:%d\n", nquant_results_, nclass_results_);
   }
   else if (idx == 2) {
       encoded_ = (CQireeResultRecord *) dev_ptr;
