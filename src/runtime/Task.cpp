@@ -5,6 +5,7 @@
 #include "Device.h"
 #include "Kernel.h"
 #include "Mem.h"
+#include "Utils.h"
 #include "DataMem.h"
 #include "Pool.h"
 #include "Scheduler.h"
@@ -61,9 +62,11 @@ Task::Task(Platform* platform, int type, const char* name, int max_cmds) {
   type_ = type;
   recommended_stream_ = -1;
   recommended_dev_ = -1;
+  execute_instance_ = -1;
   max_cmds_ = (max_cmds < IRIS_TASK_MAX_CMDS) ? IRIS_TASK_MAX_CMDS : max_cmds;
   ncmds_ = 0;
   disable_consistency_ = false;
+  disable_profiling_ = false;
   //cmds_ = new Command *[max_cmds_];
   cmd_kernel_ = NULL;
   cmd_last_ = NULL;
@@ -103,6 +106,7 @@ Task::Task(Platform* platform, int type, const char* name, int max_cmds) {
   if (name) name_ = std::string(name);
   status_ = IRIS_NONE;
 
+  pthread_mutex_init(&depend_mutex_, NULL);
   pthread_mutex_init(&stream_mutex_, NULL);
   pthread_mutex_init(&mutex_pending_, NULL);
   pthread_mutex_init(&mutex_executable_, NULL);
@@ -110,10 +114,9 @@ Task::Task(Platform* platform, int type, const char* name, int max_cmds) {
   pthread_mutex_init(&mutex_subtasks_, NULL);
   //pthread_cond_init(&complete_cond_, NULL);
   brs_policy_ = iris_default;
-#ifdef AUTO_PAR
-#ifdef AUTO_FLUSH
   graph_ = NULL;
-#endif
+  submit_graph_again_ = false;
+#ifdef AUTO_PAR
 #ifdef AUTO_SHADOW
   shadow_dep_added_ = false;
 #endif
@@ -127,7 +130,7 @@ Task::Task(Platform* platform, int type, const char* name, int max_cmds) {
 }
 
 Task::~Task() {
-  //printf("Releasedd task:%lu:%s released ptr:%p ref_cnt:%d\n", uid(), name(), this, ref_cnt());
+  //_printf("Releasedd task:%lu:%s released ptr:%p ref_cnt:%d\n", uid(), name(), this, ref_cnt());
   //Platform::GetPlatform()->task_track().UntrackObject(this, uid());
   _trace("Task deleted %lu %s %p ref_cnt:%d", uid(), name(), this, ref_cnt());
   //printf("Trying to delete profile events\n");
@@ -139,6 +142,7 @@ Task::~Task() {
   cmds_.clear();
   //delete [] cmds_;
   if (depends_uids_) delete [] depends_uids_;
+  pthread_mutex_destroy(&depend_mutex_);
   pthread_mutex_destroy(&stream_mutex_);
   pthread_mutex_destroy(&mutex_pending_);
   pthread_mutex_destroy(&mutex_executable_);
@@ -244,10 +248,14 @@ int Task::get_device_affinity() {
     }
     return -1;
 }
-void Task::AddCommand(Command* cmd) {
+void Task::AddCommand(Command* cmd, int position) {
   //if (ncmds_ >= max_cmds_) _error("ncmds[%d]", ncmds_);
   //cmds_[ncmds_++] = cmd;
-  cmds_.push_back(cmd); ncmds_++;
+  if (position == -1)
+      cmds_.push_back(cmd); 
+  else
+      Utils::insert_at(cmds_, position, cmd);
+  ncmds_++;
   if (cmd->type() == IRIS_CMD_KERNEL) {
     //if (cmd_kernel_) _error("kernel[%s] is already set", cmd->kernel()->name());
     if (!given_name_) {
@@ -266,7 +274,8 @@ void Task::AddCommand(Command* cmd) {
 void Task::print_incomplete_tasks()
 {
   if (depends_uids_ == NULL) return;
-  printf("Task Name: %ld:%s\n", uid(), name());
+  double time_start = Timer::GetCurrentTime();
+  printf("Task Name: %ld:%s time:%lf\n", uid(), name(), time_start);
   for (int i = 0; i < ndepends_; i++) {
     Task *dep= depend(i);
     if (dep!= NULL) 
@@ -345,6 +354,56 @@ void Task::set_pending() {
     }
 }
 
+void Task::set_kernel_condition(BaseMem *mem, bool flag)
+{
+    // Apply it to last kernel command
+    for (int i = ncmds_-1; i >=0 ; i--) {
+        Command* cmd = cmds_[i];
+        if (cmd->type_kernel()) {
+            cmd->set_condition_mem(mem, flag);
+            break;
+        }
+    }
+}
+
+iris_command Task::get_last_cmd()
+{
+    if (ncmds_ > 0) {
+        Command *cmd = cmds_[ncmds_-1];
+        return *(cmd->struct_obj());
+    }
+    iris_command cmd = { NULL, (unsigned long)-1 };
+    // Apply it to last kernel command
+    return cmd;
+}
+iris_kernel Task::get_last_cmd_kernel()
+{
+    // Apply it to last kernel command
+    for (int i = ncmds_-1; i >=0 ; i--) {
+        Command* cmd = cmds_[i];
+        if (cmd->type_kernel()) {
+            Kernel *kernel = cmd->kernel();
+            return *(kernel->struct_obj());
+        }
+    }
+    iris_kernel kernel = {NULL, (unsigned long)(-1)};
+    return kernel;
+}
+
+iris_kernel Task::get_first_cmd_kernel()
+{
+    // Apply it to last kernel command
+    for (int i = 0; i<ncmds_; i++) {
+        Command* cmd = cmds_[i];
+        if (cmd->type_kernel()) {
+            Kernel *kernel = cmd->kernel();
+            return *(kernel->struct_obj());
+        }
+    }
+    iris_kernel kernel = {NULL, (unsigned long)(-1)};
+    return kernel;
+}
+
 void Task::Complete() {
   _debug2(" task:%lu:%s is completed ref_cnt:%d", uid(), name(), ref_cnt());
   _event_debug(" task:%lu:%s is completed ref_cnt:%d", uid(), name(), ref_cnt());
@@ -360,7 +419,10 @@ void Task::Complete() {
   //pthread_cond_broadcast(&complete_cond_);
   //pthread_mutex_unlock(&mutex_complete_);
   //printf("calling profile events\n");
-  if (user_) platform_->ProfileCompletedTask(this);
+  if (user_ && !disable_profiling_) {
+      platform_->ProfileCompletedTask(this);
+      clear_profile_events();
+  }
   // For task with subtasks, the parent task is not in any worker queue. 
   // However, it has to call the completion of parent task each time.
   // Parent marker task was never go through Worker::Execute.
@@ -435,14 +497,14 @@ bool Task::HasSubtasks() {
 // If it is released, it might have been allocated for some other task. 
 // Hence, validate the parent task not only from whether object exists or not, but also by
 // comparing the actual parent task uid.
-void Task::AddDepend(Task* task, unsigned long uid) {
+void Task::AddDepend(Task* task, unsigned long p_uid) {
 #ifdef AUTO_PAR
 #ifdef IGNORE_MANUAL
   if ( task->platform()->get_auto_dag()->get_auto_dep() == false) return;
 #endif
 
 #ifdef SANITY_CHECK
-  if(std::string(this->name()).find("Graph") == std::string::npos){  
+  if(std::string(this->name()).find("GraphSync") == std::string::npos){  
     std::string full_dep = std::string(this->name()) + "->" + std::string(task->name());
     std::cout << full_dep << std::endl;
     if (task->platform()->get_auto_dag()->get_auto_dep() == false){
@@ -458,30 +520,106 @@ void Task::AddDepend(Task* task, unsigned long uid) {
 
 #endif
 
+  pthread_mutex_lock(&depend_mutex_);
   if (depends_uids_ == NULL) {
       depends_uids_ = new unsigned long[depends_max_];
   }
-  for (int i = 0; i < ndepends_; i++) if (uid == depends_uids_[i]) return;
-  if (ndepends_ == depends_max_ - 1) {
+  bool flag = false;
+  for (int i = 0; i < ndepends_; i++) {
+      if (p_uid == depends_uids_[i]) {
+        flag = true; break;
+      }
+  }
+  if (!flag && ndepends_ == depends_max_ - 1) {
     unsigned long *old_uids = depends_uids_;
     depends_max_ *= 2;
     depends_uids_ = new unsigned long[depends_max_];
     memcpy(depends_uids_, old_uids, ndepends_*sizeof(unsigned long));
     delete [] old_uids;
-  } 
-  depends_uids_[ndepends_] = uid;
+  }
+  if (!flag) {
+    depends_uids_[ndepends_] = p_uid;
+    ndepends_++;
+  }
+  pthread_mutex_unlock(&depend_mutex_);
   if(platform_->get_enable_proactive() 
-		&& std::string(this->name()).find("Graph") == std::string::npos  
+		&& std::string(this->name()).find("GraphSync") == std::string::npos  
+        && std::string(this->name()).find("flush") == std::string::npos  
 		&& std::string(this->name()).find("flush-out") == std::string::npos ) {
       unsigned long this_uid = this->uid();
-      platform_->task_track().CallBackIfObjectExists(uid, 
+      platform_->task_track().CallBackIfObjectExists(p_uid, 
               [](void *data, void *lhs, void *rhs) {
                 Task *parent_task = (Task *)data;
                 unsigned long child_uid = *((unsigned long *)rhs);
                 parent_task->AddChild(child_uid);
-              }, &uid, &this_uid);
+              }, &p_uid, &this_uid);
   }
-  ndepends_++;
+  if (task != NULL && task->graph() != NULL && graph() != NULL) {
+      Task *src_end = task->graph()->end();
+      Task *dst_end = graph()->end();
+      if (src_end == dst_end) {
+          if (uid() != dst_end->uid() ) { // Not END node
+              // Remove source uid from graph end
+              /* This handles case
+                Create T1
+                Create T2
+                ADD T1 to G
+                ADD T2 to G
+                T1->T2 => Trigger (P1)
+              */
+              //printf("Removed P1 here uid:%lu:%s:%p:%lu p_uid:%lu:%s:%p:%lu\n", uid(), name(), graph(), dst_end->uid(), p_uid, task->name(), task->graph(), src_end->uid());
+              src_end->RemoveDepend(p_uid);
+          }
+          else if (uid() == dst_end->uid()) { // If uid_ END node
+              /* This can handle two cases
+                Create T1
+                Create T2
+                ADD T1 to G
+                T1->T2
+                ADD T2 to G => Trigger(P2)
+
+                Create T1
+                Create T2
+                T1->T2
+                ADD T1 to G
+                ADD T2 to G => Trigger(P2)
+              */
+              for(int i=0; i<task->ndepends_; i++) {
+                 if (task->depends_uids_[i] != (unsigned long)-1) {
+                    Task *dep_task = platform_->get_task_object(task->depends_uids_[i]);
+                     //printf("Removed P2 here uid:%lu:%s:%p:%lu p_uid:%lu:%s:%p:%lu rm:%lu:%s\n", uid(), name(), graph(), dst_end->uid(), p_uid, task->name(), task->graph(), src_end->uid(), dep_task->uid(), dep_task->name());
+                     dst_end->RemoveDepend(task->depends_uids_[i]);
+                 }
+              }
+              /* TODO: Not handled case
+                Create T1
+                Create T2
+                T1->T2
+                ADD T2 to G
+                ADD T1 to G => Trigger(P3)
+
+                
+                Create T1
+                Create T2
+                ADD T2 to G
+                T1->T2
+                ADD T1 to G => Trigger(P3)
+              */
+          }
+      }
+  }
+}
+void Task::RemoveDepend(unsigned long uid) 
+{
+  int j = 0;
+  pthread_mutex_lock(&depend_mutex_);
+  for (int i = 0; i < ndepends_; i++) {
+      if (depends_uids_[i] != uid) {
+        depends_uids_[j++] = depends_uids_[i];
+      }
+  }
+  ndepends_ = j;
+  pthread_mutex_unlock(&depend_mutex_);
 }
 
 void Task::AddChild(unsigned long uid) {
@@ -541,6 +679,7 @@ void Task::RemoveDepend(Task* task) {
 void Task::Submit(int brs_policy, const char* opt, int sync) {
   status_ = IRIS_NONE;
   set_brs_policy(brs_policy);
+  execute_instance_++;
   //if the submitted task is pending but it is a d2h transfer, then, default to a data movement minimization policy.
   if (brs_policy == iris_pending){
     if (!cmd_last_ || cmd_last_->type_d2h() || cmd_last_->type_memflush()){

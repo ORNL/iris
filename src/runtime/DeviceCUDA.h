@@ -22,6 +22,8 @@ public:
   int ResetMemory(Task *task, Command *cmd, BaseMem *mem);
   void *GetSharedMemPtr(void* mem, size_t size);
   int MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset=false);
+  int MemAlloc(void** mem_addr, size_t size, void *stream_v, bool reset=false);
+  int MemFree(void* mem_addr, void *stream_v);
   int MemFree(BaseMem *mem, void* mem_addr);
   void RegisterPin(void *host, size_t size);
   void UnRegisterPin(void *host);

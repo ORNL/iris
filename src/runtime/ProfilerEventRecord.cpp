@@ -23,7 +23,7 @@ const ProfileRecordType = \
     PROFILE_KERNEL : 5, \
     PROFILE_O2D : 6, \
     PROFILE_D2O : 7, \
-    PROFILE_DMEM2DMEM_FILL : 8, \
+    PROFILE_RESET : 8, \
     PROFILE_INIT: 9, \
 }; \
 const ProfileTypeColor = \
@@ -110,7 +110,7 @@ function handleCheckboxChange() { \
     var kernel_enable = document.getElementById('kernel'); \
     var d2h_enable = document.getElementById('d2h_enable'); \
     var d2d_enable = document.getElementById('d2d_enable'); \
-    var dmem2dmem_fill_enable = document.getElementById('dmem2dmem_fill_enable'); \
+    var reset_enable = document.getElementById('reset_enable'); \
     var h2d_enable = document.getElementById('h2d_enable'); \
     var task_enable= document.getElementById('task_enable'); \
     var d2h_h2d_enable = document.getElementById('d2h_h2d_enable'); \
@@ -130,8 +130,8 @@ function handleCheckboxChange() { \
     if (d2d_enable.checked) { \
         extract_data(newData, color_options, ProfileRecordType.PROFILE_D2D); \
     }  \
-    if (dmem2dmem_fill_enable.checked) { \
-        extract_data(newData, color_options, ProfileRecordType.PROFILE_DMEM2DMEM_FILL); \
+    if (reset_enable.checked) { \
+        extract_data(newData, color_options, ProfileRecordType.PROFILE_RESET); \
     }  \
     if (kernel_enable.checked) { \
         extract_data(newData, color_options, ProfileRecordType.PROFILE_KERNEL); \
@@ -153,7 +153,7 @@ document.getElementById('h2d_enable').addEventListener('change', handleCheckboxC
 document.getElementById('d2h_enable').addEventListener('change', handleCheckboxChange); \
 document.getElementById('d2d_enable').addEventListener('change', handleCheckboxChange); \
 document.getElementById('d2h_h2d_enable').addEventListener('change', handleCheckboxChange); \
-document.getElementById('dmem2dmem_fill_enable').addEventListener('change', handleCheckboxChange); \
+document.getElementById('reset_enable').addEventListener('change', handleCheckboxChange); \
 document.getElementById('task_enable').addEventListener('change', handleCheckboxChange); \
 } \
 </script> \
@@ -163,7 +163,7 @@ document.getElementById('task_enable').addEventListener('change', handleCheckbox
 <label for="d2d_enable">D2D:</label> <input type="checkbox" id="d2d_enable" checked> \
 <label for="d2h_enable">D2H:</label> <input type="checkbox" id="d2h_enable" checked> \
 <label for="d2h_h2d_enable">D2H-H2D:</label> <input type="checkbox" id="d2h_h2d_enable" checked> \
-<label for="dmem2dmem_fill_enable">D2D:</label> <input type="checkbox" id="dmem2dmem_fill_enable" checked> \
+<label for="reset_enable">Reset:</label> <input type="checkbox" id="reset_enable" checked> \
 <br> \
 <label for="task_enable">Task level details:</label>  <input type="checkbox" id="task_enable"> \
 <br> \
@@ -266,8 +266,11 @@ int ProfilerEventRecord::CompleteTask(Task* task) {
      else if (type == PROFILE_INIT) {
          sprintf(s, "[ '%s %d', 'Command dispatcher Task:%lu:%s (%s) stream (%d)', %lf, %lf, ProfileRecordType.PROFILE_INIT, %lu, '%s'],\n", event_dev->name(), event_dev->devno(), task->uid(), task->name(), policy_str(policy), stream, start_time, end_time, task->uid(), task->name());
      }
+     else if (type == PROFILE_RESET) {
+         sprintf(s, "[ '%s %d', 'Reset: m%lu from (%d) task (%lu:%s) stream (%d)', %lf, %lf, ProfileRecordType.PROFILE_RESET, %lu, '%s'],\n", event_dev->name(), event_dev->devno(), uid, connect_dev, task->uid(), task->name(), stream, start_time, end_time, task->uid(), task->name());
+     }
      else {
-         sprintf(s, "[ '%s %d', 'D2D: m%lu from (%d) task (%lu:%s) stream (%d)', %lf, %lf, %d, %lu, '%s'],\n", event_dev->name(), event_dev->devno(), uid, connect_dev, task->uid(), task->name(), stream, start_time, end_time, (int)p.type(), task->uid(), task->name());
+         sprintf(s, "[ '%s %d', 'Unknown: m%lu from (%d) task (%lu:%s) stream (%d)', %lf, %lf, %d, %lu, '%s'],\n", event_dev->name(), event_dev->devno(), uid, connect_dev, task->uid(), task->name(), stream, start_time, end_time, (int)p.type(), task->uid(), task->name());
      }
      pthread_mutex_lock(&chart_lock_);
      Write(s);

@@ -137,6 +137,7 @@ string DataMem::ToString(bool check_regions)
         output << " DMEM-REGION";
     else
         output << " DMEM";
+    output << " name:" << name();
     output << " uid:" << uid();
     output << " dim:" << dim_;
     output << " host_dim:" << host_dim_;
@@ -665,7 +666,7 @@ void DataMem::Init(Platform *platform, void *host_ptr, size_t size, int dim)
   }
 }
 DataMem::~DataMem() {
-    //printf("Releasing memory: %lu host:%p src_mem:%p\n", uid(), host_ptr(), source_mem_);
+    //_printf("Releasing memory: %lu host:%p name:%s source_mem:%p\n", uid(), host_ptr(), name(), source_mem_);
     DataMem *source_mem = (DataMem *)get_source_mem();
     if (!platform_->IsFinalized() && is_pin_memory_ && source_mem == NULL) {
         //printf("Unregistering mem:%p\n", host_ptr());
@@ -877,6 +878,9 @@ void DataMem::EnableOuterDimensionRegions()
         loff[dim_-1] = 0;
         size_t dev_offset_from_root = i * dev_offset * elem_size_;
         DataMemRegion *region = new DataMemRegion(this, i, off, loff, host_size_, dev_size, elem_size_, dim_, dev_offset_from_root);
+        stringstream ss;
+        ss << name() << "[" << i << "]";
+        region->set_name(ss.str());
         region->compute_dev_strides(host_size_);
         region->update_dev_tile_dim(dim_-1);
         regions.push_back(make_pair(region, region));
@@ -913,6 +917,9 @@ void DataMem::EnableRegions(int axis)
         full_region->enable_multi_dim_dev_offset();
         full_region->compute_dev_strides(host_size_);
         DataMemRegion *region = new DataMemRegion(this, i, off, loff, host_size_, dev_size, elem_size_, dim_, 0);
+        stringstream ss;
+        ss << name() << "[" << i << "]";
+        region->set_name(ss.str());
         region->enable_multi_dim_dev_offset();
         region->set_dirty_all(true, false);
         region->set_own_dev_memory();

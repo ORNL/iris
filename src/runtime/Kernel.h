@@ -21,6 +21,7 @@ class History;
 class MemHistory;
 class DataMem;
 class DataMemRegion;
+class Command;
 typedef struct _KernelArg {
   size_t size;
   char value[1024];
@@ -108,6 +109,18 @@ public:
   int julia_kernel_type() { return julia_kernel_type_; }
   void set_shared_mem_size(size_t size) { shared_mem_size_ = size; }
   size_t shared_mem_size() { return shared_mem_size_; }
+  void update_arg(int index, void *val);
+  void update_arg_core(int index, void *val);
+  void update_mem(int index, BaseMem *mem);
+  void update_mem_core(int index, BaseMem *mem);
+  void update_map(int index, BaseMem *mem, std::map<BaseMem*, int> & mem2index);
+  void set_cmd(Command *cmd) { cmd_ = cmd; }
+  void set_gws_dynamic_from_dmem(DataMem *mem);
+  DataMem *get_gws_dynamic_from_dmem() { 
+      return gws_dynamic_from_dmem_; 
+  }
+  Command *get_cmd() { return cmd_; }
+  Command *command() { return cmd_; }
 /*
 #ifdef AUTO_PAR
 #ifdef AUTO_SHADOW
@@ -123,6 +136,7 @@ private:
   std::string name_;
   std::string task_name_;
   Task *task_;
+  Command *cmd_;
   std::map<int, KernelArg*> args_;
   void* archs_[IRIS_MAX_NDEVS];
   Device* archs_devs_[IRIS_MAX_NDEVS];
@@ -145,6 +159,7 @@ private:
   std::map<int, DataMem *> data_mems_out_;
   std::map<int, DataMemRegion *> data_mem_regions_out_;
   KernelAsyncData async_data_;
+  DataMem *gws_dynamic_from_dmem_;
 };
 
 } /* namespace rt */

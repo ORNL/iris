@@ -88,6 +88,8 @@ public:
   int DeviceSetDefault(int device);
   int DeviceGetDefault(int* device);
   int DeviceSynchronize(int ndevs, int* devices);
+  int DeviceMalloc(int devno, void **mem_addr, size_t size, void *stream, int reset);
+  int DeviceFree(int devno, void *mem_addr, void *stream);
 
   int PolicyRegister(const char* lib, const char* name, void* params);
   int RegisterCommand(int tag, int device, command_handler handler);
@@ -106,7 +108,7 @@ public:
   int TaskDepend(iris_task brs_task, int ntasks, iris_task* brs_tasks);
   int TaskKernel(iris_task brs_task, iris_kernel brs_kernel, int dim, size_t* off, size_t* gws, size_t* lws);
   int TaskKernel(iris_task task, const char* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, size_t* params_off, int* params_info, size_t* memranges);
-  iris_kernel TaskKernelStruct(iris_task task, const char* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, size_t* params_off, int* params_info, size_t* memranges);
+  iris_kernel TaskKernelStruct(iris_task task, const char* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, size_t* params_off, int* params_info, size_t* memranges, int position=-1);
   int TaskKernelSelector(iris_task task, iris_selector_kernel func, void* params, size_t params_size);
   int TaskHost(iris_task task, iris_host_python_task func, int64_t params_id);
   int TaskHost(iris_task task, iris_host_task func, void* params);
@@ -133,8 +135,9 @@ public:
   int TaskMapFromFull(iris_task brs_task, void* host);
   int SetTaskPolicy(iris_task brs_task, int brs_policy);
   int GetTaskPolicy(iris_task brs_task);
-  int TaskSubmit(iris_task brs_task, int brs_policy, const char* opt, int wait);
-  int TaskSubmit(Task *task, int brs_policy, const char* opt, int wait);
+  int TaskSubmit(iris_task brs_task, int brs_policy=iris_default, const char* opt=NULL, int wait=1);
+  int TaskSubmit(Task *task, int brs_policy=iris_default, const char* opt=NULL, int wait=1);
+  void GraphTaskSubmit(Task *task, int brs_policy=iris_default, int wait=1);
   void TaskSafeRetain(iris_task brs_task);
   void TaskSafeRetain(unsigned long uid);
   static void TaskSafeRetainStatic(void *data);
@@ -182,6 +185,7 @@ public:
   int GraphFree(iris_graph brs_graph);
   int GraphCreateJSON(const char* json, void** params,  iris_graph* brs_graph);
   int GraphTask(iris_graph brs_graph, iris_task brs_task, int brs_policy, const char* opt);
+  int GraphSubmit(Graph *graph, int brs_policy, int sync);
   int GraphSubmit(iris_graph brs_graph, int brs_policy, int sync);
   int GraphRetain(iris_graph brs_graph, bool flag);
   int GraphSubmit(iris_graph brs_graph, int *order, int brs_policy, int sync);
@@ -270,6 +274,8 @@ public:
   SchedulingHistory* scheduling_history() { return scheduling_history_; }
   double time_app() { return time_app_; }
   double time_init() { return time_init_; }
+  bool enable_dot_profiler() { return enable_dot_profiler_; }
+  void set_enable_dot_profiler(bool profiler) { enable_dot_profiler_ = profiler; }
   bool enable_profiler() { return enable_profiler_; }
   void set_enable_profiler(bool profiler) { enable_profiler_ = profiler; }
   int nstreams() { return nstreams_; }
@@ -287,6 +293,7 @@ public:
   bool is_kernel_launch_disabled() { return disable_kernel_launch_; }
   void set_kernel_launch_disabled(bool flag) { disable_kernel_launch_ = flag; }
   void ProfileCompletedTask(Task *task); 
+  void AddLoopDependency(Task *task, unsigned long st_id, std::vector<unsigned long> end_ids);
   hook_task hook_task_pre() { return hook_task_pre_; }
   hook_task hook_task_post() { return hook_task_post_; }
   hook_command hook_command_pre() { return hook_command_pre_; }
@@ -392,6 +399,7 @@ private:
 
   bool recording_;
 
+  bool enable_dot_profiler_;
   bool enable_profiler_;
   Profiler* profilers_[8];
   int nprofilers_;

@@ -4,6 +4,7 @@
 #include <iris/iris_poly_types.h>
 #include "BaseMem.h"
 #include "Kernel.h"
+#include "Retainable.h"
 #include "Timer.h"
 #include "Graph.h"
 #include <stddef.h>
@@ -44,7 +45,7 @@ class Task;
 class Graph;
 class Device;
 
-class Command {
+class Command : public Retainable<struct _iris_command, Command>{
 public:
   Command();
   Command(Task* task, int type);
@@ -68,6 +69,11 @@ public:
   size_t ws() { return gws_[0] * gws_[1] * gws_[2]; }
   size_t* gws() { return gws_; }
   size_t gws(int i) { return gws_[i]; }
+  void set_gws(size_t *gws, int dim) {
+    for(int i=0; i<dim; i++) {
+      gws_[i] = gws[i];
+    }
+  }
   size_t* lws() { return lws_; }
   size_t lws(int i) { return lws_[i]; }
   size_t elem_size() { return elem_size_; }
@@ -78,6 +84,9 @@ public:
   DataMem* datamem() { return (DataMem *)mem_; }
   Mem* mem() { return (Mem *)mem_; }
   DataMem* dst_mem() { return (DataMem *)dst_mem_; }
+  BaseMem* condition_mem() { return (BaseMem *)condition_mem_; }
+  bool condition_flag() { return condition_flag_; }
+  void set_condition_mem(BaseMem *mem, bool flag) { condition_mem_ = mem; condition_flag_ = flag; }
   Task* task() { return task_; }
   bool last() { return last_; }
   void set_last() { last_ = true; }
@@ -135,6 +144,8 @@ private:
   Kernel* kernel_;
   BaseMem* mem_;
   BaseMem* dst_mem_;
+  BaseMem* condition_mem_;
+  bool condition_flag_;
   Task* task_;
   Platform* platform_;
   double time_;
@@ -166,6 +177,10 @@ private:
   //uint8_t reset_value_;
   ResetData reset_data_;
 public:
+  void update_arg(int index, void *val);
+  void update_mem(int index, BaseMem *mem);
+  void update_src(BaseMem *mem);
+  void update_dst(BaseMem *mem);
   ResetData & reset_data() { return reset_data_; }
   static Command* Create(Task* task, int type);
   static Command* CreateInit(Task* task);

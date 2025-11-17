@@ -113,7 +113,9 @@ public:
   void ExecuteMemInDMemIn(Task *task, Command* cmd, DataMem *mem);
   void ExecuteMemInDMemRegionIn(Task *task, Command* cmd, DataMemRegion *mem);
   void ExecuteMemOut(Task *task, Command* cmd);
-  void ExecuteMemFlushOut(Command* cmd);
+  void ExecuteMemFlushOut(Command* cmd, BaseMem *target_mem=NULL, Task *task=NULL);
+  bool IsConditionSatisfied(Task *task, Command *cmd, DataMem *mem);
+  bool IsConditionalSubmitGraphAgain(Task *task);
 #ifdef AUTO_PAR
 #ifdef AUTO_SHADOW
   void ExecuteMemFlushOutToShadow(Command* cmd);
@@ -159,6 +161,14 @@ public:
   virtual int BuildProgram(char* path) { return IRIS_SUCCESS; }
   virtual void *GetSharedMemPtr(void* mem, size_t size) { return mem; }
   virtual int MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset=false) = 0;
+  virtual int MemAlloc(void** mem_addr, size_t size, void *stream_v, bool reset=false) { 
+    _error("Device:%d:%s doesn't support MemFree", devno_, name());
+    return IRIS_ERROR;
+  }
+  virtual int MemFree(void* mem_addr, void *stream_v) {
+    _error("Device:%d:%s doesn't support MemFree", devno_, name());
+    return IRIS_ERROR;
+  }
   virtual int MemFree(BaseMem *mem, void* mem_addr) = 0;
   virtual int MemD2D(Task *task, Device *src_dev, BaseMem *mem, void *dst, void *src, size_t size) { _error("Device:%d:%s doesn't support MemD2D", devno_, name()); return IRIS_ERROR; }
   virtual int MemD2D(Task *task, BaseMem *mem, int dim, void *dst, size_t *dst_size, size_t *dst_off, size_t *dst_strides, int src_dim, void *src, size_t *src_size, size_t *src_off, size_t *src_strides, size_t *tile_size, size_t elem_size) { _error("Device:%d:%s doesn't support MemD2D", devno_, name()); return IRIS_ERROR; }

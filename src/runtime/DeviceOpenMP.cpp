@@ -169,6 +169,20 @@ int DeviceOpenMP::ResetMemory(Task *task, Command *cmd, BaseMem *mem)
     return IRIS_SUCCESS;
 }
 
+int DeviceOpenMP::MemAlloc(void** mem_addr, size_t size, void *stream_v, bool reset)
+{
+    void** mpmem = mem_addr;
+    if (posix_memalign(mpmem, 0x1000, size) != 0) {
+        _error("%s", "posix_memalign");
+        platform_obj()->IncrementErrorCount();
+        return IRIS_ERROR;
+    }
+    _trace("Allocated mem addr:%p, size:%lu reset:%d", *mem_addr, size, reset);
+    if (reset) {
+        memset(*mpmem, 0, size);
+    }
+    return IRIS_SUCCESS;
+}
 int DeviceOpenMP::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset) {
   void** mpmem = mem_addr;
   if (posix_memalign(mpmem, 0x1000, size) != 0) {
@@ -196,6 +210,12 @@ int DeviceOpenMP::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool rese
           }
       }
   }
+  return IRIS_SUCCESS;
+}
+
+int DeviceOpenMP::MemFree(void* mem_addr, void *stream_v) {
+  void* mpmem = mem_addr;
+  if (mpmem) free(mpmem);
   return IRIS_SUCCESS;
 }
 
@@ -405,7 +425,7 @@ int DeviceOpenMP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws
   //printf(" Task %s\n", kernel->get_task_name());
   _trace("dev[%d] kernel[%s:%s] dim[%d] off[%lu] gws[%lu]", devno_, kernel->name(), kernel->get_task_name(), dim, off[0], gws[0]);
   if (julia_if_ != NULL && kernel->enable_julia_if()) {
-      julia_if_->host_launch(kernel->task()->uid(), (void **)NULL, 0, NULL, false,
+      julia_if_->host_launch(kernel->task()->uid(), kernel->command()->uid(), (void **)NULL, 0, NULL, false,
                   0, kernel->name(), 
                   kernel->GetParamWrapperMemory(), devno(),
                   dim, gws, off, gws, kernel->shared_mem_size());

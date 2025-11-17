@@ -36,7 +36,7 @@ if not (home and os.path.exists(home)):
 num_shots = 1000
 backend = iris.dmem("qsim")
 
-num_cuts = 1
+num_cuts = 2
 # Running in parallel
 n = num_cuts
 

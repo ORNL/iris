@@ -31,6 +31,7 @@ class Scheduler;
 class Graph;
 class AutoDAG;
 class Device; 
+class BaseMem;
 
 enum ProfileRecordType 
 { 
@@ -42,7 +43,7 @@ enum ProfileRecordType
     PROFILE_KERNEL = 5,
     PROFILE_O2D = 6,
     PROFILE_D2O = 7,
-    PROFILE_DMEM2DMEM_FILL = 8,
+    PROFILE_RESET = 8,
     PROFILE_INIT = 9,
 }; 
 class ProfileEvent {
@@ -106,13 +107,14 @@ public:
   Task(Platform* platform, int type = IRIS_TASK, const char* name = NULL, int max_cmds=IRIS_TASK_MAX_CMDS);
   virtual ~Task();
 
-  void AddCommand(Command* cmd);
+  void AddCommand(Command* cmd, int position=-1);
   void AddMemResetCommand(Command* cmd);
   void ClearCommands();
 
   void AddSubtask(Task* subtask);
   bool HasSubtasks();
 
+  void RemoveDepend(unsigned long uid);
   void AddDepend(Task* task, unsigned long uid);
 //  void RemoveDepend(Task* task);
 
@@ -137,6 +139,7 @@ public:
   void set_user(bool flag=true) { user_ = flag; }
   bool disable_consistency() { return disable_consistency_; }
   bool set_disable_consistency(bool flag=true) { return disable_consistency_ = flag; }
+  void set_disable_profiling(bool flag=true) { disable_profiling_ = flag; }
   bool system() { return system_; }
   void set_system() { system_ = true; }
   bool marker() { return type_ == IRIS_MARKER; }
@@ -201,6 +204,7 @@ public:
   void set_ndepends(int n) { ndepends_ = n; }
   //Task** depends() { return depends_; }
   unsigned long* depends() { return depends_uids_; }
+  unsigned long depend_uid(int i) { ASSERT(i < ndepends_); return depends_uids_[i]; }
   Task* depend(int i) { return platform_->get_task_object(depends_uids_[i]); }
   void* arch() { return arch_; }
   void set_stream_policy(StreamPolicy policy) { stream_policy_ = policy; }
@@ -234,15 +238,17 @@ public:
   int nchilds() { return nchilds_; }
   void AddChild(unsigned long uid);
   void AddAllChilds();
- 
+  Graph* get_graph(){return graph_;}
+  Graph* graph(){return graph_;}
+  void set_graph(Graph* graph){ graph_ = graph; }
+  bool submit_graph_again() { return submit_graph_again_; }
+  void set_submit_graph_again(bool flag) { submit_graph_again_ = flag; }
 #ifdef AUTO_PAR
   std::vector<BaseMem*>* get_write_list() { return &write_list_; }
   std::vector<BaseMem*>* get_read_list() { return &read_list_; }
   void add_to_read_list(BaseMem* mem) { read_list_.push_back(mem); }
   void add_to_write_list(BaseMem* mem) { write_list_.push_back(mem); }
 #ifdef AUTO_FLUSH
-  Graph* get_graph(){return graph_;}
-  void set_graph(Graph* graph){graph_ = graph;}
   //void EraseDepend();
   void ReplaceDependFlushTask(Task * task);
 #endif
@@ -257,7 +263,11 @@ public:
   void set_last_cmd_stream(int stream) { last_cmd_stream_ = stream; }
   int last_cmd_stream() { return last_cmd_stream_; }
   void set_last_cmd_device(Device *dev) { last_cmd_device_ = dev; }
+  iris_command get_last_cmd();
+  iris_kernel get_first_cmd_kernel();
+  iris_kernel get_last_cmd_kernel();
   Device *last_cmd_device() { return last_cmd_device_; }
+  int execute_instance() { return execute_instance_; }
 private:
   void CompleteSub();
 
@@ -279,12 +289,11 @@ private:
   Scheduler* scheduler_;
   std::vector<Task*> subtasks_;
   std::vector<Command *> reset_mems_;
+  Graph* graph_;
+  bool submit_graph_again_;
 #ifdef AUTO_PAR
   std::vector<BaseMem*> write_list_;
   std::vector<BaseMem*> read_list_;
-#ifdef AUTO_FLUSH
-  Graph* graph_;
-#endif
 #ifdef AUTO_SHADOW
   bool shadow_dep_added_;
 #endif
@@ -318,6 +327,7 @@ private:
   bool user_;
   bool system_;
   bool disable_consistency_;
+  bool disable_profiling_;
   bool internal_memory_transfer_;
   bool is_kernel_launch_disabled_;
   bool profile_data_transfers_;
@@ -331,6 +341,7 @@ private:
   size_t ns_time_submit_;
   size_t ns_time_start_;
   size_t ns_time_end_;
+  pthread_mutex_t depend_mutex_;
   pthread_mutex_t stream_mutex_;
   pthread_mutex_t mutex_pending_;
   pthread_mutex_t mutex_executable_;
@@ -359,6 +370,9 @@ public:
   ProfileEvent & LastProfileEvent() {
       return profile_events_.back();
   }
+  void clear_profile_events() {
+      profile_events_.clear();
+  }
   static Task* Create(Platform* platform, int type, const char* name, int max_cmds=IRIS_TASK_MAX_CMDS);
   static Task* Create(Platform* platform, int type, std::string name, int max_cmds=IRIS_TASK_MAX_CMDS) {
     return Create(platform, type, name.c_str(), max_cmds);
@@ -366,6 +380,7 @@ public:
   bool IsKernelSupported(Device *dev);
   int last_cmd_stream_;
   Device *last_cmd_device_;
+  void set_kernel_condition(BaseMem *mem, bool flag);
   void set_enable_julia_if() { enable_julia_if_ = true; }
   bool enable_julia_if() { return enable_julia_if_; }
   bool enable_julia_if_;
@@ -380,6 +395,7 @@ public:
   }
   bool j_policy_flag_;
   string j_policy_;
+  int execute_instance_;
 };
 
 } /* namespace rt */
