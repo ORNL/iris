@@ -18,7 +18,7 @@ public:
 
   const char* library();
   int LoadFunctions();
-#define RESET_DECL_SEQ(T, M)  void (*iris_reset_ ## M)(T *arr, T value, size_t size, void *stream) ;
+#define RESET_DECL_SEQ(T, M)  void (*iris_reset_ ## M)(T *arr, T value, size_t size, void *stream)
   RESET_DECL_SEQ(bool,  b);
   RESET_DECL_SEQ(uint8_t,  u8);
   RESET_DECL_SEQ(uint16_t, u16);
@@ -31,7 +31,7 @@ public:
   RESET_DECL_SEQ(float,    f32);
   RESET_DECL_SEQ(double,   f64);
 
-#define ARITH_DECL_SEQ(T, M)  void (*iris_arithmetic_seq_ ## M)(T *arr, T start, T step, size_t size, void *stream) ;
+#define ARITH_DECL_SEQ(T, M)  void (*iris_arithmetic_seq_ ## M)(T *arr, T start, T step, size_t size, void *stream)
   ARITH_DECL_SEQ(bool,  b);
   ARITH_DECL_SEQ(uint8_t,  u8);
   ARITH_DECL_SEQ(uint16_t, u16);
@@ -44,7 +44,7 @@ public:
   ARITH_DECL_SEQ(float,    f32);
   ARITH_DECL_SEQ(double,   f64);
 
-#define GEOM_DECL_SEQ(T, M)  void (*iris_geometric_seq_ ## M)(T *arr, T start, T step, size_t size, void *stream) ;
+#define GEOM_DECL_SEQ(T, M)  void (*iris_geometric_seq_ ## M)(T *arr, T start, T step, size_t size, void *stream)
   GEOM_DECL_SEQ(bool,  b);
   GEOM_DECL_SEQ(uint8_t,  u8);
   GEOM_DECL_SEQ(uint16_t, u16);
@@ -56,7 +56,7 @@ public:
   GEOM_DECL_SEQ(int64_t,  i64);
   GEOM_DECL_SEQ(float,    f32);
   GEOM_DECL_SEQ(double,   f64);
-#define RANDOM_DECL_SEQ(RTYPE, T, TAG)  void (*iris_random_ ## RTYPE ## _seq_ ## TAG)(T *arr, unsigned long long seed, T p1, T p2, size_t size, void *stream);
+#define RANDOM_DECL_SEQ(RTYPE, T, TAG)  void (*iris_random_ ## RTYPE ## _seq_ ## TAG)(T *arr, unsigned long long seed, T p1, T p2, size_t size, void *stream)
   RANDOM_DECL_SEQ(uniform, bool,  b);
   RANDOM_DECL_SEQ(uniform, uint8_t,  u8);
   RANDOM_DECL_SEQ(uniform, uint16_t, u16);

@@ -120,7 +120,7 @@ public:
 
   void Submit(int brs_policy, const char* opt, int sync);
 
-  bool Dispatchable();
+  bool Dispatchable(bool is_async_soft_touch=true);
   bool Executable();
   void Complete();
   void Wait();
@@ -150,9 +150,11 @@ public:
   Command* cmd_kernel() { return cmd_kernel_; }
   Command* cmd_last() { return cmd_last_; }
   void TryReleaseTask();
+  void set_dep_dev(Device* dev) { dep_dev_ = dev; }
   void set_dev(Device* dev) { dev_ = dev; }
   Platform* platform() { return platform_; }
   Device* dev() { return dev_; }
+  Device* dep_dev() { return dep_dev_; }
   void set_devno(int devno) { devno_ = devno; }
   int devno() { return devno_; }
   int ncmds() { return ncmds_; }
@@ -172,6 +174,7 @@ public:
   int get_brs_policy(){ return brs_policy_;};
   void set_profile_data_transfers(bool flag=true) { profile_data_transfers_ = flag; }
   bool is_profile_data_transfers() { return profile_data_transfers_; }
+  void InvokeDependentTaskDevices(Device *dev);
   void AddOutDataObjectProfile(DataObjectProfile hist) { out_dataobject_profiles.push_back(hist); }
   void ClearMemOutProfile() { out_dataobject_profiles.clear(); }
   vector<DataObjectProfile> & out_mem_profiles() { return out_dataobject_profiles; }
@@ -237,6 +240,7 @@ public:
   Task* Child(int i) { return platform_->get_task_object(childs_uids_[i]); }
   int nchilds() { return nchilds_; }
   void AddChild(unsigned long uid);
+  void RemoveChild(unsigned long uid);
   void AddAllChilds();
   Graph* get_graph(){return graph_;}
   Graph* graph(){return graph_;}
@@ -268,6 +272,7 @@ public:
   iris_kernel get_last_cmd_kernel();
   Device *last_cmd_device() { return last_cmd_device_; }
   int execute_instance() { return execute_instance_; }
+  void enable_task_enqueued_in_multiple_devices() { is_task_enqueued_in_multiple_devices_ = true; }
 private:
   void CompleteSub();
 
@@ -282,6 +287,7 @@ private:
   Command* cmd_kernel_;
   Command* cmd_last_;
   Device* dev_;
+  Device* dep_dev_;
   int meta_data_[8];
   int n_meta_data_;
   int devno_;
@@ -341,6 +347,7 @@ private:
   size_t ns_time_submit_;
   size_t ns_time_start_;
   size_t ns_time_end_;
+  pthread_mutex_t child_mutex_;
   pthread_mutex_t depend_mutex_;
   pthread_mutex_t stream_mutex_;
   pthread_mutex_t mutex_pending_;
@@ -358,6 +365,7 @@ public:
   vector<DataMem *> & hidden_dmem_in() { return hidden_dmem_in_; }
   vector<DataMem *> & hidden_dmem_out() { return hidden_dmem_out_; }
   vector<ProfileEvent> & profile_events() { return profile_events_; }
+  void Clear() { dep_dev_ = NULL; dev_ = NULL; }
   ProfileEvent & CreateProfileEvent(BaseMem *mem, int connect_dev, ProfileRecordType type, Device *dev, int stream);
   ProfileEvent & CreateProfileEvent(Task *task, int connect_dev, ProfileRecordType type, Device *dev, int stream) {
       profile_events_.push_back(ProfileEvent(task->uid(), connect_dev, type, dev, stream));
@@ -396,6 +404,7 @@ public:
   bool j_policy_flag_;
   string j_policy_;
   int execute_instance_;
+  bool is_task_enqueued_in_multiple_devices_;
 };
 
 } /* namespace rt */

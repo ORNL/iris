@@ -57,6 +57,7 @@ Task::Task(Platform* platform, int type, const char* name, int max_cmds) {
   cmds_.reserve(16);
   //printf("Creating task:%lu:%s ptr:%p\n", uid(), name, this);
   is_kernel_launch_disabled_ = false;
+  is_task_enqueued_in_multiple_devices_ = false;
   enable_julia_if_ = false;
   julia_kernel_type_ = iris_julia_native;
   type_ = type;
@@ -74,6 +75,7 @@ Task::Task(Platform* platform, int type, const char* name, int max_cmds) {
   platform_ = platform;
   if (platform) scheduler_ = platform_->scheduler();
   dev_ = NULL;
+  dep_dev_ = NULL;
   parent_ = 0;
   parent_exist_ = false;
   subtasks_complete_ = 0;
@@ -106,6 +108,7 @@ Task::Task(Platform* platform, int type, const char* name, int max_cmds) {
   if (name) name_ = std::string(name);
   status_ = IRIS_NONE;
 
+  pthread_mutex_init(&child_mutex_, NULL);
   pthread_mutex_init(&depend_mutex_, NULL);
   pthread_mutex_init(&stream_mutex_, NULL);
   pthread_mutex_init(&mutex_pending_, NULL);
@@ -142,6 +145,7 @@ Task::~Task() {
   cmds_.clear();
   //delete [] cmds_;
   if (depends_uids_) delete [] depends_uids_;
+  pthread_mutex_destroy(&child_mutex_);
   pthread_mutex_destroy(&depend_mutex_);
   pthread_mutex_destroy(&stream_mutex_);
   pthread_mutex_destroy(&mutex_pending_);
@@ -291,9 +295,12 @@ void Task::ClearCommands() {
   ncmds_ = 0;
 }
 
-bool Task::Dispatchable() {
+bool Task::Dispatchable(bool is_async_soft_touch) {
+  bool called_from_worker = !is_async_soft_touch;
+  if (!is_async_soft_touch && !is_async()) return true; // This is called by worker. If it is not async, dependency check has been already taken care by scheduler.
+  is_async_soft_touch = is_async_soft_touch && is_async();
   //if we, or the tasks we depend on are pending (or not-complete), we can't run.
-  _debug2("Checking task:%lu:%s dispatchable depends_uids_:%p ndepends_:%d pending:%d", uid(), name(), depends_uids_, ndepends_, (status_ == IRIS_PENDING));
+  _trace("Checking task:%lu:%s dispatchable depends_uids_:%p ndepends_:%d pending:%d is_async_soft_touch:%d called_from_worker:%d", uid(), name(), depends_uids_, ndepends_, (status_ == IRIS_PENDING), is_async_soft_touch, called_from_worker);
   //print_incomplete_tasks();
   if (status_ == IRIS_PENDING) return false;
   if (depends_uids_ == NULL) return true;
@@ -301,16 +308,19 @@ bool Task::Dispatchable() {
   _event_prof_debug("Checking task:%lu:%s dispatchable depends_uids_:%p ndepends_:%d pending:%d has_cmds:%d", uid(), name(), depends_uids_, ndepends_, (status_ == IRIS_PENDING), has_cmds);
   for (int i = 0; i < ndepends_; i++) {
       Task *dep = platform_->get_task_object(depends_uids_[i]);
-      //printf("dep:%p dep async:%d dep_status:%d,%d dep->status():%d IRIS_COMPLETE:%d IRIS_RUNNING:%d\n", dep, dep->is_async(), dep->status() == IRIS_COMPLETE, dep->status() == IRIS_RUNNING, dep->status(), IRIS_COMPLETE, IRIS_RUNNING);
+      bool is_dep_async = (dep != NULL && dep->is_async());
+      bool is_dep_sync = (dep != NULL && !dep->is_async());
+      //printf("dep:%p dep async:%d is_async_soft_touch:%d dep_status:%d,%d dep->status():%d IRIS_COMPLETE:%d IRIS_RUNNING:%d\n", dep, is_dep_async, is_async_soft_touch, dep->status() == IRIS_COMPLETE, dep->status() == IRIS_RUNNING, dep->status(), IRIS_COMPLETE, IRIS_RUNNING);
 #if 1
-      if ( dep != NULL && dep->is_async() && has_cmds && !(dep->status() == IRIS_COMPLETE || dep->status() == IRIS_SUBMITTED)) return false;
-      if ( dep != NULL && dep->is_async() && !has_cmds && dep->status() != IRIS_COMPLETE) return false;
-      if ( dep != NULL && !dep->is_async() && dep->status() != IRIS_COMPLETE) return false;
+      if ( is_dep_async && is_async_soft_touch) continue; // It is ok even if the task is not yet picked up by any worker queue
+      if ( is_dep_async && has_cmds && !(dep->status() == IRIS_COMPLETE || dep->status() == IRIS_SUBMITTED)) return false;
+      if ( is_dep_async && !has_cmds && dep->status() != IRIS_COMPLETE) return false;
+      if ( is_dep_sync && dep->status() != IRIS_COMPLETE) return false;
 #else
       if ( dep != NULL && dep->status() != IRIS_COMPLETE) return false;
 #endif
   }
-  _debug2("Task task:%lu:%s is ready to run", uid(), name());
+  _trace("Task task:%lu:%s is ready to run", uid(), name());
   return true;
 }
 
@@ -327,6 +337,23 @@ void Task::DispatchDependencies() {
       }
   }
   //pthread_mutex_unlock(&mutex_pending_);
+}
+void Task::InvokeDependentTaskDevices(Device *tdev) {
+    //_info("Now11 invoke for task:%lu:%s nchilds:%d", uid(), name(), nchilds());
+    if(platform_->get_enable_proactive()) {
+        for (int i = 0; i < nchilds_; i++) {
+            Task *dep= Child(i);
+            if (dep!= NULL) {
+                bool is_dep_async = (dep != NULL && dep->is_async());
+                Device *dev = dep->dep_dev();
+                //_info("Now11 invoke for task:%lu:%s dep task:%lu:%s dev:%p:%p:%p", uid(), name(), dep->uid(), dep->name(), dep->dep_dev(), dep->dev(), tdev);
+                if (dev != NULL && dev != tdev) { 
+                    //_info("Now invoke task:%d:%s for dep task:%lu:%s dev:%d:%s", uid(), name(), dep->uid(), dep->name(), dev->devno(), dev->name());
+                    dev->worker()->Invoke(); 
+                }
+            }
+        }
+    }
 }
 
 bool Task::Executable() {
@@ -543,9 +570,10 @@ void Task::AddDepend(Task* task, unsigned long p_uid) {
   }
   pthread_mutex_unlock(&depend_mutex_);
   if(platform_->get_enable_proactive() 
-		&& std::string(this->name()).find("GraphSync") == std::string::npos  
-        && std::string(this->name()).find("flush") == std::string::npos  
-		&& std::string(this->name()).find("flush-out") == std::string::npos ) {
+        //&& std::string(this->name()).find("GraphSync") == std::string::npos  
+        //&& std::string(this->name()).find("flush") == std::string::npos  
+        //&& std::string(this->name()).find("flush-out") == std::string::npos 
+    ) {
       unsigned long this_uid = this->uid();
       platform_->task_track().CallBackIfObjectExists(p_uid, 
               [](void *data, void *lhs, void *rhs) {
@@ -609,20 +637,48 @@ void Task::AddDepend(Task* task, unsigned long p_uid) {
       }
   }
 }
-void Task::RemoveDepend(unsigned long uid) 
+void Task::RemoveDepend(unsigned long p_uid) 
 {
   int j = 0;
   pthread_mutex_lock(&depend_mutex_);
   for (int i = 0; i < ndepends_; i++) {
-      if (depends_uids_[i] != uid) {
+      if (depends_uids_[i] != p_uid) {
         depends_uids_[j++] = depends_uids_[i];
       }
   }
   ndepends_ = j;
   pthread_mutex_unlock(&depend_mutex_);
+
+  if(platform_->get_enable_proactive()
+	//&& std::string(this->name()).find("GraphSync") == std::string::npos  
+	//&& std::string(this->name()).find("flush") == std::string::npos  
+	//&& std::string(this->name()).find("flush-out") == std::string::npos 
+	) {
+    unsigned long this_uid = this->uid();
+    platform_->task_track().CallBackIfObjectExists(p_uid, 
+            [](void *data, void *lhs, void *rhs) {
+              Task *parent_task = (Task *)data;
+              unsigned long child_uid = *((unsigned long *)rhs);
+              parent_task->RemoveChild(child_uid);
+            }, &p_uid, &this_uid);
+  }
+}
+
+void Task::RemoveChild(unsigned long uid) 
+{
+  int j = 0;
+  //pthread_mutex_lock(&child_mutex_);
+  for (int i = 0; i < nchilds_; i++) {
+      if (childs_uids_[i] != uid) {
+        childs_uids_[j++] = childs_uids_[i];
+      }
+  }
+  nchilds_= j;
+  //pthread_mutex_unlock(&child_mutex_);
 }
 
 void Task::AddChild(unsigned long uid) {
+  //pthread_mutex_lock(&child_mutex_);
   if (childs_uids_ == NULL) {
       childs_uids_ = new unsigned long[childs_max_];
   }
@@ -639,12 +695,13 @@ void Task::AddChild(unsigned long uid) {
   nchilds_++;
   //if (platform_->task_track().IsObjectExists(uid))
   //    task->Retain();
+  //pthread_mutex_unlock(&child_mutex_);
 }
 
 // One call to add all the childs by tracking the parents
 void Task::AddAllChilds() {
   for (int i = 0; i < ndepends_; i++) 
-	platform_->get_task_object(depends_uids_[i])->AddChild(this->uid());
+    platform_->get_task_object(depends_uids_[i])->AddChild(this->uid());
 }
 
 

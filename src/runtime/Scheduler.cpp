@@ -144,6 +144,7 @@ void Scheduler::SubmitTask(Task* task) {
   const char* opt = task->opt();
   int ndevs = 0;
   int task_affinity = task->get_device_affinity();
+  task->Clear();
   Device* devs[IRIS_MAX_NDEVS];
   if (task_affinity < 0) {
       if (brs_policy < IRIS_MAX_NDEVS) {
@@ -169,10 +170,15 @@ void Scheduler::SubmitTask(Task* task) {
   }
   //if any dependencies were pending, time to process them now.
   if (!task->Dispatchable()) task->DispatchDependencies();
-
+  
+  if (ndevs > 1) {
+    task->enable_task_enqueued_in_multiple_devices();
+  }
   for (int i = 0; i < ndevs; i++) {
       task->Retain();
   }
+  _trace("Enquing task:%lu:%s to devices\n", task->uid(), task->name());
+  task->set_dep_dev(devs[0]);
   for (int i = 0; i < ndevs; i++) {
     devs[i]->worker()->Enqueue(task);
     if (hub_available_) hub_client_->TaskInc(devs[i]->devno(), 1);

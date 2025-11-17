@@ -116,6 +116,7 @@ void Platform::Reset() {
   ncopy_streams_ = IRIS_MAX_DEVICE_NCOPY_STREAMS;
   is_malloc_async_ = false;
   recording_ = false;
+  scheduler_dispatch_fcfs_ = false;
   enable_profiler_ = false;
   enable_dot_profiler_ = false;
   enable_scheduling_history_ = false; 
@@ -250,9 +251,13 @@ int Platform::Init(int* argc, char*** argv, int sync) {
   EnvironmentIntRead("STREAM_POLICY", stream_policy);
   stream_policy_ = (StreamPolicy) stream_policy;
   bool async = async_; EnvironmentBoolRead("ASYNC", async); set_async(async);
+  if (async) {
+    scheduler_dispatch_fcfs_ = true;
+  }
 #ifdef IRIS_ASYNC_STREAMING
   set_async(true);
 #endif
+  EnvironmentBoolRead("SCHEDULER_DISPATCH_FCFS", scheduler_dispatch_fcfs_);
   if (is_async()) 
       _info("Asynchronous is enabled");
   char* archs = NULL;
