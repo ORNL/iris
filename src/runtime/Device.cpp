@@ -421,7 +421,7 @@ bool Device::IsConditionalSubmitGraphAgain(Task *task)
 
 void Device::Execute(Task* task) {
   //TODO: Clear the proile event created here
-  _event_debug("Inside device execute and calling free destroy events %lu:%s %lf\n", task->uid(), task->name(), timer_->Now());
+  _event_debug("Inside device execute and calling free destroy events %lu:%s time:%lf dev:%d:%s\n", task->uid(), task->name(), timer_->Now(), devno(), name());
   _debug("Inside device execute and calling free destroy events %lu:%s\n", task->uid(), task->name());
   FreeDestroyEvents();
   ReserveActiveTask();
@@ -435,6 +435,7 @@ void Device::Execute(Task* task) {
   //printf("================== Task:%s =====================\n", task->name());
   _event_debug("task[%lu:%s] started execution on dev[%d][%s] time[%lf] start:[%lf] q[%d]", task->uid(), task->name(), devno(), name(), task->time(), task->time_start(), task->recommended_stream());
   _trace("task[%lu:%s] started execution on dev[%d][%s] time[%lf] start:[%lf] q[%d]", task->uid(), task->name(), devno(), name(), task->time(), task->time_start(), task->recommended_stream());
+  //_info("task[%lu:%s] started execution on dev[%d][%s] time[%lf] start:[%lf] q[%d]", task->uid(), task->name(), devno(), name(), task->time(), task->time_start(), task->recommended_stream());
   //for(Command *cmd : task->reset_mems()) {
       // Handle Memory Reset commands IRIS_CMD_RESET_INPUT first
   //    ExecuteMemResetInput(task, cmd);
@@ -452,8 +453,10 @@ void Device::Execute(Task* task) {
          d2h_dmems.push_back((DataMem*)cmd->mem());
       }
   }
+  //_info("task[%lu:%s] dev:%d:%s\n", task->uid(), task->name(), devno(), name());
   HandleHiddenDMemIns(task);
   bool is_kernel_skipped = false;
+  //_info("task[%lu:%s] dev:%d:%s\n", task->uid(), task->name(), devno(), name());
   for (int i = 0; i < task->ncmds(); i++) {
     //printf("Inside device cmd:%d execute and calling free destroy events %lu:%s %lf\n", i, task->uid(), task->name(), timer_->Now());
     Command* cmd = task->cmd(i);
@@ -504,10 +507,12 @@ void Device::Execute(Task* task) {
     //printf("Inside post device execute and calling free destroy events %lu:%s %lf\n", task->uid(), task->name(), timer_->Now());
     cmd->set_time_end(timer_);
     if (hook_command_post_) hook_command_post_(cmd);
+    //_info("task[%lu:%s] dev:%d:%s\n", task->uid(), task->name(), devno(), name());
   }
+  //_info("Task %s:%lu time now:%lf\n", task->name(), task->uid(), timer_->Now());
   _trace("Task %s:%lu time now:%lf\n", task->name(), task->uid(), timer_->Now());
   HandleHiddenDMemOuts(task);
-  _trace("Task %s:%lu time now:%lf\n", task->name(), task->uid(), timer_->Now());
+  //_info("Submitted Task %s:%lu time now:%lf dev:%d:%s\n", task->name(), task->uid(), timer_->Now(), devno(), name());
   task->update_status(IRIS_SUBMITTED);
   bool disable_profile = false;
   if (task->ncmds() == 1 && is_kernel_skipped) 
@@ -518,8 +523,12 @@ void Device::Execute(Task* task) {
       double execute_end = (timer_->Now()-first_event_cpu_mid_point_time())*1000.0;
       task->CreateProfileEvent(task, devno(), PROFILE_INIT, this, (float)execute_start, (float)execute_end);
   }
-  _trace("Task %s:%lu time now:%lf\n", task->name(), task->uid(), timer_->Now());
-  if (is_async(task) && task->user()) AddCallback(task);
+  //_info("Now check to invoke child tasks for Task %s:%lu time now:%lf\n", task->name(), task->uid(), timer_->Now());
+  if (is_async(task) && task->user()) {
+        //_info("Invoking dependent Task %s:%lu time now:%lf dev:%d:%s\n", task->name(), task->uid(), timer_->Now(), devno(), name());
+        task->InvokeDependentTaskDevices(this);
+        AddCallback(task);
+  }
   if ((!is_async(task) || !task->user())  && !disable_profile)
 	  task->set_time_end(timer_);
   _trace("Task %s:%lu time now:%lf\n", task->name(), task->uid(), timer_->Now());
@@ -881,12 +890,14 @@ void Device::ProactiveTransfers(Task *task, Command *cmd)
       memset(dev_2_child_task_, 0x0, sizeof(Task*)*ndevs);
       for (int i=0; i<task->nchilds(); i++) {
           Task *child = task->Child(i);
-          int dev = child->recommended_dev();
-          KernelArg *karg = NULL;
-          if (dev != -1 && child->cmd_kernel() != NULL && 
-                  (karg = cmd->kernel()->get_in_mem_karg(mem))!=NULL) {
-              dev_2_child_task_[dev] = child;
-              karg->proactive_enabled();
+          if (child != NULL) {
+              int dev = child->recommended_dev();
+              KernelArg *karg = NULL;
+              if (dev != -1 && child->cmd_kernel() != NULL && 
+                      (karg = cmd->kernel()->get_in_mem_karg(mem))!=NULL) {
+                  dev_2_child_task_[dev] = child;
+                  karg->proactive_enabled();
+              }
           }
       }
       //TODO: Explore Hierarchical (Tree style) data transfers in future for asyn

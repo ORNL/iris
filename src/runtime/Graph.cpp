@@ -43,6 +43,7 @@ Graph::Graph(Platform* platform) {
 
   end_ = Task::Create(platform_, IRIS_TASK_PERM, "GraphSync");
   end_->set_graph(this);
+  end_->set_async(false);
   end_brs_task_ = *(end_->struct_obj());
   tasks_.push_back(end_);
 

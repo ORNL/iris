@@ -235,7 +235,6 @@ int Platform::Init(int* argc, char*** argv, int sync) {
 
   EnvironmentBoolRead("DEFAULT_KERNELS", enable_default_kernels_load_);
   EnvironmentBoolRead("DISABLE_KERNEL_LAUNCH", disable_kernel_launch_);
-  EnvironmentBoolRead("SCHEDULER_DISPATCH_FCFS", scheduler_dispatch_fcfs_);
   EnvironmentBoolRead("PROFILE", enable_profiler_);
   EnvironmentBoolRead("HISTORY", enable_scheduling_history_);
   EnvironmentBoolRead("EVENT_PROFILE", event_profile_enabled_);
@@ -252,9 +251,13 @@ int Platform::Init(int* argc, char*** argv, int sync) {
   EnvironmentIntRead("STREAM_POLICY", stream_policy);
   stream_policy_ = (StreamPolicy) stream_policy;
   bool async = async_; EnvironmentBoolRead("ASYNC", async); set_async(async);
+  if (async) {
+    scheduler_dispatch_fcfs_ = true;
+  }
 #ifdef IRIS_ASYNC_STREAMING
   set_async(true);
 #endif
+  EnvironmentBoolRead("SCHEDULER_DISPATCH_FCFS", scheduler_dispatch_fcfs_);
   if (is_async()) 
       _info("Asynchronous is enabled");
   char* archs = NULL;

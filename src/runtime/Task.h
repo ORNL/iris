@@ -174,6 +174,7 @@ public:
   int get_brs_policy(){ return brs_policy_;};
   void set_profile_data_transfers(bool flag=true) { profile_data_transfers_ = flag; }
   bool is_profile_data_transfers() { return profile_data_transfers_; }
+  void InvokeDependentTaskDevices(Device *dev);
   void AddOutDataObjectProfile(DataObjectProfile hist) { out_dataobject_profiles.push_back(hist); }
   void ClearMemOutProfile() { out_dataobject_profiles.clear(); }
   vector<DataObjectProfile> & out_mem_profiles() { return out_dataobject_profiles; }
@@ -239,6 +240,7 @@ public:
   Task* Child(int i) { return platform_->get_task_object(childs_uids_[i]); }
   int nchilds() { return nchilds_; }
   void AddChild(unsigned long uid);
+  void RemoveChild(unsigned long uid);
   void AddAllChilds();
   Graph* get_graph(){return graph_;}
   Graph* graph(){return graph_;}
@@ -345,6 +347,7 @@ private:
   size_t ns_time_submit_;
   size_t ns_time_start_;
   size_t ns_time_end_;
+  pthread_mutex_t child_mutex_;
   pthread_mutex_t depend_mutex_;
   pthread_mutex_t stream_mutex_;
   pthread_mutex_t mutex_pending_;
@@ -362,6 +365,7 @@ public:
   vector<DataMem *> & hidden_dmem_in() { return hidden_dmem_in_; }
   vector<DataMem *> & hidden_dmem_out() { return hidden_dmem_out_; }
   vector<ProfileEvent> & profile_events() { return profile_events_; }
+  void Clear() { dep_dev_ = NULL; dev_ = NULL; }
   ProfileEvent & CreateProfileEvent(BaseMem *mem, int connect_dev, ProfileRecordType type, Device *dev, int stream);
   ProfileEvent & CreateProfileEvent(Task *task, int connect_dev, ProfileRecordType type, Device *dev, int stream) {
       profile_events_.push_back(ProfileEvent(task->uid(), connect_dev, type, dev, stream));

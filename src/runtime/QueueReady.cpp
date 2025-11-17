@@ -106,9 +106,9 @@ bool QueueReady::Dequeue(Task **task, Device *device) {
   if (!queue_.empty()){
     auto &data = queue_.front();
     *task = data; //(Task*) data.second;
-    _trace("Trying to Popped task:%lu:%s to queue pq:%lu q:%lu", data->uid(), data->name(), pqueue_.size(), queue_.size());
+    //_info("Trying to Popped task:%lu:%s to queue pq:%lu q:%lu dev:%d:%s", data->uid(), data->name(), pqueue_.size(), queue_.size(), device->devno(), device->name());
     if ((*task)->Dispatchable(false)) {
-        _trace("Popped task:%lu:%s to queue pq:%lu q:%lu", data->uid(), data->name(), pqueue_.size(), queue_.size());
+        //_info("Popped task:%lu:%s to queue pq:%lu q:%lu dev:%d:%s", data->uid(), data->name(), pqueue_.size(), queue_.size(), device->devno(), device->name());
         queue_.pop_front();
         return true;
     }
