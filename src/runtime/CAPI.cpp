@@ -1722,3 +1722,27 @@ int iris_vendor_kernel_launch(int dev, void *kernel, int gridx, int gridy, int g
 int iris_is_enabled_auto_par() {
   return (int) Platform::GetPlatform()->GetAutoPar();
 }
+python_policy_t python_policy__ = NULL;
+python_kernel_t python_kernel__ = NULL;
+int iris_python_init(void *python_launch_func, int decoupled_init)
+{
+    python_kernel__ = (python_kernel_t) python_launch_func;
+    //int32_t target = 12; 
+    //int32_t devno=0;
+    //int32_t result = python_kernel__(target, devno);
+    //printf("Result %d\n", result);
+    return Platform::GetPlatform()->JuliaInit((bool)decoupled_init);
+}
+int iris_python_policy_init(void *python_policy_func) 
+{
+    python_policy__ = (python_policy_t) python_policy_func;
+    return IRIS_SUCCESS;
+}
+python_kernel_t iris_get_python_launch_func() 
+{
+    return python_kernel__;
+}
+python_policy_t iris_get_python_policy_func() 
+{
+    return python_policy__;
+}

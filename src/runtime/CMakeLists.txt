@@ -227,6 +227,7 @@ set(IRIS_RUNTIME_SOURCES
   Policies.cpp
   Policy.cpp
   HostInterface.cpp
+  PythonInterface.cpp
   PolicyBlockCycle.cpp
   PolicyFirstToFinish.cpp
   PolicyData.cpp
@@ -268,6 +269,7 @@ set(IRIS_RUNTIME_HEADERS
   DeviceHexagon.h
   DeviceHIP.h
   HostInterface.h
+  PythonInterface.h
   DeviceLevelZero.h
   DeviceOpenCL.h
   DeviceOpenMP.h

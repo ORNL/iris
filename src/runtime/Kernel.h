@@ -46,8 +46,10 @@ public:
   int SetArg(int idx, size_t size, void* value);
   int SetMem(int idx, BaseMem* mem, size_t off, int mode);
   KernelArg* ExportArgs();
-  void* GetJuliadata() { return host_if_data_; }
-  void CreateJuliadata(size_t size) { host_if_data_ = malloc(size); }
+  void* GetJuliaData() { return host_if_data_; }
+  void CreateJuliaData(size_t size) { host_if_data_ = malloc(size); }
+  void* GetPythonData() { return host_if_data_; }
+  void CreatePythonData(size_t size) { host_if_data_ = malloc(size); }
   void* GetFFIdata() { return host_if_data_; }
   void CreateFFIdata(size_t size) { host_if_data_ = malloc(size); }
   void* GetParamWrapperMemory() { return (void *)param_wrapper_mem_; }

@@ -108,6 +108,36 @@ enum StreamPolicy {
     STREAM_POLICY_SAME_FOR_TASK = 1,
     STREAM_POLICY_GIVE_ALL_STREAMS_TO_KERNEL = 2
 };
+
+typedef struct {
+    void     *data;       /* points to scalar or array data */
+    size_t   *off;
+    size_t   *tile_sizes;
+    size_t   *full_sizes;
+    size_t    element_size;      // element size
+    size_t    count;      // number of elements
+    int32_t   data_type;  /* one of iris_* above (may encode pointer bit too) */
+    int32_t   is_pointer; /* semantic: 0 = scalar, 1 = pointer/array */
+    int32_t   n_dims;     /* 0 = scalar; >=1 = array, dims[0..n_dims-1] valid */
+    unsigned long custom_type;
+} IrisParam;
+
+typedef struct {
+    int32_t n_streams;
+    int32_t devno;
+    int32_t dev_id;
+    int32_t is_async;
+    unsigned long task_id;
+    unsigned long cmd_id;
+    void **streams;
+    void *ctx;
+    int32_t dim;
+    size_t *gws;
+    size_t *grid;
+    size_t *block;
+    size_t shmem_size;
+} IrisSpec;
+
 typedef enum StreamPolicy StreamPolicy;
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 #ifndef UNDEF_IRIS_MACROS
@@ -174,6 +204,8 @@ typedef enum DeviceModel DeviceModel;
 #define iris_dt_d2h_h2d         6
 #define iris_dt_dmem2dmem_fill  7 
 #define iris_dt_error           0
+
+#define iris_python_native               0
 
 #define iris_julia_native               0
 #define iris_core_native                1
@@ -2637,6 +2669,10 @@ extern julia_policy_t iris_get_julia_policy_func();
 extern int iris_is_enabled_auto_par();
 
 extern int iris_vendor_kernel_launch(int dev, void *kernel, int gridx, int gridy, int gridz, int blockx, int blocky, int blockz, int shared_mem_bytes, void *stream, void **params);
+
+typedef void (*python_kernel_t)(IrisSpec *spec, IrisParam *params_list, int n);
+typedef int32_t (*python_policy_t)(iris_task task, const char *policy_name, iris_device *devs, int32_t ndevs, int32_t *out_dev); 
+extern python_kernel_t iris_get_python_launch_func();
 
 #ifdef __cplusplus
 } /* end of extern "C" */
