@@ -38,8 +38,8 @@ endif() # USE_RISCV
 set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g")
 set(CMAKE_C_FLAGS_DEBUG "-O0 -g")
 
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -g") 
-set(CMAKE_C_FLAGS_RELEASE "-O3 -g")   
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -g")
+set(CMAKE_C_FLAGS_RELEASE "-O3 -g")
 
 macro ( info NAME )
   string(ASCII 27 Esc)
@@ -134,7 +134,7 @@ add_custom_command(
   COMMAND echo "if  test -z \"\$pyversion\" " >> ${CMAKE_BINARY_DIR}/setup.fish VERBATIM
   COMMAND echo "    set -l PYTHON_EXE python3" >> ${CMAKE_BINARY_DIR}/setup.fish VERBATIM
   COMMAND echo "    set -l pyversion (python3 -V 2>&1 | grep -Po '(?<=Python )(.+)' || echo '')" >> ${CMAKE_BINARY_DIR}/setup.fish VERBATIM
-  COMMAND echo "    if test -z \"\$pyversion\" ]]" >> ${CMAKE_BINARY_DIR}/setup.fish VERBATIM
+  COMMAND echo "    if test -z \"$pyversion\"" >> ${CMAKE_BINARY_DIR}/setup.fish VERBATIM
   COMMAND echo "    echo \"No Python is detected! Cannot source\" " >> ${CMAKE_BINARY_DIR}/setup.fish VERBATIM
   COMMAND echo "    exit" >> ${CMAKE_BINARY_DIR}/setup.fish VERBATIM
   COMMAND echo "    end" >> ${CMAKE_BINARY_DIR}/setup.fish VERBATIM
@@ -145,14 +145,14 @@ add_custom_command(
   COMMAND echo "set -gx CPATH \$IRIS/include \$CPATH" >> ${CMAKE_BINARY_DIR}/setup.fish
   COMMAND echo "set -gx PYTHONPATH \$IRIS \$PYTHONPATH" >> ${CMAKE_BINARY_DIR}/setup.fish
   COMMAND echo "set -gx SYSTEM (hostname|cut -d . -f 1|sed 's/[0-9]*//g')" >>  ${CMAKE_BINARY_DIR}/setup.fish
-  COMMAND echo "set -gx MACHINE \${SYSTEM^}" >>  ${CMAKE_BINARY_DIR}/setup.fish
+  COMMAND echo "set -gx MACHINE (string join '' (string upper -- (string sub -l 1 -- \$SYSTEM)) (string sub -s 2 -- \$SYSTEM))" >>  ${CMAKE_BINARY_DIR}/setup.fish
   COMMAND echo "echo \"*********************** IRIS Environent *********************\"" >> ${CMAKE_BINARY_DIR}/setup.fish
   COMMAND echo "echo \"IRIS: \$IRIS\"" >> ${CMAKE_BINARY_DIR}/setup.fish
   COMMAND echo "echo \"*************************************************************\"" >> ${CMAKE_BINARY_DIR}/setup.fish
   )
 add_custom_target(setup_source ALL DEPENDS ${CMAKE_BINARY_DIR}/setup.source)
 add_custom_target(setup_zsh ALL DEPENDS ${CMAKE_BINARY_DIR}/setup.zsh)
-add_custom_target(setpu_fish ALL DEPENDS ${CMAKE_BINARY_DIR}/setup.fish)
+add_custom_target(setup_fish ALL DEPENDS ${CMAKE_BINARY_DIR}/setup.fish)
 install(FILES ${CMAKE_BINARY_DIR}/setup.source DESTINATION ${CMAKE_INSTALL_PREFIX})
 install(FILES ${CMAKE_BINARY_DIR}/setup.zsh DESTINATION ${CMAKE_INSTALL_PREFIX})
 install(FILES ${CMAKE_BINARY_DIR}/setup.fish DESTINATION ${CMAKE_INSTALL_PREFIX})
