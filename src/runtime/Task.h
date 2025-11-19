@@ -132,6 +132,8 @@ public:
   const char* name() { return name_.c_str(); }
   void set_julia_kernel_type(int type) { julia_kernel_type_ = type; }
   int julia_kernel_type() { return julia_kernel_type_; }
+  void set_python_kernel_type(int type) { python_kernel_type_ = type; }
+  int python_kernel_type() { return python_kernel_type_; }
   void set_name(std::string name);
   void set_name(const char* name);
   bool given_name(){return given_name_;}
@@ -320,6 +322,7 @@ private:
   int nchilds_;
 
 
+  int python_kernel_type_;
   int julia_kernel_type_;
   int recommended_stream_;
   int recommended_dev_;
@@ -403,6 +406,20 @@ public:
   }
   bool j_policy_flag_;
   string j_policy_;
+  void set_enable_python_if() { enable_python_if_ = true; }
+  bool enable_python_if() { return enable_python_if_; }
+  bool enable_python_if_;
+  void set_python_policy(const char *name) { 
+      py_policy_ = string(name);
+      //printf("Configuring py_policy: %s --- %s\n", py_policy_.c_str(), name);
+      py_policy_flag_ = true;
+  }
+  const char *python_policy() { 
+      if (py_policy_flag_) return py_policy_.c_str(); 
+      return NULL;
+  }
+  bool py_policy_flag_;
+  string py_policy_;
   int execute_instance_;
   bool is_task_enqueued_in_multiple_devices_;
 };

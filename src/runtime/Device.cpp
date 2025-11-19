@@ -9,6 +9,7 @@
 #include "DataMem.h"
 #include "DataMemRegion.h"
 #include "HostInterface.h"
+#include "PythonInterface.h"
 #include "Platform.h"
 #include "Reduction.h"
 #include "Task.h"
@@ -52,6 +53,7 @@ Device::Device(int devno, int platform) {
   hook_command_pre_ = NULL;
   hook_command_post_ = NULL;
   julia_if_ = NULL;
+  python_if_ = NULL;
   worker_ = NULL;
   ld_reset_ = NULL;
   stream_policy_ = STREAM_POLICY_DEFAULT;
@@ -69,6 +71,7 @@ Device::~Device() {
   FreeDestroyEvents();
   if (peer_access_ != NULL) delete [] peer_access_;
   if (julia_if_ != NULL) delete julia_if_;
+  if (python_if_ != NULL) delete python_if_;
   delete timer_;
 }
 void Device::HandleMemReset(bool async, Command *cmd, Kernel *kernel, Task *task, DataMem *mem, DataMem *src_mem)
@@ -328,6 +331,9 @@ string Device::CompileDefaultKernelLibrary(const char *key, const char *flags)
 
 void Device::EnableJuliaInterface() {
   julia_if_ = new JuliaHostInterfaceLoader(model());
+}
+void Device::EnablePythonInterface() {
+  python_if_ = new PythonHostInterfaceLoader(model());
 }
 StreamPolicy Device::stream_policy(Task *task) 
 {

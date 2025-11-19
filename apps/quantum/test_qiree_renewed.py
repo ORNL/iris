@@ -3,6 +3,7 @@
 import iris
 import pdb
 import os
+import numpy as np
 
 # Step1: MLIR circuit cutting pass (Richard, Sharmin, Daniel, Elaine, Narasinga)
 ## will generate one MLIR file each fragment 
@@ -42,7 +43,7 @@ n = num_cuts
 
 # Create n tasks (no communications with each other)
 tasks = [iris.task() for i in range(n)]
-output = [iris.dmem() for i in range(n)]
+output = [iris.dmem(np.empty(0, dtype=iris.CQireeResultRecord)) for i in range(n)]
 qir_content = [ iris.dmem_infile(f"teleport{i}.ll") for i in range(n) ]
 
 
@@ -57,9 +58,19 @@ for i in range(n):
     ])
     tasks[i].submit(iris.iris_qpu, sync=0)
 
+
+def post_processing(spec, qpu1, qpu2, result):
+    pdb.set_trace()
+    print("QPU1:", qpu1)
+    print("QPU2:", qpu2)
+
 # Classical compute task to do post-processing
-result = iris.dmem()
-post_process_task = iris.task("qiree_post_processing", 1, [], [1], [], 
+h_result = np.zeros((128, 2), dtype=int)
+result = iris.dmem(h_result)
+#post_process_task = iris.task("qiree_post_processing", 1, [], [1], [], 
+#        [(output[i], iris.iris_r) for i in range(n)] + [ (result, iris.iris_w) ]
+#)
+post_process_task = iris.task(post_processing, 1, [], [1], [], 
         [(output[i], iris.iris_r) for i in range(n)] + [ (result, iris.iris_w) ]
 )
 post_process_task.depends(tasks)

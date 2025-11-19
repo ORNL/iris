@@ -74,6 +74,10 @@ public:
         params_   = params;
         n_params_ = n_params;
     }
+    void set_mem_id(unsigned long mem_id) {
+        assert(index_ < n_params_);
+        params_[index_].mem_id = mem_id;
+    }
 
     IrisParam       *params()       { return params_; }
     const IrisParam *params() const { return params_; }
@@ -116,15 +120,15 @@ class PythonHostInterfaceLoader : public HostInterfaceLoader {
         KernelPython * get_kernel_python(void *param_mem);
         int launch_init(int model, int devno, int stream_index, int nstreams, void **stream, void *param_mem, Command *cmd);
         int SetKernelPtr(void *obj, const char *kernel_name);
-        int host_launch(unsigned long task_id, unsigned long cmd_id, void **stream, int stream_index, void *ctx, bool async, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *gws, size_t *off, size_t *bws, size_t shared_mem_size);
+        int host_launch(unsigned long task_id, unsigned long cmd_id, void **stream, int stream_index, void *ctx, bool async, int nstreams, const char *kname, void *py_fn_ptr, void *param_mem, int devno, int dim, size_t *gws, size_t *off, size_t *bws, size_t shared_mem_size);
         int setarg(void *param_mem, int kindex, size_t size, void *value);
         int setmem(void *param_mem, BaseMem *mem, int kindex, void *mem_ptr, size_t size);
         int set_python_kernel_type(void *param_mem, int type);
-        void launch_python_kernel(IrisSpec *spec, IrisParam *params, int n)
+        void launch_python_kernel(void *kname, IrisSpec *spec, IrisParam *params, int n)
         {
             if (iris_get_python_launch_func()!= NULL) {
                 python_kernel_t kernel_python_wrapper = iris_get_python_launch_func();
-                kernel_python_wrapper(spec, params, n);
+                kernel_python_wrapper(kname, spec, params, n);
             }
         }
     private:

@@ -67,12 +67,12 @@ int PythonHostInterfaceLoader::SetKernelPtr(void *obj, const char *kernel_name)
     //python_data->set_kernel_name(kernel_name);
     return IRIS_SUCCESS;
 }
-int PythonHostInterfaceLoader::host_launch(unsigned long task_id, unsigned long cmd_id, void **stream, int stream_index, void *ctx, bool async, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *gws, size_t *grid, size_t *block, size_t shared_mem_size)
+int PythonHostInterfaceLoader::host_launch(unsigned long task_id, unsigned long cmd_id, void **stream, int stream_index, void *ctx, bool async, int nstreams, const char *kname, void *py_fn_ptr, void *param_mem, int devno, int dim, size_t *gws, size_t *grid, size_t *block, size_t shared_mem_size)
 {
     KernelPython *python_data = get_kernel_python(param_mem);
     IrisSpec spec = { nstreams, devno, devno, async, task_id, cmd_id, stream, ctx, dim, gws, grid, block, shared_mem_size }; 
     SetKernelPtr(param_mem, kname);
-    launch_python_kernel(&spec, python_data->params(), python_data->n_params());
+    launch_python_kernel(py_fn_ptr, &spec, python_data->params(), python_data->n_params());
     return IRIS_SUCCESS;
 }
 int PythonHostInterfaceLoader::setarg(void *param_mem, int kindex, size_t size, void *value)
@@ -101,6 +101,7 @@ int PythonHostInterfaceLoader::setmem(void *param_mem, BaseMem *mem, int kindex,
 {
     KernelPython *python_data = get_kernel_python(param_mem);
     int element_type = mem->element_type();
+    python_data->set_mem_id(mem->uid());
     MemHandlerType h_type = mem->GetMemHandlerType();
     int element_size = 0;
     int dim = 1;
@@ -111,10 +112,6 @@ int PythonHostInterfaceLoader::setmem(void *param_mem, BaseMem *mem, int kindex,
         element_size = (int) dmem->elem_size();
         dim = dmem->dim();
         python_data->set_n_dims(dim);
-        if (dmem->preserve_size_flag()) {
-            //preserve_size_flag = 1 << 23;
-            ASSERT(false); // Couldn't handle this case
-        }
         //dev_tile_dim = dmem->dev_tile_dim();
         //printf("Size DIM : %lu\n", dmem->dev_size()[0]);
         python_data->set_dim_off(dmem->dev_off());

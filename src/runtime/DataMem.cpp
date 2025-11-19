@@ -741,7 +741,9 @@ void DataMem::realllocate_space(size_t elem_size, size_t total)
         }
     }
     update_host_size(&total);
+    update_host_tile_size(&total);
     update_dev_size(&total);
+    update_dev_tile_size(&total);
 }
 void DataMem::CopyToHost(void *host)
 {

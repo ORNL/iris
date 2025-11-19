@@ -119,7 +119,7 @@ typedef struct {
     int32_t   data_type;  /* one of iris_* above (may encode pointer bit too) */
     int32_t   is_pointer; /* semantic: 0 = scalar, 1 = pointer/array */
     int32_t   n_dims;     /* 0 = scalar; >=1 = array, dims[0..n_dims-1] valid */
-    unsigned long custom_type;
+    unsigned long mem_id;
 } IrisParam;
 
 typedef struct {
@@ -170,6 +170,7 @@ typedef enum StreamPolicy StreamPolicy;
 #define iris_custom             (1 << 28)
 #define iris_julia_policy       (1 << 29)
 #define iris_qpu                (1 << 30)
+#define iris_python_policy      (1 << 31)
 #define iris_all                0x7FFFFFFF
 
 enum DeviceModel {
@@ -371,6 +372,7 @@ extern void iris_enable_default_kernels(int flag);
 extern void iris_task_retain(iris_task task, int flag);
 
 extern int iris_task_set_julia_policy(iris_task task, const char *name);
+extern int iris_task_set_python_policy(iris_task task, const char *name);
 
 /**@brief Sets an IRIS environment variable.
  *
@@ -1069,6 +1071,24 @@ extern int iris_kernel_enable_julia_interface(iris_kernel kernel, int type);
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_task_enable_julia_interface(iris_task task, int type);
+
+/**@brief Enable Python Interface for kernel alone
+ *
+ * @param kernel iris kernel object
+ * @param type type of python kernel (iris_python_native, iris_core_native, iris_python_kernel_abstraction, iris_python_jacc)
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_kernel_enable_python_interface(iris_kernel kernel, int type);
+extern int iris_kernel_set_python_function(iris_kernel kernel, void *ptr);
+extern void *iris_kernel_get_python_function(iris_kernel kernel);
+
+/**@brief Enable Python Interface for task kernels inside
+ *
+ * @param task iris task object
+ * @param type type of python kernel (iris_python_native, iris_core_native, iris_python_kernel_abstraction, iris_python_jacc)
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_task_enable_python_interface(iris_task task, int type);
 
 /**@brief Adds a flush command to a task
  *
@@ -2663,6 +2683,26 @@ extern julia_kernel_t iris_get_julia_launch_func();
  */
 extern julia_policy_t iris_get_julia_policy_func();
 
+/* API to initialize Python interfacea
+ * @param kernel_launch_func Kernel launch Python function 
+ * @param decoupled_init flag to enable decoupled init of worker, devices and scheduler
+ * @return This function returns int flag
+ */
+extern int iris_python_init(void *python_launch_func, int decoupled_init);
+extern int iris_python_policy_init(void *python_policy_func);
+
+typedef void (*python_kernel_t)(void *kname, IrisSpec *spec, IrisParam *params_list, int n);
+typedef int32_t (*python_policy_t)(iris_task task, const char *policy_name, iris_device *devs, int32_t ndevs, int32_t *out_dev); 
+/* API to return the Python kernel launch function
+ * @return This function returns Python kernel launch function pointer
+ */
+extern python_kernel_t iris_get_python_launch_func();
+
+/* API to return the Python policy launch function
+ * @return This function returns Python policy launch function pointer
+ */
+extern python_policy_t iris_get_python_policy_func();
+
 /* API to return the the status of whether auto parallel macro is on
  * @return This function returns whether AUTO_PAR macro is set or not
  */
@@ -2670,9 +2710,6 @@ extern int iris_is_enabled_auto_par();
 
 extern int iris_vendor_kernel_launch(int dev, void *kernel, int gridx, int gridy, int gridz, int blockx, int blocky, int blockz, int shared_mem_bytes, void *stream, void **params);
 
-typedef void (*python_kernel_t)(IrisSpec *spec, IrisParam *params_list, int n);
-typedef int32_t (*python_policy_t)(iris_task task, const char *policy_name, iris_device *devs, int32_t ndevs, int32_t *out_dev); 
-extern python_kernel_t iris_get_python_launch_func();
 
 #ifdef __cplusplus
 } /* end of extern "C" */
