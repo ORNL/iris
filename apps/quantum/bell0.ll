@@ -26,7 +26,7 @@ declare void @__quantum__rt__array_record_output(i64, i8*)
 
 declare void @__quantum__rt__result_record_output(%Result*, i8*)
 
-attributes #0 = { "entry_point" "num_required_qubits"="2" "num_required_results"="2" "output_labeling_schema" "qir_profiles"="custom" }
+attributes #0 = { "entry_point" "num_required_qubits"="4" "num_required_results"="4" "output_labeling_schema" "qir_profiles"="custom" }
 attributes #1 = { "irreversible" }
 
 !llvm.module.flags = !{!0, !1, !2, !3}

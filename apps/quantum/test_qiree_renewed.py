@@ -4,7 +4,7 @@ import iris
 import pdb
 import os
 import numpy as np
-
+from post_processing import *
 # Step1: MLIR circuit cutting pass (Richard, Sharmin, Daniel, Elaine, Narasinga)
 ## will generate one MLIR file each fragment 
 ## Generate Metadata.cpp and Metadata.txt files for dependencies and validity functions 
@@ -37,14 +37,16 @@ if not (home and os.path.exists(home)):
 num_shots = 1000
 backend = iris.dmem("qsim")
 
-num_cuts = 2
+num_cuts = 4
+
+circuit = "ham_sim_16qb_c"
 # Running in parallel
 n = num_cuts
 
 # Create n tasks (no communications with each other)
 tasks = [iris.task() for i in range(n)]
 output = [iris.dmem(np.empty(0, dtype=iris.CQireeResultRecord)) for i in range(n)]
-qir_content = [ iris.dmem_infile(f"teleport{i}.ll") for i in range(n) ]
+qir_content = [ iris.dmem_infile(f"{circuit}{i}.ll") for i in range(n) ]
 
 
 # Feed parameters to each task and submit
@@ -59,10 +61,11 @@ for i in range(n):
     tasks[i].submit(iris.iris_qpu, sync=0)
 
 
-def post_processing(spec, qpu1, qpu2, result):
-    pdb.set_trace()
-    print("QPU1:", qpu1)
-    print("QPU2:", qpu2)
+#def post_processing(spec, qpu0, qpu1, qpu2, qpu3, result):
+#    print("QPU1:", qpu0)
+#    print("QPU2:", qpu1)
+#    print("QPU1:", qpu2)
+#    print("QPU2:", qpu3)
 
 # Classical compute task to do post-processing
 h_result = np.zeros((128, 2), dtype=int)
