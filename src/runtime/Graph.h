@@ -33,6 +33,7 @@ public:
   void ResetMemories();
   void AddGraphStartTask(std::vector<unsigned long> & start_tasks);
   void AddProfileStartDependencies();
+  void Print();
 
   int enable_mem_profiling();
   Platform* platform() { return platform_; }
@@ -57,12 +58,15 @@ public:
   void disable_retainable();
   static void GraphRelease(void *data);
   shared_ptr<GraphMetadata> get_metadata(int iterations=3);
+  const char *name() { return name_.c_str(); }
+  void set_name(std::string name);
+  void set_name(const char* name);
 private:
   Platform* platform_;
   Scheduler* scheduler_;
   std::vector<Task*> tasks_;
   map<unsigned long, Task *> task_uid_hash_;
-
+  std::string name_;
   //Task* start_;
   Task* end_;
   iris_task end_brs_task_;

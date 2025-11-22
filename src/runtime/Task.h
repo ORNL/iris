@@ -208,6 +208,7 @@ public:
   //Task** depends() { return depends_; }
   unsigned long* depends() { return depends_uids_; }
   unsigned long depend_uid(int i) { ASSERT(i < ndepends_); return depends_uids_[i]; }
+  Task* Depend(int i) { return platform_->get_task_object(depends_uids_[i]); }
   Task* depend(int i) { return platform_->get_task_object(depends_uids_[i]); }
   void* arch() { return arch_; }
   void set_stream_policy(StreamPolicy policy) { stream_policy_ = policy; }
@@ -242,6 +243,7 @@ public:
   void AddChild(unsigned long uid);
   void RemoveChild(unsigned long uid);
   void AddAllChilds();
+  void Print();
   Graph* get_graph(){return graph_;}
   Graph* graph(){return graph_;}
   void set_graph(Graph* graph){ graph_ = graph; }

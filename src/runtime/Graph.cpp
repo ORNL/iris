@@ -58,6 +58,7 @@ Graph::Graph(Platform* platform) {
 
   set_object_track(platform_->graph_track_ptr());
   platform_->graph_track().TrackObject(this, uid());
+  name_ = "Graph";
 }
 void Graph::set_submit_again(BaseMem *mem, int max_tries, bool condition_flag) {
   condition_mem_ = mem;
@@ -83,6 +84,14 @@ void Graph::disable_retainable()
     Release();
     //printf("Disabled Retained graph:%lu flag:%d\n", uid(), is_retainable());
 }
+
+void Graph::set_name(const char* name) {
+  name_ = name;
+}
+void Graph::set_name(std::string name) {
+  name_ = name;
+}
+
 
 shared_ptr<GraphMetadata> Graph::get_metadata(int iterations)
 {
@@ -178,6 +187,18 @@ void Graph::AddGraphStartTask(std::vector<unsigned long> & start_tasks)
         if (!intermediate_node) {
             start_tasks.push_back(task->uid());
         }
+    }
+}
+void Graph::Print()
+{
+	printf("------------ Graph: :%lu:%s\n", uid(), name());
+	for(size_t i=1; i<tasks_.size(); i++) {
+		Task *task = tasks_[i];
+		task->Print();
+	}
+	if (tasks_.size() > 0) {
+		Task *task = tasks_[0];
+		task->Print();
     }
 }
 void Graph::AddProfileStartDependencies()

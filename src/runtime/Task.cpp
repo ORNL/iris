@@ -289,6 +289,26 @@ void Task::print_incomplete_tasks()
   }
 }
 
+void Task::Print()
+{
+    printf("Task Name: %ld:%s ndep:%d nchild:%d\n", uid(), name(), ndepends_, nchilds_);
+    if (depends_uids_ == NULL) return;
+    for (int i = 0; i < ndepends_; i++) {
+      Task *dep= Depend(i);
+      if (dep!= NULL) 
+          printf("      Dependent task: %d:%ld:%ld:%s Status:%s object exists task:%p\n", i, depends_uids_[i], dep->uid(), dep->name(), dep->task_status_string(), dep);
+      else
+          printf("      Dependent task: %d:%ld object not exists\n", i, depends_uids_[i]);
+    }
+    for (int i = 0; i < nchilds_; i++) {
+      Task *child = Child(i);
+      if (child != NULL) 
+          printf("      Child task: %d:%ld:%ld:%s Status:%s object exists task:%p\n", i, childs_uids_[i], child->uid(), child->name(), child->task_status_string(), child);
+      else
+          printf("      Child task: %d:%ld object not exists\n", i, childs_uids_[i]);
+    }
+}
+
 void Task::ClearCommands() {
   for (int i = 0; i < ncmds_; i++) delete cmds_[i];
   cmds_.clear();
@@ -320,7 +340,7 @@ bool Task::Dispatchable(bool is_async_soft_touch) {
       if ( dep != NULL && dep->status() != IRIS_COMPLETE) return false;
 #endif
   }
-  _trace("Task task:%lu:%s is ready to run", uid(), name());
+  _event_debug("Task task:%lu:%s is ready to run is_async_soft_touch:%d called_from_worker:%d", uid(), name(), is_async_soft_touch, called_from_worker);
   return true;
 }
 
@@ -524,25 +544,25 @@ bool Task::HasSubtasks() {
 // If it is released, it might have been allocated for some other task. 
 // Hence, validate the parent task not only from whether object exists or not, but also by
 // comparing the actual parent task uid.
-void Task::AddDepend(Task* task, unsigned long p_uid) {
+void Task::AddDepend(Task* p_task, unsigned long p_uid) {
 #ifdef AUTO_PAR
 #ifdef IGNORE_MANUAL
-  if ( task->platform()->get_auto_dag()->get_auto_dep() == false) return;
+  if ( p_task->platform()->get_auto_dag()->get_auto_dep() == false) return;
 #endif
 
 #ifdef SANITY_CHECK
   if(std::string(this->name()).find("GraphSync") == std::string::npos){  
-    std::string full_dep = std::string(this->name()) + "->" + std::string(task->name());
+    std::string full_dep = std::string(this->name()) + "->" + std::string(p_task->name());
     std::cout << full_dep << std::endl;
-    if (task->platform()->get_auto_dag()->get_auto_dep() == false){
-        task->platform()->get_auto_dag()->add_manual_dep_list(full_dep);
+    if (p_task->platform()->get_auto_dag()->get_auto_dep() == false){
+        p_task->platform()->get_auto_dag()->add_manual_dep_list(full_dep);
     } else {
-        task->platform()->get_auto_dag()->add_auto_dep_list(full_dep);
+        p_task->platform()->get_auto_dag()->add_auto_dep_list(full_dep);
     }
   }
 
-  task->platform()->get_auto_dag()->extra_dependencies();
-  task->platform()->get_auto_dag()->missing_dependencies();
+  p_task->platform()->get_auto_dag()->extra_dependencies();
+  p_task->platform()->get_auto_dag()->missing_dependencies();
 #endif
 
 #endif
@@ -582,8 +602,8 @@ void Task::AddDepend(Task* task, unsigned long p_uid) {
                 parent_task->AddChild(child_uid);
               }, &p_uid, &this_uid);
   }
-  if (task != NULL && task->graph() != NULL && graph() != NULL) {
-      Task *src_end = task->graph()->end();
+  if (p_task != NULL && p_task->graph() != NULL && graph() != NULL) {
+      Task *src_end = p_task->graph()->end();
       Task *dst_end = graph()->end();
       if (src_end == dst_end) {
           if (uid() != dst_end->uid() ) { // Not END node
@@ -595,7 +615,7 @@ void Task::AddDepend(Task* task, unsigned long p_uid) {
                 ADD T2 to G
                 T1->T2 => Trigger (P1)
               */
-              //printf("Removed P1 here uid:%lu:%s:%p:%lu p_uid:%lu:%s:%p:%lu\n", uid(), name(), graph(), dst_end->uid(), p_uid, task->name(), task->graph(), src_end->uid());
+              //printf("Removed P1 here uid:%lu:%s:%p:%lu p_uid:%lu:%s:%p:%lu\n", uid(), name(), graph(), dst_end->uid(), p_uid, p_task->name(), p_task->graph(), src_end->uid());
               src_end->RemoveDepend(p_uid);
           }
           else if (uid() == dst_end->uid()) { // If uid_ END node
@@ -612,11 +632,11 @@ void Task::AddDepend(Task* task, unsigned long p_uid) {
                 ADD T1 to G
                 ADD T2 to G => Trigger(P2)
               */
-              for(int i=0; i<task->ndepends_; i++) {
-                 if (task->depends_uids_[i] != (unsigned long)-1) {
-                    Task *dep_task = platform_->get_task_object(task->depends_uids_[i]);
-                     //printf("Removed P2 here uid:%lu:%s:%p:%lu p_uid:%lu:%s:%p:%lu rm:%lu:%s\n", uid(), name(), graph(), dst_end->uid(), p_uid, task->name(), task->graph(), src_end->uid(), dep_task->uid(), dep_task->name());
-                     dst_end->RemoveDepend(task->depends_uids_[i]);
+              for(int i=0; i<p_task->ndepends_; i++) {
+                 if (p_task->depends_uids_[i] != (unsigned long)-1) {
+                    Task *dep_task = platform_->get_task_object(p_task->depends_uids_[i]);
+                     //printf("Removed P2 here uid:%lu:%s:%p:%lu p_uid:%lu:%s:%p:%lu rm:%lu:%s\n", uid(), name(), graph(), dst_end->uid(), p_uid, p_task->name(), p_task->graph(), src_end->uid(), dep_task->uid(), dep_task->name());
+                     dst_end->RemoveDepend(p_task->depends_uids_[i]);
                  }
               }
               /* TODO: Not handled case

@@ -2230,6 +2230,7 @@ int Platform::GraphRetain(iris_graph brs_graph, bool flag) {
 int Platform::GraphSubmit(Graph *graph, int brs_policy, int sync) {
   if (graph == NULL) { if (sync) return Synchronize(); else return IRIS_SUCCESS; }
   graph->Retain();
+  //graph->Print();
   graph->set_brs_policy(brs_policy);
   std::vector<Task*>* tasks = graph->tasks();
   //graph->RecordStartTime(devs_[0]->Now());

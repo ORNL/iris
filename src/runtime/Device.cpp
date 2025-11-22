@@ -428,7 +428,12 @@ void Device::Execute(Task* task) {
   double execute_start = (timer_->Now()-first_event_cpu_mid_point_time())*1000.0;
   busy_ = true;
   _event_prof_debug("Execute task:%lu:%s dev:%d:%s\n", task->uid(), task->name(), devno(), name());
-  if (is_async(task) && task->user()) task->set_recommended_stream(GetStream(task));
+  bool async_launch = is_async(task) && task->user();
+  int stream_index = 0;
+  if (async_launch) {
+    stream_index = GetStream(task);
+    task->set_recommended_stream(stream_index);
+  }
   if (hook_task_pre_) hook_task_pre_(task);
   TaskPre(task);
   task->set_time_start(timer_);
@@ -524,12 +529,12 @@ void Device::Execute(Task* task) {
       task->CreateProfileEvent(task, devno(), PROFILE_INIT, this, (float)execute_start, (float)execute_end);
   }
   //_info("Now check to invoke child tasks for Task %s:%lu time now:%lf\n", task->name(), task->uid(), timer_->Now());
-  if (is_async(task) && task->user()) {
+  if (async_launch) {
         //_info("Invoking dependent Task %s:%lu time now:%lf dev:%d:%s\n", task->name(), task->uid(), timer_->Now(), devno(), name());
         task->InvokeDependentTaskDevices(this);
         AddCallback(task);
   }
-  if ((!is_async(task) || !task->user())  && !disable_profile)
+  if ((!async_launch)  && !disable_profile)
 	  task->set_time_end(timer_);
   _trace("Task %s:%lu time now:%lf\n", task->name(), task->uid(), timer_->Now());
   _debug2("Task %s:%lu refcnt:%d\n", task->name(), task->uid(), task->ref_cnt());
@@ -539,7 +544,7 @@ void Device::Execute(Task* task) {
   _trace("Task %s:%lu time now:%lf\n", task->name(), task->uid(), timer_->Now());
   _debug2("Task %s:%lu refcnt:%d\n", task->name(), task->uid(), task->ref_cnt());
   if (task->cmd_kernel() != NULL) ProactiveTransfers(task, task->cmd_kernel());
-  if (!is_async(task) || !task->user()) { 
+  if (!async_launch) { 
       FreeActiveTask(); 
       bool cond = IsConditionalSubmitGraphAgain(task);
       if (cond) {
@@ -1005,11 +1010,11 @@ void Device::ExecuteKernel(Command* cmd) {
   int stream_index = 0;
   Task *task = cmd->task();
   string tname = task->name();
-  bool async_launch = is_async(cmd->task());
+  bool async_launch = is_async(task) && task->user();
   if (async_launch) {
-      WaitForTaskInputAvailability(devno(), cmd->task(), cmd);
+      WaitForTaskInputAvailability(devno(), task, cmd);
       async_launch = true;
-      stream_index = GetStream(cmd->task()); //task->uid() % nqueues_; 
+      stream_index = GetStream(task); //task->uid() % nqueues_; 
   }
   if (async_launch && platform_obj_->is_malloc_async()) {
       ResetContext();
@@ -1124,7 +1129,8 @@ void Device::ExecuteKernel(Command* cmd) {
 }
 
 void Device::ExecuteMalloc(Command* cmd) {
-  bool async_launch = is_async(cmd->task());
+  Task *task = cmd->task();
+  bool async_launch = is_async(task) && task->user();
   cmd->set_time_start(timer_);
   Mem* mem = cmd->mem();
   void* arch = mem->arch(this);
@@ -1962,7 +1968,8 @@ void Device::ExecuteMemInDMemIn(Task *task, Command* cmd, DataMem *mem) {
         }
     }
     else {
-        _trace("Skipped DMEM H2D data transfer dev[%d:%s] task[%ld:%s] dmem[%lu] dptr[%p]", devno_, name_, task->uid(), task->name(), mem->uid(), mem->get_arch(devno_));
+        _event_debug("Skipped DMEM H2D data transfer dev[%d:%s] task[%ld:%s] dmem[%lu] dptr[%p]", devno_, name_, task->uid(), task->name(), mem->uid(), mem->get_arch(devno_));
+        mem->Print("Skipped DMEM");
         //if (is_async(task)) WaitForDataAvailability<DataMem>(devno_, task, mem);
     }
 }
