@@ -363,6 +363,7 @@ int iris_dmem_set_source(iris_mem brs_mem, iris_mem source_mem)
     BaseMem* mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
     BaseMem* source = (BaseMem *)Platform::GetPlatform()->get_mem_object(source_mem);
     mem->set_source_mem(source);
+    mem->use_parent_events();
     return IRIS_SUCCESS;
 }
 

@@ -11,21 +11,27 @@ void BaseMem::set_name(std::string name) {
 }
 void BaseMem::HostRecordEvent(int devno, int stream) 
 {
+    BaseMem *source_mem = (BaseMem*)get_source_mem();
+    if (source_mem != NULL && !own_events_) 
+        return source_mem->HostRecordEvent(devno, stream);
     Device *dev = archs_dev_[devno];
     HostLock();
     void **host_event = GetHostCompletionEventPtr(true);
     dev->ResetContext();
     dev->CreateEvent(host_event, iris_event_disable_timing);
     dev->RecordEvent(host_event, stream);
-    d2h_events_[devno] = *host_event; 
+    set_d2h_event(devno, *host_event);
     ASSERT(*host_event != NULL);
     //printf("host_event:%p host_event_ptr:%p d2h:%p\n", host_event, *host_event, d2h_events_[devno]);
-    _event_debug("dev:[%d][%s] mem:%lu host_event:%p host_event_ptr:%p d2h:%p stream:%d", dev->devno(), dev->name(), uid(), *host_event, host_event, d2h_events_[devno], stream);
+    _event_debug("dev:[%d][%s] mem:%lu host_event:%p host_event_ptr:%p d2h:%p stream:%d", dev->devno(), dev->name(), uid(), *host_event, host_event, GetDeviceSpecificHostCompletionEvent(devno), stream);
     SetHostWriteDevice(devno);
     SetHostWriteStream(stream);
     HostUnlock();
 }
 void *BaseMem::RecordEvent(int devno, int stream, bool new_entry) {
+    BaseMem *source_mem = (BaseMem*)get_source_mem();
+    if (source_mem != NULL && !own_events_) 
+        return source_mem->RecordEvent(devno, stream, new_entry);
     Device *dev = archs_dev_[devno];
     void **event_ptr = GetCompletionEventPtr(devno, new_entry);
     _event_debug("Created mem:%lu devno:%d *event:%p event:%p", uid(), devno, *event_ptr, event_ptr);
@@ -46,24 +52,44 @@ void *BaseMem::RecordEvent(int devno, int stream, bool new_entry) {
     return *event_ptr;
 }
 void BaseMem::HardHostWriteEventSynchronize(Device *dev, void *event) {
+    BaseMem *source_mem = (BaseMem*)get_source_mem();
+    if (source_mem != NULL && !own_events_) {
+        source_mem->HardHostWriteEventSynchronize(dev, event);
+        return; 
+    }
     dev->ResetContext();
     dev->EventSynchronize(event);
     SetHostWriteStream(-1);
     SetHostWriteDevice(-1);
 }
 void BaseMem::HardDeviceWriteEventSynchronize(Device *dev, void *event) {
+    BaseMem *source_mem = (BaseMem*)get_source_mem();
+    if (source_mem != NULL && !own_events_) {
+        source_mem->HardDeviceWriteEventSynchronize(dev, event);
+        return; 
+    }
     dev->ResetContext();
     dev->EventSynchronize(event);
     SetWriteStream(dev->devno(), -1);
     SetWriteDevice(-1);
 }
 void BaseMem::WaitForEvent(int devno, int stream, int dep_devno) {
+    BaseMem *source_mem = (BaseMem*)get_source_mem();
+    if (source_mem != NULL && !own_events_)  {
+        source_mem->WaitForEvent(devno, stream, dep_devno);
+        return; 
+    }
     assert(GetCompletionEvent(devno) != NULL);
     Device *dev = archs_dev_[devno];
     dev->ResetContext();
     dev->WaitForEvent(GetCompletionEvent(devno), stream, iris_event_wait_default);
 }
 void BaseMem::DestroyEvent(int devno, void *event) {
+    BaseMem *source_mem = (BaseMem*)get_source_mem();
+    if (source_mem != NULL && !own_events_) {
+        source_mem->DestroyEvent(devno, event);
+        return;
+    }
     Device *dev = archs_dev_[devno];
     dev->ResetContext();
     dev->DestroyEvent(event);
@@ -72,13 +98,19 @@ pair<bool, int8_t> BaseMem::IsResetPossibleWithMemset() {
     return IsResetPossibleWithMemset(reset_data_);
 }
 pair<bool, int8_t> BaseMem::IsResetPossibleWithMemset(ResetData & reset_data) {
+    return IsResetPossibleWithMemset(reset_data_, element_type_);
+}
+pair<bool, int8_t> BaseMem::IsResetPossibleWithMemset(ResetData & reset_data, int element_type) {
+    BaseMem *source_mem = (BaseMem*)get_source_mem();
+    if (source_mem != NULL && !own_events_) 
+        return source_mem->IsResetPossibleWithMemset(reset_data, element_type);
     if (reset_data.reset_type_ == iris_reset_memset) return make_pair<bool, int8_t>(true, 0); //It will read value from reset_data->value_.u8
     auto false_pair = std::make_pair(false, 0);
     if (reset_data.reset_type_ != iris_reset_assign) return false_pair;
     IRISValue *value = &reset_data.value_;
     int8_t vi8 = reset_data.value_.i8;
     auto v_pair = std::make_pair(true, vi8);
-    switch(element_type_) {
+    switch(element_type) {
         case iris_int8: 
         case iris_bool: 
         case iris_uint8: 

@@ -1366,9 +1366,9 @@ void Device::WaitForTaskInputAvailability(int devno, Task *task, Command *cmd)
         void *event = dmem->GetWriteDeviceEvent(devno);
         // If DMEM input is not yet happened due to reset flag enabled
         if (dmem_stream != task_stream && event != NULL) {
-            _event_prof_debug("Wait for event\n");
+            _event_debug("Wait for event\n");
             WaitForEvent(event, task_stream, iris_event_wait_default);
-            _event_prof_debug(" WaitForEvent task:%s:%lu mem:%lu Waiting for event:%p to be fired devno:%d task_stream:%d waiting for dmem_stream:%d\n", task->name(), task->uid(), dmem->uid(), event, devno, task_stream, dmem_stream);
+            _event_debug(" WaitForEvent task:%s:%lu mem:%lu Waiting for event:%p to be fired devno:%d task_stream:%d waiting for dmem_stream:%d\n", task->name(), task->uid(), dmem->uid(), event, devno, task_stream, dmem_stream);
         }
     }
 }
@@ -1969,7 +1969,7 @@ void Device::ExecuteMemInDMemIn(Task *task, Command* cmd, DataMem *mem) {
     }
     else {
         _event_debug("Skipped DMEM H2D data transfer dev[%d:%s] task[%ld:%s] dmem[%lu] dptr[%p]", devno_, name_, task->uid(), task->name(), mem->uid(), mem->get_arch(devno_));
-        mem->Print("Skipped DMEM");
+        //mem->Print("Skipped DMEM");
         //if (is_async(task)) WaitForDataAvailability<DataMem>(devno_, task, mem);
     }
 }
