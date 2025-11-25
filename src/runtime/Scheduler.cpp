@@ -182,6 +182,7 @@ void Scheduler::SubmitTask(Task* task) {
   for (int i = 0; i < ndevs; i++) {
     devs[i]->worker()->Enqueue(task);
     if (hub_available_) hub_client_->TaskInc(devs[i]->devno(), 1);
+	devs[i]->worker()->Invoke();
   }
 }
 
