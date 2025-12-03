@@ -114,6 +114,7 @@ void Platform::Reset() {
   stream_policy_ = STREAM_POLICY_DEFAULT;
   nstreams_ = IRIS_MAX_DEVICE_NSTREAMS;
   ncopy_streams_ = IRIS_MAX_DEVICE_NCOPY_STREAMS;
+  cpu_set_start_ = 0;
   is_malloc_async_ = true;
   recording_ = false;
   scheduler_dispatch_fcfs_ = false;
@@ -238,7 +239,7 @@ int Platform::Init(int* argc, char*** argv, int sync) {
   EnvironmentBoolRead("PROFILE", enable_profiler_);
   EnvironmentBoolRead("HISTORY", enable_scheduling_history_);
   EnvironmentBoolRead("EVENT_PROFILE", event_profile_enabled_);
-  EnvironmentBoolRead("MALLOC_SYNC", is_malloc_async_);
+  EnvironmentBoolRead("MALLOC_SYNC", is_malloc_async_, false);
   EnvironmentBoolRead("DISABLE_D2D", disable_d2d_);
   EnvironmentBoolRead("DISABLE_DATA_TRANSFERS", disable_data_transfers_);
   EnvironmentIntRead("OPENMP_DEVICE_FACTOR", openmp_device_factor_);
@@ -247,6 +248,7 @@ int Platform::Init(int* argc, char*** argv, int sync) {
   EnvironmentIntRead("HIP_DEVICE_FACTOR", hip_device_factor_);
   EnvironmentIntRead("NSTREAMS", nstreams_);
   EnvironmentIntRead("NCOPY_STREAMS", ncopy_streams_);
+  EnvironmentIntRead("CPUSET_START", cpu_set_start_);
   int stream_policy = (int) stream_policy_;
   EnvironmentIntRead("STREAM_POLICY", stream_policy);
   stream_policy_ = (StreamPolicy) stream_policy;
@@ -424,13 +426,21 @@ void Platform::EnvironmentIntRead(const char *env_name, int & env_var) {
     if (env_val_char != NULL && atoi(env_val_char) >=0 )
         env_var = atoi(env_val_char);
 }
-void Platform::EnvironmentBoolRead(const char *env_name, bool & flag) {
+void Platform::EnvironmentBoolRead(const char *env_name, bool & flag, bool val_set) {
     char *env_val_char = NULL;
     EnvironmentGet(env_name, &env_val_char, NULL);
-    if (env_val_char != NULL && atoi(env_val_char) == 1)
-        flag = true;
+    if (env_val_char != NULL && strcasecmp(env_val_char, "true") == 0) 
+        flag = val_set;
+    else if (env_val_char != NULL && strcasecmp(env_val_char, "false") == 0) 
+        flag = !val_set;
+    else if (env_val_char != NULL && strcasecmp(env_val_char, "on") == 0) 
+        flag = val_set;
+    else if (env_val_char != NULL && strcasecmp(env_val_char, "off") == 0) 
+        flag = !val_set;
+    else if (env_val_char != NULL && atoi(env_val_char) == 1)
+        flag = val_set;
     else if (env_val_char != NULL && atoi(env_val_char) == 0)
-        flag = false;
+        flag = !val_set;
 }
 int Platform::EnvironmentInit() {
 #ifdef ANDROID

@@ -1,5 +1,6 @@
 #include "Scheduler.h"
 #include "Debug.h"
+#include "Utils.h"
 #include "Consistency.h"
 #include "Device.h"
 #include "HubClient.h"
@@ -88,6 +89,7 @@ void Scheduler::Enqueue(Task* task) {
 
 void Scheduler::Run() {
   while (true) {
+    Utils::SetThreadAffinity(platform_->cpu_set_start());
     _debug2("Scheduler entering into sleep mode qsize:%lu", queue_->Size());
     Sleep();
     _debug2("Scheduler invoked");

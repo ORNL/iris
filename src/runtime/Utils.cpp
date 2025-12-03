@@ -477,19 +477,22 @@ void Utils::SetThreadAffinity(unsigned int core_id) {
     if (lcore_id >= num_cores) 
         lcore_id = lcore_id % num_cores;
 #ifdef _WIN32
-    DWORD_PTR mask = 1ULL << lcore_id;
-    SetThreadAffinityMask(GetCurrentThread(), mask);
+    DWORD_PTR mask = (static_cast<DWORD_PTR>(1) << lcore_id);
+    DWORD_PTR result = SetThreadAffinityMask(GetCurrentThread(), mask);
+    if (result == 0) {
+        throw std::runtime_error("SetThreadAffinityMask failed");
+    }
 #elif defined(__linux__)   
     cpu_set_t cpuset;
     CPU_ZERO(&cpuset);
     CPU_SET(lcore_id, &cpuset);
 
-#if 1
+#if 0
     sched_setaffinity(0, sizeof(cpuset), &cpuset);
 #else
     pthread_t current_thread = pthread_self();
     int s = pthread_setaffinity_np(current_thread, sizeof(cpu_set_t), &cpuset);
-    printf("Device:%u Setting affinity of thread to core id:%u\n", core_id, lcore_id);
+    //printf("Device:%u Setting affinity of thread to core id:%u\n", core_id, lcore_id);
     if (s != 0)
         _error("CPU affinity set to %u is failed with pthread_setaffinity_np", core_id);
 #endif

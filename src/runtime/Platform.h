@@ -73,7 +73,7 @@ public:
   int EnvironmentInit();
   int EnvironmentSet(const char* key, const char* value, bool overwrite);
   void EnvironmentIntRead(const char *env_name, int & env_var);
-  void EnvironmentBoolRead(const char *env_name, bool & flag);
+  void EnvironmentBoolRead(const char *env_name, bool & flag, bool val_set=true);
   int EnvironmentGet(const char* key, char** value, size_t* vallen, char sep='_');
   int GetFilePath(const char *key, char** value, size_t* vallen);
 
@@ -313,6 +313,7 @@ public:
   bool dmem_register_pin_flag() { return dmem_register_pin_flag_; }
   void enable_default_kernels_load(bool flag) { enable_default_kernels_load_ = flag; }
   bool is_scheduler_dispatch_fcfs()  { return scheduler_dispatch_fcfs_; }
+  int cpu_set_start() { return cpu_set_start_; }
 #ifdef AUTO_PAR
   AutoDAG* get_auto_dag(){return auto_dag_;}
   void set_auto_dag(AutoDAG* auto_dag){auto_dag_ = auto_dag;}
@@ -429,6 +430,7 @@ private:
   hook_command hook_command_pre_;
   hook_command hook_command_post_;
 
+  int cpu_set_start_;
   char app_[256];
   char host_[256];
   double time_app_;

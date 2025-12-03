@@ -421,6 +421,7 @@ bool Device::IsConditionalSubmitGraphAgain(Task *task)
 
 void Device::Execute(Task* task) {
   //TODO: Clear the proile event created here
+  //_info("Inside device execute and calling free destroy events %lu:%s time:%lf dev:%d:%s\n", task->uid(), task->name(), timer_->Now(), devno(), name());
   _event_debug("Inside device execute and calling free destroy events %lu:%s time:%lf dev:%d:%s\n", task->uid(), task->name(), timer_->Now(), devno(), name());
   _debug("Inside device execute and calling free destroy events %lu:%s\n", task->uid(), task->name());
   FreeDestroyEvents();
@@ -541,6 +542,7 @@ void Device::Execute(Task* task) {
   TaskPost(task);
   if (hook_task_post_) hook_task_post_(task);
   if (!task->system()) _trace("task[%lu:%s] complete dev[%d][%s] time[%lf] now[%lf] end:[%lf]", task->uid(), task->name(), devno(), name(), task->time(), timer_->Now(), task->time_end());
+  //_info("Task %s:%lu dev:%d:%s stream:%d time now:%lf async_launch:%d\n", task->name(), task->uid(), devno(), name(), stream_index, timer_->Now(), async_launch);
   _trace("Task %s:%lu time now:%lf\n", task->name(), task->uid(), timer_->Now());
   _debug2("Task %s:%lu refcnt:%d\n", task->name(), task->uid(), task->ref_cnt());
   if (task->cmd_kernel() != NULL) ProactiveTransfers(task, task->cmd_kernel());
@@ -584,8 +586,8 @@ void Device::Callback(void *stream, int status, void* data) {
   string tname = task->name();
   task->set_time_end(task->dev()->timer());
   task->dev()->FreeActiveTask();
-  _event_prof_debug(" ------ Just before completed task stream_ptr:%p task:%p:%s:%lu time[%lf] now:[%lf] status:%d data:%p\n", stream, task, tname.c_str(), uid, task->time_end(), task->dev()->timer_->Now(), status, data);
   _event_debug(" ------ Just before completed task stream_ptr:%p task:%p:%s:%lu time[%lf] now:[%lf] status:%d data:%p\n", stream, task, tname.c_str(), uid, task->time_end(), task->dev()->timer_->Now(), status, data);
+  //_info(" ------ Just before completed task stream_ptr:%p task:%p:%s:%lu time[%lf] now:[%lf] status:%d data:%p\n", stream, task, tname.c_str(), uid, task->time_end(), task->dev()->timer_->Now(), status, data);
   bool cond = task->dev()->IsConditionalSubmitGraphAgain(task);
   if (cond) {
       Graph *graph = task->graph();
@@ -982,6 +984,7 @@ void Device::ExecuteInit(Command* cmd) {
 }
 
 void Device::ExecuteKernel(Command* cmd) {
+  Task *task = cmd->task();
   timer_->Start(IRIS_TIMER_KERNEL);
   cmd->set_time_start(timer_);
   Kernel* kernel = ExecuteSelectorKernel(cmd);
@@ -999,6 +1002,7 @@ void Device::ExecuteKernel(Command* cmd) {
   int npolymems = cmd->npolymems();
   int max_idx = 0;
   int mem_idx = 0;
+  _debug("Inside device kernel execute and calling free destroy events task:%lu:%s kernel:%lu:%s time:%lf dev:%d:%s\n", task->uid(), task->name(), kernel->uid(), kernel->name(), timer_->Now(), devno(), name());
   //double ltime_start = timer_->GetCurrentTime();
   if (!kernel->vendor_specific_kernel_check_flag(devno_))
       CheckVendorSpecificKernel(kernel);
@@ -1008,7 +1012,6 @@ void Device::ExecuteKernel(Command* cmd) {
   int *params_map = cmd->get_params_map();
   int arg_idx = 0;
   int stream_index = 0;
-  Task *task = cmd->task();
   string tname = task->name();
   bool async_launch = is_async(task) && task->user();
   if (async_launch) {
