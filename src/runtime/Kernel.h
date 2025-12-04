@@ -46,8 +46,10 @@ public:
   int SetArg(int idx, size_t size, void* value);
   int SetMem(int idx, BaseMem* mem, size_t off, int mode);
   KernelArg* ExportArgs();
-  void* GetJuliadata() { return host_if_data_; }
-  void CreateJuliadata(size_t size) { host_if_data_ = malloc(size); }
+  void* GetJuliaData() { return host_if_data_; }
+  void CreateJuliaData(size_t size) { host_if_data_ = malloc(size); }
+  void* GetPythonData() { return host_if_data_; }
+  void CreatePythonData(size_t size) { host_if_data_ = malloc(size); }
   void* GetFFIdata() { return host_if_data_; }
   void CreateFFIdata(size_t size) { host_if_data_ = malloc(size); }
   void* GetParamWrapperMemory() { return (void *)param_wrapper_mem_; }
@@ -104,9 +106,14 @@ public:
   void *GetCompletionEvent() { return async_data_.GetCompletionEvent(); }
   void set_enable_julia_if() { enable_julia_if_ = true; }
   bool enable_julia_if() { return enable_julia_if_; }
-  bool enable_julia_if_;
   void set_julia_kernel_type(int type) { julia_kernel_type_ = type; }
   int julia_kernel_type() { return julia_kernel_type_; }
+  void set_enable_python_if() { enable_python_if_ = true; }
+  bool enable_python_if() { return enable_python_if_; }
+  void set_python_function(void *ptr) { python_function_ = ptr; }
+  void *get_python_function() { return python_function_; }
+  void set_python_kernel_type(int type) { python_kernel_type_ = type; }
+  int python_kernel_type() { return python_kernel_type_; }
   void set_shared_mem_size(size_t size) { shared_mem_size_ = size; }
   size_t shared_mem_size() { return shared_mem_size_; }
   void update_arg(int index, void *val);
@@ -130,8 +137,12 @@ public:
 */
 
 private:
+  bool enable_julia_if_;
+  bool enable_python_if_;
+  void *python_function_;
   size_t shared_mem_size_;
   int julia_kernel_type_;
+  int python_kernel_type_;
   int n_mems_;
   std::string name_;
   std::string task_name_;

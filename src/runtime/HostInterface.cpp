@@ -6,9 +6,6 @@
 #include "signal.h"
 #include "DataMem.h"
 
-#define INIT_SYM_FN(FN)  \
-    sym_map_fn_.insert(make_pair(string(#FN), (void **)&FN)); \
-    FN = NULL;
 namespace iris {
     namespace rt {
         HostInterfaceLoader::HostInterfaceLoader(string kernel_env, bool is_path) : Loader(), kernel_env_(kernel_env), is_path_(is_path)
@@ -21,8 +18,18 @@ namespace iris {
             INIT_SYM_FN(iris_host_launch_with_obj);
             INIT_SYM_FN(iris_ffi_launch);
         }
+        HostInterfaceLoader::HostInterfaceLoader() { 
+            INIT_SYM_FN(iris_host_init);
+            INIT_SYM_FN(iris_host_init_handles);
+            INIT_SYM_FN(iris_host_finalize_handles);
+            INIT_SYM_FN(iris_host_finalize);
+            INIT_SYM_FN(iris_host_launch);
+            INIT_SYM_FN(iris_host_launch_with_obj);
+            INIT_SYM_FN(iris_ffi_launch);
+        }
         uint32_t HostInterfaceLoader::get_encoded_stream_device(int stream_index, int nstreams, int devno)
         {
+            // 8-bit stream_index, 8-bits for streams, devno with 16-bits
             ASSERT(stream_index < 256 && "Stream index should be <256");
             ASSERT(nstreams < 256 && "Stream index should be <256");
             ASSERT(devno < 65536 && "Stream index should be <256");
@@ -230,8 +237,8 @@ namespace iris {
         {
             Kernel *kernel = cmd->kernel();
             const char *name = kernel->name();
-            kernel->CreateJuliadata(sizeof(KernelJulia));
-            KernelJulia *julia_data = (KernelJulia *) kernel->GetJuliadata();
+            kernel->CreateJuliaData(sizeof(KernelJulia));
+            KernelJulia *julia_data = (KernelJulia *) kernel->GetJuliaData();
             //printf("Julia Data:%p size:%lu\n", julia_data, sizeof(KernelJulia));
             set_kernel_julia(param_mem, julia_data);
             julia_data->reset();

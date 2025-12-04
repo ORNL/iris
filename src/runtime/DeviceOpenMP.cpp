@@ -11,6 +11,7 @@
 #include "Worker.h"
 #include <dlfcn.h>
 #include <stdlib.h>
+#include "PythonInterface.h"
 
 namespace iris {
 namespace rt {
@@ -45,6 +46,7 @@ DeviceOpenMP::~DeviceOpenMP() {
   if (ld_default_ != NULL) delete ld_default_;
   ld_->finalize(devno());
   if (julia_if_ != NULL) julia_if_->finalize(devno());
+  if (python_if_ != NULL) python_if_->finalize(devno());
 }
 
 void DeviceOpenMP::TaskPre(Task *task) {
@@ -129,6 +131,7 @@ int DeviceOpenMP::Init() {
   //ld_->set_dev(devno(), model());
   ld_->init(devno());
   if (julia_if_ != NULL) julia_if_->init(devno());
+  if (python_if_ != NULL) python_if_->init(devno());
   set_first_event_cpu_begin_time(timer_->Now());
   set_first_event_cpu_end_time(timer_->Now());
   if (platform_obj()->is_default_kernels_load()) {
@@ -313,6 +316,9 @@ int DeviceOpenMP::KernelGet(Kernel *kernel, void** kernel_bin, const char* name,
   if (julia_if_ != NULL && kernel->enable_julia_if()) {
       return IRIS_SUCCESS;
   }
+  if (python_if_ != NULL && kernel->enable_python_if()) {
+      return IRIS_SUCCESS;
+  }
   if (ld_->host_kernel(&kernel_idx, name) == IRIS_SUCCESS) {
       *kernel_bin = ld_->GetFunctionPtr(name);
       return IRIS_SUCCESS;
@@ -348,6 +354,11 @@ int DeviceOpenMP::KernelLaunchInit(Command *cmd, Kernel* kernel) {
       julia_if_->set_julia_kernel_type(kernel->GetParamWrapperMemory(), kernel->julia_kernel_type());
       return IRIS_SUCCESS;
   }
+  else if (python_if_ != NULL && kernel->enable_python_if()) {
+      python_if_->launch_init(model(), devno_, 0, 0, (void **)NULL, kernel->GetParamWrapperMemory(), cmd);
+      python_if_->set_python_kernel_type(kernel->GetParamWrapperMemory(), kernel->python_kernel_type());
+      return IRIS_SUCCESS;
+  }
   else if (ld_default_ != NULL && kernel->is_default_kernel(devno_))
       ld_default_->launch_init(model(), devno_, 0, 0, NULL, kernel->GetParamWrapperMemory(), cmd);
   else {
@@ -369,6 +380,11 @@ int DeviceOpenMP::KernelLaunchInit(Command *cmd, Kernel* kernel) {
 int DeviceOpenMP::KernelSetArg(Kernel* kernel, int idx, int kindex, size_t size, void* value) {
     if (julia_if_ != NULL && kernel->enable_julia_if()) {
        julia_if_->setarg(
+              kernel->GetParamWrapperMemory(), kindex, size, value);
+       return IRIS_SUCCESS;
+    }
+    else if (python_if_ != NULL && kernel->enable_python_if()) {
+       python_if_->setarg(
               kernel->GetParamWrapperMemory(), kindex, size, value);
        return IRIS_SUCCESS;
     }
@@ -402,6 +418,11 @@ int DeviceOpenMP::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem
               kernel->GetParamWrapperMemory(), mem, kindex, mpmem, size);
       return IRIS_SUCCESS;
   }
+  else if (python_if_ != NULL && kernel->enable_python_if()) {
+      python_if_->setmem(
+              kernel->GetParamWrapperMemory(), mem, kindex, mpmem, size);
+      return IRIS_SUCCESS;
+  }
   else if (ld_default_ != NULL && kernel->is_default_kernel(devno_)) {
       ld_default_->setmem(
               kernel->GetParamWrapperMemory(), kindex, mpmem, size);
@@ -427,6 +448,13 @@ int DeviceOpenMP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws
   if (julia_if_ != NULL && kernel->enable_julia_if()) {
       julia_if_->host_launch(kernel->task()->uid(), kernel->command()->uid(), (void **)NULL, 0, NULL, false,
                   0, kernel->name(), 
+                  kernel->GetParamWrapperMemory(), devno(),
+                  dim, gws, off, gws, kernel->shared_mem_size());
+      return IRIS_SUCCESS;
+  }
+  if (python_if_ != NULL && kernel->enable_python_if()) {
+      python_if_->host_launch(kernel->task()->uid(), kernel->command()->uid(), (void **)NULL, 0, NULL, false,
+                  0, kernel->name(), kernel->get_python_function(),
                   kernel->GetParamWrapperMemory(), devno(),
                   dim, gws, off, gws, kernel->shared_mem_size());
       return IRIS_SUCCESS;

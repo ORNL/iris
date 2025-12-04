@@ -61,6 +61,7 @@ public:
 
 public:
   int Init(int* argc, char*** argv, int sync);
+  int PythonInit(bool decoupled_init=true);
   int JuliaInit(bool decoupled_init=true);
   int InitWorker(int dev);
   int StartWorker(int dev, bool use_pthread=true);
@@ -299,6 +300,7 @@ public:
   hook_command hook_command_pre() { return hook_command_pre_; }
   hook_command hook_command_post() { return hook_command_post_; }
   bool is_julia_enabled() { return iris_get_julia_launch_func() != NULL; }
+  bool is_python_enabled() { return iris_get_python_launch_func() != NULL; }
   Kernel* GetKernel(const char* name);
   BaseMem* GetMem(iris_mem brs_mem);
   BaseMem* GetMem(void* host, size_t* off);

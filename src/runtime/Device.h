@@ -32,6 +32,7 @@ class Timer;
 class Worker;
 class Platform;
 class JuliaHostInterfaceLoader;
+class PythonHostInterfaceLoader;
 class LoaderResetKernel;
 
 enum AsyncResolveType
@@ -220,6 +221,7 @@ public:
   }
   void set_first_event_cpu_begin_time(double time) { first_event_cpu_begin_time_ = time; }
   void EnableJuliaInterface(); 
+  void EnablePythonInterface(); 
   bool IsFree();
   int active_tasks() { return active_tasks_; }
   void FreeActiveTask() { active_tasks_--; }
@@ -329,6 +331,7 @@ protected:
   int local_devno_;
   Device *root_device() { return root_dev_; }
   JuliaHostInterfaceLoader *julia_if_;
+  PythonHostInterfaceLoader *python_if_;
 };
 
 } /* namespace rt */

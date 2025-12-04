@@ -14,6 +14,7 @@ install(FILES
   iris_host2cuda.h
   iris_host2hip.h
   iris_gpu.h
+  qiree.h
   default_iris_gpu_ai.h
   default_iris_gpu_reduction.h
   default_iris_openmp_reduction.h

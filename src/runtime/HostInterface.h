@@ -17,7 +17,11 @@
 #define HostInterfaceClass FFIHostInterfaceLoader
 #else
 #define HostInterfaceClass BoilerPlateHostInterfaceLoader
-#endif 
+#endif
+
+#define INIT_SYM_FN(FN)  \
+    sym_map_fn_.insert(make_pair(string(#FN), (void **)&FN)); \
+    FN = NULL;
 typedef struct _jl_value_t jl_value_t;
 typedef jl_value_t jl_function_t;
 void *jl_unbox_voidpointer(jl_value_t *v);
@@ -42,6 +46,7 @@ namespace iris {
         class HostInterfaceLoader : public Loader {
             public:
                 HostInterfaceLoader(string kernel_env, bool is_path=false);
+                HostInterfaceLoader();
                 //HostInterfaceLoader(string kernel_env, string suffix);
                 virtual ~HostInterfaceLoader() { }
                 virtual const char* library();

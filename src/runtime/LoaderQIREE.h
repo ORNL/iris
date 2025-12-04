@@ -3,6 +3,7 @@
 
 #include "Loader.h"
 #include "HostInterface.h"
+#include "iris/qiree.h"
 //#include <iris/qiree/qiree.h>
 
 typedef struct CQiree_s CQiree;
@@ -34,7 +35,7 @@ public:
   int (*qiree_setup_executor)(CQiree *manager, char const *backend, char const *config_json);
   int (*qiree_execute)(CQiree *manager, int num_shots);
 
-  int (*qiree_save_result_items)(CQiree *manager, size_t max, uint64_t *encoded);
+  int (*qiree_save_result_items)(CQiree *manager, CQireeResultRecord *encoded, size_t max);
 
 };
 

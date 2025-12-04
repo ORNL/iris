@@ -24,6 +24,11 @@ namespace rt {
 #define RUN_QIREE(X, ...) if (ld_->X == NULL) { \
         _error(#X " not found in QIREE library"); \
     } else { \
+        ASSERT(ld_->X(__VA_ARGS__) == IRIS_SUCCESS); \
+    }
+#define RUN_QIREE_NO_RETURN(X, ...) if (ld_->X == NULL) { \
+        _error(#X " not found in QIREE library"); \
+    } else { \
         ld_->X(__VA_ARGS__); \
     }
 DeviceQIREE::DeviceQIREE(LoaderQIREE* ld, int devno, int platform) : Device(devno, platform) {
@@ -39,14 +44,22 @@ DeviceQIREE::DeviceQIREE(LoaderQIREE* ld, int devno, int platform) : Device(devn
 
 DeviceQIREE::~DeviceQIREE() {
   if (manager_ != NULL) {
-      RUN_QIREE(qiree_destroy, manager_);
+      RUN_QIREE_NO_RETURN(qiree_destroy, manager_);
   }
   manager_ = NULL;
 }
 
+void DeviceQIREE::CreateCQiree()
+{
+    // TODO: Reuse manager_ object which is parsed for same QIR file 
+    if (manager_ != NULL)  {
+        RUN_QIREE_NO_RETURN(qiree_destroy, manager_);
+    }
+    RUN_QIREE_OUT(manager_, NULL, qiree_create);
+}
+
 int DeviceQIREE::Init() {
   //ld_->iris_hexagon_init();
-  RUN_QIREE_OUT(manager_, NULL, qiree_create);
   return IRIS_SUCCESS;
 }
 
@@ -202,6 +215,7 @@ int DeviceQIREE::KernelSetArg(Kernel* kernel, int idx, int kindex, size_t size, 
   }
   if (idx == 1) {
       num_shots_ = *((int *)value);
+      result_items_ = 0;
       RUN_QIREE(qiree_max_result_items, manager_, num_shots_, &result_items_);
   }
   if (max_arg_idx_ < idx) max_arg_idx_ = idx;
@@ -232,7 +246,7 @@ int DeviceQIREE::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem,
   if (idx == 2) {
       // Now allocate space. 
       // It is the output memory
-      ((DataMem *)mem)->realllocate_space((result_items_+1)*2);
+      ((DataMem *)mem)->realllocate_space(sizeof(CQireeResultRecord), num_shots_+1);
   }
   void **dev_alloc_ptr = mem->arch_ptr(this);
   void *dev_ptr = NULL;
@@ -250,15 +264,17 @@ int DeviceQIREE::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem,
       size_t data_len = mem->size();
       //((DataMem *)mem)->Print();
       //printf("Data: %p: %p : %p : %s length:%lu\n", data, dev_ptr, dev_alloc_ptr, data, data_len);
+      CreateCQiree();
       RUN_QIREE(qiree_load_module_from_memory, manager_, (char const *)params_[0], data_len); 
       RUN_QIREE(qiree_num_quantum_reg, manager_, &nquant_results_);
       RUN_QIREE(qiree_num_classical_reg, manager_, &nclass_results_);
+      //printf(" nquant_results:%d nclass_results:%d\n", nquant_results_, nclass_results_);
   }
   else if (idx == 2) {
-      encoded_ = (uint64_t *) dev_ptr;
+      encoded_ = (CQireeResultRecord *) dev_ptr;
   }
   else if (idx == 3) {
-      const char *config_json = NULL;
+      const char *config_json = nullptr;
       backend_ = (const char *)params_[idx]; 
       RUN_QIREE(qiree_setup_executor, manager_, backend_, config_json);
   }
@@ -290,8 +306,9 @@ int DeviceQIREE::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws,
   //printf("nparams: %d\n", qiree_nparams_);
   const char *config_json = NULL;
   RUN_QIREE(qiree_execute, manager_, num_shots_);
-  int max_results = (int) (QIREE_MAX(nquant_results_, nclass_results_));
-  RUN_QIREE(qiree_save_result_items, manager_, result_items_, encoded_);
+  RUN_QIREE(qiree_save_result_items, manager_, encoded_, num_shots_);
+  //printf("encoded_[0]: %lu:%lu ptr:%p\n", encoded_[0].key, encoded_[0].count, encoded_);
+  //printf("encoded_[1]: %lu:%lu ptr:%p\n", encoded_[1].key, encoded_[1].count, encoded_);
   //ld_->parse_input_c(qiree_nparams_, (char**)qiree_params_);
   //return ld_->parse_input_c(4, (char**)argv);
   return IRIS_SUCCESS;

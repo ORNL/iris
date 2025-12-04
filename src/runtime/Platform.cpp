@@ -200,6 +200,17 @@ int Platform::JuliaInit(bool decoupled_init) {
   enable_default_kernels_load_ = true;
   return IRIS_SUCCESS;
 }
+int Platform::PythonInit(bool decoupled_init) {
+#if 1
+  if (decoupled_init) {
+    disable_init_devices_ = true;
+    disable_init_workers_ = true;
+    disable_init_scheduler_ = true;
+  }
+#endif
+  enable_default_kernels_load_ = true;
+  return IRIS_SUCCESS;
+}
 
 int Platform::Init(int* argc, char*** argv, int sync) {
   pthread_mutex_lock(&mutex_);
@@ -642,6 +653,8 @@ int Platform::InitCUDA() {
     devs_[ndevs_]->set_root_device(devs_[ndevs_-i]);
     if (is_julia_enabled()) 
         devs_[ndevs_]->EnableJuliaInterface();
+    if (is_python_enabled()) 
+        devs_[ndevs_]->EnablePythonInterface();
     arch_available_ |= devs_[ndevs_]->type();
     cudevs[mdevs] = dev;
     ndevs_++;
@@ -719,6 +732,8 @@ int Platform::InitHIP() {
     devs_[ndevs_]->set_root_device(devs_[ndevs_-i]);
     if (is_julia_enabled()) 
         devs_[ndevs_]->EnableJuliaInterface();
+    if (is_python_enabled()) 
+        devs_[ndevs_]->EnablePythonInterface();
     arch_available_ |= devs_[ndevs_]->type();
     hipdevs[mdevs] = dev;
     ndevs_++;
@@ -832,6 +847,8 @@ int Platform::InitOpenMP() {
       devs_[ndevs_] = new DeviceOpenMP(loaderOpenMP_, ndevs_, nplatforms_);
       if (is_julia_enabled()) 
           devs_[ndevs_]->EnableJuliaInterface();
+      if (is_python_enabled()) 
+          devs_[ndevs_]->EnablePythonInterface();
       arch_available_ |= devs_[ndevs_]->type();
       ndevs_++;
       mdevs++;
@@ -856,6 +873,8 @@ int Platform::InitQIREE() {
       devs_[ndevs_] = new DeviceQIREE(loaderQIREE_, ndevs_, nplatforms_);
       if (is_julia_enabled()) 
           devs_[ndevs_]->EnableJuliaInterface();
+      if (is_python_enabled()) 
+          devs_[ndevs_]->EnablePythonInterface();
       arch_available_ |= devs_[ndevs_]->type();
       ndevs_++;
       mdevs++;

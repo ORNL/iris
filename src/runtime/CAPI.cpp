@@ -41,6 +41,12 @@ int iris_task_set_julia_policy(iris_task brs_task, const char *name) {
   return IRIS_SUCCESS;
 }
 
+int iris_task_set_python_policy(iris_task brs_task, const char *name) {
+  Task *task = Platform::GetPlatform()->get_task_object(brs_task);
+  task->set_python_policy(name);
+  return IRIS_SUCCESS;
+}
+
 void iris_enable_default_kernels(int flag) {
     Platform *platform = Platform::GetPlatform(); 
     platform->enable_default_kernels_load((bool) flag);
@@ -202,6 +208,30 @@ int iris_task_enable_julia_interface(iris_task brs_task, int type) {
   task->set_julia_kernel_type(type);
   return IRIS_SUCCESS;
 }
+
+int iris_kernel_enable_python_interface(iris_kernel brs_kernel, int type) {
+  Kernel *kernel = brs_kernel.class_obj;
+  kernel->set_enable_python_if();
+  kernel->set_python_kernel_type(type);
+  return IRIS_SUCCESS;
+}
+
+int iris_task_enable_python_interface(iris_task brs_task, int type) {
+  Task *task = Platform::GetPlatform()->get_task_object(brs_task);
+  task->set_enable_python_if();
+  task->set_python_kernel_type(type);
+  return IRIS_SUCCESS;
+}
+int iris_kernel_set_python_function(iris_kernel brs_kernel, void *ptr) {
+    Kernel *kernel = brs_kernel.class_obj;
+    kernel->set_python_function(ptr);
+    return IRIS_SUCCESS;
+}
+void *iris_kernel_get_python_function(iris_kernel brs_kernel) {
+    Kernel *kernel = brs_kernel.class_obj;
+    return kernel->get_python_function();
+}
+
 
 int iris_task_create_perm(iris_task* task) {
   return Platform::GetPlatform()->TaskCreate(NULL, true, task);
@@ -1722,4 +1752,28 @@ int iris_vendor_kernel_launch(int dev, void *kernel, int gridx, int gridy, int g
 }
 int iris_is_enabled_auto_par() {
   return (int) Platform::GetPlatform()->GetAutoPar();
+}
+python_policy_t python_policy__ = NULL;
+python_kernel_t python_kernel__ = NULL;
+int iris_python_init(void *python_launch_func, int decoupled_init)
+{
+    python_kernel__ = (python_kernel_t) python_launch_func;
+    //int32_t target = 12; 
+    //int32_t devno=0;
+    //int32_t result = python_kernel__(target, devno);
+    //printf("Result %d\n", result);
+    return Platform::GetPlatform()->PythonInit((bool)decoupled_init);
+}
+int iris_python_policy_init(void *python_policy_func) 
+{
+    python_policy__ = (python_policy_t) python_policy_func;
+    return IRIS_SUCCESS;
+}
+python_kernel_t iris_get_python_launch_func() 
+{
+    return python_kernel__;
+}
+python_policy_t iris_get_python_policy_func() 
+{
+    return python_policy__;
 }
