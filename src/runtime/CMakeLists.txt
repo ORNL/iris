@@ -455,8 +455,9 @@ if (CUDAToolkit_FOUND)
               /usr/local/cuda/bin
 
     )
+    #message(STATUS "NVCC_EXECUTABLE: ${NVCC_EXECUTABLE}")
     if (NVCC_EXECUTABLE)
-        message(STATUS "CUDA found!")
+        #message(STATUS "CUDA found!")
         find_path(
                 CURAND_INCLUDE_DIR
                 NAMES curand.h
@@ -464,6 +465,7 @@ if (CUDAToolkit_FOUND)
                       "$ENV{MATH_LIBS}/include"
                       "$ENV{NVIDIA_PATH}/math_libs/include"
                       "$ENV{NVHPC_ROOT}/math_libs/include"
+                      "/usr/local/cuda/include"
                 PATH_SUFFIXES ""        # you can strip off sub-folders
                 REQUIRED
               )
@@ -479,6 +481,7 @@ if (CUDAToolkit_FOUND)
                 "$ENV{NVIDIA_PATH}/math_libs/lib64"
                 "$ENV{NVHPC_ROOT}/math_libs/lib"
                 "$ENV{NVHPC_ROOT}/math_libs/lib64"
+                "/usr/local/cuda/lib64"
               PATH_SUFFIXES ""             # no extra suffixes
               REQUIRED
             )
@@ -514,7 +517,7 @@ if (CUDAToolkit_FOUND)
             #COMMAND nvcc -x cu -g -Xcompiler -fPIC -DENABLE_IRIS_HOST2CUDA_APIS ${include_paths} -I. -I${IRIS_INC_DIR} -I${CUDA_INCLUDE_DIRS}/ ${CMAKE_CURRENT_SOURCE_DIR}/default_cpu_gpu_kernels.cpp -c -o default_cpu_gpu_kernels_cuda.cpp.o
             #COMMAND nvcc -x cu -g -Xcompiler -fPIC -I${IRIS_INC_DIR} ${include_paths} -I. ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_cuda_kernels.cu -c -o iris_default_math_cuda_kernels.cu.o
             #COMMAND nvcc -shared -g -Xcompiler -fPIC default_cpu_gpu_kernels_cuda.cpp.o iris_default_math_cuda_kernels.cu.o -o libcuda_default.so 
-			COMMAND nvcc -shared -x cu -g -Xcompiler -fPIC -DENABLE_IRIS_HOST2CUDA_APIS ${include_paths} -I. -I${IRIS_INC_DIR} -I${CUDA_INCLUDE_DIRS}/ ${CMAKE_CURRENT_SOURCE_DIR}/default_cpu_gpu_kernels.cpp ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_cuda_kernels.cu -o libcuda_default.so 
+			COMMAND ${NVCC_EXECUTABLE} -shared -x cu -g -Xcompiler -fPIC -DENABLE_IRIS_HOST2CUDA_APIS ${include_paths} -I. -I${IRIS_INC_DIR} -I${CUDA_INCLUDE_DIRS}/ ${CMAKE_CURRENT_SOURCE_DIR}/default_cpu_gpu_kernels.cpp ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_cuda_kernels.cu -o libcuda_default.so 
 			DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/default_cpu_gpu_kernels.cpp
         )
         add_custom_target(myapp_cuda DEPENDS libcuda_default.so)
