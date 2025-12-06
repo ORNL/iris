@@ -234,6 +234,10 @@ int Platform::Init(int* argc, char*** argv, int sync) {
   EnvironmentInit();
 
   char* logo = NULL;
+  char *iris_path = NULL;
+  EnvironmentGet("", &iris_path, NULL, '\0');
+  _info("Environment of IRIS: %s", iris_path);
+  free(iris_path);
   EnvironmentGet("LOGO", &logo, NULL);
   if (strcmp("on", logo) == 0) Utils::Logo(true);
 
