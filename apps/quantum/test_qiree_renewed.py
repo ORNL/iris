@@ -36,7 +36,7 @@ if not (home and os.path.exists(home)):
 #print("content: ", qir_content.host.tobytes().decode('latin-1'))
 num_shots = 1000
 backend = iris.dmem("qsim")
-config_json = iris.dmem("config.json")
+config_json = iris.dmem("null") #iris.dmem_infile("config.json")
 
 num_cuts = 4
 

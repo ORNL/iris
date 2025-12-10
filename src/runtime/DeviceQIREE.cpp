@@ -296,6 +296,7 @@ int DeviceQIREE::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem,
   }
   else if (idx == 2) {
       config_json_ = (const char *)params_[idx];
+      if (strcasecmp(config_json_, "null") == 0) config_json_ = NULL;
   }
   else if (idx == 4) {
       encoded_ = (CQireeResultRecord *) dev_ptr;
@@ -303,7 +304,7 @@ int DeviceQIREE::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem,
           qiree_process_->qiree_setup_executor(backend_, config_json_);
       }
       else {
-          RUN_QIREE(qiree_setup_executor, manager_, backend_, NULL);
+          RUN_QIREE(qiree_setup_executor, manager_, backend_, config_json_);
       }
   }
   _debug2("task:%lu:%s idx:%d::%d off:%lu dev_ptr:%p dev_alloc_ptr:%p", 
