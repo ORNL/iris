@@ -5,9 +5,30 @@
 #include "LoaderQIREE.h"
 #include "iris/qiree.h"
 
+#define RUN_QIREE_OUT(OUT, DEFAULT, X, ...) \
+    if (ld_->X == NULL) { \
+        _error(#X " not found in QIREE library"); \
+        OUT = DEFAULT; \
+    } else { \
+        OUT = ld_->X(__VA_ARGS__); \
+    }
+#define RUN_QIREE(X, ...) \
+    if (ld_->X == NULL) { \
+        _error(#X " not found in QIREE library"); \
+    } else { \
+        ASSERT(ld_->X(__VA_ARGS__) == IRIS_SUCCESS); \
+    }
+#define RUN_QIREE_NO_RETURN(X, ...) \
+    if (ld_->X == NULL) { \
+        _error(#X " not found in QIREE library"); \
+    } else { \
+        ld_->X(__VA_ARGS__); \
+    }
+
 namespace iris {
 namespace rt {
 
+class ProcessQiree;
 class DeviceQIREE : public Device {
 public:
   DeviceQIREE(LoaderQIREE* ld, int devno, int platform);
@@ -29,6 +50,7 @@ public:
   void CreateCQiree();
 
 private:
+  bool is_qiree_process_;
   CQiree *manager_;
   LoaderQIREE* ld_;
   unsigned int shared_mem_bytes_;
@@ -37,10 +59,12 @@ private:
   int max_arg_idx_;
   int nquant_results_;
   int nclass_results_;
-  int num_shots_;
+  uint32_t num_shots_;
   const char *backend_;
-  int result_items_;
+  const char *config_json_;
+  uint32_t result_items_;
   CQireeResultRecord *encoded_;
+  ProcessQiree *qiree_process_;
 
   //float* Z;
   //float* X;

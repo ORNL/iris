@@ -7,6 +7,7 @@
 #include "Task.h"
 #include "Utils.h"
 #include "Worker.h"
+#include "ProcessQiree.h"
 //#include <iris/qiree/rpcmem.h>
 #include <dlfcn.h>
 #include <stdint.h>
@@ -15,25 +16,11 @@
 namespace iris {
 namespace rt {
 
-#define RUN_QIREE_OUT(OUT, DEFAULT, X, ...) if (ld_->X == NULL) { \
-        _error(#X " not found in QIREE library"); \
-        OUT = DEFAULT; \
-    } else { \
-        OUT = ld_->X(__VA_ARGS__); \
-    }
-#define RUN_QIREE(X, ...) if (ld_->X == NULL) { \
-        _error(#X " not found in QIREE library"); \
-    } else { \
-        ASSERT(ld_->X(__VA_ARGS__) == IRIS_SUCCESS); \
-    }
-#define RUN_QIREE_NO_RETURN(X, ...) if (ld_->X == NULL) { \
-        _error(#X " not found in QIREE library"); \
-    } else { \
-        ld_->X(__VA_ARGS__); \
-    }
 DeviceQIREE::DeviceQIREE(LoaderQIREE* ld, int devno, int platform) : Device(devno, platform) {
   ld_ = ld;
   manager_ = NULL;
+  is_qiree_process_ = false;
+  qiree_process_ = NULL;
   type_ = iris_qpu;
   model_ = iris_qiree;
   //type_ = iris_qiree;
@@ -47,15 +34,32 @@ DeviceQIREE::~DeviceQIREE() {
       RUN_QIREE_NO_RETURN(qiree_destroy, manager_);
   }
   manager_ = NULL;
+  if (qiree_process_ != NULL) {
+    qiree_process_->qiree_destroy();
+    delete qiree_process_;
+    qiree_process_ = NULL;
+  }
 }
 
 void DeviceQIREE::CreateCQiree()
 {
     // TODO: Reuse manager_ object which is parsed for same QIR file 
-    if (manager_ != NULL)  {
-        RUN_QIREE_NO_RETURN(qiree_destroy, manager_);
+    if (is_qiree_process_) {
+        if (qiree_process_ != NULL) {
+            qiree_process_->qiree_destroy();
+            delete qiree_process_;
+            qiree_process_ = NULL;
+        }
+        qiree_process_ = new ProcessQiree();
+        qiree_process_->Init(ld_);
+        qiree_process_->qiree_create();
     }
-    RUN_QIREE_OUT(manager_, NULL, qiree_create);
+    else {
+        if (manager_ != NULL)  {
+            RUN_QIREE_NO_RETURN(qiree_destroy, manager_);
+        }
+        RUN_QIREE_OUT(manager_, NULL, qiree_create);
+    }
 }
 
 int DeviceQIREE::Init() {
@@ -213,10 +217,15 @@ int DeviceQIREE::KernelSetArg(Kernel* kernel, int idx, int kindex, size_t size, 
     params_[idx] = shared_mem_offs_ + idx;
     shared_mem_bytes_ += size;
   }
-  if (idx == 1) {
-      num_shots_ = *((int *)value);
+  if (idx == 3) {
+      num_shots_ = *((uint32_t*)value);
       result_items_ = 0;
-      RUN_QIREE(qiree_max_result_items, manager_, num_shots_, &result_items_);
+      if (is_qiree_process_) {
+          qiree_process_->qiree_max_result_items(num_shots_, &result_items_);
+      }
+      else {
+          RUN_QIREE(qiree_max_result_items, manager_, (int)num_shots_, (int*)&result_items_);
+      }
   }
   if (max_arg_idx_ < idx) max_arg_idx_ = idx;
   if (julia_if_ != NULL && kernel->enable_julia_if()) {
@@ -243,7 +252,7 @@ int DeviceQIREE::KernelSetArg(Kernel* kernel, int idx, int kindex, size_t size, 
 }
 
 int DeviceQIREE::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, size_t off) {
-  if (idx == 2) {
+  if (idx == 4) {
       // Now allocate space. 
       // It is the output memory
       ((DataMem *)mem)->realllocate_space(sizeof(CQireeResultRecord), num_shots_+1);
@@ -260,23 +269,42 @@ int DeviceQIREE::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem,
       params_[idx] = dev_ptr;
   }
   if (idx == 0) {
-      const char *data = (const char *)params_[0];
+      backend_ = (const char *)params_[idx]; 
+      if (strcmp(backend_, "xacc")==0) {
+          is_qiree_process_ = true;
+      }
+  }
+  else if (idx == 1) {
+      const char *data = (const char *)params_[idx];
       size_t data_len = mem->size();
       //((DataMem *)mem)->Print();
       //printf("Data: %p: %p : %p : %s length:%lu\n", data, dev_ptr, dev_alloc_ptr, data, data_len);
+      //for(int i=0; i<data_len; i++) {
+      //  printf("%c", data[i]);
+      //}
+      //printf("\n");
       CreateCQiree();
-      RUN_QIREE(qiree_load_module_from_memory, manager_, (char const *)params_[0], data_len); 
-      RUN_QIREE(qiree_num_quantum_reg, manager_, &nquant_results_);
-      RUN_QIREE(qiree_num_classical_reg, manager_, &nclass_results_);
+      if (is_qiree_process_) {
+        qiree_process_->qiree_load((const char *)params_[idx], data_len, &nquant_results_, &nclass_results_);
+      }
+      else {
+        RUN_QIREE(qiree_load_module_from_memory, manager_, (char const *)params_[idx], data_len); 
+        RUN_QIREE(qiree_num_quantum_reg, manager_, &nquant_results_);
+        RUN_QIREE(qiree_num_classical_reg, manager_, &nclass_results_);
+      }
       //printf(" nquant_results:%d nclass_results:%d\n", nquant_results_, nclass_results_);
   }
   else if (idx == 2) {
-      encoded_ = (CQireeResultRecord *) dev_ptr;
+      config_json_ = (const char *)params_[idx];
   }
-  else if (idx == 3) {
-      const char *config_json = nullptr;
-      backend_ = (const char *)params_[idx]; 
-      RUN_QIREE(qiree_setup_executor, manager_, backend_, config_json);
+  else if (idx == 4) {
+      encoded_ = (CQireeResultRecord *) dev_ptr;
+      if (is_qiree_process_) {
+          qiree_process_->qiree_setup_executor(backend_, config_json_);
+      }
+      else {
+          RUN_QIREE(qiree_setup_executor, manager_, backend_, NULL);
+      }
   }
   _debug2("task:%lu:%s idx:%d::%d off:%lu dev_ptr:%p dev_alloc_ptr:%p", 
           kernel->task()->uid(), kernel->task()->name(),
@@ -304,9 +332,14 @@ int DeviceQIREE::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws,
   // Call the function with an argument
   //parse_input_c(4, (char**)argv);
   //printf("nparams: %d\n", qiree_nparams_);
-  const char *config_json = NULL;
-  RUN_QIREE(qiree_execute, manager_, num_shots_);
-  RUN_QIREE(qiree_save_result_items, manager_, encoded_, num_shots_);
+  //const char *config_json = NULL;
+  if (is_qiree_process_) {
+    qiree_process_->qiree_execute(num_shots_, encoded_);
+  }
+  else {
+    RUN_QIREE(qiree_execute, manager_, num_shots_);
+    RUN_QIREE(qiree_save_result_items, manager_, encoded_, num_shots_);
+  }
   //printf("encoded_[0]: %lu:%lu ptr:%p\n", encoded_[0].key, encoded_[0].count, encoded_);
   //printf("encoded_[1]: %lu:%lu ptr:%p\n", encoded_[1].key, encoded_[1].count, encoded_);
   //ld_->parse_input_c(qiree_nparams_, (char**)qiree_params_);
