@@ -62,19 +62,6 @@ class DataObjectProfile(Structure):
     def __repr__(self) -> str:
         return f"DataObjectProfile(task={self.task}, data_object={self.data_object}, datatransfer_type={self.datatransfer_type}, from_device={self.from_device}, device={self.device}, start={self.start}, end={self.end})"
 
-class Quantum:
-    def qiskit2qiris(counts, output):
-        n = len(counts)
-        # Header record
-        output[0] = (np.uint64(0), np.uint64(n))
-        # Payload records
-        output[1:n+1] = np.fromiter(
-            ((int(k, 2), v) for k, v in counts.items()),
-            dtype=CQireeResultRecord,
-            count=n
-        )
-        return output
-
 class library(CDLL):
     def __init__(self, library_name, read_symbols=False):
         super().__init__(library_name, mode=RTLD_GLOBAL)
@@ -705,6 +692,9 @@ def finalize():
     return dll.iris_finalize()
 
 def synchronize():
+    return dll.iris_synchronize()
+
+def sync():
     return dll.iris_synchronize()
 
 def set_nstreams(n):
@@ -1833,4 +1823,23 @@ class graph:
 class json_graph(graph):
     def __init__(self, json_file='graph.json', params=[]):
         self.load(json_file, params)
+
+class Quantum:
+    def empty_output(N, is_dmem=True):
+        output = np.empty(N, dtype=CQireeResultRecord)
+        if is_dmem:
+            return dmem(output)
+        else:
+            return output
+    def qiskit2qiris(counts, output):
+        n = len(counts)
+        # Header record
+        output[0] = (np.uint64(0), np.uint64(n))
+        # Payload records
+        output[1:n+1] = np.fromiter(
+            ((int(k, 2), v) for k, v in counts.items()),
+            dtype=CQireeResultRecord,
+            count=n
+        )
+        return output
 

@@ -56,13 +56,15 @@ def qiskit_task(spec, param1, param2, output):
 
 param1 = iris.dmem("Hello")
 param2 = iris.dmem("World")
-output = iris.dmem(np.empty(100, dtype=iris.CQireeResultRecord))
+output = iris.Quantum.empty_output(1024)
 
 qtask = iris.task(qiskit_task, 1, [], [1], [], 
         [   (param1, iris.iris_r),
             (param2, iris.iris_r),
-            (output, iris.iris_w) ]
+            (output, iris.iris_w | iris.iris_flush) ]
 )
 qtask.submit(iris.iris_cpu)
+qtask.wait()
+print("Output: ", output.host)
 
 iris.finalize()
