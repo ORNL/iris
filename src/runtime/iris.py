@@ -1346,6 +1346,9 @@ class task:
             task_handle_2_pobj[self.handle.uid] = self
             return
         (kernel, dim, off, gws, lws, params_list) = args
+        self.kernel(kernel, dim, off, gws, lws, params_list)
+
+    def kernel(self, kernel, dim, off, gws, lws, params, params_info=[]):
         if callable(kernel):
             # This is python kernel function
             self.py_func_object = ctypes.py_object(kernel)
@@ -1353,15 +1356,13 @@ class task:
             self.kernel(kernel.__name__, dim, off, gws, lws, params_list)
             dll.iris_kernel_set_python_function(self.kernel_obj, ctypes.pointer(self.py_func_object))
             dll.iris_kernel_enable_python_interface(self.kernel_obj, iris_python_native)
+            return self.kernel_obj
         else:
             self.handle = task_create(kernel)
-            self.kernel(kernel, dim, off, gws, lws, params_list)
-
-    def kernel(self, kernel, dim, off, gws, lws, params, params_info=[]):
-        if len(params_info) == 0  and len(params) != len(params_info):
-            return self.kernel_core2(kernel, dim, off, gws, lws, params)
-        else:
-            return self.kernel_core1(kernel, dim, off, gws, lws, params, params_info)
+            if len(params_info) == 0  and len(params) != len(params_info):
+                return self.kernel_core2(kernel, dim, off, gws, lws, params)
+            else:
+                return self.kernel_core1(kernel, dim, off, gws, lws, params, params_info)
     def kernel_core1(self, kernel, dim, off, gws, lws, params, params_info):
         task_kernel(self.handle, kernel, dim, off, gws, lws, params, params_info, self.params)
         self.kernel_obj = dll.call_ret(dll.iris_task_get_last_cmd_kernel, iris_kernel, self.handle)
