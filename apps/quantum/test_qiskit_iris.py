@@ -61,7 +61,7 @@ output = iris.Quantum.empty_output(1024)
 qtask = iris.task(qiskit_task, 1, [], [1], [], 
         [   (param1, iris.iris_r),
             (param2, iris.iris_r),
-            (output, iris.iris_w | iris.iris_flush) ]
+            (output, iris.iris_flush) ]
 )
 qtask.submit(iris.iris_cpu)
 qtask.wait()
