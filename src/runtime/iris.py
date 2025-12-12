@@ -62,7 +62,18 @@ class DataObjectProfile(Structure):
     def __repr__(self) -> str:
         return f"DataObjectProfile(task={self.task}, data_object={self.data_object}, datatransfer_type={self.datatransfer_type}, from_device={self.from_device}, device={self.device}, start={self.start}, end={self.end})"
 
-
+class Quantum:
+    def qiskit2qiris(counts, output):
+        n = len(counts)
+        # Header record
+        output[0] = (np.uint64(0), np.uint64(n))
+        # Payload records
+        output[1:n+1] = np.fromiter(
+            ((int(k, 2), v) for k, v in counts.items()),
+            dtype=CQireeResultRecord,
+            count=n
+        )
+        return output
 
 class library(CDLL):
     def __init__(self, library_name, read_symbols=False):
@@ -1353,7 +1364,7 @@ class task:
             # This is python kernel function
             self.py_func_object = ctypes.py_object(kernel)
             self.handle = task_create(kernel.__name__)
-            self.kernel(kernel.__name__, dim, off, gws, lws, params_list)
+            self.kernel(kernel.__name__, dim, off, gws, lws, params)
             dll.iris_kernel_set_python_function(self.kernel_obj, ctypes.pointer(self.py_func_object))
             dll.iris_kernel_enable_python_interface(self.kernel_obj, iris_python_native)
             return self.kernel_obj
