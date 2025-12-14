@@ -11,9 +11,9 @@ import json
 from post_processing_ghz import *
 
 # Set up QIREE library path and IRIS devices
-os.environ["LIB_QIREE"] = "/home/kew/qiree/build/lib/libcqiree.so"
+#os.environ["LIB_QIREE"] = "/home/kew/qiree/build/lib/libcqiree.so"
 os.environ["IRIS_ARCHS"] = "openmp:qiree"
-os.environ["IRIS_QIREE_DEVICE_FACTOR"] = "1"
+os.environ["IRIS_QIREE_DEVICE_FACTOR"] = "4"
 os.environ["IRIS_PROFILE"] = "1"
 
 # Initialize IRIS
@@ -31,7 +31,7 @@ num_fragments = 4
 
 # This sets up a config for all fragments to use the same backend.
 backends_config = [
-    {"backend": "xacc", "accelerator": "qsim", "shots": num_shots}
+    {"backend": "xacc", "accelerator": "qpp", "shots": num_shots}
  for i in range(num_fragments)]
 
 print("=" * 70)
@@ -61,7 +61,7 @@ print("-" * 70)
 # Create n tasks (no communications with each other)
 tasks = [iris.task() for i in range(num_fragments)]
 output = [[iris.dmem(np.empty(0, dtype=iris.CQireeResultRecord)) for j in range (3)] for i in range(num_fragments)]
-qir_content = [[iris.dmem_infile(f"/home/kew/qcut/qcut_circuits_qir_only/circ_{i:02}_{j}_qir.ll") 
+qir_content = [[iris.dmem_infile(f"qcut_circuits_qir_only/circ_{i:02}_{j}_qir.ll") 
                        for j in range (3)] for i in range(num_fragments)]
 
 print(f"✓ Created {num_fragments} IRIS tasks")

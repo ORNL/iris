@@ -21,6 +21,7 @@ DeviceQIREE::DeviceQIREE(LoaderQIREE* ld, int devno, int platform) : Device(devn
   manager_ = NULL;
   is_qiree_process_ = false;
   qiree_process_ = NULL;
+  max_arg_idx_ = -1;
   type_ = iris_qpu;
   model_ = iris_qiree;
   //type_ = iris_qiree;
@@ -51,7 +52,7 @@ void DeviceQIREE::CreateCQiree()
             qiree_process_ = NULL;
         }
         qiree_process_ = new ProcessQiree();
-        qiree_process_->Init(ld_);
+        qiree_process_->Init(devno_, ld_);
         qiree_process_->qiree_create();
     }
     else {
@@ -224,7 +225,7 @@ int DeviceQIREE::KernelSetArg(Kernel* kernel, int idx, int kindex, size_t size, 
           qiree_process_->qiree_max_result_items(num_shots_, &result_items_);
       }
       else {
-          RUN_QIREE(qiree_max_result_items, manager_, (int)num_shots_, (int*)&result_items_);
+          RUN_QIREE(qiree_max_result_items, manager_, (int)num_shots_, &result_items_);
       }
   }
   if (max_arg_idx_ < idx) max_arg_idx_ = idx;

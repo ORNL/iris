@@ -62,7 +62,7 @@ private:
   uint32_t num_shots_;
   const char *backend_;
   const char *config_json_;
-  uint32_t result_items_;
+  size_t result_items_;
   CQireeResultRecord *encoded_;
   ProcessQiree *qiree_process_;
 
