@@ -470,7 +470,7 @@ int Platform::EnvironmentInit() {
 #endif
   char *tmp_dir = mkdtemp(tmp_dir_str);
   strcpy(tmp_dir_, tmp_dir);
-  printf("Temp directory:%s\n", tmp_dir_);
+  //printf("Temp directory:%s\n", tmp_dir_);
 #ifdef ENABLE_RISCV
   EnvironmentSet("ARCHS",  "openmp",  false);
 #else
