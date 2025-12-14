@@ -1,0 +1,213 @@
+#!/usr/bin/env python3
+"""
+Processing the GHZ QCUT example using Q-IRIS and QIR files
+"""
+
+import iris
+import os
+import time
+import sys
+import io
+import numpy as np
+import json
+from pathlib import Path
+from typing import Any
+import ast
+import pdb
+
+
+# ---------- Helper functions for AcceleratorBuffer processing ----------
+
+def save_accelerator_buffer_to_file(qpu_buffer: Any, 
+                                     filepath: str, 
+                                     fragment_idx: int, 
+                                     circuit_idx: int) -> None:
+    """
+    Save the XACC AcceleratorBuffer dictionary output to a file for future parsing.
+    
+    Parameters
+    ----------
+    qpu_buffer : Any
+        The structured array containing the QPU result with 'out' field.
+    filepath : str
+        Path to the file where results will be appended (JSON Lines format).
+    fragment_idx : int
+        Index of the circuit fragment.
+    circuit_idx : int
+        Index of the subcircuit within the fragment.
+    """
+    try:
+        # Extract the dictionary from the 'out' field if it exists
+        accelerator_dict = None
+        
+        if hasattr(qpu_buffer, 'dtype') and hasattr(qpu_buffer.dtype, 'names'):
+            if qpu_buffer.dtype.names and 'out' in qpu_buffer.dtype.names:
+                if len(qpu_buffer) > 0:
+                    out_json_str = str(qpu_buffer['out'][0])
+                    try:
+                        accelerator_dict = json.loads(out_json_str)
+                    except json.JSONDecodeError:
+                        pass
+        
+        if accelerator_dict:
+            # Append to file in JSON Lines format with metadata
+            record = {
+                "fragment_idx": fragment_idx,
+                "circuit_idx": circuit_idx,
+                "buffer": accelerator_dict
+            }
+            
+            # Ensure directory exists
+            Path(filepath).parent.mkdir(parents=True, exist_ok=True)
+            
+            with open(filepath, 'a') as f:
+                f.write(json.dumps(record) + '\n')
+        else:
+            print(f"  [Fragment {fragment_idx}, Circuit {circuit_idx}] Warning: Could not extract AcceleratorBuffer")
+    
+    except Exception as e:
+        print(f"  [Fragment {fragment_idx}, Circuit {circuit_idx}] Error saving buffer: {e}")
+
+
+def extract_measurements_from_dict(qpu_buffer_dict: dict) -> Any:
+    """
+    Extract the "Measurements" key from an XACC AcceleratorBuffer dictionary.
+    
+    Parameters
+    ----------
+    qpu_buffer_dict : dict
+        Dictionary containing the AcceleratorBuffer data, typically with structure:
+        {"AcceleratorBuffer": {"Measurements": {...}, ...}}
+    
+    Returns
+    -------
+    measurements : Any
+        The extracted Measurements data, or the original dict if extraction fails.
+    """
+    try:
+        if isinstance(qpu_buffer_dict, dict):
+            if 'AcceleratorBuffer' in qpu_buffer_dict:
+                if 'Measurements' in qpu_buffer_dict['AcceleratorBuffer']:
+                    return qpu_buffer_dict['AcceleratorBuffer']['Measurements']
+    except (KeyError, TypeError):
+        pass
+    
+    # Fallback: return the original dict if extraction fails
+    return qpu_buffer_dict
+
+
+
+# Set up QIREE library path and IRIS devices
+home_dir = os.path.expanduser("~")
+#os.environ["IRIS_LIB_QIREE"] = os.path.join(home_dir, "qiree/build/lib/libcqiree.so")
+os.environ["IRIS_ARCHS"] = "openmp:qiree"
+os.environ["IRIS_QIREE_DEVICE_FACTOR"] = "8"
+os.environ["IRIS_PROFILE"] = "1"
+
+# Suppress verbose XACC output
+os.environ["XACC_VERBOSE"] = "0"
+
+# Initialize IRIS
+iris.init()
+
+# Configuration
+# Shots configurable via environment: export NUM_SHOTS=100
+num_shots = int(os.getenv("NUM_SHOTS", "100"))
+num_fragments_test = 2
+num_fragments = num_fragments_test
+
+# This sets up a config for all fragments to use the same backend.
+backends_config = [
+    {"backend": "xacc", "accelerator": "qpp", "shots": num_shots}
+ for i in range(num_fragments)]
+
+print("=" * 70)
+print("GHZ QCut Example")
+print("=" * 70)
+print(f"\nConfiguration:")
+print(f"  Backends Used: {num_fragments}")
+print(f"  Shots per circuit: {num_shots}")
+print(f"  Backend Config: backend={backends_config[0]['backend']}, accelerator={backends_config[0]['accelerator']}, shots={backends_config[0]['shots']}")
+
+# Prepare configuration as JSON string
+print(f"\nPreparing backend configurations...")
+
+# Note: Create backend/config handles per submission to avoid reusing the same dmem,
+# which can cause repeated execution of the first circuit when handles are shared.
+def make_backend_handle(cfg):
+    return iris.dmem(cfg["backend"]) if cfg["backend"] != "" else iris.dmem("xacc")
+
+def make_config_handle(cfg):
+    if cfg["backend"] != "xacc":
+        return iris.dmem("null")
+    return iris.dmem(json.dumps({"accelerator": cfg["accelerator"], "shots": cfg["shots"]}))
+
+# Create one task per subcircuit (2D array: fragment x subcircuit)
+tasks = np.array([[iris.task() for j in range(3)] for i in range(num_fragments)])
+qpu_output = [[iris.dmem(np.empty(0, dtype=iris.CQireeResultRecord)) for j in range(3)] for i in range(num_fragments)]
+output_w = [[(qpu_output[i][j], iris.iris_w) for j in range(3)] for i in range(num_fragments)]
+inputs_r = [(qpu_output[i][j], iris.iris_r) for j in range(3) for i in range(num_fragments)]
+
+# Load QIR file paths
+home_dir = os.path.expanduser("~")
+qir_paths = [[os.path.join(".", f"qcut/qcut_circuits_qir_only/circ_{i:02}_{j}_qir.ll")
+              for j in range(3)] for i in range(num_fragments)]
+qir_content = [[iris.dmem_infile(qir_paths[i][j])
+                for j in range(3)] for i in range(num_fragments)]
+
+def post_processing(spec, *inputs_r):
+    print(f"\nExtracting circuit results from IRIS ...")
+
+    inputs_r_np = iris.CQireeResult.reshape(inputs_r, [num_fragments, 3])
+    print("all outputs:", inputs_r_np.shape, " output:", inputs_r_np)
+    for fragment in range(inputs_r_np.shape[0]):
+        for index in range(inputs_r_np.shape[1]):
+            print(inputs_r_np[i][j])
+    print(f"✓ Extracted {len(inputs_r)} results from {inputs_r_np.shape[0]} fragments ({inputs_r_np.shape[0] * inputs_r_np.shape[1]} subcircuits)")
+
+num_fragments_test = 2
+
+print(f"✓ Created {num_fragments_test} tasks")
+print(f"✓ Loaded {num_fragments_test*3} QIR circuits")
+
+# Feed parameters: submit all 3 subcircuits per fragment
+print(f"\nSubmitting {num_fragments_test * 3} subcircuits...")
+for i in range(num_fragments_test):
+    for j in range(3):
+        # Debug: print which QIR file is being submitted
+        try:
+            from hashlib import sha256
+            with open(qir_paths[i][j], 'rb') as fh:
+                data = fh.read()
+            digest = sha256(data).hexdigest()[:16]
+            print(f"  [Fragment {i}, Subcircuit {j}] -> {qir_paths[i][j]} (sha256: {digest})")
+        except Exception as e:
+            print(f"  [Fragment {i}, Subcircuit {j}] Warning: Could not read QIR file: {e}")
+
+        backend_handle = make_backend_handle(backends_config[i])
+        config_handle = make_config_handle(backends_config[i])
+        tasks[i][j].kernel("qiree", 1, [], [1], [], [
+            (backend_handle, iris.iris_r),
+            (qir_content[i][j], iris.iris_r),  # Correct subcircuit
+            (config_handle, iris.iris_r),
+            backends_config[i]["shots"],
+            output_w[i][j],  # Correct output buffer
+        ])
+        # Async mode for parallel execution
+        tasks[i][j].submit(iris.iris_qpu, sync=0)
+        if backends_config[i]["backend"] != "xacc":
+            print(f"    Submitted ({backends_config[i]['backend']})")
+        else:
+            print(f"    Submitted ({backends_config[i]['backend']}/{backends_config[i]['accelerator']})")
+
+# Classical compute: Extract all circuit results and estimate ⟨ZZZZ⟩
+print(f"\nWaiting for circuit execution to complete...")
+
+post_process_task = iris.task(post_processing, 1, [], [1], [], inputs_r)
+post_process_task.depends(tasks.reshape(-1))
+post_process_task.submit(iris.iris_cpu, sync=1)
+
+# Extract Measurements from the saved IRIS output
+
+
+iris.finalize()

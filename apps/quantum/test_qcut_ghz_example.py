@@ -61,7 +61,7 @@ print("-" * 70)
 # Create n tasks (no communications with each other)
 tasks = [iris.task() for i in range(num_fragments)]
 output = [[iris.dmem(np.empty(0, dtype=iris.CQireeResultRecord)) for j in range (3)] for i in range(num_fragments)]
-qir_content = [[iris.dmem_infile(f"qcut_circuits_qir_only/circ_{i:02}_{j}_qir.ll") 
+qir_content = [[iris.dmem_infile(f"qcut/qcut_circuits_qir_only/circ_{i:02}_{j}_qir.ll") 
                        for j in range (3)] for i in range(num_fragments)]
 
 print(f"✓ Created {num_fragments} IRIS tasks")

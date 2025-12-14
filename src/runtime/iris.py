@@ -311,6 +311,7 @@ CQireeResultRecord = np.dtype([
     ('count', np.uint64)
 ])
 
+
 class IrisParam(ctypes.Structure):
     _fields_ = [
         ("data",        c_void_p),          # void* data
@@ -1513,10 +1514,15 @@ class task:
         return ntasks, ptasks
 
     def depends(self, tasks_list):
-        if type(tasks_list) != list:
+        if isinstance(tasks_list, np.ndarray):
+            tasks_list = tasks_list.ravel().tolist()
+        elif isinstance(tasks_list, (list, tuple)):
+            tasks_list = list(tasks_list)
+        else:
             tasks_list = [ tasks_list ]
         dep_list = [t.handle for t in tasks_list]
-        task_depend(self.handle, len(tasks_list), dep_list)
+        if len(dep_list) > 0:
+            task_depend(self.handle, len(tasks_list), dep_list)
     def wait(self):
         task_wait(self.handle)
     def dmem2dmem(self, src_mem, dst_mem):
@@ -1824,6 +1830,36 @@ class json_graph(graph):
     def __init__(self, json_file='graph.json', params=[]):
         self.load(json_file, params)
 
+class CQireeResult:
+    def __init__(self, values=[]):
+        if len(values) > 0:
+            self.count = values[0][1]
+            self.values = values[1:]
+        else:
+            self.count = 0
+            self.values = []
+    def init(self, values):
+        if len(values) > 0:
+            self.count = values[0][1]
+            self.values = values[1:]
+        else:
+            self.count = 0
+            self.values = []
+    def reshape(list_of_values, dims:list[int, ...]):
+        values  = np.array([CQireeResult(d) for d in list_of_values], dtype=object)
+        return values.reshape(dims)
+    def __str__(self) -> str:
+        return (
+            f"CQireeResult(count={self.count}, "
+            f"values={self.values})"
+        )
+
+    def __repr__(self) -> str:
+        return (
+            f"CQireeResult(count={self.count}, "
+            f"values={self.values!r})"
+        )
+    
 class Quantum:
     def empty_output(N, is_dmem=True):
         output = np.empty(N, dtype=CQireeResultRecord)
