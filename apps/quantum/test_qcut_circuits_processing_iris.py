@@ -32,7 +32,7 @@ iris.init()
 # Configuration
 # Shots configurable via environment: export NUM_SHOTS=100
 num_shots = int(os.getenv("NUM_SHOTS", "100"))
-num_fragments_test = 2
+num_fragments_test = 12
 num_fragments = num_fragments_test
 
 # This sets up a config for all fragments to use the same backend.
@@ -83,8 +83,6 @@ def post_processing(spec, *inputs_r):
         for index in range(inputs_r_np.shape[1]):
             print(inputs_r_np[i][j])
     print(f"✓ Extracted {len(inputs_r)} results from {inputs_r_np.shape[0]} fragments ({inputs_r_np.shape[0] * inputs_r_np.shape[1]} subcircuits)")
-
-num_fragments_test = 2
 
 print(f"✓ Created {num_fragments_test} tasks")
 print(f"✓ Loaded {num_fragments_test*3} QIR circuits")

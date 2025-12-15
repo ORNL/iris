@@ -37,6 +37,7 @@ DeviceQIREE::~DeviceQIREE() {
   manager_ = NULL;
   if (qiree_process_ != NULL) {
     qiree_process_->qiree_destroy();
+    qiree_process_->Stop();
     delete qiree_process_;
     qiree_process_ = NULL;
   }
@@ -46,14 +47,21 @@ void DeviceQIREE::CreateCQiree()
 {
     // TODO: Reuse manager_ object which is parsed for same QIR file 
     if (is_qiree_process_) {
+        bool create_now = true;
         if (qiree_process_ != NULL) {
+            create_now = false;
+#if 0
             qiree_process_->qiree_destroy();
+            qiree_process_->Stop();
             delete qiree_process_;
             qiree_process_ = NULL;
+#endif
         }
-        qiree_process_ = new ProcessQiree();
-        qiree_process_->Init(devno_, ld_);
-        qiree_process_->qiree_create();
+        if (create_now) {
+            qiree_process_ = new ProcessQiree();
+            qiree_process_->Init(devno_, ld_);
+            qiree_process_->qiree_create();
+        }
     }
     else {
         if (manager_ != NULL)  {
