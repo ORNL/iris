@@ -548,6 +548,9 @@ namespace iris {
                     devno_ = devno;
                     qmgr_.manager_ = NULL ; qmgr_.ld_ = ld; 
                 }
+                void Stop() {
+                    set_status(Exit);
+                }
 
                 void qiree_create() {
                     _debug2("Inside ");
@@ -614,7 +617,7 @@ namespace iris {
 
                         if (pid_ == 0) {
                             serverLoop();
-                            _debug2("Exiting server\n");
+                            //printf("Exiting server\n");
                             _exit(0);
                         }
                     }
