@@ -21,7 +21,7 @@ home_dir = os.path.expanduser("~")
 #os.environ["IRIS_LIB_QIREE"] = os.path.join(home_dir, "qiree/build/lib/libcqiree.so")
 os.environ["IRIS_ARCHS"] = "openmp:qiree"
 os.environ["IRIS_QIREE_DEVICE_FACTOR"] = "8"
-os.environ["IRIS_PROFILE"] = "1"
+os.environ["IRIS_PROFILE"] = "0"
 
 # Suppress verbose XACC output
 os.environ["XACC_VERBOSE"] = "0"
@@ -78,11 +78,14 @@ def post_processing(spec, *inputs_r):
     print(f"\nExtracting circuit results from IRIS ...")
 
     inputs_r_np = iris.CQireeResult.reshape(inputs_r, [num_fragments, 3])
+    print("--------------------------------------------------------")
     print("all outputs:", inputs_r_np.shape, " output:", inputs_r_np)
+    print("--------------------------------------------------------")
     for fragment in range(inputs_r_np.shape[0]):
         for index in range(inputs_r_np.shape[1]):
-            print(inputs_r_np[i][j])
+            print(f"----({fragment},{index}): ", inputs_r_np[fragment][index])
     print(f"✓ Extracted {len(inputs_r)} results from {inputs_r_np.shape[0]} fragments ({inputs_r_np.shape[0] * inputs_r_np.shape[1]} subcircuits)")
+    print("--------------------------------------------------------")
 
 print(f"✓ Created {num_fragments_test} tasks")
 print(f"✓ Loaded {num_fragments_test*3} QIR circuits")

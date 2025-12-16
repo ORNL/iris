@@ -1834,7 +1834,7 @@ class CQireeResult:
     def __init__(self, values=[]):
         if len(values) > 0:
             self.count = values[0][1]
-            self.values = values[1:]
+            self.values = values[1:self.count+1]
         else:
             self.count = 0
             self.values = []
