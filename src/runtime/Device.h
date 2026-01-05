@@ -144,6 +144,7 @@ public:
   inline void TrackMemoryReads(Task *task, Command* cmd);
   inline void ResolveMemoryOutputDependency(Task *task, Command *cmd, BaseMem *mem, map<int, void *> & dep_streams, bool async);
   inline void ResolveWriteDependencies(Task *task, Command *cmd);
+  inline void AddMemoryAccessWriteDependencies(Task *task, Command *cmd, BaseMem *mem, int mem_stream);
   //inline void ResolveKernelDependencies(Task *task, Command *cmd);
   template <AsyncResolveType resolve_type>
   inline void ResolveOutputWriteDependency(Task *task, Command *cmd, BaseMem *mem, bool async, Device *select_src_dev=NULL);

@@ -266,6 +266,10 @@ namespace rt {
                     device_map_[i].ClearReadTrack();
                 }
             }
+            void clear_read_tracks(int devno) {
+                ASSERT(devno < ndevs_);
+                device_map_[devno].ClearReadTrack();
+            }
             void insert_read_track(int devno, int stream, Task *task, void *event) {
                 ASSERT(devno < ndevs_);
                 device_map_[devno].InsertReadTrack(stream, task, event);
