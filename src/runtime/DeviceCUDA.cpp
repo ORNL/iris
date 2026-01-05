@@ -495,7 +495,7 @@ int DeviceCUDA::ResetMemory(Task *task, Command *cmd, BaseMem *mem) {
     int stream_index = 0;
     bool async = false;
     if (is_async(task)) {
-        stream_index = GetStream(task); //task->uid() % nqueues_; 
+        stream_index = cmd->recommended_stream(); //GetStream(task); //task->uid() % nqueues_; 
         async = true;
         if (stream_index == DEFAULT_STREAM_INDEX) { async = false; stream_index = 0; }
     }
@@ -1615,7 +1615,7 @@ int DeviceCUDA::KernelLaunchInit(Command *cmd, Kernel* kernel) {
     CUstream *kstream = NULL;
     int nstreams = 0;
     if (is_async(kernel->task(), false)) {
-        stream_index = GetStream(kernel->task()); //task->uid() % nqueues_; 
+        stream_index = cmd->recommended_stream();  //GetStream(kernel->task()); //task->uid() % nqueues_; 
         if (stream_index == DEFAULT_STREAM_INDEX) { stream_index = 0; }
         kstream = &streams_[stream_index];
         //nstreams = nqueues_ - stream_index;
@@ -1652,7 +1652,7 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
   bool async = false;
   int nstreams = 0;
   if (is_async(kernel->task(), false)) { //Disable stream policy check
-      stream_index = GetStream(kernel->task()); //task->uid() % nqueues_; 
+      stream_index = cmd->recommended_stream();
       async = true;
       if (stream_index == DEFAULT_STREAM_INDEX) { async = false; stream_index = 0; }
       // Though async is set to false, we still pass all streams to kernel to use it
@@ -1663,6 +1663,7 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
   //_debug2("dev[%d][%s] task[%ld:%s] kernel launch::%ld:%s q[%d]", devno_, name_, kernel->task()->uid(), kernel->task()->name(), kernel->uid(), kernel->name(), stream_index);
   _event_prof_debug("kernel start dev[%d][%s] kernel[%s:%s] dim[%d] q[%d]\n", devno_, name_, kernel->name(), kernel->get_task_name(), dim, stream_index);
   if (kernel->is_vendor_specific_kernel(devno_)) {
+	 _event_debug("vendor host launch kernel start dev[%d][%s] kernel[%s:%s] dim[%d] q[%d]\n", devno_, name_, kernel->name(), kernel->get_task_name(), dim, stream_index);
      if (host2cuda_ld_->host_launch((void **)kstream, stream_index, 
                  nstreams, kernel->name(), 
                  kernel->GetParamWrapperMemory(), devno(),

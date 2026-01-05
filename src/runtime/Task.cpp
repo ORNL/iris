@@ -292,7 +292,7 @@ void Task::print_incomplete_tasks()
 void Task::Print()
 {
     printf("Task Name: %ld:%s ndep:%d nchild:%d\n", uid(), name(), ndepends_, nchilds_);
-    if (depends_uids_ == NULL) return;
+    //if (depends_uids_ == NULL) return;
     for (int i = 0; i < ndepends_; i++) {
       Task *dep= Depend(i);
       if (dep!= NULL) 
@@ -318,7 +318,8 @@ void Task::ClearCommands() {
 bool Task::Dispatchable(bool is_async_soft_touch) {
   bool called_from_worker = !is_async_soft_touch;
   if (!is_async_soft_touch && !is_async()) return true; // This is called by worker. If it is not async, dependency check has been already taken care by scheduler.
-  is_async_soft_touch = is_async_soft_touch && is_async();
+  is_async_soft_touch = is_async_soft_touch && is_async() && 
+      platform_->is_proactive_dispatch();
   //if we, or the tasks we depend on are pending (or not-complete), we can't run.
   _trace("Checking task:%lu:%s dispatchable depends_uids_:%p ndepends_:%d pending:%d is_async_soft_touch:%d called_from_worker:%d", uid(), name(), depends_uids_, ndepends_, (status_ == IRIS_PENDING), is_async_soft_touch, called_from_worker);
   //print_incomplete_tasks();
@@ -360,7 +361,7 @@ void Task::DispatchDependencies() {
 }
 void Task::InvokeDependentTaskDevices(Device *tdev) {
     //_info("Now11 invoke for task:%lu:%s nchilds:%d", uid(), name(), nchilds());
-    if(platform_->get_enable_proactive()) {
+    if(platform_->is_proactive_transfers()) {
         for (int i = 0; i < nchilds_; i++) {
             Task *dep= Child(i);
             if (dep!= NULL) {
@@ -589,7 +590,7 @@ void Task::AddDepend(Task* p_task, unsigned long p_uid) {
     ndepends_++;
   }
   pthread_mutex_unlock(&depend_mutex_);
-  if(platform_->get_enable_proactive() 
+  if(platform_->is_proactive_transfers() 
         //&& std::string(this->name()).find("GraphSync") == std::string::npos  
         //&& std::string(this->name()).find("flush") == std::string::npos  
         //&& std::string(this->name()).find("flush-out") == std::string::npos 
@@ -669,7 +670,7 @@ void Task::RemoveDepend(unsigned long p_uid)
   ndepends_ = j;
   pthread_mutex_unlock(&depend_mutex_);
 
-  if(platform_->get_enable_proactive()
+  if(platform_->is_proactive_transfers()
 	//&& std::string(this->name()).find("GraphSync") == std::string::npos  
 	//&& std::string(this->name()).find("flush") == std::string::npos  
 	//&& std::string(this->name()).find("flush-out") == std::string::npos 

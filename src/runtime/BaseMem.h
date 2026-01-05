@@ -228,12 +228,14 @@ namespace rt {
               BaseMem *source_mem = (BaseMem*)get_source_mem();
               if (source_mem != NULL && !own_events_) 
                   return source_mem->dev_unlock(devno);
+              ASSERT(devno >=0 && devno < ndevs_+1);
               device_map_[devno].Unlock();
             }
             void dev_lock(int devno) {
               BaseMem *source_mem = (BaseMem*)get_source_mem();
               if (source_mem != NULL && !own_events_) 
                   return source_mem->dev_lock(devno);
+              ASSERT(devno >=0 && devno < ndevs_+1);
               device_map_[devno].Lock();
             }
             void host_unlock() {
@@ -258,6 +260,19 @@ namespace rt {
                 }
                 device_map_[ndevs_].ClearDevice();
                 write_dev_ = -1;
+            }
+            void clear_read_tracks() {
+                for(int i=0; i<ndevs_; i++) {
+                    device_map_[i].ClearReadTrack();
+                }
+            }
+            void insert_read_track(int devno, int stream, Task *task, void *event) {
+                ASSERT(devno < ndevs_);
+                device_map_[devno].InsertReadTrack(stream, task, event);
+            }
+            map<int, DataReadTrack> & read_tracks(int devno) {
+                ASSERT(devno < ndevs_);
+                return device_map_[devno].ReadTracks();
             }
             void ClearAndAddWaitEvent(int devno, void *event) { 
                 BaseMem *source_mem = (BaseMem*)get_source_mem();

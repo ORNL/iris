@@ -210,6 +210,13 @@ public:
   //Task** depends() { return depends_; }
   unsigned long* depends() { return depends_uids_; }
   unsigned long depend_uid(int i) { ASSERT(i < ndepends_); return depends_uids_[i]; }
+  bool is_depend(unsigned long d_uid) {
+    for(int i=0; i<ndepends_; i++) {
+        if (depends_uids_[i] == d_uid) 
+            return true;
+    }
+    return false;
+  }
   Task* Depend(int i) { return platform_->get_task_object(depends_uids_[i]); }
   Task* depend(int i) { return platform_->get_task_object(depends_uids_[i]); }
   void* arch() { return arch_; }

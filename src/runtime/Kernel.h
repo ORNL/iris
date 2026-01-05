@@ -144,6 +144,7 @@ private:
   int julia_kernel_type_;
   int python_kernel_type_;
   int n_mems_;
+  int recommend_stram_;
   std::string name_;
   std::string task_name_;
   Task *task_;

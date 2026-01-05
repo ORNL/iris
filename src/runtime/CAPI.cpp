@@ -1257,6 +1257,12 @@ int iris_is_graph_null(iris_graph graph) {
   return (int)false;
 }
 
+void iris_graph_print(iris_graph brs_graph) {
+    Graph *graph = Platform::GetPlatform()->get_graph_object(brs_graph);
+    if (graph != NULL) {
+        graph->Print();
+    }
+}
 int iris_graph_create_json(const char* json, void** params, iris_graph* graph) {
   return Platform::GetPlatform()->GraphCreateJSON(json, params, graph);
 }

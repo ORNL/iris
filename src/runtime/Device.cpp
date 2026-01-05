@@ -484,8 +484,17 @@ void Device::Execute(Task* task) {
                                           is_kernel_skipped = true;
                                           break;
                                       }
+                                      bool async_launch = is_async(task) && task->user();
+                                      int stream_index = 0;
+                                      if (async_launch) {
+                                          stream_index = GetStream(task); //task->uid() % nqueues_; 
+                                      }
+                                      cmd->set_recommended_stream(stream_index);
                                       ExecuteMemIn(task, cmd);
+
+                                      ResolveWriteDependencies(task, cmd);
                                       ExecuteKernel(cmd);     
+                                      TrackMemoryReads(task, cmd);
                                       ExecuteMemOut(task, cmd);
                                       for(DataMem *dmem : d2h_dmems) {
                                           dmem->set_dirty_except(devno_);
@@ -809,19 +818,40 @@ void Device::DeviceEventExchange(Task *task, BaseMem *mem, void *input_event, in
 
 }
 template <AsyncResolveType resolve_type>
-void Device::ResolveOutputWriteDependency(Task *task, BaseMem *mem, bool async, Device *select_src_dev)
+void Device::ResolveOutputWriteDependency(Task *task, Command *cmd, BaseMem *mem, bool async, Device *select_src_dev)
 {
     if(!async) return;
     int mem_stream = GetStream(task, mem);
     if (resolve_type == ASYNC_D2H_SYNC) {
-        Device *input_dev = select_src_dev;
-        int input_devno = input_dev->devno();
-        int input_stream = input_dev->GetStream(task, mem);
-        void *input_event = mem->GetDeviceSpecificHostCompletionEvent(input_devno);
-        if (input_stream != -1) {
-            mem->HardHostWriteEventSynchronize(input_dev, input_event);
-            ResetContext();
-            _event_debug(" HardHostWriteEventSynchronize ASYNC_D2H_SYNC dev:[%d][%s] src_dev:[%d][%s] Wait for event:%p mem_stream:%d input_stream:%d", devno(), name(), input_dev->devno(), input_dev->name(), input_event, mem_stream, input_stream); 
+        ASSERT(mem->GetMemHandlerType() == IRIS_DMEM ||
+                    mem->GetMemHandlerType() == IRIS_DMEM_REGION);
+        ASSERT(select_src_dev == NULL);
+        int kernel_stream = cmd->recommended_stream();
+        DataMem *dmem = (DataMem *)mem;
+        if (dmem->is_regions_enabled()) {
+            // If regisions are enabled
+            int n_regions = dmem->get_n_regions();
+            for (int i=0; i<n_regions; i++) {
+                DataMemRegion *rmem = (DataMemRegion *)dmem->get_region(i, false);
+                ResolveOutputWriteDependency<ASYNC_D2H_SYNC>(task, cmd, rmem, async, select_src_dev);
+            }
+        }
+        else {
+            int host_w_devno = dmem->GetHostWriteDevice();
+            int host_w_stream = dmem->GetHostWriteStream();
+            void *host_w_event = dmem->GetHostCompletionEvent();
+            Device *host_write_dev = (host_w_devno != -1) ? Platform::GetPlatform()->device(host_w_devno) : nullptr;
+            _event_debug(" Inside ASYNC_D2H_SYNC dev:[%d][%s] src_dev:[%d][%s] mem:[%lu] Wait for event:%p mem_stream:%d input_stream:%d", devno(), name(), host_w_devno, ((host_write_dev != nullptr) ? host_write_dev->name() : ""), mem->uid(), host_w_event, kernel_stream, host_w_stream); 
+            if (host_w_devno == -1 || host_w_stream == -1 || host_w_event == NULL) return;
+            if (host_w_devno == devno() && host_w_stream == kernel_stream) return;
+            if (host_write_dev->type() == type()) {
+                WaitForEvent(host_w_event, kernel_stream, iris_event_wait_default);
+                _printf(" WaitForEvent ASYNC_D2H_SYNC dev:[%d][%s] src_dev:[%d][%s] mem:[%lu] Wait for event:%p mem_stream:%d input_stream:%d", devno(), name(), host_w_devno, host_write_dev->name(), mem->uid(), host_w_event, kernel_stream, host_w_stream); 
+            }
+            else {
+                dmem->HardHostWriteEventSynchronize(host_write_dev, host_w_event);
+                _printf(" HardHostWriteEventSynchronize ASYNC_D2H_SYNC dev:[%d][%s] src_dev:[%d][%s] mem:[%lu] Wait for event:%p mem_stream:%d input_stream:%d", devno(), name(), host_w_devno, host_write_dev->name(), mem->uid(), host_w_event, kernel_stream, host_w_stream); 
+            }
         }
     }
     else if (resolve_type == ASYNC_D2O_SYNC) {
@@ -889,7 +919,7 @@ void Device::ResolveH2DStartEvents(Task *task, BaseMem *mem, bool async, BaseMem
 }
 void Device::ProactiveTransfers(Task *task, Command *cmd)
 {
-  if (!Platform::GetPlatform()->get_enable_proactive()) return;
+  if (!Platform::GetPlatform()->is_proactive_transfers()) return;
   if (cmd->kernel() == NULL) return;
   _debug2("Doing proactive transfers for task:%s:%lu", task->name(), task->uid());
   int ndevs = Platform::GetPlatform()->ndevs();
@@ -1017,13 +1047,11 @@ void Device::ExecuteKernel(Command* cmd) {
   KernelArg* args = cmd->kernel_args();
   int *params_map = cmd->get_params_map();
   int arg_idx = 0;
-  int stream_index = 0;
+  int stream_index = cmd->recommended_stream();
   string tname = task->name();
   bool async_launch = is_async(task) && task->user();
   if (async_launch) {
-      WaitForTaskInputAvailability(devno(), task, cmd);
-      async_launch = true;
-      stream_index = GetStream(task); //task->uid() % nqueues_; 
+      WaitForKernelInputAvailability(task, cmd);
   }
   if (async_launch && platform_obj_->is_malloc_async()) {
       ResetContext();
@@ -1126,9 +1154,10 @@ void Device::ExecuteKernel(Command* cmd) {
   cmd->SetTime(time);
   if (async_launch) {
       void **event = cmd->kernel()->GetCompletionEventPtr(true);
-      RecordEvent(event, task->recommended_stream());
-      _event_debug("Task RecordEvent recording event for task:%lu %s stream:%d event:%p\n", task->uid(), task->name(), task->recommended_stream(), *event);
-      _event_prof_debug("Task RecordEvent recording event for task:%lu %s stream:%d event:%p\n", task->uid(), task->name(), task->recommended_stream(), *event);
+      //cmd->set_recommended_stream(stream_index);
+      RecordEvent(event, cmd->recommended_stream());
+      _event_debug("Task RecordEvent recording event for task:%lu %s stream:%d event:%p\n", task->uid(), task->name(), cmd->recommended_stream(), *event);
+      _event_prof_debug("Task RecordEvent recording event for task:%lu %s stream:%d event:%p\n", task->uid(), task->name(), cmd->recommended_stream(), *event);
       //if (task->uid() == 14)
       //EventSynchronize(cmd->kernel()->GetCompletionEvent());
   }
@@ -1183,23 +1212,38 @@ void Device::ExecuteMemResetInput(Task *task, Command* cmd) {
     }
     if (bmem->GetMemHandlerType() == IRIS_DMEM || 
             bmem->GetMemHandlerType() == IRIS_DMEM_REGION) {
-        int mem_stream = GetStream(task); 
         DataMem* mem = (DataMem *)cmd->mem();
         if (mem->get_source_mem() != NULL) mem = (DataMem*)mem->get_source_mem();
         mem->dev_lock(devno_);
+        map<int, void *> dep_streams;
+        bool async = is_async(task);
+        int stream_index = 0; 
+        if (async) {
+            stream_index = GetStream(task); 
+            cmd->set_recommended_stream(stream_index);
+            task->set_last_cmd_stream(stream_index);
+        }
+        bool is_proactive_dispatch = platform_obj_->is_proactive_dispatch();
+        bool l_async = async && is_proactive_dispatch;
+        ResolveMemoryOutputDependency(task, cmd, mem, dep_streams, l_async);
+        for (auto & k : dep_streams) {
+            _event_debug("Adding reset memory WaitForEvent dependency for task:[%lu][%s] stream:%d in_stream:%d in_event:%p\n", task->uid(), task->name(), stream_index, k.first, k.second);
+            WaitForEvent(k.second, stream_index, iris_event_wait_default);
+        }
         ResetMemory(task, cmd, mem);
         mem->set_host_dirty();
         mem->set_dirty_except(devno_);
         mem->dev_unlock(devno_);
-        if (is_async(task)) {
+        if (async) {
+            mem->clear_read_tracks();
             mem->clear_d2h_events();
             mem->clear_streams();
-            EVENT_DEBUG(void *k_event = ) mem->RecordEvent(devno(), mem_stream, true); 
+            EVENT_DEBUG(void *k_event = ) mem->RecordEvent(devno(), stream_index, true); 
             //mem->SetWriteDevice(devno());
             //mem->SetWriteDeviceEvent(devno(), mem->GetCompletionEvent(devno()));
-            //mem->SetWriteStream(devno(), mem_stream);
+            //mem->SetWriteStream(devno(), stream_index);
             //It should create new entry of event instead of using existing one
-            _event_debug("Reset RecordEvent mem set stream   task:[%lu][%s] output dmem:%lu stream:%d, dev:%d event:%p\n", task->uid(), task->name(), mem->uid(), mem_stream, devno(), k_event);
+            _event_debug("Reset RecordEvent mem set stream   task:[%lu][%s] output dmem:%lu stream:%d, dev:%d event:%p\n", task->uid(), task->name(), mem->uid(), stream_index, devno(), k_event);
         }
     }
 }
@@ -1363,21 +1407,51 @@ void Device::ExecuteMemIn(Task *task, Command* cmd) {
     }
 }
 
-void Device::WaitForTaskInputAvailability(int devno, Task *task, Command *cmd)
+void Device::WaitForKernelInputAvailability(Task *task, Command *cmd)
 {
+    int task_stream = cmd->recommended_stream();
+    int *params_map = cmd->get_params_map();
+    _event_debug(" Inside task:%lu:%s \n", task->uid(), task->name());
     for(auto && z : cmd->kernel()->in_mems()) {
         BaseMem *mem = z.first;
         int idx = z.second;
         //if (mem->GetMemHandlerType() == IRIS_MEM) continue;
-        BaseMem *dmem = (BaseMem *)mem;
-        int task_stream = GetStream(task);
-        int dmem_stream = dmem->GetWriteStream(devno);
-        void *event = dmem->GetWriteDeviceEvent(devno);
+        if (params_map != NULL && 
+                (params_map[idx] & iris_all) == 0 && 
+                !(params_map[idx] & type_) ) continue;
+        if (!(mem->GetMemHandlerType() == IRIS_DMEM ||
+                    mem->GetMemHandlerType() == IRIS_DMEM_REGION)) continue;
+        DataMem *dmem = (DataMem *)mem;
         // If DMEM input is not yet happened due to reset flag enabled
-        if (dmem_stream != task_stream && event != NULL) {
-            _event_debug("Wait for event\n");
-            WaitForEvent(event, task_stream, iris_event_wait_default);
-            _event_debug(" WaitForEvent task:%s:%lu mem:%lu Waiting for event:%p to be fired devno:%d task_stream:%d waiting for dmem_stream:%d\n", task->name(), task->uid(), dmem->uid(), event, devno, task_stream, dmem_stream);
+        bool enable=true;
+        if (enable && dmem->is_regions_enabled()) {
+            int n_regions = dmem->get_n_regions();
+            for (int i=0; i<n_regions; i++) {
+                DataMemRegion *rmem = (DataMemRegion *)dmem->get_region(i, false);
+                int written_stream = rmem->GetWriteStream(devno());
+                void *event = rmem->GetWriteDeviceEvent(devno());
+                _event_debug(" Inside parent dmem:%lu(non-dirty)  dmem:%lu written_stream:%d task_stream:%d, event:%p dev[%d][%s]\n",
+                       dmem->uid(), rmem->uid(), written_stream, task_stream, event, devno(), name()); 
+                if (task_stream != written_stream && event != NULL) {
+                    int status = WaitForEvent(event, task_stream, iris_event_wait_default);
+                    _event_debug(" WaitForEvent parent dmem:%lu(non-dirty)  dmem:%lu written_stream:%d task_stream:%d, event:%p dev[%d][%s]\n",
+                           dmem->uid(), rmem->uid(), written_stream, task_stream, event, devno(), name()); 
+                    if (status == IRIS_ERROR) {
+                        rmem->Print("Region memory: ");
+                        _error(" WaitForEvent parent task:%s dmem:%lu(non-dirty):%s  dmem:%lu:%s written_stream:%d task_stream:%d, event:%p dev[%d][%s]\n",
+                               task->name(), dmem->uid(), dmem->name(), rmem->uid(), rmem->name(), written_stream, task_stream, event, devno(), name()); 
+                    }
+                }
+            }
+        }
+        else  {
+            int dmem_stream = dmem->GetWriteStream(devno());
+            void *event = dmem->GetWriteDeviceEvent(devno());
+            if (dmem_stream != task_stream && event != NULL) {
+                _event_debug("Wait for event\n");
+                WaitForEvent(event, task_stream, iris_event_wait_default);
+                _event_debug(" WaitForEvent task:%s:%lu mem:%lu Waiting for event:%p to be fired devno:%d task_stream:%d waiting for dmem_stream:%d\n", task->name(), task->uid(), dmem->uid(), event, devno(), task_stream, dmem_stream);
+            }
         }
     }
 }
@@ -1667,7 +1741,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
             prof_event.RecordEndEvent(); 
         }
         ResetContext(); //This is must. Otherwise, it may still point to src_dev context
-        ResolveOutputWriteDependency<ASYNC_D2O_SYNC>(task, mem, async, src_dev);
+        ResolveOutputWriteDependency<ASYNC_D2O_SYNC>(task, cmd, mem, async, src_dev);
         if (!async && kernel != NULL && kernel->is_profile_data_transfers()) {
             kernel->AddInDataObjectProfile({(uint32_t) cmd->task()->uid(), (uint32_t) mem->uid(), (uint32_t) iris_dt_d2o, (uint32_t) non_cpu_dev, (uint32_t) devno_, start, end});
         }
@@ -1900,12 +1974,15 @@ void Device::ExecuteMemInDMemIn(Task *task, Command* cmd, DataMem *mem) {
         for (int i=0; i<n_regions; i++) {
             DataMemRegion *rmem = (DataMemRegion *)mem->get_region(i, false);
             if (rmem->is_dev_dirty(devno_)) {
-                _event_debug("Initiating DMEM_REGION region(%d) data transfer dev[%d:%s] task[%ld:%s] dmem_reg[%lu] dmem[%lu]", i, devno_, name_, task->uid(), task->name(), rmem->uid(), rmem->get_dmem()->uid());
+                _event_debug("Initiating DMEM/DMEM_REGION region(%d) data transfer dev[%d:%s] task[%ld:%s] dmem_reg[%lu] dmem[%lu]", i, devno_, name_, task->uid(), task->name(), rmem->uid(), rmem->get_dmem()->uid());
                 DataMemRegion *dev_rmem = (DataMemRegion *)mem->get_region(i, true);
                 CopyDataBetweenConnectedDMemRegions(task, cmd, rmem, dev_rmem);
             }
             else {
-                _event_debug("Skipped DMEM_REGION region(%d) H2D data transfer dev[%d:%s] task[%ld:%s] dmem_reg[%lu] dmem[%lu] dptr[%p]", i, devno_, name_, task->uid(), task->name(), rmem->uid(), rmem->get_dmem()->uid(), rmem->get_arch(devno_));
+                _event_debug("Skipped DMEM/DMEM_REGION region(%d) H2D data transfer dev[%d:%s] task[%ld:%s] dmem_reg[%lu] dmem[%lu] dptr[%p]", i, devno_, name_, task->uid(), task->name(), rmem->uid(), rmem->get_dmem()->uid(), rmem->get_arch(devno_));
+#if 0
+                // This is the wrong place to create event dependency. 
+                // Handle event dependencies in WaitForKernelInputAvailability
                 if (async) {
                     int written_stream = rmem->GetWriteStream(devno());
                     void *event = rmem->GetWriteDeviceEvent(devno());
@@ -1921,6 +1998,7 @@ void Device::ExecuteMemInDMemIn(Task *task, Command* cmd, DataMem *mem) {
                     }
                 }
                 //if (is_async(task)) WaitForDataAvailability<DataMemRegion>(devno_, task, rmem);
+#endif 
             }
         }
         if (async) {
@@ -2175,10 +2253,47 @@ int Device::BringDataToHost(Task *task, DataMem *mem,
     }
     return errid;
 }
+void Device::TrackMemoryReads(Task *task, Command* cmd) {
+    if (cmd == NULL || cmd->kernel() == NULL) return;
+    bool async = is_async(task) && platform_obj_->is_proactive_dispatch();
+    if (!async) return;
+    int *params_map = cmd->get_params_map();
+    //int nargs = cmd->kernel_nargs();
+    for(auto && z : cmd->kernel()->in_mems()) {
+        BaseMem *mem = z.first;
+        int idx = z.second;
+        if (params_map != NULL && 
+                (params_map[idx] & iris_all) == 0 && 
+                !(params_map[idx] & type_) ) continue;
+        //if (mem->get_source_mem() != NULL) mem = (DataMem*)mem->get_source_mem();
+        if (!(mem->GetMemHandlerType() == IRIS_DMEM ||
+                    mem->GetMemHandlerType() == IRIS_DMEM_REGION)) continue;
+        DataMem *dmem = (DataMem *)mem;
+        int stream_index = cmd->recommended_stream();
+        void *event = cmd->kernel()->GetCompletionEvent();
+        dmem->insert_read_track(devno(), stream_index, task, event);
+        if (dmem->is_regions_enabled()) {
+            // If regisions are enabled
+            int n_regions = dmem->get_n_regions();
+            for (int i=0; i<n_regions; i++) {
+                DataMemRegion *rmem = (DataMemRegion *)dmem->get_region(i, false);
+                rmem->insert_read_track(devno(), stream_index, task, event);
+            }
+            for (int i=0; i<n_regions; i++) {
+                DataMemRegion *rmem = (DataMemRegion *)dmem->get_region(i, false);
+                DataMemRegion *dev_rmem = (DataMemRegion *)dmem->get_region(i, true);
+                if (dev_rmem != rmem) {
+                    dev_rmem->insert_read_track(devno(), stream_index, task, event);
+                }
+            }
+        }
+    }
+}
 void Device::ExecuteMemOut(Task *task, Command* cmd) {
     if (cmd == NULL || cmd->kernel() == NULL) return;
     int *params_map = cmd->get_params_map();
     //int nargs = cmd->kernel_nargs();
+    int kstream = cmd->recommended_stream();
     for(auto && z : cmd->kernel()->out_mems()) {
         BaseMem *mem = z.first;
         int idx = z.second;
@@ -2197,9 +2312,10 @@ void Device::ExecuteMemOut(Task *task, Command* cmd) {
             //dmem->Print(); dmem->Print("After dirty set: ");
         }
         if (is_async(task)) {
-            int mem_stream = GetStream(task);
+            int mem_stream = kstream; //GetStream(task);
             mem->clear_d2h_events();
             mem->clear_streams();
+            mem->clear_read_tracks();
             mem->SetWriteStream(devno(), mem_stream);
             mem->SetWriteDevice(devno());
             void *k_event = cmd->kernel()->GetCompletionEvent();
@@ -2214,6 +2330,7 @@ void Device::ExecuteMemOut(Task *task, Command* cmd) {
 					int n_regions = dmem->get_n_regions();
 					for (int i=0; i<n_regions; i++) {
 						DataMemRegion *rmem = (DataMemRegion *)dmem->get_region(i, false);
+                        rmem->clear_read_tracks();
 						rmem->clear_d2h_events();
 						rmem->clear_streams();
 						rmem->SetWriteStream(devno(), mem_stream);
@@ -2224,13 +2341,62 @@ void Device::ExecuteMemOut(Task *task, Command* cmd) {
 						DataMemRegion *rmem = (DataMemRegion *)dmem->get_region(i, false);
 						DataMemRegion *dev_rmem = (DataMemRegion *)dmem->get_region(i, true);
 						if (dev_rmem != rmem) {
-							rmem->clear_d2h_events();
-							rmem->clear_streams();
+                            dev_rmem->clear_read_tracks();
+							dev_rmem->clear_d2h_events();
+							dev_rmem->clear_streams();
 						}
 					}
 				}
 			}
         }
+    }
+}
+void Device::ResolveMemoryOutputDependency(Task *task, Command *cmd, BaseMem *mem, map<int, void *> & dep_streams, bool async) {
+    ResolveOutputWriteDependency<ASYNC_D2H_SYNC>(task, cmd, mem, async);
+    auto read_trac = mem->read_tracks(devno());
+    for( auto && z : read_trac ) {
+        int k_stream = z.first;
+        DataReadTrack & track = z.second;
+        void *k_event = track.event();
+        bool enable = false;
+        if (task == track.task()) {
+            enable = true;
+        }
+        else if (task->is_depend(track.task()->uid())) {
+            enable = true;
+        }
+        if (enable) {
+            if (dep_streams.find(k_stream) != dep_streams.end())
+                dep_streams[k_stream] = k_event;
+            else
+                dep_streams.insert(make_pair(k_stream, k_event));
+        }
+    }
+}
+void Device::ResolveWriteDependencies(Task *task, Command *cmd) {
+    // Assume a scenario. A previous flush is happening. At the same time, another 
+    // task is trying to write. It should wait until the flush completes. 
+    // In general, we can expect the use to create a dependency for the flush to the 
+    // current task. However, an automation for flush will make it easy. 
+    // This is required for both proactive and non-proactive dispatch modes
+    bool async = is_async(task) && platform_obj_->is_proactive_dispatch();
+    if (!async) return;
+    int *params_map = cmd->get_params_map();
+    map<int, void *> dep_streams; 
+    int stream_index = cmd->recommended_stream();
+    for(auto && z : cmd->kernel()->out_mems()) {
+        BaseMem *mem = z.first;
+        int idx = z.second;
+        if (params_map != NULL && 
+                (params_map[idx] & iris_all) == 0 && 
+                !(params_map[idx] & type_) ) continue;
+        if (!(mem->GetMemHandlerType() == IRIS_DMEM ||
+                    mem->GetMemHandlerType() == IRIS_DMEM_REGION)) continue;
+        ResolveMemoryOutputDependency(task, cmd, mem, dep_streams, async);
+    }
+    for (auto & k : dep_streams) {
+        _printf("Adding kernel dependency for task:[%lu][%s] stream:%d in_stream:%d in_event:%p\n", task->uid(), task->name(), stream_index, k.first, k.second);
+        WaitForEvent(k.second, stream_index, iris_event_wait_default);
     }
 }
 void Device::ExecuteMemFlushOut(Command* cmd, BaseMem *target_mem, Task *task) {
@@ -2249,7 +2415,8 @@ void Device::ExecuteMemFlushOut(Command* cmd, BaseMem *target_mem, Task *task) {
 	//_printf("Inside flush of mem: %lu\n", mem->uid());
     //if (mem->get_source_mem() != NULL) mem = (DataMem*)mem->get_source_mem();
     //mem->Print("Flush out:");
-    if (mem->is_host_dirty()) {
+    bool is_host_dirty  = mem->is_host_dirty();
+    if (is_host_dirty) {
         void* host = mem->host_memory(); // It should work even if host_ptr is null
         //printf("Pointer offset mem:%lu %lu, gws %lu lws %lu elem_size %lu dim %d size %lu host:%p\n", 
         //    mem->uid(), *ptr_off, *gws, *lws, elem_size, dim, size, host);
@@ -2270,7 +2437,7 @@ void Device::ExecuteMemFlushOut(Command* cmd, BaseMem *target_mem, Task *task) {
                     d2d_dev, cpu_dev, non_cpu_dev, async);
             _event_debug(" Flushing out mem:%lu dev:[%d][%s] src_dev:%d:%s\n", mem->uid(), devno(), name(), src_dev->devno(), src_dev->name());
             //printf(" Flushing out mem:%lu dev:[%d][%s] src_dev:%d:%s nddevs[0]:%d\n", mem->uid(), devno(), name(), src_dev->devno(), src_dev->name(), nddevs[0]);
-            if (nddevs[0] == -1 && mem->is_host_dirty()) {
+            if (nddevs[0] == -1 && is_host_dirty) {
                 if (mem->is_reset()) {
                     HandleMemReset(async, cmd, NULL, task, mem, mem);
                     return;
@@ -2281,12 +2448,11 @@ void Device::ExecuteMemFlushOut(Command* cmd, BaseMem *target_mem, Task *task) {
                 }
                 // Device is dirty flag.
             }
-			else {
-                if (mem->is_host_dirty()) {
-                    // If no source device is found. Just return safely.
-                    _warning("mem id:%lu is not initialzeed and doesn't have valid data either on any device or host memory. Hence, safely returning from flush operation", mem->uid());
+			else if (nddevs[0] == -1) {
+                if (!is_host_dirty) {
+                    // If host is not dirty; it is fine. just return.
+                    return;
                 }
-				return;
 			}
             src_dev = Platform::GetPlatform()->device(nddevs[0]);
             errid_ = src_dev->BringDataToHost(task, mem, host, "MemFlushOut ");

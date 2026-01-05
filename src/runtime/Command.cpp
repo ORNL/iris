@@ -46,6 +46,7 @@ void Command::set_time_end(Timer* d) {
 
 void Command::Clear(bool init) {
   n_mems_ = 0;
+  recommend_stram_ = -1;
   host_ = NULL;
   params_map_ = NULL;
   kernel_ = NULL;

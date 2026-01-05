@@ -1860,6 +1860,8 @@ extern int iris_mem_release(iris_mem mem);
  */
 extern int iris_graph_create(iris_graph* graph);
 
+extern void iris_graph_print(iris_graph graph);
+
 /**@brief Creates a graph
  *
  * @return This function returns empty graph

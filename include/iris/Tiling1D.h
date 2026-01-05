@@ -144,6 +144,16 @@ namespace iris {
                 {
                     Init(data, row_size, row_tile_size, row_stride, usm_flag, reset_flag);
                 }
+                virtual ~Tiling1D() {
+                    if (tiles_ != NULL) free(tiles_);
+                    if (iris_mem_tiles_ != NULL) {
+                        /*for(size_t i=0; i<row_tiles_count_; i++) {
+                            iris_mem mem = iris_mem_tiles_[i];
+                            iris_mem_release(mem);
+                        }*/
+                        free(iris_mem_tiles_);
+                    }
+                }   
                 void Init(DType *data, size_t row_size, size_t row_tile_size, bool usm_flag=false, bool reset_flag=false) 
                 {
                     InitCore(data, row_size, row_tile_size, usm_flag, reset_flag);
@@ -228,10 +238,6 @@ namespace iris {
                     iterator_type_ = TILE1D_COL_FIRST;
                     tiles_ = NULL;
                     iris_mem_tiles_ = NULL;
-                }
-                ~Tiling1D() {
-                    if (tiles_ != NULL) free(tiles_);
-                    if (iris_mem_tiles_ != NULL) free(iris_mem_tiles_);
                 }
                 Tile1D<DType> & GetAt(size_t row_tile_index) {
                     return tiles_[row_tile_index];

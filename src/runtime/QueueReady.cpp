@@ -3,7 +3,7 @@
 #include "Device.h"
 #include <utility>
 
-#define FLUSH_INDEPENDENT_QUEUE
+//#define FLUSH_INDEPENDENT_QUEUE
 using namespace std;
 namespace iris {
 namespace rt {

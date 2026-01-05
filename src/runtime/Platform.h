@@ -271,7 +271,7 @@ public:
   bool is_scheduling_history_enabled() { return enable_scheduling_history_; }
   bool is_event_profile_enabled() { return event_profile_enabled_; }
   bool is_async() { return async_; }
-  void set_async(bool flag=true) { async_ = flag; enable_proactive_ = true; }
+  void set_async(bool flag=true) { async_ = flag; enable_proactive_transfers_ = flag; enable_proactive_transfers_ = flag; }
   SchedulingHistory* scheduling_history() { return scheduling_history_; }
   double time_app() { return time_app_; }
   double time_init() { return time_init_; }
@@ -305,8 +305,10 @@ public:
   BaseMem* GetMem(iris_mem brs_mem);
   BaseMem* GetMem(void* host, size_t* off);
   shared_ptr<History> CreateHistory(string kname);
-  bool get_enable_proactive(){ return enable_proactive_;}
-  void set_enable_proactive(bool enable_proactive){ enable_proactive_ = enable_proactive;}
+  bool is_proactive_dispatch() { return enable_proactive_dispatch_; }
+  bool is_proactive_transfers(){ return enable_proactive_transfers_;}
+  void set_proactive_dispatch(bool enable_proactive){ enable_proactive_dispatch_ = enable_proactive;}
+  void set_proactive_transfers(bool enable_proactive){ enable_proactive_transfers_ = enable_proactive;}
   bool disable_init_scheduler() { return disable_init_scheduler_; }
   bool disable_init_devices() { return disable_init_devices_; }
   bool disable_init_workers() { return disable_init_workers_; }
@@ -438,7 +440,8 @@ private:
   double time_app_;
   double time_init_;
   char tmp_dir_[263];
-  bool enable_proactive_;
+  bool enable_proactive_dispatch_;
+  bool enable_proactive_transfers_;
   bool disable_init_devices_;
   bool disable_init_scheduler_;
   bool disable_init_workers_;

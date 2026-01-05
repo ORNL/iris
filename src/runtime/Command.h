@@ -126,12 +126,15 @@ public:
   int get_access_index() { return access_index_; }
   int src_dev() { return src_dev_; }
   void set_src_dev(int devno) { src_dev_ = devno; }
+  int recommended_stream() { return recommend_stram_; }
+  void set_recommended_stream(int stream) { recommend_stram_ = stream; }
 private:
   void Clear(bool init);
 
 private:
   int type_;
   int devno_;
+  int recommend_stram_;
   int src_dev_;
   size_t size_;
   void* host_;

@@ -129,7 +129,8 @@ void Platform::Reset() {
   hook_command_pre_ = NULL;
   hook_command_post_ = NULL;
   scheduling_history_ = NULL;
-  enable_proactive_ = false;
+  enable_proactive_dispatch_ = true;
+  enable_proactive_transfers_ = false;
   disable_kernel_launch_ = false;
 #ifdef AUTO_PAR
   auto_dag_ = NULL;
@@ -251,6 +252,8 @@ int Platform::Init(int* argc, char*** argv, int sync) {
 
   EnvironmentBoolRead("DEFAULT_KERNELS", enable_default_kernels_load_);
   EnvironmentBoolRead("DISABLE_KERNEL_LAUNCH", disable_kernel_launch_);
+  EnvironmentBoolRead("DISABLE_PRO_TRANSFERS", enable_proactive_transfers_, false);
+  EnvironmentBoolRead("DISABLE_PRO_DISPATCH", enable_proactive_dispatch_, false);
   EnvironmentBoolRead("PROFILE", enable_profiler_);
   EnvironmentBoolRead("HISTORY", enable_scheduling_history_);
   EnvironmentBoolRead("EVENT_PROFILE", event_profile_enabled_);

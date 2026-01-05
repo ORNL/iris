@@ -248,7 +248,7 @@ int DeviceHIP::ResetMemory(Task *task, Command *cmd, BaseMem *mem) {
     hipError_t err;
     bool async = false;
     if (is_async(task)) {
-        stream_index = GetStream(task); //task->uid() % nqueues_; 
+        stream_index = cmd->recommended_stream(); //GetStream(task); //task->uid() % nqueues_; 
         async = true;
         if (stream_index == DEFAULT_STREAM_INDEX) { async = false; stream_index = 0; }
     }
@@ -1279,7 +1279,7 @@ int DeviceHIP::KernelLaunchInit(Command *cmd, Kernel* kernel) {
     hipStream_t *kstream = NULL;
     int nstreams = 0;
     if (is_async(kernel->task(), false)) {
-        stream_index = GetStream(kernel->task()); //task->uid() % nqueues_; 
+        stream_index = cmd->recommended_stream(); //GetStream(kernel->task()); //task->uid() % nqueues_; 
         if (stream_index == DEFAULT_STREAM_INDEX) { stream_index = 0; }
         kstream = &streams_[stream_index];
         //nstreams = nqueues_ - stream_index;
@@ -1310,6 +1310,7 @@ void DeviceHIP::VendorKernelLaunch(void *kernel, int gridx, int gridy, int gridz
 
 
 int DeviceHIP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws) {
+  Command *cmd = kernel->command();
 #ifdef TRACE_DISABLE
   hipCtx_t ctx;
   ld_->hipCtxGetCurrent(&ctx);
@@ -1326,7 +1327,7 @@ int DeviceHIP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, s
   bool async = false;
   int nstreams = 0;
   if (is_async(kernel->task(), false)) {
-      stream_index = GetStream(kernel->task()); //task->uid() % nqueues_; 
+      stream_index = cmd->recommended_stream(); //GetStream(kernel->task()); //task->uid() % nqueues_; 
       async = true;
       if (stream_index == DEFAULT_STREAM_INDEX) { async = false; stream_index = 0; }
       // Though async is set to false, we still pass all streams to kernel to use it

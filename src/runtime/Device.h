@@ -101,7 +101,7 @@ public:
   virtual void EnablePeerAccess() { }
   virtual bool IsD2DPossible(Device *target) { return true; }
   void ProactiveTransfers(Task *task, Command *cmd);
-  void WaitForTaskInputAvailability(int devno, Task *task, Command *cmd);
+  void WaitForKernelInputAvailability(Task *task, Command *cmd);
   template <typename DMemType>
   void WaitForDataAvailability(int devno, Task *task, DMemType *mem, int read_stream=-1);
   void CopyDataBetweenConnectedDMemRegions(Task *task, Command *cmd, DataMemRegion *rmem, DataMemRegion *dev_rmem, bool is_dev_centric=false);
@@ -141,8 +141,12 @@ public:
   void ResolveDeviceWrite(Task *task, BaseMem *mem, Device *input_dev, bool instant_wait, BaseMem *src_mem=NULL);
   template <AsyncResolveType resolve_type>
   inline void ResolveInputWriteDependency(Task *task, BaseMem *mem, bool async, Device *select_src_dev=NULL, BaseMem *src_mem=NULL);
+  inline void TrackMemoryReads(Task *task, Command* cmd);
+  inline void ResolveMemoryOutputDependency(Task *task, Command *cmd, BaseMem *mem, map<int, void *> & dep_streams, bool async);
+  inline void ResolveWriteDependencies(Task *task, Command *cmd);
+  //inline void ResolveKernelDependencies(Task *task, Command *cmd);
   template <AsyncResolveType resolve_type>
-  inline void ResolveOutputWriteDependency(Task *task, BaseMem *mem, bool async, Device *select_src_dev);
+  inline void ResolveOutputWriteDependency(Task *task, Command *cmd, BaseMem *mem, bool async, Device *select_src_dev=NULL);
   inline void DeviceEventExchange(Task *task, BaseMem *mem, void *input_event, int input_stream, Device *input_dev);
   void SynchronizeInputToMemory(Task *task, BaseMem *mem);
   void GetPossibleDevices(BaseMem *mem, int devno, int *nddevs, 

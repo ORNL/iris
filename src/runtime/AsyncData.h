@@ -2,9 +2,23 @@
 #include <pthread.h>
 #include "EventExchange.h"
 #include <stack>
+#include <map>
 
+using namespace std;
 namespace iris {
     namespace rt {
+        class Task;
+        class DataReadTrack {
+            public:
+            Task *task_;
+            void *event_; // Completion event
+            DataReadTrack(Task *task, void *event) : 
+                task_(task), event_(event) {}
+            DataReadTrack() : task_(nullptr), event_(nullptr) {}
+            virtual ~DataReadTrack() { }
+            Task *task() { return task_; }
+            void *event() { return event_; }
+        };
         template <typename CoreClass>
             class AsyncData {
                 public:
@@ -79,12 +93,31 @@ namespace iris {
                     void Lock() {
                         pthread_mutex_lock(&mutex_);
                     }
+                    void ClearReadTrack() {
+                        data_reads_.clear();                       
+                    }
+                    void InsertReadTrack(int stream, Task *task, 
+                            void *complete_event) {
+                        if (data_reads_.find(stream) != 
+                                data_reads_.end()) 
+                            data_reads_.insert(
+                                    make_pair(stream, 
+                                        DataReadTrack(task, 
+                                            complete_event)));
+                        else
+                            data_reads_[stream] = 
+                                DataReadTrack(task, complete_event);
+                    }
+                    map<int, DataReadTrack> & ReadTracks() {
+                        return data_reads_;
+                    }
                 private:
                     CoreClass *core_;
                     EventExchange *exchange_;
                     stack<void *> completion_event_;
                     pthread_mutex_t mutex_;
                     vector<void *> waiting_events_;
+                    map<int, DataReadTrack> data_reads_;
                     int devno_;
                     int  write_streams_;
                     bool proactive_transfer_;
