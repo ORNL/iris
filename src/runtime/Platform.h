@@ -277,6 +277,8 @@ public:
   double time_init() { return time_init_; }
   bool enable_dot_profiler() { return enable_dot_profiler_; }
   void set_enable_dot_profiler(bool profiler) { enable_dot_profiler_ = profiler; }
+  bool enable_validation() { return enable_validation_; }
+  void set_enable_validation(bool flag) { enable_validation_ = flag; }
   bool enable_profiler() { return enable_profiler_; }
   void set_enable_profiler(bool profiler) { enable_profiler_ = profiler; }
   int nstreams() { return nstreams_; }
@@ -406,6 +408,7 @@ private:
 
   bool enable_dot_profiler_;
   bool enable_profiler_;
+  bool enable_validation_;
   Profiler* profilers_[8];
   int nprofilers_;
   int openmp_device_factor_;

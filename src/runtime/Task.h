@@ -217,6 +217,8 @@ public:
     }
     return false;
   }
+  inline pair<double, double> GetTaskLevelTimeBoundaries();
+  void Validate();
   Task* Depend(int i) { return platform_->get_task_object(depends_uids_[i]); }
   Task* depend(int i) { return platform_->get_task_object(depends_uids_[i]); }
   void* arch() { return arch_; }

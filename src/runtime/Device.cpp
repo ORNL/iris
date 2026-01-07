@@ -28,6 +28,7 @@ Device::Device(int devno, int platform) {
   active_tasks_ = 0;
   root_dev_ = NULL;
   current_queue_ = 0;
+  task_current_queue_ = 0;
   current_copy_queue_ = 0;
   type_ = iris_cpu;
   first_event_cpu_end_time_ = 0.0f;
@@ -42,6 +43,7 @@ Device::Device(int devno, int platform) {
   shared_memory_buffers_ = false;
   can_share_host_memory_ = false;
   nqueues_ = platform_obj_->nstreams();
+  ntask_sync_queues_ = 4;
   dev_2_child_task_ = NULL; 
   memset(vendor_, 0, sizeof(vendor_));
   memset(name_, 0, sizeof(name_));
@@ -344,6 +346,20 @@ StreamPolicy Device::stream_policy(Task *task)
     policy = (task_policy != STREAM_POLICY_DEFAULT) ? task_policy : policy;
     return policy; 
 }
+int Device::GetStandaloneStream(Task *task) { 
+    task->stream_lock();
+    int s_index = task->recommended_stream();
+    if (s_index == -1) {
+        int stream;
+        StreamPolicy policy = stream_policy(task);
+        stream = get_new_task_stream_queue();
+        task->set_recommended_stream(stream);
+    }
+    task->stream_unlock();
+    return task->recommended_stream();
+    //return task->uid() % nqueues_; 
+}
+
 int Device::GetStream(Task *task) { 
     task->stream_lock();
     int s_index = task->recommended_stream();
@@ -552,6 +568,7 @@ void Device::Execute(Task* task) {
   }
   if ((!async_launch)  && !disable_profile)
 	  task->set_time_end(timer_);
+  //_info("Task %s:%lu time now:%lf\n", task->name(), task->uid(), timer_->Now());
   _trace("Task %s:%lu time now:%lf\n", task->name(), task->uid(), timer_->Now());
   _debug2("Task %s:%lu refcnt:%d\n", task->name(), task->uid(), task->ref_cnt());
   TaskPost(task);
@@ -1828,7 +1845,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
 
                 // Do Device to Host Transfer
                 if (async && platform_obj_->is_proactive_dispatch()) {
-                    src_dev->AddMemoryAccessWriteDependencies(task, cmd, src_mem, src_mem_stream);
+                    src_dev->AddMemoryAccessWriteDependencies(task, cmd, select_mem, src_mem_stream);
                 }
                 d2h_start = timer_->Now();
                 if (!platform_obj_->is_data_transfers_disabled()) {
@@ -2690,16 +2707,29 @@ void Device::ExecuteD2D(Command* cmd, Device *dev) {
     }
 }
 void Device::ExecuteH2D(Command* cmd, Device *dev) {
+
   if (dev == NULL) dev = this;
+  Task *task = cmd->task();
+  bool async = is_async(task);
   void* host = cmd->host();
   BaseMem* dmem = (BaseMem *)cmd->mem();
   //we're using datamem so there is no need to execute this memory transfer
   if (dmem->GetMemHandlerType() == IRIS_DMEM) {
     ExecuteMemInDMemIn(cmd->task(), cmd, (DataMem *)dmem);
+    if (async) {
+        int stream = dmem->GetWriteStream(dev->devno());
+        if (stream >= 0) task->set_last_cmd_stream(stream);
+        task->set_last_cmd_device(dev);
+    }
     return;
   }
   if (dmem->GetMemHandlerType() == IRIS_DMEM_REGION) {
     ExecuteMemInDMemRegionIn(cmd->task(), cmd, (DataMemRegion *)dmem);
+    if (async) {
+        int stream = dmem->GetWriteStream(dev->devno());
+        if (stream >= 0) task->set_last_cmd_stream(stream);
+        task->set_last_cmd_device(dev);
+    }
     return;
   }
   Mem* mem = cmd->mem();
@@ -2715,8 +2745,6 @@ void Device::ExecuteH2D(Command* cmd, Device *dev) {
   if (exclusive) mem->SetOwner(off, size, this);
   else mem->AddOwner(off, size, this);
   timer_->Start(IRIS_TIMER_H2D);
-  Task *task = cmd->task();
-  bool async = is_async(task);
   //ResolveH2DStartEvents(task, mem, async);
   int mem_stream = -1;
   if (async) {
@@ -2763,10 +2791,17 @@ void Device::ExecuteH2DNP(Command* cmd) {
 
 void Device::ExecuteD2H(Command* cmd) {
   BaseMem* dmem = (BaseMem *)cmd->mem();
+  Task *task = cmd->task();
+  bool async = is_async(task);
   if (dmem && (dmem->GetMemHandlerType() == IRIS_DMEM ||
               dmem->GetMemHandlerType() == IRIS_DMEM_REGION)) {
     //we're using datamem so there is no need to execute this memory transfer -- just flush
     ExecuteMemFlushOut(cmd);
+    if (async) {
+        int stream = dmem->GetHostWriteStream();
+        if (stream >= 0) task->set_last_cmd_stream(stream);
+        task->set_last_cmd_device(this);
+    }
     return;
   }
   Mem* mem = cmd->mem();
@@ -2784,8 +2819,6 @@ void Device::ExecuteD2H(Command* cmd) {
   cmd->set_time_start(timer_);
   errid_ = IRIS_SUCCESS;
 
-  Task *task = cmd->task();
-  bool async = is_async(task);
   int mem_stream = -1;
   if (async) {
       mem_stream = GetStream(task, mem, true);

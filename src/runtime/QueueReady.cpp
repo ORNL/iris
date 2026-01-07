@@ -91,6 +91,7 @@ bool QueueReady::Dequeue(Task **task) {
 }
 bool QueueReady::Dequeue(Task **task, Device *device) {
   std::lock_guard<std::mutex> lock(mutex_);
+  bool is_regular_queues_empty = true;
 #ifdef FLUSH_INDEPENDENT_QUEUE
   if (!pqueue_.empty()){
     auto &data = pqueue_.front();
@@ -101,6 +102,7 @@ bool QueueReady::Dequeue(Task **task, Device *device) {
         pqueue_.pop_front();
         return true;
     }
+    is_regular_queues_empty = false;
   }
 #endif
   if (!queue_.empty()){
@@ -112,11 +114,13 @@ bool QueueReady::Dequeue(Task **task, Device *device) {
         queue_.pop_front();
         return true;
     }
+    is_regular_queues_empty = false;
   }
-  if (!mqueue_.empty() && device->IsFree()){
+  if (is_regular_queues_empty && !mqueue_.empty() && device->IsFree()){
     auto &data = mqueue_.front();
     *task = data; //(Task*) data.second;
     _trace("Popped task:%lu:%s to mqueue pq:%lu q:%lu", data->uid(), data->name(), mqueue_.size(), queue_.size());
+    //_info("Popped task:%lu:%s to mqueue pq:%lu q:%lu", data->uid(), data->name(), mqueue_.size(), queue_.size());
     mqueue_.pop_front();
     return true;
   }

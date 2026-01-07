@@ -118,6 +118,7 @@ void Platform::Reset() {
   is_malloc_async_ = true;
   recording_ = false;
   scheduler_dispatch_fcfs_ = false;
+  enable_validation_ = false;
   enable_profiler_ = false;
   enable_dot_profiler_ = false;
   enable_scheduling_history_ = false; 
@@ -255,6 +256,7 @@ int Platform::Init(int* argc, char*** argv, int sync) {
   EnvironmentBoolRead("DISABLE_PRO_TRANSFERS", enable_proactive_transfers_, false);
   EnvironmentBoolRead("DISABLE_PRO_DISPATCH", enable_proactive_dispatch_, false);
   EnvironmentBoolRead("PROFILE", enable_profiler_);
+  EnvironmentBoolRead("VALIDATION", enable_validation_);
   EnvironmentBoolRead("HISTORY", enable_scheduling_history_);
   EnvironmentBoolRead("EVENT_PROFILE", event_profile_enabled_);
   EnvironmentBoolRead("MALLOC_SYNC", is_malloc_async_, false);
@@ -320,6 +322,12 @@ int Platform::Init(int* argc, char*** argv, int sync) {
   if (polyhedral_available_)
     filter_task_split_ = new FilterTaskSplit(polyhedral_, this);
 
+  if (enable_validation_) {
+    enable_profiler_ = true;
+    if (async) {
+        event_profile_enabled_ = true;
+    }
+  }
   if (enable_profiler_ || event_profile_enabled_) {
     profilers_[nprofilers_++] = new ProfilerDOT(this);
     profilers_[nprofilers_++] = new ProfilerGoogleCharts(this);

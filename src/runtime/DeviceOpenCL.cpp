@@ -484,7 +484,7 @@ int DeviceOpenCL::KernelLaunchInit(Command *cmd, Kernel* kernel) {
     cl_command_queue *kstream = &default_queue_;
     int nstreams = 1;
     if (is_async(kernel->task(), false)) {
-        stream_index = GetStream(kernel->task()); //task->uid() % nqueues_; 
+        stream_index = cmd->recommended_stream();  //GetStream(kernel->task()); //task->uid() % nqueues_; 
         if (stream_index == DEFAULT_STREAM_INDEX) { stream_index = 0; }
         kstream = &clcmdq_[stream_index];
         nstreams = nqueues_ - stream_index;
@@ -494,13 +494,14 @@ int DeviceOpenCL::KernelLaunchInit(Command *cmd, Kernel* kernel) {
 }
 
 int DeviceOpenCL::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws) {
+  Command *cmd = kernel->command();
   cl_int err;
   int stream_index = 0;
   cl_command_queue *kstream = &default_queue_;
   bool async = false;
   int nstreams = 1;
   if (is_async(kernel->task(), false)) { //Disable stream policy check
-      stream_index = GetStream(kernel->task()); //task->uid() % nqueues_; 
+      stream_index = cmd->recommended_stream();  //GetStream(kernel->task()); //task->uid() % nqueues_; 
       async = true;
       if (stream_index == DEFAULT_STREAM_INDEX) { async = false; stream_index = 0; }
       // Though async is set to false, we still pass all streams to kernel to use it

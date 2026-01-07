@@ -248,6 +248,7 @@ public:
   int ok() { return errid_; }
   void set_worker(Worker* worker) { worker_ = worker; }
   Worker* worker() { return worker_; }
+  int GetStandaloneStream(Task *task);
   int GetStream(Task *task);
   int GetStream(Task *task, BaseMem *mem, bool new_stream=false);
   StreamPolicy stream_policy(Task *task);
@@ -263,6 +264,17 @@ protected:
   Platform *platform_obj() { return platform_obj_; }
 private:
   LoaderResetKernel *ld_reset_;
+  int get_new_task_stream_queue() {
+    int nqs = (ntask_sync_queues_-1);
+    if (nqs <= 0) return task_current_queue_ + nqueues_ + 1;
+    unsigned long new_current_queue;
+    do {
+        new_current_queue = task_current_queue_ + 1;
+    } while (!__sync_bool_compare_and_swap(&task_current_queue_, task_current_queue_, new_current_queue));
+    int stream = new_current_queue%nqs + nqueues_ + 1;
+    //printf("New queue:%d\n", stream);
+    return stream;
+  }
   int get_new_stream_queue(int offset=0) {
     int nqs = ((nqueues_-1)-offset);
     if (nqs <= 0) return current_queue_ + offset+1;
@@ -270,7 +282,7 @@ private:
     do {
         new_current_queue = current_queue_ + 1;
     } while (!__sync_bool_compare_and_swap(&current_queue_, current_queue_, new_current_queue));
-    int stream = new_current_queue%nqs+offset+1;
+    int stream = new_current_queue%nqs + offset + 1;
     //printf("New queue:%d\n", stream);
     return stream;
   }
@@ -298,7 +310,9 @@ protected:
   int max_block_dims_[3];
   Task **dev_2_child_task_;
   int nqueues_;
+  int ntask_sync_queues_;
   int errid_;
+  int task_current_queue_;
   int current_queue_;
   int current_copy_queue_;
   int n_copy_engines_;

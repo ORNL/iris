@@ -1,4 +1,5 @@
 #include <string>
+#include <limits>
 #include "Task.h"
 #include "Debug.h"
 #include "Command.h"
@@ -319,7 +320,7 @@ bool Task::Dispatchable(bool is_async_soft_touch) {
   bool called_from_worker = !is_async_soft_touch;
   if (!is_async_soft_touch && !is_async()) return true; // This is called by worker. If it is not async, dependency check has been already taken care by scheduler.
   is_async_soft_touch = is_async_soft_touch && is_async() && 
-      platform_->is_proactive_dispatch();
+      platform_->is_proactive_dispatch() && user();
   //if we, or the tasks we depend on are pending (or not-complete), we can't run.
   _trace("Checking task:%lu:%s dispatchable depends_uids_:%p ndepends_:%d pending:%d is_async_soft_touch:%d called_from_worker:%d", uid(), name(), depends_uids_, ndepends_, (status_ == IRIS_PENDING), is_async_soft_touch, called_from_worker);
   //print_incomplete_tasks();
@@ -469,6 +470,8 @@ void Task::Complete() {
   //printf("calling profile events\n");
   if (user_ && !disable_profiling_) {
       platform_->ProfileCompletedTask(this);
+      if (platform_->enable_validation())
+          Validate();
       clear_profile_events();
   }
   // For task with subtasks, the parent task is not in any worker queue. 
@@ -539,6 +542,56 @@ void Task::AddSubtask(Task* subtask) {
 
 bool Task::HasSubtasks() {
   return !subtasks_.empty();
+}
+
+pair<double, double> Task::GetTaskLevelTimeBoundaries() {
+    vector<ProfileEvent> & pevents = profile_events();
+    double t_end_time = -1.0;
+    double t_start_time = std::numeric_limits<double>::max();
+    for (ProfileEvent & p : pevents) {
+        Device *event_dev = p.event_dev();
+        double midpoint = event_dev->first_event_cpu_mid_point_time();
+        double start_time = midpoint + p.GetStartTime();
+        double end_time = midpoint + p.GetEndTime();
+        //int stream = p.stream();
+        //unsigned long uid = p.uid();
+        ProfileRecordType type = p.type();
+        //int connect_dev = p.connect_dev();
+        if (type == PROFILE_KERNEL) {
+            if (start_time < t_start_time) t_start_time = start_time;
+            if (end_time > t_end_time) t_end_time = end_time;
+        }
+    }
+    return make_pair(t_start_time, t_end_time);
+}
+
+void Task::Validate() {
+    if (platform_->enable_validation()) {
+        vector<ProfileEvent> & pevents = profile_events();
+        for (ProfileEvent & p : pevents) {
+            Device *event_dev = p.event_dev();
+            double midpoint = event_dev->first_event_cpu_mid_point_time();
+            double start_time = midpoint + p.GetStartTime();
+            double end_time = midpoint + p.GetEndTime();
+            //int stream = p.stream();
+            //unsigned long uid = p.uid();
+            ProfileRecordType type = p.type();
+            //int connect_dev = p.connect_dev();
+            if (type == PROFILE_KERNEL) {
+                for (int i = 0; i < ndepends_; i++) {
+                    if (depends_uids_[i] != (unsigned long)-1) {
+                        Task *dep= depend(i);
+                        if (dep!= NULL) {
+                            auto t = dep->GetTaskLevelTimeBoundaries();
+                            if (start_time < t.second) {
+                                _error("Timing violation of D[%lu:%s] (%lf, %lf) -> T[%lu:%s] (%lf, %lf)", dep->uid(), dep->name(), t.first, t.second, uid(), name(), start_time, end_time);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 // Note: It is possible that the parent task might have been already completed and released. 
