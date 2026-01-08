@@ -66,7 +66,6 @@ void Command::Clear(bool init) {
   type_name_ = std::string();
   given_name_ = false;
   name_ = "";
-  selector_kernel_params_ = NULL;
   time_ = 0.0;
   ns_time_start_ = 0;
   ns_time_end_ = 0;

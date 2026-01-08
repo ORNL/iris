@@ -2894,6 +2894,7 @@ Kernel* Device::ExecuteSelectorKernel(Command* cmd) {
   string kernel_name = string(kernel->name());
   func(*(cmd->task()->struct_obj()), params, (char *)kernel_name.c_str());
   Kernel *selected_kernel = Platform::GetPlatform()->GetKernel(kernel_name.c_str());
+  selected_kernel->set_cmd(cmd);
   selected_kernel->set_task(kernel->task());
   return selected_kernel;
 }
