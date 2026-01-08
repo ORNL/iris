@@ -143,7 +143,6 @@ void Platform::Reset() {
 
 void Platform::Clean() {
   for (int i = 0; i < ndevs_; i++) delete workers_[i];
-  if (queue_) delete queue_;
   if (tmp_dir_[0] != '\0') {
       char cmd[270];
       //printf("Removing tmp_dir:%s\n", tmp_dir_);
@@ -153,6 +152,7 @@ void Platform::Clean() {
   }
   for (int i = 0; i < ndevs_; i++) delete devs_[i];
   if (scheduler_) delete scheduler_;
+  if (queue_) delete queue_;
 #ifdef AUTO_PAR
 #ifdef AUTO_SHADOW
   printf("Total Shadow created %d\n", auto_dag_->get_number_of_shadow());
