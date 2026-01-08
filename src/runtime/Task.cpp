@@ -64,6 +64,7 @@ Task::Task(Platform* platform, int type, const char* name, int max_cmds) {
   type_ = type;
   recommended_stream_ = -1;
   recommended_dev_ = -1;
+  completion_event_ = NULL;
   execute_instance_ = -1;
   max_cmds_ = (max_cmds < IRIS_TASK_MAX_CMDS) ? IRIS_TASK_MAX_CMDS : max_cmds;
   ncmds_ = 0;
@@ -320,7 +321,7 @@ bool Task::Dispatchable(bool is_async_soft_touch) {
   bool called_from_worker = !is_async_soft_touch;
   if (!is_async_soft_touch && !is_async()) return true; // This is called by worker. If it is not async, dependency check has been already taken care by scheduler.
   is_async_soft_touch = is_async_soft_touch && is_async() && 
-      platform_->is_proactive_dispatch() && user();
+      platform_->is_proactive_dispatch() && user() && (ncmds() > 0);
   //if we, or the tasks we depend on are pending (or not-complete), we can't run.
   _trace("Checking task:%lu:%s dispatchable depends_uids_:%p ndepends_:%d pending:%d is_async_soft_touch:%d called_from_worker:%d", uid(), name(), depends_uids_, ndepends_, (status_ == IRIS_PENDING), is_async_soft_touch, called_from_worker);
   //print_incomplete_tasks();

@@ -455,6 +455,7 @@ void Device::Execute(Task* task) {
   int stream_index = 0;
   if (async_launch) {
     stream_index = GetStream(task);
+    task->set_recommended_dev(devno());
     task->set_recommended_stream(stream_index);
   }
   if (hook_task_pre_) hook_task_pre_(task);
@@ -2400,8 +2401,8 @@ void Device::AddMemoryAccessWriteDependencies(Task *task, Command *cmd, BaseMem 
         if (k_stream != mem_stream) {
             DataReadTrack  & track = z.second;
             void *k_event = track.event();
-            _event_debug(" WaitForEvent parent mem:%lu  dmem:%lu mem_stream:%d, event:%p dev[%d][%s]",
-                    parent->uid(), mem->uid(), mem_stream, k_event, devno(), name()); 
+            _event_debug(" WaitForEvent dmem:%lu mem_stream:%d, event:%p dev[%d][%s]",
+                    mem->uid(), mem_stream, k_event, devno(), name()); 
             WaitForEvent(k_event, mem_stream, iris_event_wait_default);
         }
     }           

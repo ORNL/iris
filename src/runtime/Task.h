@@ -185,6 +185,8 @@ public:
   const char* opt() { return opt_.c_str(); }
   int brs_policy() { return brs_policy_; }
   int recommended_stream() { return recommended_stream_; }
+  void *GetCompletionEvent() { return completion_event_; }
+  void **GetCompletionEventPtr() { return &completion_event_; }
   void stream_lock() {
     pthread_mutex_lock(&stream_mutex_);
   }
@@ -338,6 +340,7 @@ private:
   int recommended_stream_;
   int recommended_dev_;
   int brs_policy_;
+  void *completion_event_;
   //char opt_[128];
   std::string opt_;
 
