@@ -96,7 +96,7 @@ public:
   virtual void RecordEvent(void **event, int stream, int event_creation_flag=iris_event_disable_timing);
   virtual int WaitForEvent(void *event, int stream, int flags=0);
   virtual void DestroyEvent(void *event);
-  virtual void DestroyEvent(BaseMem *mem, void *event);
+  void DestroyEvent(BaseMem *mem, void *event);
   virtual void EventSynchronize(void *event);
   virtual void EnablePeerAccess() { }
   virtual bool IsD2DPossible(Device *target) { return true; }
@@ -168,7 +168,7 @@ public:
   virtual void *GetSharedMemPtr(void* mem, size_t size) { return mem; }
   virtual int MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset=false) = 0;
   virtual int MemAlloc(void** mem_addr, size_t size, void *stream_v, bool reset=false) { 
-    _error("Device:%d:%s doesn't support MemFree", devno_, name());
+    _error("Device:%d:%s doesn't support MemAlloc", devno_, name());
     return IRIS_ERROR;
   }
   virtual int MemFree(void* mem_addr, void *stream_v) {

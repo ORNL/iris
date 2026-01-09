@@ -69,6 +69,19 @@ int DeviceQIREE::ResetMemory(Task *task, Command *cmd, BaseMem *mem) {
     return IRIS_ERROR;
 }
 
+int DeviceQIREE::MemAlloc(void** mem_addr, size_t size, void *stream_v, bool reset) {
+    void** mpmem = mem_addr;
+    if (posix_memalign(mpmem, 0x1000, size) != 0) {
+        _error("%s", "posix_memalign");
+        platform_obj()->IncrementErrorCount();
+        return IRIS_ERROR;
+    }
+    _trace("Allocated mem addr:%p, size:%lu reset:%d", *mem_addr, size, reset);
+    if (reset) {
+        memset(*mpmem, 0, size);
+    }
+    return IRIS_SUCCESS;
+}
 int DeviceQIREE::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset) {
   void** mpmem = mem_addr;
   if (posix_memalign(mpmem, 0x1000, size) != 0) {
@@ -100,6 +113,12 @@ int DeviceQIREE::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset
 }
 
 int DeviceQIREE::MemFree(BaseMem *mem, void* mem_addr) {
+  void* mpmem = mem_addr;
+  if (mpmem) free(mpmem);
+  return IRIS_SUCCESS;
+}
+
+int DeviceQIREE::MemFree(void* mem_addr, void *stream_v) {
   void* mpmem = mem_addr;
   if (mpmem) free(mpmem);
   return IRIS_SUCCESS;

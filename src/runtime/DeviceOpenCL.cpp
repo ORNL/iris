@@ -287,6 +287,32 @@ int DeviceOpenCL::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool rese
   return IRIS_SUCCESS;
 }
 
+int DeviceOpenCL::MemAlloc(void** mem_addr, size_t size, void *stream_v, bool reset) {
+  cl_int err;
+  cl_mem* clmem = (cl_mem*) mem_addr;
+  *clmem = ld_->clCreateBuffer(clctx_, CL_MEM_READ_WRITE, size, NULL, &err);
+  if (reset) {
+    _error("OpenCL not supported with reset for size:%lu", size);
+  }
+  _clerror(err);
+  if (err != CL_SUCCESS){
+    worker_->platform()->IncrementErrorCount();
+    return IRIS_ERROR;
+  }
+  return IRIS_SUCCESS;
+}
+
+int DeviceOpenCL::MemFree(void* mem_addr, void *stream_v) {
+  cl_mem clmem = (cl_mem) mem_addr;
+  cl_int err = ld_->clReleaseMemObject(clmem);
+  _clerror(err);
+  if (err != CL_SUCCESS){
+    worker_->platform()->IncrementErrorCount();
+    return IRIS_ERROR;
+  }
+  return IRIS_SUCCESS;
+}
+
 int DeviceOpenCL::MemFree(BaseMem *mem, void* mem_addr) {
   cl_mem clmem = (cl_mem) mem_addr;
   cl_int err = ld_->clReleaseMemObject(clmem);
@@ -457,7 +483,7 @@ int DeviceOpenCL::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem
           idx, kindex, off, dev_ptr, dev_alloc_ptr);
   if (kernel->is_vendor_specific_kernel(devno_)) {
       host2opencl_ld_->setmem(
-              kernel->GetParamWrapperMemory(), kindex, dev_ptr, size);
+              kernel->GetParamWrapperMemory(), mem, kindex, dev_ptr, size);
   }
   else {
     cl_kernel clkernel = (cl_kernel) kernel->arch(this);

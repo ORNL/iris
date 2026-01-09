@@ -192,7 +192,7 @@ namespace iris {
                 return iris_host_setarg(kindex, size, value);
             return IRIS_ERROR;
         }
-        int BoilerPlateHostInterfaceLoader::setmem(void *param_mem, int kindex, void *mem, size_t size) 
+        int BoilerPlateHostInterfaceLoader::setmem(void *param_mem, BaseMem *bmem, int kindex, void *mem, size_t size) 
         {
             //printf("iris_host_setmem:%p kindex:%d\n", iris_host_setmem, kindex);
             if (iris_host_setmem_with_obj) 
@@ -445,7 +445,7 @@ namespace iris {
             ffi_data->increment();
             return IRIS_SUCCESS;
         }
-        int FFIHostInterfaceLoader::setmem(void *param_mem, int kindex, void *mem, size_t size)
+        int FFIHostInterfaceLoader::setmem(void *param_mem, BaseMem *bmem, int kindex, void *mem, size_t size)
         {
             KernelFFI *ffi_data = get_kernel_ffi(param_mem);
             //printf("setmem ffi_data:%p kindex:%d arg_index:%d mem:%p\n", ffi_data, kindex, ffi_data->top(), mem);

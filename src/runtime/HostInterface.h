@@ -59,7 +59,6 @@ namespace iris {
                 virtual void init(int dev);
                 virtual int launch_init(int model, int devno, int stream_index, int nstreams, void **stream, void *param_mem, Command *cmd_kernel) { return IRIS_SUCCESS; }
                 virtual int setarg(void *param_mem, int index, size_t size, void *value) { return IRIS_ERROR; }
-                virtual int setmem(void *param_mem, int kindex, void *mem, size_t size) { return IRIS_ERROR; }
                 virtual int setmem(void *param_mem, BaseMem *mem, int kindex, void *mem_ptr, size_t size) { return IRIS_ERROR; }
                 static uint32_t get_encoded_stream_device(int stream_index, int nstreams, int device);
                 static uint32_t update_dev_info_stream_index(int dev_info, int stream_index);
@@ -95,7 +94,7 @@ namespace iris {
                 int launch_init(int model, int devno, int stream_index, int nstreams, void **stream, void *param_mem, Command *cmd);
                 int host_launch(void **stream, int stream_index, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *off, size_t *bws);
                 int setarg(void *param_mem, int kindex, size_t size, void *value);
-                int setmem(void *param_mem, int kindex, void *mem, size_t size);
+                int setmem(void *param_mem, BaseMem *bmem, int kindex, void *mem, size_t size);
             private:
                 int (*iris_host_kernel)(const char* name);
                 int (*iris_host_setarg)(int idx, size_t size, void* value);
@@ -255,6 +254,7 @@ namespace iris {
                 KernelJulia * get_kernel_julia(void *param_mem);
                 int launch_init(int model, int devno, int stream_index, int nstreams, void **stream, void *param_mem, Command *cmd);
                 int SetKernelPtr(void *obj, const char *kernel_name);
+                int host_launch(void **stream, int stream_index, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *off, size_t *bws) { _error("Not implemented");  return IRIS_ERROR; }
                 int host_launch(unsigned long task_id, unsigned long cmd_id, void **stream, int stream_index, void *ctx, bool async, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *gws, size_t *off, size_t *bws, size_t shared_mem_size);
                 int setarg(void *param_mem, int kindex, size_t size, void *value);
                 int setmem(void *param_mem, BaseMem *mem, int kindex, void *mem_ptr, size_t size);
@@ -402,7 +402,7 @@ namespace iris {
                 int SetKernelPtr(void *obj, const char *kernel_name);
                 int host_launch(void **stream, int stream_index, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *off, size_t *bws);
                 int setarg(void *param_mem, int kindex, size_t size, void *value);
-                int setmem(void *param_mem, int kindex, void *mem, size_t size);
+                int setmem(void *param_mem, BaseMem *bmem, int kindex, void *mem, size_t size);
             private:
                 ffi_cif cif_;
         };

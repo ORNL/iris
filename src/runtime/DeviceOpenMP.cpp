@@ -425,10 +425,10 @@ int DeviceOpenMP::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem
   }
   else if (ld_default_ != NULL && kernel->is_default_kernel(devno_)) {
       ld_default_->setmem(
-              kernel->GetParamWrapperMemory(), kindex, mpmem, size);
+              kernel->GetParamWrapperMemory(), mem, kindex, mpmem, size);
   }
   else {
-      int status = ld_->setmem(kernel->GetParamWrapperMemory(), kindex, mpmem, size);
+      int status = ld_->setmem(kernel->GetParamWrapperMemory(), mem, kindex, mpmem, size);
       /*
          if (ld_->iris_openmp_setmem_with_obj)
          return ld_->iris_openmp_setmem_with_obj(kernel->GetParamWrapperMemory(), kindex, mpmem);

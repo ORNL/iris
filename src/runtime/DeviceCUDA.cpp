@@ -1583,11 +1583,11 @@ int DeviceCUDA::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, 
   if (max_arg_idx_ < idx) max_arg_idx_ = idx;
   if (kernel->is_vendor_specific_kernel(devno_)) {
       host2cuda_ld_->setmem(
-              kernel->GetParamWrapperMemory(), kindex, dev_ptr, size);
+              kernel->GetParamWrapperMemory(), mem, kindex, dev_ptr, size);
   }
   else if (ld_default_ != NULL && kernel->is_default_kernel(devno_)) {
       ld_default_->setmem(
-              kernel->GetParamWrapperMemory(), kindex, dev_ptr, size);
+              kernel->GetParamWrapperMemory(), mem, kindex, dev_ptr, size);
   }
   else if (julia_if_ != NULL && kernel->enable_julia_if()) {
       julia_if_->setmem(

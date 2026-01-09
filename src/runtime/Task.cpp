@@ -331,9 +331,10 @@ bool Task::Dispatchable(bool is_async_soft_touch) {
   _event_prof_debug("Checking task:%lu:%s dispatchable depends_uids_:%p ndepends_:%d pending:%d has_cmds:%d", uid(), name(), depends_uids_, ndepends_, (status_ == IRIS_PENDING), has_cmds);
   for (int i = 0; i < ndepends_; i++) {
       Task *dep = platform_->get_task_object(depends_uids_[i]);
+      if (dep == NULL) continue;
       bool is_dep_async = (dep != NULL && dep->is_async());
       bool is_dep_sync = (dep != NULL && !dep->is_async());
-      //printf("dep:%p dep async:%d is_async_soft_touch:%d dep_status:%d,%d dep->status():%d IRIS_COMPLETE:%d IRIS_RUNNING:%d\n", dep, is_dep_async, is_async_soft_touch, dep->status() == IRIS_COMPLETE, dep->status() == IRIS_RUNNING, dep->status(), IRIS_COMPLETE, IRIS_RUNNING);
+      _trace("dep:%p:%lu:%s dep async:%d is_async_soft_touch:%d dep_status:%d,%d dep->status():%d IRIS_COMPLETE:%d IRIS_RUNNING:%d\n", dep, dep->uid(), dep->name(), is_dep_async, is_async_soft_touch, dep->status() == IRIS_COMPLETE, dep->status() == IRIS_RUNNING, dep->status(), IRIS_COMPLETE, IRIS_RUNNING);
 #if 1
       if ( is_dep_async && is_async_soft_touch) continue; // It is ok even if the task is not yet picked up by any worker queue
       if ( is_dep_async && has_cmds && !(dep->status() == IRIS_COMPLETE || dep->status() == IRIS_SUBMITTED)) return false;
