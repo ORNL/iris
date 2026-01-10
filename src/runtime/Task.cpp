@@ -334,7 +334,7 @@ bool Task::Dispatchable(bool is_async_soft_touch) {
       if (dep == NULL) continue;
       bool is_dep_async = (dep != NULL && dep->is_async());
       bool is_dep_sync = (dep != NULL && !dep->is_async());
-      _trace("dep:%p:%lu:%s dep async:%d is_async_soft_touch:%d dep_status:%d,%d dep->status():%d IRIS_COMPLETE:%d IRIS_RUNNING:%d\n", dep, dep->uid(), dep->name(), is_dep_async, is_async_soft_touch, dep->status() == IRIS_COMPLETE, dep->status() == IRIS_RUNNING, dep->status(), IRIS_COMPLETE, IRIS_RUNNING);
+      _trace("dep:%p:%lu:%s dep async:%d is_async_soft_touch:%d dep_status:%d,%d dep->status():%d IRIS_COMPLETE:%d IRIS_RUNNING:%d dev:%d\n", dep, dep->uid(), dep->name(), is_dep_async, is_async_soft_touch, dep->status() == IRIS_COMPLETE, dep->status() == IRIS_RUNNING, dep->status(), IRIS_COMPLETE, IRIS_RUNNING, dep->devno());
 #if 1
       if ( is_dep_async && is_async_soft_touch) continue; // It is ok even if the task is not yet picked up by any worker queue
       if ( is_dep_async && has_cmds && !(dep->status() == IRIS_COMPLETE || dep->status() == IRIS_SUBMITTED)) return false;
@@ -485,6 +485,24 @@ void Task::Complete() {
     if (dev_) dev_->worker()->TaskComplete(this);
     else if (scheduler_) scheduler_->Invoke();
     _debug2(" task:%lu:%s is completed ref_cnt:%d", uid(), name(), ref_cnt());
+    if (platform_->is_proactive_dispatch()) {
+        set<int> invoke_devs;
+        for (int i = 0; i < nchilds_; i++) {
+            Task *child = Child(i);
+            if (child != NULL && child->recommended_dev() != -1 &&
+                    child->recommended_dev() != recommended_dev()) {
+                invoke_devs.insert(child->recommended_dev());
+            }
+        }   
+        for(int child : invoke_devs) {
+            Device *child_dev = platform_->device(child);
+            Worker *worker = child_dev->worker();
+            //if (!worker->running()) {
+                _event_debug("invoking device (%d:%s) for child tasks of task:%lu:%s", child_dev->devno(), child_dev->name(), uid(), name());
+                worker->Invoke();
+            //}
+        }
+    }
   }
   //if (!is_user_task) return;
   _debug2(" trying to release task:%lu:%s ref_cnt:%d", uid(), name(), ref_cnt());

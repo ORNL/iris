@@ -425,17 +425,33 @@ namespace iris {
         {
             KernelFFI *ffi_data = get_kernel_ffi(param_mem);
             KernelArg *arg = ffi_data->get_iris_arg(kindex);
-            //printf("setarg ffi_data:%p kindex:%d arg_index:%d size:%lu value:%p\n", ffi_data, kindex, ffi_data->top(), size, value);
-            if (size == 1) 
+            //printf("setarg ffi_data:%p kindex:%d arg_index:%d size:%lu value:%p data_type:%d\n", ffi_data, kindex, ffi_data->top(), size, value, arg->data_type);
+            if (size == 1 && arg->data_type == iris_uint8) 
                 ffi_data->set_arg_type(&ffi_type_uint8);
+            else if (size == 1 && arg->data_type == iris_int8) 
+                ffi_data->set_arg_type(&ffi_type_sint8);
+            else if (size == 1) 
+                ffi_data->set_arg_type(&ffi_type_uint8);
+            else if (size == 2 && arg->data_type == iris_uint16) 
+                ffi_data->set_arg_type(&ffi_type_uint16);
+            else if (size == 2 && arg->data_type == iris_int16) 
+                ffi_data->set_arg_type(&ffi_type_sint16);
             else if (size == 2) 
                 ffi_data->set_arg_type(&ffi_type_uint16);
             else if (size == 4 && arg->data_type == iris_float)  // Special case to handle for double
                 ffi_data->set_arg_type(&ffi_type_float);
+            else if (size == 4 && arg->data_type == iris_uint32) 
+                ffi_data->set_arg_type(&ffi_type_uint32);
+            else if (size == 4 && arg->data_type == iris_int32) 
+                ffi_data->set_arg_type(&ffi_type_sint32);
             else if (size == 4) 
                 ffi_data->set_arg_type(&ffi_type_uint32);
             else if (size == 8 && arg->data_type == iris_double)  // Special case to handle for double
                 ffi_data->set_arg_type(&ffi_type_double);
+            else if (size == 8 && arg->data_type == iris_uint64) 
+                ffi_data->set_arg_type(&ffi_type_uint64);
+            else if (size == 8 && arg->data_type == iris_int64) 
+                ffi_data->set_arg_type(&ffi_type_sint64);
             else if (size == 8) 
                 ffi_data->set_arg_type(&ffi_type_uint64);
             else {

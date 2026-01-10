@@ -352,6 +352,7 @@ namespace iris {
                     increment();
                     set_arg_type(&ffi_type_pointer);
                     set_value(&param_size_);
+                    //printf(" off:%p ndr:%p, param_idx:%p, param_size:%p\n", off, ndr, &param_idx_, &param_size_);
                     increment();
                 }
                 void add_stream(void **stream) {

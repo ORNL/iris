@@ -23,7 +23,10 @@ Worker::Worker(Device* dev, Platform* platform, bool single) {
   else consistency_ = NULL;
   single_ = single;
   if (single) queue_ = platform->queue();
-  else queue_ = new QueueReady();
+  else {
+      queue_ = new QueueReady();
+      ((QueueReady*)queue_)->set_devno(dev->devno());
+  }
   busy_ = false;
 }
 
@@ -105,23 +108,23 @@ void Worker::Execute(Task* task) {
 void Worker::Run() {
   while (true) {
 	Utils::SetThreadAffinity(platform_->cpu_set_start() + dev_->devno()+1);
-    _debug2("Device:%d:%s Worker entering into sleep mode", dev_->devno(), dev_->name());
+    _trace("Device:%d:%s Worker entering into sleep mode", dev_->devno(), dev_->name());
     //printf("1Device:%d:%s Queue size:%lu\n", dev_->devno(), dev_->name(), queue_->Size());
     //_debug2("Device:%d:%s Worker thread invoked now running:%d", dev_->devno(), dev_->name(), running_);
     //printf("2Device:%d:%s Queue size:%lu\n", dev_->devno(), dev_->name(), queue_->Size());
     if (!running()) break;
     Task* task;
-    _debug2("Device:%d:%s Queue size:%lu", dev_->devno(), dev_->name(), queue_->Size());
+    _trace("Device:%d:%s Queue size:%lu", dev_->devno(), dev_->name(), queue_->Size());
     while (running() && queue_->Dequeue(&task, dev_)){
       //printf("Device:%d:%s Qsize:%lu dequeued task:%lu:%s:%p\n", dev_->devno(), dev_->name(), queue_->Size(), task->uid(), task->name(), task);
-      _debug2("Device:%d:%s Qsize:%lu dequeued task:%lu:%s:%p time:%lf", dev_->devno(), dev_->name(), queue_->Size(), task->uid(), task->name(), task, timer_->Now());
+      _trace("Device:%d:%s Qsize:%lu dequeued task:%lu:%s:%p time:%lf", dev_->devno(), dev_->name(), queue_->Size(), task->uid(), task->name(), task, timer_->Now());
       //FIX: This check is not needed. For the policies like ALL, when the task is in some worker queue, it couldn't be deleted unless all worker queues release them
       //if (!Platform::GetPlatform()->is_task_exist(task.first)) continue;
 #ifdef _DEBUG2_ENABLE
       task->Retain();
 #endif
       Execute(task);
-      _debug2("Completed task Device:%d:%s Qsize:%lu dequeued, task:%p", dev_->devno(), dev_->name(), queue_->Size(), task);
+      _trace("Completed task Device:%d:%s Qsize:%lu dequeued, task:%p", dev_->devno(), dev_->name(), queue_->Size(), task);
 #ifdef _DEBUG2_ENABLE
       task->Release(); // For Worker::Run Retain call
 #endif

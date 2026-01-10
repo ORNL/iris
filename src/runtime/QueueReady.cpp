@@ -9,6 +9,7 @@ namespace iris {
 namespace rt {
 
 QueueReady::QueueReady() {
+    devno_ = -1;
 }
 
 QueueReady::~QueueReady() {
@@ -29,9 +30,14 @@ bool QueueReady::Peek(Task** task, int target_index){
 }
 
 void QueueReady::Print(int devno) {
-  printf("Queue data: (%lu) devno:%d:%p --- ", pqueue_.size(), devno, this);
+  printf("PQueue dev:%d data: (%lu) devno:%d:%p --- ", devno_, pqueue_.size(), devno, this);
   for(size_t i=0; i<pqueue_.size(); i++) {
-    printf("%lu:%p ", pqueue_[i]->uid(), pqueue_[i]);
+    printf("%lu:%s:%p  | ", pqueue_[i]->uid(), pqueue_[i]->name(), pqueue_[i]);
+  }
+  printf("\n");
+  printf("Queue dev:%d data: (%lu) devno:%d:%p --- ", devno_, queue_.size(), devno, this);
+  for(size_t i=0; i<queue_.size(); i++) {
+    printf("%lu:%s:%p | ", queue_[i]->uid(), queue_[i]->name(), queue_[i]);
   }
   printf("\n");
 }
@@ -92,13 +98,15 @@ bool QueueReady::Dequeue(Task **task) {
 bool QueueReady::Dequeue(Task **task, Device *device) {
   std::lock_guard<std::mutex> lock(mutex_);
   bool is_regular_queues_empty = true;
+  _trace("Trying dequeue pqueue pq:%lu q:%lu dev:%d", pqueue_.size(), queue_.size(), devno_);
+  //Print(devno_);
 #ifdef FLUSH_INDEPENDENT_QUEUE
   if (!pqueue_.empty()){
     auto &data = pqueue_.front();
     *task = data; //(Task*) data.second;
-    _trace("Trying Popped task:%lu:%s to pqueue pq:%lu q:%lu", data->uid(), data->name(), pqueue_.size(), queue_.size());
+    _trace("Trying Popped task:%lu:%s to pqueue pq:%lu q:%lu dev:%d", data->uid(), data->name(), pqueue_.size(), queue_.size(), devno_);
     if ((*task)->Dispatchable(false)) {
-        _trace("Popped task:%lu:%s to pqueue pq:%lu q:%lu", data->uid(), data->name(), pqueue_.size(), queue_.size());
+        _trace("Popped task:%lu:%s to pqueue pq:%lu q:%lu dev:%d", data->uid(), data->name(), pqueue_.size(), queue_.size(), devno_);
         pqueue_.pop_front();
         return true;
     }
@@ -119,7 +127,7 @@ bool QueueReady::Dequeue(Task **task, Device *device) {
   if (is_regular_queues_empty && !mqueue_.empty() && device->IsFree()){
     auto &data = mqueue_.front();
     *task = data; //(Task*) data.second;
-    _trace("Popped task:%lu:%s to mqueue pq:%lu q:%lu", data->uid(), data->name(), mqueue_.size(), queue_.size());
+    _trace("Popped task:%lu:%s to mqueue pq:%lu q:%lu dev:%d", data->uid(), data->name(), mqueue_.size(), queue_.size(), devno_);
     //_info("Popped task:%lu:%s to mqueue pq:%lu q:%lu", data->uid(), data->name(), mqueue_.size(), queue_.size());
     mqueue_.pop_front();
     return true;

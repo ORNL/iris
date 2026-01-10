@@ -95,6 +95,23 @@ namespace iris {
                     ss << "]";
                     return ss.str();
                 }
+                static const char *GetTypeString(int type) {
+                    switch(type) {
+                        case iris_float: return "float";
+                        case iris_double: return "double";
+                        case iris_uint64: return "uint64";
+                        case iris_uint32: return "uint32";
+                        case iris_uint16: return "uint16";
+                        case iris_uint8: return "uint8";
+                        case iris_int64: return "int64";
+                        case iris_int32: return "int32";
+                        case iris_int16: return "int16";
+                        case iris_int8: return "int8";
+                        case iris_int: return "int";
+                        case iris_uint: return "uint";
+                        default: return "error";
+                    }
+                }
                 template<class T>
                 static void insert_at(std::vector<T>& v, std::size_t pos, const T& value) {
                     if (pos > v.size()) throw std::out_of_range("pos out of range");

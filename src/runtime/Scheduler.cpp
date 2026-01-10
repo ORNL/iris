@@ -54,6 +54,12 @@ void Scheduler::StartTask(Task* task, Worker* worker) {
   //task->set_time_start(timer_->Now());
 }
 
+void Scheduler::InvokeDevices() {
+    for (int i = 0; i < ndevs_; i++) {
+        if (!devs_[i]->worker()->running()) devs_[i]->worker()->Invoke();
+    }
+}
+
 void Scheduler::CompleteTask(Task* task, Worker* worker) {
   //task->set_time_end(timer_->Now());
   Device* dev = worker->device();

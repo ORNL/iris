@@ -463,6 +463,7 @@ void Device::Execute(Task* task) {
   task->set_time_start(timer_);
   //printf("================== Task:%s =====================\n", task->name());
   _event_debug("task[%lu:%s] started execution on dev[%d][%s] time[%lf] start:[%lf] q[%d]", task->uid(), task->name(), devno(), name(), task->time(), task->time_start(), task->recommended_stream());
+  //_printf(" started working task[%lu:%s] started execution on dev[%d][%s] time[%lf] start:[%lf] q[%d]", task->uid(), task->name(), devno(), name(), task->time(), task->time_start(), task->recommended_stream());
   _trace("task[%lu:%s] started execution on dev[%d][%s] time[%lf] start:[%lf] q[%d]", task->uid(), task->name(), devno(), name(), task->time(), task->time_start(), task->recommended_stream());
   //_info("task[%lu:%s] started execution on dev[%d][%s] time[%lf] start:[%lf] q[%d]", task->uid(), task->name(), devno(), name(), task->time(), task->time_start(), task->recommended_stream());
   //for(Command *cmd : task->reset_mems()) {
@@ -548,14 +549,14 @@ void Device::Execute(Task* task) {
     //_info("task[%lu:%s] dev:%d:%s\n", task->uid(), task->name(), devno(), name());
   }
   //_info("Task %s:%lu time now:%lf\n", task->name(), task->uid(), timer_->Now());
-  _trace("Task %s:%lu time now:%lf\n", task->name(), task->uid(), timer_->Now());
+  _trace("Task %s:%lu time now:%lf dev:%d:%s\n", task->name(), task->uid(), timer_->Now(), devno(), name());
   HandleHiddenDMemOuts(task);
   //_info("Submitted Task %s:%lu time now:%lf dev:%d:%s\n", task->name(), task->uid(), timer_->Now(), devno(), name());
   task->update_status(IRIS_SUBMITTED);
   bool disable_profile = false;
   if (task->ncmds() == 1 && is_kernel_skipped) 
       disable_profile = true;
-  _trace("Task %s:%lu time now:%lf\n", task->name(), task->uid(), timer_->Now());
+  _trace("Task %s:%lu time now:%lf dev:%d:%s\n", task->name(), task->uid(), timer_->Now(), devno(), name());
   task->set_disable_profiling(disable_profile);
   if (platform_obj_->is_event_profile_enabled() && !disable_profile) {
       double execute_end = (timer_->Now()-first_event_cpu_mid_point_time())*1000.0;
@@ -570,14 +571,15 @@ void Device::Execute(Task* task) {
   if ((!async_launch)  && !disable_profile)
 	  task->set_time_end(timer_);
   //_info("Task %s:%lu time now:%lf\n", task->name(), task->uid(), timer_->Now());
-  _trace("Task %s:%lu time now:%lf\n", task->name(), task->uid(), timer_->Now());
-  _debug2("Task %s:%lu refcnt:%d\n", task->name(), task->uid(), task->ref_cnt());
+  _trace("Task %s:%lu time now:%lf dev:%d:%s\n", task->name(), task->uid(), timer_->Now(), devno(), name());
+  _debug2("Task %s:%lu refcnt:%d dev:%d:%s\n", task->name(), task->uid(), task->ref_cnt(), devno(), name());
   TaskPost(task);
   if (hook_task_post_) hook_task_post_(task);
   if (!task->system()) _trace("task[%lu:%s] complete dev[%d][%s] time[%lf] now[%lf] end:[%lf]", task->uid(), task->name(), devno(), name(), task->time(), timer_->Now(), task->time_end());
   //_info("Task %s:%lu dev:%d:%s stream:%d time now:%lf async_launch:%d\n", task->name(), task->uid(), devno(), name(), stream_index, timer_->Now(), async_launch);
-  _trace("Task %s:%lu time now:%lf\n", task->name(), task->uid(), timer_->Now());
-  _debug2("Task %s:%lu refcnt:%d\n", task->name(), task->uid(), task->ref_cnt());
+  _trace("Task %s:%lu time now:%lf dev:%d:%s\n", task->name(), task->uid(), timer_->Now(), devno(), name());
+  //_printf("Task %s:%lu time now:%lf dev:%d:%s\n", task->name(), task->uid(), timer_->Now(), devno(), name());
+  _debug2("Task %s:%lu refcnt:%d dev:%d:%s\n", task->name(), task->uid(), task->ref_cnt(), devno(), name());
   if (task->cmd_kernel() != NULL) ProactiveTransfers(task, task->cmd_kernel());
   if (!async_launch) { 
       FreeActiveTask(); 
@@ -864,11 +866,11 @@ void Device::ResolveOutputWriteDependency(Task *task, Command *cmd, BaseMem *mem
             if (host_w_devno == devno() && host_w_stream == kernel_stream) return;
             if (host_write_dev->type() == type()) {
                 WaitForEvent(host_w_event, kernel_stream, iris_event_wait_default);
-                _printf(" WaitForEvent ASYNC_D2H_SYNC dev:[%d][%s] src_dev:[%d][%s] mem:[%lu] Wait for event:%p mem_stream:%d input_stream:%d", devno(), name(), host_w_devno, host_write_dev->name(), mem->uid(), host_w_event, kernel_stream, host_w_stream); 
+                _event_debug(" WaitForEvent ASYNC_D2H_SYNC dev:[%d][%s] src_dev:[%d][%s] mem:[%lu] Wait for event:%p mem_stream:%d input_stream:%d", devno(), name(), host_w_devno, host_write_dev->name(), mem->uid(), host_w_event, kernel_stream, host_w_stream); 
             }
             else {
                 dmem->HardHostWriteEventSynchronize(host_write_dev, host_w_event);
-                _printf(" HardHostWriteEventSynchronize ASYNC_D2H_SYNC dev:[%d][%s] src_dev:[%d][%s] mem:[%lu] Wait for event:%p mem_stream:%d input_stream:%d", devno(), name(), host_w_devno, host_write_dev->name(), mem->uid(), host_w_event, kernel_stream, host_w_stream); 
+                _event_debug(" HardHostWriteEventSynchronize ASYNC_D2H_SYNC dev:[%d][%s] src_dev:[%d][%s] mem:[%lu] Wait for event:%p mem_stream:%d input_stream:%d", devno(), name(), host_w_devno, host_write_dev->name(), mem->uid(), host_w_event, kernel_stream, host_w_stream); 
             }
         }
     }

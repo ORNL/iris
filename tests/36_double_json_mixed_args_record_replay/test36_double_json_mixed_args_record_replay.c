@@ -84,7 +84,7 @@ int main(int argc, char** argv) {
   printf("]\n");
 
   saxpy_ref(Zref, X, Y, A, SIZE);
-  printf( "Checking for bit-exact errors... \n");
+  printf( "1-Checking for bit-exact errors... \n");
   for (i=0; i<SIZE; i++)
   {
       if (Zref[i] != Z[i]) {
@@ -147,7 +147,7 @@ int main(int argc, char** argv) {
   printf("]\n");
 
   saxpy_ref(Zref, X, Y, A, SIZE);
-  printf( "Checking for bit-exact errors... \n");
+  printf( "2-Checking for bit-exact errors... \n");
   for (i=0; i<SIZE; i++)
   {
       if (Zref[i] != Z[i]) {
@@ -191,6 +191,7 @@ int main(int argc, char** argv) {
 
   void* json_inputs[11] = { &SIZE, &SIZECB, Z, X, Y, &memZ, &memX, &memY, &A, &target1, &target2 };
 
+  printf("X:%p, Y:%p, Z:%p\n", X, Y, Z);
   iris_graph graph;
   iris_graph_create_json("graph_data_type.json", json_inputs, &graph);
 
@@ -209,7 +210,7 @@ int main(int argc, char** argv) {
   printf("]\n");
 
   saxpy_ref(Zref, X, Y, A, SIZE);
-  printf( "Checking for bit-exact errors... \n");
+  printf( "3-Checking for bit-exact errors... \n");
   for (i=0; i<SIZE; i++)
   {
       if (Zref[i] != Z[i]) {
@@ -270,7 +271,7 @@ int main(int argc, char** argv) {
   printf("]\n");
 
   saxpy_ref(Zref, X, Y, A, SIZE);
-  printf( "Checking for bit-exact errors... \n");
+  printf( "4-Checking for bit-exact errors... \n");
   for (i=0; i<SIZE; i++)
   {
       if (Zref[i] != Z[i]) {
@@ -331,7 +332,7 @@ int main(int argc, char** argv) {
   printf("]\n");
 
   saxpy_ref(Zref, X, Y, A, SIZE);
-  printf( "Checking for bit-exact errors... \n");
+  printf( "5-Checking for bit-exact errors... \n");
   for (i=0; i<SIZE; i++)
   {
       if (Zref[i] != Z[i]) {
@@ -391,7 +392,7 @@ int main(int argc, char** argv) {
   printf("]\n");
 
   saxpy_ref(Zref, X, Y, A, SIZE);
-  printf( "Checking for bit-exact errors... \n");
+  printf( "6-Checking for bit-exact errors... \n");
   for (i=0; i<SIZE; i++)
   {
       if (Zref[i] != Z[i]) {

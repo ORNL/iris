@@ -45,6 +45,7 @@ public:
 private:
   void Submit(Task* task);
   void SubmitTask(Task* task);
+  inline void InvokeDevices();
   virtual void Run();
 
   void InitHubClient();
