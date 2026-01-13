@@ -508,9 +508,9 @@ void Device::Execute(Task* task) {
                                           stream_index = GetStream(task); //task->uid() % nqueues_; 
                                       }
                                       cmd->set_recommended_stream(stream_index);
+                                      ResolveWriteDependencies(task, cmd);
                                       ExecuteMemIn(task, cmd);
 
-                                      ResolveWriteDependencies(task, cmd);
                                       ExecuteKernel(cmd);     
                                       TrackMemoryReads(task, cmd);
                                       ExecuteMemOut(task, cmd);
@@ -1235,7 +1235,7 @@ void Device::ExecuteMemResetInput(Task *task, Command* cmd) {
         DataMem* mem = (DataMem *)cmd->mem();
         if (mem->get_source_mem() != NULL) mem = (DataMem*)mem->get_source_mem();
         mem->dev_lock(devno_);
-        map<int, void *> dep_streams;
+        map<pair<int, int>, void *> dep_streams; 
         bool async = is_async(task);
         int stream_index = 0; 
         if (async) {
@@ -1245,10 +1245,9 @@ void Device::ExecuteMemResetInput(Task *task, Command* cmd) {
         }
         bool is_proactive_dispatch = platform_obj_->is_proactive_dispatch();
         bool l_async = async && is_proactive_dispatch;
-        ResolveMemoryOutputDependency(task, cmd, mem, dep_streams, l_async);
-        for (auto & k : dep_streams) {
-            _event_debug("Adding reset memory WaitForEvent dependency for task:[%lu][%s] stream:%d in_stream:%d in_event:%p\n", task->uid(), task->name(), stream_index, k.first, k.second);
-            WaitForEvent(k.second, stream_index, iris_event_wait_default);
+        if (l_async) {
+            ResolveMemoryOutputDependency(task, cmd, mem, dep_streams, l_async);
+            WaitForWAWDependencies(task, dep_streams, stream_index);
         }
         ResetMemory(task, cmd, mem);
         mem->set_host_dirty();
@@ -1771,6 +1770,9 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
             else {
                 src_dev->MemD2H(task, mem, mem->dev_dim(), dst_host, mem->dev_tile_size(), mem->dev_off(), mem->dev_strides(IRIS_MAX(src_mem->dim(), mem->dev_dim())), src_mem->dim(), src_mem->arch(this), src_mem->dev_tile_size(), src_mem->dev_off(), src_mem->dev_strides(IRIS_MAX(src_mem->dev_dim(), mem->dev_dim())), mem->dev_tile_size(), mem->elem_size());
             }
+        }
+        if (async && platform_obj_->is_proactive_dispatch()) {
+            mem->insert_read_track(src_dev->devno(), src_mem_stream, task, mem->GetCompletionEvent(src_dev->devno()));
         }
         double end = timer_->Now();
 
@@ -2409,13 +2411,14 @@ void Device::AddMemoryAccessWriteDependencies(Task *task, Command *cmd, BaseMem 
         }
     }           
 }
-void Device::ResolveMemoryOutputDependency(Task *task, Command *cmd, BaseMem *mem, map<int, void *> & dep_streams, bool async) {
+void Device::ResolveMemoryOutputDependency(Task *task, Command *cmd, BaseMem *mem, map<pair<int, int>, void *> & dep_streams, bool async) {
     ResolveOutputWriteDependency<ASYNC_D2H_SYNC>(task, cmd, mem, async);
     auto read_trac = mem->read_tracks(devno());
     for( auto && z : read_trac ) {
         int k_stream = z.first;
         DataReadTrack & track = z.second;
         void *k_event = track.event();
+        int k_devno = track.task()->recommended_dev();
         bool enable = false;
         if (task == track.task()) {
             enable = true;
@@ -2424,10 +2427,29 @@ void Device::ResolveMemoryOutputDependency(Task *task, Command *cmd, BaseMem *me
             enable = true;
         }
         if (enable) {
-            if (dep_streams.find(k_stream) != dep_streams.end())
-                dep_streams[k_stream] = k_event;
+            auto key = make_pair(k_stream, k_devno);
+            if (dep_streams.find(key) != dep_streams.end())
+                dep_streams[key] = k_event;
             else
-                dep_streams.insert(make_pair(k_stream, k_event));
+                dep_streams.insert(make_pair(key, k_event));
+        }
+    }
+}
+void Device::WaitForWAWDependencies(Task *task, map<pair<int, int>, void *> & dep_streams, int stream_index)
+{
+    for (auto & k : dep_streams) {
+        auto k_stream_devno = k.first;
+        auto k_event = k.second;
+        auto k_stream = k.first;
+        int k_devno = k_stream_devno.second;
+        Device *k_dev = platform_obj_->device(k_devno);
+        if (k_dev->type() == type()) {
+            _printf("Adding kernel dependency for dev:%d:%s task:[%lu][%s] k_stream:%d k_dev:%d:%s k_stream:%d k_event:%p\n", devno(), name(), task->uid(), task->name(), stream_index, k_devno, k_dev->name(), k_stream, k_event);
+            WaitForEvent(k.second, stream_index, iris_event_wait_default);
+        }
+        else {
+            _printf("Adding kernel dependency for dev:%d:%s task:[%lu][%s] k_stream:%d k_dev:%d:%s k_stream:%d k_event:%p\n", devno(), name(), task->uid(), task->name(), stream_index, k_devno, k_dev->name(), k_stream, k_event);
+            k_dev->EventSynchronize(k_event);
         }
     }
 }
@@ -2440,7 +2462,7 @@ void Device::ResolveWriteDependencies(Task *task, Command *cmd) {
     bool async = is_async(task) && platform_obj_->is_proactive_dispatch();
     if (!async) return;
     int *params_map = cmd->get_params_map();
-    map<int, void *> dep_streams; 
+    map<pair<int, int>, void *> dep_streams; 
     int stream_index = cmd->recommended_stream();
     for(auto && z : cmd->kernel()->out_mems()) {
         BaseMem *mem = z.first;
@@ -2452,10 +2474,7 @@ void Device::ResolveWriteDependencies(Task *task, Command *cmd) {
                     mem->GetMemHandlerType() == IRIS_DMEM_REGION)) continue;
         ResolveMemoryOutputDependency(task, cmd, mem, dep_streams, async);
     }
-    for (auto & k : dep_streams) {
-        _printf("Adding kernel dependency for task:[%lu][%s] stream:%d in_stream:%d in_event:%p\n", task->uid(), task->name(), stream_index, k.first, k.second);
-        WaitForEvent(k.second, stream_index, iris_event_wait_default);
-    }
+    WaitForWAWDependencies(task, dep_streams, stream_index);
 }
 void Device::ExecuteMemFlushOut(Command* cmd, BaseMem *target_mem, Task *task) {
     int nddevs[IRIS_MAX_NDEVS+1];
