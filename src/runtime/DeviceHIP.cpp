@@ -498,7 +498,7 @@ int DeviceHIP::MemD2D(Task *task, Device *src_dev, BaseMem *mem, void *dst, void
   hipError_t err;
   bool async = false;
   if (is_async(task)) {
-      stream_index = GetStream(task, mem); //task->uid() % nqueues_; 
+      stream_index = mem->recommended_stream(devno()); //GetStream(task, mem); //task->uid() % nqueues_; 
       async = true;
       if (stream_index == DEFAULT_STREAM_INDEX) { async = false; stream_index = 0; }
   }
@@ -635,7 +635,7 @@ int DeviceHIP::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,
   int stream_index=0;
   bool async = false;
   if (is_async(task)) {
-      stream_index = GetStream(task, mem); //task->uid() % nqueues_; 
+      stream_index = mem->recommended_stream(devno()); //GetStream(task, mem); //task->uid() % nqueues_; 
       async = true;
       if (stream_index == DEFAULT_STREAM_INDEX) { async = false; stream_index = 0; }
   }
@@ -721,7 +721,7 @@ int DeviceHIP::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,
   int stream_index=0;
   bool async = false;
   if (is_async(task)) {
-      stream_index = GetStream(task, mem); //task->uid() % nqueues_; 
+      stream_index = mem->recommended_stream(devno()); //GetStream(task, mem); //task->uid() % nqueues_; 
       async = true;
       if (stream_index == DEFAULT_STREAM_INDEX) { async = false; stream_index = 0; }
   }
@@ -885,7 +885,7 @@ int DeviceHIP::MemCpy(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t *
   _hiperror(err);
   bool async = false;
   if (is_async(task)) {
-      stream_index = GetStream(task, mem); //task->uid() % nqueues_; 
+      stream_index = mem->recommended_stream(devno()); //GetStream(task, mem); //task->uid() % nqueues_; 
       async = true;
       if (stream_index == DEFAULT_STREAM_INDEX) { async = false; stream_index = 0; }
   }

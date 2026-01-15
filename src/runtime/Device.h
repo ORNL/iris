@@ -143,7 +143,7 @@ public:
   inline void ResolveInputWriteDependency(Task *task, BaseMem *mem, bool async, Device *select_src_dev=NULL, BaseMem *src_mem=NULL);
   inline void TrackMemoryReads(Task *task, Command* cmd);
   inline void WaitForWAWDependencies(Task *task, map<pair<int, int>, void *> & dep_streams, int stream_index);
-  inline void ResolveMemoryOutputDependency(Task *task, Command *cmd, BaseMem *mem, map<pair<int, int>, void *> & dep_streams, bool async);
+  inline void ResolveMemoryOutputDependency(Task *task, Command *cmd, DataMem *mem, map<pair<int, int>, void *> & dep_streams, bool async);
   inline void ResolveWriteDependencies(Task *task, Command *cmd);
   inline void AddMemoryAccessWriteDependencies(Task *task, Command *cmd, BaseMem *mem, int mem_stream);
   //inline void ResolveKernelDependencies(Task *task, Command *cmd);

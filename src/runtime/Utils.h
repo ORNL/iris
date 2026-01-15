@@ -117,8 +117,10 @@ namespace iris {
                     if (pos > v.size()) throw std::out_of_range("pos out of range");
                     v.insert(v.begin() + pos, value);   // shifts [pos..end) to the right by 1
                 }
-                static bool IsTileContiguous( const size_t strides[3],   
-                        const size_t tile_size[3], int dims);              
+                static bool IsSizesSame( const size_t *src_size,   
+                        const size_t *dst_size, int dims);              
+                static bool IsTileContiguous( const size_t *strides,   
+                        const size_t *tile_size, int dims);              
 
 #if defined(_WIN32)
                 static size_t PageSize() { 

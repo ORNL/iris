@@ -256,7 +256,7 @@ int DeviceOpenCL::ResetMemory(Task *task, Command *cmd, BaseMem *mem) {
     int stream_index = 0;
     cl_command_queue queue = default_queue_;
     if (is_async(task)) {
-        stream_index = GetStream(task); //task->uid() % nqueues_; 
+        stream_index = cmd->recommended_stream(); //GetStream(task); //task->uid() % nqueues_; 
         if (stream_index == DEFAULT_STREAM_INDEX) { stream_index = 0; }
         queue = clcmdq_[stream_index];
     }
@@ -331,7 +331,7 @@ int DeviceOpenCL::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_siz
   cl_command_queue queue = default_queue_;
   //bool async = false;
   if (is_async(task)) {
-      stream_index = GetStream(task, mem); //task->uid() % nqueues_; 
+      stream_index = mem->recommended_stream(devno()); //GetStream(task, mem); //task->uid() % nqueues_; 
       //async = true;
       if (stream_index == DEFAULT_STREAM_INDEX) { /*async = false;*/ stream_index = 0; }
       queue = clcmdq_[stream_index];
@@ -387,7 +387,7 @@ int DeviceOpenCL::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_siz
   //bool async = false;
   cl_command_queue queue = default_queue_;
   if (is_async(task)) {
-      stream_index = GetStream(task, mem); //task->uid() % nqueues_; 
+      stream_index = mem->recommended_stream(devno()); //GetStream(task, mem); //task->uid() % nqueues_; 
       //async = true;
       if (stream_index == DEFAULT_STREAM_INDEX) { /*async = false;*/ stream_index = 0; }
       queue = clcmdq_[stream_index];

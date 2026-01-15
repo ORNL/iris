@@ -633,7 +633,8 @@ void Device::Callback(void *stream, int status, void* data) {
   else {
       task->Complete();
   }
-  _event_prof_debug(" ------ Completed and Safe return from callback task stream_ptr:%p task:%p:%s:%lu status:%d data:%p\n", stream, task, tname.c_str(), uid, status, data);
+  _event_debug(" ------ Completed and Safe return from callback task stream_ptr:%p task:%p:%s:%lu status:%d data:%p time:[%lf]\n", stream, task, tname.c_str(), uid, status, data, task->dev()->timer_->Now());
+  _trace(" ------ Completed and Safe return from callback task dev:%d:%s stream_ptr:%p task:%p:%s:%lu status:%d data:%p start_time:[%lf] end_time:[%lf]\n", task->dev()->devno(), task->dev()->name(), stream, task, tname.c_str(), uid, status, data, task->time_start(), task->dev()->timer_->Now());
 }
 void Device::ResolveDeviceWrite(Task *task, BaseMem *mem, Device *input_dev, bool instant_wait, BaseMem *src_mem)
 {
@@ -1058,7 +1059,8 @@ void Device::ExecuteKernel(Command* cmd) {
   int npolymems = cmd->npolymems();
   int max_idx = 0;
   int mem_idx = 0;
-  _debug("Inside device kernel execute and calling free destroy events task:%lu:%s kernel:%lu:%s time:%lf dev:%d:%s\n", task->uid(), task->name(), kernel->uid(), kernel->name(), timer_->Now(), devno(), name());
+  _event_debug("Inside device kernel execute and calling free destroy events task:%lu:%s kernel:%lu:%s time:%lf dev:%d:%s\n", task->uid(), task->name(), kernel->uid(), kernel->name(), timer_->Now(), devno(), name());
+  //_printf("Inside device kernel execute and calling free destroy events task:%lu:%s kernel:%lu:%s time:%lf dev:%d:%s\n", task->uid(), task->name(), kernel->uid(), kernel->name(), timer_->Now(), devno(), name());
   //double ltime_start = timer_->GetCurrentTime();
   if (!kernel->vendor_specific_kernel_check_flag(devno_))
       CheckVendorSpecificKernel(kernel);
@@ -1176,8 +1178,8 @@ void Device::ExecuteKernel(Command* cmd) {
       void **event = cmd->kernel()->GetCompletionEventPtr(true);
       //cmd->set_recommended_stream(stream_index);
       RecordEvent(event, cmd->recommended_stream());
-      _event_debug("Task RecordEvent recording event for task:%lu %s stream:%d event:%p\n", task->uid(), task->name(), cmd->recommended_stream(), *event);
-      _event_prof_debug("Task RecordEvent recording event for task:%lu %s stream:%d event:%p\n", task->uid(), task->name(), cmd->recommended_stream(), *event);
+	  _trace("Task RecordEvent recording event for dev:[%d:%s] task:%lu %s stream:%d event:%p", devno(), name(), task->uid(), task->name(), cmd->recommended_stream(), *event);
+	  _event_debug("Task RecordEvent recording event for dev:[%d:%s] task:%lu %s stream:%d event:%p", devno(), name(), task->uid(), task->name(), cmd->recommended_stream(), *event);
       //if (task->uid() == 14)
       //EventSynchronize(cmd->kernel()->GetCompletionEvent());
   }
@@ -1249,7 +1251,17 @@ void Device::ExecuteMemResetInput(Task *task, Command* cmd) {
             ResolveMemoryOutputDependency(task, cmd, mem, dep_streams, l_async);
             WaitForWAWDependencies(task, dep_streams, stream_index);
         }
+        if (async && platform_obj_->is_event_profile_enabled()) {
+            ProfileEvent & prof_event = task->CreateProfileEvent(mem, devno(), PROFILE_RESET, this, stream_index);
+            _event_debug("Profiling record start: task[%lu][%s]", task->uid(), task->name());
+            prof_event.RecordStartEvent(); 
+        }
         ResetMemory(task, cmd, mem);
+        if (async && platform_obj_->is_event_profile_enabled()) {
+            ProfileEvent & prof_event = task->LastProfileEvent();
+           _event_debug("Profiling record end: task[%lu][%s]", task->uid(), task->name());
+            prof_event.RecordEndEvent(); 
+        }
         mem->set_host_dirty();
         mem->set_dirty_except(devno_);
         mem->dev_unlock(devno_);
@@ -1801,7 +1813,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         }
     }
     else {
-        // D2H->H2D case
+        // D2H->H2D / D2H-H2D case
         // Host doesn't have fresh copy and peer2peer d2d is not possible
         // Fresh copy should be in some other device memory
         // do D2H and follewed by H2D
@@ -1850,6 +1862,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
 
                 // Do Device to Host Transfer
                 if (async && platform_obj_->is_proactive_dispatch()) {
+					_event_debug(" D2H->H2D (D2H) task[%lu][%s] mem:[%lu] steram:%d dev:[%d:%s] introducing write input dependencies", task->uid(), task->name(), select_mem->uid(), src_mem_stream, src_dev->devno(), src_dev->name());
                     src_dev->AddMemoryAccessWriteDependencies(task, cmd, select_mem, src_mem_stream);
                 }
                 d2h_start = timer_->Now();
@@ -1885,6 +1898,11 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
             ResolveInputWriteDependency<ASYNC_KNOWN_H2D_RESOLVE>(task, mem, async, src_dev, select_mem);
             _event_debug("   MemD2H -> MemH2D registered callbacks completed callbacks");
 
+			if (async && platform_obj_->is_proactive_dispatch()) {
+				_event_debug(" D2H->H2D (H2D) task[%lu][%s] mem:[%lu] steram:%d dev:[%d:%s] introducing write input dependencies", task->uid(), task->name(), mem->uid(), mem_stream, devno(), name());
+				_trace(" D2H->H2D (H2D) task[%lu][%s] mem:[%lu] steram:%d dev:[%d:%s] introducing write input dependencies", task->uid(), task->name(), mem->uid(), mem_stream, devno(), name());
+				AddMemoryAccessWriteDependencies(task, cmd, mem, mem_stream);
+			}
             // H2D should be issued from this current device
             if (async && platform_obj_->is_event_profile_enabled()) {
                 ProfileEvent & prof_event = task->CreateProfileEvent(mem, -1, PROFILE_D2HH2D_H2D, this, mem_stream);
@@ -2323,11 +2341,8 @@ void Device::TrackMemoryReads(Task *task, Command* cmd) {
             int n_regions = dmem->get_n_regions();
             for (int i=0; i<n_regions; i++) {
                 DataMemRegion *rmem = (DataMemRegion *)dmem->get_region(i, false);
-                rmem->insert_read_track(devno(), stream_index, task, event);
-            }
-            for (int i=0; i<n_regions; i++) {
-                DataMemRegion *rmem = (DataMemRegion *)dmem->get_region(i, false);
                 DataMemRegion *dev_rmem = (DataMemRegion *)dmem->get_region(i, true);
+                rmem->insert_read_track(devno(), stream_index, task, event);
                 if (dev_rmem != rmem) {
                     dev_rmem->insert_read_track(devno(), stream_index, task, event);
                 }
@@ -2405,33 +2420,44 @@ void Device::AddMemoryAccessWriteDependencies(Task *task, Command *cmd, BaseMem 
         if (k_stream != mem_stream) {
             DataReadTrack  & track = z.second;
             void *k_event = track.event();
-            _event_debug(" WaitForEvent dmem:%lu mem_stream:%d, event:%p dev[%d][%s]",
-                    mem->uid(), mem_stream, k_event, devno(), name()); 
+			_event_debug(" waitforevent dmem:%lu mem_stream:%d, event:%p dev[%d][%s] task[%lu][%s]",
+					mem->uid(), mem_stream, k_event, devno(), name(), task->uid(), task->name()); 
+            _trace(" waitforevent dmem:%lu mem_stream:%d, event:%p dev[%d][%s] task[%lu][%s]",
+                    mem->uid(), mem_stream, k_event, devno(), name(), task->uid(), task->name()); 
             WaitForEvent(k_event, mem_stream, iris_event_wait_default);
         }
     }           
 }
-void Device::ResolveMemoryOutputDependency(Task *task, Command *cmd, BaseMem *mem, map<pair<int, int>, void *> & dep_streams, bool async) {
-    ResolveOutputWriteDependency<ASYNC_D2H_SYNC>(task, cmd, mem, async);
-    auto read_trac = mem->read_tracks(devno());
-    for( auto && z : read_trac ) {
-        int k_stream = z.first;
-        DataReadTrack & track = z.second;
-        void *k_event = track.event();
-        int k_devno = track.task()->recommended_dev();
-        bool enable = false;
-        if (task == track.task()) {
-            enable = true;
+void Device::ResolveMemoryOutputDependency(Task *task, Command *cmd, DataMem *mem, map<pair<int, int>, void *> & dep_streams, bool async) {
+    if (mem->get_n_regions() <=0) {
+        ResolveOutputWriteDependency<ASYNC_D2H_SYNC>(task, cmd, mem, async);
+        auto read_trac = mem->read_tracks(devno());
+        for( auto && z : read_trac ) {
+            int k_stream = z.first;
+            DataReadTrack & track = z.second;
+            void *k_event = track.event();
+            int k_devno = track.task()->recommended_dev();
+            bool enable = false;
+            if (task == track.task()) {
+                enable = true;
+            }
+            else if (task->is_depend(track.task()->uid())) {
+                enable = true;
+            }
+            if (enable) {
+                auto key = make_pair(k_stream, k_devno);
+                if (dep_streams.find(key) != dep_streams.end())
+                    dep_streams[key] = k_event;
+                else
+                    dep_streams.insert(make_pair(key, k_event));
+            }
         }
-        else if (task->is_depend(track.task()->uid())) {
-            enable = true;
-        }
-        if (enable) {
-            auto key = make_pair(k_stream, k_devno);
-            if (dep_streams.find(key) != dep_streams.end())
-                dep_streams[key] = k_event;
-            else
-                dep_streams.insert(make_pair(key, k_event));
+    }
+    else {
+        int n_regions = mem->get_n_regions();
+        for (int i=0; i<n_regions; i++) {
+            DataMemRegion *rmem = (DataMemRegion *)mem->get_region(i, false);
+            ResolveMemoryOutputDependency(task, cmd, rmem, dep_streams, async);
         }
     }
 }
@@ -2440,15 +2466,15 @@ void Device::WaitForWAWDependencies(Task *task, map<pair<int, int>, void *> & de
     for (auto & k : dep_streams) {
         auto k_stream_devno = k.first;
         auto k_event = k.second;
-        auto k_stream = k.first;
+        //auto k_stream = k.first;
         int k_devno = k_stream_devno.second;
         Device *k_dev = platform_obj_->device(k_devno);
         if (k_dev->type() == type()) {
-            _printf("Adding kernel dependency for dev:%d:%s task:[%lu][%s] k_stream:%d k_dev:%d:%s k_stream:%d k_event:%p\n", devno(), name(), task->uid(), task->name(), stream_index, k_devno, k_dev->name(), k_stream, k_event);
+            //_printf("Adding kernel dependency for dev:%d:%s task:[%lu][%s] k_stream:%d k_dev:%d:%s k_stream:%d k_event:%p\n", devno(), name(), task->uid(), task->name(), stream_index, k_devno, k_dev->name(), k_stream, k_event);
             WaitForEvent(k.second, stream_index, iris_event_wait_default);
         }
         else {
-            _printf("Adding kernel dependency for dev:%d:%s task:[%lu][%s] k_stream:%d k_dev:%d:%s k_stream:%d k_event:%p\n", devno(), name(), task->uid(), task->name(), stream_index, k_devno, k_dev->name(), k_stream, k_event);
+            //_printf("Adding kernel dependency for dev:%d:%s task:[%lu][%s] k_stream:%d k_dev:%d:%s k_stream:%d k_event:%p\n", devno(), name(), task->uid(), task->name(), stream_index, k_devno, k_dev->name(), k_stream, k_event);
             k_dev->EventSynchronize(k_event);
         }
     }
@@ -2472,7 +2498,7 @@ void Device::ResolveWriteDependencies(Task *task, Command *cmd) {
                 !(params_map[idx] & type_) ) continue;
         if (!(mem->GetMemHandlerType() == IRIS_DMEM ||
                     mem->GetMemHandlerType() == IRIS_DMEM_REGION)) continue;
-        ResolveMemoryOutputDependency(task, cmd, mem, dep_streams, async);
+        ResolveMemoryOutputDependency(task, cmd, (DataMem *)mem, dep_streams, async);
     }
     WaitForWAWDependencies(task, dep_streams, stream_index);
 }

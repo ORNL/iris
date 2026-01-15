@@ -176,10 +176,20 @@ void Utils::Logo(bool color) {
   }
 }
 
+bool Utils::IsSizesSame(
+        const size_t *src_size,   // { elems in X-step, elems in row, elems in slice }
+        const size_t *dst_size,     // { width, height, depth } in elements
+        int          dims              // 1, 2 or 3
+        ) {
+    for(int d=0; d < dims; d++) {
+        if (src_size[d] != dst_size[d]) return false;
+    }
+    return true;
+}
 // returns true if an up-to-3D tile is laid out as one contiguous block
 bool Utils::IsTileContiguous(
-        const size_t strides[3],   // { elems in X-step, elems in row, elems in slice }
-        const size_t tile_size[3],     // { width, height, depth } in elements
+        const size_t *strides,   // { elems in X-step, elems in row, elems in slice }
+        const size_t *tile_size,     // { width, height, depth } in elements
         int          dims              // 1, 2 or 3
         ) {
     size_t expect = 1;
