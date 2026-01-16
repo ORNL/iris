@@ -212,7 +212,7 @@ public:
   //Task** depends() { return depends_; }
   unsigned long* depends() { return depends_uids_; }
   unsigned long depend_uid(int i) { ASSERT(i < ndepends_); return depends_uids_[i]; }
-  bool is_depend(unsigned long d_uid) {
+  inline bool is_depend(unsigned long d_uid) {
     for(int i=0; i<ndepends_; i++) {
         if (depends_uids_[i] == d_uid) 
             return true;
@@ -287,7 +287,7 @@ public:
   iris_kernel get_last_cmd_kernel();
   Device *last_cmd_device() { return last_cmd_device_; }
   int execute_instance() { return execute_instance_; }
-  void enable_task_enqueued_in_multiple_devices() { is_task_enqueued_in_multiple_devices_ = true; }
+  //void enable_task_enqueued_in_multiple_devices() { is_task_enqueued_in_multiple_devices_ = true; }
 private:
   void CompleteSub();
 
@@ -382,7 +382,7 @@ public:
   vector<DataMem *> & hidden_dmem_in() { return hidden_dmem_in_; }
   vector<DataMem *> & hidden_dmem_out() { return hidden_dmem_out_; }
   vector<ProfileEvent> & profile_events() { return profile_events_; }
-  void Clear() { dep_dev_ = NULL; dev_ = NULL; }
+  inline void Clear() { dep_dev_ = NULL; dev_ = NULL; }
   ProfileEvent & CreateProfileEvent(BaseMem *mem, int connect_dev, ProfileRecordType type, Device *dev, int stream);
   ProfileEvent & CreateProfileEvent(Task *task, int connect_dev, ProfileRecordType type, Device *dev, int stream) {
       profile_events_.push_back(ProfileEvent(task->uid(), connect_dev, type, dev, stream));
@@ -435,7 +435,7 @@ public:
   bool py_policy_flag_;
   string py_policy_;
   int execute_instance_;
-  bool is_task_enqueued_in_multiple_devices_;
+  //bool is_task_enqueued_in_multiple_devices_;
 };
 
 } /* namespace rt */

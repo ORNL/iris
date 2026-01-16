@@ -10,6 +10,7 @@ namespace rt {
 
 QueueReady::QueueReady() {
     devno_ = -1;
+    is_proactive_dispatch_ = Platform::GetPlatform()->is_proactive_dispatch();
 }
 
 QueueReady::~QueueReady() {
@@ -69,7 +70,7 @@ bool QueueReady::Dequeue(Task **task) {
     auto &data = pqueue_.front();
     *task = data;
     _trace("Popped task:%lu:%s to pqueue pq:%lu q:%lu", (*task)->uid(), (*task)->name(), pqueue_.size(), queue_.size());
-    if ((*task)->Dispatchable(false)) {
+    if (!is_proactive_dispatch_ || (*task)->Dispatchable(false)) {
         _trace("Popped task:%lu:%s to pqueue pq:%lu q:%lu", (*task)->uid(), (*task)->name(), pqueue_.size(), queue_.size());
         pqueue_.pop_front();
         return true;
@@ -80,7 +81,7 @@ bool QueueReady::Dequeue(Task **task) {
     auto &data = queue_.front();
     *task = data;
     _trace("Popped task:%lu:%s to pqueue pq:%lu q:%lu", (*task)->uid(), (*task)->name(), pqueue_.size(), queue_.size());
-    if ((*task)->Dispatchable(false)) {
+    if (!is_proactive_dispatch_ || (*task)->Dispatchable(false)) {
         _trace("Popped task:%lu:%s to queue pq:%lu q:%lu", (*task)->uid(), (*task)->name(), pqueue_.size(), queue_.size());
         queue_.pop_front();
         return true;
@@ -105,7 +106,7 @@ bool QueueReady::Dequeue(Task **task, Device *device) {
     auto &data = pqueue_.front();
     *task = data; //(Task*) data.second;
     _trace("Trying Popped task:%lu:%s to pqueue pq:%lu q:%lu dev:%d", data->uid(), data->name(), pqueue_.size(), queue_.size(), devno_);
-    if ((*task)->Dispatchable(false)) {
+    if (!is_proactive_dispatch_ || (*task)->Dispatchable(false)) {
         _trace("Popped task:%lu:%s to pqueue pq:%lu q:%lu dev:%d", data->uid(), data->name(), pqueue_.size(), queue_.size(), devno_);
         pqueue_.pop_front();
         return true;
@@ -117,7 +118,7 @@ bool QueueReady::Dequeue(Task **task, Device *device) {
     auto &data = queue_.front();
     *task = data; //(Task*) data.second;
     //_info("Trying to Popped task:%lu:%s to queue pq:%lu q:%lu dev:%d:%s", data->uid(), data->name(), pqueue_.size(), queue_.size(), device->devno(), device->name());
-    if ((*task)->Dispatchable(false)) {
+    if (!is_proactive_dispatch_ || (*task)->Dispatchable(false)) {
         //_info("Popped task:%lu:%s to queue pq:%lu q:%lu dev:%d:%s", data->uid(), data->name(), pqueue_.size(), queue_.size(), device->devno(), device->name());
         queue_.pop_front();
         return true;

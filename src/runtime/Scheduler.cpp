@@ -17,6 +17,7 @@ namespace iris {
 namespace rt {
 
 Scheduler::Scheduler(Platform* platform) {
+  //Utils::SetThreadAffinity(platform_->cpu_set_start());
   platform_ = platform;
   devs_ = platform_->devices();
   ndevs_ = platform_->ndevs();
@@ -30,6 +31,7 @@ Scheduler::Scheduler(Platform* platform) {
   policies_ = new Policies(this);
   hub_client_ = new HubClient(this);
   timer_ = new Timer();
+  is_proactive_dispatch_ = platform->is_proactive_dispatch();
   InitHubClient();
 }
 
@@ -95,7 +97,7 @@ void Scheduler::Enqueue(Task* task) {
 
 void Scheduler::Run() {
   while (true) {
-    Utils::SetThreadAffinity(platform_->cpu_set_start());
+    //Utils::SetThreadAffinity(platform_->cpu_set_start());
     _debug2("Scheduler entering into sleep mode qsize:%lu", queue_->Size());
     Sleep();
     _debug2("Scheduler invoked");
@@ -179,9 +181,9 @@ void Scheduler::SubmitTask(Task* task) {
   //if any dependencies were pending, time to process them now.
   if (!task->Dispatchable()) task->DispatchDependencies();
   
-  if (ndevs > 1) {
-    task->enable_task_enqueued_in_multiple_devices();
-  }
+  //if (ndevs > 1) {
+  //  task->enable_task_enqueued_in_multiple_devices();
+  //}
   for (int i = 0; i < ndevs; i++) {
       task->Retain();
   }
@@ -190,7 +192,7 @@ void Scheduler::SubmitTask(Task* task) {
   for (int i = 0; i < ndevs; i++) {
     devs[i]->worker()->Enqueue(task);
     if (hub_available_) hub_client_->TaskInc(devs[i]->devno(), 1);
-	devs[i]->worker()->Invoke();
+	if (is_proactive_dispatch_) devs[i]->worker()->Invoke();
   }
 }
 

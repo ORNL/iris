@@ -26,6 +26,7 @@ public:
 private:
   std::deque<Task*> pqueue_, queue_, mqueue_;
   mutable std::mutex mutex_;
+  bool is_proactive_dispatch_;
   int devno_;
 };
 

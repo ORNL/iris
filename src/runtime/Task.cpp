@@ -58,7 +58,7 @@ Task::Task(Platform* platform, int type, const char* name, int max_cmds) {
   cmds_.reserve(16);
   //printf("Creating task:%lu:%s ptr:%p\n", uid(), name, this);
   is_kernel_launch_disabled_ = false;
-  is_task_enqueued_in_multiple_devices_ = false;
+  //is_task_enqueued_in_multiple_devices_ = false;
   enable_julia_if_ = false;
   julia_kernel_type_ = iris_julia_native;
   type_ = type;

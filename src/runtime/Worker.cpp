@@ -15,7 +15,7 @@ namespace rt {
 Worker::Worker(Device* dev, Platform* platform, bool single) {
   dev_ = dev;
   platform_ = platform;
-  //Utils::SetThreadAffinity(dev_->devno());
+  Utils::SetThreadAffinity(dev_->devno());
   timer_ = new Timer();
   dev_->set_worker(this);
   scheduler_ = platform_->scheduler();
@@ -107,7 +107,7 @@ void Worker::Execute(Task* task) {
 
 void Worker::Run() {
   while (true) {
-	Utils::SetThreadAffinity(platform_->cpu_set_start() + dev_->devno()+1);
+	//Utils::SetThreadAffinity(platform_->cpu_set_start() + dev_->devno()+1);
     _trace("Device:%d:%s Worker entering into sleep mode", dev_->devno(), dev_->name());
     //printf("1Device:%d:%s Queue size:%lu\n", dev_->devno(), dev_->name(), queue_->Size());
     //_debug2("Device:%d:%s Worker thread invoked now running:%d", dev_->devno(), dev_->name(), running_);

@@ -565,7 +565,8 @@ void Device::Execute(Task* task) {
   //_info("Now check to invoke child tasks for Task %s:%lu time now:%lf\n", task->name(), task->uid(), timer_->Now());
   if (async_launch) {
         //_info("Invoking dependent Task %s:%lu time now:%lf dev:%d:%s\n", task->name(), task->uid(), timer_->Now(), devno(), name());
-        task->InvokeDependentTaskDevices(this);
+        if (platform_obj_->is_proactive_dispatch()) 
+            task->InvokeDependentTaskDevices(this);
         AddCallback(task);
   }
   if ((!async_launch)  && !disable_profile)
@@ -880,7 +881,7 @@ void Device::ResolveOutputWriteDependency(Task *task, Command *cmd, BaseMem *mem
         int input_devno = input_dev->devno();
         int input_stream = input_dev->GetStream(task, mem);
         void *input_event = mem->GetWriteDeviceEvent(input_devno);
-        if (input_stream != -1) {
+        if (input_stream != -1 && input_event != NULL) {
             mem->HardDeviceWriteEventSynchronize(input_dev, input_event);
             ResetContext();
             _event_debug(" HardDeviceWriteEventSynchronize ASYNC_D2O_SYNC dev:[%d][%s] src_dev:[%d][%s] Wait for event:%p mem_stream:%d input_stream:%d", devno(), name(), input_dev->devno(), input_dev->name(), input_event, mem_stream, input_stream); 
@@ -1266,7 +1267,7 @@ void Device::ExecuteMemResetInput(Task *task, Command* cmd) {
         mem->set_dirty_except(devno_);
         mem->dev_unlock(devno_);
         if (async) {
-            mem->clear_read_tracks(devno());
+            if (is_proactive_dispatch) mem->clear_read_tracks(devno());
             mem->clear_d2h_events();
             mem->clear_streams();
             EVENT_DEBUG(void *k_event = ) mem->RecordEvent(devno(), stream_index, true); 
@@ -1525,6 +1526,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
     else {
         src_mem = mem;
     }
+    bool is_proactive_dispatch = platform_obj_->is_proactive_dispatch();
 	size_t size = IRIS_MIN(mem->size(), src_mem->size());
     cmd->set_devno(devno_);
 	bool is_host_dirty = src_mem->is_host_dirty();
@@ -1581,7 +1583,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
 
         _event_debug("D2D: task:%lu:%s smem:%lu:%s dmem:%lu:%s src:%d dest:%d src_arch:%p dst_arch:%p mem_stream:%d\n\n", task->uid(), task->name(), src_mem->uid(), src_mem->name(), mem->uid(), mem->name(), src_dev->devno(), this->devno(), src_arch, dst_arch, mem_stream);
         // Now do D2D
-        if (async && platform_obj_->is_proactive_dispatch()) {
+        if (async && is_proactive_dispatch) {
             AddMemoryAccessWriteDependencies(task, cmd, mem, mem_stream);
         }
 		size_t copy_size = IRIS_MIN(mem->size(), src_mem->size());
@@ -1602,7 +1604,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         if (async) {
             mem->RecordEvent(devno(), mem_stream, true);
         }
-        if (async && platform_obj_->is_proactive_dispatch()) {
+        if (async && is_proactive_dispatch) {
             mem->insert_read_track(src_dev->devno(), mem_stream, task, mem->GetCompletionEvent(devno()));
             mem->clear_read_tracks(devno());
         }
@@ -1640,7 +1642,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
 
         ResolveH2DStartEvents(task, mem, async, src_mem);
         void *dst_arch = mem->arch(this);
-        if (async && platform_obj_->is_proactive_dispatch()) {
+        if (async && is_proactive_dispatch) {
             AddMemoryAccessWriteDependencies(task, cmd, mem, mem_stream);
         }
         double start = timer_->Now();
@@ -1654,7 +1656,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         if (cmd_host != NULL && mem->host_ptr() != cmd_host) {
             mem->set_host_dirty(true); // Because we fetched data from some other customized H2D host address
         }
-        if (async && platform_obj_->is_proactive_dispatch()) {
+        if (async && is_proactive_dispatch) {
             mem->clear_read_tracks(devno());
         }
 
@@ -1707,7 +1709,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         }
 
         void* src_arch = src_mem->arch(src_dev);
-        if (async && platform_obj_->is_proactive_dispatch()) {
+        if (async && is_proactive_dispatch) {
             AddMemoryAccessWriteDependencies(task, cmd, mem, mem_stream);
         }
         double start = timer_->Now();
@@ -1720,7 +1722,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
             }
         }
         double end = timer_->Now();
-        if (async && platform_obj_->is_proactive_dispatch()) {
+        if (async && is_proactive_dispatch) {
             mem->clear_read_tracks(devno());
         }
         if (async && platform_obj_->is_event_profile_enabled()) {
@@ -1783,7 +1785,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
                 src_dev->MemD2H(task, mem, mem->dev_dim(), dst_host, mem->dev_tile_size(), mem->dev_off(), mem->dev_strides(IRIS_MAX(src_mem->dim(), mem->dev_dim())), src_mem->dim(), src_mem->arch(this), src_mem->dev_tile_size(), src_mem->dev_off(), src_mem->dev_strides(IRIS_MAX(src_mem->dev_dim(), mem->dev_dim())), mem->dev_tile_size(), mem->elem_size());
             }
         }
-        if (async && platform_obj_->is_proactive_dispatch()) {
+        if (async && is_proactive_dispatch) {
             mem->insert_read_track(src_dev->devno(), src_mem_stream, task, mem->GetCompletionEvent(src_dev->devno()));
         }
         double end = timer_->Now();
@@ -1861,7 +1863,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
                 _event_debug("In mem:[%lu] src_mem_stream:%d src_dev:%d dev:%d host_write_dev:%d", select_mem->uid(), src_mem_stream, src_dev->devno(), devno(), host_write_dev);
 
                 // Do Device to Host Transfer
-                if (async && platform_obj_->is_proactive_dispatch()) {
+                if (async && is_proactive_dispatch) {
 					_event_debug(" D2H->H2D (D2H) task[%lu][%s] mem:[%lu] steram:%d dev:[%d:%s] introducing write input dependencies", task->uid(), task->name(), select_mem->uid(), src_mem_stream, src_dev->devno(), src_dev->name());
                     src_dev->AddMemoryAccessWriteDependencies(task, cmd, select_mem, src_mem_stream);
                 }
@@ -1898,7 +1900,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
             ResolveInputWriteDependency<ASYNC_KNOWN_H2D_RESOLVE>(task, mem, async, src_dev, select_mem);
             _event_debug("   MemD2H -> MemH2D registered callbacks completed callbacks");
 
-			if (async && platform_obj_->is_proactive_dispatch()) {
+			if (async && is_proactive_dispatch) {
 				_event_debug(" D2H->H2D (H2D) task[%lu][%s] mem:[%lu] steram:%d dev:[%d:%s] introducing write input dependencies", task->uid(), task->name(), mem->uid(), mem_stream, devno(), name());
 				_trace(" D2H->H2D (H2D) task[%lu][%s] mem:[%lu] steram:%d dev:[%d:%s] introducing write input dependencies", task->uid(), task->name(), mem->uid(), mem_stream, devno(), name());
 				AddMemoryAccessWriteDependencies(task, cmd, mem, mem_stream);
@@ -1921,7 +1923,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
                             select_mem->host_dim(), host, select_mem->host_tile_size(), select_mem->dev_off(), select_mem->host_strides(IRIS_MAX(select_mem->host_dim(), mem->dev_dim())), mem->dev_tile_size(), mem->elem_size());
             }
             double end = timer_->Now();
-            if (async && platform_obj_->is_proactive_dispatch()) {
+            if (async && is_proactive_dispatch) {
                 mem->clear_read_tracks(devno());
             }
             _event_debug("   MemD2H -> MemH2D done");
@@ -2355,6 +2357,7 @@ void Device::ExecuteMemOut(Task *task, Command* cmd) {
     int *params_map = cmd->get_params_map();
     //int nargs = cmd->kernel_nargs();
     int kstream = cmd->recommended_stream();
+    bool is_proactive_dispatch = platform_obj_->is_proactive_dispatch();
     for(auto && z : cmd->kernel()->out_mems()) {
         BaseMem *mem = z.first;
         int idx = z.second;
@@ -2376,7 +2379,7 @@ void Device::ExecuteMemOut(Task *task, Command* cmd) {
             int mem_stream = kstream; //GetStream(task);
             mem->clear_d2h_events();
             mem->clear_streams();
-            mem->clear_read_tracks(devno());
+            if (is_proactive_dispatch) mem->clear_read_tracks(devno());
             mem->SetWriteStream(devno(), mem_stream);
             mem->SetWriteDevice(devno());
             void *k_event = cmd->kernel()->GetCompletionEvent();
@@ -2391,7 +2394,7 @@ void Device::ExecuteMemOut(Task *task, Command* cmd) {
 					int n_regions = dmem->get_n_regions();
 					for (int i=0; i<n_regions; i++) {
 						DataMemRegion *rmem = (DataMemRegion *)dmem->get_region(i, false);
-                        rmem->clear_read_tracks(devno());
+                        if (is_proactive_dispatch) rmem->clear_read_tracks(devno());
 						rmem->clear_d2h_events();
 						rmem->clear_streams();
 						rmem->SetWriteStream(devno(), mem_stream);
@@ -2402,7 +2405,7 @@ void Device::ExecuteMemOut(Task *task, Command* cmd) {
 						DataMemRegion *rmem = (DataMemRegion *)dmem->get_region(i, false);
 						DataMemRegion *dev_rmem = (DataMemRegion *)dmem->get_region(i, true);
 						if (dev_rmem != rmem) {
-                            dev_rmem->clear_read_tracks(devno());
+                            if (is_proactive_dispatch) dev_rmem->clear_read_tracks(devno());
 							dev_rmem->clear_d2h_events();
 							dev_rmem->clear_streams();
 						}
