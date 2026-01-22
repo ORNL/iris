@@ -1,11 +1,21 @@
 #!/bin/bash
 
 #uncomment to use data memory rather than explicit memory transfers
-export USE_DATA_MEMORY=--use-data-memory
+#export USE_DATA_MEMORY=${USE_DATA_MEMORY:--use-data-memory}
+export ENABLE_DMEM=${ENABLE_DMEM:=0}
+if [ "x$ENABLE_DMEM" = "x1" ]; then
+export USE_DATA_MEMORY=${USE_DATA_MEMORY:=--use-data-memory}
+else
+export USE_DATA_MEMORY=${USE_DATA_MEMORY:=}
+fi
 export REPEATS=${REPEATS:=100}
 export PAYLOAD_SIZE=${PAYLOAD_SIZE:=128}
 export SIZES=("10" "25" "100")
 export SKIP_SETUP=${SKIP_SETUP:=0}
+
+echo "IRIS_ASYNC: ${IRIS_ASYNC}"
+echo "USE_DATA_MEMORY: ${USE_DATA_MEMORY}"
+echo "REPEATS: ${REPEATS}"
 
 set -x;
 if [ "x$SKIP_SETUP" = "x0" ]; then
