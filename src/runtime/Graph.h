@@ -105,6 +105,7 @@ public:
         comm_task_adj_matrix_ = NULL;
         comp_task_adj_matrix_ = NULL;
         map_task_inputs_outputs();
+        json_url_ = NULL;
     }
     void set_iterations(int iterations) { iterations_ = iterations; }
     void map_task_inputs_outputs();
@@ -129,7 +130,8 @@ public:
     size_t dataobject_schedule_count() { return dataobject_schedule_count_; }
     DataObjectProfile *dataobject_schedule_data() { return dataobject_schedule_data_; }
     TaskProfile *task_schedule_data() { return task_schedule_data_; }
-
+    const char* json_url() { return json_url_; }
+    void set_json_url(const char* path) { json_url_ = path; }
 
 private:
     Graph *graph_;
@@ -160,6 +162,7 @@ private:
     map<unsigned long, vector<unsigned long>> task_inputs_map_;
     map<unsigned long, vector<unsigned long>> task_outputs_map_;
     vector<vector<unsigned long>> levels_dag_;
+    const char* json_url_;
 };
 
 } /* namespace rt */

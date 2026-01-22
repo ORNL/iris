@@ -19,8 +19,12 @@ A summary of Development Versioning Specification is shown below.
 
 ## [Unreleased]
 
+## [3.0.0] - 2025-05-30
+
 ### Added
-#### New capabilties
+
+#### New Capabilties
+
 - Asynchronous task execution and utilizes underlying device specific asynchronous multi-stream capabilities
 - Handle stream synchronization within device and avoid host involvement
 - Overlapped computation with data transfer using device provided asynchronous multi-stream capabilities
@@ -33,24 +37,28 @@ A summary of Development Versioning Specification is shown below.
 - Task Graph policy
 - Changelog added to the repo to track major changes.
 - Xilinx FPGA kernel acceleration support
-- FFI based kernel calls (No need of boiler plate. To be enabled using ENABLE_FFI)
-- Added multi-purpose HostInterface for traditional boiler-plate based host kernel calls and FFI based calls
+- FFI-based kernel calls (No need of boiler plate. To be enabled using ENABLE_FFI)
+- Added multi-purpose HostInterface for traditional boiler-plate based host kernel calls and FFI-based calls
 - Generalized Loader for loading shared libraries of kernels
 - Support for UniSYCL (In external repository)
 
 #### Updates
+
 - Also enabled manual control of DMEM (H2D, D2H) through IRIS APIs along with automatic data orchestration
 - Added DMEM to DMEM copy command support
 
 ### Changed
+
 - Improved Python interface and Python PIP package installation
 - Improved C++ IRIS interface with DMEM type specific templates
 - iris_task and iris_mem are no longer pointers. They are structs now and the memory will be in application's memory space.
 
 ### Removed
+
 - None
 
 ### Fixed
+
 - Several bug fixes and fixes for deadlock issues
 - DMEM multiple PIN memory registrations
 - Fixed fortan host
@@ -69,3 +77,9 @@ Moved documentation from external repo to be part of the code repo.
 
 Initial Release of IRIS, an intelligent runtime system for extremely heterogeneous architectures. IRIS discovers available functionality, manage multiple diverse programming
 systems (e.g., OpenMP, CUDA, HIP, Level Zero, OpenCL, Hexagon) simultaneously in the same application, represents data dependencies, orchestrates data movement proactively, and allows configurable work schedulers for diverse heterogeneous devices.
+
+[unreleased]: https://github.com/ORNL/iris/compare/v3.0.0...HEAD
+[3.0.0]: https://github.com/ORNL/iris/compare/v2.0.0...v3.0.0
+[2.0.0]: https://github.com/ORNL/iris/compare/v1.0.1...v2.0.0
+[1.0.1]: https://github.com/ORNL/iris/compare/v1.0.0...v1.0.1
+[1.0.0]: https://github.com/ORNL/iris/releases/tag/v1.0.0

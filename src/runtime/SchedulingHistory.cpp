@@ -8,12 +8,10 @@
 #include <time.h>
 #include <iostream>
 #include <fstream>
-//#include <codecvt>
 #include <locale>
 #include <string>
 
 #define SCHEDULING_HISTORY_HEADER "taskname,type,start,end,duration,size,policy,acclname"
-
 #define SCHEDULING_HISTORY_FOOTER ""
 
 namespace iris {
@@ -44,9 +42,10 @@ SchedulingHistory::~SchedulingHistory() {
 
 void SchedulingHistory::AddKernel(Command* cmd) {
   //ignore logging kernels at the moment
-  if (cmd->type_init()){
-    printf("not logging initialization -- but performed init on device id %d\n",cmd->task()->dev()->devno());
-  }
+  //if (cmd->type_init()){
+  //  //printf("not logging initialization -- but performed init on device id %d\n",cmd->task()->dev()->devno());
+  //  return;
+  //}
   Add(cmd);
 }
 
@@ -119,12 +118,14 @@ int SchedulingHistory::CompleteCommand(Command* command) {
 }
 
 int SchedulingHistory::CompleteTask(Task* task) {
+  /*
   if (task->cmd_last()->type_h2dnp())
     printf("data memory uses type_h2dnp\n");
   if (task->cmd_last()->type_h2broadcast())
     printf("data memory uses h2broadcast\n");
   if (task->cmd_last()->type_memflush())
     printf("data memory uses memflush\n");
+  */
   if (task->type() == IRIS_TASK_PERM){
     //if the task is named prioritize using that in the log
     if (task->given_name()){

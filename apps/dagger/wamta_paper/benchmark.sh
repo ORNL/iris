@@ -50,7 +50,7 @@ fi
 #run the payload (note, we have to omit the data policy since it is incompatible with dmem)
 for POLICY in roundrobin depend profile random ftf sdq #data
 do
-  LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$SCRIPT_DIR $SCRIPT_DIR/dagger_runner --graph="$WORKING_DIR/graph.json" --logfile="$WORKING_DIR/time.csv" --repeats=1 --scheduling-policy="$POLICY" --size=$PAYLOAD_SIZE --kernels="ijk" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=40 --num-tasks=240 --min-width=6 --max-width=6 --concurrent-kernels="ijk:6" --skips=3  --sandwich --use-data-memory #--local-sizes="ijk:256 1 1"
+  LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$SCRIPT_DIR $SCRIPT_DIR/dagger_runner --graph="$WORKING_DIR/graph.json" --repeats=1 --scheduling-policy="$POLICY" --size=$PAYLOAD_SIZE --kernels="ijk" --buffers-per-kernel="ijk:rw r r" --kernel-dimensions="ijk:2" --kernel-split='100' --depth=40 --num-tasks=240 --min-width=6 --max-width=6 --concurrent-kernels="ijk:6" --skips=3  --sandwich --use-data-memory #--local-sizes="ijk:256 1 1"
   [ $? -ne 0 ] && echo "Failed to run DAG" && exit 1
   mv $SCRIPT_DIR/dagger_runner-$HOST*\.csv $WORKING_DIR/$HOST-$POLICY-time.csv
   #joint plot

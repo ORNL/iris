@@ -1433,6 +1433,9 @@ class task:
             dll.iris_task_dmem_flush_out(self.handle, pobj)
         return self.kernel_obj
 
+    def flush(self, mem):                                                     
+        dll.iris_task_dmem_flush_out(self.handle, mem.handle)                 
+
     def name(self):
         dll.iris_task_get_name.restype = c_char_p
         kname = dll.iris_task_get_name(self.handle)

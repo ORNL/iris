@@ -166,11 +166,12 @@ class Gantt():
 
 class DAG():
 
-    def __init__(self, dag_file, timeline_file, drop_memory_transfer_commands=True):
+    def __init__(self, dag_file, timeline_file, drop_memory_transfer_commands=True,drop_node_labels=False):
         self.tasks, self.edges = self.getJsonToTask(dag_file)
         self.timeline = self.getTimelineFromFile(timeline_file)
         self.device_colour_palette = None
         self.drop_memory_transfer_commands = drop_memory_transfer_commands
+        self.drop_node_labels = drop_node_labels
 
 
     def getJsonToTask(self, dag_file):
@@ -265,7 +266,10 @@ class DAG():
         #if there are edges, create the DAG from it, otherwise just the nodes (there are no edges in the DAG, and so the draw call will fail)
         node_d = [(str(e['name']),{"label":e['name'], "position":(i,0), "marker":kernel_shapes[e['kernel']]}) for i, e in enumerate(task_dag)]
         dag.add_nodes_from(node_d)
-        node_labels = {str(n['name']):'{}'.format(n['name']) for i,n in enumerate(task_dag)}
+        if self.drop_node_labels:
+            node_labels =  {str(n['name']):' ' for i,n in enumerate(task_dag)}
+        else:
+            node_labels = {str(n['name']):'{}'.format(n['name']) for i,n in enumerate(task_dag)}
         if edge_d != []:
             dag.add_edges_from(edge_d)
             edge_labels = {(e1,e2):'{}'.format(d) for e1,e2,d in dag.edges(data=True)}
@@ -335,7 +339,7 @@ class DAG():
 
 
 class CombinePlots():
-    def __init__(self, timeline_file=None,dag_file=None,combined_output_file=None,timeline_output_file=None,dag_output_file=None,title_string=None,drop=None,drop_memory_transfer_commands=True,show_task_legend=True,**kargs):
+    def __init__(self, timeline_file=None,dag_file=None,combined_output_file=None,timeline_output_file=None,dag_output_file=None,title_string=None,drop=None,drop_memory_transfer_commands=True,show_task_legend=True,drop_node_labels=False,**kargs):
         assert timeline_file is not None, f"timeline file not provided"
         assert dag_file is not None, f"dag file not provided"
         if combined_output_file is None and timeline_output_file is None and dag_output_file is None:
@@ -351,6 +355,8 @@ class CombinePlots():
         self.title_string = title_string
         self.drop_memory_transfer_commands = drop_memory_transfer_commands
         self.show_task_legend = show_task_legend
+        self.drop_node_labels = drop_node_labels
+
         self.kargs = kargs
         self.PlotBoth()
 
@@ -380,7 +386,7 @@ class CombinePlots():
         time_range = [mint-window_buffer, maxt+window_buffer]
 
         # generate the dag/graph plot
-        dag = DAG(self.dag_file,timeline_file=self.timeline_file,drop_memory_transfer_commands=self.drop_memory_transfer_commands)
+        dag = DAG(self.dag_file,timeline_file=self.timeline_file,drop_memory_transfer_commands=self.drop_memory_transfer_commands,drop_node_labels=self.drop_node_labels)
         show_kernel_legend = False
         if 'show_kernel_legend' in self.kargs:
             show_kernel_legend = self.kargs['show_kernel_legend']
@@ -419,6 +425,8 @@ if __name__ == '__main__':
     parser.add_argument('--no-show-task-legend', dest='show_task_legend', action='store_false')
     parser.add_argument('--show-kernel-legend', dest='show_kernel_legend', action='store_true')
     parser.add_argument('--keep-memory-transfer-commands', dest='drop_memory_transfer_commands', action='store_false')
+    parser.add_argument('--no-show-node-labels', dest='drop_node_labels', action='store_true')
+
     #todo cell colour
     #todo separate plots
     parser.set_defaults(show_kernel_legend=True)
@@ -430,7 +438,6 @@ if __name__ == '__main__':
     output_file   = args.combinedout
     timeline_output_file  = args.timelineout
     dag_output_file       = args.dagout
-    
     dropsy = []
     if args.drop is not None:
       dropsy = str(args.drop).split(',')
@@ -444,5 +451,5 @@ if __name__ == '__main__':
         g.plotGanttChart(timeline_file,args.titlestring,timeline_output_file=args.timelineout)
         sys.exit(0)
 
-    cp = CombinePlots(timeline_file=args.timeline, dag_file=args.dag, combined_output_file=args.combinedout, timeline_output_file=args.timelineout, dag_output_file=args.dagout, title_string=args.titlestring, drop=dropsy, use_device_background_colour=args.use_device_background_colour, show_kernel_legend=args.show_kernel_legend, drop_memory_transfer_commands=args.drop_memory_transfer_commands,show_task_legend=args.show_task_legend)
+    cp = CombinePlots(timeline_file=args.timeline, dag_file=args.dag, combined_output_file=args.combinedout, timeline_output_file=args.timelineout, dag_output_file=args.dagout, title_string=args.titlestring, drop=dropsy, use_device_background_colour=args.use_device_background_colour, show_kernel_legend=args.show_kernel_legend, drop_memory_transfer_commands=args.drop_memory_transfer_commands,show_task_legend=args.show_task_legend,drop_node_labels=args.drop_node_labels)
 
