@@ -58,7 +58,7 @@
 #cmakedefine DISABLE_DYNAMIC_LINKING
 
 
-//#include <iris/iris.h>
+#include <iris/iris.h>
 #include <stddef.h>
 
 #endif /* IRIS_RT_SRC_CONFIG_H */
