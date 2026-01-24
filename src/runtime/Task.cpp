@@ -53,6 +53,7 @@ void ProfileEvent::RecordEndEvent() {
     _event_prof_debug("Recorded id:%lu type:%d End event:%p stream:%d", id_, type_, end_event_, stream_);
 }
 Task::Task(Platform* platform, int type, const char* name, int max_cmds) {
+  opt_ = "";
   j_policy_ = "";
   j_policy_flag_ = false;
   cmds_.reserve(16);

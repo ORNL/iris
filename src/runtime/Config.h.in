@@ -9,7 +9,56 @@
 #cmakedefine01 USE_HUB
 #cmakedefine01 USE_SIGHANDLER
 
-#include <iris/iris.h>
+#cmakedefine IRIS_AUTO
+#cmakedefine AUTO_PARALLEL
+#cmakedefine AUTO_FLUSH
+#cmakedefine AUTO_SHADOW
+#cmakedefine IGNORE_MANUAL_DEP
+#cmakedefine DEP_SANITY_CHECK
+
+#cmakedefine DEBUG_DISABLE
+#cmakedefine TRACE_DISABLE
+#cmakedefine TODO_DISABLE
+#cmakedefine INFO_DISABLE
+#cmakedefine CHECK_DISABLE
+#cmakedefine WARNING_DISABLE
+
+#ifdef AUTO_PARALLEL
+#define AUTO_PAR
+#endif
+
+#ifdef IGNORE_MANUAL_DEP
+#define IGNORE_MANUAL
+#endif
+
+#ifdef DEP_SANITY_CHECK
+#define SANITY_CHECK
+#endif
+
+#cmakedefine ENABLE_PER_TASK_COLOR_DOT
+#cmakedefine ENABLE_PRINT_TASK_DEP
+#cmakedefine USE_RISCV
+#cmakedefine IRIS_ASYNC_STREAMING
+
+#ifdef ENABLE_PER_TASK_COLOR_DOT
+#define PER_TASK_COLOR
+#endif
+
+#ifdef ENABLE_PRINT_TASK_DEP
+#define PRINT_TASK_DEP
+#endif
+
+#ifdef USE_RISCV
+#define ENABLE_RISCV
+#endif
+
+#cmakedefine ENABLE_SINGLE_DEVICE_PER_CU
+#cmakedefine ENABLE_FFI
+#cmakedefine DISABLE_CONSISTENCY_CHECK
+#cmakedefine DISABLE_DYNAMIC_LINKING
+
+
+//#include <iris/iris.h>
 #include <stddef.h>
 
 #endif /* IRIS_RT_SRC_CONFIG_H */
