@@ -1,8 +1,8 @@
 #ifndef IRIS_SRC_RT_DEVICE_H
 #define IRIS_SRC_RT_DEVICE_H
 
-#include "Debug.h"
 #include "Config.h"
+#include "Debug.h"
 #include "Timer.h"
 //#include "CPUEvent.h"
 #include <map>

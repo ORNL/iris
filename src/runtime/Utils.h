@@ -17,6 +17,7 @@
 
 #include <cstdint>
 #include <utility>
+#include "Config.h"
 
 using namespace std;
 namespace iris {

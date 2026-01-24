@@ -1,6 +1,7 @@
 #ifndef IRIS_SRC_RT_THREAD_H
 #define IRIS_SRC_RT_THREAD_H
 
+#include "Config.h"
 #include <atomic>
 #include <semaphore.h>
 #include <pthread.h>

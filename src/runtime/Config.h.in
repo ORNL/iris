@@ -1,5 +1,6 @@
 #ifndef IRIS_RT_SRC_CONFIG_H
 #define IRIS_RT_SRC_CONFIG_H
+#pragma once
 
 #define IRIS_VERSION_MAJOR        @IRIS_VERSION_MAJOR@
 #define IRIS_VERSION_MINOR        @IRIS_VERSION_MINOR@
@@ -9,54 +10,121 @@
 #cmakedefine01 USE_HUB
 #cmakedefine01 USE_SIGHANDLER
 
+#ifndef IRIS_AUTO
 #cmakedefine IRIS_AUTO
-#cmakedefine AUTO_PARALLEL
-#cmakedefine AUTO_FLUSH
-#cmakedefine AUTO_SHADOW
-#cmakedefine IGNORE_MANUAL_DEP
-#cmakedefine DEP_SANITY_CHECK
+#endif
 
+#ifndef AUTO_PARALLEL
+#cmakedefine AUTO_PARALLEL
+#endif
+
+#ifndef AUTO_FLUSH
+#cmakedefine AUTO_FLUSH
+#endif
+
+#ifndef AUTO_SHADOW
+#cmakedefine AUTO_SHADOW
+#endif
+
+#ifndef IGNORE_MANUAL_DEP
+#cmakedefine IGNORE_MANUAL_DEP
+#endif
+
+#ifndef DEP_SANITY_CHECK
+#cmakedefine DEP_SANITY_CHECK
+#endif
+
+#ifndef DEBUG_DISABLE
 #cmakedefine DEBUG_DISABLE
+#endif
+
+#ifndef TRACE_DISABLE
 #cmakedefine TRACE_DISABLE
+#endif
+
+#ifndef TODO_DISABLE
 #cmakedefine TODO_DISABLE
+#endif
+
+#ifndef INFO_DISABLE
 #cmakedefine INFO_DISABLE
+#endif
+
+#ifndef CHECK_DISABLE
 #cmakedefine CHECK_DISABLE
+#endif
+
+#ifndef WARNING_DISABLE
 #cmakedefine WARNING_DISABLE
+#endif
 
 #ifdef AUTO_PARALLEL
+#ifndef AUTO_PAR
 #define AUTO_PAR
+#endif
 #endif
 
 #ifdef IGNORE_MANUAL_DEP
+#ifndef IGNORE_MANUAL
 #define IGNORE_MANUAL
+#endif
 #endif
 
 #ifdef DEP_SANITY_CHECK
+#ifndef SANITY_CHECK
 #define SANITY_CHECK
 #endif
+#endif
 
+#ifndef ENABLE_PER_TASK_COLOR_DOT
 #cmakedefine ENABLE_PER_TASK_COLOR_DOT
+#endif
+
+#ifndef ENABLE_PRINT_TASK_DEP
 #cmakedefine ENABLE_PRINT_TASK_DEP
+#endif
+
+#ifndef USE_RISCV
 #cmakedefine USE_RISCV
+#endif
+
+#ifndef IRIS_ASYNC_STREAMING
 #cmakedefine IRIS_ASYNC_STREAMING
+#endif
 
 #ifdef ENABLE_PER_TASK_COLOR_DOT
+#ifndef PER_TASK_COLOR
 #define PER_TASK_COLOR
+#endif
 #endif
 
 #ifdef ENABLE_PRINT_TASK_DEP
+#ifndef PRINT_TASK_DEP
 #define PRINT_TASK_DEP
+#endif
 #endif
 
 #ifdef USE_RISCV
+#ifndef ENABLE_RISCV
 #define ENABLE_RISCV
 #endif
+#endif
 
+#ifndef ENABLE_SINGLE_DEVICE_PER_CU
 #cmakedefine ENABLE_SINGLE_DEVICE_PER_CU
-#cmakedefine ENABLE_FFI
-#cmakedefine DISABLE_CONSISTENCY_CHECK
-#cmakedefine DISABLE_DYNAMIC_LINKING
+#endif
 
+#ifndef ENABLE_FFI
+#cmakedefine ENABLE_FFI
+#endif
+
+#ifndef DISABLE_CONSISTENCY_CHECK
+#cmakedefine DISABLE_CONSISTENCY_CHECK
+#endif
+
+#ifndef DISABLE_DYNAMIC_LINKING
+#cmakedefine DISABLE_DYNAMIC_LINKING
+#endif
 
 #include <iris/iris.h>
 #include <stddef.h>
