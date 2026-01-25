@@ -59,7 +59,7 @@ cmake ${NINJA} .. \
   -DTODO_DISABLE=ON   \
   -DWARNING_DISABLE=ON \
   -DAUTO_PARALLEL=OFF  \
-  -DAUTO_FLUSH=OFF  $@    
+  -DAUTO_FLUSH=OFF  $@ 
   #-DUSE_PYTHON=ON     \
   #-DUSE_FORTRAN=ON    \
 

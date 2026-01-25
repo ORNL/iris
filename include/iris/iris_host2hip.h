@@ -15,7 +15,9 @@
 #define __kernel
 #define __global
 #define __constant
+#ifndef __local
 #define __local
+#endif
 #define __restrict
 
 
