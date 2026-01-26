@@ -70,8 +70,8 @@ def extractTaskCallsCore(filename, args):
     f = tempfile.NamedTemporaryFile(delete=False)
     compile_options = re.sub(r'-Mpfo', '', args.compile_options)
     compile_options = re.sub(r'-Mprof=dwarf', '', compile_options)
-    print(f"[Cmd] g++ -x c++ -E -P {filename} -Uiris_cpu -Uiris_dsp -o {f.name} {compile_options} -DUNDEF_IRIS_MACROS -DEXTRACT_MACROS -std=c++11")
-    os.system(f"g++ -x c++ -E -P {filename} -Uiris_cpu -Uiris_dsp -o {f.name} {compile_options} -DUNDEF_IRIS_MACROS -DEXTRACT_MACROS -std=c++11")
+    print(f"[Cmd] {args.cxx} -x c++ -E -P {filename} -Uiris_cpu -Uiris_dsp -o {f.name} {compile_options} -DUNDEF_IRIS_MACROS -DEXTRACT_MACROS -std=c++11")
+    os.system(f"{args.cxx} -x c++ -E -P {filename} -Uiris_cpu -Uiris_dsp -o {f.name} {compile_options} -DUNDEF_IRIS_MACROS -DEXTRACT_MACROS -std=c++11")
     if not os.path.exists(f.name):
         return ""
     fh = open(f.name, "r")
@@ -2108,6 +2108,8 @@ class AttrDict(dict):
         self.__dict__ = self
 
 def InitParser(parser):
+    parser.add_argument("-cc", dest="cc", default='gcc')
+    parser.add_argument("-cxx", dest="cxx", default='g++')
     parser.add_argument("-input", dest="input", nargs='+', default=[])
     parser.add_argument("-output", dest="output", default="iris_app_cpu_dsp_interface.h")
     parser.add_argument("-extract", dest="extract", action="store_true")

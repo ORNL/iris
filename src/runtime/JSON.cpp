@@ -244,7 +244,7 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
               else if(strcmp(data_type_str,"char") == 0) kparams_info[l] = sizeof(char) | iris_char;
               else if(strcmp(data_type_str,"float") == 0) kparams_info[l] = sizeof(float) | iris_float;
               else if(strcmp(data_type_str,"double") == 0) kparams_info[l] = sizeof(double) | iris_double;
-              else if(strcmp(data_type_str,"uint") == 0) kparams_info[l] = sizeof(uint) | iris_uint;
+              else if(strcmp(data_type_str,"uint") == 0) kparams_info[l] = sizeof(unsigned int) | iris_uint;
               else if(strcmp(data_type_str,"int") == 0) kparams_info[l] = sizeof(int) | iris_int;
               else if(strcmp(data_type_str,"int8") == 0) kparams_info[l] = sizeof(int8_t) | iris_int8;
               else if(strcmp(data_type_str,"int16") == 0) kparams_info[l] = sizeof(int16_t) | iris_int16;

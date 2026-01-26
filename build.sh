@@ -22,7 +22,7 @@ cd $BUILD_DIR_NAME
 CC=${CC:-gcc}
 CXX=${CXX:-g++}
 CXX_STD=${CXX_STD:-11}
-IRIS_FLAGS="-I/opt/homebrew/opt/gcc/include/c++/15/ -I/opt/homebrew/opt/gcc/include/c++/15/aarch64-apple-darwin24/"
+IRIS_FLAGS=
 
 # Default preference: Ninja generator
 NINJA=${NINJA:--G Ninja}
@@ -33,6 +33,12 @@ NINJA_GEN=${NINJA_GEN:--DCMAKE_GENERATOR:INTERNAL=Ninja}
 if [[ "x${NO_NINJA}" == "x1" ]]; then
   NINJA=""
   NINJA_GEN=""
+fi
+
+if [[ "$(uname)" == "Darwin" ]]; then
+    CC="gcc-15"
+    CXX="g++-15"
+    IRIS_FLAGS="-I/opt/homebrew/opt/gcc/include/c++/15/ -I/opt/homebrew/opt/gcc/include/c++/15/aarch64-apple-darwin24/"
 fi
 
 # Auto-fallback if Ninja is not installed

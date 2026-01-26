@@ -68,9 +68,9 @@ class CMakeBuild(build_ext):
         print(f'Running CMake configure: {cmake_args}')
         subprocess.check_call(['cmake', ext.sourcedir] + cmake_args, cwd=self.build_temp)
         print(f'Running CMake build: {build_args}')
-        subprocess.check_call(['cmake', '--build', '.'] + build_args, cwd=self.build_temp)
+        subprocess.check_call(['cmake', '--build', '.', '-v'] + build_args, cwd=self.build_temp)
         #print_tree(os.path.join(self.build_temp, '_deps', "libffi-build"))
-        subprocess.check_call(['cmake', '--install', '.'] + install_args, cwd=self.build_temp)
+        subprocess.check_call(['cmake', '--install', '.', '-v'] + install_args, cwd=self.build_temp)
 
         # Ensure the built library is moved to the package directory
         self.copy_extensions_to_source(extdir)

@@ -99,8 +99,15 @@ class library(CDLL):
             fn_name = self.__getitem__(fn_name)
         fn_name(*conv_args)
 
+
+iris_default_libname = "libiris.so"
+if sys.platform.startswith("linux"):
+    iris_default_libname = "libiris.so"
+elif sys.platform == "darwin":
+    iris_default_libname = "libiris.dylib"
+
 class IRIS(library):
-    def __init__(self, libname='libiris.so'):
+    def __init__(self, libname=iris_default_libname):
         so_file = libname
         current_dir = os.path.dirname(os.path.abspath(__file__))
         if os.path.exists(os.path.join(current_dir, 'lib64', libname)):
@@ -112,7 +119,7 @@ class IRIS(library):
             super(IRIS, self).__init__(so_file)
         except OSError as e:
             print(e)
-            print('libiris.so not found. Please install IRIS library.', file=sys.stderr)
+            print(f'{libname} not found. Please install IRIS library.', file=sys.stderr)
 
     def get_numpy_size(self, size):
         if type(size) != np.ndarray:

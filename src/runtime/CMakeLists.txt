@@ -1,7 +1,15 @@
 option(BUILD_SHARED_LIBS "Build shared libs" ON)
 
+if (APPLE) 
+include_directories(/opt/homebrew/opt/gcc/include/c++/15)
+include_directories(/opt/homebrew/opt/gcc/include/c++/15/aarch64-apple-darwin24)
+list(APPEND CMAKE_PREFIX_PATH "/opt/homebrew/opt/libomp")
+endif()
 message(STATUS "CXX STD: ${CMAKE_CXX_STANDARD}")
 message(STATUS "NVCC: ${CUDA_NVCC_EXECUTABLE}")
+message(STATUS "CMAKE_C_COMPILER: ${CMAKE_C_COMPILER}")
+message(STATUS "CMAKE_CXX_COMPILER: ${CMAKE_CXX_COMPILER}")
+
 message(STATUS "CMAKE_CUDA_COMPILER: ${CMAKE_CUDA_COMPILER}")
 message(STATUS "CMAKE_CXX_COMPILER_ID: ${CMAKE_CXX_COMPILER_ID}")
 if (CMAKE_CXX_COMPILER_ID STREQUAL "NVIDIA")
@@ -77,9 +85,17 @@ endif()
 
 configure_file(Config.h.in Config.h)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wno-unused-parameter -Wno-unused-variable")
+add_compile_options(
+    $<$<COMPILE_LANGUAGE:CXX>:-Wall>
+    $<$<COMPILE_LANGUAGE:CXX>:-Wextra>
+    $<$<COMPILE_LANGUAGE:CXX>:-Wno-unused-parameter>
+    $<$<COMPILE_LANGUAGE:CXX>:-Wno-unused-variable>
+)
 if (CMAKE_VERSION VERSION_LESS "3.1")
-  set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+  #set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+  add_compile_options(
+      $<$<COMPILE_LANGUAGE:CXX>:-std=c++11>
+  )
 else()
   if(NOT DEFINED CMAKE_CXX_STANDARD)
     set(CMAKE_CXX_STANDARD 11)
@@ -87,50 +103,94 @@ else()
 endif()
 if (COVERAGE)
    if (IS_NVIDIA_CC)
-      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Mpfo -Mprof=dwarf -g -pg")
+      add_compile_options(
+          $<$<COMPILE_LANGUAGE:CXX>:-Mpfo>
+          $<$<COMPILE_LANGUAGE:CXX>:-Mprof=dwarf>
+          $<$<COMPILE_LANGUAGE:CXX>:-g>
+          $<$<COMPILE_LANGUAGE:CXX>:-pg>
+      )
    else()
-      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage")
+      add_compile_options(
+          $<$<COMPILE_LANGUAGE:CXX>:--coverage>
+      )
    endif()
 endif()
 
 if (USE_RISCV) 
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DENABLE_RISCV")
+  add_compile_options(
+      $<$<COMPILE_LANGUAGE:CXX>:-DENABLE_RISCV>
+  )
 endif()
 
 if (IRIS_ASYNC_STREAMING) 
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DIRIS_ASYNC_STREAMING")
+  add_compile_options(
+      $<$<COMPILE_LANGUAGE:CXX>:-DIRIS_ASYNC_STREAMING>
+  )
 endif()
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DIRIS_ASYNC_STREAMING")
 
 if (ENABLE_SINGLE_DEVICE_PER_CU) 
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DENABLE_SINGLE_DEVICE_PER_CU")
+  add_compile_options(
+      $<$<COMPILE_LANGUAGE:CXX>:-DENABLE_SINGLE_DEVICE_PER_CU>
+  )
 endif()
 
 if (DISABLE_DYNAMIC_LINKING) 
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDISABLE_DYNAMIC_LINKING")
+  add_compile_options(
+      $<$<COMPILE_LANGUAGE:CXX>:-DDISABLE_DYNAMIC_LINKING>
+  )
 endif()
 
 if (DISABLE_CONSISTENCY_CHECK) 
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDISABLE_CONSISTENCY_CHECK")
+  add_compile_options(
+      $<$<COMPILE_LANGUAGE:CXX>:-DDISABLE_CONSISTENCY_CHECK>
+  )
 endif()
 
 if (ENABLE_PROFILE)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -pg -fno-omit-frame-pointer")
+  add_compile_options(
+      $<$<COMPILE_LANGUAGE:CXX>:-g>
+      $<$<COMPILE_LANGUAGE:CXX>:-pg>
+      $<$<COMPILE_LANGUAGE:CXX>:-fno-omit-frame-pointer>
+  )
 endif()
 
 if (ENABLE_FFI) 
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DENABLE_FFI")
+  add_compile_options(
+      $<$<COMPILE_LANGUAGE:CXX>:-DENABLE_FFI>
+  )
 endif()
 
 if (TRACE_DISABLE) 
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DTRACE_DISABLE")
+  add_compile_options(
+      $<$<COMPILE_LANGUAGE:CXX>:-DTRACE_DISABLE>
+  )
 endif()
 if (INFO_DISABLE) 
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DINFO_DISABLE")
+  add_compile_options(
+      $<$<COMPILE_LANGUAGE:CXX>:-DINFO_DISABLE>
+  )
 endif()
 if (DEBUG_DISABLE) 
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDEBUG_DISABLE")
+  add_compile_options(
+      $<$<COMPILE_LANGUAGE:CXX>:-DDEBUG_DISABLE>
+  )
 endif()
+if (TODO_DISABLE)
+  add_compile_options(
+      $<$<COMPILE_LANGUAGE:CXX>:-DTODO_DISABLE>
+  )
+endif()
+if (CHECK_DISABLE)
+  add_compile_options(
+      $<$<COMPILE_LANGUAGE:CXX>:-DCHECK_DISABLE>
+  )
+endif()
+if (WARNING_DISABLE)
+  add_compile_options(
+      $<$<COMPILE_LANGUAGE:CXX>:-DWARNING_DISABLE>
+  )
+endif()
+
 
 function(initVar var_name default_value)
 #    message(STATUS "args var:(${var_name}) default_value:(${default_value})")
@@ -166,7 +226,7 @@ function(extractIRISAPIs)
         get_filename_component(SRC_FILE_PATH ${first} ABSOLUTE BASE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
         list(APPEND src_include_paths "-I${SRC_DIR_PATH}")
         add_custom_command(OUTPUT  ${CMAKE_BINARY_DIR}/${rule_name}.iris 
-            COMMAND ${IRIS_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/extract_iris_task_calls.py -input ${SRC_FILE_PATH} -compile_options "${APP_FLAGS} ${CMAKE_CXX_FLAGS}" -output ${CMAKE_BINARY_DIR}/${rule_name}.iris -extract  -codegen_file_tag iris_default_math
+            COMMAND ${IRIS_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/extract_iris_task_calls.py -cc ${CMAKE_C_COMPILER} -cxx ${CMAKE_CXX_COMPILER} -input ${SRC_FILE_PATH} -compile_options "${APP_FLAGS} ${CMAKE_CXX_FLAGS} -I${CMAKE_BINARY_DIR} -I${CMAKE_BINARY_DIR}/src/runtime" -output ${CMAKE_BINARY_DIR}/${rule_name}.iris -extract  -codegen_file_tag iris_default_math
             DEPENDS ${SRC_FILE_PATH}
         )
         #message(STATUS " RULE: ${rule_name}")
@@ -177,23 +237,12 @@ function(extractIRISAPIs)
    endwhile()
    add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/src/runtime/iris/iris_default_math_boilerplate.h ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_cuda_kernels.cu ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_hip_kernels.hip.cpp ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_openmp_kernels.cpp
            COMMAND mkdir -p ${CMAKE_BINARY_DIR}/src/runtime/iris
-           COMMAND ${IRIS_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/extract_iris_task_calls.py -input ${src_iris_files} -output ${CMAKE_BINARY_DIR}/src/runtime/iris/iris_default_math_boilerplate.h -generate $ENV{IRIS_NO_CODEGEN} -codegen_file_tag iris_default_math -signature_file iris_default_math.h -signature_file_include_headers "iris/iris.h,iris/Tiling1D.h,iris/Tiling2D.h" -signature_file_using_namespace "std,iris"
+           COMMAND ${IRIS_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/extract_iris_task_calls.py -cc ${CMAKE_C_COMPILER} -cxx ${CMAKE_CXX_COMPILER} -input ${src_iris_files} -output ${CMAKE_BINARY_DIR}/src/runtime/iris/iris_default_math_boilerplate.h -generate $ENV{IRIS_NO_CODEGEN} -codegen_file_tag iris_default_math -signature_file iris_default_math.h -signature_file_include_headers "iris/iris.h,iris/Tiling1D.h,iris/Tiling2D.h" -signature_file_using_namespace "std,iris"
            DEPENDS ${src_rules}
            )
     add_custom_target(iris_default_math_boilerplate_h DEPENDS ${CMAKE_BINARY_DIR}/src/runtime/iris/iris_default_math_boilerplate.h)
     install(FILES ${CMAKE_BINARY_DIR}/src/runtime/iris/iris_default_math_boilerplate.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/iris/)
 endfunction()
-
-
-if (TODO_DISABLE)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DTODO_DISABLE")
-endif()
-if (CHECK_DISABLE)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DCHECK_DISABLE")
-endif()
-if (WARNING_DISABLE)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DWARNING_DISABLE")
-endif()
 
 set(IRIS_RUNTIME_SOURCES
 #AutoDAG.cpp
@@ -356,33 +405,47 @@ set(IRIS_RUNTIME_HEADERS
 
 
 if (AUTO_PARALLEL) 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DAUTO_PAR")
+add_compile_options(
+    $<$<COMPILE_LANGUAGE:CXX>:-DAUTO_PAR>
+)
 list(APPEND IRIS_RUNTIME_SOURCES AutoDAG.cpp)
 list(APPEND IRIS_RUNTIME_HEADERS AutoDAG.h)
 if (AUTO_FLUSH) 
-   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DAUTO_FLUSH")
+   add_compile_options(
+       $<$<COMPILE_LANGUAGE:CXX>:-DAUTO_FLUSH>
+   )
 endif()
 
 if (AUTO_SHADOW) 
-   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DAUTO_SHADOW")
+   add_compile_options(
+       $<$<COMPILE_LANGUAGE:CXX>:-DAUTO_SHADOW>
+   )
 endif()
 
 if (IGNORE_MANUAL_DEP) 
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DIGNORE_MANUAL")
+    add_compile_options(
+        $<$<COMPILE_LANGUAGE:CXX>:-DIGNORE_MANUAL>
+    )
 endif()
 
 if (DEP_SANITY_CHECK) 
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSANITY_CHECK")
+    add_compile_options(
+        $<$<COMPILE_LANGUAGE:CXX>:-DSANITY_CHECK>
+    )
 endif()
 
 endif()
 
 if (ENABLE_PER_TASK_COLOR_DOT) 
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DPER_TASK_COLOR")
+    add_compile_options(
+        $<$<COMPILE_LANGUAGE:CXX>:-DPER_TASK_COLOR>
+    )
 endif()
 
 if (ENABLE_PRINT_TASK_DEP) 
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DPRINT_TASK_DEP")
+    add_compile_options(
+        $<$<COMPILE_LANGUAGE:CXX>:-DPRINT_TASK_DEP>
+    )
 endif()
 
 
