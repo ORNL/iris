@@ -105,7 +105,7 @@ public:
   template <typename DMemType>
   void WaitForDataAvailability(int devno, Task *task, DMemType *mem, int read_stream=-1);
   void CopyDataBetweenConnectedDMemRegions(Task *task, Command *cmd, DataMemRegion *rmem, DataMemRegion *dev_rmem, bool is_dev_centric=false);
-  int BringDataToHost(Task *task, DataMem *mem, void *host, const char *tag);
+  int BringDataToHost(Task *task, Command *cmd, DataMem *mem, void *host, const char *tag);
   template <typename DMemType>
   void InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, BaseMem *parent=NULL, DMemType *src_mem=NULL, bool disable_host_dirty_update=false);
   void ExecuteMemResetInput(Task *task, Command* cmd);
@@ -136,7 +136,7 @@ public:
 
   Kernel* ExecuteSelectorKernel(Command* cmd);
 
-  void ResolveH2DStartEvents(Task *task, BaseMem *mem, bool async, BaseMem *src_mem=NULL);
+  void ResolveH2DStartEvents(Task *task, Command *cmd, BaseMem *mem, bool async, BaseMem *src_mem=NULL);
   void ResolveH2DEndEvents(Task *task, BaseMem *mem, bool async);
   void ResolveDeviceWrite(Task *task, BaseMem *mem, Device *input_dev, bool instant_wait, BaseMem *src_mem=NULL);
   template <AsyncResolveType resolve_type>

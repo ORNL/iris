@@ -1,6 +1,11 @@
 #ifndef IRIS_INCLUDE_IRIS_IRIS_RUNTIME_H
 #define IRIS_INCLUDE_IRIS_IRIS_RUNTIME_H
 
+#ifndef DO_NOT_INCLUDE_IRIS
+#define DO_NOT_INCLUDE_IRIS
+#endif
+#include "Config.h"
+
 #include <iris/iris_errno.h>
 #include <stddef.h>
 #include <stdint.h>

@@ -7,6 +7,11 @@
 #include <string.h>
 #include <math.h>
 
+#ifndef DO_NOT_INCLUDE_IRIS
+#define DO_NOT_INCLUDE_IRIS
+#endif
+#include "Config.h"
+
 //#define IRIS_OPENMP_KERNEL_ARGS     size_t _off, size_t _ndr
 //#define IRIS_OPENMP_KERNEL_BEGIN(i) for (i = _off; i < _off + _ndr; i++) {
 //#define IRIS_OPENMP_KERNEL_END      }

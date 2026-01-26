@@ -81,7 +81,7 @@ void Device::HandleMemReset(bool async, Command *cmd, Kernel *kernel, Task *task
     int mem_stream = GetStream(task, mem, true);
     double start = timer_->Now();
     if (async && platform_obj_->is_event_profile_enabled()) {
-        ProfileEvent & prof_event = task->CreateProfileEvent(mem, devno(), PROFILE_RESET, this, mem_stream);
+        ProfileEvent & prof_event = task->CreateProfileEvent(cmd, mem, devno(), PROFILE_RESET, this, mem_stream);
         _event_debug("Profiling record start: task[%lu][%s]", task->uid(), task->name());
         prof_event.RecordStartEvent(); 
     }
@@ -560,7 +560,7 @@ void Device::Execute(Task* task) {
   task->set_disable_profiling(disable_profile);
   if (platform_obj_->is_event_profile_enabled() && !disable_profile) {
       double execute_end = (timer_->Now()-first_event_cpu_mid_point_time())*1000.0;
-      task->CreateProfileEvent(task, devno(), PROFILE_INIT, this, (float)execute_start, (float)execute_end);
+      task->CreateProfileEvent(nullptr, task, devno(), PROFILE_INIT, this, (float)execute_start, (float)execute_end);
   }
   //_info("Now check to invoke child tasks for Task %s:%lu time now:%lf\n", task->name(), task->uid(), timer_->Now());
   if (async_launch) {
@@ -927,13 +927,13 @@ void Device::ResolveH2DEndEvents(Task *task, BaseMem *mem, bool async)
         _event_debug("h2d: RecordEvent adding event (H2D) dev[%d][%s] task[%ld:%s] mem:%lu q[%d] event:%p\n", devno_, name_, task->uid(), task->name(), mem->uid(), mem_stream, event);
     }
 }
-void Device::ResolveH2DStartEvents(Task *task, BaseMem *mem, bool async, BaseMem *src_mem)
+void Device::ResolveH2DStartEvents(Task *task, Command *cmd, BaseMem *mem, bool async, BaseMem *src_mem)
 {
     int mem_stream = GetStream(task, mem);
     ResolveInputWriteDependency<ASYNC_UNKNOWN_H2D_RESOLVE>(task, mem, async, NULL, src_mem);
     ResetContext();
     if (async && platform_obj_->is_event_profile_enabled()) {
-        ProfileEvent & prof_event = task->CreateProfileEvent(mem, -1, PROFILE_H2D, this, mem_stream);
+        ProfileEvent & prof_event = task->CreateProfileEvent(cmd, mem, -1, PROFILE_H2D, this, mem_stream);
         _event_debug("Profiling record start: task[%lu][%s]", task->uid(), task->name());
         prof_event.RecordStartEvent(); 
         _event_debug("prof_event ptr:%p %p task:%lu:%s mem:%lu\n", prof_event.start_event_ptr(), prof_event.start_event(), task->uid(), task->name(), mem->uid());
@@ -1159,7 +1159,7 @@ void Device::ExecuteKernel(Command* cmd) {
   if (enabled) {
       _debug2("Launching kernel:%s:%lu task:%s:%lu stream:%d", kernel->name(), kernel->uid(), task->name(), task->uid(), stream_index);
       if (async_launch && platform_obj_->is_event_profile_enabled()) {
-          ProfileEvent &prof_event = task->CreateProfileEvent(task, devno(), PROFILE_KERNEL, this, stream_index);
+          ProfileEvent &prof_event = task->CreateProfileEvent(cmd, task, devno(), PROFILE_KERNEL, this, stream_index);
           _event_debug("Profiling record start: task[%lu][%s]", task->uid(), task->name());
           prof_event.RecordStartEvent(); 
       }
@@ -1253,7 +1253,7 @@ void Device::ExecuteMemResetInput(Task *task, Command* cmd) {
             WaitForWAWDependencies(task, dep_streams, stream_index);
         }
         if (async && platform_obj_->is_event_profile_enabled()) {
-            ProfileEvent & prof_event = task->CreateProfileEvent(mem, devno(), PROFILE_RESET, this, stream_index);
+            ProfileEvent & prof_event = task->CreateProfileEvent(cmd, mem, devno(), PROFILE_RESET, this, stream_index);
             _event_debug("Profiling record start: task[%lu][%s]", task->uid(), task->name());
             prof_event.RecordStartEvent(); 
         }
@@ -1572,7 +1572,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         ResolveInputWriteDependency<ASYNC_D2D_RESOLVE>(task, mem, async, src_dev, src_mem);
 
         if (async && platform_obj_->is_event_profile_enabled()) {
-            ProfileEvent & prof_event = task->CreateProfileEvent(mem, src_dev->devno(), PROFILE_D2D, this, mem_stream);
+            ProfileEvent & prof_event = task->CreateProfileEvent(cmd, mem, src_dev->devno(), PROFILE_D2D, this, mem_stream);
             _event_debug("Profiling record start: task[%lu][%s]", task->uid(), task->name());
             prof_event.RecordStartEvent(); 
         }
@@ -1640,7 +1640,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         }
 		size_t copy_size = IRIS_MIN(mem->size(), src_mem->size());
 
-        ResolveH2DStartEvents(task, mem, async, src_mem);
+        ResolveH2DStartEvents(task, cmd, mem, async, src_mem);
         void *dst_arch = mem->arch(this);
         if (async && is_proactive_dispatch) {
             AddMemoryAccessWriteDependencies(task, cmd, mem, mem_stream);
@@ -1703,7 +1703,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
         ResolveInputWriteDependency<ASYNC_DEV_INPUT_RESOLVE>(task, mem, async, src_dev, src_mem);
 
         if (async && platform_obj_->is_event_profile_enabled()) {
-            ProfileEvent & prof_event = task->CreateProfileEvent(mem, src_dev->devno(), PROFILE_O2D, this, mem_stream);
+            ProfileEvent & prof_event = task->CreateProfileEvent(cmd, mem, src_dev->devno(), PROFILE_O2D, this, mem_stream);
             _event_debug("Profiling record start: task[%lu][%s]", task->uid(), task->name());
             prof_event.RecordStartEvent(); 
         }
@@ -1773,7 +1773,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
 
         double start = timer_->Now();
         if (async && platform_obj_->is_event_profile_enabled()) {
-            ProfileEvent & prof_event = task->CreateProfileEvent(mem, devno(), PROFILE_D2O, src_dev, src_mem_stream);
+            ProfileEvent & prof_event = task->CreateProfileEvent(cmd, mem, devno(), PROFILE_D2O, src_dev, src_mem_stream);
             _event_debug("Profiling record start: task[%lu][%s]", task->uid(), task->name());
             prof_event.RecordStartEvent(); 
         }
@@ -1856,7 +1856,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
                 ResolveInputWriteDependency<ASYNC_SAME_DEVICE_DEPENDENCY>(task, select_mem, src_async, src_dev, src_mem);
                 src_dev->ResetContext();
                 if (async && src_async && platform_obj_->is_event_profile_enabled()) {
-                    ProfileEvent & prof_event = task->CreateProfileEvent(select_mem, -1, PROFILE_D2HH2D_D2H, src_dev, src_mem_stream);
+                    ProfileEvent & prof_event = task->CreateProfileEvent(cmd, select_mem, -1, PROFILE_D2HH2D_D2H, src_dev, src_mem_stream);
                     _event_debug("Profiling record start: task[%lu][%s]", task->uid(), task->name());
                     prof_event.RecordStartEvent(); 
                 }
@@ -1907,7 +1907,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
 			}
             // H2D should be issued from this current device
             if (async && platform_obj_->is_event_profile_enabled()) {
-                ProfileEvent & prof_event = task->CreateProfileEvent(mem, -1, PROFILE_D2HH2D_H2D, this, mem_stream);
+                ProfileEvent & prof_event = task->CreateProfileEvent(cmd, mem, -1, PROFILE_D2HH2D_H2D, this, mem_stream);
                 _event_debug("Profiling record start: task[%lu][%s]", task->uid(), task->name());
                 prof_event.RecordStartEvent(); 
             }
@@ -2226,7 +2226,7 @@ void Device::CopyDataBetweenConnectedDMemRegions(Task *task, Command *cmd, DataM
         }
     }
 }
-int Device::BringDataToHost(Task *task, DataMem *mem, 
+int Device::BringDataToHost(Task *task, Command *cmd, DataMem *mem, 
         void *host, const char *tag) 
 {
     size_t *ptr_off = mem->off();
@@ -2247,7 +2247,7 @@ int Device::BringDataToHost(Task *task, DataMem *mem,
             ResolveInputWriteDependency<ASYNC_DEV_INPUT_RESOLVE>(task, mem, async, this);
             ResetContext();
             if (async && platform_obj_->is_event_profile_enabled()) {
-                ProfileEvent & prof_event = task->CreateProfileEvent(mem, -1, PROFILE_D2H, this , mem_stream);
+                ProfileEvent & prof_event = task->CreateProfileEvent(cmd, mem, -1, PROFILE_D2H, this , mem_stream);
                 _event_debug("Profiling record start: task[%lu][%s]", task->uid(), task->name());
                 prof_event.RecordStartEvent(); 
             }
@@ -2289,10 +2289,10 @@ int Device::BringDataToHost(Task *task, DataMem *mem,
                 int dev_rmem_nddevs[IRIS_MAX_NDEVS+1];
                 bool src_async = is_async(false);
                 if (!rmem->is_dev_dirty(devno_)) {
-                    BringDataToHost(task, rmem, host, tag);
+                    BringDataToHost(task, cmd, rmem, host, tag);
                 } 
                 else if (!dev_rmem->is_dev_dirty(devno_)){
-                    BringDataToHost(task, dev_rmem, host, tag);
+                    BringDataToHost(task, cmd, dev_rmem, host, tag);
                 }
                 else {
                     int rmem_cpu_dev = -1;
@@ -2307,11 +2307,11 @@ int Device::BringDataToHost(Task *task, DataMem *mem,
                             dev_rmem_d2d_dev, dev_rmem_cpu_dev, dev_rmem_non_cpu_dev, async);
                     if (dev_rmem_nddevs[0] != -1) {
                         Device *src_dev = Platform::GetPlatform()->device(dev_rmem_nddevs[0]);
-                        src_dev->BringDataToHost(task, dev_rmem, host, tag);
+                        src_dev->BringDataToHost(task, cmd, dev_rmem, host, tag);
                     }
                     else if (rmem_nddevs[0] != -1) {
                         Device *src_dev = Platform::GetPlatform()->device(rmem_nddevs[0]);
-                        src_dev->BringDataToHost(task, rmem, host, tag);
+                        src_dev->BringDataToHost(task, cmd, rmem, host, tag);
                     }
                 }
             }
@@ -2561,10 +2561,10 @@ void Device::ExecuteMemFlushOut(Command* cmd, BaseMem *target_mem, Task *task) {
                 }
 			}
             src_dev = Platform::GetPlatform()->device(nddevs[0]);
-            errid_ = src_dev->BringDataToHost(task, mem, host, "MemFlushOut ");
+            errid_ = src_dev->BringDataToHost(task, cmd, mem, host, "MemFlushOut ");
         }
         else {
-            errid_ = BringDataToHost(task, mem, host, "MemFlushOut ");
+            errid_ = BringDataToHost(task, cmd, mem, host, "MemFlushOut ");
         }
         if (errid_ != IRIS_SUCCESS) _error("iret[%d]", errid_);
         if (update_host_flag)
@@ -2796,7 +2796,7 @@ void Device::ExecuteH2D(Command* cmd, Device *dev) {
   if (exclusive) mem->SetOwner(off, size, this);
   else mem->AddOwner(off, size, this);
   timer_->Start(IRIS_TIMER_H2D);
-  //ResolveH2DStartEvents(task, mem, async);
+  //ResolveH2DStartEvents(task, cmd, mem, async);
   int mem_stream = -1;
   if (async) {
       mem_stream = dev->GetStream(task, mem, true);

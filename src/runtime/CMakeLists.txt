@@ -441,6 +441,10 @@ install(FILES
   ${IRIS_BIN_DIR}/runtime/Config.h
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/iris/rt)
 
+install(FILES
+  ${IRIS_BIN_DIR}/runtime/Config.h
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/iris)
+
 
 if (IS_NVIDIA_CC)
 else()

@@ -48,7 +48,8 @@ enum ProfileRecordType
 }; 
 class ProfileEvent {
     public:
-        ProfileEvent(unsigned long id, int connect_dev, ProfileRecordType type, Device *event_dev, int stream) {
+        ProfileEvent(Command *cmd, unsigned long id, int connect_dev, ProfileRecordType type, Device *event_dev, int stream) {
+            cmd_ = cmd;
             start_event_ = NULL;
             end_event_ = NULL;
             type_ = type;
@@ -59,7 +60,8 @@ class ProfileEvent {
             event_fetch_flag_ = true;
             //printf("prof_event created:%p %p\n", &start_event_, start_event_);
         }
-        ProfileEvent(unsigned long id, int connect_dev, ProfileRecordType type, Device *event_dev, float start_time, float end_time) {
+        ProfileEvent(Command *cmd, unsigned long id, int connect_dev, ProfileRecordType type, Device *event_dev, float start_time, float end_time) {
+            cmd_ = cmd;
             start_event_ = NULL;
             end_event_ = NULL;
             type_ = type;
@@ -80,6 +82,7 @@ class ProfileEvent {
         void RecordEndEvent();
         void RecordEndEvent(float end_time) { end_time_ = end_time; }
         int stream() { return stream_; }
+        Command *cmd() { return cmd_; }
         void **start_event_ptr() { return &start_event_; }
         void **end_event_ptr()   { return &end_event_; }
         void *start_event()      { return start_event_; }
@@ -90,6 +93,7 @@ class ProfileEvent {
         int connect_dev() { return connect_dev_; }
         unsigned long uid() { return id_; }
     private:
+        Command *cmd_;
         Device *event_dev_;
         float start_time_;
         float end_time_;
@@ -383,13 +387,13 @@ public:
   vector<DataMem *> & hidden_dmem_out() { return hidden_dmem_out_; }
   vector<ProfileEvent> & profile_events() { return profile_events_; }
   inline void Clear() { dep_dev_ = NULL; dev_ = NULL; }
-  ProfileEvent & CreateProfileEvent(BaseMem *mem, int connect_dev, ProfileRecordType type, Device *dev, int stream);
-  ProfileEvent & CreateProfileEvent(Task *task, int connect_dev, ProfileRecordType type, Device *dev, int stream) {
-      profile_events_.push_back(ProfileEvent(task->uid(), connect_dev, type, dev, stream));
+  ProfileEvent & CreateProfileEvent(Command *cmd, BaseMem *mem, int connect_dev, ProfileRecordType type, Device *dev, int stream);
+  ProfileEvent & CreateProfileEvent(Command *cmd, Task *task, int connect_dev, ProfileRecordType type, Device *dev, int stream) {
+      profile_events_.push_back(ProfileEvent(cmd, task->uid(), connect_dev, type, dev, stream));
       return profile_events_.back();
   }
-  ProfileEvent &CreateProfileEvent(Task *task, int connect_dev, ProfileRecordType type, Device *dev, float start, float end) {
-      profile_events_.push_back(ProfileEvent(task->uid(), connect_dev, type, dev, start, end));
+  ProfileEvent &CreateProfileEvent(Command *cmd, Task *task, int connect_dev, ProfileRecordType type, Device *dev, float start, float end) {
+      profile_events_.push_back(ProfileEvent(cmd, task->uid(), connect_dev, type, dev, start, end));
       return profile_events_.back();
   }
   ProfileEvent & LastProfileEvent() {
