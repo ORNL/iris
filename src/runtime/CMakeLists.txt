@@ -483,6 +483,12 @@ install(FILES ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_cuda_kernels.cu 
 
 add_library(iris ${IRIS_RUNTIME_SOURCES} ${DEFAULT_KERNELS})
 add_dependencies(iris iris_default_math_boilerplate_h)
+if (COVERAGE)
+if (IS_NVIDIA_CC)
+else()
+target_link_libraries(iris gcov)
+endif()
+endif()
 if (ENABLE_FFI)
 if(EXISTS "${libffi_BINARY_DIR}/libffi.so")
 install(FILES ${libffi_BINARY_DIR}/libffi.so DESTINATION ${CMAKE_INSTALL_LIBDIR})

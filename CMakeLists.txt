@@ -1,4 +1,20 @@
 cmake_minimum_required(VERSION 3.15)
+# Only set compiler if user did NOT specify one
+if(NOT DEFINED CMAKE_C_COMPILER AND NOT DEFINED ENV{CC})
+    if (APPLE) 
+    set(CMAKE_C_COMPILER gcc-15 CACHE STRING "C compiler" FORCE)
+    else()
+    set(CMAKE_C_COMPILER gcc CACHE STRING "C compiler" FORCE)
+    endif()
+endif()
+
+if(NOT DEFINED CMAKE_CXX_COMPILER AND NOT DEFINED ENV{CXX})
+    if (APPLE) 
+    set(CMAKE_CXX_COMPILER g++-15 CACHE STRING "C++ compiler" FORCE)
+    else()
+    set(CMAKE_CXX_COMPILER g++ CACHE STRING "C++ compiler" FORCE)
+    endif()
+endif()
 
 project(IRIS)
 include(GNUInstallDirs)
