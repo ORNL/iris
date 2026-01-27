@@ -16,12 +16,51 @@
 namespace iris {
 namespace rt {
 
+#ifdef __APPLE__
+#include <sys/types.h>
+#include <sys/sysctl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+// helper: read sysctl string into malloc'd buffer (caller frees)
+static char* sysctl_string(const char* key) {
+    size_t n = 0;
+    if (sysctlbyname(key, NULL, &n, NULL, 0) != 0 || n == 0) return NULL;
+    char* buf = (char*)malloc(n);
+    if (!buf) return NULL;
+    if (sysctlbyname(key, buf, &n, NULL, 0) != 0) { free(buf); return NULL; }
+    // ensure NUL-terminated (sysctl strings normally are, but be safe)
+    buf[n - 1] = '\0';
+    return buf;
+}
+
+// helper: append a formatted line to a growing buffer
+const int FillCpuNameFromMacSysctl(char* name, size_t name_cap) {
+    // On Intel Macs: machdep.cpu.brand_string is best
+    // On Apple Silicon: this key may not exist; fallback to hw.model / hw.machine
+    char* brand = sysctl_string("machdep.cpu.brand_string");
+    char* model = sysctl_string("hw.model");     // e.g., "Mac14,2"
+    char* machine = sysctl_string("hw.machine"); // e.g., "arm64"
+
+    snprintf(name, name_cap, "%s-%s-%s", brand, model, machine);
+
+    free(brand);
+    free(model);
+    free(machine);
+    return 1;
+}
+#endif
+
 DeviceOpenMP::DeviceOpenMP(LoaderOpenMP* ld, int devno, int platform) : Device(devno, platform) {
   ld_ = ld;
   ld_default_ = NULL;
   type_ = iris_cpu;
   model_ = iris_openmp;
   can_share_host_memory_ = true;
+#ifdef __APPLE__
+  FillCpuNameFromMacSysctl(name_, 256);
+#else
   FILE* fd = fopen("/proc/cpuinfo", "rb");
   char* arg = 0;
   size_t size = 0;
@@ -33,11 +72,14 @@ DeviceOpenMP::DeviceOpenMP(LoaderOpenMP* ld, int devno, int platform) : Device(d
     if (GetProcessorNameQualcomm(arg) == IRIS_SUCCESS) break;
     strcpy(name_, "Unknown CPU"); break;
   }
+#endif // __APPLE__
 #ifndef DISABLE_D2D
   enableD2D();
 #endif
+#ifndef __APPLE__
   free(arg);
   fclose(fd);
+#endif // __APPLE__
   _info("device[%d] platform[%d] device[%s] type[%d]", devno_, platform_, name_, type_);
 }
 

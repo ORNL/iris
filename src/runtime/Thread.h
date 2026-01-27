@@ -54,7 +54,12 @@ protected:
   pthread_t         thread_;
   std::atomic<bool> running_;
   std::atomic<bool> sleeping_;
+#ifdef __APPLE__
+  pthread_cond_t    sem_;
+  bool              signaled_;
+#else
   sem_t             sem_;
+#endif // __APPLE__
 
   // Protects thread_ and lifecycle of the pthread
   pthread_mutex_t   mutex_;
