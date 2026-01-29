@@ -122,7 +122,7 @@ enum StreamPolicy {
     STREAM_POLICY_GIVE_ALL_STREAMS_TO_KERNEL = 2
 };
 
-typedef struct {
+typedef struct IrisParam_ {
     void     *data;       /* points to scalar or array data */
     size_t   *off;
     size_t   *tile_sizes;
@@ -135,7 +135,7 @@ typedef struct {
     unsigned long mem_id;
 } IrisParam;
 
-typedef struct {
+typedef struct IrisSpec_ {
     int32_t n_streams;
     int32_t devno;
     int32_t dev_id;
@@ -150,6 +150,25 @@ typedef struct {
     size_t *block;
     size_t shmem_size;
 } IrisSpec;
+
+// Match the exact field order you requested.
+typedef struct ExternalEventRecord {
+  double start_;
+  double end_;
+  int32_t type_;
+  int32_t stream_;
+  unsigned long id_;
+#ifdef __cplusplus
+  public:
+  void init(double start, double end, int32_t type, int32_t stream, unsigned long id) {
+    start_ = start; end_ = end; 
+    type_ = type; stream_ = stream;
+    id_ = id;
+  }
+  ExternalEventRecord() {  init(0.0, 0.0, -1, -1, 0); }
+  ExternalEventRecord(double start, double end, int32_t type, int32_t stream, unsigned long id) { init(start, end, type, stream, id); }
+#endif
+} ExternalEventRecord;
 
 typedef enum StreamPolicy StreamPolicy;
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
