@@ -323,9 +323,9 @@ CQireeResultRecord = np.dtype([
 CProfileRecord = np.dtype([
     ('start_time',   np.float64),
     ('end_time',     np.float64),
-    ('type',         np.int32_t),
-    ('stream',       np.int32_t),
-    ('id',           np.int64_t)
+    ('type',         np.int32),
+    ('stream',       np.int32),
+    ('id',           np.int64)
 ])
 
 class IrisParam(ctypes.Structure):
