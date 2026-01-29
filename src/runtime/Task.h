@@ -390,11 +390,9 @@ private:
   vector<DataMem *> hidden_dmem_out_;
 public:
   size_t n_profile_events() { return profile_events_.size(); }
-  ExternalEventRecord * FetchProfileEventsData();
+  ExternalEventRecord * fetch_profile_records();
   vector<DataMem *> & hidden_dmem_in() { return hidden_dmem_in_; }
   vector<DataMem *> & hidden_dmem_out() { return hidden_dmem_out_; }
-  size_t n_profile_events() { return profile_events_.size(); }
-  EProfileRecord *fetch_profile_records() { return NULL; }
   vector<ProfileEvent> & profile_events() { return profile_events_; }
   inline void Clear() { dep_dev_ = NULL; dev_ = NULL; }
   ProfileEvent & CreateProfileEvent(Command *cmd, BaseMem *mem, int connect_dev, ProfileRecordType type, Device *dev, int stream);

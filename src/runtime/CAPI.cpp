@@ -71,7 +71,7 @@ int iris_get_n_profile_events(iris_task brs_task) {
   return 0;
 }
 
-EProfileRecord *iris_get_profile_events(iris_task brs_task) {
+ExternalEventRecord *iris_get_profile_events(iris_task brs_task) {
   Task *task = Platform::GetPlatform()->get_task_object(brs_task);
   if (task != NULL) {
     return task->fetch_profile_records();

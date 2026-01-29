@@ -108,14 +108,6 @@ typedef int8_t bool;
 #endif
 #endif
 
-typedef struct EProfileRecord_ {
-    double start_time;
-    double end_time;
-    int32_t type;
-    int32_t stream;
-    unsigned long id;
-}EProfileRecord;
-
 enum StreamPolicy {
     STREAM_POLICY_DEFAULT = 0,
     STREAM_POLICY_SAME_FOR_TASK = 1,
@@ -2241,7 +2233,7 @@ extern int iris_dmem_set_source(iris_mem brs_mem, iris_mem source_mem);
 extern int iris_cmd_kernel_get_nargs(void *cmd);
 extern void iris_cmd_get_profile(iris_command brs_cmd, double *start, double *end);
 extern int iris_get_n_profile_events(iris_task brs_task);
-extern EProfileRecord *iris_get_profile_events(iris_task brs_task);
+extern ExternalEventRecord *iris_get_profile_events(iris_task brs_task);
 extern int    iris_cmd_kernel_get_arg_is_mem(void *cmd, int index);
 extern size_t iris_cmd_kernel_get_arg_size(void *cmd, int index);
 extern void  *iris_cmd_kernel_get_arg_value(void *cmd, int index);

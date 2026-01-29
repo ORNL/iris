@@ -605,7 +605,7 @@ pair<double, double> Task::GetTaskLevelTimeBoundaries() {
     return make_pair(t_start_time, t_end_time);
 }
 
-ExternalEventRecord *Task::FetchProfileEventsData() {
+ExternalEventRecord *Task::fetch_profile_records() {
     if (platform_->is_event_profile_enabled()) {
         vector<ProfileEvent> & pevents = profile_events();
         if (pevents.size() == 0) return NULL;
