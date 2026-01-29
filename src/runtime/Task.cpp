@@ -26,19 +26,22 @@ void ProfileEvent::Clean() {
     //printf("completed prof_event trying to destroy :%p %p\n", &start_event_, start_event_);
 }
 float ProfileEvent::GetStartTime() {
-    if (!event_fetch_flag_) return start_time_; 
+    if (start_event_fetch_flag_) return start_time_; 
     float etime =0.0;
     _event_prof_debug(" start uid:%lu start_event:%p stream:%d\n", uid(), start_event_, stream_);
-    if (start_event_ != NULL && event_dev_ != NULL) 
+    if (start_event_ != NULL && event_dev_ != NULL) {
         etime = event_dev_->GetEventTime(start_event_, stream_);
+    }
+    start_event_fetch_flag_ = true;
     return etime;
 }
 float ProfileEvent::GetEndTime() {
-    if (!event_fetch_flag_) return end_time_; 
+    if (end_event_fetch_flag_) return end_time_; 
     float etime =0.0;
     _event_prof_debug(" end uid:%lu end_event:%p stream:%d\n", uid(), end_event_, stream_);
     if (end_event_ != NULL && event_dev_ != NULL) 
         etime = event_dev_->GetEventTime(end_event_, stream_);
+    end_event_fetch_flag_ = true;
     return etime;
 
 }
@@ -64,6 +67,7 @@ Task::Task(Platform* platform, int type, const char* name, int max_cmds) {
   julia_kernel_type_ = iris_julia_native;
   type_ = type;
   recommended_stream_ = -1;
+  ext_records_ = NULL;
   recommended_dev_ = -1;
   completion_event_ = NULL;
   execute_instance_ = -1;
@@ -584,6 +588,23 @@ pair<double, double> Task::GetTaskLevelTimeBoundaries() {
         }
     }
     return make_pair(t_start_time, t_end_time);
+}
+
+ExternalEventRecord *Task::FetchProfileEventsData() {
+    if (platform_->is_event_profile_enabled()) {
+        vector<ProfileEvent> & pevents = profile_events();
+        if (pevents.size() == 0) return NULL;
+        if (ext_records_ != NULL) delete [] ext_records_;
+        ext_records_ = new ExternalEventRecord[pevents.size()];
+        int index = 0;
+        for (ProfileEvent & p : pevents) {
+            Device *event_dev = p.event_dev();
+            ExternalEventRecord *record = &ext_records_[index++];
+            record->init(p.GetStartTime(), p.GetEndTime(), p.type(), p.stream(), p.uid());
+        }
+        return ext_records_;
+    }
+    return NULL;
 }
 
 void Task::Validate() {

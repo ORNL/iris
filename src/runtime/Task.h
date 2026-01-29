@@ -57,7 +57,8 @@ class ProfileEvent {
             connect_dev_ = connect_dev;
             event_dev_ = event_dev;
             stream_ = stream;
-            event_fetch_flag_ = true;
+            start_event_fetch_flag_ = false;
+            end_event_fetch_flag_ = false;
             //printf("prof_event created:%p %p\n", &start_event_, start_event_);
         }
         ProfileEvent(Command *cmd, unsigned long id, int connect_dev, ProfileRecordType type, Device *event_dev, float start_time, float end_time) {
@@ -71,16 +72,17 @@ class ProfileEvent {
             stream_ = -1;
             start_time_ = start_time;
             end_time_ = end_time;
-            event_fetch_flag_ = false;
+            start_event_fetch_flag_ = false;
+            end_event_fetch_flag_ = false;
         }
         ~ProfileEvent(){ /*It shouldn't destroy any events*/ }
         void Clean();
         float GetStartTime();
         float GetEndTime();
         void RecordStartEvent();
-        void RecordStartEvent(float start_time) { start_time_ = start_time; }
         void RecordEndEvent();
-        void RecordEndEvent(float end_time) { end_time_ = end_time; }
+        void RecordStartTime(float start_time) { start_time_ = start_time; }
+        void RecordEndTime(float end_time) { end_time_ = end_time; }
         int stream() { return stream_; }
         Command *cmd() { return cmd_; }
         void **start_event_ptr() { return &start_event_; }
@@ -97,7 +99,8 @@ class ProfileEvent {
         Device *event_dev_;
         float start_time_;
         float end_time_;
-        bool event_fetch_flag_; 
+        bool start_event_fetch_flag_; 
+        bool end_event_fetch_flag_; 
         void *start_event_;
         void *end_event_;
         ProfileRecordType type_;
@@ -383,6 +386,8 @@ private:
   vector<DataMem *> hidden_dmem_in_;
   vector<DataMem *> hidden_dmem_out_;
 public:
+  size_t n_profile_events() { return profile_events_.size(); }
+  ExternalEventRecord * FetchProfileEventsData();
   vector<DataMem *> & hidden_dmem_in() { return hidden_dmem_in_; }
   vector<DataMem *> & hidden_dmem_out() { return hidden_dmem_out_; }
   vector<ProfileEvent> & profile_events() { return profile_events_; }
@@ -439,6 +444,7 @@ public:
   bool py_policy_flag_;
   string py_policy_;
   int execute_instance_;
+  ExternalEventRecord *ext_records_;
   //bool is_task_enqueued_in_multiple_devices_;
 };
 
