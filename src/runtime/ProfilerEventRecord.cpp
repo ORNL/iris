@@ -233,8 +233,14 @@ int ProfilerEventRecord::CompleteTask(Task* task) {
   for (ProfileEvent & p : pevents) {
      Device *event_dev = p.event_dev();
      double midpoint = event_dev->first_event_cpu_mid_point_time();
-     double start_time = midpoint + p.GetStartTime();
-     double end_time = midpoint + p.GetEndTime();
+     double e_start_time = p.GetStartTime();
+     double e_end_time = p.GetEndTime();
+     if (p.cmd() != NULL) {
+         p.cmd()->set_event_time_start(e_start_time);
+         p.cmd()->set_event_time_end(e_end_time);
+     }
+     double start_time = midpoint + e_start_time;
+     double end_time = midpoint + e_end_time;
      int stream = p.stream();
      unsigned long uid = p.uid();
      ProfileRecordType type = p.type();

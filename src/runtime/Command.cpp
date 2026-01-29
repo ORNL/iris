@@ -67,6 +67,9 @@ void Command::Clear(bool init) {
   given_name_ = false;
   name_ = "";
   time_ = 0.0;
+  event_time_start_ = 0.0;
+  event_time_start_flag_ = false;
+  event_time_end_ = 0.0;
   ns_time_start_ = 0;
   ns_time_end_ = 0;
   internal_memory_transfer_ = false;

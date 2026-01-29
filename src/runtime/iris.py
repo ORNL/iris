@@ -320,6 +320,14 @@ CQireeResultRecord = np.dtype([
     ('count', np.uint64)
 ])
 
+CProfileRecord = np.dtype([
+    ('start_time',   np.float64),
+    ('end_time',     np.float64),
+    ('type',         np.int32_t),
+    ('stream',       np.int32_t),
+    ('id',           np.int64_t)
+])
+
 class IrisParam(ctypes.Structure):
     _fields_ = [
         ("data",        c_void_p),          # void* data
@@ -459,6 +467,9 @@ def get_iris_type(np_dtype):
         return iris_uint64
     return iris_double
 class iris_kernel(Structure):
+    _fields_ = [("class_obj", c_void_p), ("uid", c_ulong)]
+
+class iris_command(Structure):
     _fields_ = [("class_obj", c_void_p), ("uid", c_ulong)]
 
 class iris_mem(Structure):
@@ -937,14 +948,20 @@ def task_d2h(task, mem, off=0, size=0, host=None):
         host_ctype = host.ctypes.data_as(c_void_p)
     return dll.iris_task_d2h(task, mem, c_size_t(off), c_size_t(size), host_ctype)
 
+def task_d2d(task, mem, src_dev=0, off=0, size=0, host=None):
+    host_ctype = None
+    if host != None:
+        host_ctype = host.ctypes.data_as(c_void_p)
+    return dll.iris_task_d2d(task, mem, c_size_t(off), c_size_t(size), host_ctype, src_dev)
+
 def task_h2d_full(task, mem, host):
     return dll.iris_task_h2d_full(task, mem, host.ctypes.data_as(c_void_p))
 
 def task_d2h_full(task, mem, host):
     return dll.iris_task_d2h_full(task, mem, host.ctypes.data_as(c_void_p))
 
-def task_submit(task, device, sync):
-    return dll.iris_task_submit(task, c_int(device), None, c_int(sync))
+def task_submit(task, policy, sync):
+    return dll.iris_task_submit(task, c_int(policy), None, c_int(sync))
 
 def task_wait(task):
     return dll.iris_task_wait(task)
@@ -1190,6 +1207,16 @@ class kernel:
   def release(self):
     kernel_release(self.handle)
 
+class command:
+  def __init__(self, handle):
+    self.handle = handle
+
+  def profile():
+    start_time = c_double()
+    end_time = c_double()
+    dll.iris_cmd_get_profile(self.handle, byref(start_time), byref(end_time))
+    return (end_time-start_time, start_time, end_time)
+
 class size_t:
     def __init__(self, value):
         self.value = value
@@ -1354,17 +1381,23 @@ class task:
             return
         (kernel, dim, off, gws, lws, params_list) = args
         if callable(kernel):
+            self.handle = task_create(kernel.__name__)
+        else:
+            self.handle = task_create(kernel)
+        self.kernel(kernel, dim, off, gws, lws, params_list)
+
+    def kernel(self, kernel, dim, off, gws, lws, params, params_info=[]):
+        if callable(kernel):
             # This is python kernel function
             self.py_func_object = ctypes.py_object(kernel)
-            self.handle = task_create(kernel.__name__)
-            self.kernel(kernel.__name__, dim, off, gws, lws, params_list)
+            self.kernel_core(kernel.__name__, dim, off, gws, lws, params, params_info)
             dll.iris_kernel_set_python_function(self.kernel_obj, ctypes.pointer(self.py_func_object))
             dll.iris_kernel_enable_python_interface(self.kernel_obj, iris_python_native)
         else:
-            self.handle = task_create(kernel)
-            self.kernel(kernel, dim, off, gws, lws, params_list)
+            self.kernel_core(kernel, dim, off, gws, lws, params, params_info)
+        return self.last_command()
 
-    def kernel(self, kernel, dim, off, gws, lws, params, params_info=[]):
+    def kernel_core(self, kernel, dim, off, gws, lws, params, params_info=[]):
         if len(params_info) == 0  and len(params) != len(params_info):
             return self.kernel_core2(kernel, dim, off, gws, lws, params)
         else:
@@ -1440,8 +1473,9 @@ class task:
             dll.iris_task_dmem_flush_out(self.handle, pobj)
         return self.kernel_obj
 
-    def flush(self, mem):                                                     
-        dll.iris_task_dmem_flush_out(self.handle, mem.handle)                 
+    def flush(self, mem):
+        dll.iris_task_dmem_flush_out(self.handle, mem.handle)
+        return self.last_command()
 
     def name(self):
         dll.iris_task_get_name.restype = c_char_p
@@ -1455,7 +1489,9 @@ class task:
         c_name = c_char_p(name) if sys.version_info[0] == 2 else c_char_p(bytes(name, 'ascii'))
         dll.iris_task_set_name(self.handle, c_name)
     def set_device(self, device):
-        dll.iris_task_set_policy(self.handle, convert_obj_ctype(device)[0])
+        dll.iris_task_set_device(self.handle, convert_obj_ctype(device)[0])
+    def set_policy(self, policy):
+        dll.iris_task_set_policy(self.handle, convert_obj_ctype(policy)[0])
     def uid(self):
         dll.iris_task_get_uid.restype = c_ulong
         return dll.iris_task_get_uid(self.handle)
@@ -1510,6 +1546,11 @@ class task:
         ntasks = dll.iris_task_get_dependency_count(self.handle)
         return ntasks
 
+    def last_command(self):
+        dll.iris_task_get_last_cmd.restype = iris_kernel
+        cmd = dll.iris_task_get_last_cmd(self.handle)
+        return command(cmd)
+
     def get_depends(self):
         dll.iris_task_get_dependency_count.restype = c_int
         ntasks = dll.iris_task_get_dependency_count(self.handle)
@@ -1527,24 +1568,40 @@ class task:
         task_depend(self.handle, len(tasks_list), dep_list)
     def wait(self):
         task_wait(self.handle)
-    def dmem2dmem(self, src_mem, dst_mem):
-        dll.iris_task_dmem2dmem(self.handle, src_mem.handle, dst_mem.handle)
-    def h2d(self, mem, off=0, size=0, host=None):
-        task_h2d(self.handle, mem.handle, off, size, host)
     def params_map(self, params_map_list):
         task_params_map(self.handle, params_map_list)
+    def dmem2dmem(self, src_mem, dst_mem):
+        dll.iris_task_dmem2dmem(self.handle, src_mem.handle, dst_mem.handle)
+        return self.last_command()
+    def mem_in(self, mem, off=0, size=0, host=None):
+        task_h2d(self.handle, mem.handle, off, size, host)
+        return self.last_command()
+    def h2d(self, mem, off=0, size=0, host=None):
+        task_h2d(self.handle, mem.handle, off, size, host)
+        return self.last_command()
+    def mem_out(self, mem, off=0, size=0, host=None):
+        task_d2h(self.handle, mem.handle, off, size, host)
+        return self.last_command()
     def d2h(self, mem, off=0, size=0, host=None):
         task_d2h(self.handle, mem.handle, off, size, host)
+        return self.last_command()
+    def d2d(self, mem, src_dev=0, off=0, size=0, host=None):
+        task_d2d(self.handle, mem.handle, src_dev, off, size, host)
+        return self.last_command()
     def h2d_full(self, mem, host):
         task_h2d_full(self.handle, mem.handle, host)
+        return self.last_command()
     def d2h_full(self, mem, host):
         task_d2h_full(self.handle, mem.handle, host)
+        return self.last_command()
     def pyhost(self, func, params):
         python_task_host(self, self.handle, func, params)
+        return self.last_command()
     def host(self, func, params):
         task_host(self.handle, func, params)
-    def submit(self, device, sync = 1):
-        task_submit(self.handle, device, sync)
+        return self.last_command()
+    def submit(self, policy=iris_default, sync = 1):
+        task_submit(self.handle, policy, sync)
     def task_name(self):
         dll.iris_task_get_name(self.handle)
     def kernel_name(self):
@@ -1589,16 +1646,16 @@ class graph:
         dll.iris_graph_free(self.handle)
     def wait(self):
         dll.iris_graph_wait(self.handle)
-    def submit(self, device=iris_default, sync=1, order=None):
+    def submit(self, policy=iris_default, sync=1, order=None):
         if type(order) == np.ndarray or order != None:
             order_np = order
             if type(order) != np.ndarray:
                 order_np = np.int32(order)
             conv_order_np = convert_obj_ctype(order_np)
-            dll.iris_graph_submit_with_order(self.handle, conv_order_np[0], c_int(device), c_int(sync))
+            dll.iris_graph_submit_with_order(self.handle, conv_order_np[0], c_int(policy), c_int(sync))
         else:
-            dll.iris_graph_submit(self.handle, c_int(device), c_int(sync))
-    def submit_time(self, device=iris_default, sync=1, order=None):
+            dll.iris_graph_submit(self.handle, c_int(policy), c_int(sync))
+    def submit_time(self, policy=iris_default, sync=1, order=None):
         #stime = np.double(0.0)
         #cobj = byref(c_double(stime))
         stime = np.zeros((1), np.double)
@@ -1608,15 +1665,15 @@ class graph:
             if type(order) != np.ndarray:
                 order_np = np.int32(order)
             conv_order_np = convert_obj_ctype(order_np)
-            dll.iris_graph_submit_with_order_and_time(self.handle, conv_order_np[0], cobj, c_int(device), c_int(sync))
+            dll.iris_graph_submit_with_order_and_time(self.handle, conv_order_np[0], cobj, c_int(policy), c_int(sync))
         else:
-            dll.iris_graph_submit_with_time(self.handle, cobj, c_int(device), c_int(sync))
+            dll.iris_graph_submit_with_time(self.handle, cobj, c_int(policy), c_int(sync))
         return stime[0]
-    def add_task(self, task, device=iris_default, opt=None):
+    def add_task(self, task, policy=iris_default, opt=None):
         c_opt = c_void_p(0)
         if opt != None:
            c_opt = c_char_p(opt) if sys.version_info[0] == 2 else c_char_p(bytes(opt, 'ascii'))
-        dll.iris_graph_task(self.handle, task.handle, c_int(device), c_opt)
+        dll.iris_graph_task(self.handle, task.handle, c_int(policy), c_opt)
 
     def reset_memories(self):
         dll.iris_graph_reset_memories(self.handle)

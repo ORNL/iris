@@ -63,6 +63,22 @@ void iris_set_enable_profiler(int flag) {
   Platform::GetPlatform()->set_enable_profiler((bool)flag);
 }
 
+int iris_get_n_profile_events(iris_task brs_task) {
+  Task *task = Platform::GetPlatform()->get_task_object(brs_task);
+  if (task != NULL) {
+    return task->n_profile_events();
+  }
+  return 0;
+}
+
+EProfileRecord *iris_get_profile_events(iris_task brs_task) {
+  Task *task = Platform::GetPlatform()->get_task_object(brs_task);
+  if (task != NULL) {
+    return task->fetch_profile_records();
+  }
+  return nullptr;
+}
+
 void iris_set_enable_dot_profiler(int flag) {
   Platform::GetPlatform()->set_enable_dot_profiler((bool)flag);
 }
@@ -540,6 +556,15 @@ int iris_task_submit(iris_task task, int device, const char* opt, int sync) {
   return Platform::GetPlatform()->TaskSubmit(task, device, opt, sync);
 }
 
+int iris_task_set_device(iris_task brs_task, int device) {
+  Task *task = Platform::GetPlatform()->get_task_object(brs_task);
+  if (task != NULL) {
+    task->set_brs_affinity(device);
+    return IRIS_SUCCESS;
+  }
+  return IRIS_ERROR;
+}
+
 int iris_task_set_policy(iris_task task, int policy) {
   return Platform::GetPlatform()->SetTaskPolicy(task, policy);
 }
@@ -630,6 +655,16 @@ void iris_task_get_dependencies(iris_task brs_task, iris_task *tasks) {
         Task *dtask = task->depend(i);
         if (dtask == NULL) tasks[i] = empty_task;
         else tasks[i] = *(dtask->struct_obj());
+    }
+}
+void iris_cmd_get_profile(iris_command brs_cmd, double *start, double *end) {
+    Command *cmd = brs_cmd.class_obj;
+    if (cmd->is_event_time()) {
+        *start = cmd->event_time_start();
+        *end = cmd->event_time_end();
+    } else {
+        *start = cmd->time_start();
+        *end = cmd->time_end();
     }
 }
 int iris_cmd_kernel_get_nargs(void *cmd_p) {

@@ -187,6 +187,8 @@ public:
   void set_opt(const char* opt);
   const char* get_opt(){return opt_.c_str();}
   const char* opt() { return opt_.c_str(); }
+  void set_brs_affinity(int dev) { brs_affinity_ = dev; }
+  int brs_affinity() { return brs_affinity_; }
   int brs_policy() { return brs_policy_; }
   int recommended_stream() { return recommended_stream_; }
   void *GetCompletionEvent() { return completion_event_; }
@@ -344,6 +346,7 @@ private:
   int recommended_stream_;
   int recommended_dev_;
   int brs_policy_;
+  int brs_affinity_;
   void *completion_event_;
   //char opt_[128];
   std::string opt_;
@@ -385,6 +388,8 @@ private:
 public:
   vector<DataMem *> & hidden_dmem_in() { return hidden_dmem_in_; }
   vector<DataMem *> & hidden_dmem_out() { return hidden_dmem_out_; }
+  size_t n_profile_events() { return profile_events_.size(); }
+  EProfileRecord *fetch_profile_records() { return NULL; }
   vector<ProfileEvent> & profile_events() { return profile_events_; }
   inline void Clear() { dep_dev_ = NULL; dev_ = NULL; }
   ProfileEvent & CreateProfileEvent(Command *cmd, BaseMem *mem, int connect_dev, ProfileRecordType type, Device *dev, int stream);

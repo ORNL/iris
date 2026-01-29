@@ -120,6 +120,7 @@ Task::Task(Platform* platform, int type, const char* name, int max_cmds) {
   pthread_mutex_init(&mutex_subtasks_, NULL);
   //pthread_cond_init(&complete_cond_, NULL);
   brs_policy_ = iris_default;
+  brs_affinity_ = -1;
   graph_ = NULL;
   submit_graph_again_ = false;
 #ifdef AUTO_PAR
@@ -204,16 +205,30 @@ void Task::set_brs_policy(int brs_policy) {
 
 const char* Task::brs_policy_string() {
   switch(brs_policy_){
-    case iris_ftf: return ("ftf");
-    case iris_data: return ("data");
     case iris_default: return ("default");
+    case iris_cpu: return ("cpu");
+    case iris_nvidia: return ("nvidia");
+    case iris_amd: return ("amd");
+    case iris_gpu_intel: return ("gpu-intel");
+    case iris_gpu: return ("gpu");
+    case iris_phi: return ("phi");
+    case iris_fpga: return ("fpga");
+    case iris_hexagon: return ("hexagon");
+    case iris_roundrobin: return ("roundrobin");
     case iris_depend: return ("depend");
-    case iris_sdq: return ("sdq");
-    case iris_pending: return ("pending");
+    case iris_data: return ("data");
     case iris_profile: return ("profile");
     case iris_random: return ("random");
-    case iris_roundrobin: return ("roundrobin");
+    case iris_pending: return ("pending");
+    case iris_sdq: return ("sdq");
+    case iris_ftf: return ("ftf");
+    case iris_ocl: return ("ocl");
+    case iris_block_cycle: return ("block_cycle");
+    case iris_custom: return ("custom");
     case iris_julia_policy: return ("julia_policy");
+    case iris_qpu: return ("qpu");
+    case iris_python_policy: return ("python_policy");
+    case iris_all: return ("all");
     default: return("unknown");
   }
 }
@@ -253,7 +268,7 @@ int Task::get_device_affinity() {
         BaseMem* mem = (BaseMem *)cmds_[0]->mem();
         return mem->get_dev_affinity();
     }
-    return -1;
+    return brs_affinity_;
 }
 void Task::AddCommand(Command* cmd, int position) {
   //if (ncmds_ >= max_cmds_) _error("ncmds[%d]", ncmds_);

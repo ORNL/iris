@@ -118,6 +118,17 @@ public:
   void set_time_end(Timer* d);
   double time_start() { return time_start_; }
   double time_end() { return time_end_; }
+  double event_time_start() { return event_time_start_; }
+  double event_time_end() { return event_time_end_; }
+  bool is_event_time() { return event_time_start_flag_; }
+  void set_event_time_start(double t) { 
+      if (!event_time_start_flag_ || t < event_time_start_) 
+          event_time_start_ = t; 
+      event_time_start_flag_ = true;
+  }
+  void set_event_time_end(double t) { 
+      if (t > event_time_end_) event_time_end_ = t; 
+  }
   double time_duration() { return time_end_-time_start_; }
   size_t ns_time_start() { return ns_time_start_; }
   size_t ns_time_end() { return ns_time_end_; }
@@ -149,9 +160,12 @@ private:
   BaseMem* dst_mem_;
   BaseMem* condition_mem_;
   bool condition_flag_;
+  bool event_time_start_flag_;
   Task* task_;
   Platform* platform_;
   double time_;
+  double event_time_start_;
+  double event_time_end_;
   double time_start_;
   double time_end_;
   size_t ns_time_start_;

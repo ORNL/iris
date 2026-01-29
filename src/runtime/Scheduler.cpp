@@ -157,7 +157,7 @@ void Scheduler::SubmitTask(Task* task) {
   task->Clear();
   Device* devs[IRIS_MAX_NDEVS];
   if (task_affinity < 0) {
-      if (brs_policy < IRIS_MAX_NDEVS) {
+      if (brs_policy < IRIS_MAX_NDEVS_POLICIES) {
           if (brs_policy >= ndevs_) ndevs = 0;
           else {
               ndevs = 1;

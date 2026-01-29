@@ -108,6 +108,14 @@ typedef int8_t bool;
 #endif
 #endif
 
+typedef struct EProfileRecord_ {
+    double start_time;
+    double end_time;
+    int32_t type;
+    int32_t stream;
+    unsigned long id;
+}EProfileRecord;
+
 enum StreamPolicy {
     STREAM_POLICY_DEFAULT = 0,
     STREAM_POLICY_SAME_FOR_TASK = 1,
@@ -147,11 +155,16 @@ typedef enum StreamPolicy StreamPolicy;
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 #ifndef UNDEF_IRIS_MACROS
 #define IRIS_MAX_NPLATFORMS     32
-#define IRIS_MAX_NDEVS          (1 << 8) - 1
+#define IRIS_MAX_NDEVS          (1 << 8) - 1 
+
+// This is maximum you can use in iris_task_set_policy
+#define IRIS_MAX_NDEVS_POLICIES   (1<<5)
+
 #define IRIS_MAX_KERNEL_NARGS     64
 #define IRIS_MAX_DEVICE_NSTREAMS   11
 #define IRIS_MAX_DEVICE_NCOPY_STREAMS   3
 
+// Task Policies/Policy
 #define iris_default            (1 << 5)
 #define iris_cpu                (1 << 6)
 #define iris_nvidia             (1 << 7)
@@ -1265,6 +1278,16 @@ extern int iris_task_submit(iris_task task, int device, const char* opt, int syn
 
 
 
+/**@brief Sets a device affinity for a task
+ *
+ * This function sets scheduling policy for a task
+ *
+ * @param task iris task object
+ * @param device either device index 
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_task_set_device(iris_task task, int device );
+
 /**@brief Sets a scheduling policy for a task
  *
  * This function sets scheduling policy for a task
@@ -2197,6 +2220,9 @@ extern int iris_dmem_set_source(iris_mem brs_mem, iris_mem source_mem);
 
 // Command kernel member access
 extern int iris_cmd_kernel_get_nargs(void *cmd);
+extern void iris_cmd_get_profile(iris_command brs_cmd, double *start, double *end);
+extern int iris_get_n_profile_events(iris_task brs_task);
+extern EProfileRecord *iris_get_profile_events(iris_task brs_task);
 extern int    iris_cmd_kernel_get_arg_is_mem(void *cmd, int index);
 extern size_t iris_cmd_kernel_get_arg_size(void *cmd, int index);
 extern void  *iris_cmd_kernel_get_arg_value(void *cmd, int index);
