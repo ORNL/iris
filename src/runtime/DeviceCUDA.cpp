@@ -187,6 +187,10 @@ DeviceCUDA::DeviceCUDA(LoaderCUDA* ld, LoaderHost2CUDA *host2cuda_ld, CUdevice c
   shared_memory_buffers_ = usm_flag;
   type_ = iris_nvidia;
   model_ = iris_cuda;
+  spec_.ordinal = ordinal;
+  spec_.model = model_;
+  spec_.local_dev_id = local_devno;
+
   err = ld_->cuDriverGetVersion(&driver_version_);
   _cuerror(err);
   //err = ld_->cudaSetDevice(dev_);
@@ -412,6 +416,7 @@ int DeviceCUDA::Init() {
   _cuerror(err);
   err = ld_->cuCtxCreate(&ctx_, CU_CTX_SCHED_AUTO, dev_);
   _cuerror(err);
+  spec_.ctx = (void *)ctx_;
   //err = ld_->cuCtxEnablePeerAccess(ctx_, 0);
   //_cuerror(err);
   //EnablePeerAccess();
@@ -1624,19 +1629,27 @@ int DeviceCUDA::KernelLaunchInit(Command *cmd, Kernel* kernel) {
     int stream_index = 0;
     CUstream *kstream = NULL;
     int nstreams = 0;
+    bool async = false;
     if (is_async(kernel->task(), false)) {
         stream_index = cmd->recommended_stream();  //GetStream(kernel->task()); //task->uid() % nqueues_; 
-        if (stream_index == DEFAULT_STREAM_INDEX) { stream_index = 0; }
+        async = true;
+        if (stream_index == DEFAULT_STREAM_INDEX) { async = false; stream_index = 0; }
         kstream = &streams_[stream_index];
         //nstreams = nqueues_ - stream_index;
         nstreams = nqueues_-n_copy_engines_;
     }
+    spec_.is_async = async;
+    spec_.stream_index = stream_index;
+    spec_.n_streams = nstreams;
+    spec_.streams = (void **)kstream;
+    spec_.cmd_id = cmd->uid();
+    spec_.task_id = cmd->task()->uid();
     if (kernel->is_vendor_specific_kernel(devno_))
-        host2cuda_ld_->launch_init(model(), devno_, stream_index, nstreams, (void **)kstream, kernel->GetParamWrapperMemory(), cmd);
+        host2cuda_ld_->launch_init(spec(), kernel->GetParamWrapperMemory(), cmd);
     else if (ld_default_ != NULL && kernel->is_default_kernel(devno_))
-        ld_default_->launch_init(model(), devno_, stream_index, nstreams, (void **)kstream, kernel->GetParamWrapperMemory(), cmd);
+        ld_default_->launch_init(spec(), kernel->GetParamWrapperMemory(), cmd);
     else if (julia_if_ != NULL && kernel->enable_julia_if()) {
-        julia_if_->launch_init(model(), devno_, stream_index, nstreams, (void **)kstream, kernel->GetParamWrapperMemory(), cmd);
+        julia_if_->launch_init(spec(), kernel->GetParamWrapperMemory(), cmd);
         julia_if_->set_julia_kernel_type(kernel->GetParamWrapperMemory(), kernel->julia_kernel_type());
     }
     return IRIS_SUCCESS;
@@ -1644,6 +1657,7 @@ int DeviceCUDA::KernelLaunchInit(Command *cmd, Kernel* kernel) {
 
 int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws) {
     Command *cmd = kernel->command();
+    spec_.dim = dim;
 #ifndef TRACE_DISABLE
     CUcontext ctx;
     ld_->cuCtxGetCurrent(&ctx);
@@ -1657,28 +1671,28 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
       ld_->cuCtxSetCurrent(ctx_);
   }
   CUresult err;
-  int stream_index = 0;
-  CUstream *kstream = NULL;
-  bool async = false;
-  int nstreams = 0;
-  if (is_async(kernel->task(), false)) { //Disable stream policy check
-      stream_index = cmd->recommended_stream();
-      async = true;
-      if (stream_index == DEFAULT_STREAM_INDEX) { async = false; stream_index = 0; }
-      // Though async is set to false, we still pass all streams to kernel to use it
-      kstream = &streams_[stream_index];
-      //nstreams = nqueues_ - stream_index;
-      nstreams = nqueues_-n_copy_engines_;
+  int stream_index=spec_.stream_index;
+  bool async = spec_.is_async;
+  int block[3] = { lws ? (int) lws[0] : 1, lws ? (int) lws[1] : 1, lws ? (int) lws[2] : 1 };
+  if (!lws) {
+    while (max_compute_units_ * block[0] < gws[0]) block[0] <<= 1;
+    while (block[0] > max_block_dims_[0]) block[0] >>= 1;
   }
+  int grid[3] = { (int) ((gws[0]+block[0]-1) / block[0]), (int) ((gws[1]+block[1]-1) / block[1]), (int) ((gws[2]+block[2]-1) / block[2]) };
+  size_t grid_s[3] =  { (size_t)grid[0],  (size_t)grid[1],  (size_t)grid[2] };
+  size_t block_s[3] = { (size_t)block[0], (size_t)block[1], (size_t)block[2] };
+  spec_.off = off;
+  spec_.gws = gws;
+  spec_.block = block_s;
+  spec_.grid = grid_s;
+  spec_.shmem_size = kernel->shared_mem_size();
+  //int grid[3] = { (int) ((gws[0]-off[0]) / block[0]), (int) ((gws[1]-off[1]) / block[1]), (int) ((gws[2]-off[2]) / block[2]) };
   //_debug2("dev[%d][%s] task[%ld:%s] kernel launch::%ld:%s q[%d]", devno_, name_, kernel->task()->uid(), kernel->task()->name(), kernel->uid(), kernel->name(), stream_index);
   _event_prof_debug("kernel start dev[%d][%s] kernel[%s:%s] dim[%d] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, stream_index);
   _event_debug("kernel start dev[%d][%s] kernel[%s:%s] dim[%d] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, stream_index);
   if (kernel->is_vendor_specific_kernel(devno_)) {
 	 _event_debug("vendor host launch kernel start dev[%d][%s] kernel[%s:%s] dim[%d] q[%d]\n", devno_, name_, kernel->name(), kernel->get_task_name(), dim, stream_index);
-     if (host2cuda_ld_->host_launch((void **)kstream, stream_index, 
-                 nstreams, kernel->name(), 
-                 kernel->GetParamWrapperMemory(), devno(),
-                 dim, off, gws) == IRIS_SUCCESS) {
+     if (host2cuda_ld_->host_launch(spec(), cmd, kernel) == IRIS_SUCCESS) {
          if (!async) {
              //err = ld_->cuStreamSynchronize(0);
              err = ld_->cuCtxSynchronize();
@@ -1696,11 +1710,7 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
   }
   if (kernel->is_default_kernel(devno_)) {
      if (ld_default_ != NULL && 
-             ld_default_->host_launch((void **)kstream, 
-                 stream_index, 
-                 nstreams, kernel->name(), 
-                 kernel->GetParamWrapperMemory(), devno(),
-                 dim, off, gws) == IRIS_SUCCESS) {
+             ld_default_->host_launch(spec(), cmd, kernel) == IRIS_SUCCESS) {
          if (!async) {
              //err = ld_->cuStreamSynchronize(0);
              err = ld_->cuCtxSynchronize();
@@ -1718,13 +1728,6 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
   }
   _trace("native kernel start dev[%d][%s] kernel[%s:%s] dim[%d] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, stream_index);
   CUfunction cukernel = (CUfunction) kernel->arch(this);
-  int block[3] = { lws ? (int) lws[0] : 1, lws ? (int) lws[1] : 1, lws ? (int) lws[2] : 1 };
-  if (!lws) {
-    while (max_compute_units_ * block[0] < gws[0]) block[0] <<= 1;
-    while (block[0] > max_block_dims_[0]) block[0] >>= 1;
-  }
-  int grid[3] = { (int) ((gws[0]+block[0]-1) / block[0]), (int) ((gws[1]+block[1]-1) / block[1]), (int) ((gws[2]+block[2]-1) / block[2]) };
-  //int grid[3] = { (int) ((gws[0]-off[0]) / block[0]), (int) ((gws[1]-off[1]) / block[1]), (int) ((gws[2]-off[2]) / block[2]) };
   size_t blockOff_x = off[0] / block[0];
   size_t blockOff_y = off[1] / block[1];
   size_t blockOff_z = off[2] / block[2];
@@ -1755,17 +1758,12 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
       _printf("dev[%d][%s] kernel[%s:%s] dim[%d] grid[%d,%d,%d] off[%ld,%ld,%ld] block[%d,%d,%d] blockoff[%lu,%lu,%lu] max_arg_idx[%d] shared_mem_bytes[%u] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, grid[0], grid[1], grid[2], off[0], off[1], off[2], block[0], block[1], block[2], blockOff_x, blockOff_y, blockOff_z, max_arg_idx_, shared_mem_bytes_, stream_index);
   }*/
   if (julia_if_ != NULL && kernel->enable_julia_if()) {
-      size_t grid_s[3] =  { (size_t)grid[0],  (size_t)grid[1],  (size_t)grid[2] };
-      size_t block_s[3] = { (size_t)block[0], (size_t)block[1], (size_t)block[2] };
       //if (false && kernel->task()->uid() == 431530) {
         //raise(SIGABRT);
       //  _printf("------Error with this issue:------ task:%lu", kernel->task()->uid());
       //  _info("dev[%d][%s] kernel[%s:%s] dim[%d] grid[%d,%d,%d] off[%ld,%ld,%ld] block[%d,%d,%d] blockoff[%lu,%lu,%lu] max_arg_idx[%d] shared_mem_bytes[%u] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, grid[0], grid[1], grid[2], off[0], off[1], off[2], block[0], block[1], block[2], blockOff_x, blockOff_y, blockOff_z, max_arg_idx_, shared_mem_bytes_, stream_index);
       //}
-      julia_if_->host_launch(kernel->task()->uid(), cmd->uid(), (void **)kstream, stream_index, (void *)&ctx_, async,
-                  nstreams, kernel->name(), 
-                  kernel->GetParamWrapperMemory(), ordinal_,
-                  dim, gws, grid_s, block_s, kernel->shared_mem_size());
+      julia_if_->host_launch(spec(), cmd, kernel);
       return IRIS_SUCCESS;
   }
   //printf("Shared mem bytes: %d\n", shared_mem_bytes_);
@@ -1798,7 +1796,7 @@ int DeviceCUDA::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, 
 }
 void DeviceCUDA::VendorKernelLaunch(void *kernel, int gridx, int gridy, int gridz, int blockx, int blocky, int blockz, int shared_mem_bytes, void *stream, void **params) 
 { 
-  printf("IRIS Received kernel:%p stream:%p\n", kernel, stream);
+  //printf("IRIS Received kernel:%p stream:%p\n", kernel, stream);
   if (IsContextChangeRequired()) {
       ld_->cuCtxSetCurrent(ctx_);
   }

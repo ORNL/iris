@@ -24,6 +24,19 @@ namespace rt {
 
 Device::Device(int devno, int platform) {
   devno_ = devno;
+  spec_.devno = devno;
+  spec_.is_async = false;
+  spec_.ctx = NULL;
+  spec_.streams = NULL;
+  spec_.grid = NULL;
+  spec_.gws = NULL;
+  spec_.grid = NULL;
+  spec_.block = NULL;
+  spec_.shmem_size = 0;
+  spec_.n_streams = 0;
+  spec_.stream_index = 0;
+  spec_.dim = 0;
+  spec_.task_id = spec_.cmd_id = 0;
   peer_access_ = NULL;
   active_tasks_ = 0;
   root_dev_ = NULL;

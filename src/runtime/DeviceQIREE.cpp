@@ -31,11 +31,20 @@ namespace rt {
     } else { \
         ld_->X(__VA_ARGS__); \
     }
-DeviceQIREE::DeviceQIREE(LoaderQIREE* ld, int devno, int platform) : Device(devno, platform) {
+DeviceQIREE::DeviceQIREE(LoaderQIREE* ld, int ordinal, int devno, int platform) : Device(devno, platform) {
   ld_ = ld;
   manager_ = NULL;
   type_ = iris_qpu;
   model_ = iris_qiree;
+  spec_.ordinal = ordinal;
+  spec_.model = model_;
+  spec_.local_dev_id = ordinal;
+  // Below arguments are fixed for now
+  spec_.is_async = false;
+  spec_.stream_index = 0;
+  spec_.n_streams = 0;
+  spec_.streams = NULL;
+  spec_.ctx = NULL;
   //type_ = iris_qiree;
   //model_ = iris_qiree;
   strcpy(name_, "QIREE");
@@ -203,6 +212,8 @@ int DeviceQIREE::KernelGet(Kernel *kernel, void** kernel_bin, const char* name, 
 }
 
 int DeviceQIREE::KernelLaunchInit(Command *cmd, Kernel* kernel) {
+  spec_.cmd_id = cmd->uid();
+  spec_.task_id = cmd->task()->uid();
   /*if (ld_->iris_qiree_kernel_with_obj) {
       if (ld_->iris_qiree_kernel_with_obj(
               kernel->GetParamWrapperMemory(), kernel->name())==IRIS_SUCCESS) {
@@ -310,6 +321,12 @@ int DeviceQIREE::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem,
 }
 
 int DeviceQIREE::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws) {
+  spec_.dim = dim;
+  spec_.off = off;
+  spec_.gws = gws;
+  spec_.block = NULL;
+  spec_.grid = NULL;
+  spec_.shmem_size = kernel->shared_mem_size();
   _trace("kernel[%s] dim[%d] off[%zu] gws[%zu]", kernel->name(), dim, off[0], gws[0]);
 #if 0
   char* argv[6]; 

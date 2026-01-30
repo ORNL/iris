@@ -119,10 +119,9 @@ class PythonHostInterfaceLoader : public HostInterfaceLoader {
         int host_kernel(void *param_mem, const char *kname);
         void set_kernel_python(void *param_mem, KernelPython *python_data);
         KernelPython * get_kernel_python(void *param_mem);
-        int launch_init(int model, int devno, int stream_index, int nstreams, void **stream, void *param_mem, Command *cmd);
+        int launch_init(IrisSpec *spec, void *param_mem, Command *cmd);
         int SetKernelPtr(void *obj, const char *kernel_name);
-        int host_launch(void **stream, int stream_index, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *off, size_t *bws) { _error("Not implemented"); return IRIS_ERROR; }
-        int host_launch(unsigned long task_id, unsigned long cmd_id, void **stream, int stream_index, void *ctx, bool async, int nstreams, const char *kname, void *py_fn_ptr, void *param_mem, int devno, int dim, size_t *gws, size_t *off, size_t *bws, size_t shared_mem_size);
+        int host_launch(IrisSpec *spec, Command *cmd, Kernel *kernel);
         int setarg(void *param_mem, int kindex, size_t size, void *value);
         int setmem(void *param_mem, BaseMem *mem, int kindex, void *mem_ptr, size_t size);
         int set_python_kernel_type(void *param_mem, int type);

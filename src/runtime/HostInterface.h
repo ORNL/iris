@@ -57,18 +57,20 @@ namespace iris {
                 virtual int LoadFunctions(){ Loader::LoadFunctions(); return IRIS_SUCCESS; }
                 virtual void finalize(int dev);
                 virtual void init(int dev);
-                virtual int launch_init(int model, int devno, int stream_index, int nstreams, void **stream, void *param_mem, Command *cmd_kernel) { return IRIS_SUCCESS; }
+                virtual int launch_init(IrisSpec *spec, void *param_mem, Command *cmd_kernel) { return IRIS_SUCCESS; }
                 virtual int setarg(void *param_mem, int index, size_t size, void *value) { return IRIS_ERROR; }
                 virtual int setmem(void *param_mem, BaseMem *mem, int kindex, void *mem_ptr, size_t size) { return IRIS_ERROR; }
                 static uint32_t get_encoded_stream_device(int stream_index, int nstreams, int device);
                 static uint32_t update_dev_info_stream_index(int dev_info, int stream_index);
                 static uint32_t update_dev_info_nstreams(int dev_info, int nstreams);
                 static uint32_t update_dev_info_devno(int dev_info, int devno);
-                virtual int host_launch(void **stream, int stream_index, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *off, size_t *bws) { return IRIS_ERROR; }
+                virtual int host_launch(IrisSpec *spec, Command *cmd, Kernel *kernel) { return IRIS_ERROR; }
                 virtual int host_kernel(void *param_mem, const char *kname) { return IRIS_ERROR; }
                 int SetKernelPtr(void *obj, const char *kernel_name) { return IRIS_ERROR; }
                 void LoadFunction(const char *func_name, const char *symbol);
                 void LoadFunctionStatic(const char *func_name, void *symbol);
+                void enable_spec_flag() { pass_spec_flag_ = true; }
+                bool is_pass_spec_flag() { return pass_spec_flag_; }
             protected:
                 map<string, void **> sym_map_fn_;
                 int (*iris_host_init)();
@@ -80,6 +82,7 @@ namespace iris {
                 int (*iris_host_launch_with_obj)(void *stream, void *obj, uint32_t devno, int dim, size_t *off, size_t *bws);
                 string & kernel_env() { return kernel_env_; }
             private:
+                bool pass_spec_flag_;
                 string kernel_env_;
                 bool is_path_;
         };
@@ -91,8 +94,8 @@ namespace iris {
                 int LoadFunctions();
                 int host_kernel(void *param_mem, const char *kname);
                 int SetKernelPtr(void *obj, const char *kernel_name);
-                int launch_init(int model, int devno, int stream_index, int nstreams, void **stream, void *param_mem, Command *cmd);
-                int host_launch(void **stream, int stream_index, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *off, size_t *bws);
+                int launch_init(IrisSpec *spec, void *param_mem, Command *cmd);
+                int host_launch(IrisSpec *spec, Command *cmd, Kernel *kernel);
                 int setarg(void *param_mem, int kindex, size_t size, void *value);
                 int setmem(void *param_mem, BaseMem *bmem, int kindex, void *mem, size_t size);
             private:
@@ -252,10 +255,9 @@ namespace iris {
                 int host_kernel(void *param_mem, const char *kname);
                 void set_kernel_julia(void *param_mem, KernelJulia *julia_data);
                 KernelJulia * get_kernel_julia(void *param_mem);
-                int launch_init(int model, int devno, int stream_index, int nstreams, void **stream, void *param_mem, Command *cmd);
+                int launch_init(IrisSpec *spec, void *param_mem, Command *cmd);
                 int SetKernelPtr(void *obj, const char *kernel_name);
-                int host_launch(void **stream, int stream_index, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *off, size_t *bws) { _error("Not implemented");  return IRIS_ERROR; }
-                int host_launch(unsigned long task_id, unsigned long cmd_id, void **stream, int stream_index, void *ctx, bool async, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *gws, size_t *off, size_t *bws, size_t shared_mem_size);
+                int host_launch(IrisSpec *spec, Command *cmd, Kernel *kernel);
                 int setarg(void *param_mem, int kindex, size_t size, void *value);
                 int setmem(void *param_mem, BaseMem *mem, int kindex, void *mem_ptr, size_t size);
                 int set_julia_kernel_type(void *param_mem, int type);
@@ -289,6 +291,7 @@ namespace iris {
             HOST_LAUNCH_WITH_STREAM_DEV,
             HOST_LAUNCH_BARE,
             HOST_LAUNCH_WITH_FFI_OBJ,
+            HOST_LAUNCH_FFI_SPEC,
             HOST_LAUNCH_FFI_BARE
         };
         class KernelFFI {
@@ -299,16 +302,18 @@ namespace iris {
                     values_ = NULL;
                     values_ptr_ = NULL;
                     args_capacity_ = 0;
+                    spec_ = NULL;
                 }
                 ~KernelFFI( ) {
                     if (args_ != NULL) free(args_);
                     if (values_ != NULL) free(values_);
                     if (values_ptr_ != NULL) free(values_ptr_);
                 }
-                void init(int nargs) {
+                void init(int nargs, bool is_pass_spec_flag) {
                     args_ = NULL;
                     values_ = NULL;
                     values_ptr_ = NULL;
+                    spec_ = NULL;
                     args_capacity_ = nargs+6;
                     if (args_ == NULL) 
                         args_ = (ffi_type **) malloc(
@@ -361,6 +366,12 @@ namespace iris {
                     set_value(&streams_);
                     increment();
                 }
+                void add_spec(IrisSpec *spec) {
+                    set_arg_type(&ffi_type_pointer);
+                    spec_ = spec;
+                    set_value(&spec_);
+                    increment();
+                }
                 void add_dev_info() {
                     set_arg_type(&ffi_type_uint);
                     set_value(&dev_info_);
@@ -389,6 +400,7 @@ namespace iris {
                 void **streams_;
                 uint32_t dev_info_;
                 int index_;
+                IrisSpec *spec_;
         };
         class FFIHostInterfaceLoader : public HostInterfaceLoader {
             public:
@@ -399,9 +411,9 @@ namespace iris {
                 int host_kernel(void *param_mem, const char *kname);
                 void set_kernel_ffi(void *param_mem, KernelFFI *ffi_data);
                 KernelFFI *get_kernel_ffi(void *param_mem);
-                int launch_init(int model, int devno, int stream_index, int nstreams, void **stream, void *param_mem, Command *cmd);
+                int launch_init(IrisSpec *spec, void *param_mem, Command *cmd);
                 int SetKernelPtr(void *obj, const char *kernel_name);
-                int host_launch(void **stream, int stream_index, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *off, size_t *bws);
+                int host_launch(IrisSpec *spec, Command *cmd, Kernel *kernel);
                 int setarg(void *param_mem, int kindex, size_t size, void *value);
                 int setmem(void *param_mem, BaseMem *bmem, int kindex, void *mem, size_t size);
             private:

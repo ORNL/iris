@@ -9,7 +9,7 @@ namespace rt {
 
 class DeviceHexagon : public Device {
 public:
-  DeviceHexagon(LoaderHexagon* ld, int devno, int platform);
+  DeviceHexagon(LoaderHexagon* ld, int ordinal, int devno, int platform);
   ~DeviceHexagon();
 
   int Init();

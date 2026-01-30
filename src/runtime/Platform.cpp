@@ -828,7 +828,7 @@ int Platform::InitLevelZero() {
         _error("This platform has more than max devices: %d ! Hence ignoring further LevelZero devices\n", IRIS_MAX_NDEVS);
         break;
     }
-    devs_[ndevs_] = new DeviceLevelZero(loaderLevelZero_, devs[i], zectx, driver, ndevs_, nplatforms_);
+    devs_[ndevs_] = new DeviceLevelZero(loaderLevelZero_, devs[i], zectx, driver, i, ndevs_, nplatforms_);
     arch_available_ |= devs_[ndevs_]->type();
     ndevs_++; mdevs++;
   }
@@ -860,7 +860,7 @@ int Platform::InitOpenMP() {
       }
       _trace("OpenMP platform[%d] dev[%d] ndevs[%d]", nplatforms_, ndevs_, ndevs_+1);
       _printf("OpenMP platform[%d] dev[%d] ndevs[%d]", nplatforms_, ndevs_, ndevs_+1);
-      devs_[ndevs_] = new DeviceOpenMP(loaderOpenMP_, ndevs_, nplatforms_);
+      devs_[ndevs_] = new DeviceOpenMP(loaderOpenMP_, i, ndevs_, nplatforms_);
       if (is_julia_enabled()) 
           devs_[ndevs_]->EnableJuliaInterface();
       if (is_python_enabled()) 
@@ -886,7 +886,7 @@ int Platform::InitQIREE() {
   int mdevs = 0;
   for(int i=0; i<qiree_device_factor_; i++) {
       _trace("QIR platform[%d] dev[%d] ndevs[%d]", nplatforms_, ndevs_, ndevs_+1);
-      devs_[ndevs_] = new DeviceQIREE(loaderQIREE_, ndevs_, nplatforms_);
+      devs_[ndevs_] = new DeviceQIREE(loaderQIREE_, i, ndevs_, nplatforms_);
       if (is_julia_enabled()) 
           devs_[ndevs_]->EnableJuliaInterface();
       if (is_python_enabled()) 
@@ -915,7 +915,7 @@ int Platform::InitHexagon() {
     return IRIS_ERROR;
   }
   _trace("Hexagon platform[%d] ndevs[%d]", nplatforms_, 1);
-  devs_[ndevs_] = new DeviceHexagon(loaderHexagon_, ndevs_, nplatforms_);
+  devs_[ndevs_] = new DeviceHexagon(loaderHexagon_, 0, ndevs_, nplatforms_);
   arch_available_ |= devs_[ndevs_]->type();
   ndevs_++;
   strcpy(platform_names_[nplatforms_], "Hexagon");

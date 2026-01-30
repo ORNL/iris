@@ -378,18 +378,22 @@ class IrisParam(ctypes.Structure):
 
 class IrisSpec(ctypes.Structure):
     _fields_ = [
-        ("n_streams",  c_int32),
         ("devno",      c_int32),
-        ("dev_id",     c_int32),
+        ("local_dev_id",    c_int32),            
+        ("ordinal",     c_int32),
+        ("model",      c_int32),            
+        ("n_streams",  c_int32),
+        ("stream_index",c_int32),
         ("is_async",   c_int32),
+        ("dim",        c_int32),            # dimensionality for gws/grid/block
         ("task_id",    c_ulong),
         ("cmd_id",     c_ulong),
-        ("streams",    POINTER(c_void_p)),  # void** streams
         ("ctx",        c_void_p),           # void* ctx
-        ("dim",        c_int32),            # dimensionality for gws/grid/block
         ("gws",        POINTER(c_size_t)),  # size_t* gws
+        ("off",        POINTER(c_size_t)),  # size_t* off
         ("grid",       POINTER(c_size_t)),  # size_t* grid
         ("block",      POINTER(c_size_t)),  # size_t* block
+        ("streams",    POINTER(c_void_p)),  # void** streams
         ("shmem_size", c_size_t),
     ]
 
@@ -1211,11 +1215,11 @@ class command:
   def __init__(self, handle):
     self.handle = handle
 
-  def profile():
+  def profile(self):
     start_time = c_double()
     end_time = c_double()
     dll.iris_cmd_get_profile(self.handle, byref(start_time), byref(end_time))
-    return (end_time-start_time, start_time, end_time)
+    return (np.double(end_time)-np.double(start_time), np.double(start_time), np.double(end_time))
 
 class size_t:
     def __init__(self, value):
@@ -1379,22 +1383,28 @@ class task:
             self.handle = task_create()
             task_handle_2_pobj[self.handle.uid] = self
             return
-        (kernel, dim, off, gws, lws, params_list) = args
+        kernel = args[0] if len(args) > 0 else "kernel"
+        dim = args[1] if len(args) > 1 else 1
+        off = args[2] if len(args) > 2 else []
+        gws = args[3] if len(args) > 3 else []
+        lws = args[4] if len(args) > 4 else []
+        params = args[5] if len(args) > 5 else []
+        params_info = args[6] if len(args) > 6 else []
         if callable(kernel):
             self.handle = task_create(kernel.__name__)
         else:
             self.handle = task_create(kernel)
-        self.kernel(kernel, dim, off, gws, lws, params_list)
+        self.kernel(kernel, dim, off, gws, lws, params, params_info)
 
-    def kernel(self, kernel, dim, off, gws, lws, params, params_info=[]):
-        if callable(kernel):
+    def kernel(self, kname, dim, off, gws, lws, params, params_info=[]):
+        if callable(kname):
             # This is python kernel function
-            self.py_func_object = ctypes.py_object(kernel)
-            self.kernel_core(kernel.__name__, dim, off, gws, lws, params, params_info)
+            self.py_func_object = ctypes.py_object(kname)
+            self.kernel_core(kname.__name__, dim, off, gws, lws, params, params_info)
             dll.iris_kernel_set_python_function(self.kernel_obj, ctypes.pointer(self.py_func_object))
             dll.iris_kernel_enable_python_interface(self.kernel_obj, iris_python_native)
         else:
-            self.kernel_core(kernel, dim, off, gws, lws, params, params_info)
+            self.kernel_core(kname, dim, off, gws, lws, params, params_info)
         return self.last_command()
 
     def kernel_core(self, kernel, dim, off, gws, lws, params, params_info=[]):
@@ -1402,6 +1412,7 @@ class task:
             return self.kernel_core2(kernel, dim, off, gws, lws, params)
         else:
             return self.kernel_core1(kernel, dim, off, gws, lws, params, params_info)
+
     def kernel_core1(self, kernel, dim, off, gws, lws, params, params_info):
         task_kernel(self.handle, kernel, dim, off, gws, lws, params, params_info, self.params)
         self.kernel_obj = dll.call_ret(dll.iris_task_get_last_cmd_kernel, iris_kernel, self.handle)

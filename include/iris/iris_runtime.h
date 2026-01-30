@@ -128,16 +128,20 @@ typedef struct IrisParam_ {
 } IrisParam;
 
 typedef struct IrisSpec_ {
-    int32_t n_streams;
     int32_t devno;
-    int32_t dev_id;
+    int32_t local_dev_id;
+    int32_t ordinal;
+    int32_t model;
+    int32_t n_streams;
+    int32_t stream_index;
     int32_t is_async;
+    int32_t dim;
     unsigned long task_id;
     unsigned long cmd_id;
     void **streams;
     void *ctx;
-    int32_t dim;
     size_t *gws;
+    size_t *off;
     size_t *grid;
     size_t *block;
     size_t shmem_size;

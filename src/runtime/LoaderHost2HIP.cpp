@@ -8,10 +8,12 @@ namespace rt {
 
 LoaderHost2HIP::LoaderHost2HIP() : HostInterfaceClass("KERNEL_HOST2HIP") {
     enable_strict_handle_check();
+    enable_spec_flag();
 }
 
 LoaderHost2HIP::LoaderHost2HIP(string path) : HostInterfaceClass(path, true) {
     enable_strict_handle_check();
+    //enable_spec_flag();
 }
 
 LoaderHost2HIP::~LoaderHost2HIP() {

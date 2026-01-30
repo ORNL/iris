@@ -257,6 +257,7 @@ public:
   double Now() { return timer_->Now(); }
   Timer *timer() { return timer_; }
   const char *kernel_path() { return kernel_path_.c_str(); }
+  IrisSpec *spec() { return &spec_; }
 protected:
   LoaderResetKernel* ld_reset() { return ld_reset_; }
   void HandleMemReset(bool async, Command *cmd, Kernel *kernel, Task *task, DataMem *mem, DataMem *src_mem);
@@ -352,6 +353,7 @@ protected:
   Device *root_device() { return root_dev_; }
   JuliaHostInterfaceLoader *julia_if_;
   PythonHostInterfaceLoader *python_if_;
+  IrisSpec spec_;
 };
 
 } /* namespace rt */
