@@ -129,6 +129,13 @@ public:
   void set_event_time_end(double t) { 
       if (t > event_time_end_) event_time_end_ = t; 
   }
+  void reset_timers() {
+      event_time_start_flag_ = false;
+      event_time_start_ = 0.0;
+      event_time_end_ = 0.0;
+      time_start_ = 0.0;
+      time_end_ = 0.0;
+  }
   double time_duration() { return time_end_-time_start_; }
   size_t ns_time_start() { return ns_time_start_; }
   size_t ns_time_end() { return ns_time_end_; }

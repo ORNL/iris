@@ -66,14 +66,30 @@ DeviceOpenCL::DeviceOpenCL(LoaderOpenCL* ld, LoaderHost2OpenCL *host2opencl_ld, 
   ld_->clGetDeviceInfo(cldev_, CL_DEVICE_COMPILER_AVAILABLE, sizeof(compiler_available_), &compiler_available_, NULL);
   fpga_bin_suffix_ = "aocx";   
 
-  if (cltype_ == CL_DEVICE_TYPE_CPU) type_ = iris_cpu;
+  if (cltype_ == CL_DEVICE_TYPE_CPU) {
+      type_ = iris_cpu;
+      sub_model_ = iris_opencl_cpu;
+  }
   else if (cltype_ == CL_DEVICE_TYPE_GPU) {
     type_ = iris_gpu;
-    if (strcasestr(vendor_, "NVIDIA")) type_ = iris_nvidia;
-    else if (strcasestr(vendor_, "Advanced Micro Devices")) type_ = iris_amd;
+    if (strcasestr(vendor_, "NVIDIA")) {
+        type_ = iris_nvidia;
+        sub_model_ = iris_opencl_cuda;
+    }
+    else if (strcasestr(vendor_, "Advanced Micro Devices")) {
+        type_ = iris_amd;
+        sub_model_ = iris_opencl_hip;
+    }
   }
   else if (cltype_ == CL_DEVICE_TYPE_ACCELERATOR) {
-    if (strstr(vendor_, "Xilinx") != NULL) { type_ = iris_fpga; fpga_bin_suffix_ = "xclbin"; }
+    if (strstr(vendor_, "Xilinx") != NULL) { 
+        type_ = iris_fpga; fpga_bin_suffix_ = "xclbin"; 
+        sub_model_ = iris_opencl_xilinx_fpga;
+    }
+    else if (strstr(vendor_, "Intel") != NULL) {
+        type_ = iris_fpga; fpga_bin_suffix_ = "aocx"; 
+        sub_model_ = iris_opencl_intel_fpga;
+    }
     else if (strstr(name_, "FPGA") != NULL || strstr(version_, "FPGA") != NULL) type_ = iris_fpga;
     else type_ = iris_phi;
   }

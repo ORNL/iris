@@ -508,12 +508,18 @@ int DeviceHIP::MemD2D(Task *task, Device *src_dev, BaseMem *mem, void *dst, void
       if (stream_index == DEFAULT_STREAM_INDEX) { async = false; stream_index = 0; }
   }
   if (async) {
+      if (ctx_ != ((DeviceHIP *)src_dev)->ctx_)
+      err = ld_->hipMemcpyPeerAsync(dst, dev_, src, ((DeviceHIP *)src_dev)->dev_, size, streams_[stream_index]);
+      else
       err = ld_->hipMemcpyDtoDAsync(dst, src, size, streams_[stream_index]);
       _hiperror(err);
       if (err != hipSuccess) error_occured = true;
   } 
   else {
-      err = ld_->hipMemcpyDtoD(dst, src, size);
+      if (ctx_ != ((DeviceHIP *)src_dev)->ctx_)
+         err = ld_->hipMemcpyPeer(dst, dev_, src, ((DeviceHIP *)src_dev)->dev_, size);
+      else
+         err = ld_->hipMemcpyDtoD(dst, src, size);
       _hiperror(err);
       if (err != hipSuccess) error_occured = true;
   }

@@ -138,12 +138,12 @@ typedef struct IrisSpec_ {
     int32_t dim;
     unsigned long task_id;
     unsigned long cmd_id;
-    void **streams;
     void *ctx;
     size_t *gws;
     size_t *off;
     size_t *grid;
     size_t *block;
+    void **streams;
     size_t shmem_size;
 } IrisSpec;
 
@@ -213,6 +213,11 @@ iris_levelzero = 4,
 iris_opencl = 5,
 iris_openmp = 6,
 iris_qiree = 7,
+iris_opencl_cuda = 8,
+iris_opencl_hip = 9,
+iris_opencl_xilinx_fpga = 10,
+iris_opencl_intel_fpga = 10,
+iris_opencl_cpu = 11,
 iris_model_all = (1 << 25) // Same as iris_all
 };
 typedef enum DeviceModel DeviceModel;
@@ -850,6 +855,7 @@ extern int iris_command_update_mem(iris_command brs_command, int index, iris_mem
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_task_set_stream_policy(iris_task brs_task, StreamPolicy policy);
+extern int iris_task_set_stream_affinity(iris_task brs_task, int stream);
 
 /**@brief Disable task asynchronous execution
  *

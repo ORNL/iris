@@ -275,6 +275,12 @@ int iris_task_set_stream_policy(iris_task brs_task, StreamPolicy policy) {
  return IRIS_SUCCESS;
 }
 
+int iris_task_set_stream_affinity(iris_task brs_task, int stream) {
+ Task *task = Platform::GetPlatform()->get_task_object(brs_task);
+ if (task != NULL) task->set_stream_affinity(stream);
+ return IRIS_SUCCESS;
+}
+
 void iris_task_disable_asynchronous(iris_task brs_task) {
     Task *task = Platform::GetPlatform()->get_task_object(brs_task);
     task->set_async(false);

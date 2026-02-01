@@ -35,12 +35,12 @@ void Command::set_params_map(int *pmap) {
 }
 
 void Command::set_time_start(Timer* d) {
-  time_start_ = d->Now();
+  time_start_ = d->Now() * 1e3; // Record it in ms
   ns_time_start_ = d->NowNS();
 }
 
 void Command::set_time_end(Timer* d) {
-  time_end_ = d->Now();
+  time_end_ = d->Now() * 1e3; // Record it in ms
   ns_time_end_ = d->NowNS();
 }
 

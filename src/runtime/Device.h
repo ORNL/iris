@@ -236,6 +236,7 @@ public:
   int devno() { return devno_; }
   int type() { return type_; }
   int model() { return model_; }
+  int sub_model() { return sub_model_; }
   char* vendor() { return vendor_; }
   char* name() { return name_; }
   bool busy() { return busy_; }
@@ -302,6 +303,7 @@ protected:
   int platform_;
   int type_;
   int model_;
+  int sub_model_;
   char vendor_[128];
   char name_[256];
   char version_[64];

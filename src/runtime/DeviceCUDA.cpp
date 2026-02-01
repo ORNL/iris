@@ -349,9 +349,21 @@ bool DeviceCUDA::IsAddrValidForD2D(BaseMem *mem, void *ptr)
     int data;
     if (ptr == NULL) return true;
     CUresult err;
-    err = ld_->cuCtxSetCurrent(ctx_);
-    _cuerror(err);
+    bool ctx_changed = IsContextChangeRequired();
+    CUcontext ctx = nullptr;
+    if (ctx_changed) {
+        err = ld_->cuCtxGetCurrent(&ctx);
+        _cuerror(err);
+        err=ld_->cuCtxSetCurrent(ctx_);
+        _cuerror(err);
+    }
+    _printf(" dev:[%d:%s] mem:%lu ctx: %p ptr:%p\n", devno(), name(), mem->uid(), ctx_, ptr);
     err = ld_->cuPointerGetAttribute(&data, CU_POINTER_ATTRIBUTE_DEVICE_POINTER, (CUdeviceptr) ptr);
+    printf("err:%d\n", err);
+    if (ctx_changed) {
+        err=ld_->cuCtxSetCurrent(ctx);
+        _cuerror(err);
+    }
     if (err == CUDA_SUCCESS) return true;
     return false;
 }
@@ -390,11 +402,16 @@ void DeviceCUDA::EnablePeerAccess()
             DeviceCUDA *target = (DeviceCUDA *)platform_obj_->device(offset_dev + target_dev);
             CUcontext target_ctx = target->ctx_;
             //printf("Can access dev:%d(%d) -> %d(%d) = %d api:%p api1:%p\n", dev_, dev_+offset_dev, target_dev, target_dev+offset_dev, can_access, ld_->cudaDeviceEnablePeerAccess, ld_->cuCtxEnablePeerAccess);
-            err = ld_->cuCtxSetCurrent(ctx_);
-            _cuerror(err);
+            CUcontext cur = nullptr;
+            ld_->cuCtxGetCurrent(&cur);
+            if (cur != ctx_) {
+                err = ld_->cuCtxSetCurrent(ctx_);
+                _cuerror(err);
+            }
             err = ld_->cuCtxEnablePeerAccess(target_ctx, 0);
+            if (err != CUDA_SUCCESS && err != CUDA_ERROR_PEER_ACCESS_ALREADY_ENABLED) _cuerror(err);
             //err = ld_->cudaDeviceEnablePeerAccess(target_dev, 0);
-            _cuerror(err);
+            //_cuerror(err);
         }
         else {
             //printf("Can not access dev:%d -> %d = %d\n", dev_, target_dev, can_access);
@@ -419,7 +436,7 @@ int DeviceCUDA::Init() {
   spec_.ctx = (void *)ctx_;
   //err = ld_->cuCtxEnablePeerAccess(ctx_, 0);
   //_cuerror(err);
-  //EnablePeerAccess();
+  EnablePeerAccess();
   //_printf("Init:: Context create dev:%d ctx:%p self:%p thread:%p", devno_, ctx_, (void *)worker()->self(), (void *)worker()->thread());
 #ifndef TRACE_DISABLE
   CUcontext ctx;
@@ -590,8 +607,8 @@ int DeviceCUDA::MemAlloc(void** mem_addr, size_t size, void *v_stream, bool rese
         platform_obj()->IncrementErrorCount();
         return IRIS_ERROR;
     }
-    _event_debug("CUDA MemAlloc dev:%d:%s size:%zu ptr:%p async:%d stream:%p\n", devno_, name_, size, (void *)*cumem, async, stream);
-    _trace("CUDA MemAlloc dev:%d:%s size:%zu ptr:%p async:%d stream:%p\n", devno_, name_, size, (void *)*cumem, async, stream);
+    _event_debug("CUDA MemAlloc dev:%d:%s size:%zu ptr:%p async:%d stream:%p ctx:%p\n", devno_, name_, size, (void *)*cumem, async, stream, ctx_);
+    _trace("CUDA MemAlloc dev:%d:%s size:%zu ptr:%p async:%d stream:%p ctx:%p\n", devno_, name_, size, (void *)*cumem, async, stream, ctx_);
     if (reset)  {
         //printf("Resetting memory\n");
         if (l_async) 
@@ -623,8 +640,8 @@ int DeviceCUDA::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset)
     platform_obj()->IncrementErrorCount();
     return IRIS_ERROR;
   }
-  _event_debug("CUDA MemAlloc dev:%d:%s mem:%lu size:%zu ptr:%p async:%d l_async:%d stream:%d\n", devno_, name_, mem->uid(), size, (void *)*cumem, async, l_async, stream);
-  _trace("CUDA MemAlloc dev:%d:%s mem:%lu size:%zu ptr:%p async:%d l_async:%d stream:%d\n", devno_, name_, mem->uid(), size, (void *)*cumem, async, l_async, stream);
+  _event_debug("CUDA MemAlloc dev:%d:%s mem:%lu size:%zu ptr:%p async:%d l_async:%d stream:%d ctx:%p\n", devno_, name_, mem->uid(), size, (void *)*cumem, async, l_async, stream, ctx_);
+  _trace("CUDA MemAlloc dev:%d:%s mem:%lu size:%zu ptr:%p async:%d l_async:%d stream:%d ctx:%p\n", devno_, name_, mem->uid(), size, (void *)*cumem, async, l_async, stream, ctx_);
   if (reset)  {
       if (mem->reset_data().reset_type_ == iris_reset_memset) {
           //printf("Resetting memory\n");
@@ -849,16 +866,19 @@ int DeviceCUDA::MemD2D(Task *task, Device *src_dev, BaseMem *mem, void *dst, voi
       async = true;
       if (stream_index == DEFAULT_STREAM_INDEX) { async = false; stream_index = 0; }
   }
-  _event_debug("D2D dev[%d][%s] task[%ld:%s] mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] size[%lu] q[%d] async:%d", devno_, name_, task->uid(), task->name(), mem->uid(), dst, src, size, stream_index, async);
+  _event_debug("D2D dev[%d][%s] task[%ld:%s] mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] size[%lu] q[%d] async:%d ctx:%p", devno_, name_, task->uid(), task->name(), mem->uid(), dst, src, size, stream_index, async, ctx_);
   if (async) {
       ASSERT(stream_index >= 0);
       //err = ld_->cuMemcpyAsync((void *)dst_cumem, (void *)src_cumem, size, cudaMemcpyDeviceToDevice, streams_[stream_index]);
       //err = ld_->cuMemcpyDtoDAsync(dst_cumem, src_cumem, size, streams_[stream_index]);
-#if 1
+#if 0
       err = ld_->cuMemcpyDtoDAsync_v2(dst_cumem, src_cumem, size, streams_[stream_index]);
       //err = ld_->cudaMemcpyAsync((void *)dst_cumem, (void *)src_cumem, size, cudaMemcpyDeviceToDevice, streams_[stream_index]);
 #else
-      err = ld_->cuMemcpyPeerAsync(dst_cumem, ctx_, src_cumem, ((DeviceCUDA *)src_dev)->ctx_, size, streams_[stream_index]);
+      if (ctx_ != ((DeviceCUDA *)src_dev)->ctx_)
+          err = ld_->cuMemcpyPeerAsync(dst_cumem, ctx_, src_cumem, ((DeviceCUDA *)src_dev)->ctx_, size, streams_[stream_index]);
+      else
+          err = ld_->cuMemcpyDtoDAsync_v2(dst_cumem, src_cumem, size, streams_[stream_index]);
 #endif
       //printf("cuMemcpyAsync:%p\n", ld_->cuMemcpyAsync);
       //printf("cuMemcpyDtoDAsync:%p\n", ld_->cuMemcpyDtoDAsync);
@@ -872,10 +892,13 @@ int DeviceCUDA::MemD2D(Task *task, Device *src_dev, BaseMem *mem, void *dst, voi
       //err = ld_->cuCtxSetCurrent(ctx_);
       //_cuerror(err);
       //err = ld_->cuMemcpyDtoD(dst_cumem, src_cumem, size);
-#if 1
+#if 0
       err = ld_->cuMemcpyDtoD_v2(dst_cumem, src_cumem, size);
 #else
-      err = ld_->cudaMemcpy((void *)dst_cumem, (void *)src_cumem, size, cudaMemcpyDeviceToDevice);
+      if (ctx_ != ((DeviceCUDA *)src_dev)->ctx_)
+          err = ld_->cuMemcpyPeer(dst_cumem, ctx_, src_cumem, ((DeviceCUDA *)src_dev)->ctx_, size);
+      else
+          err = ld_->cuMemcpyDtoD_v2(dst_cumem, src_cumem, size);
 #endif
       //err = ld_->cuMemcpyPeer(dst_cumem, ctx_, src_cumem, ((DeviceCUDA *)src_dev)->ctx_, size);
       _cuerror(err);
