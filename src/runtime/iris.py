@@ -645,20 +645,23 @@ def spec_to_python(spec_ptr: POINTER(IrisSpec)):
         return [int(ptr[i]) for i in range(dim)]
 
     return {
-        "n_streams": int(s.n_streams),
-        "devno":     int(s.devno),
-        "dev_id":    int(s.dev_id),
-        "is_async":  int(s.is_async),
-        "task_id":   int(s.task_id),
-        "cmd_id":    int(s.cmd_id),
-        "streams":   streams,    # list of c_void_p
-        "ctx_ptr":   s.ctx,      # opaque pointer
-        "dim":       dim,
-        "gws":       read_size_array(s.gws),
-        "grid":      read_size_array(s.grid),
-        "block":     read_size_array(s.block),
-        "shmem_size": int(s.shmem_size),
-        "raw":       s,          # original IrisSpec ctypes struct
+        "devno":        int(s.devno),
+        "local_dev_id": int(s.local_dev_id),
+        "ordinal":      int(s.ordinal),
+        "model":        int(s.model),
+        "n_streams":    int(s.n_streams),
+        "stream_index": int(s.stream_index),
+        "is_async":     int(s.is_async),
+        "dim":          int(s.dim),
+        "task_id":      int(s.task_id),
+        "cmd_id":       int(s.cmd_id),
+        "ctx":          s.ctx,      # opaque pointer
+        "gws":          read_size_array(s.gws),
+        "off":          read_size_array(s.off),
+        "grid":         read_size_array(s.grid),
+        "block":        read_size_array(s.block),
+        "streams":      streams,    # list of c_void_p
+        "shmem_size":   int(s.shmem_size),
     }
 
 # Callback type: void (*)(IrisParam* params, int32_t n, IrisSpec* spec)
