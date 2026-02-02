@@ -1110,8 +1110,8 @@ void Platform::ShowOverview() {
     setw(32) << setfill('-') << "------" <<  "-+-" <<
     setw(12) << setfill('-') << "----" << "-" << std::endl;
   for (int i = 0; i < ndevices; i++){
-    int type_id;
-    int backend_id;
+    int type_id = iris_cpu;
+    int backend_id = iris_openmp;
     DeviceInfo(i, iris_name,    name,       NULL);
     DeviceInfo(i, iris_vendor,  vendor,     NULL);
     DeviceInfo(i, iris_type,    &type_id,   NULL);

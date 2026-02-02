@@ -306,14 +306,22 @@ string Device::CompileDefaultKernelLibrary(const char *key, const char *flags)
     char *tmpdir = NULL;
     char path[2048];
     char out[1024];
+    char out_mac[1024];
+    char include_dir[1024];
     string out_str;
     string backend = Utils::GetBackendName(model());
     worker_->platform()->EnvironmentGet("", &iris, NULL, '\0');
     worker_->platform()->EnvironmentGet("DEFAULT_DIR", &src, NULL);
     sprintf(out, "%s/%s/lib%s_default.so", iris, src, backend.c_str());
+    sprintf(out_mac, "%s/%s/lib%s_default.dylib", iris, src, backend.c_str());
+    sprintf(include_dir, "-I%s/%s/..", iris, src);
     out_str = out;
     if (Utils::Exist(out)) {
         ld_reset_= new LoaderResetKernel(out);
+        ld_reset_->Load();
+    } 
+    else if (Utils::Exist(out_mac)) {
+        ld_reset_= new LoaderResetKernel(out_mac);
         ld_reset_->Load();
     }
     else {
@@ -324,6 +332,9 @@ string Device::CompileDefaultKernelLibrary(const char *key, const char *flags)
         for(string fl : file_list) {
             ss << iris << "/" << src << "/" << fl << " ";
         }
+        ss << " " << include_dir << "/include ";
+        ss << " " << include_dir << "/include/iris ";
+        ss << " " << include_dir << "/default ";
         string path_str = ss.str();
         sprintf(path, "%s", path_str.c_str());
         Platform::GetPlatform()->EnvironmentGet("TMPDIR", &tmpdir, NULL);

@@ -242,6 +242,9 @@ function(extractIRISAPIs)
            )
     add_custom_target(iris_default_math_boilerplate_h DEPENDS ${CMAKE_BINARY_DIR}/src/runtime/iris/iris_default_math_boilerplate.h)
     install(FILES ${CMAKE_BINARY_DIR}/src/runtime/iris/iris_default_math_boilerplate.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/iris/)
+    install(FILES ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_openmp_kernels.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/iris/)
+    install(FILES ${CMAKE_BINARY_DIR}/src/runtime//iris_default_math_task_template.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/iris/)
+    install(FILES ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_tiled.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/iris/)
 endfunction()
 
 set(IRIS_RUNTIME_SOURCES
@@ -477,6 +480,7 @@ extractIRISAPIs(${DEFAULT_KERNELS})
 #install(TARGETS default_iris DESTINATION ${CMAKE_INSTALL_PREFIX}/default)
 
 install(FILES ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math.h DESTINATION ${CMAKE_INSTALL_PREFIX}/include/iris/)
+install(FILES ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_openmp_kernels.cpp DESTINATION ${CMAKE_INSTALL_PREFIX}/default/)
 install(FILES ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_hip_kernels.hip.cpp DESTINATION ${CMAKE_INSTALL_PREFIX}/default/)
 install(FILES ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_cuda_kernels.cu DESTINATION ${CMAKE_INSTALL_PREFIX}/default/)
 #install(FILES ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_openmp_kernels.cpp DESTINATION ${CMAKE_INSTALL_PREFIX}/default/)
