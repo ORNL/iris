@@ -154,6 +154,13 @@ if (ENABLE_PROFILE)
   )
 endif()
 
+if (ENABLE_DEBUG)
+  add_compile_options(
+      $<$<COMPILE_LANGUAGE:CXX>:-g>
+      $<$<COMPILE_LANGUAGE:CXX>:-O0>
+  )
+endif()
+
 if (ENABLE_FFI) 
   add_compile_options(
       $<$<COMPILE_LANGUAGE:CXX>:-DENABLE_FFI>

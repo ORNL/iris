@@ -39,6 +39,8 @@ option(TODO_DISABLE     "Disable todo messages"     ON)
 option(INFO_DISABLE     "Disable info messages"     ON)
 option(CHECK_DISABLE    "Disable checking messages" ON)
 option(WARNING_DISABLE  "Disable warning messages"  ON)
+option(ENABLE_PROFILE   "Enable profiling" OFF)
+option(ENABLE_DEBUG     "Enable debugging" OFF)
 option(ENABLE_PER_TASK_COLOR_DOT "Enable per task color dot" OFF)
 option(ENABLE_PRINT_TASK_DEP "Enable print task dependencies" OFF)
 
