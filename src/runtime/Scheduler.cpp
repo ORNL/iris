@@ -166,6 +166,7 @@ void Scheduler::SubmitTask(Task* task) {
       } else policies_->GetPolicy(brs_policy, opt)->GetDevices(task, devs, &ndevs);
   }
   else {
+      ASSERT(task_affinity < ndevs_);
       devs[0] = devs_[task_affinity];
       ndevs = 1;
   }

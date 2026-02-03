@@ -1023,9 +1023,10 @@ class dmem_base:
   def print(self, tag):
     dll.iris_data_mem_print_with_tag(self.handle, convert_obj_ctype(tag))
   def flush(self, sync=True):
-      task_handle = task_create("flush")
-      dll.iris_task_dmem_flush_out(task_handle, self.handle)
-      task_submit(task_handle, iris_default, sync)
+    task_handle = task_create("flush")
+    dll.iris_task_dmem_flush_out(task_handle, self.handle)
+    task_submit(task_handle, iris_default, sync)
+
   def print(self):
     dll.iris_data_mem_print(self.handle)
 
@@ -1125,10 +1126,12 @@ class dmem(dmem_base):
     super().__init__(True, *args)
   def __del__(self):
     None
-  def create(np_arr):
+  def create(np_arr, no_mandate=False):
     global np_obj_2_dmem
     if hasattr(np_arr, 'handle') and isinstance(np_arr.handle, iris_mem):
         return np_arr # Already a IRIS MEM object
+    if no_mandate:
+        return None
     if isinstance(np_arr, np.ndarray):
         key = (np_arr.ctypes.data, np_arr.size)
         if key in np_obj_2_dmem:
@@ -1519,7 +1522,8 @@ class task:
         return self.kernel_obj
 
     def flush(self, mem):
-        dll.iris_task_dmem_flush_out(self.handle, mem.handle)
+        d_mem = dmem.create(mem)
+        dll.iris_task_dmem_flush_out(self.handle, d_mem.handle)
         return self.last_command()
 
     def name(self):
@@ -1941,6 +1945,24 @@ class graph:
             df['task_uid'] = task_uids
             return df
         return comp_2d
+def flush(data, sync=True):
+    d = dmem.create(data, True)
+    if d != None:
+        d.flush(sync)
+
+def release(data, sync=True):
+    if isinstance(data, dmem_base) or isinstance(data, kernel) or isinstance(data, task) or isinstance(data, graph):
+        data.release()
+        return
+    d = dmem.create(data, True)
+    if d != None:
+        d.release()
+
+def print_dmem(data, tag=""):
+    d = dmem.create(data, True)
+    if d != None:
+        d.print(tag)
+
 class json_graph(graph):
     def __init__(self, json_file='graph.json', params=[]):
         self.load(json_file, params)
