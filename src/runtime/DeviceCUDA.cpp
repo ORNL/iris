@@ -436,7 +436,7 @@ int DeviceCUDA::Init() {
   spec_.ctx = (void *)ctx_;
   //err = ld_->cuCtxEnablePeerAccess(ctx_, 0);
   //_cuerror(err);
-  EnablePeerAccess();
+  //EnablePeerAccess();
   //_printf("Init:: Context create dev:%d ctx:%p self:%p thread:%p", devno_, ctx_, (void *)worker()->self(), (void *)worker()->thread());
 #ifndef TRACE_DISABLE
   CUcontext ctx;

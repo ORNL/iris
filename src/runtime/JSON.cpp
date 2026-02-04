@@ -3,7 +3,7 @@
 #include "Command.h"
 #include "Graph.h"
 #include "Kernel.h"
-#include "Mem.h"
+#include "BaseMem.h"
 #include "Platform.h"
 #include "Task.h"
 #include "Timer.h"
@@ -450,7 +450,7 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
           platform_->IncrementErrorCount();
           return IRIS_ERROR;
         }
-        Command* cmd = Command::CreateH2D(task, (Mem *)platform_->get_mem_object(*dev_mem), offset, size, host_mem);
+        Command* cmd = Command::CreateH2D(task, (BaseMem *)platform_->get_mem_object(*dev_mem), offset, size, host_mem);
         //name (optional)
         if(h2d_.HasMember("name")){
           if(!h2d_["name"].IsString()){
@@ -530,7 +530,7 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
           return IRIS_ERROR;
         }
 
-        Command* cmd = Command::CreateD2H(task, (Mem *)platform_->get_mem_object(*dev_mem), offset, size, host_mem);
+        Command* cmd = Command::CreateD2H(task, (BaseMem *)platform_->get_mem_object(*dev_mem), offset, size, host_mem);
         //name (optional)
         if(d2h_.HasMember("name")){
           if(!d2h_["name"].IsString()){
@@ -584,7 +584,7 @@ int JSON::RecordFlush() {
     inputs_.PushBack(tmp,iris_output_document_.GetAllocator());
   }
   //device memory
-  for(std::vector<Mem*>::iterator iter = mems_.begin(); iter != mems_.end(); iter ++){
+  for(std::vector<BaseMem*>::iterator iter = mems_.begin(); iter != mems_.end(); iter ++){
     tmp.SetString(NameFromDeviceMem(*iter).c_str(),NameFromDeviceMem(*iter).length(),iris_output_document_.GetAllocator());
     inputs_.PushBack(tmp,iris_output_document_.GetAllocator());
   }
@@ -621,14 +621,14 @@ int JSON::UniqueUIDFromHostPointer(void* host_ptr){
   return index;
 }
 
-const std::string JSON::NameFromDeviceMem(Mem* dev_mem){
+const std::string JSON::NameFromDeviceMem(BaseMem* dev_mem){
   return std::string("devicemem-"+std::to_string(UniqueUIDFromDevicePointer(dev_mem)));
 }
 
-int JSON::UniqueUIDFromDevicePointer(Mem* dev_ptr){
+int JSON::UniqueUIDFromDevicePointer(BaseMem* dev_ptr){
   bool already_included = false;
   int index = 0;
-  for(std::vector<Mem*>::iterator it = mems_.begin(); it != mems_.end();it ++){
+  for(std::vector<BaseMem*>::iterator it = mems_.begin(); it != mems_.end();it ++){
     if (*it == dev_ptr) { already_included = true; break; }
     index++;
   }
@@ -716,7 +716,7 @@ int JSON::ProcessTask(Task* task){
         KernelArg* arg = cmd->kernel_arg(i);
         if(arg->mem){//memory
           param_.AddMember("type",rapidjson::StringRef("memory_object"),iris_output_document_.GetAllocator());
-          rapidjson::Value kernel_arg_mem_name_(NameFromDeviceMem((Mem *)arg->mem).c_str(),iris_output_document_.GetAllocator());
+          rapidjson::Value kernel_arg_mem_name_(NameFromDeviceMem((BaseMem *)arg->mem).c_str(),iris_output_document_.GetAllocator());
           param_.AddMember("value",kernel_arg_mem_name_,iris_output_document_.GetAllocator());
           param_.AddMember("size_bytes",rapidjson::Value(arg->mem_size),iris_output_document_.GetAllocator());
           //permissions

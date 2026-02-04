@@ -4,7 +4,7 @@
 #include "Pool.h"
 #include "Task.h"
 #include "Timer.h"
-#include "Mem.h"
+#include "BaseMem.h"
 #include "Device.h"
 #include "DataMem.h"
 #include "AutoDAG.h"
@@ -301,7 +301,7 @@ Command* Command::CreateKernelPolyMem(Task* task, Command* pcmd, size_t* off, si
   return cmd;
 }
 
-Command* Command::CreateMalloc(Task* task, Mem* mem) {
+Command* Command::CreateMalloc(Task* task, BaseMem* mem) {
   Command* cmd = Create(task, IRIS_CMD_MALLOC);
   cmd->mem_ = mem;
   return cmd;
@@ -363,7 +363,7 @@ Command* Command::CreateMemResetInput(Task* task, BaseMem *mem, ResetData & data
   return cmd;
 }
 
-Command* Command::CreateH2Broadcast(Task* task, Mem* mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host) {
+Command* Command::CreateH2Broadcast(Task* task, BaseMem* mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host) {
   Command* cmd = Create(task, IRIS_CMD_H2BROADCAST);
   cmd->mem_ = mem;
   cmd->dim_ = dim;
@@ -388,7 +388,7 @@ Command* Command::CreateDMEM2DMEM(Task* task, DataMem* src_mem, DataMem *dst_mem
   return cmd;
 }
 
-Command* Command::CreateH2D(Task* task, Mem* mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host) {
+Command* Command::CreateH2D(Task* task, BaseMem* mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host) {
   Command* cmd = Create(task, IRIS_CMD_H2D);
   cmd->mem_ = mem;
   cmd->dim_ = dim;
@@ -406,7 +406,7 @@ Command* Command::CreateH2D(Task* task, Mem* mem, size_t *off, size_t *host_size
   return cmd;
 }
 
-Command* Command::CreateH2Broadcast(Task* task, Mem* mem, size_t off, size_t size, void* host) {
+Command* Command::CreateH2Broadcast(Task* task, BaseMem* mem, size_t off, size_t size, void* host) {
   Command* cmd = Create(task, IRIS_CMD_H2BROADCAST);
   cmd->dim_ = 1;
   cmd->mem_ = mem;
@@ -416,7 +416,7 @@ Command* Command::CreateH2Broadcast(Task* task, Mem* mem, size_t off, size_t siz
   cmd->exclusive_ = true;
   return cmd;
 }
-Command* Command::CreateD2D(Task* task, Mem* mem, size_t off, size_t size, void* host, int src_dev) {
+Command* Command::CreateD2D(Task* task, BaseMem* mem, size_t off, size_t size, void* host, int src_dev) {
   Command* cmd = Create(task, IRIS_CMD_D2D);
   cmd->dim_ = 1;
   cmd->src_dev_ = src_dev;
@@ -428,7 +428,7 @@ Command* Command::CreateD2D(Task* task, Mem* mem, size_t off, size_t size, void*
   return cmd;
 }
 
-Command* Command::CreateH2D(Task* task, Mem* mem, size_t off, size_t size, void* host) {
+Command* Command::CreateH2D(Task* task, BaseMem* mem, size_t off, size_t size, void* host) {
   Command* cmd = Create(task, IRIS_CMD_H2D);
   cmd->dim_ = 1;
   cmd->mem_ = mem;
@@ -439,7 +439,7 @@ Command* Command::CreateH2D(Task* task, Mem* mem, size_t off, size_t size, void*
   return cmd;
 }
 
-Command* Command::CreateH2DNP(Task* task, Mem* mem, size_t off, size_t size, void* host) {
+Command* Command::CreateH2DNP(Task* task, BaseMem* mem, size_t off, size_t size, void* host) {
   Command* cmd = Create(task, IRIS_CMD_H2DNP);
   cmd->mem_ = mem;
   cmd->dim_ = 1;
@@ -450,7 +450,7 @@ Command* Command::CreateH2DNP(Task* task, Mem* mem, size_t off, size_t size, voi
   return cmd;
 }
 
-Command* Command::CreateD2H(Task* task, Mem* mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host) {
+Command* Command::CreateD2H(Task* task, BaseMem* mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host) {
   Command* cmd = Create(task, IRIS_CMD_D2H);
   cmd->mem_ = mem;
   cmd->dim_ = dim;
@@ -468,7 +468,7 @@ Command* Command::CreateD2H(Task* task, Mem* mem, size_t *off, size_t *host_size
   return cmd;
 }
 
-Command* Command::CreateD2H(Task* task, Mem* mem, size_t off, size_t size, void* host) {
+Command* Command::CreateD2H(Task* task, BaseMem* mem, size_t off, size_t size, void* host) {
   Command* cmd = Create(task, IRIS_CMD_D2H);
   cmd->mem_ = mem;
   cmd->dim_ = 1;
@@ -498,7 +498,7 @@ Command* Command::CreateMapFrom(Task* task, void* host) {
   return cmd;
 }
 
-Command* Command::CreateReleaseMem(Task* task, Mem* mem) {
+Command* Command::CreateReleaseMem(Task* task, BaseMem* mem) {
   Command* cmd = Create(task, IRIS_CMD_RELEASE_MEM);
   cmd->mem_ = mem;
   return cmd;

@@ -2750,7 +2750,7 @@ void Device::ExecuteH2BroadCast(Command *cmd) {
 }
 void Device::ExecuteD2D(Command* cmd, Device *dev) {
     if (dev == NULL) dev = this;
-    Mem* mem = cmd->mem();
+    Mem* mem = (Mem *)cmd->mem();
     size_t off = cmd->off(0);
     size_t *ptr_off = cmd->off();
     size_t *gws = cmd->gws();
@@ -2823,7 +2823,7 @@ void Device::ExecuteH2D(Command* cmd, Device *dev) {
     }
     return;
   }
-  Mem* mem = cmd->mem();
+  Mem* mem = (Mem *)cmd->mem();
   size_t off = cmd->off(0);
   size_t *ptr_off = cmd->off();
   size_t *gws = cmd->gws();
@@ -2895,7 +2895,7 @@ void Device::ExecuteD2H(Command* cmd) {
     }
     return;
   }
-  Mem* mem = cmd->mem();
+  Mem* mem = (Mem *)cmd->mem();
   //size_t off = cmd->off(0);
   size_t *ptr_off = cmd->off();
   size_t *gws = cmd->gws();
@@ -2948,7 +2948,7 @@ void Device::ExecuteMap(Command* cmd) {
 }
 
 void Device::ExecuteReleaseMem(Command* cmd) {
-  Mem* mem = cmd->mem();
+  BaseMem* mem = cmd->mem();
   mem->Release(); 
 }
 

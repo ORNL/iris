@@ -2208,7 +2208,7 @@ extern int iris_mem_is_alive(iris_mem brs_mem);
 extern size_t iris_mem_get_size(iris_mem mem);
 extern size_t iris_mem_get_full_size(iris_mem mem);
 extern int iris_mem_get_type(iris_mem mem);
-extern int iris_mem_get_uid(iris_mem mem);
+extern unsigned long iris_mem_get_uid(iris_mem mem);
 extern int iris_get_mem_element_type(iris_mem brs_mem);
 extern int iris_mem_is_reset(iris_mem mem);
 extern int iris_mem_init_reset(iris_mem brs_mem, int memset_value);

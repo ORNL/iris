@@ -992,6 +992,7 @@ def timer_now():
 
 np_obj_2_dmem = {}
 mem_handle_2_pobj = {}
+track_host2dmems = {}
 class dmem_null:
   def __init__(self, size=0):
     m = iris_mem()
@@ -1011,7 +1012,6 @@ class dmem_null:
     dll.iris_data_mem_update(self.handle, c_host)
 
 class dmem_base:
-  track_host2dmems = {}
   def __init__(self, reuse, *args):
     self.str_data = None
     self.host = None
@@ -1038,6 +1038,7 @@ class dmem_base:
     return np_array
 
   def dmem_create(self, reuse, *args):
+    global track_host2dmems
     if len(args) == 1:
       c_host = None
       if len(args[0]) == 0:
@@ -1062,9 +1063,9 @@ class dmem_base:
       dim = len(host_size)
       size = host.nbytes
       self.dtype = host.dtype
-      if reuse and c_host.value in dmem_base.track_host2dmems:
+      if reuse and c_host.value in track_host2dmems:
         self.host = host
-        return dmem_base.track_host2dmems[c_host.value], IRIS_DMEM
+        return track_host2dmems[c_host.value], IRIS_DMEM
       m = iris_mem()
       if dim == 1:
         chost_size = (c_size_t * dim)(*host_size)
@@ -1077,7 +1078,7 @@ class dmem_base:
         elem_type = get_iris_type(host.dtype)
         dll.iris_data_mem_create_nd(byref(m), c_host, chost_size, c_int(dim), c_size_t(elem_size), c_int(elem_type))
       self.host = host
-      dmem_base.track_host2dmems[c_host.value] = m
+      track_host2dmems[c_host.value] = m
       return m, IRIS_DMEM
     elif len(args) == 2:
       (root_mem, host) = args
@@ -1130,16 +1131,18 @@ class dmem(dmem_base):
     global np_obj_2_dmem
     if hasattr(np_arr, 'handle') and isinstance(np_arr.handle, iris_mem):
         return np_arr # Already a IRIS MEM object
-    if no_mandate:
-        return None
     if isinstance(np_arr, np.ndarray):
         key = (np_arr.ctypes.data, np_arr.size)
         if key in np_obj_2_dmem:
             return np_obj_2_dmem[key]
+        if no_mandate:
+            return None
         dmem_obj = dmem(np_arr)
         np_obj_2_dmem[key] = dmem_obj
         return dmem_obj
     else:
+        if no_mandate:
+            return None
         # Do not know what it is
         return dmem(np_arr)
   def clear(self):
@@ -1945,12 +1948,22 @@ class graph:
             df['task_uid'] = task_uids
             return df
         return comp_2d
+def refresh():
+    np_obj_2_dmem.clear()
+    mem_handle_2_pobj.clear()
+    track_host2dmems.clear()
+
+def clear(data):
+    d = dmem.create(data, True)
+    if d != None:
+        d.clear()
+
 def flush(data, sync=True):
     d = dmem.create(data, True)
     if d != None:
         d.flush(sync)
 
-def release(data, sync=True):
+def release(data):
     if isinstance(data, dmem_base) or isinstance(data, kernel) or isinstance(data, task) or isinstance(data, graph):
         data.release()
         return
