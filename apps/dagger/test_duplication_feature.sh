@@ -1,7 +1,12 @@
 #!/bin/bash
 #uncomment to use data memory rather than explicit memory transfers
+export SKIP_SETUP=${SKIP_SETUP:=0}
+set -x;
+if [ "x$SKIP_SETUP" = "x0" ]; then
+source ./setup.sh
+fi
 
-source ./build.sh
+#source ./build.sh
 [ $? -ne 0 ] &&  exit 1
 #uncomment to use explicit (non DMEM) version
 #export USE_DATA_MEMORY=" "
@@ -15,7 +20,7 @@ else
 fi
 
 export SIZES=("10")
-
+export PAYLOAD_SIZE=256
 #export SIZES=("10" "25" "100")
 export REPEATS=0
 
