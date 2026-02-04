@@ -476,6 +476,7 @@ dagger-zenith-run-policy-evaluations-synchronous-explicit-data-transfers:
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: .run_sync_exp_dt
+    IRIS_TESTNAME: dagger
 
 dagger-zenith-run-policy-evaluations-synchronous-dmem:
   extends: [.dagger-zenith-run-policy-evaluations]
@@ -489,6 +490,7 @@ dagger-zenith-run-policy-evaluations-asynchronous-explicit-data-transfers:
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: .run_async_exp_dt
+    IRIS_TESTNAME: dagger
     IRIS_ASYNC: 1
 
 dagger-zenith-run-policy-evaluations-asynchronous-dmem:
@@ -496,6 +498,7 @@ dagger-zenith-run-policy-evaluations-asynchronous-dmem:
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: .run_async_dmem
+    IRIS_TESTNAME: dagger
     IRIS_ASYNC: 1
     USE_DATA_MEMORY: --use-data-memory
 
@@ -511,6 +514,7 @@ dagger-zenith-test-correctness:
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: .test-correctness
+    IRIS_TESTNAME: dagger
   artifacts:
     when: always
     paths:
@@ -542,6 +546,7 @@ dagger-zenith-test-local-workgroup-sizes-synchronous-explicit-data-transfers:
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: .local_workgroup_sync_exp_dt
+    IRIS_TESTNAME: dagger
     REPEATS: 1
 
 dagger-zenith-test-local-workgroup-sizes-synchronous-dmem:
@@ -550,6 +555,7 @@ dagger-zenith-test-local-workgroup-sizes-synchronous-dmem:
     IRIS_MACHINE: "zenith"
     REPEATS: 1
     IRIS_TAG: .local_workgroup_sync_dmem
+    IRIS_TESTNAME: dagger
     USE_DATA_MEMORY: --use-data-memory
 
 dagger-zenith-test-local-workgroup-sizes-asynchronous-explicit-data-transfers:
@@ -558,6 +564,7 @@ dagger-zenith-test-local-workgroup-sizes-asynchronous-explicit-data-transfers:
     IRIS_MACHINE: "zenith"
     REPEATS: 1
     IRIS_TAG: .local_workgroup_async_exp_dt
+    IRIS_TESTNAME: dagger
     IRIS_ASYNC: 1
 
 dagger-zenith-test-local-workgroup-sizes-asynchronous-dmem:
@@ -565,6 +572,7 @@ dagger-zenith-test-local-workgroup-sizes-asynchronous-dmem:
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: .local_workgroup_async_dmem
+    IRIS_TESTNAME: dagger
     REPEATS: 1
     IRIS_ASYNC: 1
     USE_DATA_MEMORY: --use-data-memory
@@ -598,6 +606,9 @@ dagger-zenith-test-duplication-explicit:
   variables:
     REPEATS: 1
     USE_DATA_MEMORY: " "
+    IRIS_MACHINE: "zenith"
+    IRIS_TAG: .test-duplication
+    IRIS_TESTNAME: dagger
 
 coverage-collect:
   <<: *zenith_config
