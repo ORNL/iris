@@ -8,6 +8,7 @@
 #SBATCH --exclusive
 #SBATCH --time="1:01:00"
 
+set -x
 GIT_ROOT=$(git rev-parse --show-toplevel)
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
@@ -40,12 +41,13 @@ module load gnu
 
 # General setup for IRIS
 source /auto/software/iris/setup_system.source
-IRIS_TAG=.$IRIS_TAG.$IRIS_MACHINE.$IRIS_TESTNAME IRIS_INSTALL_ROOT=$IRIS_INSTALL_ROOT bash build.sh -DENABLE_FFI=$IRIS_FFI_FLAG -DCMAKE_BUILD_TYPE=DEBUG -DCOVERAGE=true 
+IRIS_TAG=.$IRIS_TAG.$IRIS_MACHINE.$IRIS_TESTNAME IRIS_INSTALL_ROOT=$IRIS_INSTALL_ROOT bash build.sh -DENABLE_FFI=$IRIS_FFI_FLAG -DCMAKE_BUILD_TYPE=DEBUG -DCOVERAGE=true
 source $IRIS_INSTALL_ROOT.$IRIS_TAG.$IRIS_MACHINE.$IRIS_TESTNAME/setup.source
 
 set -e
 
 # Local conda environment setup
+echo "Before push PWD: $(pwd)"
 if [ "x$IRIS_TAG" = "x" ]; then
 echo "Working on apps/dagger"
 else
@@ -53,6 +55,8 @@ cp -r apps/dagger apps/dagger$IRIS_TAG
 echo "Working on apps/dagger$IRIS_TAG"
 fi
 pushd apps/dagger$IRIS_TAG
+CWD=$(pwd)
+echo "After push PWD: $(pwd)"
 #conda env create --force -p ./envs -f dagger.yaml
 #conda activate ./envs
 
