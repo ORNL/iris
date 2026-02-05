@@ -577,38 +577,30 @@ dagger-zenith-test-local-workgroup-sizes-asynchronous-dmem:
     IRIS_ASYNC: 1
     USE_DATA_MEMORY: --use-data-memory
 
-.dagger-zenith-test-duplication:
+dagger-zenith-test-duplication:
   extends: [.dagger]
   script:
-    - source /auto/software/iris/setup_system.source
-    - echo "Installing iris to $CI_PROJECT_DIR/install"
-    - bash build.sh -DCMAKE_BUILD_TYPE=DEBUG -DCOVERAGE=true
-    - echo source $IRIS_INSTALL_ROOT/setup.source
-    - source $IRIS_INSTALL_ROOT/setup.source
     - .gitlab-ci-scripts/runner_watcher.sh $$ &
     - sbatch --partition=gpu --nodelist=zenith .gitlab-ci-scripts/slurm-dagger-test-duplication.sh
     - python3 -u .gitlab-ci-scripts/slurm-tee.py slurm-test-err.txt slurm-test-out.txt
-    - echo "Errors $(wc -l apps/dagger/errors.txt)"
-    - cat apps/dagger/errors.txt
-    - if [ -s apps/dagger/errors.txt ]; then exit 1; fi
-  artifacts:
-    when: always
-    paths:
-      - apps/dagger/test-out.txt
-      - apps/dagger/errors.txt
-      - apps/dagger/dagger-payloads
-      - apps/dagger/dagger-graphs
-      - apps/dagger/dagger-results
-      - slurm*.txt
-
-dagger-zenith-test-duplication-explicit:
-  extends: [.dagger-zenith-test-duplication]
+    - echo "Errors $(wc -l apps/dagger$IRIS_TAG/errors.txt)"
+    - cat apps/dagger$IRIS_TAG/errors.txt
+    - if [ -s apps/dagger$IRIS_TAG/errors.txt ]; then exit 1; fi
   variables:
     REPEATS: 1
     USE_DATA_MEMORY: " "
     IRIS_MACHINE: "zenith"
     IRIS_TAG: .test-duplication
     IRIS_TESTNAME: dagger
+  artifacts:
+    when: always
+    paths:
+      - apps/dagger$IRIS_TAG/test-out.txt
+      - apps/dagger$IRIS_TAG/errors.txt
+      - apps/dagger$IRIS_TAG/dagger-payloads
+      - apps/dagger$IRIS_TAG/dagger-graphs
+      - apps/dagger$IRIS_TAG/dagger-results
+      - slurm*.txt
 
 coverage-collect:
   <<: *zenith_config
