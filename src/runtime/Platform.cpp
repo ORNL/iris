@@ -375,6 +375,7 @@ int Platform::Init(int* argc, char*** argv, int sync) {
   init_ = true;
   finalize_ = false;
   pthread_mutex_unlock(&mutex_);
+  fflush(stdout);
   return IRIS_SUCCESS;
 }
 
@@ -859,7 +860,7 @@ int Platform::InitOpenMP() {
           break;
       }
       _trace("OpenMP platform[%d] dev[%d] ndevs[%d]", nplatforms_, ndevs_, ndevs_+1);
-      _printf("OpenMP platform[%d] dev[%d] ndevs[%d]", nplatforms_, ndevs_, ndevs_+1);
+      //_printf("OpenMP platform[%d] dev[%d] ndevs[%d]", nplatforms_, ndevs_, ndevs_+1);
       devs_[ndevs_] = new DeviceOpenMP(loaderOpenMP_, i, ndevs_, nplatforms_);
       if (is_julia_enabled()) 
           devs_[ndevs_]->EnableJuliaInterface();

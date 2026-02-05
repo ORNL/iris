@@ -54,6 +54,7 @@ class CMakeBuild(build_ext):
             f'-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={extdir}',
             f'-DCMAKE_INSTALL_PREFIX={dist_info_dir}',
             f'-DCMAKE_BUILD_TYPE={build_type}',
+            f'-DINFO_DISABLE=OFF',
             f'-DPYTHON_EXECUTABLE={sys.executable}',
         ]
 
