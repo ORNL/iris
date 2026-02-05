@@ -42,9 +42,8 @@ module load gnu
 # General setup for IRIS
 source /auto/software/iris/setup_system.source
 export IRIS_TAG=.$IRIS_TAG.$IRIS_MACHINE.$IRIS_TESTNAME
-export IRIS_INSTALL_ROOT=$IRIS_INSTALL_ROOT.$IRIS_TAG.$IRIS_MACHINE.$IRIS_TESTNAME
 bash build.sh -DENABLE_FFI=$IRIS_FFI_FLAG -DCMAKE_BUILD_TYPE=DEBUG -DCOVERAGE=true
-source $IRIS_INSTALL_ROOT/setup.source
+source $IRIS_INSTALL_ROOT$IRIS_TAG/setup.source
 
 set -e
 
