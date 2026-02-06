@@ -23,6 +23,8 @@ echo Started: $(date)
 echo Host: $(hostname)
 echo Path: $GIT_ROOT
 echo Groups: $(groups)
+echo IRIS_TAG: $IRIS_TAG
+echo IRIS_INSTALL_ROOT: $IRIS_INSTALL_ROOT
 echo ${SLURM_JOB_ID} > slurm.job
 echo --------------------------------------------------------------------------------
 
@@ -44,9 +46,11 @@ module load gnu
 source /auto/software/iris/setup_system.source
 IRIS_TAG_ORIG=$IRIS_TAG
 IRIS_TAG=.$IRIS_TAG.$IRIS_MACHINE.$IRIS_TESTNAME
+echo Full IRIS_TAG: $IRIS_TAG
 bash build.sh -DENABLE_FFI=$IRIS_FFI_FLAG -DCMAKE_BUILD_TYPE=DEBUG -DCOVERAGE=true
 source $IRIS_INSTALL_ROOT$IRIS_TAG/setup.source
 IRIS_TAG=$IRIS_TAG_ORIG
+echo Restored IRIS_TAG: $IRIS_TAG
 
 set -e
 

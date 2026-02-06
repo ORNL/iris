@@ -1,6 +1,6 @@
-build/
+build*/
 _build/
-install/
+install*/
 _install/
 envs/
 slurm-test-out.txt
@@ -15,3 +15,4 @@ install.milan/
 apps/quantum/local_exp/
 apps/qiree_backend/local_exp/
 apps/quantum/.nfs*
+apps/dagger.*/
