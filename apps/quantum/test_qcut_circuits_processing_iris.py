@@ -21,7 +21,7 @@ home_dir = os.path.expanduser("~")
 os.environ["IRIS_LIB_QIREE"] = os.path.join(home_dir, "qiree/build/lib/libcqiree.so")
 os.environ["IRIS_ARCHS"] = "openmp:qiree"
 os.environ["IRIS_QIREE_DEVICE_FACTOR"] = "8"
-os.environ["IRIS_PROFILE"] = "1"
+os.environ["IRIS_PROFILE"] = "0"
 
 # Suppress verbose XACC output
 os.environ["XACC_VERBOSE"] = "0"
@@ -78,6 +78,7 @@ def post_processing(spec, *inputs_r):
     print(f"\nExtracting circuit results from IRIS ...")
 
     inputs_r_np = iris.CQireeResult.reshape(inputs_r, [num_fragments, 3])
+    print("--------------------------------------------------------")
     print("all outputs:", inputs_r_np.shape, " output:", inputs_r_np)
     
     # Create output directory if it doesn't exist
