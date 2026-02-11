@@ -66,19 +66,38 @@ DeviceOpenCL::DeviceOpenCL(LoaderOpenCL* ld, LoaderHost2OpenCL *host2opencl_ld, 
   ld_->clGetDeviceInfo(cldev_, CL_DEVICE_COMPILER_AVAILABLE, sizeof(compiler_available_), &compiler_available_, NULL);
   fpga_bin_suffix_ = "aocx";   
 
-  if (cltype_ == CL_DEVICE_TYPE_CPU) type_ = iris_cpu;
+  if (cltype_ == CL_DEVICE_TYPE_CPU) {
+      type_ = iris_cpu;
+      sub_model_ = iris_opencl_cpu;
+  }
   else if (cltype_ == CL_DEVICE_TYPE_GPU) {
     type_ = iris_gpu;
-    if (strcasestr(vendor_, "NVIDIA")) type_ = iris_nvidia;
-    else if (strcasestr(vendor_, "Advanced Micro Devices")) type_ = iris_amd;
+    if (strcasestr(vendor_, "NVIDIA")) {
+        type_ = iris_nvidia;
+        sub_model_ = iris_opencl_cuda;
+    }
+    else if (strcasestr(vendor_, "Advanced Micro Devices")) {
+        type_ = iris_amd;
+        sub_model_ = iris_opencl_hip;
+    }
   }
   else if (cltype_ == CL_DEVICE_TYPE_ACCELERATOR) {
-    if (strstr(vendor_, "Xilinx") != NULL) { type_ = iris_fpga; fpga_bin_suffix_ = "xclbin"; }
+    if (strstr(vendor_, "Xilinx") != NULL) { 
+        type_ = iris_fpga; fpga_bin_suffix_ = "xclbin"; 
+        sub_model_ = iris_opencl_xilinx_fpga;
+    }
+    else if (strstr(vendor_, "Intel") != NULL) {
+        type_ = iris_fpga; fpga_bin_suffix_ = "aocx"; 
+        sub_model_ = iris_opencl_intel_fpga;
+    }
     else if (strstr(name_, "FPGA") != NULL || strstr(version_, "FPGA") != NULL) type_ = iris_fpga;
     else type_ = iris_phi;
   }
   else type_ = iris_cpu;
   model_ = iris_opencl;
+  spec_.ordinal = ocldevno;
+  spec_.model = model_;
+  spec_.local_dev_id = ocldevno;
   clcmdq_ = new cl_command_queue[nqueues_];
   for (int i = 0; i < nqueues_; i++) {
     clcmdq_[i] = NULL;
@@ -120,6 +139,7 @@ DeviceOpenCL::~DeviceOpenCL() {
 
 int DeviceOpenCL::Init() {
   cl_int err;
+  spec_.ctx = (void *)clctx_;
   if (is_async(false)) {
       for (int i = 0; i < nqueues_; i++) {
 #ifdef CL_VERSION_2_0
@@ -509,36 +529,40 @@ int DeviceOpenCL::KernelLaunchInit(Command *cmd, Kernel* kernel) {
     int stream_index = 0;
     cl_command_queue *kstream = &default_queue_;
     int nstreams = 1;
+    bool async  = false;
     if (is_async(kernel->task(), false)) {
         stream_index = cmd->recommended_stream();  //GetStream(kernel->task()); //task->uid() % nqueues_; 
-        if (stream_index == DEFAULT_STREAM_INDEX) { stream_index = 0; }
+        async = true;
+        if (stream_index == DEFAULT_STREAM_INDEX) { async = false; stream_index = 0; }
         kstream = &clcmdq_[stream_index];
         nstreams = nqueues_ - stream_index;
     }
-    host2opencl_ld_->launch_init(model(), ocldevno_, stream_index, nstreams, (void **)kstream, kernel->GetParamWrapperMemory(), cmd);
+    spec_.is_async = async;
+    spec_.stream_index = stream_index;
+    spec_.n_streams = nstreams;
+    spec_.streams = (void **)kstream;
+    spec_.cmd_id = cmd->uid();
+    spec_.task_id = cmd->task()->uid();
+    host2opencl_ld_->launch_init(spec(), kernel->GetParamWrapperMemory(), cmd);
     return IRIS_SUCCESS;
 }
 
 int DeviceOpenCL::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws) {
   Command *cmd = kernel->command();
+  spec_.dim = dim;
   cl_int err;
-  int stream_index = 0;
-  cl_command_queue *kstream = &default_queue_;
-  bool async = false;
-  int nstreams = 1;
-  if (is_async(kernel->task(), false)) { //Disable stream policy check
-      stream_index = cmd->recommended_stream();  //GetStream(kernel->task()); //task->uid() % nqueues_; 
-      async = true;
-      if (stream_index == DEFAULT_STREAM_INDEX) { async = false; stream_index = 0; }
-      // Though async is set to false, we still pass all streams to kernel to use it
-      kstream = &clcmdq_[stream_index];
-      nstreams = nqueues_ - stream_index;
-  }
+  int stream_index = spec_.stream_index;
+  cl_command_queue *kstream =(cl_command_queue *)spec_.streams;
+  bool async = spec_.is_async;
+  size_t block[3] = { lws ? lws[0] : 1, lws ?  lws[1] : 1, lws ?  lws[2] : 1 };
+  spec_.off = off;
+  spec_.gws = gws;
+  spec_.block = block;
+  spec_.grid = NULL;
+  spec_.shmem_size = kernel->shared_mem_size();
   _debug2("dev[%d][%s] task[%ld:%s] kernel launch::%ld:%s q[%d]", devno_, name_, kernel->task()->uid(), kernel->task()->name(), kernel->uid(), kernel->name(), stream_index);
   if (kernel->is_vendor_specific_kernel(devno_)) {
-     if (host2opencl_ld_->host_launch((void **)kstream, stream_index, nstreams, kernel->name(), 
-                 kernel->GetParamWrapperMemory(), ocldevno_,
-                 dim, off, gws) == IRIS_SUCCESS) {
+     if (host2opencl_ld_->host_launch(spec(), cmd, kernel) == IRIS_SUCCESS) {
          if (!async) {
              err = ld_->clFinish(*kstream);
              _clerror(err);
@@ -554,7 +578,6 @@ int DeviceOpenCL::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws
      return IRIS_ERROR;
   }
 
-  size_t block[3] = { lws ? lws[0] : 1, lws ?  lws[1] : 1, lws ?  lws[2] : 1 };
   _trace("dev[%d][%s] kernel[%s:%s] dim[%d] gws[%zu,%zu,%zu] lws[%zu,%zu,%zu] off[%zu,%zu,%zu] block[%zu, %zu, %zu]", 
           devno_, name_, kernel->name(), kernel->get_task_name(), 
           dim, gws[0], gws[1], gws[2], 

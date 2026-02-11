@@ -154,6 +154,13 @@ if (ENABLE_PROFILE)
   )
 endif()
 
+if (ENABLE_DEBUG)
+  add_compile_options(
+      $<$<COMPILE_LANGUAGE:CXX>:-g>
+      $<$<COMPILE_LANGUAGE:CXX>:-O0>
+  )
+endif()
+
 if (ENABLE_FFI) 
   add_compile_options(
       $<$<COMPILE_LANGUAGE:CXX>:-DENABLE_FFI>
@@ -250,6 +257,9 @@ function(extractIRISAPIs)
            )
     add_custom_target(iris_default_math_boilerplate_h DEPENDS ${CMAKE_BINARY_DIR}/src/runtime/iris/iris_default_math_boilerplate.h)
     install(FILES ${CMAKE_BINARY_DIR}/src/runtime/iris/iris_default_math_boilerplate.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/iris/)
+    install(FILES ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_openmp_kernels.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/iris/)
+    install(FILES ${CMAKE_BINARY_DIR}/src/runtime//iris_default_math_task_template.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/iris/)
+    install(FILES ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_tiled.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/iris/)
 endfunction()
 
 set(IRIS_RUNTIME_SOURCES
@@ -485,6 +495,7 @@ extractIRISAPIs(${DEFAULT_KERNELS})
 #install(TARGETS default_iris DESTINATION ${CMAKE_INSTALL_PREFIX}/default)
 
 install(FILES ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math.h DESTINATION ${CMAKE_INSTALL_PREFIX}/include/iris/)
+install(FILES ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_openmp_kernels.cpp DESTINATION ${CMAKE_INSTALL_PREFIX}/default/)
 install(FILES ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_hip_kernels.hip.cpp DESTINATION ${CMAKE_INSTALL_PREFIX}/default/)
 install(FILES ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_cuda_kernels.cu DESTINATION ${CMAKE_INSTALL_PREFIX}/default/)
 #install(FILES ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_openmp_kernels.cpp DESTINATION ${CMAKE_INSTALL_PREFIX}/default/)
@@ -608,12 +619,16 @@ if (CUDAToolkit_FOUND)
         #    list(APPEND include_paths -I${first_core})
         #endwhile()
         list(APPEND include_paths "-I${CMAKE_BINARY_DIR}/src/runtime")
+        set(INC_FLAGS "")
+        foreach(dir IN LISTS CUDA_INCLUDE_DIRS)
+            list(APPEND INC_FLAGS -I${dir})
+        endforeach()
         add_custom_command(
             OUTPUT libcuda_default.so
             #COMMAND nvcc -x cu -g -Xcompiler -fPIC -DENABLE_IRIS_HOST2CUDA_APIS ${include_paths} -I. -I${IRIS_INC_DIR} -I${CUDA_INCLUDE_DIRS}/ ${CMAKE_CURRENT_SOURCE_DIR}/default_cpu_gpu_kernels.cpp -c -o default_cpu_gpu_kernels_cuda.cpp.o
             #COMMAND nvcc -x cu -g -Xcompiler -fPIC -I${IRIS_INC_DIR} ${include_paths} -I. ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_cuda_kernels.cu -c -o iris_default_math_cuda_kernels.cu.o
             #COMMAND nvcc -shared -g -Xcompiler -fPIC default_cpu_gpu_kernels_cuda.cpp.o iris_default_math_cuda_kernels.cu.o -o libcuda_default.so 
-			COMMAND ${NVCC_EXECUTABLE} -shared -x cu -g -Xcompiler -fPIC -DENABLE_IRIS_HOST2CUDA_APIS ${include_paths} -I. -I${IRIS_INC_DIR} -I${CUDA_INCLUDE_DIRS}/ ${CMAKE_CURRENT_SOURCE_DIR}/default_cpu_gpu_kernels.cpp ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_cuda_kernels.cu -o libcuda_default.so 
+			COMMAND ${NVCC_EXECUTABLE} -shared -x cu -g -Xcompiler -fPIC -DENABLE_IRIS_HOST2CUDA_APIS ${include_paths} -I. -I${IRIS_INC_DIR} ${INC_FLAGS} ${CMAKE_CURRENT_SOURCE_DIR}/default_cpu_gpu_kernels.cpp ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_cuda_kernels.cu -o libcuda_default.so 
 			DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/default_cpu_gpu_kernels.cpp
         )
         add_custom_target(myapp_cuda DEPENDS libcuda_default.so)
@@ -636,9 +651,13 @@ if (hip_FOUND)
  	get_target_property(HIP_INCLUDE_DIRS hip::host
                      INTERFACE_INCLUDE_DIRECTORIES)
 	set(include_paths "")
+    set(INC_FLAGS "")
+    foreach(dir IN LISTS HIP_INCLUDE_DIRS)
+        list(APPEND INC_FLAGS -I${dir})
+    endforeach()
 	add_custom_command(
 		OUTPUT libhip_default.so
-		COMMAND hipcc -g -fPIC ${include_paths} -I. -I${CMAKE_BINARY_DIR}/src/runtime -DENABLE_IRIS_HOST2HIP_APIS -I${IRIS_INC_DIR} -I${HIP_INCLUDE_DIRS}/ ${CMAKE_CURRENT_SOURCE_DIR}/default_cpu_gpu_kernels.cpp -c -o default_cpu_gpu_kernels_hip.cpp.o
+		COMMAND hipcc -g -fPIC ${include_paths} -I. -I${CMAKE_BINARY_DIR}/src/runtime -DENABLE_IRIS_HOST2HIP_APIS -I${IRIS_INC_DIR} ${INC_FLAGS} ${CMAKE_CURRENT_SOURCE_DIR}/default_cpu_gpu_kernels.cpp -c -o default_cpu_gpu_kernels_hip.cpp.o
 		COMMAND hipcc -g -fPIC -I${IRIS_INC_DIR} -I. -I${CMAKE_BINARY_DIR}/src/runtime ${CMAKE_BINARY_DIR}/src/runtime/iris_default_math_hip_kernels.hip.cpp -c -o iris_default_math_hip_kernels.hip.cpp.o
 		COMMAND hipcc -shared -g -fPIC default_cpu_gpu_kernels_hip.cpp.o iris_default_math_hip_kernels.hip.cpp.o -o libhip_default.so 
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/default_cpu_gpu_kernels.cpp

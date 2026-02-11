@@ -128,18 +128,22 @@ typedef struct IrisParam_ {
 } IrisParam;
 
 typedef struct IrisSpec_ {
-    int32_t n_streams;
     int32_t devno;
-    int32_t dev_id;
+    int32_t local_dev_id;
+    int32_t ordinal;
+    int32_t model;
+    int32_t n_streams;
+    int32_t stream_index;
     int32_t is_async;
+    int32_t dim;
     unsigned long task_id;
     unsigned long cmd_id;
-    void **streams;
     void *ctx;
-    int32_t dim;
     size_t *gws;
+    size_t *off;
     size_t *grid;
     size_t *block;
+    void **streams;
     size_t shmem_size;
 } IrisSpec;
 
@@ -209,6 +213,11 @@ iris_levelzero = 4,
 iris_opencl = 5,
 iris_openmp = 6,
 iris_qiree = 7,
+iris_opencl_cuda = 8,
+iris_opencl_hip = 9,
+iris_opencl_xilinx_fpga = 10,
+iris_opencl_intel_fpga = 10,
+iris_opencl_cpu = 11,
 iris_model_all = (1 << 25) // Same as iris_all
 };
 typedef enum DeviceModel DeviceModel;
@@ -846,6 +855,7 @@ extern int iris_command_update_mem(iris_command brs_command, int index, iris_mem
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_task_set_stream_policy(iris_task brs_task, StreamPolicy policy);
+extern int iris_task_set_stream_affinity(iris_task brs_task, int stream);
 
 /**@brief Disable task asynchronous execution
  *
@@ -2198,7 +2208,7 @@ extern int iris_mem_is_alive(iris_mem brs_mem);
 extern size_t iris_mem_get_size(iris_mem mem);
 extern size_t iris_mem_get_full_size(iris_mem mem);
 extern int iris_mem_get_type(iris_mem mem);
-extern int iris_mem_get_uid(iris_mem mem);
+extern unsigned long iris_mem_get_uid(iris_mem mem);
 extern int iris_get_mem_element_type(iris_mem brs_mem);
 extern int iris_mem_is_reset(iris_mem mem);
 extern int iris_mem_init_reset(iris_mem brs_mem, int memset_value);

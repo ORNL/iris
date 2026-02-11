@@ -236,6 +236,7 @@ public:
   int devno() { return devno_; }
   int type() { return type_; }
   int model() { return model_; }
+  int sub_model() { return sub_model_; }
   char* vendor() { return vendor_; }
   char* name() { return name_; }
   bool busy() { return busy_; }
@@ -257,6 +258,7 @@ public:
   double Now() { return timer_->Now(); }
   Timer *timer() { return timer_; }
   const char *kernel_path() { return kernel_path_.c_str(); }
+  IrisSpec *spec() { return &spec_; }
 protected:
   LoaderResetKernel* ld_reset() { return ld_reset_; }
   void HandleMemReset(bool async, Command *cmd, Kernel *kernel, Task *task, DataMem *mem, DataMem *src_mem);
@@ -301,6 +303,7 @@ protected:
   int platform_;
   int type_;
   int model_;
+  int sub_model_;
   char vendor_[128];
   char name_[256];
   char version_[64];
@@ -352,6 +355,7 @@ protected:
   Device *root_device() { return root_dev_; }
   JuliaHostInterfaceLoader *julia_if_;
   PythonHostInterfaceLoader *python_if_;
+  IrisSpec spec_;
 };
 
 } /* namespace rt */

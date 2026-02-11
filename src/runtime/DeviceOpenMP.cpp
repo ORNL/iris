@@ -52,11 +52,20 @@ const int FillCpuNameFromMacSysctl(char* name, size_t name_cap) {
 }
 #endif
 
-DeviceOpenMP::DeviceOpenMP(LoaderOpenMP* ld, int devno, int platform) : Device(devno, platform) {
+DeviceOpenMP::DeviceOpenMP(LoaderOpenMP* ld, int ordinal, int devno, int platform) : Device(devno, platform) {
   ld_ = ld;
   ld_default_ = NULL;
   type_ = iris_cpu;
   model_ = iris_openmp;
+  spec_.ordinal = ordinal;
+  spec_.model = model_;
+  spec_.local_dev_id = ordinal;
+  // Below arguments are fixed for now
+  spec_.is_async = false;
+  spec_.stream_index = 0;
+  spec_.n_streams = 0;
+  spec_.streams = NULL;
+  spec_.ctx = NULL;
   can_share_host_memory_ = true;
 #ifdef __APPLE__
   FillCpuNameFromMacSysctl(name_, 256);
@@ -390,21 +399,23 @@ void DeviceOpenMP::CheckVendorSpecificKernel(Kernel* kernel) {
 }
 int DeviceOpenMP::KernelLaunchInit(Command *cmd, Kernel* kernel) {
   //c_string_array data = ld_->iris_get_kernel_names();
+  spec_.cmd_id = cmd->uid();
+  spec_.task_id = cmd->task()->uid();
   int status=IRIS_ERROR;
   if (julia_if_ != NULL && kernel->enable_julia_if()) {
-      julia_if_->launch_init(model(), devno_, 0, 0, (void **)NULL, kernel->GetParamWrapperMemory(), cmd);
+      julia_if_->launch_init(spec(), kernel->GetParamWrapperMemory(), cmd);
       julia_if_->set_julia_kernel_type(kernel->GetParamWrapperMemory(), kernel->julia_kernel_type());
       return IRIS_SUCCESS;
   }
   else if (python_if_ != NULL && kernel->enable_python_if()) {
-      python_if_->launch_init(model(), devno_, 0, 0, (void **)NULL, kernel->GetParamWrapperMemory(), cmd);
+      python_if_->launch_init(spec(), kernel->GetParamWrapperMemory(), cmd);
       python_if_->set_python_kernel_type(kernel->GetParamWrapperMemory(), kernel->python_kernel_type());
       return IRIS_SUCCESS;
   }
   else if (ld_default_ != NULL && kernel->is_default_kernel(devno_))
-      ld_default_->launch_init(model(), devno_, 0, 0, NULL, kernel->GetParamWrapperMemory(), cmd);
+      ld_default_->launch_init(spec(), kernel->GetParamWrapperMemory(), cmd);
   else {
-      status = ld_->launch_init(model(), devno_, 0, 0, NULL, kernel->GetParamWrapperMemory(), cmd);
+      status = ld_->launch_init(spec(), kernel->GetParamWrapperMemory(), cmd);
       /*
          if (ld_->iris_openmp_kernel_with_obj)
          status = ld_->iris_openmp_kernel_with_obj(kernel->GetParamWrapperMemory(), kernel->name());
@@ -485,31 +496,28 @@ int DeviceOpenMP::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem
 }
 
 int DeviceOpenMP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws) {
+  Command *cmd = kernel->command();
   //printf(" Task %s\n", kernel->get_task_name());
+  spec_.dim = dim;
+  spec_.off = off;
+  spec_.gws = gws;
+  spec_.block = NULL;
+  spec_.grid = NULL;
+  spec_.shmem_size = kernel->shared_mem_size();
   _trace("dev[%d] kernel[%s:%s] dim[%d] off[%lu] gws[%lu]", devno_, kernel->name(), kernel->get_task_name(), dim, off[0], gws[0]);
   if (julia_if_ != NULL && kernel->enable_julia_if()) {
-      julia_if_->host_launch(kernel->task()->uid(), kernel->command()->uid(), (void **)NULL, 0, NULL, false,
-                  0, kernel->name(), 
-                  kernel->GetParamWrapperMemory(), devno(),
-                  dim, gws, off, gws, kernel->shared_mem_size());
+      julia_if_->host_launch(spec(), cmd, kernel);
       return IRIS_SUCCESS;
   }
   if (python_if_ != NULL && kernel->enable_python_if()) {
-      python_if_->host_launch(kernel->task()->uid(), kernel->command()->uid(), (void **)NULL, 0, NULL, false,
-                  0, kernel->name(), kernel->get_python_function(),
-                  kernel->GetParamWrapperMemory(), devno(),
-                  dim, gws, off, gws, kernel->shared_mem_size());
+      python_if_->host_launch(spec(), cmd, kernel);
       return IRIS_SUCCESS;
   }
   if (ld_default_ != NULL && kernel->is_default_kernel(devno_) && 
-          (ld_default_->host_launch(NULL, 0, 0, kernel->name(), 
-                            kernel->GetParamWrapperMemory(), 
-                            devno(),
-                            dim, off, gws) == IRIS_SUCCESS)) {
+          (ld_default_->host_launch(spec(), cmd, kernel) == IRIS_SUCCESS)) {
     return IRIS_SUCCESS;
   }
-  else if (ld_->host_launch(NULL, 0, 0, kernel->name(), kernel->GetParamWrapperMemory(), devno(),
-              dim, off, gws) == IRIS_SUCCESS) 
+  else if (ld_->host_launch(spec(), cmd, kernel) == IRIS_SUCCESS) 
       return IRIS_SUCCESS;
   /*
   ld_->SetKernelPtr(kernel->GetParamWrapperMemory(), kernel->name());

@@ -62,6 +62,8 @@ int LoaderHIP::LoadFunctions() {
   LOADFUNC(hipSetDeviceFlags);
   LOADFUNC(hipMemcpy2DAsync);
   LOADFUNC(hipMemcpy3DAsync);
+  LOADFUNC(hipMemcpyPeer);
+  LOADFUNC(hipMemcpyPeerAsync);
   LOADFUNC(hipMemcpyDtoD);
   LOADFUNC(hipMemcpyDtoDAsync);
   LOADFUNC(hipMemcpyHtoD);

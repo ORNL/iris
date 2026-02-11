@@ -378,18 +378,22 @@ class IrisParam(ctypes.Structure):
 
 class IrisSpec(ctypes.Structure):
     _fields_ = [
-        ("n_streams",  c_int32),
         ("devno",      c_int32),
-        ("dev_id",     c_int32),
+        ("local_dev_id",    c_int32),            
+        ("ordinal",     c_int32),
+        ("model",      c_int32),            
+        ("n_streams",  c_int32),
+        ("stream_index",c_int32),
         ("is_async",   c_int32),
+        ("dim",        c_int32),            # dimensionality for gws/grid/block
         ("task_id",    c_ulong),
         ("cmd_id",     c_ulong),
-        ("streams",    POINTER(c_void_p)),  # void** streams
         ("ctx",        c_void_p),           # void* ctx
-        ("dim",        c_int32),            # dimensionality for gws/grid/block
         ("gws",        POINTER(c_size_t)),  # size_t* gws
+        ("off",        POINTER(c_size_t)),  # size_t* off
         ("grid",       POINTER(c_size_t)),  # size_t* grid
         ("block",      POINTER(c_size_t)),  # size_t* block
+        ("streams",    POINTER(c_void_p)),  # void** streams
         ("shmem_size", c_size_t),
     ]
 
@@ -641,20 +645,23 @@ def spec_to_python(spec_ptr: POINTER(IrisSpec)):
         return [int(ptr[i]) for i in range(dim)]
 
     return {
-        "n_streams": int(s.n_streams),
-        "devno":     int(s.devno),
-        "dev_id":    int(s.dev_id),
-        "is_async":  int(s.is_async),
-        "task_id":   int(s.task_id),
-        "cmd_id":    int(s.cmd_id),
-        "streams":   streams,    # list of c_void_p
-        "ctx_ptr":   s.ctx,      # opaque pointer
-        "dim":       dim,
-        "gws":       read_size_array(s.gws),
-        "grid":      read_size_array(s.grid),
-        "block":     read_size_array(s.block),
-        "shmem_size": int(s.shmem_size),
-        "raw":       s,          # original IrisSpec ctypes struct
+        "devno":        int(s.devno),
+        "local_dev_id": int(s.local_dev_id),
+        "ordinal":      int(s.ordinal),
+        "model":        int(s.model),
+        "n_streams":    int(s.n_streams),
+        "stream_index": int(s.stream_index),
+        "is_async":     int(s.is_async),
+        "dim":          int(s.dim),
+        "task_id":      int(s.task_id),
+        "cmd_id":       int(s.cmd_id),
+        "ctx":          s.ctx,      # opaque pointer
+        "gws":          read_size_array(s.gws),
+        "off":          read_size_array(s.off),
+        "grid":         read_size_array(s.grid),
+        "block":        read_size_array(s.block),
+        "streams":      streams,    # list of c_void_p
+        "shmem_size":   int(s.shmem_size),
     }
 
 # Callback type: void (*)(IrisParam* params, int32_t n, IrisSpec* spec)
@@ -983,7 +990,9 @@ def timer_now():
     dll.iris_timer_now(byref(d))
     return d.value
 
+np_obj_2_dmem = {}
 mem_handle_2_pobj = {}
+track_host2dmems = {}
 class dmem_null:
   def __init__(self, size=0):
     m = iris_mem()
@@ -1003,7 +1012,6 @@ class dmem_null:
     dll.iris_data_mem_update(self.handle, c_host)
 
 class dmem_base:
-  track_host2dmems = {}
   def __init__(self, reuse, *args):
     self.str_data = None
     self.host = None
@@ -1012,6 +1020,15 @@ class dmem_base:
     if self.handle.uid not in mem_handle_2_pobj:
         mem_handle_2_pobj[self.handle.uid] = []
     mem_handle_2_pobj[self.handle.uid].append(self)
+  def print(self, tag):
+    dll.iris_data_mem_print_with_tag(self.handle, convert_obj_ctype(tag))
+  def flush(self, sync=True):
+    task_handle = task_create("flush")
+    dll.iris_task_dmem_flush_out(task_handle, self.handle)
+    task_submit(task_handle, iris_default, sync)
+
+  def print(self):
+    dll.iris_data_mem_print(self.handle)
 
   def host_data(self, dtype):
     ptr = dll.call_ret_ptr(dll.iris_get_dmem_valid_host, self.handle)
@@ -1021,6 +1038,7 @@ class dmem_base:
     return np_array
 
   def dmem_create(self, reuse, *args):
+    global track_host2dmems
     if len(args) == 1:
       c_host = None
       if len(args[0]) == 0:
@@ -1045,9 +1063,9 @@ class dmem_base:
       dim = len(host_size)
       size = host.nbytes
       self.dtype = host.dtype
-      if reuse and c_host.value in dmem_base.track_host2dmems:
+      if reuse and c_host.value in track_host2dmems:
         self.host = host
-        return dmem_base.track_host2dmems[c_host.value], IRIS_DMEM
+        return track_host2dmems[c_host.value], IRIS_DMEM
       m = iris_mem()
       if dim == 1:
         chost_size = (c_size_t * dim)(*host_size)
@@ -1060,7 +1078,7 @@ class dmem_base:
         elem_type = get_iris_type(host.dtype)
         dll.iris_data_mem_create_nd(byref(m), c_host, chost_size, c_int(dim), c_size_t(elem_size), c_int(elem_type))
       self.host = host
-      dmem_base.track_host2dmems[c_host.value] = m
+      track_host2dmems[c_host.value] = m
       return m, IRIS_DMEM
     elif len(args) == 2:
       (root_mem, host) = args
@@ -1079,7 +1097,8 @@ class dmem_base:
       self.host = host
       dll.iris_data_mem_create_tile(byref(m), c_host, coff, chost_size, cdev_size, c_size_t(elem_size), c_int(dim))
       return m, IRIS_DMEM
-
+  def clear(self):
+    dll.iris_data_mem_clear(self.handle)
   def release(self):
     return dll.iris_mem_release(self.handle)
   def is_reset(self):
@@ -1108,6 +1127,26 @@ class dmem(dmem_base):
     super().__init__(True, *args)
   def __del__(self):
     None
+  def create(np_arr, no_mandate=False):
+    global np_obj_2_dmem
+    if hasattr(np_arr, 'handle') and isinstance(np_arr.handle, iris_mem):
+        return np_arr # Already a IRIS MEM object
+    if isinstance(np_arr, np.ndarray):
+        key = (np_arr.ctypes.data, np_arr.size)
+        if key in np_obj_2_dmem:
+            return np_obj_2_dmem[key]
+        if no_mandate:
+            return None
+        dmem_obj = dmem(np_arr)
+        np_obj_2_dmem[key] = dmem_obj
+        return dmem_obj
+    else:
+        if no_mandate:
+            return None
+        # Do not know what it is
+        return dmem(np_arr)
+  def clear(self):
+    dll.iris_data_mem_clear(self.handle)
   def get_region_uids(self):
     n_regions = dll.call_ret(dll.iris_data_mem_n_regions(self.handle), np.int32)
     output = []
@@ -1118,6 +1157,8 @@ class dmem(dmem_base):
 class dmem_noreuse(dmem_base):
   def __init__(self, *args):
     super().__init__(False, *args)
+  def clear(self):
+    dll.iris_data_mem_clear(self.handle)
   def get_region_uids(self):
     n_regions = dll.call_ret(dll.iris_data_mem_n_regions(self.handle), np.int32)
     output = []
@@ -1129,6 +1170,8 @@ class dmem_region(dmem_base):
   def __init__(self, *args):
     super().__init__(True, args)
     self.fetch_dmem()
+  def clear(self):
+    dll.iris_data_mem_clear(self.handle)
   def fetch_dmem(self, handle=None):
     if handle == None:
         handle = self.handle
@@ -1161,8 +1204,6 @@ class dmem_infile(dmem_base):
             print(f"An error occurred: {e}")
             return None
 
-
-    
 class mem:
   def __init__(self, size):
     self.handle = mem_create(size)
@@ -1211,11 +1252,11 @@ class command:
   def __init__(self, handle):
     self.handle = handle
 
-  def profile():
+  def profile(self):
     start_time = c_double()
     end_time = c_double()
     dll.iris_cmd_get_profile(self.handle, byref(start_time), byref(end_time))
-    return (end_time-start_time, start_time, end_time)
+    return (np.double(end_time)-np.double(start_time), np.double(start_time), np.double(end_time))
 
 class size_t:
     def __init__(self, value):
@@ -1379,36 +1420,44 @@ class task:
             self.handle = task_create()
             task_handle_2_pobj[self.handle.uid] = self
             return
-        (kernel, dim, off, gws, lws, params_list) = args
+        kernel = args[0] if len(args) > 0 else "kernel"
+        dim = args[1] if len(args) > 1 else 1
+        off = args[2] if len(args) > 2 else []
+        gws = args[3] if len(args) > 3 else []
+        lws = args[4] if len(args) > 4 else []
+        params = args[5] if len(args) > 5 else []
+        params_info = args[6] if len(args) > 6 else []
         if callable(kernel):
             self.handle = task_create(kernel.__name__)
         else:
             self.handle = task_create(kernel)
-        self.kernel(kernel, dim, off, gws, lws, params_list)
+        self.kernel(kernel, dim, off, gws, lws, params, params_info)
 
-    def kernel(self, kernel, dim, off, gws, lws, params, params_info=[]):
-        if callable(kernel):
+    def kernel(self, kname, dim, off, gws, lws, params, params_info=[], shared_mem=0):
+        if callable(kname):
             # This is python kernel function
-            self.py_func_object = ctypes.py_object(kernel)
-            self.kernel_core(kernel.__name__, dim, off, gws, lws, params, params_info)
+            self.py_func_object = ctypes.py_object(kname)
+            self.kernel_core(kname.__name__, dim, off, gws, lws, params, params_info, shared_mem)
             dll.iris_kernel_set_python_function(self.kernel_obj, ctypes.pointer(self.py_func_object))
             dll.iris_kernel_enable_python_interface(self.kernel_obj, iris_python_native)
         else:
-            self.kernel_core(kernel, dim, off, gws, lws, params, params_info)
+            self.kernel_core(kname, dim, off, gws, lws, params, params_info, shared_mem)
         return self.last_command()
 
-    def kernel_core(self, kernel, dim, off, gws, lws, params, params_info=[]):
+    def kernel_core(self, kernel, dim, off, gws, lws, params, params_info=[], shared_mem=0):
         if len(params_info) == 0  and len(params) != len(params_info):
-            return self.kernel_core2(kernel, dim, off, gws, lws, params)
+            return self.kernel_core2(kernel, dim, off, gws, lws, params, shared_mem)
         else:
-            return self.kernel_core1(kernel, dim, off, gws, lws, params, params_info)
-    def kernel_core1(self, kernel, dim, off, gws, lws, params, params_info):
+            return self.kernel_core1(kernel, dim, off, gws, lws, params, params_info, shared_mem)
+
+    def kernel_core1(self, kernel, dim, off, gws, lws, params, params_info=[], shared_mem=0):
         task_kernel(self.handle, kernel, dim, off, gws, lws, params, params_info, self.params)
         self.kernel_obj = dll.call_ret(dll.iris_task_get_last_cmd_kernel, iris_kernel, self.handle)
-
+        if shared_mem !=0:
+            dll.iris_kernel_set_shared_memory_size(self.kernel_obj, c_size_t(shared_mem))
         return self.kernel_obj
 
-    def kernel_core2(self, kernel, dim, off, gws, lws, params_list):
+    def kernel_core2(self, kernel, dim, off, gws, lws, params_list, shared_mem=0):
         coff = (c_size_t * dim)(*off)
         cgws = (c_size_t * dim)(*gws)
         clws = (c_size_t * dim)(*lws)
@@ -1435,7 +1484,7 @@ class task:
                     # (NUMPY Object, modes of use, <optional flush>)
                     # Should be numpy array
                     host = pobj[0]
-                    dobj = dmem(host)
+                    dobj = dmem.create(host)
                     self.params.append(dobj)
                     cparams[i] = ctypes.addressof(dobj.handle)
                     if len(pobj) == 2 and pobj[1] == iris_flush:
@@ -1469,12 +1518,15 @@ class task:
         kernel_name = c_char_p(kernel) if sys.version_info[0] == 2 else c_char_p(bytes(kernel, 'ascii'))
         self.kernel_obj = dll.iris_task_kernel(self.handle, kernel_name, c_int(dim), coff, cgws, clws, c_int(nparams), cparams, cparams_info)
         self.kernel_obj = dll.call_ret(dll.iris_task_get_last_cmd_kernel, iris_kernel, self.handle)
+        if shared_mem !=0:
+            dll.iris_kernel_set_shared_memory_size(self.kernel_obj, c_size_t(shared_mem))
         for pobj in flush_objs:
             dll.iris_task_dmem_flush_out(self.handle, pobj)
         return self.kernel_obj
 
     def flush(self, mem):
-        dll.iris_task_dmem_flush_out(self.handle, mem.handle)
+        d_mem = dmem.create(mem)
+        dll.iris_task_dmem_flush_out(self.handle, d_mem.handle)
         return self.last_command()
 
     def name(self):
@@ -1490,6 +1542,8 @@ class task:
         dll.iris_task_set_name(self.handle, c_name)
     def set_device(self, device):
         dll.iris_task_set_device(self.handle, convert_obj_ctype(device)[0])
+    def set_stream(self, stream): # Set stream affinity
+        dll.iris_task_set_stream_affinity(self.handle, convert_obj_ctype(stream)[0])
     def set_policy(self, policy):
         dll.iris_task_set_policy(self.handle, convert_obj_ctype(policy)[0])
     def uid(self):
@@ -1571,28 +1625,37 @@ class task:
     def params_map(self, params_map_list):
         task_params_map(self.handle, params_map_list)
     def dmem2dmem(self, src_mem, dst_mem):
-        dll.iris_task_dmem2dmem(self.handle, src_mem.handle, dst_mem.handle)
+        src_d_mem = dmem.create(src_mem)
+        dst_d_mem = dmem.create(dst_mem)
+        dll.iris_task_dmem2dmem(self.handle, src_d_mem.handle, dst_d_mem.handle)
         return self.last_command()
     def mem_in(self, mem, off=0, size=0, host=None):
-        task_h2d(self.handle, mem.handle, off, size, host)
+        d_mem = dmem.create(mem)
+        task_h2d(self.handle, d_mem.handle, off, size, host)
         return self.last_command()
     def h2d(self, mem, off=0, size=0, host=None):
-        task_h2d(self.handle, mem.handle, off, size, host)
+        d_mem = dmem.create(mem)
+        task_h2d(self.handle, d_mem.handle, off, size, host)
         return self.last_command()
     def mem_out(self, mem, off=0, size=0, host=None):
-        task_d2h(self.handle, mem.handle, off, size, host)
+        d_mem = dmem.create(mem)
+        task_d2h(self.handle, d_mem.handle, off, size, host)
         return self.last_command()
     def d2h(self, mem, off=0, size=0, host=None):
-        task_d2h(self.handle, mem.handle, off, size, host)
+        d_mem = dmem.create(mem)
+        task_d2h(self.handle, d_mem.handle, off, size, host)
         return self.last_command()
     def d2d(self, mem, src_dev=0, off=0, size=0, host=None):
-        task_d2d(self.handle, mem.handle, src_dev, off, size, host)
+        d_mem = dmem.create(mem)
+        task_d2d(self.handle, d_mem.handle, src_dev, off, size, host)
         return self.last_command()
     def h2d_full(self, mem, host):
-        task_h2d_full(self.handle, mem.handle, host)
+        d_mem = dmem.create(mem)
+        task_h2d_full(self.handle, d_mem.handle, host)
         return self.last_command()
     def d2h_full(self, mem, host):
-        task_d2h_full(self.handle, mem.handle, host)
+        d_mem = dmem.create(mem)
+        task_d2h_full(self.handle, d_mem.handle, host)
         return self.last_command()
     def pyhost(self, func, params):
         python_task_host(self, self.handle, func, params)
@@ -1885,6 +1948,34 @@ class graph:
             df['task_uid'] = task_uids
             return df
         return comp_2d
+def refresh():
+    np_obj_2_dmem.clear()
+    mem_handle_2_pobj.clear()
+    track_host2dmems.clear()
+
+def clear(data):
+    d = dmem.create(data, True)
+    if d != None:
+        d.clear()
+
+def flush(data, sync=True):
+    d = dmem.create(data, True)
+    if d != None:
+        d.flush(sync)
+
+def release(data):
+    if isinstance(data, dmem_base) or isinstance(data, kernel) or isinstance(data, task) or isinstance(data, graph):
+        data.release()
+        return
+    d = dmem.create(data, True)
+    if d != None:
+        d.release()
+
+def print_dmem(data, tag=""):
+    d = dmem.create(data, True)
+    if d != None:
+        d.print(tag)
+
 class json_graph(graph):
     def __init__(self, json_file='graph.json', params=[]):
         self.load(json_file, params)

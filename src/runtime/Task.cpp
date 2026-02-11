@@ -66,6 +66,7 @@ Task::Task(Platform* platform, int type, const char* name, int max_cmds) {
   enable_julia_if_ = false;
   julia_kernel_type_ = iris_julia_native;
   type_ = type;
+  stream_affinity_ = -1;
   recommended_stream_ = -1;
   ext_records_ = NULL;
   recommended_dev_ = -1;

@@ -52,6 +52,10 @@ DeviceHIP::DeviceHIP(LoaderHIP* ld, LoaderHost2HIP *host2hip_ld, hipDevice_t dev
   strcpy(name_, name_str.c_str());
   type_ = iris_amd;
   model_ = iris_hip;
+  spec_.ordinal = ordinal;
+  spec_.model = model_;
+  spec_.local_dev_id = local_devno;
+
   streams_ = new hipStream_t[nqueues_*2];
   memset(streams_, 0, sizeof(hipStream_t)*nqueues_*2);
   //memset(start_time_event_, 0, sizeof(hipEvent_t)*IRIS_MAX_DEVICE_NQUEUES);
@@ -163,6 +167,7 @@ int DeviceHIP::Init() {
   err = ld_->hipInit(0);
   _hiperror(err);
   err = ld_->hipCtxCreate(&ctx_, hipDeviceScheduleAuto, ordinal_);
+  spec_.ctx = (void *)ctx_;
   //EnablePeerAccess();
   _hiperror(err);
   if (is_async(false)) {
@@ -503,12 +508,18 @@ int DeviceHIP::MemD2D(Task *task, Device *src_dev, BaseMem *mem, void *dst, void
       if (stream_index == DEFAULT_STREAM_INDEX) { async = false; stream_index = 0; }
   }
   if (async) {
+      if (ctx_ != ((DeviceHIP *)src_dev)->ctx_)
+      err = ld_->hipMemcpyPeerAsync(dst, dev_, src, ((DeviceHIP *)src_dev)->dev_, size, streams_[stream_index]);
+      else
       err = ld_->hipMemcpyDtoDAsync(dst, src, size, streams_[stream_index]);
       _hiperror(err);
       if (err != hipSuccess) error_occured = true;
   } 
   else {
-      err = ld_->hipMemcpyDtoD(dst, src, size);
+      if (ctx_ != ((DeviceHIP *)src_dev)->ctx_)
+         err = ld_->hipMemcpyPeer(dst, dev_, src, ((DeviceHIP *)src_dev)->dev_, size);
+      else
+         err = ld_->hipMemcpyDtoD(dst, src, size);
       _hiperror(err);
       if (err != hipSuccess) error_occured = true;
   }
@@ -1278,20 +1289,28 @@ int DeviceHIP::KernelLaunchInit(Command *cmd, Kernel* kernel) {
     int stream_index = 0;
     hipStream_t *kstream = NULL;
     int nstreams = 0;
+    bool async = false;
     if (is_async(kernel->task(), false)) {
         stream_index = cmd->recommended_stream(); //GetStream(kernel->task()); //task->uid() % nqueues_; 
-        if (stream_index == DEFAULT_STREAM_INDEX) { stream_index = 0; }
+        async = true;
+        if (stream_index == DEFAULT_STREAM_INDEX) { async = false; stream_index = 0; }
         kstream = &streams_[stream_index];
         //nstreams = nqueues_ - stream_index;
         nstreams = nqueues_-n_copy_engines_;
     }
+    spec_.is_async = async;
+    spec_.stream_index = stream_index;
+    spec_.n_streams = nstreams;
+    spec_.streams = (void **)kstream;
+    spec_.cmd_id = cmd->uid();
+    spec_.task_id = cmd->task()->uid();
     if (kernel->is_vendor_specific_kernel(devno_))
-        host2hip_ld_->launch_init(model(), devno_, stream_index, nstreams, (void **)kstream, kernel->GetParamWrapperMemory(), cmd);
+        host2hip_ld_->launch_init(spec(), kernel->GetParamWrapperMemory(), cmd);
     //printf(" Is task julia enabled:%d param:%p\n", kernel->enable_julia_if(), kernel->GetParamWrapperMemory());
     else if (ld_default_ != NULL && kernel->is_default_kernel(devno_))
-        ld_default_->launch_init(model(), devno_, stream_index, nstreams, (void **)kstream, kernel->GetParamWrapperMemory(), cmd);
+        ld_default_->launch_init(spec(), kernel->GetParamWrapperMemory(), cmd);
     if (julia_if_ != NULL && kernel->enable_julia_if()) {
-        julia_if_->launch_init(model(), devno_, stream_index, nstreams, (void **)kstream, kernel->GetParamWrapperMemory(), cmd);
+        julia_if_->launch_init(spec(), kernel->GetParamWrapperMemory(), cmd);
         julia_if_->set_julia_kernel_type(kernel->GetParamWrapperMemory(), kernel->julia_kernel_type());
     }
     return IRIS_SUCCESS;
@@ -1299,7 +1318,7 @@ int DeviceHIP::KernelLaunchInit(Command *cmd, Kernel* kernel) {
 
 void DeviceHIP::VendorKernelLaunch(void *kernel, int gridx, int gridy, int gridz, int blockx, int blocky, int blockz, int shared_mem_bytes, void *stream, void **params) 
 { 
-  printf("IRIS Received kernel:%p stream:%p\n", kernel, stream);
+  //printf("IRIS Received kernel:%p stream:%p\n", kernel, stream);
   if (IsContextChangeRequired()) {
       ld_->hipCtxSetCurrent(ctx_);
   }
@@ -1311,6 +1330,7 @@ void DeviceHIP::VendorKernelLaunch(void *kernel, int gridx, int gridy, int gridz
 
 int DeviceHIP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws) {
   Command *cmd = kernel->command();
+  spec_.dim = dim;
 #ifdef TRACE_DISABLE
   hipCtx_t ctx;
   ld_->hipCtxGetCurrent(&ctx);
@@ -1322,28 +1342,27 @@ int DeviceHIP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, s
 #endif
   atleast_one_command_ = true;
   hipError_t err;
-  int stream_index=0;
-  hipStream_t *kstream = NULL;
-  bool async = false;
-  int nstreams = 0;
-  if (is_async(kernel->task(), false)) {
-      stream_index = cmd->recommended_stream(); //GetStream(kernel->task()); //task->uid() % nqueues_; 
-      async = true;
-      if (stream_index == DEFAULT_STREAM_INDEX) { async = false; stream_index = 0; }
-      // Though async is set to false, we still pass all streams to kernel to use it
-      kstream = &streams_[stream_index];
-      //nstreams = nqueues_ - stream_index;
-      nstreams = nqueues_-n_copy_engines_;
-  }
+  int stream_index=spec_.stream_index;
+  bool async = spec_.is_async;
   if (IsContextChangeRequired()) {
       ld_->hipCtxSetCurrent(ctx_);
   }
-  _event_prof_debug("kernel start dev[%d][%s] kernel[%s:%s] dim[%d] q[%d]\n", devno_, name_, kernel->name(), kernel->get_task_name(), dim, stream_index);
+  int block[3] = { lws ? (int) lws[0] : 1, lws ? (int) lws[1] : 1, lws ? (int) lws[2] : 1 };
+  if (!lws) {
+    if (max_compute_units_ != 0) while (max_compute_units_ * block[0] < gws[0]) block[0] <<= 1;
+    while (block[0] > max_block_dims_[0] && max_block_dims_[0] !=0) block[0] >>= 1;
+  }
+  int grid[3] = { (int) ((gws[0]+block[0]-1) / block[0]), (int) ((gws[1]+block[1]-1) / block[1]), (int) ((gws[2]+block[2]-1) / block[2]) };
+  size_t grid_s[3] =  { (size_t)grid[0],  (size_t)grid[1],  (size_t)grid[2] };
+  size_t block_s[3] = { (size_t)block[0], (size_t)block[1], (size_t)block[2] };
+  spec_.off = off;
+  spec_.gws = gws;
+  spec_.block = block_s;
+  spec_.grid = grid_s;
+  spec_.shmem_size = kernel->shared_mem_size();
+  _event_prof_debug("kernel start dev[%d][%s] kernel[%s:%s] dim[%d] q[%d]\n", devno_, name_, kernel->name(), kernel->get_task_name(), dim, spec_.stream_index);
   if (kernel->is_vendor_specific_kernel(devno_)) {
-     if (host2hip_ld_->host_launch((void **)kstream, stream_index, 
-                nstreams, kernel->name(), 
-                 kernel->GetParamWrapperMemory(), devno(), 
-                 dim, off, gws) == IRIS_SUCCESS) {
+     if (host2hip_ld_->host_launch(spec(), cmd, kernel) == IRIS_SUCCESS) {
          if (!async) {
              err = ld_->hipDeviceSynchronize();
              _hiperror(err);
@@ -1358,10 +1377,7 @@ int DeviceHIP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, s
      return IRIS_ERROR;
   }
   if (kernel->is_default_kernel(devno_)) {
-     if (ld_default_->host_launch((void **)kstream, 
-                 stream_index, nstreams, kernel->name(), 
-                 kernel->GetParamWrapperMemory(), devno(), 
-                 dim, off, gws) == IRIS_SUCCESS) {
+     if (ld_default_->host_launch(spec(), cmd, kernel) == IRIS_SUCCESS) {
          if (!async) {
              err = ld_->hipDeviceSynchronize();
              _hiperror(err);
@@ -1375,14 +1391,8 @@ int DeviceHIP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, s
      platform_obj()->IncrementErrorCount();
      return IRIS_ERROR;
   }
-  _trace("native kernel start dev[%d][%s] kernel[%s:%s] dim[%d] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, stream_index);
+  _trace("native kernel start dev[%d][%s] kernel[%s:%s] dim[%d] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, spec_.stream_index);
   hipFunction_t func = (hipFunction_t) kernel->arch(this);
-  int block[3] = { lws ? (int) lws[0] : 1, lws ? (int) lws[1] : 1, lws ? (int) lws[2] : 1 };
-  if (!lws) {
-    if (max_compute_units_ != 0) while (max_compute_units_ * block[0] < gws[0]) block[0] <<= 1;
-    while (block[0] > max_block_dims_[0] && max_block_dims_[0] !=0) block[0] >>= 1;
-  }
-  int grid[3] = { (int) ((gws[0]+block[0]-1) / block[0]), (int) ((gws[1]+block[1]-1) / block[1]), (int) ((gws[2]+block[2]-1) / block[2]) };
   //int grid[3] = { (int) ((gws[0]-off[0]) / block[0]), (int) ((gws[1]-off[1]) / block[1]), (int) ((gws[2]-off[2]) / block[2]) };
 
   size_t blockOff_x = off[0] / block[0];
@@ -1402,14 +1412,9 @@ int DeviceHIP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, s
     }
   }
 
-  _trace("dev[%d][%s] kernel[%s:%s] dim[%d] grid[%d,%d,%d] off[%ld,%ld,%ld] block[%d,%d,%d] blockoff[%lu,%lu,%lu] max_arg_idx[%d] shared_mem_bytes[%u] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, grid[0], grid[1], grid[2], off[0], off[1], off[2], block[0], block[1], block[2], blockOff_x, blockOff_y, blockOff_z, max_arg_idx_, shared_mem_bytes_, stream_index);
+  _trace("dev[%d][%s] kernel[%s:%s] dim[%d] grid[%d,%d,%d] off[%ld,%ld,%ld] block[%d,%d,%d] blockoff[%lu,%lu,%lu] max_arg_idx[%d] shared_mem_bytes[%u] q[%d]", devno_, name_, kernel->name(), kernel->get_task_name(), dim, grid[0], grid[1], grid[2], off[0], off[1], off[2], block[0], block[1], block[2], blockOff_x, blockOff_y, blockOff_z, max_arg_idx_, shared_mem_bytes_, spec_.stream_index);
   if (julia_if_ != NULL && kernel->enable_julia_if()) {
-      size_t grid_s[3] =  { (size_t)grid[0],  (size_t)grid[1],  (size_t)grid[2] };
-      size_t block_s[3] = { (size_t)block[0], (size_t)block[1], (size_t)block[2] };
-      julia_if_->host_launch(kernel->task()->uid(), kernel->command()->uid(), (void **)kstream, stream_index, (void *)&ctx_, async,
-                  nstreams, kernel->name(), 
-                  kernel->GetParamWrapperMemory(), ordinal_,
-                  dim, gws, grid_s, block_s, kernel->shared_mem_size());
+      julia_if_->host_launch(spec(), cmd, kernel);
       return IRIS_SUCCESS;
   }
   if (!async) {
@@ -1427,7 +1432,7 @@ int DeviceHIP::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, s
       }
   }
   else {
-      err = ld_->hipModuleLaunchKernel(func, grid[0], grid[1], grid[2], block[0], block[1], block[2], kernel->shared_mem_size(), streams_[stream_index], params_, NULL);
+      err = ld_->hipModuleLaunchKernel(func, grid[0], grid[1], grid[2], block[0], block[1], block[2], kernel->shared_mem_size(), streams_[spec_.stream_index], params_, NULL);
       _hiperror(err);
       if (err != hipSuccess){
           platform_obj()->IncrementErrorCount();

@@ -190,6 +190,8 @@ public:
   void set_opt(const char* opt);
   const char* get_opt(){return opt_.c_str();}
   const char* opt() { return opt_.c_str(); }
+  void set_stream_affinity(int stream) { stream_affinity_ = stream; }
+  int stream_affinity() { return stream_affinity_; }
   void set_brs_affinity(int dev) { brs_affinity_ = dev; }
   int brs_affinity() { return brs_affinity_; }
   int brs_policy() { return brs_policy_; }
@@ -350,6 +352,7 @@ private:
   int recommended_dev_;
   int brs_policy_;
   int brs_affinity_;
+  int stream_affinity_;
   void *completion_event_;
   //char opt_[128];
   std::string opt_;

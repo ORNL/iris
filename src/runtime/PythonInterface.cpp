@@ -28,7 +28,7 @@ void PythonHostInterfaceLoader::set_kernel_python(void *param_mem, KernelPython 
     //printf("Python data: %p %p : %p\n", param_mem, python_ptr, python_data);
     *python_ptr = python_data;
 }
-int PythonHostInterfaceLoader::launch_init(int model, int devno, int stream_index, int nstreams, void **stream, void *param_mem, Command *cmd) 
+int PythonHostInterfaceLoader::launch_init(IrisSpec *spec, void *param_mem, Command *cmd) 
 {
     Kernel *kernel = cmd->kernel();
     const char *name = kernel->name();
@@ -67,12 +67,13 @@ int PythonHostInterfaceLoader::SetKernelPtr(void *obj, const char *kernel_name)
     //python_data->set_kernel_name(kernel_name);
     return IRIS_SUCCESS;
 }
-int PythonHostInterfaceLoader::host_launch(unsigned long task_id, unsigned long cmd_id, void **stream, int stream_index, void *ctx, bool async, int nstreams, const char *kname, void *py_fn_ptr, void *param_mem, int devno, int dim, size_t *gws, size_t *grid, size_t *block, size_t shared_mem_size)
+int PythonHostInterfaceLoader::host_launch(IrisSpec *spec, Command *cmd, Kernel *kernel)
 {
+    void *param_mem = kernel->GetParamWrapperMemory();
+    void *py_fn_ptr = kernel->get_python_function();
     KernelPython *python_data = get_kernel_python(param_mem);
-    IrisSpec spec = { nstreams, devno, devno, async, task_id, cmd_id, stream, ctx, dim, gws, grid, block, shared_mem_size }; 
-    SetKernelPtr(param_mem, kname);
-    launch_python_kernel(py_fn_ptr, &spec, python_data->params(), python_data->n_params());
+    SetKernelPtr(param_mem, kernel->name());
+    launch_python_kernel(py_fn_ptr, spec, python_data->params(), python_data->n_params());
     return IRIS_SUCCESS;
 }
 int PythonHostInterfaceLoader::setarg(void *param_mem, int kindex, size_t size, void *value)

@@ -27,6 +27,7 @@ Kernel::Kernel(const char* name, Platform* platform) {
   gws_dynamic_from_dmem_ = NULL;
   //name_[len] = 0;
   enable_julia_if_ = false;
+  enable_python_if_ = false;
   julia_kernel_type_ = iris_julia_native;
   profile_data_transfers_ = false;
   platform_ = platform;

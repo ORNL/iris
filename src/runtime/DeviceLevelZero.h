@@ -9,7 +9,7 @@ namespace rt {
 
 class DeviceLevelZero : public Device {
 public:
-  DeviceLevelZero(LoaderLevelZero* ld, ze_device_handle_t zedev, ze_context_handle_t zectx, ze_driver_handle_t zedriver, int devno, int platform);
+  DeviceLevelZero(LoaderLevelZero* ld, ze_device_handle_t zedev, ze_context_handle_t zectx, ze_driver_handle_t zedriver, int ordinal, int devno, int platform);
   ~DeviceLevelZero();
 
   int Compile(char* src, const char *out=NULL, const char *flags=NULL);

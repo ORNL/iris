@@ -236,8 +236,8 @@ int ProfilerEventRecord::CompleteTask(Task* task) {
      double e_start_time = p.GetStartTime();
      double e_end_time = p.GetEndTime();
      if (p.cmd() != NULL) {
-         p.cmd()->set_event_time_start(e_start_time);
-         p.cmd()->set_event_time_end(e_end_time);
+         p.cmd()->set_event_time_start(midpoint + e_start_time);
+         p.cmd()->set_event_time_end(midpoint + e_end_time);
      }
      double start_time = midpoint + e_start_time;
      double end_time = midpoint + e_end_time;

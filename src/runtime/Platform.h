@@ -252,13 +252,13 @@ public:
   BaseMem *get_mem_object(unsigned long uid) { 
       //mem_track_.Print("Mem track"); 
       BaseMem *mem = (BaseMem *)mem_track_.GetObject(uid); 
-      assert(mem != NULL);
+      //assert(mem != NULL);
       return mem; 
   }
   BaseMem *get_mem_object(iris_mem brs_mem) { 
       //mem_track_.Print("Mem track"); 
       BaseMem *mem = (BaseMem *)mem_track_.GetObject(brs_mem.uid); 
-      assert(mem != NULL);
+      //assert(mem != NULL);
       return mem; 
   }
   Graph *get_graph_object(unsigned long uid) { return (Graph *)graph_track_.GetObject(uid); }

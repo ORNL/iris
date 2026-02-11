@@ -109,20 +109,25 @@ void DataMem::compute_host_strides(size_t *size)
 }
 string DataMem::ToString(bool check_regions)
 {
+    stringstream dev_ptr_addr;
     stringstream dev_ptr;
     stringstream dev_dirty;
+    dev_ptr_addr << "[";
     dev_ptr << "[";
     dev_dirty << "[";
     for (int i = 0; i < ndevs_; i++) {
         dev_dirty << is_dev_dirty(i, check_regions);
+        dev_ptr_addr << hex << get_arch_ptr(i);
         dev_ptr << hex << get_arch(i);
         if (i != ndevs_-1) {
             dev_dirty << ", ";
             dev_ptr << ", ";
+            dev_ptr_addr << ", ";
         }
     }
     dev_dirty << "]";
     dev_ptr << "]";
+    dev_ptr_addr << "]";
     string host_tile_size_str = Utils::GetString(host_tile_size_, dim());
     string dev_size_str = Utils::GetString(dev_size_, dim());
     string dev_tile_size_str = Utils::GetString(dev_tile_size_, dim());
@@ -157,6 +162,7 @@ string DataMem::ToString(bool check_regions)
     output << " dev_strides:" << dev_strides_size_str;
     output << " host_ptr:" << host_ptr_;
     output << " dev_ptr:" << dev_ptr.str();
+    output << " dev_ptr_addr:" << dev_ptr_addr.str();
     output << " host_dirty:" << is_host_dirty(check_regions);
     output << " dev_dirty:" << dev_dirty.str();
     output << " reset:" << reset_;

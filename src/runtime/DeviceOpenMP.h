@@ -9,7 +9,7 @@ namespace rt {
 
 class DeviceOpenMP : public Device {
 public:
-  DeviceOpenMP(LoaderOpenMP* ld, int devno, int platform);
+  DeviceOpenMP(LoaderOpenMP* ld, int ordinal, int devno, int platform);
   ~DeviceOpenMP();
 
   int Init();

@@ -10,7 +10,7 @@ namespace rt {
 
 class DeviceQIREE : public Device {
 public:
-  DeviceQIREE(LoaderQIREE* ld, int devno, int platform);
+  DeviceQIREE(LoaderQIREE* ld, int ordinal, int devno, int platform);
   ~DeviceQIREE();
   int Init();
   int ResetMemory(Task *task, Command *cmd, BaseMem *mem);

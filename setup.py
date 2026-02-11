@@ -48,10 +48,13 @@ class CMakeBuild(build_ext):
         dist_info_dir = os.path.join(site_packages_path, f'iris')
         print(f"Dist-info directory: {dist_info_dir}")
         os.makedirs(dist_info_dir, exist_ok=True)
+        build_type = 'DEBUG' if self.debug else 'RELEASE'
 
         cmake_args = [
             f'-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={extdir}',
             f'-DCMAKE_INSTALL_PREFIX={dist_info_dir}',
+            f'-DCMAKE_BUILD_TYPE={build_type}',
+            f'-DINFO_DISABLE=OFF',
             f'-DPYTHON_EXECUTABLE={sys.executable}',
         ]
 

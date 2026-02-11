@@ -62,6 +62,8 @@ public:
   hipError_t (*hipMemcpy2DAsync)(void* dst, size_t dpitch, const void* src, size_t spitch, size_t width, size_t height, hipMemcpyKind kind, hipStream_t stream);
   hipError_t (*hipMemcpy3D)(const struct hipMemcpy3DParms* p);
   hipError_t (*hipMemcpy3DAsync)(const struct hipMemcpy3DParms* p, hipStream_t stream);
+  hipError_t (*hipMemcpyPeer)(void* dst, int dstDeviceId, const void* src, int srcDeviceId, size_t sizeBytes);
+  hipError_t (*hipMemcpyPeerAsync)(void* dst, int dstDeviceId, const void* src, int srcDevice, size_t sizeBytes, hipStream_t stream);
   hipError_t (*hipMemcpyDtoD)(hipDeviceptr_t dst, hipDeviceptr_t src, size_t sizeBytes);
   hipError_t (*hipMemcpyDtoDAsync)(hipDeviceptr_t dst, hipDeviceptr_t src, size_t sizeBytes, hipStream_t stream);
   hipError_t (*hipMemcpyHtoD)(hipDeviceptr_t dst, void* src, size_t sizeBytes);

@@ -375,6 +375,7 @@ int Platform::Init(int* argc, char*** argv, int sync) {
   init_ = true;
   finalize_ = false;
   pthread_mutex_unlock(&mutex_);
+  fflush(stdout);
   return IRIS_SUCCESS;
 }
 
@@ -828,7 +829,7 @@ int Platform::InitLevelZero() {
         _error("This platform has more than max devices: %d ! Hence ignoring further LevelZero devices\n", IRIS_MAX_NDEVS);
         break;
     }
-    devs_[ndevs_] = new DeviceLevelZero(loaderLevelZero_, devs[i], zectx, driver, ndevs_, nplatforms_);
+    devs_[ndevs_] = new DeviceLevelZero(loaderLevelZero_, devs[i], zectx, driver, i, ndevs_, nplatforms_);
     arch_available_ |= devs_[ndevs_]->type();
     ndevs_++; mdevs++;
   }
@@ -859,8 +860,8 @@ int Platform::InitOpenMP() {
           break;
       }
       _trace("OpenMP platform[%d] dev[%d] ndevs[%d]", nplatforms_, ndevs_, ndevs_+1);
-      _printf("OpenMP platform[%d] dev[%d] ndevs[%d]", nplatforms_, ndevs_, ndevs_+1);
-      devs_[ndevs_] = new DeviceOpenMP(loaderOpenMP_, ndevs_, nplatforms_);
+      //_printf("OpenMP platform[%d] dev[%d] ndevs[%d]", nplatforms_, ndevs_, ndevs_+1);
+      devs_[ndevs_] = new DeviceOpenMP(loaderOpenMP_, i, ndevs_, nplatforms_);
       if (is_julia_enabled()) 
           devs_[ndevs_]->EnableJuliaInterface();
       if (is_python_enabled()) 
@@ -886,7 +887,7 @@ int Platform::InitQIREE() {
   int mdevs = 0;
   for(int i=0; i<qiree_device_factor_; i++) {
       _trace("QIR platform[%d] dev[%d] ndevs[%d]", nplatforms_, ndevs_, ndevs_+1);
-      devs_[ndevs_] = new DeviceQIREE(loaderQIREE_, ndevs_, nplatforms_);
+      devs_[ndevs_] = new DeviceQIREE(loaderQIREE_, i, ndevs_, nplatforms_);
       if (is_julia_enabled()) 
           devs_[ndevs_]->EnableJuliaInterface();
       if (is_python_enabled()) 
@@ -915,7 +916,7 @@ int Platform::InitHexagon() {
     return IRIS_ERROR;
   }
   _trace("Hexagon platform[%d] ndevs[%d]", nplatforms_, 1);
-  devs_[ndevs_] = new DeviceHexagon(loaderHexagon_, ndevs_, nplatforms_);
+  devs_[ndevs_] = new DeviceHexagon(loaderHexagon_, 0, ndevs_, nplatforms_);
   arch_available_ |= devs_[ndevs_]->type();
   ndevs_++;
   strcpy(platform_names_[nplatforms_], "Hexagon");
@@ -1110,8 +1111,8 @@ void Platform::ShowOverview() {
     setw(32) << setfill('-') << "------" <<  "-+-" <<
     setw(12) << setfill('-') << "----" << "-" << std::endl;
   for (int i = 0; i < ndevices; i++){
-    int type_id;
-    int backend_id;
+    int type_id = iris_cpu;
+    int backend_id = iris_openmp;
     DeviceInfo(i, iris_name,    name,       NULL);
     DeviceInfo(i, iris_vendor,  vendor,     NULL);
     DeviceInfo(i, iris_type,    &type_id,   NULL);
@@ -1358,8 +1359,12 @@ int Platform::KernelSetArg(iris_kernel brs_kernel, int idx, size_t size, void* v
 int Platform::KernelSetMem(iris_kernel brs_kernel, int idx, iris_mem brs_mem, size_t off, size_t mode) {
   Kernel* kernel = Platform::GetPlatform()->get_kernel_object(brs_kernel);
   BaseMem* mem = Platform::GetPlatform()->get_mem_object(brs_mem);
-  kernel->SetMem(idx, mem, off, mode);
-  return IRIS_SUCCESS;
+  if (mem != NULL) {
+      kernel->SetMem(idx, mem, off, mode);
+      return IRIS_SUCCESS;
+  }
+  _error("Invalid memory:%lu set for kernel:%s at index:%d", brs_mem.uid, kernel->name(), idx);
+  return IRIS_ERROR;
 }
 
 int Platform::KernelSetMap(iris_kernel brs_kernel, int idx, void* host, size_t mode) {
@@ -1463,6 +1468,10 @@ int Platform::SetParamsMap(iris_task brs_task, int *params_map)
 int Platform::SetSharedMemoryModel(iris_mem brs_mem, DeviceModel model, int flag)
 {
     BaseMem* mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (mem == NULL) {
+        _error("invalid memory:%lu", brs_mem.uid);
+        return IRIS_ERROR;
+    }
     for (int i = 0; i < ndevs_; i++) {
         if (devs_[i] && (model == iris_model_all || devs_[i]->model() == model)) {
             devs_[i]->set_can_share_host_memory_flag((bool)flag);
@@ -1509,7 +1518,11 @@ int Platform::TaskHost(iris_task brs_task, iris_host_task func, void* params) {
 int Platform::TaskMalloc(iris_task brs_task, iris_mem brs_mem) {
   Task *task = get_task_object(brs_task);
   assert(task != NULL);
-  Mem* mem = (Mem*)Platform::GetPlatform()->get_mem_object(brs_mem);
+  BaseMem* mem = (BaseMem*)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu for task:%lu", brs_mem.uid, brs_task.uid);
+      return IRIS_ERROR;
+  }
   Command* cmd = Command::CreateMalloc(task, mem);
   task->AddCommand(cmd);
   return IRIS_SUCCESS;
@@ -1527,6 +1540,10 @@ int Platform::TaskMemFlushOut(iris_task brs_task, iris_mem brs_mem) {
   }
   assert(task != NULL);
   DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu for task:%lu", brs_mem.uid, brs_task.uid);
+      return IRIS_ERROR;
+  }
   Command* cmd = Command::CreateMemFlushOut(task, mem);
   task->AddCommand(cmd);
   // Submit the task and wait for flush completion
@@ -1539,6 +1556,10 @@ int Platform::TaskMemResetInput(iris_task brs_task, iris_mem brs_mem, uint8_t re
     Task *task = get_task_object(brs_task);
     assert(task != NULL);
     BaseMem* mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (mem == NULL) {
+        _error("invalid memory:%lu for task:%lu", brs_mem.uid, brs_task.uid);
+        return IRIS_ERROR;
+    }
     Command *cmd = Command::CreateMemResetInput(task, mem, reset);
     task->AddCommand(cmd);
     return IRIS_SUCCESS;
@@ -1549,6 +1570,10 @@ int Platform::TaskMemResetInput(iris_task brs_task, iris_mem brs_mem, ResetData 
     Task *task = get_task_object(brs_task);
     assert(task != NULL);
     BaseMem* mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (mem == NULL) {
+        _error("invalid memory:%lu for task:%lu", brs_mem.uid, brs_task.uid);
+        return IRIS_ERROR;
+    }
     Command *cmd = Command::CreateMemResetInput(task, mem, reset);
     task->AddCommand(cmd);
     return IRIS_SUCCESS;
@@ -1557,7 +1582,11 @@ int Platform::TaskMemResetInput(iris_task brs_task, iris_mem brs_mem, ResetData 
 int Platform::TaskH2Broadcast(iris_task brs_task, iris_mem brs_mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host) {
   Task *task = get_task_object(brs_task);
   assert(task != NULL);
-  Mem* mem = (Mem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  BaseMem* mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu for task:%lu", brs_mem.uid, brs_task.uid);
+      return IRIS_ERROR;
+  }
   Command* cmd = Command::CreateH2Broadcast(task, mem, off, host_sizes, dev_sizes, elem_size, dim, host);
   task->AddCommand(cmd);
   return IRIS_SUCCESS;
@@ -1566,7 +1595,11 @@ int Platform::TaskH2Broadcast(iris_task brs_task, iris_mem brs_mem, size_t *off,
 int Platform::TaskH2Broadcast(iris_task brs_task, iris_mem brs_mem, size_t off, size_t size, void* host) {
   Task *task = get_task_object(brs_task);
   assert(task != NULL);
-  Mem* mem = (Mem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  BaseMem* mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu for task:%lu", brs_mem.uid, brs_task.uid);
+      return IRIS_ERROR;
+  }
   Command* cmd = Command::CreateH2Broadcast(task, mem, off, size, host);
   task->AddCommand(cmd);
   return IRIS_SUCCESS;
@@ -1576,7 +1609,15 @@ int Platform::TaskDMEM2DMEM(iris_task brs_task, iris_mem src_mem, iris_mem dst_m
   Task *task = get_task_object(brs_task);
   assert(task != NULL);
   BaseMem* src_mem_iris = (BaseMem *)Platform::GetPlatform()->get_mem_object(src_mem);
+  if (src_mem_iris == NULL) {
+      _error("invalid memory:%lu for task:%lu", src_mem.uid, brs_task.uid);
+      return IRIS_ERROR;
+  }
   BaseMem* dst_mem_iris = (BaseMem *)Platform::GetPlatform()->get_mem_object(dst_mem);
+  if (dst_mem_iris == NULL) {
+      _error("invalid memory:%lu for task:%lu", dst_mem.uid, brs_task.uid);
+      return IRIS_ERROR;
+  }
   ASSERT(src_mem_iris->GetMemHandlerType() == IRIS_DMEM || src_mem_iris->GetMemHandlerType() == IRIS_DMEM_REGION);
   ASSERT(dst_mem_iris->GetMemHandlerType() == IRIS_DMEM || dst_mem_iris->GetMemHandlerType() == IRIS_DMEM_REGION);
   Command* cmd = Command::CreateDMEM2DMEM(task, (DataMem *)src_mem_iris, (DataMem *)dst_mem_iris);
@@ -1587,7 +1628,11 @@ int Platform::TaskDMEM2DMEM(iris_task brs_task, iris_mem src_mem, iris_mem dst_m
 int Platform::TaskH2D(iris_task brs_task, iris_mem brs_mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host) {
   Task *task = get_task_object(brs_task);
   assert(task != NULL);
-  Mem* mem = (Mem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  BaseMem* mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu for task:%lu", brs_mem.uid, brs_task.uid);
+      return IRIS_ERROR;
+  }
   Command* cmd = Command::CreateH2D(task, mem, off, host_sizes, dev_sizes, elem_size, dim, host);
   task->AddCommand(cmd);
   return IRIS_SUCCESS;
@@ -1596,7 +1641,11 @@ int Platform::TaskH2D(iris_task brs_task, iris_mem brs_mem, size_t *off, size_t 
 int Platform::TaskD2D(iris_task brs_task, iris_mem brs_mem, size_t off, size_t size, void* host, int src_dev) {
   Task *task = get_task_object(brs_task);
   assert(task != NULL);
-  Mem* mem = (Mem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  BaseMem* mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu for task:%lu", brs_mem.uid, brs_task.uid);
+      return IRIS_ERROR;
+  }
   Command* cmd = Command::CreateD2D(task, mem, off, size, host, src_dev);
   task->AddCommand(cmd);
   return IRIS_SUCCESS;
@@ -1605,7 +1654,11 @@ int Platform::TaskD2D(iris_task brs_task, iris_mem brs_mem, size_t off, size_t s
 int Platform::TaskH2D(iris_task brs_task, iris_mem brs_mem, size_t off, size_t size, void* host) {
   Task *task = get_task_object(brs_task);
   assert(task != NULL);
-  Mem* mem = (Mem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  BaseMem* mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu for task:%lu", brs_mem.uid, brs_task.uid);
+      return IRIS_ERROR;
+  }
   Command* cmd = Command::CreateH2D(task, mem, off, size, host);
   task->AddCommand(cmd);
   return IRIS_SUCCESS;
@@ -1614,7 +1667,11 @@ int Platform::TaskH2D(iris_task brs_task, iris_mem brs_mem, size_t off, size_t s
 int Platform::TaskD2H(iris_task brs_task, iris_mem brs_mem, size_t off, size_t size, void* host) {
   Task *task = get_task_object(brs_task);
   assert(task != NULL);
-  Mem* mem = (Mem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  BaseMem* mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu for task:%lu", brs_mem.uid, brs_task.uid);
+      return IRIS_ERROR;
+  }
   Command* cmd = Command::CreateD2H(task, mem, off, size, host);
   task->AddCommand(cmd);
   return IRIS_SUCCESS;
@@ -1623,22 +1680,41 @@ int Platform::TaskD2H(iris_task brs_task, iris_mem brs_mem, size_t off, size_t s
 int Platform::TaskD2H(iris_task brs_task, iris_mem brs_mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host) {
   Task *task = get_task_object(brs_task);
   assert(task != NULL);
-  Mem* mem = (Mem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  BaseMem* mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu for task:%lu", brs_mem.uid, brs_task.uid);
+      return IRIS_ERROR;
+  }
   Command* cmd = Command::CreateD2H(task, mem, off, host_sizes, dev_sizes, elem_size, dim, host);
   task->AddCommand(cmd);
   return IRIS_SUCCESS;
 }
 
 int Platform::TaskH2BroadcastFull(iris_task brs_task, iris_mem brs_mem, void* host) {
-  return TaskH2Broadcast(brs_task, brs_mem, 0ULL, Platform::GetPlatform()->get_mem_object(brs_mem)->size(), host);
+  BaseMem* mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu for task:%lu", brs_mem.uid, brs_task.uid);
+      return IRIS_ERROR;
+  }
+  return TaskH2Broadcast(brs_task, brs_mem, 0ULL, mem->size(), host);
 }
 
 int Platform::TaskH2DFull(iris_task brs_task, iris_mem brs_mem, void* host) {
-  return TaskH2D(brs_task, brs_mem, 0ULL, Platform::GetPlatform()->get_mem_object(brs_mem)->size(), host);
+  BaseMem* mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu for task:%lu", brs_mem.uid, brs_task.uid);
+      return IRIS_ERROR;
+  }
+  return TaskH2D(brs_task, brs_mem, 0ULL, mem->size(), host);
 }
 
 int Platform::TaskD2HFull(iris_task brs_task, iris_mem brs_mem, void* host) {
-  return TaskD2H(brs_task, brs_mem, 0ULL, Platform::GetPlatform()->get_mem_object(brs_mem)->size(), host);
+  BaseMem* mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu for task:%lu", brs_mem.uid, brs_task.uid);
+      return IRIS_ERROR;
+  }
+  return TaskD2H(brs_task, brs_mem, 0ULL, mem->size(), host);
 }
 
 int Platform::TaskMap(iris_task brs_task, void* host, size_t size) {
@@ -1859,7 +1935,11 @@ int Platform::TaskRelease(iris_task brs_task) {
 int Platform::TaskReleaseMem(iris_task brs_task, iris_mem brs_mem) {
   Task *task = get_task_object(brs_task);
   assert(task != NULL);
-  Mem* mem = (Mem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  BaseMem* mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu for task:%lu", brs_mem.uid, brs_task.uid);
+      return IRIS_ERROR;
+  }
   Command* cmd = Command::CreateReleaseMem(task, mem);
   task->AddCommand(cmd);
   return IRIS_SUCCESS;
@@ -1922,6 +2002,10 @@ int Platform::TaskInfo(iris_task brs_task, int param, void* value, size_t* size)
 
 int Platform::DataMemInit(iris_mem brs_mem, bool reset) {
     BaseMem *mem = Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (mem == NULL) {
+        _error("invalid memory:%lu", brs_mem.uid);
+        return IRIS_ERROR;
+    }
     if (mem->GetMemHandlerType() != IRIS_DMEM) {
         _error("IRIS Mem is not supported for initialization with reset value. %ld", mem->uid());
         return IRIS_ERROR;
@@ -1941,6 +2025,10 @@ int Platform::DataMemInit(BaseMem *mem, bool reset) {
 
 int Platform::DataMemUpdate(iris_mem brs_mem, void *host) {
   DataMem *mem = (DataMem *) Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu", brs_mem.uid);
+      return IRIS_ERROR;
+  }
   mem->UpdateHost(host);
   return IRIS_SUCCESS;
 }
@@ -1971,6 +2059,10 @@ int Platform::DataMemUnRegisterPin(DataMem *mem) {
 
 int Platform::DataMemUnRegisterPin(iris_mem brs_mem) {
   DataMem *mem = (DataMem *) Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu", brs_mem.uid);
+      return IRIS_ERROR;
+  }
   return DataMemUnRegisterPin(mem);
 }
 
@@ -1997,6 +2089,10 @@ int Platform::DataMemRegisterPin(DataMem *mem) {
 
 int Platform::DataMemRegisterPin(iris_mem brs_mem) {
   DataMem *mem = (DataMem *) Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu", brs_mem.uid);
+      return IRIS_ERROR;
+  }
   return DataMemRegisterPin(mem);
 }
 
@@ -2054,6 +2150,10 @@ int Platform::DataMemCreate(iris_mem* brs_mem, void *host, size_t *off, size_t *
 
 int Platform::DataMemCreate(iris_mem* brs_mem, iris_mem root_mem, int region) {
   DataMem *root = (DataMem *) get_mem_object(root_mem);
+  if (root == NULL) {
+      _error("invalid memory:%lu", root_mem.uid);
+      return IRIS_ERROR;
+  }
   DataMemRegion *mem= root->get_region(region);
   if (brs_mem) mem->SetStructObject(brs_mem);
   //if (brs_mem) *brs_mem = mem->struct_obj();
@@ -2106,6 +2206,10 @@ iris_mem *Platform::DataMemCreate(void *host, size_t *off, size_t *host_size, si
 
 iris_mem *Platform::DataMemCreate(iris_mem root_mem, int region) {
   DataMem *root = (DataMem *) get_mem_object(root_mem);
+  if (root == NULL) {
+      _error("invalid memory:%lu", root_mem.uid);
+      return NULL;
+  }
   DataMemRegion *mem= root->get_region(region);
   if (mem->size()==0) return NULL;
   return mem->struct_obj();
@@ -2113,6 +2217,10 @@ iris_mem *Platform::DataMemCreate(iris_mem root_mem, int region) {
 
 int Platform::DataMemEnableOuterDimRegions(iris_mem brs_mem) {
   DataMem *mem= (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu", brs_mem.uid);
+      return IRIS_ERROR;
+  }
   mem->EnableOuterDimensionRegions();
   return IRIS_SUCCESS;
 }
@@ -2139,7 +2247,11 @@ void *Platform::GetDeviceStream(int device, int index)
 }
 int Platform::MemArch(iris_mem brs_mem, int device, void** arch) {
   if (!arch) return IRIS_ERROR;
-  Mem* mem = (Mem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  BaseMem* mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu", brs_mem.uid);
+      return IRIS_ERROR;
+  }
   Device* dev = devs_[device];
   void* ret = mem->arch(dev);
   if (!ret) return IRIS_ERROR;
@@ -2163,13 +2275,19 @@ int Platform::MemUnmap(void* host) {
 
 int Platform::MemReduce(iris_mem brs_mem, int mode, int type) {
   Mem* mem = (Mem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu", brs_mem.uid);
+      return IRIS_ERROR;
+  }
   mem->Reduce(mode, type);
   return IRIS_SUCCESS;
 }
 
 int Platform::MemRelease(iris_mem brs_mem) {
+  //printf(" trying to release memory: %lu\n", brs_mem.uid);
   BaseMem* mem = Platform::GetPlatform()->get_mem_object(brs_mem);
-  mem->Release();
+  if (mem != NULL)
+      mem->Release();
   return IRIS_SUCCESS;
 }
 
