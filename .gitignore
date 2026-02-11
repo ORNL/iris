@@ -1,9 +1,18 @@
-build/
+build*/
 _build/
-install/
+install*/
 _install/
 envs/
 slurm-test-out.txt
 slurm-test-err.txt
 *.so
 *.swp
+
+# Ignore local experiment files and directories
+.viris/
+build.milan/
+install.milan/
+apps/quantum/local_exp/
+apps/qiree_backend/local_exp/
+apps/quantum/.nfs*
+apps/dagger.*/

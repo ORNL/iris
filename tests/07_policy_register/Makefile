@@ -8,13 +8,13 @@ clean:
 	rm -f $(TEST) kernel.ptx kernel.hip kernel.openmp.so policy_last.so libPolicyGWSHook.so libPolicyGWS.so
 
 policy_last.so: policy_last.cpp
-	g++ -std=c++11 -fPIC -shared ${CXXFLAGS} -o $@ $^
+	$(CXX) -shared ${CXXFLAGS} -o $@ $^
 
 libPolicyGWS.so: policy_gws.cpp
-	g++ -std=c++11 -fPIC -shared ${CXXFLAGS} -o $@ $^
+	$(CXX) -shared ${CXXFLAGS} -o $@ $^ -liris ${LDFLAGS}
 
 libPolicyGWSHook.so: policy_gws_hook.cpp
-	g++ -std=c++11 -fPIC -shared ${CXXFLAGS} -o $@ $^
+	$(CXX) -shared ${CXXFLAGS} -o $@ $^ -liris ${LDFLAGS}
 
 kernel.openmp.so: kernel.cl.openmp.c
-	$(CC) -g -lgomp -Wl,-rpath=$(OPENMP_PATH) -fPIC -shared -I. $(CFLAGS) -o $@ $^
+	$(CC) -g $(IRIS_OPENMP_PATH) -shared -I. $(CFLAGS) -o $@ $^

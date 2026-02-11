@@ -1,7 +1,6 @@
 #include <iris/iris.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <malloc.h>
 
 size_t SIZE, UNIT;
 int VERBOSE=1;

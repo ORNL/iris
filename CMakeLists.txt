@@ -1,4 +1,20 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.15)
+# Only set compiler if user did NOT specify one
+if(NOT DEFINED CMAKE_C_COMPILER AND NOT DEFINED ENV{CC})
+    if (APPLE) 
+    set(CMAKE_C_COMPILER gcc-15 CACHE STRING "C compiler" FORCE)
+    else()
+    set(CMAKE_C_COMPILER gcc CACHE STRING "C compiler" FORCE)
+    endif()
+endif()
+
+if(NOT DEFINED CMAKE_CXX_COMPILER AND NOT DEFINED ENV{CXX})
+    if (APPLE) 
+    set(CMAKE_CXX_COMPILER g++-15 CACHE STRING "C++ compiler" FORCE)
+    else()
+    set(CMAKE_CXX_COMPILER g++ CACHE STRING "C++ compiler" FORCE)
+    endif()
+endif()
 
 project(IRIS)
 include(GNUInstallDirs)
@@ -11,12 +27,21 @@ set(IRIS_SRC_DIR ${PROJECT_SOURCE_DIR}/src)
 set(IRIS_INC_DIR ${PROJECT_SOURCE_DIR}/include)
 set(IRIS_BIN_DIR ${PROJECT_BINARY_DIR}/src)
 
+option(AUTO_PARALLEL    "Enable auto parallel"      OFF)
+option(AUTO_FLUSH       "Enable auto flush"         OFF)
+option(AUTO_SHADOW      "Enable auto shadow"        OFF)
+option(IGNORE_MANUAL_DEP "Ignore manual dependencies"   OFF)
+option(DEP_SANITY_CHECK  "Enable dependency sanity check"   OFF)
+
 option(DEBUG_DISABLE    "Disable debug messages"    ON)
 option(TRACE_DISABLE    "Disable trace messages"    ON)
 option(TODO_DISABLE     "Disable todo messages"     ON)
 option(INFO_DISABLE     "Disable info messages"     ON)
 option(CHECK_DISABLE    "Disable checking messages" ON)
 option(WARNING_DISABLE  "Disable warning messages"  ON)
+option(ENABLE_PER_TASK_COLOR_DOT "Enable per task color dot" OFF)
+option(ENABLE_PRINT_TASK_DEP "Enable print task dependencies" OFF)
+
 option(DISABLE_DYNAMIC_LINKING "Disable dynamic linking"     OFF )
 option(DISABLE_CONSISTENCY_CHECK "Disable memry consistency checks "     OFF )
 option(ENABLE_SINGLE_DEVICE_PER_CU "Enable single device per compute unit "     OFF )
@@ -26,7 +51,7 @@ option(USE_FORTRAN      "Enable support for Fortran 90" OFF)
 
 option(USE_SIGHANDLER   "Enable signal handler"         OFF)
 option(USE_HUB          "Enable hub"                    OFF)
-option(ENABLE_FFI       "Enable FFI based kernel calls" OFF)
+option(ENABLE_FFI       "Enable FFI based kernel calls" ON)
 option(IRIS_ASYNC_STREAMING "Enable IRIS CUDA/HIP Asynchronous streaming"                    OFF)
 
 if (USE_RISCV)
@@ -74,25 +99,19 @@ add_custom_command(
   OUTPUT ${CMAKE_BINARY_DIR}/setup.source
   WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
   COMMAND echo "SCRIPT_FILE=\${BASH_SOURCE[0]}" > ${CMAKE_BINARY_DIR}/setup.source VERBATIM
-  COMMAND echo "PYTHON_EXE=python" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
-  COMMAND echo "version=\$(python -V 2>&1 | grep -Po '(?<=Python )(.+)' || echo '')" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
-  COMMAND echo "if [[ -z \"\$version\" ]]" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
-  COMMAND echo "then" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
-  COMMAND echo "    PYTHON_EXE=python3" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
-  COMMAND echo "    version=\$(python3 -V 2>&1 | grep -Po '(?<=Python )(.+)' || echo '')" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
-  COMMAND echo "    if [[ -z \"\$version\" ]]" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
-  COMMAND echo "    then" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
+  COMMAND echo "PYTHON_EXE=$(command -v python || command -v python3)" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
+  COMMAND echo "if [[ -z \"\$PYTHON_EXE\" ]]; then" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
   COMMAND echo "    echo \"No Python is detected! Cannot source\" " >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
   COMMAND echo "    return" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
-  COMMAND echo "    fi" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
   COMMAND echo "fi" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
   COMMAND echo "SCRIPT=$(\$PYTHON_EXE -c \"import os,sys; print(os.path.realpath(os.path.expanduser(sys.argv[1])))\" \${SCRIPT_FILE})" >> ${CMAKE_BINARY_DIR}/setup.source VERBATIM
   COMMAND echo "export IRIS=$(dirname -- \${SCRIPT})" >> ${CMAKE_BINARY_DIR}/setup.source
   COMMAND echo "export LD_LIBRARY_PATH=.:\$IRIS/lib:\$IRIS/lib64:\$LD_LIBRARY_PATH" >> ${CMAKE_BINARY_DIR}/setup.source
+  COMMAND echo "export DYLD_LIBRARY_PATH=.:\$IRIS/default:\$IRIS/lib:\$DYLD_LIBRARY_PATH" >> ${CMAKE_BINARY_DIR}/setup.source
   COMMAND echo "export CPATH=\$IRIS/include:\$CPATH" >> ${CMAKE_BINARY_DIR}/setup.source
   COMMAND echo "export PYTHONPATH=\$IRIS:\$PYTHONPATH" >> ${CMAKE_BINARY_DIR}/setup.source
   COMMAND echo "export SYSTEM=\$(hostname|cut -d . -f 1|sed 's/[0-9]*//g')" >>  ${CMAKE_BINARY_DIR}/setup.source
-  COMMAND echo "export MACHINE=\${SYSTEM^}" >>  ${CMAKE_BINARY_DIR}/setup.source
+  COMMAND echo "export MACHINE=$(echo \"\$SYSTEM\" | awk '{print toupper(substr(\$0,1,1)) tolower(substr(\$0,2))}')" >>  ${CMAKE_BINARY_DIR}/setup.source
   COMMAND echo "echo \"*********************** IRIS Environent *********************\"" >> ${CMAKE_BINARY_DIR}/setup.source
   COMMAND echo "echo \"IRIS: \$IRIS\"" >> ${CMAKE_BINARY_DIR}/setup.source
   COMMAND echo "echo \"*************************************************************\"" >> ${CMAKE_BINARY_DIR}/setup.source
@@ -115,7 +134,8 @@ add_custom_command(
   COMMAND echo "fi" >> ${CMAKE_BINARY_DIR}/setup.zsh VERBATIM
   COMMAND echo "SCRIPT=$(\$PYTHON_EXE -c \"import os,sys; print(os.path.realpath(os.path.expanduser(sys.argv[1])))\" \${SCRIPT_FILE})" >> ${CMAKE_BINARY_DIR}/setup.zsh VERBATIM
   COMMAND echo "export IRIS=$(dirname -- \${SCRIPT})" >> ${CMAKE_BINARY_DIR}/setup.zsh
-  COMMAND echo "export LD_LIBRARY_PATH=.:\$IRIS/lib:\$IRIS/lib64:\$LD_LIBRARY_PATH" >> ${CMAKE_BINARY_DIR}/setup.zsh
+  COMMAND echo "export LD_LIBRARY_PATH=.:\$IRIS/default:\$IRIS/lib:\$IRIS/lib64:\$LD_LIBRARY_PATH" >> ${CMAKE_BINARY_DIR}/setup.zsh
+  COMMAND echo "export DYLD_LIBRARY_PATH=.:\$IRIS/default:\$IRIS/lib:\$DYLD_LIBRARY_PATH" >> ${CMAKE_BINARY_DIR}/setup.zsh
   COMMAND echo "export LIBRARY_PATH=.:\$IRIS/lib:\$IRIS/lib64:\$LIBRARY_PATH" >> ${CMAKE_BINARY_DIR}/setup.zsh
   COMMAND echo "export CPATH=\$IRIS/include:\$CPATH" >> ${CMAKE_BINARY_DIR}/setup.zsh
   COMMAND echo "export PYTHONPATH=\$IRIS:\$PYTHONPATH" >> ${CMAKE_BINARY_DIR}/setup.zsh

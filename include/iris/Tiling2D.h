@@ -35,12 +35,15 @@ namespace iris {
                         size_t const row_tile_index, size_t const col_tile_index, 
                         size_t const row_tiles_count, size_t const col_tiles_count,
                         Tile2DIteratorType iterator_type): 
-                    row_tile_index(row_tile_index), col_tile_index(col_tile_index),
-                    row_tiles_count(row_tiles_count), col_tiles_count(col_tiles_count),
-                    collection(collection), iterator_type(iterator_type),
-                    row_start_index(row_tile_index), col_start_index(col_tile_index) {
-                        state = 0; level = 0;
-                    }
+                    row_tile_index(row_tile_index), 
+                    col_tile_index(col_tile_index),
+                    row_tiles_count(row_tiles_count), 
+                    col_tiles_count(col_tiles_count),
+                    state(0), level(0),
+                    row_start_index(row_tile_index), 
+                    col_start_index(col_tile_index),
+                    iterator_type(iterator_type),
+                    collection(collection) { }
 
                 bool operator!= (Tiling2DIteratorType const & other) const
                 {

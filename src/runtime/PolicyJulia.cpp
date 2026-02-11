@@ -39,8 +39,8 @@ void PolicyJulia::GetDevices(Task* task, Device** devs, int* ndevs) {
   //printf("Julia Policy name: %s\n", jpolicy_name_);
   iris_task brs_task = *(task->struct_obj());
   *ndevs = j_policy(brs_task, jpolicy_name_, j_devs_, ndevs_, out_devs_);
-  //printf("Returned with ndevs: %d\n", *ndevs);
-  ASSERT(*ndevs < ndevs_);
+  //printf("Returned with ndevs: %d ndevs_:%d\n", *ndevs, ndevs_);
+  ASSERT(*ndevs <= ndevs_);
   for (int i=0; i<*ndevs; i++) {
     int dev_index = out_devs_[i];
     ASSERT(dev_index <= ndevs_);

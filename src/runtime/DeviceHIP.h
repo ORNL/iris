@@ -24,8 +24,20 @@ public:
   void *GetSharedMemPtr(void* mem, size_t size);
   bool IsD2DPossible(Device *target);
   int MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset);
+  int MemAlloc(void** mem_addr, size_t size, void *stream_v, bool reset=false);
+  int MemFree(void* mem_addr, void *stream_v);
   int MemFree(BaseMem *mem, void* mem_addr);
+  void MemCpy3D(void * dev, uint8_t *host, size_t *off, 
+          size_t *dev_sizes, size_t *host_sizes, 
+          size_t elem_size, bool host_2_dev, bool async, int stream_index);
   int MemD2D(Task *task, Device *src_dev, BaseMem *mem, void *dst, void *src, size_t size);
+  void MemCpy3DDirect(void *dev, uint8_t *host, size_t *off, 
+          size_t *dev_sizes, size_t *host_sizes, 
+          size_t elem_size, bool host_2_dev, bool async, int stream_index);
+  int MemCpy(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t *dst_size, size_t *dst_off, size_t *dst_strides, int src_dim, void *src, size_t *src_size, size_t *src_off, size_t *src_strides, size_t *tile_size, size_t elem_size, int src_type, int dst_type, const char *tag) ;
+  int MemD2D(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t *dst_size, size_t *dst_off, size_t *dst_strides, int src_dim, void *src, size_t *src_size, size_t *src_off, size_t *src_strides, size_t *tile_size, size_t elem_size) ;
+  int MemH2D(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t *dst_size, size_t *dst_off, size_t *dst_strides, int src_dim, void *src, size_t *src_size, size_t *src_off, size_t *src_strides, size_t *tile_size, size_t elem_size) ;
+  int MemD2H(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t *dst_size, size_t *dst_off, size_t *dst_strides, int src_dim, void *src, size_t *src_size, size_t *src_off, size_t *src_strides, size_t *tile_size, size_t elem_size) ;
   int MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag="");
   int MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag="");
   int KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bool report_error=true);
@@ -49,11 +61,13 @@ public:
   float GetEventTime(void *event, int stream);
   void CreateEvent(void **event, int flags);
   void RecordEvent(void **event, int stream, int event_creation_flag=iris_event_disable_timing);
-  void WaitForEvent(void *event, int stream, int flags=0);
+  int WaitForEvent(void *event, int stream, int flags=0);
   void DestroyEvent(void *event);
   void EventSynchronize(void *event);
   void *get_ctx() { return (void *)&ctx_; }
-  void *GetSymbol(const char *name)  { 
+  int Custom(int tag, char* params);
+  void *GetSymbol(const char *name)
+  { 
       ASSERT(ld_ != NULL); 
       void *ptr = ld_->GetSymbol(name); 
       if (ptr == NULL) 
@@ -63,6 +77,7 @@ public:
 
 private:
   LoaderHIP* ld_;
+  LoaderHost2HIP* ld_default_;
   LoaderHost2HIP* host2hip_ld_;
   hipCtx_t ctx_;
   hipDevice_t dev_;
@@ -78,6 +93,7 @@ private:
   unsigned int shared_mem_offs_[IRIS_MAX_KERNEL_NARGS];
   void* params_[IRIS_MAX_KERNEL_NARGS];
   int max_arg_idx_;
+  std::map<string, hipModule_t> runtime_modules_;
   std::map<hipFunction_t, hipFunction_t> kernels_offs_;
   bool atleast_one_command_;
 };

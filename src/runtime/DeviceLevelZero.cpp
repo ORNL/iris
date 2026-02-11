@@ -109,7 +109,24 @@ int DeviceLevelZero::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool r
   _zeerror(err_);
   return IRIS_SUCCESS;
 }
+int DeviceLevelZero::MemAlloc(void** mem_addr, size_t size, void *stream_v, bool reset) {
+  void** dptr = mem_addr;
+  ze_device_mem_alloc_desc_t desc = {};
+  desc.stype = ZE_STRUCTURE_TYPE_DEVICE_MEM_ALLOC_DESC;
+  err_ = ld_->zeMemAllocDevice(zectx_, &desc, size, align_, zedev_, dptr);
+  if (reset) {
+    _error("Levelzero not supported with reset for size:%lu", size);
+  }
+  _zeerror(err_);
+  return IRIS_SUCCESS;
+}
 
+int DeviceLevelZero::MemFree(void* mem_addr, void *stream_v) {
+  void* dptr = mem_addr;
+  err_ = ld_->zeMemFree(zectx_, dptr);
+  _zeerror(err_);
+  return IRIS_SUCCESS;
+}
 int DeviceLevelZero::MemFree(BaseMem *mem, void* mem_addr) {
   void* dptr = mem_addr;
   err_ = ld_->zeMemFree(zectx_, dptr);

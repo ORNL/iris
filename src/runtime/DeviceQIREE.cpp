@@ -11,13 +11,31 @@
 #include <dlfcn.h>
 #include <stdint.h>
 #include <stdlib.h>
-
+#define QIREE_MAX(X, Y)  (((X) > (Y)) ? (X) : (Y))
 namespace iris {
 namespace rt {
 
+#define RUN_QIREE_OUT(OUT, DEFAULT, X, ...) if (ld_->X == NULL) { \
+        _error(#X " not found in QIREE library"); \
+        OUT = DEFAULT; \
+    } else { \
+        OUT = ld_->X(__VA_ARGS__); \
+    }
+#define RUN_QIREE(X, ...) if (ld_->X == NULL) { \
+        _error(#X " not found in QIREE library"); \
+    } else { \
+        ASSERT(ld_->X(__VA_ARGS__) == IRIS_SUCCESS); \
+    }
+#define RUN_QIREE_NO_RETURN(X, ...) if (ld_->X == NULL) { \
+        _error(#X " not found in QIREE library"); \
+    } else { \
+        ld_->X(__VA_ARGS__); \
+    }
 DeviceQIREE::DeviceQIREE(LoaderQIREE* ld, int devno, int platform) : Device(devno, platform) {
   ld_ = ld;
-  qiree_nparams_ = 0;
+  manager_ = NULL;
+  type_ = iris_qpu;
+  model_ = iris_qiree;
   //type_ = iris_qiree;
   //model_ = iris_qiree;
   strcpy(name_, "QIREE");
@@ -25,8 +43,19 @@ DeviceQIREE::DeviceQIREE(LoaderQIREE* ld, int devno, int platform) : Device(devn
 }
 
 DeviceQIREE::~DeviceQIREE() {
-  //ld_->iris_qiree_finalize();
-  //return IRIS_SUCCESS;
+  if (manager_ != NULL) {
+      RUN_QIREE_NO_RETURN(qiree_destroy, manager_);
+  }
+  manager_ = NULL;
+}
+
+void DeviceQIREE::CreateCQiree()
+{
+    // TODO: Reuse manager_ object which is parsed for same QIR file 
+    if (manager_ != NULL)  {
+        RUN_QIREE_NO_RETURN(qiree_destroy, manager_);
+    }
+    RUN_QIREE_OUT(manager_, NULL, qiree_create);
 }
 
 int DeviceQIREE::Init() {
@@ -40,6 +69,19 @@ int DeviceQIREE::ResetMemory(Task *task, Command *cmd, BaseMem *mem) {
     return IRIS_ERROR;
 }
 
+int DeviceQIREE::MemAlloc(void** mem_addr, size_t size, void *stream_v, bool reset) {
+    void** mpmem = mem_addr;
+    if (posix_memalign(mpmem, 0x1000, size) != 0) {
+        _error("%s", "posix_memalign");
+        platform_obj()->IncrementErrorCount();
+        return IRIS_ERROR;
+    }
+    _trace("Allocated mem addr:%p, size:%lu reset:%d", *mem_addr, size, reset);
+    if (reset) {
+        memset(*mpmem, 0, size);
+    }
+    return IRIS_SUCCESS;
+}
 int DeviceQIREE::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset) {
   void** mpmem = mem_addr;
   if (posix_memalign(mpmem, 0x1000, size) != 0) {
@@ -52,7 +94,7 @@ int DeviceQIREE::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset
       if (mem->reset_data().reset_type_ == iris_reset_memset) {
           memset(*mpmem, 0, size);
       }
-      else if (ld_default() != NULL) {
+      else if (ld_reset() != NULL) {
           pair<bool, int8_t> out = mem->IsResetPossibleWithMemset();
           if (out.first) {
               memset(*mpmem, out.second, size);
@@ -71,6 +113,12 @@ int DeviceQIREE::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset
 }
 
 int DeviceQIREE::MemFree(BaseMem *mem, void* mem_addr) {
+  void* mpmem = mem_addr;
+  if (mpmem) free(mpmem);
+  return IRIS_SUCCESS;
+}
+
+int DeviceQIREE::MemFree(void* mem_addr, void *stream_v) {
   void* mpmem = mem_addr;
   if (mpmem) free(mpmem);
   return IRIS_SUCCESS;
@@ -148,14 +196,13 @@ int DeviceQIREE::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_size
 
 int DeviceQIREE::KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bool report_error) {
   int kernel_idx=-1;
-  if (julia_if_ != NULL && kernel->task()->enable_julia_if()) {
+  if (julia_if_ != NULL && kernel->enable_julia_if()) {
       return IRIS_SUCCESS;
   }
   return IRIS_SUCCESS;
 }
 
 int DeviceQIREE::KernelLaunchInit(Command *cmd, Kernel* kernel) {
-  qiree_nparams_ = 0;
   /*if (ld_->iris_qiree_kernel_with_obj) {
       if (ld_->iris_qiree_kernel_with_obj(
               kernel->GetParamWrapperMemory(), kernel->name())==IRIS_SUCCESS) {
@@ -165,61 +212,105 @@ int DeviceQIREE::KernelLaunchInit(Command *cmd, Kernel* kernel) {
   //return ld_->iris_qiree_kernel(kernel->name());
   return IRIS_SUCCESS;
 }
-
+/*
+Encoded result: first entry is # pairs, every following pair is (bitstring,
+* count) [123, 0, 3, 15, 10, ...] 
+* 123: number of following entries / possibilities
+* 0:  00000000 bitstring,  3: number of samples of "00000000" 
+* 15: 00001111 bitstring, 10: number of samples of "00001111"
+* ....
+{ 123, 
+  (000000, 15), 
+  (00001111, 20)
+  ... }
+qiree(contet, num_shots, output, backend)
+*/
 int DeviceQIREE::KernelSetArg(Kernel* kernel, int idx, int kindex, size_t size, void* value) {
-  if (julia_if_ != NULL && kernel->task()->enable_julia_if()) {
+  if (value) params_[idx] = value;
+  else {
+    shared_mem_offs_[idx] = shared_mem_bytes_;
+    params_[idx] = shared_mem_offs_ + idx;
+    shared_mem_bytes_ += size;
+  }
+  if (idx == 1) {
+      num_shots_ = *((int *)value);
+      result_items_ = 0;
+      RUN_QIREE(qiree_max_result_items, manager_, num_shots_, &result_items_);
+  }
+  if (max_arg_idx_ < idx) max_arg_idx_ = idx;
+  if (julia_if_ != NULL && kernel->enable_julia_if()) {
      julia_if_->setarg(
             kernel->GetParamWrapperMemory(), kindex, size, value);
      return IRIS_SUCCESS;
   }
   else {
-      int status = ld_->setarg(
-              kernel->GetParamWrapperMemory(), kindex, size, value);
+      //int status = ld_->setarg(
+      //        kernel->GetParamWrapperMemory(), kindex, size, value);
       /*
          if (ld_->iris_openmp_setarg_with_obj)
          return ld_->iris_openmp_setarg_with_obj(kernel->GetParamWrapperMemory(), kindex, size, value);
          if (ld_->iris_openmp_setarg)
          return ld_->iris_openmp_setarg(kindex, size, value);
        */
-      if (status != IRIS_SUCCESS) {
-          _error("Missing host iris_openmp_setarg/iris_openmp_setarg_with_obj function for OpenMP kernel:%s", kernel->name());
-          worker_->platform()->IncrementErrorCount();
-      }
-      return status;
+      //if (status != IRIS_SUCCESS) {
+      //    _error("Missing host iris_openmp_setarg/iris_openmp_setarg_with_obj function for OpenMP kernel:%s", kernel->name());
+       //   worker_->platform()->IncrementErrorCount();
+      //}
+      //return status;
   }
   return IRIS_SUCCESS;
 }
 
 int DeviceQIREE::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, size_t off) {
-  void* mpmem = (char*) mem->arch(this) + off;
-  size_t size = mem->size() - off;
-  if (julia_if_ != NULL && kernel->task()->enable_julia_if()) {
-      julia_if_->setmem(
-              kernel->GetParamWrapperMemory(), mem, kindex, mpmem, size);
-      return IRIS_SUCCESS;
+  if (idx == 2) {
+      // Now allocate space. 
+      // It is the output memory
+      ((DataMem *)mem)->realllocate_space(sizeof(CQireeResultRecord), num_shots_+1);
   }
-  else {
-      int status = IRIS_SUCCESS;
-      qiree_params_[kindex+1] = mpmem;
-      qiree_nparams_ = (kindex+1 >= qiree_nparams_) ? kindex+2 : qiree_nparams_;
-      //printf("p%d: %p (%s) n:%d\n", kindex+1, mpmem, (char *)mpmem, qiree_nparams_);
-      //int status = ld_->setmem(kernel->GetParamWrapperMemory(), kindex, mpmem, size);
-      /*
-         if (ld_->iris_openmp_setmem_with_obj)
-         return ld_->iris_openmp_setmem_with_obj(kernel->GetParamWrapperMemory(), kindex, mpmem);
-         if (ld_->iris_openmp_setmem)
-         return ld_->iris_openmp_setmem(kindex, mpmem);
-       */
-      if (status == IRIS_SUCCESS) return IRIS_SUCCESS;
-      _error("Missing host iris_openmp_setmem/iris_openmp_setmem_with_obj function for OpenMP kernel:%s", kernel->name());
-      worker_->platform()->IncrementErrorCount();
+  void **dev_alloc_ptr = mem->arch_ptr(this);
+  void *dev_ptr = NULL;
+  size_t size = mem->size() - off;
+  if (off) {
+      *(mem->archs_off() + devno_) = (void*) ((uint8_t *) *dev_alloc_ptr + off);
+      dev_ptr = *(mem->archs_off() + devno_);
+      params_[idx] = dev_ptr;
+  } else {
+      dev_ptr = *dev_alloc_ptr; 
+      params_[idx] = dev_ptr;
+  }
+  if (idx == 0) {
+      const char *data = (const char *)params_[0];
+      size_t data_len = mem->size();
+      //((DataMem *)mem)->Print();
+      //printf("Data: %p: %p : %p : %s length:%lu\n", data, dev_ptr, dev_alloc_ptr, data, data_len);
+      CreateCQiree();
+      RUN_QIREE(qiree_load_module_from_memory, manager_, (char const *)params_[0], data_len); 
+      RUN_QIREE(qiree_num_quantum_reg, manager_, &nquant_results_);
+      RUN_QIREE(qiree_num_classical_reg, manager_, &nclass_results_);
+      //printf(" nquant_results:%d nclass_results:%d\n", nquant_results_, nclass_results_);
+  }
+  else if (idx == 2) {
+      encoded_ = (CQireeResultRecord *) dev_ptr;
+  }
+  else if (idx == 3) {
+      const char *config_json = nullptr;
+      backend_ = (const char *)params_[idx]; 
+      RUN_QIREE(qiree_setup_executor, manager_, backend_, config_json);
+  }
+  _debug2("task:%lu:%s idx:%d::%d off:%lu dev_ptr:%p dev_alloc_ptr:%p", 
+          kernel->task()->uid(), kernel->task()->name(),
+          idx, kindex, off, dev_ptr, dev_alloc_ptr);
+  if (max_arg_idx_ < idx) max_arg_idx_ = idx;
+  if (julia_if_ != NULL && kernel->enable_julia_if()) {
+      julia_if_->setmem(
+              kernel->GetParamWrapperMemory(), mem, kindex, dev_ptr, size);
+      return IRIS_SUCCESS;
   }
   return IRIS_SUCCESS;
 }
 
 int DeviceQIREE::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws) {
   _trace("kernel[%s] dim[%d] off[%zu] gws[%zu]", kernel->name(), dim, off[0], gws[0]);
-  qiree_params_[0] = (void *)"null";
 #if 0
   char* argv[6]; 
   argv[0] = "null";
@@ -232,7 +323,12 @@ int DeviceQIREE::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws,
   // Call the function with an argument
   //parse_input_c(4, (char**)argv);
   //printf("nparams: %d\n", qiree_nparams_);
-  ld_->parse_input_c(qiree_nparams_, (char**)qiree_params_);
+  const char *config_json = NULL;
+  RUN_QIREE(qiree_execute, manager_, num_shots_);
+  RUN_QIREE(qiree_save_result_items, manager_, encoded_, num_shots_);
+  //printf("encoded_[0]: %lu:%lu ptr:%p\n", encoded_[0].key, encoded_[0].count, encoded_);
+  //printf("encoded_[1]: %lu:%lu ptr:%p\n", encoded_[1].key, encoded_[1].count, encoded_);
+  //ld_->parse_input_c(qiree_nparams_, (char**)qiree_params_);
   //return ld_->parse_input_c(4, (char**)argv);
   return IRIS_SUCCESS;
 }

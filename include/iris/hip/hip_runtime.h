@@ -1,5 +1,21 @@
+#ifndef HIP_INCLUDE_HIP_HIP_RUNTIME_H
+#define HIP_INCLUDE_HIP_HIP_RUNTIME_H
+#ifndef HIP_INCLUDE_HIP_HIP_RUNTIME_API_H
+#define HIP_INCLUDE_HIP_HIP_RUNTIME_API_H
 #ifndef HIP_INCLUDE_HIP_HCC_DETAIL_HIP_RUNTIME_API_H
 #define HIP_INCLUDE_HIP_HCC_DETAIL_HIP_RUNTIME_API_H
+
+#ifdef __cplusplus
+  #define __dparm(x) \
+          = x
+#else
+  #define __dparm(x)
+#endif
+
+struct __half {
+    unsigned short __x;
+};
+typedef struct __half half;
 
 #ifdef __cplusplus
 extern "C" {
@@ -15,9 +31,99 @@ typedef enum hipMemcpyKind {
     hipMemcpyHostToDevice = 1,    ///< Host-to-Device Copy
     hipMemcpyDeviceToHost = 2,    ///< Device-to-Host Copy
     hipMemcpyDeviceToDevice = 3,  ///< Device-to-Device Copy
-    hipMemcpyDefault =
-        4  ///< Runtime will automatically determine copy-kind based on virtual addresses.
+    hipMemcpyDefault = 4,               ///< Runtime will automatically determine
+                                        ///<copy-kind based on virtual addresses.
+    hipMemcpyDeviceToDeviceNoCU = 1024  ///< Device-to-Device Copy without using compute units
 } hipMemcpyKind;
+
+typedef struct hipPitchedPtr {
+    void* ptr;
+    size_t pitch;
+    size_t xsize;
+    size_t ysize;
+}hipPitchedPtr;
+typedef struct hipExtent {
+    size_t width;  // Width in elements when referring to array memory, in bytes when referring to
+                   // linear memory
+    size_t height;
+    size_t depth;
+}hipExtent;
+typedef struct hipPos {
+    size_t x;
+    size_t y;
+    size_t z;
+}hipPos;
+typedef struct hipArray* hipArray_t;
+typedef const struct hipArray* hipArray_const_;
+typedef struct hipMemcpy3DParms {
+    hipArray_t srcArray;
+    struct hipPos srcPos;
+    struct hipPitchedPtr srcPtr;
+    hipArray_t dstArray;
+    struct hipPos dstPos;
+    struct hipPitchedPtr dstPtr;
+    struct hipExtent extent;
+    enum hipMemcpyKind kind;
+} hipMemcpy3DParms;
+
+typedef enum hipMemoryType {
+    hipMemoryTypeUnregistered = 0,  ///< Unregistered memory
+    hipMemoryTypeHost         = 1,  ///< Memory is physically located on host
+    hipMemoryTypeDevice       = 2,  ///< Memory is physically located on device. (see deviceId for
+                                    ///< specific device)
+    hipMemoryTypeManaged      = 3,  ///< Managed memory, automaticallly managed by the unified
+                                    ///< memory system
+                                    ///< place holder for new values.
+    hipMemoryTypeArray        = 10, ///< Array memory, physically located on device. (see deviceId for
+                                    ///< specific device)
+    hipMemoryTypeUnified      = 11  ///< unified address space
+
+} hipMemoryType;
+typedef void* hipDeviceptr_t;
+typedef struct hip_Memcpy2D {
+    size_t srcXInBytes;
+    size_t srcY;
+    hipMemoryType srcMemoryType;
+    const void* srcHost;
+    hipDeviceptr_t srcDevice;
+    hipArray_t srcArray;
+    size_t srcPitch;
+    size_t dstXInBytes;
+    size_t dstY;
+    hipMemoryType dstMemoryType;
+    void* dstHost;
+    hipDeviceptr_t dstDevice;
+    hipArray_t dstArray;
+    size_t dstPitch;
+    size_t WidthInBytes;
+    size_t Height;
+} hip_Memcpy2D;
+#define HIP_MEMCPY2D hip_Memcpy2D
+typedef struct HIP_MEMCPY3D {
+  size_t srcXInBytes;
+  size_t srcY;
+  size_t srcZ;
+  size_t srcLOD;
+  hipMemoryType srcMemoryType;
+  const void* srcHost;
+  hipDeviceptr_t srcDevice;
+  hipArray_t srcArray;
+  size_t srcPitch;
+  size_t srcHeight;
+  size_t dstXInBytes;
+  size_t dstY;
+  size_t dstZ;
+  size_t dstLOD;
+  hipMemoryType dstMemoryType;
+  void* dstHost;
+  hipDeviceptr_t dstDevice;
+  hipArray_t dstArray;
+  size_t dstPitch;
+  size_t dstHeight;
+  size_t WidthInBytes;
+  size_t Height;
+  size_t Depth;
+} HIP_MEMCPY3D;
 
 //Flags that can be used with hipStreamCreateWithFlags.
 /** Default stream creation flags. These are used with hipStreamCreate().*/
@@ -249,6 +355,12 @@ hipError_t hipSetDevice(int deviceId);
 hipError_t hipGetDevice(int* deviceId);
 hipError_t hipGetDeviceCount(int* count);
 hipError_t hipDeviceGetAttribute(int* pi, hipDeviceAttribute_t attr, int deviceId);
+hipError_t hipMemcpy(void* dst, const void* src, size_t sizeBytes, hipMemcpyKind kind);
+hipError_t hipMemcpyAsync(void* dst, const void* src, size_t sizeBytes, hipMemcpyKind kind, hipStream_t stream __dparm(0));
+hipError_t hipMemcpyParam2D(const hip_Memcpy2D* pCopy);
+hipError_t hipMemcpyParam2DAsync(const hip_Memcpy2D* pCopy, hipStream_t stream __dparm(0));
+hipError_t hipDrvMemcpy3D(const HIP_MEMCPY3D* pCopy);
+hipError_t hipDrvMemcpy3DAsync(const HIP_MEMCPY3D* pCopy, hipStream_t stream);
 hipError_t hipDeviceEnablePeerAccess(int peerDevice, unsigned int flags);
 hipError_t hipDeviceCanAccessPeer(int *canaccess, int device, int peerDevice);
 hipError_t hipCtxEnablePeerAccess(hipCtx_t peerCtx, unsigned int flags);
@@ -279,6 +391,8 @@ hipError_t hipMemcpyDtoH(void* dst, hipDeviceptr_t src, size_t sizeBytes);
 hipError_t hipMemcpyDtoHAsync(void* dst, hipDeviceptr_t src, size_t sizeBytes, hipStream_t stream);
 hipError_t hipModuleLaunchKernel(hipFunction_t f, unsigned int gridDimX, unsigned int gridDimY, unsigned int gridDimZ, unsigned int blockDimX, unsigned int blockDimY, unsigned int blockDimZ, unsigned int sharedMemBytes, hipStream_t stream, void** kernelParams, void** extra);
 hipError_t hipDeviceSynchronize(void);
+hipError_t hipMemcpy3D(const struct hipMemcpy3DParms* p);
+hipError_t hipMemcpy3DAsync(const struct hipMemcpy3DParms* p, hipStream_t stream);
 hipError_t hipMemcpy2D(void* dst, size_t dpitch, const void* src, size_t spitch, size_t width, size_t height, hipMemcpyKind kind);
 hipError_t hipMemcpy2DAsync(void* dst, size_t dpitch, const void* src, size_t spitch, size_t width,
                             size_t height, hipMemcpyKind kind, hipStream_t stream);
@@ -401,3 +515,5 @@ hipError_t hipGetDeviceProperties(hipDeviceProp_t* prop, int deviceId);
 #endif
 
 #endif /* HIP_INCLUDE_HIP_HCC_DETAIL_HIP_RUNTIME_API_H */
+#endif //HIP_INCLUDE_HIP_HIP_RUNTIME_API_H
+#endif //HIP_INCLUDE_HIP_HIP_RUNTIME_H

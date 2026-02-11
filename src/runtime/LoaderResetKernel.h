@@ -1,5 +1,5 @@
-#ifndef IRIS_SRC_RT_LOADER_DEFAULT_KERNEL_H
-#define IRIS_SRC_RT_LOADER_DEFAULT_KERNEL_H
+#ifndef IRIS_SRC_RT_LOADER_RESET_KERNEL_H
+#define IRIS_SRC_RT_LOADER_RESET_KERNEL_H
 
 #include "Loader.h"
 
@@ -11,14 +11,15 @@ using namespace std;
 namespace iris {
 namespace rt {
 
-class LoaderDefaultKernel : public HostInterfaceLoader {
+class LoaderResetKernel : public HostInterfaceClass {
 public:
-  LoaderDefaultKernel(string path);
-  ~LoaderDefaultKernel();
+  LoaderResetKernel(string path);
+  ~LoaderResetKernel();
 
   const char* library();
   int LoadFunctions();
-#define RESET_DECL_SEQ(T, M)  void (*iris_reset_ ## M)(T *arr, T value, size_t size, void *stream) ;
+#define RESET_DECL_SEQ(T, M)  void (*iris_reset_ ## M)(T *arr, T value, size_t size, void *stream)
+  RESET_DECL_SEQ(bool,  b);
   RESET_DECL_SEQ(uint8_t,  u8);
   RESET_DECL_SEQ(uint16_t, u16);
   RESET_DECL_SEQ(uint32_t, u32);
@@ -30,7 +31,8 @@ public:
   RESET_DECL_SEQ(float,    f32);
   RESET_DECL_SEQ(double,   f64);
 
-#define ARITH_DECL_SEQ(T, M)  void (*iris_arithmetic_seq_ ## M)(T *arr, T start, T step, size_t size, void *stream) ;
+#define ARITH_DECL_SEQ(T, M)  void (*iris_arithmetic_seq_ ## M)(T *arr, T start, T step, size_t size, void *stream)
+  ARITH_DECL_SEQ(bool,  b);
   ARITH_DECL_SEQ(uint8_t,  u8);
   ARITH_DECL_SEQ(uint16_t, u16);
   ARITH_DECL_SEQ(uint32_t, u32);
@@ -42,7 +44,8 @@ public:
   ARITH_DECL_SEQ(float,    f32);
   ARITH_DECL_SEQ(double,   f64);
 
-#define GEOM_DECL_SEQ(T, M)  void (*iris_geometric_seq_ ## M)(T *arr, T start, T step, size_t size, void *stream) ;
+#define GEOM_DECL_SEQ(T, M)  void (*iris_geometric_seq_ ## M)(T *arr, T start, T step, size_t size, void *stream)
+  GEOM_DECL_SEQ(bool,  b);
   GEOM_DECL_SEQ(uint8_t,  u8);
   GEOM_DECL_SEQ(uint16_t, u16);
   GEOM_DECL_SEQ(uint32_t, u32);
@@ -53,7 +56,8 @@ public:
   GEOM_DECL_SEQ(int64_t,  i64);
   GEOM_DECL_SEQ(float,    f32);
   GEOM_DECL_SEQ(double,   f64);
-#define RANDOM_DECL_SEQ(RTYPE, T, TAG)  void (*iris_random_ ## RTYPE ## _seq_ ## TAG)(T *arr, unsigned long long seed, T p1, T p2, size_t size, void *stream);
+#define RANDOM_DECL_SEQ(RTYPE, T, TAG)  void (*iris_random_ ## RTYPE ## _seq_ ## TAG)(T *arr, unsigned long long seed, T p1, T p2, size_t size, void *stream)
+  RANDOM_DECL_SEQ(uniform, bool,  b);
   RANDOM_DECL_SEQ(uniform, uint8_t,  u8);
   RANDOM_DECL_SEQ(uniform, uint16_t, u16);
   RANDOM_DECL_SEQ(uniform, uint32_t, u32);
@@ -65,6 +69,7 @@ public:
   RANDOM_DECL_SEQ(uniform, float,    f32);
   RANDOM_DECL_SEQ(uniform, double,   f64);
 
+  RANDOM_DECL_SEQ(normal, bool,  b);
   RANDOM_DECL_SEQ(normal, uint8_t,  u8);
   RANDOM_DECL_SEQ(normal, uint16_t, u16);
   RANDOM_DECL_SEQ(normal, uint32_t, u32);
@@ -87,6 +92,7 @@ public:
   RANDOM_DECL_SEQ(log_normal, float,    f32);
   RANDOM_DECL_SEQ(log_normal, double,   f64);
 
+  RANDOM_DECL_SEQ(uniform_sobol, bool,  b);
   RANDOM_DECL_SEQ(uniform_sobol, uint8_t,  u8);
   RANDOM_DECL_SEQ(uniform_sobol, uint16_t, u16);
   RANDOM_DECL_SEQ(uniform_sobol, uint32_t, u32);
@@ -98,6 +104,7 @@ public:
   RANDOM_DECL_SEQ(uniform_sobol, float,    f32);
   RANDOM_DECL_SEQ(uniform_sobol, double,   f64);
 
+  RANDOM_DECL_SEQ(normal_sobol, bool,  b);
   RANDOM_DECL_SEQ(normal_sobol, uint8_t,  u8);
   RANDOM_DECL_SEQ(normal_sobol, uint16_t, u16);
   RANDOM_DECL_SEQ(normal_sobol, uint32_t, u32);
@@ -124,6 +131,6 @@ public:
 } /* namespace rt */
 } /* namespace iris */
 
-#endif /* IRIS_SRC_RT_LOADER_DEFAULT_KERNEL_H */
+#endif /* IRIS_SRC_RT_LOADER_RESET_KERNEL_H */
 
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=test-correctness-gitlab-ci-dagger
+#SBATCH --job-name=test-duplication-gitlab-ci-dagger
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
@@ -8,6 +8,7 @@
 #SBATCH --exclusive
 #SBATCH --time="1:01:00"
 
+set -x
 GIT_ROOT=$(git rev-parse --show-toplevel)
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
@@ -22,6 +23,8 @@ echo Started: $(date)
 echo Host: $(hostname)
 echo Path: $GIT_ROOT
 echo Groups: $(groups)
+echo IRIS_TAG: $IRIS_TAG
+echo IRIS_INSTALL_ROOT: $IRIS_INSTALL_ROOT
 echo ${SLURM_JOB_ID} > slurm.job
 echo --------------------------------------------------------------------------------
 
@@ -32,17 +35,35 @@ echo ---------------------------------------------------------------------------
 unset MODULEPATH_ROOT
 unset MODULEPATH
 source /etc/profile.d/lmod.sh
+module load cmake
+module load gnu
+
 # Load conda
 #source $CONDA_ROOT/etc/profile.d/conda.sh
 
 # General setup for IRIS
 source /auto/software/iris/setup_system.source
-source $IRIS_INSTALL_ROOT/setup.source
+IRIS_TAG_ORIG=$IRIS_TAG
+IRIS_TAG=.$IRIS_TAG.$IRIS_MACHINE.$IRIS_TESTNAME
+echo Full IRIS_TAG: $IRIS_TAG
+bash build.sh -DENABLE_FFI=$IRIS_FFI_FLAG -DCMAKE_BUILD_TYPE=DEBUG -DCOVERAGE=true
+source $IRIS_INSTALL_ROOT$IRIS_TAG/setup.source
+IRIS_TAG=$IRIS_TAG_ORIG
+echo Restored IRIS_TAG: $IRIS_TAG
 
 set -e
 
 # Local conda environment setup
-pushd apps/dagger
+echo "Before push PWD: $(pwd)"
+if [ "x$IRIS_TAG" = "x" ]; then
+echo "Working on apps/dagger"
+else
+cp -r apps/dagger apps/dagger$IRIS_TAG
+echo "Working on apps/dagger$IRIS_TAG"
+fi
+pushd apps/dagger$IRIS_TAG
+CWD=$(pwd)
+echo "After push PWD: $(pwd)"
 #conda env create --force -p ./envs -f dagger.yaml
 #conda activate ./envs
 

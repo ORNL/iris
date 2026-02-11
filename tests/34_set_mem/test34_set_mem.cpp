@@ -1,7 +1,6 @@
 #include <iris/iris.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <malloc.h>
 
 //this test assesses the use of data memory with the old explicit kernel object creation and setting memory arguments vs the newer way (iris_task_kernel)
 int main(int argc, char** argv) {

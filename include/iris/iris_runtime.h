@@ -1,16 +1,31 @@
 #ifndef IRIS_INCLUDE_IRIS_IRIS_RUNTIME_H
 #define IRIS_INCLUDE_IRIS_IRIS_RUNTIME_H
 
+#ifndef DO_NOT_INCLUDE_IRIS
+#define DO_NOT_INCLUDE_IRIS
+#endif
+#include "Config.h"
+
 #include <iris/iris_errno.h>
 #include <stddef.h>
 #include <stdint.h>
 
 #define DMEM_MAX_DIM 6
+#define IRIS_MAX(X, Y)        (((X) > (Y)) ? (X) : (Y))
+#define IRIS_MIN(X, Y)        (((X) < (Y)) ? (X) : (Y))
+#define IRIS_MAX3(X, Y, Z)    (IRIS_MAX(IRIS_MAX(X,Y), Z))
+#define IRIS_MIN3(X, Y, Z)    (IRIS_MIN(IRIS_MIN(X,Y), Z))
+#define IRIS_MAX4(X, Y, Z, U) (IRIS_MAX(IRIS_MAX(X,Y), IRIS_MAX(Z,U)))
+#define IRIS_MIN4(X, Y, Z, U) (IRIS_MIN(IRIS_MIN(X,Y), IRIS_MIN(Z,U)))
+#define IRIS_MAX5(X, Y, Z, U, V) (IRIS_MAX(IRIS_MAX3(X,Y,Z), IRIS_MAX(U,V)))
+#define IRIS_MIN5(X, Y, Z, U, V) (IRIS_MIN(IRIS_MIN3(X,Y,Z), IRIS_MIN(U,V)))
+
 
 #ifdef __cplusplus
 namespace iris {
 namespace rt {
 class Kernel;
+class Command;
 class BaseMem;
 class Mem;
 class Task;
@@ -36,6 +51,17 @@ struct __attribute__ ((packed)) _iris_kernel {
 #endif // DOXYGEN_SHOULD_SKIP_THIS
 #ifdef __cplusplus
   iris::rt::Kernel* class_obj;
+#else
+  void *class_obj;
+#endif
+  unsigned long uid;
+};
+
+#ifndef DOXYGEN_SHOULD_SKIP_THIS
+struct __attribute__ ((packed)) _iris_command {
+#endif // DOXYGEN_SHOULD_SKIP_THIS
+#ifdef __cplusplus
+  iris::rt::Command* class_obj;
 #else
   void *class_obj;
 #endif
@@ -87,15 +113,69 @@ enum StreamPolicy {
     STREAM_POLICY_SAME_FOR_TASK = 1,
     STREAM_POLICY_GIVE_ALL_STREAMS_TO_KERNEL = 2
 };
+
+typedef struct IrisParam_ {
+    void     *data;       /* points to scalar or array data */
+    size_t   *off;
+    size_t   *tile_sizes;
+    size_t   *full_sizes;
+    size_t    element_size;      // element size
+    size_t    count;      // number of elements
+    int32_t   data_type;  /* one of iris_* above (may encode pointer bit too) */
+    int32_t   is_pointer; /* semantic: 0 = scalar, 1 = pointer/array */
+    int32_t   n_dims;     /* 0 = scalar; >=1 = array, dims[0..n_dims-1] valid */
+    unsigned long mem_id;
+} IrisParam;
+
+typedef struct IrisSpec_ {
+    int32_t n_streams;
+    int32_t devno;
+    int32_t dev_id;
+    int32_t is_async;
+    unsigned long task_id;
+    unsigned long cmd_id;
+    void **streams;
+    void *ctx;
+    int32_t dim;
+    size_t *gws;
+    size_t *grid;
+    size_t *block;
+    size_t shmem_size;
+} IrisSpec;
+
+// Match the exact field order you requested.
+typedef struct ExternalEventRecord {
+  double start_;
+  double end_;
+  int32_t type_;
+  int32_t stream_;
+  unsigned long id_;
+#ifdef __cplusplus
+  public:
+  void init(double start, double end, int32_t type, int32_t stream, unsigned long id) {
+    start_ = start; end_ = end; 
+    type_ = type; stream_ = stream;
+    id_ = id;
+  }
+  ExternalEventRecord() {  init(0.0, 0.0, -1, -1, 0); }
+  ExternalEventRecord(double start, double end, int32_t type, int32_t stream, unsigned long id) { init(start, end, type, stream, id); }
+#endif
+} ExternalEventRecord;
+
 typedef enum StreamPolicy StreamPolicy;
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 #ifndef UNDEF_IRIS_MACROS
 #define IRIS_MAX_NPLATFORMS     32
-#define IRIS_MAX_NDEVS          (1 << 8) - 1
+#define IRIS_MAX_NDEVS          (1 << 8) - 1 
+
+// This is maximum you can use in iris_task_set_policy
+#define IRIS_MAX_NDEVS_POLICIES   (1<<5)
+
 #define IRIS_MAX_KERNEL_NARGS     64
 #define IRIS_MAX_DEVICE_NSTREAMS   11
 #define IRIS_MAX_DEVICE_NCOPY_STREAMS   3
 
+// Task Policies/Policy
 #define iris_default            (1 << 5)
 #define iris_cpu                (1 << 6)
 #define iris_nvidia             (1 << 7)
@@ -114,11 +194,13 @@ typedef enum StreamPolicy StreamPolicy;
 #define iris_pending            (1 << 23)
 #define iris_sdq                (1 << 24)
 #define iris_ftf                (1 << 25)
-#define iris_all                (1 << 25)
 #define iris_ocl                (1 << 26)
 #define iris_block_cycle        (1 << 27)
 #define iris_custom             (1 << 28)
 #define iris_julia_policy       (1 << 29)
+#define iris_qpu                (1 << 30)
+#define iris_python_policy      (1 << 31)
+#define iris_all                0x7FFFFFFF
 
 enum DeviceModel {
 iris_cuda = 1,
@@ -126,6 +208,7 @@ iris_hip = 3,
 iris_levelzero = 4,
 iris_opencl = 5,
 iris_openmp = 6,
+iris_qiree = 7,
 iris_model_all = (1 << 25) // Same as iris_all
 };
 typedef enum DeviceModel DeviceModel;
@@ -149,7 +232,10 @@ typedef enum DeviceModel DeviceModel;
 #define iris_dt_d2h             4
 #define iris_dt_d2d             5
 #define iris_dt_d2h_h2d         6
+#define iris_dt_dmem2dmem_fill  7 
 #define iris_dt_error           0
+
+#define iris_python_native               0
 
 #define iris_julia_native               0
 #define iris_core_native                1
@@ -175,7 +261,7 @@ typedef enum DeviceModel DeviceModel;
 #define iris_unsigned_long      (15 << 16)
 #define iris_bool               (16 << 16)
 #define iris_custom_type        (17 << 16)
-#define iris_pointer            (0x4000 << 16)
+#define iris_pointer            (0x40 << 16)
 
 #define iris_reset_memset                      0
 #define iris_reset_assign                      1 
@@ -228,6 +314,7 @@ typedef enum DeviceModel DeviceModel;
 typedef struct _iris_task      iris_task;
 typedef struct _iris_mem       iris_mem;
 typedef struct _iris_kernel    iris_kernel;
+typedef struct _iris_command   iris_command;
 typedef struct _iris_graph     iris_graph;
 typedef struct _iris_device    iris_device;
 
@@ -240,6 +327,7 @@ typedef int (*hook_command)(void* command);
 typedef int (*iris_selector_kernel)(iris_task task, void* params, char* kernel_name);
 
 typedef union _IRISValue {
+    bool     b;
     int8_t   i8;
     int16_t  i16;
     int32_t  i32;
@@ -313,6 +401,7 @@ extern void iris_enable_default_kernels(int flag);
 extern void iris_task_retain(iris_task task, int flag);
 
 extern int iris_task_set_julia_policy(iris_task task, const char *name);
+extern int iris_task_set_python_policy(iris_task task, const char *name);
 
 /**@brief Sets an IRIS environment variable.
  *
@@ -424,6 +513,12 @@ extern int iris_mem_disable_usm(iris_mem mem, DeviceModel type);
  */
 extern int iris_mem_disable_usm_all(iris_mem mem);
 
+/**@brief Enable/disable DOT profiler
+ *
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern void iris_set_enable_dot_profiler(int flag);
+
 /**@brief Enable/disable profiler
  *
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
@@ -437,6 +532,25 @@ extern void iris_set_enable_profiler(int flag);
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_device_count(int* ndevs);
+
+/**@brief Creates device specific memory allocation
+ *
+ * @param devno Device number 
+ * @param size Size of memory allocation
+ * @param stream Stream pointer either it could be NULL or device specific stream pointer
+ * @param reset Reset flag (if enabled, it will set 0s in memory)
+ * @return Pointer of memory location where the device malloc is created
+ */
+extern void *iris_device_malloc(int devno, size_t size, void *stream, int reset);
+
+/**@brief Frees device specific memory 
+ *
+ * @param devno Device number 
+ * @param Pointer of memory location where the device malloc is created
+ * @param stream Stream pointer either it could be NULL or device specific stream pointer
+ * @return nothing
+ */
+extern void iris_device_free(int devno, void *mem_addr, void *stream);
 
 /**@brief Returns the number of devices
  *
@@ -572,6 +686,27 @@ extern iris_kernel iris_kernel_create_struct(const char* name);
  */
 extern int iris_kernel_get(const char* name, iris_kernel* kernel);
 
+/**@brief Get Kernel command from given kernel
+ * @param kernel is iris_kernel type
+ * @return Return iris_command (Kernel Command)
+ */
+extern iris_command iris_kernel_cmd(iris_kernel brs_kernel);
+
+/**@brief Sets the DMEM to set the GWS dynamically
+ *
+ * @param kernel a kernel object
+ * @param mem a DMEM object
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_kernel_set_gws_dynamic_from_dmem(iris_kernel brs_kernel, iris_mem brs_mem);
+
+/**@brief Sets the shared memory size for a given kernel
+ *
+ * @param kernel a kernel object
+ * @param size shared memory size of the kernel
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_kernel_set_shared_memory_size(iris_kernel kernel, size_t size);
 
 /**@brief Sets the arguments for a given kernel
  *
@@ -614,6 +749,16 @@ extern int iris_kernel_setmem_off(iris_kernel kernel, int idx, iris_mem mem, siz
  */
 extern int iris_kernel_release(iris_kernel kernel);
 
+/**@brief Sets a task name
+ *
+ * This function Sets a task name
+ *
+ * @param brs_task task object
+ * @param brs_mem DMEM object (bool type where condition is present)
+ * @param flag the last task kernel will be executed if flag == brs_mem[0]
+ * @param name name of the task
+ */
+extern void iris_task_kernel_set_condition(iris_task brs_task, iris_mem brs_mem, int flag);
 
 /**@brief Creates a new task.
  *
@@ -686,6 +831,12 @@ extern int iris_task_cmd_init_reset_random_uniform_sobol_seq(iris_task brs_task,
 extern int iris_task_cmd_init_reset_random_normal_sobol_seq(iris_task brs_task, iris_mem brs_mem, IRISValue mean, IRISValue stddev);
 extern int iris_task_cmd_init_reset_random_log_normal_sobol_seq(iris_task brs_task, iris_mem brs_mem, IRISValue mean, IRISValue stddev);
 
+// Update Task kernel Command arguments
+extern int iris_kernel_update_arg(iris_kernel brs_kernel, int index, void *ptr);
+extern int iris_kernel_update_mem(iris_kernel brs_kernel, int index, iris_mem mem);
+extern int iris_command_set_gws(iris_command brs_cmd, size_t *gws, int dim);
+extern int iris_command_update_arg(iris_command brs_command, int index, void *ptr);
+extern int iris_command_update_mem(iris_command brs_command, int index, iris_mem mem);
 
 /**@brief set task level IRIS stream policy type 
  *
@@ -933,6 +1084,15 @@ extern int iris_init_devices_synchronize(int sync);
  */
 extern int iris_init_devices(int sync);
 
+
+/**@brief Enable Julia Interface for kernel alone
+ *
+ * @param kernel iris kernel object
+ * @param type type of julia kernel (iris_julia_native, iris_core_native, iris_julia_kernel_abstraction, iris_julia_jacc)
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_kernel_enable_julia_interface(iris_kernel kernel, int type);
+
 /**@brief Enable Julia Interface for task kernels inside
  *
  * @param task iris task object
@@ -940,6 +1100,24 @@ extern int iris_init_devices(int sync);
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_task_enable_julia_interface(iris_task task, int type);
+
+/**@brief Enable Python Interface for kernel alone
+ *
+ * @param kernel iris kernel object
+ * @param type type of python kernel (iris_python_native, iris_core_native, iris_python_kernel_abstraction, iris_python_jacc)
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_kernel_enable_python_interface(iris_kernel kernel, int type);
+extern int iris_kernel_set_python_function(iris_kernel kernel, void *ptr);
+extern void *iris_kernel_get_python_function(iris_kernel kernel);
+
+/**@brief Enable Python Interface for task kernels inside
+ *
+ * @param task iris task object
+ * @param type type of python kernel (iris_python_native, iris_core_native, iris_python_kernel_abstraction, iris_python_jacc)
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_task_enable_python_interface(iris_task task, int type);
 
 /**@brief Adds a flush command to a task
  *
@@ -983,6 +1161,23 @@ extern int iris_task_d2h_full(iris_task task, iris_mem mem, void* host);
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_task_kernel_object(iris_task task, iris_kernel kernel, int dim, size_t* off, size_t* gws, size_t* lws);
+
+
+/**@brief Launches a kernel
+ *
+ * @param task target task
+ * @param kernel kernel name
+ * @param dim dimension
+ * @param off global workitem space offsets
+ * @param gws global workitem space
+ * @param lws local workitem space
+ * @param nparams number of kernel parameters
+ * @param params kernel parameters
+ * @param params_info kernel parameters information
+ * @return IRIS kernel 
+ */
+extern iris_kernel iris_task_kernel_struct(iris_task task, const char* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, int* params_info);
+extern iris_kernel iris_task_kernel_struct_with_position(iris_task task, const char* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, int* params_info, int position);
 
 
 /**@brief Launches a kernel
@@ -1093,6 +1288,16 @@ extern int iris_task_custom(iris_task task, int tag, void* params, size_t params
 extern int iris_task_submit(iris_task task, int device, const char* opt, int sync);
 
 
+
+/**@brief Sets a device affinity for a task
+ *
+ * This function sets scheduling policy for a task
+ *
+ * @param task iris task object
+ * @param device either device index 
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_task_set_device(iris_task task, int device );
 
 /**@brief Sets a scheduling policy for a task
  *
@@ -1234,6 +1439,15 @@ extern int iris_mem_create(size_t size, iris_mem* mem);
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_data_mem_init_reset(iris_mem mem, int reset);
+
+/**@brief Print DMEM status 
+ *
+ * This function prints data memory object status 
+ *
+ * @return void 
+ */
+extern void iris_data_mem_print(iris_mem mem);
+extern void iris_data_mem_print_with_tag(iris_mem mem, const char *tag);
 
 /**@brief Get DMem element type
  *
@@ -1427,7 +1641,7 @@ extern int iris_data_mem_set_pin_flag(bool flag);
  */
 extern int iris_data_mem_pin(iris_mem mem);
 
-/**@brief data memory object update for a task
+/**@brief data memory object update the host pointer
  *
  * @param mem memory object
  * @param host host pointer to the memory
@@ -1435,20 +1649,112 @@ extern int iris_data_mem_pin(iris_mem mem);
  */
 extern int iris_data_mem_update(iris_mem mem, void *host);
 
-/**@brief data memory object refresh for a task. It will make host copy valid and device copies invalid
+/**@brief data memory object copies the src_host content to  DMEM host
+ *
+ * @param mem memory object
+ * @param src_host source host pointer content
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_data_mem_copyto_host(iris_mem mem, void *src_host);
+
+/**@brief Create a copy of data memory object but it doesn't set the host and device pointers and it doesn't copies the data
+ *
+ * @param src_mem memory object to create a copy of DMEM object
+ * @return This function returns an DMEM memory object
+ */
+extern iris_mem iris_data_mem_copy(iris_mem src_mem);
+
+/**@brief data memory object refresh. It will make host copy valid and device copies invalid
  *
  * @param mem memory object
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_data_mem_refresh(iris_mem mem);
 
-/**@brief data memory object update for a task
+/**@brief data memory object to refresh DMEM device copies. It will make all device copies dirty 
+ *
+ * @param mem memory object
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_data_mem_fresh_device_data(iris_mem mem);
+
+/**@brief update host offsets for DMME object 
+ *
+ * @param mem memory object
+ * @param offsets host size pointer to the array
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_data_mem_update_host_offs(iris_mem mem, size_t *offsets);
+
+/**@brief update host tile size for DMME object 
+ *
+ * @param mem memory object
+ * @param host_size host size pointer to the array
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_data_mem_update_host_tile_size(iris_mem mem, size_t *host_size);
+
+/**@brief data memory object update with host size
  *
  * @param mem memory object
  * @param host_size host size pointer to the array
  * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
  */
 extern int iris_data_mem_update_host_size(iris_mem mem, size_t *host_size);
+
+/**@brief data memory object update with host size but do not touch strides
+ *
+ * @param mem memory object
+ * @param host_size host size pointer to the array. It do not update strides. Only for expert users.
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_data_mem_update_host_size_no_strides(iris_mem mem, size_t *host_size);
+
+/**@brief data memory object update device size
+ *
+ * @param mem memory object
+ * @param dev_size device size pointer to the array
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_data_mem_update_dev_size(iris_mem mem, size_t *dev_size);
+/**@brief data memory object update device size tile
+ *
+ * @param mem memory object
+ * @param dev_size device size pointer to the array
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_data_mem_update_dev_tile_size(iris_mem mem, size_t *dev_size);
+
+/**@brief data memory object update for a task
+ *
+ * @param mem memory object
+ * @param dev_size device size pointer to the array. It do not update strides. Only for expert users.
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_data_mem_update_dev_size_no_strides(iris_mem mem, size_t *dev_size);
+
+/**@brief data memory object update for a task
+ *
+ * @param mem memory object
+ * @param off offset pointer to the array
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_data_mem_update_off(iris_mem mem, size_t *off);
+
+/**@brief data memory object update host dimension
+ *
+ * @param mem memory object
+ * @param dim is dimension of memory object 
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_data_mem_update_host_dim(iris_mem mem, int dim);
+/**@brief data memory object update dimension
+ *
+ * @param mem memory object
+ * @param dim is dimension of memory object 
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_data_mem_update_dim(iris_mem mem, int dim);
 
 /**@brief creates data memory region
  *
@@ -1475,6 +1781,22 @@ extern iris_mem iris_data_mem_create_region_struct(iris_mem root_mem, int region
  * @return This function returns a pointer to the IRIS memory object
  */
 extern iris_mem *iris_data_mem_create_region_ptr(iris_mem root_mem, int region);
+
+/**@brief enable decomposition along the given axis dimension
+ *
+ * @param mem memory object
+ * @param axis to which axis of memory object to create region
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_data_mem_enable_regions(iris_mem mem, int axis);
+
+/**@brief enable decomposition along the given axis dimension
+ *
+ * @param mem memory object
+ * @param regions set number of valid regions to check 
+ * @return This function returns an integer indicating IRIS_SUCCESS or IRIS_ERROR .
+ */
+extern int iris_data_mem_set_valid_regions(iris_mem mem, int regions);
 
 /**@brief enable decomposition along the outer dimension
  *
@@ -1534,6 +1856,7 @@ extern iris_mem iris_data_mem_create_tile_struct_with_type(void *host, size_t *o
 extern iris_mem *iris_data_mem_create_tile_ptr(void *host, size_t *off, size_t *host_size, size_t *dev_size, size_t elem_size, int dim);
 extern int iris_data_mem_update_bc(iris_mem mem, int bc, int row, int col);
 extern int iris_data_mem_get_rr_bc_dev(iris_mem mem);
+extern int iris_data_mem_is_size_preserved(iris_mem mem);
 
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 extern int iris_data_mem_n_regions(iris_mem brs_mem);
@@ -1576,6 +1899,8 @@ extern int iris_mem_release(iris_mem mem);
  */
 extern int iris_graph_create(iris_graph* graph);
 
+extern void iris_graph_print(iris_graph graph);
+
 /**@brief Creates a graph
  *
  * @return This function returns empty graph
@@ -1595,6 +1920,13 @@ extern int iris_graph_create_null(iris_graph* graph);
  * @return This function returns a boolean flag indicating whether graph is null or not 
  */
 extern int iris_is_graph_null(iris_graph graph);
+
+/**@brief Get IRIS graph end task
+ *
+ * @param graph graph object
+ * @return This function returns an iris_task object 
+ */
+extern iris_task iris_graph_end_task(iris_graph graph);
 
 /**@brief Frees a graph
  *
@@ -1700,6 +2032,16 @@ extern int iris_graph_wait(iris_graph graph);
   */
 extern int iris_graph_wait_all(int ngraphs, iris_graph* graphs);
 
+/**@brief Submit the graph agaain and again some condition is met
+  *
+  * @param graph iris_graph (IRIS Graph) object
+  * @param mem iris_mem (IRIS DMEM) boolean object of array size of 1
+  * @param max_tries integer to indicate maximum number of tries. -1 indicates unlimited until condition is satisfied
+  * @param condition_Flag flag to be equal with iris_mem (mem) object to call graph again
+  * @return This functions return an error value. IRIS_SUCCESS, IRIS_ERROR
+  */
+extern int iris_graph_submit_again(iris_graph graph, iris_mem mem, int max_tries, int condition_flag);
+
 /**@brief Start recording task graph to generate JSON graph
   *
   * @return This functions return an error value. IRIS_SUCCESS, IRIS_ERROR
@@ -1762,6 +2104,15 @@ extern const char *iris_kernel_get_name(iris_kernel brs_kernel);
  */
 extern const char *iris_task_get_name(iris_task brs_task);
 
+/**@brief Retruns a memory name
+ *
+ * This function returns a memory name
+ *
+ * @param brs_mem memory object
+ * @return This function returns name of the memory
+ */
+extern const char *iris_mem_get_name(iris_mem brs_mem);
+
 
 
 /**@brief Sets a task name
@@ -1772,6 +2123,15 @@ extern const char *iris_task_get_name(iris_task brs_task);
  * @param name name of the task
  */
 extern void iris_task_set_name(iris_task brs_task, const char *name);
+
+/**@brief Sets a memory name
+ *
+ * This function Sets a memory name
+ *
+ * @param brs_mem memory object
+ * @param name name of the memory
+ */
+extern void iris_mem_set_name(iris_mem brs_mem, const char *name);
 
 
 /**@brief Gets dependency counts for a task
@@ -1822,14 +2182,21 @@ extern unsigned long iris_kernel_get_uid(iris_kernel brs_kernel);
  * @param brs_task kernel object
  * @return This function returns the kernel object extracted from a given task
  */
+extern iris_command iris_task_get_last_cmd(iris_task brs_task);
 extern iris_kernel iris_task_get_kernel(iris_task brs_task);
+extern iris_kernel iris_task_get_last_cmd_kernel(iris_task brs_task);
+extern int iris_copyto_cmd_update_dst(iris_command brs_command, iris_mem brs_mem);
+extern int iris_copyto_cmd_update_src(iris_command brs_command, iris_mem brs_mem);
 extern int iris_task_kernel_dmem_fetch_order(iris_task brs_task, int *order);
 extern int iris_task_disable_consistency(iris_task brs_task);
 extern int iris_task_is_cmd_kernel_exists(iris_task brs_task);
 extern void *iris_task_get_cmd_kernel(iris_task brs_task);
+extern int iris_task_is_alive(iris_task brs_task);
 
 // Memory member access
+extern int iris_mem_is_alive(iris_mem brs_mem);
 extern size_t iris_mem_get_size(iris_mem mem);
+extern size_t iris_mem_get_full_size(iris_mem mem);
 extern int iris_mem_get_type(iris_mem mem);
 extern int iris_mem_get_uid(iris_mem mem);
 extern int iris_get_mem_element_type(iris_mem brs_mem);
@@ -1847,14 +2214,26 @@ extern int iris_mem_init_reset_random_log_normal_sobol_seq(iris_mem brs_mem, IRI
 
 // DMem Memory member access
 extern int iris_dmem_get_dim(iris_mem mem);
+extern int iris_dmem_get_dev_dim(iris_mem mem);
+extern int iris_dmem_get_host_dim(iris_mem mem);
 extern int iris_dmem_get_elem_size(iris_mem mem);
 extern int iris_dmem_get_elem_type(iris_mem mem);
 extern size_t *iris_dmem_get_host_size(iris_mem mem);
+extern size_t *iris_dmem_get_dev_size(iris_mem mem);
+extern size_t *iris_dmem_get_host_tile_size(iris_mem mem);
+extern size_t *iris_dmem_get_dev_tile_size(iris_mem mem);
+extern size_t *iris_dmem_get_offsets(iris_mem mem);
+extern size_t *iris_dmem_get_offsets_from_host(iris_mem mem);
+extern int iris_dmem_is_region(iris_mem dmem_region_obj);
 extern iris_mem iris_get_dmem_for_region(iris_mem dmem_region_obj);
+extern iris_mem iris_dmem_get_source(iris_mem brs_mem);
 extern int iris_dmem_set_source(iris_mem brs_mem, iris_mem source_mem);
 
 // Command kernel member access
 extern int iris_cmd_kernel_get_nargs(void *cmd);
+extern void iris_cmd_get_profile(iris_command brs_cmd, double *start, double *end);
+extern int iris_get_n_profile_events(iris_task brs_task);
+extern ExternalEventRecord *iris_get_profile_events(iris_task brs_task);
 extern int    iris_cmd_kernel_get_arg_is_mem(void *cmd, int index);
 extern size_t iris_cmd_kernel_get_arg_size(void *cmd, int index);
 extern void  *iris_cmd_kernel_get_arg_value(void *cmd, int index);
@@ -2335,7 +2714,7 @@ extern int iris_read_int_env(const char *env_name);
 
 typedef int32_t (*julia_policy_t)(iris_task task, const char *policy_name, iris_device *devs, int32_t ndevs, int32_t *out_dev); 
 // Define a type for the Julia kernel launch function call pointer
-typedef int32_t (*julia_kernel_t)(unsigned long task_id, int32_t julia_kernel_type, int32_t target, int32_t devno, void *ctx, int async, int32_t stream_index, void **stream, int32_t nstreams, int32_t *args, void **values, size_t *param_size, size_t *param_dim_size, int32_t nparams, size_t *threads, size_t *blocks, int dim, const char *kernel_name);
+typedef int32_t (*julia_kernel_t)(unsigned long task_id, unsigned long cmd_id, int32_t julia_kernel_type, int32_t target, int32_t devno, void *ctx, int async, int32_t stream_index, void **stream, int32_t nstreams, int32_t *args, void **values, size_t *param_size, size_t *param_dim_size, size_t *param_dim_full_size, size_t *param_dim_off, int32_t nparams, size_t *gws, size_t *threads, size_t *blocks, size_t shared_mem_size, int dim, const char *kernel_name);
 
 /* API to initialize Julia interfacea
  * @param kernel_launch_func Kernel launch Julia function 
@@ -2355,12 +2734,33 @@ extern julia_kernel_t iris_get_julia_launch_func();
  */
 extern julia_policy_t iris_get_julia_policy_func();
 
+/* API to initialize Python interfacea
+ * @param kernel_launch_func Kernel launch Python function 
+ * @param decoupled_init flag to enable decoupled init of worker, devices and scheduler
+ * @return This function returns int flag
+ */
+extern int iris_python_init(void *python_launch_func, int decoupled_init);
+extern int iris_python_policy_init(void *python_policy_func);
+
+typedef void (*python_kernel_t)(void *kname, IrisSpec *spec, IrisParam *params_list, int n);
+typedef int32_t (*python_policy_t)(iris_task task, const char *policy_name, iris_device *devs, int32_t ndevs, int32_t *out_dev); 
+/* API to return the Python kernel launch function
+ * @return This function returns Python kernel launch function pointer
+ */
+extern python_kernel_t iris_get_python_launch_func();
+
+/* API to return the Python policy launch function
+ * @return This function returns Python policy launch function pointer
+ */
+extern python_policy_t iris_get_python_policy_func();
+
 /* API to return the the status of whether auto parallel macro is on
  * @return This function returns whether AUTO_PAR macro is set or not
  */
 extern int iris_is_enabled_auto_par();
 
 extern int iris_vendor_kernel_launch(int dev, void *kernel, int gridx, int gridy, int gridz, int blockx, int blocky, int blockz, int shared_mem_bytes, void *stream, void **params);
+
 
 #ifdef __cplusplus
 } /* end of extern "C" */

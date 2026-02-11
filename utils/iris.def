@@ -13,7 +13,7 @@ Stage: build
     mkdir -p ${APPTAINER_ROOTFS}/software/iris
 
 %files
-    containers/install_julia.sh /install_julia.sh
+    utils/install_julia.sh /install_julia.sh
     build.sh /software/iris/.
     CMakeLists.txt /software/iris/.
     src   /software/iris/
@@ -23,9 +23,47 @@ Stage: build
 
 
 %environment
+	export DEBIAN_FRONTEND=noninteractive
+	export LANG=C.UTF-8
+    export LC_ALL=C.UTF-8
 
 %post
     pwd
+	echo "Installing prerequisites..."
+    apt -y update && \
+    apt-get install -y apt-transport-https ca-certificates gnupg software-properties-common wget lsb-release
+
+    wget https://github.com/Kitware/CMake/releases/download/v3.31.5/cmake-3.31.5-linux-x86_64.sh
+    echo y | bash cmake-3.31.5-linux-x86_64.sh --skip-license --prefix=/usr/local --exclude-subdir
+    apt -y update && \
+	apt install -y --no-install-recommends ninja-build \
+                   libssl-dev \
+                   libcurl4-openssl-dev \
+                   autoconf automake autotools-dev \
+                   build-essential \
+                   python3 \
+                   libpython3-dev \
+                   python3-venv \
+                   python3-pip \
+                   libblas-dev \
+                   liblapack-dev \
+                   libncurses-dev \
+                   gcc \
+                   g++ \
+                   gdb \
+                   lld \
+                   ccache make \
+                   git \
+                   doxygen pandoc lcov \
+                   vim \
+                   pybind11-dev \
+                   unzip \
+                   curl \
+                   wget \
+                   lsb-release \
+                   software-properties-common \
+                   gpg \
+                   libzstd-dev 
     HOME=/ JULIA_CACHE_NAME=.julia.apptainer  . /install_julia.sh
     cd /software/iris/ 
     IRIS_INSTALL_ROOT=$PWD/install bash build.sh  

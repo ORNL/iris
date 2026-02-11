@@ -1,7 +1,7 @@
 #ifndef IRIS_SRC_RT_RETAINABLE_H
 #define IRIS_SRC_RT_RETAINABLE_H
 
-#include <iris/iris.h>
+#include "Config.h"
 #include "Structs.h"
 #include "Debug.h"
 #include <stddef.h>

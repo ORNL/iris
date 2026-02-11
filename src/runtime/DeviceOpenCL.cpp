@@ -256,7 +256,7 @@ int DeviceOpenCL::ResetMemory(Task *task, Command *cmd, BaseMem *mem) {
     int stream_index = 0;
     cl_command_queue queue = default_queue_;
     if (is_async(task)) {
-        stream_index = GetStream(task); //task->uid() % nqueues_; 
+        stream_index = cmd->recommended_stream(); //GetStream(task); //task->uid() % nqueues_; 
         if (stream_index == DEFAULT_STREAM_INDEX) { stream_index = 0; }
         queue = clcmdq_[stream_index];
     }
@@ -287,6 +287,32 @@ int DeviceOpenCL::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool rese
   return IRIS_SUCCESS;
 }
 
+int DeviceOpenCL::MemAlloc(void** mem_addr, size_t size, void *stream_v, bool reset) {
+  cl_int err;
+  cl_mem* clmem = (cl_mem*) mem_addr;
+  *clmem = ld_->clCreateBuffer(clctx_, CL_MEM_READ_WRITE, size, NULL, &err);
+  if (reset) {
+    _error("OpenCL not supported with reset for size:%lu", size);
+  }
+  _clerror(err);
+  if (err != CL_SUCCESS){
+    worker_->platform()->IncrementErrorCount();
+    return IRIS_ERROR;
+  }
+  return IRIS_SUCCESS;
+}
+
+int DeviceOpenCL::MemFree(void* mem_addr, void *stream_v) {
+  cl_mem clmem = (cl_mem) mem_addr;
+  cl_int err = ld_->clReleaseMemObject(clmem);
+  _clerror(err);
+  if (err != CL_SUCCESS){
+    worker_->platform()->IncrementErrorCount();
+    return IRIS_ERROR;
+  }
+  return IRIS_SUCCESS;
+}
+
 int DeviceOpenCL::MemFree(BaseMem *mem, void* mem_addr) {
   cl_mem clmem = (cl_mem) mem_addr;
   cl_int err = ld_->clReleaseMemObject(clmem);
@@ -305,7 +331,7 @@ int DeviceOpenCL::MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_siz
   cl_command_queue queue = default_queue_;
   //bool async = false;
   if (is_async(task)) {
-      stream_index = GetStream(task, mem); //task->uid() % nqueues_; 
+      stream_index = mem->recommended_stream(devno()); //GetStream(task, mem); //task->uid() % nqueues_; 
       //async = true;
       if (stream_index == DEFAULT_STREAM_INDEX) { /*async = false;*/ stream_index = 0; }
       queue = clcmdq_[stream_index];
@@ -361,7 +387,7 @@ int DeviceOpenCL::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_siz
   //bool async = false;
   cl_command_queue queue = default_queue_;
   if (is_async(task)) {
-      stream_index = GetStream(task, mem); //task->uid() % nqueues_; 
+      stream_index = mem->recommended_stream(devno()); //GetStream(task, mem); //task->uid() % nqueues_; 
       //async = true;
       if (stream_index == DEFAULT_STREAM_INDEX) { /*async = false;*/ stream_index = 0; }
       queue = clcmdq_[stream_index];
@@ -457,7 +483,7 @@ int DeviceOpenCL::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem
           idx, kindex, off, dev_ptr, dev_alloc_ptr);
   if (kernel->is_vendor_specific_kernel(devno_)) {
       host2opencl_ld_->setmem(
-              kernel->GetParamWrapperMemory(), kindex, dev_ptr, size);
+              kernel->GetParamWrapperMemory(), mem, kindex, dev_ptr, size);
   }
   else {
     cl_kernel clkernel = (cl_kernel) kernel->arch(this);
@@ -484,7 +510,7 @@ int DeviceOpenCL::KernelLaunchInit(Command *cmd, Kernel* kernel) {
     cl_command_queue *kstream = &default_queue_;
     int nstreams = 1;
     if (is_async(kernel->task(), false)) {
-        stream_index = GetStream(kernel->task()); //task->uid() % nqueues_; 
+        stream_index = cmd->recommended_stream();  //GetStream(kernel->task()); //task->uid() % nqueues_; 
         if (stream_index == DEFAULT_STREAM_INDEX) { stream_index = 0; }
         kstream = &clcmdq_[stream_index];
         nstreams = nqueues_ - stream_index;
@@ -494,13 +520,14 @@ int DeviceOpenCL::KernelLaunchInit(Command *cmd, Kernel* kernel) {
 }
 
 int DeviceOpenCL::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws) {
+  Command *cmd = kernel->command();
   cl_int err;
   int stream_index = 0;
   cl_command_queue *kstream = &default_queue_;
   bool async = false;
   int nstreams = 1;
   if (is_async(kernel->task(), false)) { //Disable stream policy check
-      stream_index = GetStream(kernel->task()); //task->uid() % nqueues_; 
+      stream_index = cmd->recommended_stream();  //GetStream(kernel->task()); //task->uid() % nqueues_; 
       async = true;
       if (stream_index == DEFAULT_STREAM_INDEX) { async = false; stream_index = 0; }
       // Though async is set to false, we still pass all streams to kernel to use it
@@ -786,13 +813,19 @@ void DeviceOpenCL::RecordEvent(void **event, int stream, int event_creation_flag
     err = ld_->clEnqueueMarker(clcmdq_[stream], (cl_event*)event);
     _clerror(err);
 }
-void DeviceOpenCL::WaitForEvent(void *event, int stream, int flags)
+int DeviceOpenCL::WaitForEvent(void *event, int stream, int flags)
 {
     cl_event event_arr[1];
     event_arr[0] = (cl_event) event;
     cl_int err;
     err = ld_->clEnqueueWaitForEvents(clcmdq_[stream], 1, event_arr);
     _clerror(err);
+    if (err != CL_SUCCESS){
+        platform_obj()->IncrementErrorCount();
+        Utils::PrintStackTrace();
+        return IRIS_ERROR;
+    }
+    return IRIS_SUCCESS;
 }
 void DeviceOpenCL::DestroyEvent(void *event)
 {

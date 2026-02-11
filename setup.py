@@ -18,6 +18,19 @@ import sys
 
 iris_version="3.0.0"
 
+def print_tree_core(root, prefix=""):
+    entries = sorted(os.listdir(root))
+    for i, name in enumerate(entries):
+        path = os.path.join(root, name)
+        connector = "└── " if i == len(entries) - 1 else "├── "
+        print(prefix + connector + name)
+        if os.path.isdir(path):
+            extension = "    " if i == len(entries) - 1 else "│   "
+            print_tree_core(path, prefix + extension)
+def print_tree(root, prefix=""):
+    print("***** Root: ", root)
+    print_tree_core(root, prefix)
+
 class CMakeExtension(Extension):
     def __init__(self, name, sourcedir=''):
         super().__init__(name, sources=[])
@@ -51,30 +64,32 @@ class CMakeBuild(build_ext):
 
         print('Source dir:', ext.sourcedir)
         self.sourcedir = ext.sourcedir
+        print("Build temporary dir:", self.build_temp)
         print(f'Running CMake configure: {cmake_args}')
         subprocess.check_call(['cmake', ext.sourcedir] + cmake_args, cwd=self.build_temp)
         print(f'Running CMake build: {build_args}')
-        subprocess.check_call(['cmake', '--build', '.'] + build_args, cwd=self.build_temp)
-        subprocess.check_call(['cmake', '--install', '.'] + install_args, cwd=self.build_temp)
+        subprocess.check_call(['cmake', '--build', '.', '-v'] + build_args, cwd=self.build_temp)
+        #print_tree(os.path.join(self.build_temp, '_deps', "libffi-build"))
+        subprocess.check_call(['cmake', '--install', '.', '-v'] + install_args, cwd=self.build_temp)
 
         # Ensure the built library is moved to the package directory
         self.copy_extensions_to_source(extdir)
 
     def copy_all_files(self, source_dir, dest_dir):
-     """
-     Copy all files from source_dir to dest_dir.
-     :param source_dir: Source directory
-     :param dest_dir: Destination directory
-     """
-     if not os.path.exists(source_dir):
-         raise ValueError(f"Source directory '{source_dir}' does not exist.")
-     if not os.path.exists(dest_dir):
-         os.makedirs(dest_dir)
-     for item in os.listdir(source_dir):
-         src_path = os.path.join(source_dir, item)
-         dst_path = os.path.join(dest_dir, item)
-         if os.path.isfile(src_path):
-             self.copy_file(src_path, dst_path)  
+        """
+        Copy all files from source_dir to dest_dir.
+        :param source_dir: Source directory
+        :param dest_dir: Destination directory
+        """
+        if not os.path.exists(source_dir):
+            raise ValueError(f"Source directory '{source_dir}' does not exist.")
+        if not os.path.exists(dest_dir):
+            os.makedirs(dest_dir)
+        for item in os.listdir(source_dir):
+            src_path = os.path.join(source_dir, item)
+            dst_path = os.path.join(dest_dir, item)
+            if os.path.isfile(src_path):
+                self.copy_file(src_path, dst_path)  
 
 
     def copy_extensions_to_source(self, extdir):

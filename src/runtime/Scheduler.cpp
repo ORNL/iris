@@ -1,5 +1,6 @@
 #include "Scheduler.h"
 #include "Debug.h"
+#include "Utils.h"
 #include "Consistency.h"
 #include "Device.h"
 #include "HubClient.h"
@@ -16,6 +17,7 @@ namespace iris {
 namespace rt {
 
 Scheduler::Scheduler(Platform* platform) {
+  //Utils::SetThreadAffinity(platform_->cpu_set_start());
   platform_ = platform;
   devs_ = platform_->devices();
   ndevs_ = platform_->ndevs();
@@ -29,6 +31,7 @@ Scheduler::Scheduler(Platform* platform) {
   policies_ = new Policies(this);
   hub_client_ = new HubClient(this);
   timer_ = new Timer();
+  is_proactive_dispatch_ = platform->is_proactive_dispatch();
   InitHubClient();
 }
 
@@ -51,6 +54,12 @@ void Scheduler::InitHubClient() {
 
 void Scheduler::StartTask(Task* task, Worker* worker) {
   //task->set_time_start(timer_->Now());
+}
+
+void Scheduler::InvokeDevices() {
+    for (int i = 0; i < ndevs_; i++) {
+        if (!devs_[i]->worker()->running()) devs_[i]->worker()->Invoke();
+    }
 }
 
 void Scheduler::CompleteTask(Task* task, Worker* worker) {
@@ -88,6 +97,7 @@ void Scheduler::Enqueue(Task* task) {
 
 void Scheduler::Run() {
   while (true) {
+    //Utils::SetThreadAffinity(platform_->cpu_set_start());
     _debug2("Scheduler entering into sleep mode qsize:%lu", queue_->Size());
     Sleep();
     _debug2("Scheduler invoked");
@@ -144,9 +154,10 @@ void Scheduler::SubmitTask(Task* task) {
   const char* opt = task->opt();
   int ndevs = 0;
   int task_affinity = task->get_device_affinity();
+  task->Clear();
   Device* devs[IRIS_MAX_NDEVS];
   if (task_affinity < 0) {
-      if (brs_policy < IRIS_MAX_NDEVS) {
+      if (brs_policy < IRIS_MAX_NDEVS_POLICIES) {
           if (brs_policy >= ndevs_) ndevs = 0;
           else {
               ndevs = 1;
@@ -169,13 +180,19 @@ void Scheduler::SubmitTask(Task* task) {
   }
   //if any dependencies were pending, time to process them now.
   if (!task->Dispatchable()) task->DispatchDependencies();
-
+  
+  //if (ndevs > 1) {
+  //  task->enable_task_enqueued_in_multiple_devices();
+  //}
   for (int i = 0; i < ndevs; i++) {
       task->Retain();
   }
+  _trace("Enquing task:%lu:%s to devices\n", task->uid(), task->name());
+  task->set_dep_dev(devs[0]);
   for (int i = 0; i < ndevs; i++) {
     devs[i]->worker()->Enqueue(task);
     if (hub_available_) hub_client_->TaskInc(devs[i]->devno(), 1);
+	if (is_proactive_dispatch_) devs[i]->worker()->Invoke();
   }
 }
 

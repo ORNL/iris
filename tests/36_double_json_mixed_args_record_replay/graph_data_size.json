@@ -91,6 +91,7 @@
                   {
                     "type": "scalar",
                     "value": "A",
+                    "data_type": "double",
                     "data_size": 8
                   }
                 ]

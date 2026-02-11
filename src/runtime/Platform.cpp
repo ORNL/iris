@@ -114,9 +114,13 @@ void Platform::Reset() {
   stream_policy_ = STREAM_POLICY_DEFAULT;
   nstreams_ = IRIS_MAX_DEVICE_NSTREAMS;
   ncopy_streams_ = IRIS_MAX_DEVICE_NCOPY_STREAMS;
-  is_malloc_async_ = false;
+  cpu_set_start_ = 0;
+  is_malloc_async_ = true;
   recording_ = false;
+  scheduler_dispatch_fcfs_ = false;
+  enable_validation_ = false;
   enable_profiler_ = false;
+  enable_dot_profiler_ = false;
   enable_scheduling_history_ = false; 
   nprofilers_ = 0;
   time_app_ = 0.0;
@@ -126,7 +130,8 @@ void Platform::Reset() {
   hook_command_pre_ = NULL;
   hook_command_post_ = NULL;
   scheduling_history_ = NULL;
-  enable_proactive_ = false;
+  enable_proactive_dispatch_ = false;
+  enable_proactive_transfers_ = false;
   disable_kernel_launch_ = false;
 #ifdef AUTO_PAR
   auto_dag_ = NULL;
@@ -138,7 +143,6 @@ void Platform::Reset() {
 
 void Platform::Clean() {
   for (int i = 0; i < ndevs_; i++) delete workers_[i];
-  if (queue_) delete queue_;
   if (tmp_dir_[0] != '\0') {
       char cmd[270];
       //printf("Removing tmp_dir:%s\n", tmp_dir_);
@@ -148,6 +152,7 @@ void Platform::Clean() {
   }
   for (int i = 0; i < ndevs_; i++) delete devs_[i];
   if (scheduler_) delete scheduler_;
+  if (queue_) delete queue_;
 #ifdef AUTO_PAR
 #ifdef AUTO_SHADOW
   printf("Total Shadow created %d\n", auto_dag_->get_number_of_shadow());
@@ -197,6 +202,17 @@ int Platform::JuliaInit(bool decoupled_init) {
   enable_default_kernels_load_ = true;
   return IRIS_SUCCESS;
 }
+int Platform::PythonInit(bool decoupled_init) {
+#if 1
+  if (decoupled_init) {
+    disable_init_devices_ = true;
+    disable_init_workers_ = true;
+    disable_init_scheduler_ = true;
+  }
+#endif
+  enable_default_kernels_load_ = true;
+  return IRIS_SUCCESS;
+}
 
 int Platform::Init(int* argc, char*** argv, int sync) {
   pthread_mutex_lock(&mutex_);
@@ -220,6 +236,10 @@ int Platform::Init(int* argc, char*** argv, int sync) {
   EnvironmentInit();
 
   char* logo = NULL;
+  char *iris_path = NULL;
+  EnvironmentGet("", &iris_path, NULL, '\0');
+  _info("Environment of IRIS: %s", iris_path);
+  free(iris_path);
   EnvironmentGet("LOGO", &logo, NULL);
   if (strcmp("on", logo) == 0) Utils::Logo(true);
 
@@ -231,11 +251,16 @@ int Platform::Init(int* argc, char*** argv, int sync) {
 
   SetDevsAvailable();
 
+  EnvironmentBoolRead("DEFAULT_KERNELS", enable_default_kernels_load_);
   EnvironmentBoolRead("DISABLE_KERNEL_LAUNCH", disable_kernel_launch_);
+  EnvironmentBoolRead("DISABLE_PRO_TRANSFERS", enable_proactive_transfers_, false);
+  //EnvironmentBoolRead("DISABLE_PRO_DISPATCH", enable_proactive_dispatch_, false);
+  EnvironmentBoolRead("ENABLE_PRO_DISPATCH", enable_proactive_dispatch_);
   EnvironmentBoolRead("PROFILE", enable_profiler_);
+  EnvironmentBoolRead("VALIDATION", enable_validation_);
   EnvironmentBoolRead("HISTORY", enable_scheduling_history_);
   EnvironmentBoolRead("EVENT_PROFILE", event_profile_enabled_);
-  EnvironmentBoolRead("MALLOC_ASYNC", is_malloc_async_);
+  EnvironmentBoolRead("MALLOC_SYNC", is_malloc_async_, false);
   EnvironmentBoolRead("DISABLE_D2D", disable_d2d_);
   EnvironmentBoolRead("DISABLE_DATA_TRANSFERS", disable_data_transfers_);
   EnvironmentIntRead("OPENMP_DEVICE_FACTOR", openmp_device_factor_);
@@ -244,13 +269,18 @@ int Platform::Init(int* argc, char*** argv, int sync) {
   EnvironmentIntRead("HIP_DEVICE_FACTOR", hip_device_factor_);
   EnvironmentIntRead("NSTREAMS", nstreams_);
   EnvironmentIntRead("NCOPY_STREAMS", ncopy_streams_);
+  EnvironmentIntRead("CPUSET_START", cpu_set_start_);
   int stream_policy = (int) stream_policy_;
   EnvironmentIntRead("STREAM_POLICY", stream_policy);
   stream_policy_ = (StreamPolicy) stream_policy;
   bool async = async_; EnvironmentBoolRead("ASYNC", async); set_async(async);
+  if (async) {
+    scheduler_dispatch_fcfs_ = true;
+  }
 #ifdef IRIS_ASYNC_STREAMING
   set_async(true);
 #endif
+  EnvironmentBoolRead("SCHEDULER_DISPATCH_FCFS", scheduler_dispatch_fcfs_);
   if (is_async()) 
       _info("Asynchronous is enabled");
   char* archs = NULL;
@@ -293,13 +323,24 @@ int Platform::Init(int* argc, char*** argv, int sync) {
   if (polyhedral_available_)
     filter_task_split_ = new FilterTaskSplit(polyhedral_, this);
 
-  if (enable_profiler_) {
+  if (enable_validation_) {
+    enable_profiler_ = true;
+    if (async) {
+        event_profile_enabled_ = true;
+    }
+  }
+  if (enable_profiler_ || event_profile_enabled_) {
     profilers_[nprofilers_++] = new ProfilerDOT(this);
     profilers_[nprofilers_++] = new ProfilerGoogleCharts(this);
     profilers_[nprofilers_++] = new ProfilerGoogleCharts(this, true);
   }
-  if (event_profile_enabled_) 
+  if (event_profile_enabled_) {
+    enable_profiler_ = true;
     profilers_[nprofilers_++] = new ProfilerEventRecord(this);
+  }
+  if (enable_profiler_) {
+    enable_dot_profiler_ = true;
+  }
 
   if (enable_scheduling_history_) scheduling_history_ = new SchedulingHistory(this);
 
@@ -412,13 +453,21 @@ void Platform::EnvironmentIntRead(const char *env_name, int & env_var) {
     if (env_val_char != NULL && atoi(env_val_char) >=0 )
         env_var = atoi(env_val_char);
 }
-void Platform::EnvironmentBoolRead(const char *env_name, bool & flag) {
+void Platform::EnvironmentBoolRead(const char *env_name, bool & flag, bool val_set) {
     char *env_val_char = NULL;
     EnvironmentGet(env_name, &env_val_char, NULL);
-    if (env_val_char != NULL && atoi(env_val_char) == 1)
-        flag = true;
+    if (env_val_char != NULL && strcasecmp(env_val_char, "true") == 0) 
+        flag = val_set;
+    else if (env_val_char != NULL && strcasecmp(env_val_char, "false") == 0) 
+        flag = !val_set;
+    else if (env_val_char != NULL && strcasecmp(env_val_char, "on") == 0) 
+        flag = val_set;
+    else if (env_val_char != NULL && strcasecmp(env_val_char, "off") == 0) 
+        flag = !val_set;
+    else if (env_val_char != NULL && atoi(env_val_char) == 1)
+        flag = val_set;
     else if (env_val_char != NULL && atoi(env_val_char) == 0)
-        flag = false;
+        flag = !val_set;
 }
 int Platform::EnvironmentInit() {
 #ifdef ANDROID
@@ -440,12 +489,14 @@ int Platform::EnvironmentInit() {
   // Removed qiree 
   EnvironmentSet("ARCHS",  "openmp:cuda:hip:levelzero:hexagon:opencl",  false);
 #endif
-  EnvironmentSet("DEFAULT_OMP_KERNELS",  "default_cpu_gpu_kernels.cpp", false);
-  EnvironmentSet("DEFAULT_CUDA_KERNELS", "default_cpu_gpu_kernels.cpp", false);
-  EnvironmentSet("DEFAULT_HIP_KERNELS",  "default_cpu_gpu_kernels.cpp", false);
+  EnvironmentSet("RUNTIME_KERNELS_PATH",  "./", false);
+  EnvironmentSet("DEFAULT_OMP_KERNELS",  "default_cpu_gpu_kernels.cpp,iris_default_math_openmp_kernels.cpp", false);
+  EnvironmentSet("DEFAULT_CUDA_KERNELS", "default_cpu_gpu_kernels.cpp,iris_default_math_cuda_kernels.cu", false);
+  EnvironmentSet("DEFAULT_HIP_KERNELS",  "default_cpu_gpu_kernels.cpp,iris_default_math_hip_kernels.hip.cpp", false);
   EnvironmentSet("TMPDIR",               tmp_dir_,               false);
   EnvironmentSet("OPENCL_VENDORS",       "all",                  false);
   EnvironmentSet("INCLUDE_DIR",          "include/iris",         false);
+  EnvironmentSet("DEFAULT_DIR",          "default",              false);
   EnvironmentSet("KERNEL_DIR",           "",                     false);
   EnvironmentSet("KERNEL_SRC_CUDA",      "kernel.cu",            false);
   EnvironmentSet("KERNEL_BIN_CUDA",      "kernel.ptx",           false);
@@ -463,7 +514,8 @@ int Platform::EnvironmentInit() {
   EnvironmentSet("KERNEL_BIN_SPV",       "kernel.spv",           false);
   EnvironmentSet("KERNEL_JULIA",         "libjulia.so",          false);
   EnvironmentSet("LIB_CUDA",             "libcuda.so",           false);
-  EnvironmentSet("LIB_QIREE",            "libqir.xacc.lib.so",           false);
+  EnvironmentSet("LIB_QIREE",            "libcqiree.so",         false);
+  //EnvironmentSet("LIB_QIREE",            "libqir.xacc.lib.so",           false);
   EnvironmentSet("KERNEL_HOST2CUDA","kernel.host2cuda.so",false);
   EnvironmentSet("KERNEL_HOST2HIP", "kernel.host2hip.so", false);
   EnvironmentSet("KERNEL_HOST2OPENCL","kernel.host2opencl.so",false);
@@ -617,6 +669,8 @@ int Platform::InitCUDA() {
     devs_[ndevs_]->set_root_device(devs_[ndevs_-i]);
     if (is_julia_enabled()) 
         devs_[ndevs_]->EnableJuliaInterface();
+    if (is_python_enabled()) 
+        devs_[ndevs_]->EnablePythonInterface();
     arch_available_ |= devs_[ndevs_]->type();
     cudevs[mdevs] = dev;
     ndevs_++;
@@ -694,6 +748,8 @@ int Platform::InitHIP() {
     devs_[ndevs_]->set_root_device(devs_[ndevs_-i]);
     if (is_julia_enabled()) 
         devs_[ndevs_]->EnableJuliaInterface();
+    if (is_python_enabled()) 
+        devs_[ndevs_]->EnablePythonInterface();
     arch_available_ |= devs_[ndevs_]->type();
     hipdevs[mdevs] = dev;
     ndevs_++;
@@ -807,6 +863,8 @@ int Platform::InitOpenMP() {
       devs_[ndevs_] = new DeviceOpenMP(loaderOpenMP_, ndevs_, nplatforms_);
       if (is_julia_enabled()) 
           devs_[ndevs_]->EnableJuliaInterface();
+      if (is_python_enabled()) 
+          devs_[ndevs_]->EnablePythonInterface();
       arch_available_ |= devs_[ndevs_]->type();
       ndevs_++;
       mdevs++;
@@ -831,6 +889,8 @@ int Platform::InitQIREE() {
       devs_[ndevs_] = new DeviceQIREE(loaderQIREE_, ndevs_, nplatforms_);
       if (is_julia_enabled()) 
           devs_[ndevs_]->EnableJuliaInterface();
+      if (is_python_enabled()) 
+          devs_[ndevs_]->EnablePythonInterface();
       arch_available_ |= devs_[ndevs_]->type();
       ndevs_++;
       mdevs++;
@@ -1172,6 +1232,20 @@ int Platform::DeviceSynchronize(int ndevs, int* devices) {
   task->Release();
   return IRIS_SUCCESS;
 }
+int Platform::DeviceMalloc(int devno, void **mem_addr, size_t size, void *stream, int reset)
+{
+    if (devno>= ndevs_ || devno < 0) return IRIS_ERROR;
+    Device* dev = devs_[devno];
+    dev->MemAlloc(mem_addr, size, stream, reset);
+    return IRIS_SUCCESS;
+}
+int Platform::DeviceFree(int devno, void *mem_addr, void *stream)
+{
+    if (devno>= ndevs_ || devno < 0) return IRIS_ERROR;
+    Device* dev = devs_[devno];
+    dev->MemFree(mem_addr, stream);
+    return IRIS_SUCCESS;
+}
 
 int Platform::PolicyRegister(const char* lib, const char* name, void* params) {
   return scheduler_->policies()->Register(lib, name, params);
@@ -1350,6 +1424,21 @@ int Platform::TaskCustom(iris_task brs_task, int tag, void* params, size_t param
   return IRIS_SUCCESS;
 }
 
+iris_kernel Platform::TaskKernelStruct(iris_task brs_task, const char* name, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, size_t* params_off, int* params_info, size_t* memranges, int position) {
+  Task *task = get_task_object(brs_task);
+  assert(task != NULL);
+  Kernel* kernel = GetKernel(name);
+  //_trace("Adding kernel:%s:%p to task:%s\n", name, kernel, task->name());
+  if (!task->given_name()) task->set_name(name);
+  kernel->set_task_name(task->name());
+  Command* cmd = Command::CreateKernel(task, kernel, dim, off, gws, lws, nparams, params, params_off, params_info, memranges);
+  if (position == -1)
+      task->AddCommand(cmd);
+  else
+      task->AddCommand(cmd, position);
+  return *(kernel->struct_obj());
+}
+
 int Platform::TaskKernel(iris_task brs_task, const char* name, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, size_t* params_off, int* params_info, size_t* memranges) {
   Task *task = get_task_object(brs_task);
   assert(task != NULL);
@@ -1488,8 +1577,8 @@ int Platform::TaskDMEM2DMEM(iris_task brs_task, iris_mem src_mem, iris_mem dst_m
   assert(task != NULL);
   BaseMem* src_mem_iris = (BaseMem *)Platform::GetPlatform()->get_mem_object(src_mem);
   BaseMem* dst_mem_iris = (BaseMem *)Platform::GetPlatform()->get_mem_object(dst_mem);
-  ASSERT(src_mem_iris->GetMemHandlerType() == IRIS_DMEM);
-  ASSERT(dst_mem_iris->GetMemHandlerType() == IRIS_DMEM);
+  ASSERT(src_mem_iris->GetMemHandlerType() == IRIS_DMEM || src_mem_iris->GetMemHandlerType() == IRIS_DMEM_REGION);
+  ASSERT(dst_mem_iris->GetMemHandlerType() == IRIS_DMEM || dst_mem_iris->GetMemHandlerType() == IRIS_DMEM_REGION);
   Command* cmd = Command::CreateDMEM2DMEM(task, (DataMem *)src_mem_iris, (DataMem *)dst_mem_iris);
   task->AddCommand(cmd);
   return IRIS_SUCCESS;
@@ -1614,8 +1703,15 @@ shared_ptr<History> Platform::CreateHistory(string kname)
 }
 void Platform::ProfileCompletedTask(Task *task)
 {
-    if (!task->marker()){
+    if (!task->marker() && enable_profiler_){
         for (int i = 0; i < nprofilers_; i++) profilers_[i]->CompleteTask(task);
+    }
+}
+
+void Platform::AddLoopDependency(Task *task, unsigned long st_id, std::vector<unsigned long> end_ids)
+{
+    if (!task->marker() && enable_profiler_){
+        for (int i = 0; i < nprofilers_; i++) profilers_[i]->AddLoopDependency(st_id, end_ids);
     }
 }
 
@@ -1625,6 +1721,25 @@ void Platform::IncrementErrorCount(){
 
 int Platform::NumErrors(){
   return nfailures_;
+}
+
+void Platform::GraphTaskSubmit(Task *task, int brs_policy, int sync) {
+    /*    for(int i = 0; i < task->nchilds(); i++)
+          printf("    Childs %d - %s\n", i, task->Child(i)->name());
+    */ 
+    //printf("Task name %s depend count %d\n", task->name(), task->ndepends());
+    //for(int i = 0; i < task->ndepends(); i++)
+    //    printf("    depend %d - %s\n", i, task->depend(i)->name());
+    if (task->brs_policy() == iris_default) {
+        task->set_brs_policy(brs_policy);
+    }
+    _debug2("Graph submit task:%lu:%s retained ref_cnt:%d", task->uid(), task->name(), task->ref_cnt());
+    task->Retain();
+    task->set_time_submit(timer_);
+    task->Submit(task->brs_policy(), task->opt(), sync);
+    if (recording_) json_->RecordTask(task);
+    if (scheduler_) scheduler_->Enqueue(task);
+    else { task->Retain(); workers_[0]->Enqueue(task); }
 }
 
 int Platform::TaskSubmit(iris_task brs_task, int brs_policy, const char* opt, int sync) {
@@ -2157,39 +2272,27 @@ int Platform::GraphRetain(iris_graph brs_graph, bool flag) {
   return IRIS_SUCCESS;
 }
 
-int Platform::GraphSubmit(iris_graph brs_graph, int brs_policy, int sync) {
-  Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
+int Platform::GraphSubmit(Graph *graph, int brs_policy, int sync) {
   if (graph == NULL) { if (sync) return Synchronize(); else return IRIS_SUCCESS; }
   graph->Retain();
+  //graph->Print();
+  graph->set_brs_policy(brs_policy);
   std::vector<Task*>* tasks = graph->tasks();
   //graph->RecordStartTime(devs_[0]->Now());
-  for (std::vector<Task*>::iterator I = tasks->begin(), E = tasks->end(); I != E; ++I) {
-    Task* task = *I;
+  if (!tasks->empty()) {
+      for (std::vector<Task*>::iterator I = tasks->begin()+1, E = tasks->end(); I != E; ++I) {
+          Task* task = *I;
 
 #ifdef PRINT_TASK_DEP
-    printf("Task: %s task id %d\n", task->name(), task->uid());
-    for(int i = 0; i < task->ndepends(); i++)
-        printf("    Parents %d - %s task id %d\n", i, task->depend(i)->name(), task->depend(i)->uid());
-    for(int i = 0; i < task->nchilds(); i++)
-        printf("    Childs %d - %s task id %d\n", i, task->Child(i)->name(), task->Child(i)->uid());
+          printf("Graph submit Task: %s task id %d\n", task->name(), task->uid());
+          for(int i = 0; i < task->ndepends(); i++)
+              printf("    Parents %d - %s task id %d\n", i, task->depend(i)->name(), task->depend(i)->uid());
+          for(int i = 0; i < task->nchilds(); i++)
+              printf("    Childs %d - %s task id %d\n", i, task->Child(i)->name(), task->Child(i)->uid());
 #endif
-/*    for(int i = 0; i < task->nchilds(); i++)
-        printf("    Childs %d - %s\n", i, task->Child(i)->name());
-*/ 
-    //printf("Task name %s depend count %d\n", task->name(), task->ndepends());
-    //for(int i = 0; i < task->ndepends(); i++)
-    //    printf("    depend %d - %s\n", i, task->depend(i)->name());
-    //preference is to honour the policy embedded in the task-graph.
-    if (task->brs_policy() == iris_default) {
-      task->set_brs_policy(brs_policy);
-    }
-    _debug2("Graph submit task:%lu:%s retained ref_cnt:%d", task->uid(), task->name(), task->ref_cnt());
-    task->Retain();
-    task->set_time_submit(timer_);
-    task->Submit(task->brs_policy(), task->opt(), sync);
-    if (recording_) json_->RecordTask(task);
-    if (scheduler_) scheduler_->Enqueue(task);
-    else { task->Retain(); workers_[0]->Enqueue(task); }
+          GraphTaskSubmit(task, brs_policy, sync);
+      }
+      GraphTaskSubmit(tasks->front(), brs_policy, sync);
   }
   if (sync) graph->Wait();
 #ifdef AUTO_PAR
@@ -2200,26 +2303,20 @@ int Platform::GraphSubmit(iris_graph brs_graph, int brs_policy, int sync) {
 #endif
   return IRIS_SUCCESS;
 }
-
+int Platform::GraphSubmit(iris_graph brs_graph, int brs_policy, int sync) {
+  Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
+  return GraphSubmit(graph, brs_policy, sync);
+}
 int Platform::GraphSubmit(iris_graph brs_graph, int *order, int brs_policy, int sync) {
   Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
   if (graph == NULL) { if (sync) return Synchronize(); else return IRIS_SUCCESS; }
   graph->Retain();
+  graph->set_brs_policy(brs_policy);
   std::vector<Task*> & tasks = graph->tasks_list();
   //graph->RecordStartTime(devs_[0]->Now());
   for(size_t i=0; i<tasks.size(); i++) {
     Task* task = tasks[order[i]];
-    //preference is to honour the policy embedded in the task-graph.
-    if (task->brs_policy() == iris_default) {
-      task->set_brs_policy(brs_policy);
-    }
-    _debug2("Graph submit task:%lu:%s retained ref_cnt:%d", task->uid(), task->name(), task->ref_cnt());
-    task->Retain();
-    task->set_time_submit(timer_);
-    task->Submit(task->brs_policy(), task->opt(), sync);
-    if (recording_) json_->RecordTask(task);
-    if (scheduler_) scheduler_->Enqueue(task);
-    else { task->Retain(); workers_[0]->Enqueue(task); }
+    GraphTaskSubmit(task, brs_policy, sync);
   }
   if (sync) graph->Wait();
   return IRIS_SUCCESS;

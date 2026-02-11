@@ -50,7 +50,27 @@ int DeviceHexagon::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool res
   return IRIS_SUCCESS;
 }
 
+int DeviceHexagon::MemAlloc(void** mem_addr, size_t size, void *stream_v, bool reset) {
+  void** hxgmem = mem_addr;
+  *hxgmem = ld_->iris_hexagon_rpcmem_alloc(RPCMEM_HEAP_ID_SYSTEM, RPCMEM_DEFAULT_FLAGS, (int) size);
+  if (*hxgmem == 0) {
+    _error("hxgmem[%p]", hxgmem);
+    worker_->platform()->IncrementErrorCount();
+    return IRIS_ERROR;
+  }
+  if (reset) {
+    _error("Hexagon not supported with reset for size:%lu", size);
+  }
+  return IRIS_SUCCESS;
+}
+
 int DeviceHexagon::MemFree(BaseMem *mem, void* mem_addr) {
+  void* hxgmem = mem_addr;
+  if (hxgmem) ld_->iris_hexagon_rpcmem_free(hxgmem);
+  return IRIS_SUCCESS;
+}
+
+int DeviceHexagon::MemFree(void* mem_addr, void *stream_v) {
   void* hxgmem = mem_addr;
   if (hxgmem) ld_->iris_hexagon_rpcmem_free(hxgmem);
   return IRIS_SUCCESS;

@@ -2,6 +2,8 @@
 #define IRIS_SRC_RT_WORKER_H
 
 #include "Thread.h"
+#include "Timer.h"
+#include "Queue.h"
 
 namespace iris {
 namespace rt {
@@ -24,8 +26,11 @@ public:
 
   bool busy() { return busy_; }
   unsigned long ntasks();
+  size_t size() { return queue_->Size(); }
   Device* device() { return dev_; }
   Platform* platform() { return platform_; }
+  double Now() { return timer_->Now(); }
+  Timer *timer() { return timer_; }
 private:
   void Execute(Task* task);
   virtual void Run();
@@ -38,6 +43,8 @@ private:
   Scheduler* scheduler_;
   bool single_;
   bool busy_;
+protected:
+  Timer* timer_;
 };
 
 } /* namespace rt */

@@ -99,8 +99,15 @@ class library(CDLL):
             fn_name = self.__getitem__(fn_name)
         fn_name(*conv_args)
 
+
+iris_default_libname = "libiris.so"
+if sys.platform.startswith("linux"):
+    iris_default_libname = "libiris.so"
+elif sys.platform == "darwin":
+    iris_default_libname = "libiris.dylib"
+
 class IRIS(library):
-    def __init__(self, libname='libiris.so'):
+    def __init__(self, libname=iris_default_libname):
         so_file = libname
         current_dir = os.path.dirname(os.path.abspath(__file__))
         if os.path.exists(os.path.join(current_dir, 'lib64', libname)):
@@ -112,7 +119,7 @@ class IRIS(library):
             super(IRIS, self).__init__(so_file)
         except OSError as e:
             print(e)
-            print('libiris.so not found. Please install IRIS library.', file=sys.stderr)
+            print(f'{libname} not found. Please install IRIS library.', file=sys.stderr)
 
     def get_numpy_size(self, size):
         if type(size) != np.ndarray:
@@ -247,10 +254,15 @@ iris_profile    =       (1 << 21)
 iris_random     =       (1 << 22)
 iris_pending    =       (1 << 23)
 iris_sdq        =       (1 << 24)
-iris_all        =       (1 << 25)
 iris_ftf        =       (1 << 25)
-iris_custom     =       (1 << 26)
+iris_ocl        =       (1 << 26)
+iris_block_cycle=       (1 << 27)
+iris_custom     =       (1 << 28)
+iris_qpu        =       (1 << 30)
+iris_python_policy =    (1 << 31)
+iris_all        =       0x7FFFFFFF
 
+iris_python_native     = 0
 
 iris_r          =   -1
 iris_w          =   -2
@@ -273,7 +285,9 @@ iris_int64            =  (12 << 16)
 iris_uint64           =  (13 << 16)
 iris_long             =  (14 << 16)
 iris_unsigned_long    =  (15 << 16)
-iris_pointer          =  (0x4000 << 16)
+iris_bool             =  (16 << 16)
+iris_custom_type      =  (17 << 16)
+iris_pointer          =  (0x40 << 16)
 
 iris_normal     =   (1 << 10)
 iris_reduction  =   (1 << 11)
@@ -299,6 +313,131 @@ IRIS_MEM = 0x1
 IRIS_DMEM = 0x2
 IRIS_DMEM_REGION = 0x4
 
+IRIS_BASE_TYPE_MASK = ~iris_pointer
+
+CQireeResultRecord = np.dtype([
+    ('key',   np.uint64),
+    ('count', np.uint64)
+])
+
+CProfileRecord = np.dtype([
+    ('start_time',   np.float64),
+    ('end_time',     np.float64),
+    ('type',         np.int32),
+    ('stream',       np.int32),
+    ('id',           np.int64)
+])
+
+class IrisParam(ctypes.Structure):
+    _fields_ = [
+        ("data",        c_void_p),          # void* data
+        ("off",         POINTER(c_size_t)), # size_t* off
+        ("tile_sizes",  POINTER(c_size_t)), # size_t* tile_sizes
+        ("full_sizes",  POINTER(c_size_t)), # size_t* full_sizes
+        ("element_size", c_size_t),         # element size in bytes
+        ("count",       c_size_t),          # number of elements
+        ("data_type",   c_int32),           # iris_* code
+        ("is_pointer",  c_int32),           # 0 = scalar, 1 = pointer/array
+        ("n_dims",      c_int32),           # rank of array
+        ("mem_id",      c_ulong),           # user-defined
+    ]
+    def get_arr(self, ptr):
+        nd = int(self.n_dims)
+
+        if not ptr or nd == 0:
+            return None
+        return [int(ptr[i]) for i in range(nd)]
+
+    def full_sizes_arr(self):
+        return self.get_arr(self.full_sizes)
+
+    def tile_sizes_arr(self):
+        return self.get_arr(self.tile_sizes)
+
+    def off_arr(self):
+        return self.get_arr(self.off)
+
+    def __repr__(self):
+        vals = {}
+        vals["data"]         = hex(self.data) if self.data else None
+        vals["element_size"] = int(self.element_size)
+        vals["count"]        = int(self.count)
+        vals["data_type"]    = int(self.data_type)
+        vals["is_pointer"]   = int(self.is_pointer)
+        vals["n_dims"]       = int(self.n_dims)
+        vals["mem_id"]       = int(self.mem_id)
+
+        vals["off"]        = self.get_arr(self.off)
+        vals["tile_sizes"] = self.get_arr(self.tile_sizes)
+        vals["full_sizes"] = self.get_arr(self.full_sizes)
+
+        # pretty-print
+        inner = ", ".join(f"{k}={v}" for k, v in vals.items())
+        return f"IrisParam({inner})"
+
+
+class IrisSpec(ctypes.Structure):
+    _fields_ = [
+        ("n_streams",  c_int32),
+        ("devno",      c_int32),
+        ("dev_id",     c_int32),
+        ("is_async",   c_int32),
+        ("task_id",    c_ulong),
+        ("cmd_id",     c_ulong),
+        ("streams",    POINTER(c_void_p)),  # void** streams
+        ("ctx",        c_void_p),           # void* ctx
+        ("dim",        c_int32),            # dimensionality for gws/grid/block
+        ("gws",        POINTER(c_size_t)),  # size_t* gws
+        ("grid",       POINTER(c_size_t)),  # size_t* grid
+        ("block",      POINTER(c_size_t)),  # size_t* block
+        ("shmem_size", c_size_t),
+    ]
+
+TYPE_TO_CTYPE = {
+    iris_int:           c_int32,
+    iris_int32:         c_int32,
+    iris_uint:          c_uint32,
+    iris_uint32:        c_uint32,
+    iris_float:         ctypes.c_float,
+    iris_double:        ctypes.c_double,
+    iris_char:          ctypes.c_char,
+    iris_int8:          c_int8,
+    iris_uint8:         c_uint8,
+    iris_int16:         c_int16,
+    iris_uint16:        c_uint16,
+    iris_int64:         c_int64,
+    iris_uint64:        c_uint64,
+    iris_long:          c_long,
+    iris_unsigned_long: c_ulong,
+    iris_bool:          c_uint8,  # or ctypes.c_bool
+}
+
+TYPE_TO_DTYPE = {
+    iris_int:           np.int32,
+    iris_int32:         np.int32,
+    iris_uint:          np.uint32,
+    iris_uint32:        np.uint32,
+    iris_float:         np.float32,
+    iris_double:        np.float64,
+    iris_char:          np.byte,
+    iris_int8:          np.int8,
+    iris_uint8:         np.uint8,
+    iris_int16:         np.int16,
+    iris_uint16:        np.uint16,
+    iris_int64:         np.int64,
+    iris_uint64:        np.uint64,
+    iris_long:          np.int64,   # adjust if your platform differs
+    iris_unsigned_long: np.uint64,
+    iris_bool:          np.bool_,
+}
+
+def iris_base_type(t: int) -> int:
+    """Strip pointer bits from data_type."""
+    return t & IRIS_BASE_TYPE_MASK
+
+def is_custom_dtype(arr: np.ndarray) -> bool:
+    return arr.fields is not None  # True for structured dtypes
+
 def get_iris_type(np_dtype):
     if np_dtype == np.float64:
         return iris_double
@@ -320,12 +459,17 @@ def get_iris_type(np_dtype):
         return iris_uint32
     if np_dtype == np.uint64:
         return iris_uint64
+    if is_custom_dtype(np_dtype):
+        return iris_custom_type
     if np_dtype.itemsize == 4:
         return iris_uint32
     if np_dtype.itemsize == 8:
         return iris_uint64
     return iris_double
 class iris_kernel(Structure):
+    _fields_ = [("class_obj", c_void_p), ("uid", c_ulong)]
+
+class iris_command(Structure):
     _fields_ = [("class_obj", c_void_p), ("uid", c_ulong)]
 
 class iris_mem(Structure):
@@ -337,8 +481,225 @@ class iris_task(Structure):
 class iris_graph(Structure):
     _fields_ = [("class_obj", c_void_p), ("uid", c_ulong)]
 
+# ---------------------------------------------------------------------------
+#  Helpers: element count and shape from IrisParam
+# ---------------------------------------------------------------------------
+
+def param_nelems(p: IrisParam) -> int:
+    """
+    Number of elements represented by this IrisParam.
+    Prefer p.count if set; otherwise, derive from full_sizes.
+    """
+    if p.count:
+        return int(p.count)
+
+    # Fallback: scalar
+    if not p.is_pointer or p.n_dims == 0:
+        return 1
+
+    # Fallback: product of full_sizes
+    if not p.full_sizes:
+        return 1
+
+    n = 1
+    for i in range(int(p.n_dims)):
+        n *= int(p.full_sizes[i])
+    return n
+
+
+def param_shape(p: IrisParam):
+    """
+    Shape tuple for a param.
+    Uses full_sizes[0..n_dims-1] if available, else () or (count,).
+    """
+    if not p.is_pointer or p.n_dims == 0:
+        return ()
+
+    if p.full_sizes and p.n_dims > 0:
+        return tuple(int(p.full_sizes[i]) for i in range(int(p.n_dims)))
+
+    # No full_sizes pointer: treat as 1D of length count (if non-zero)
+    nelems = param_nelems(p)
+    return (nelems,) if nelems > 0 else ()
+
+
+# ---------------------------------------------------------------------------
+#  IrisParam -> Python (scalar or NumPy array view)
+# ---------------------------------------------------------------------------
+
+def param_to_python(p: IrisParam):
+    """
+    Convert an IrisParam into a Python object:
+      - scalar -> Python scalar
+      - array  -> NumPy array view on C memory
+    """
+    base = iris_base_type(p.data_type)
+
+    # Unknown / custom type: just pass through pointer
+    if base not in TYPE_TO_CTYPE:
+        if p.mem_id in mem_handle_2_pobj:
+            mem = mem_handle_2_pobj[p.mem_id]
+            dtype = mem[0].dtype
+            byte_ptr = ctypes.cast(p.data, ctypes.POINTER(ctypes.c_ubyte))
+            full_sizes = p.full_sizes_arr()
+            shape = tuple(int(s) for s in full_sizes)
+            n_elems = int(np.prod(shape))
+            total_bytes = n_elems * dtype.itemsize
+            byte_array = np.ctypeslib.as_array(byte_ptr, shape=(total_bytes,))
+            arr = byte_array.view(dtype).reshape(shape)
+            return arr
+        return p.data
+
+    c_scalar_type = TYPE_TO_CTYPE[base]
+    dtype         = TYPE_TO_DTYPE[base]
+
+    # Optionally, sanity-check element_size vs ctypes size
+    if p.element_size and ctypes.sizeof(c_scalar_type) != p.element_size:
+        # You *can* assert or log here if you want stricter checking.
+        # For now, we just trust the mapping.
+        pass
+
+    nelems = param_nelems(p)
+
+    # Scalar case: not pointer/array or logically single element
+    if (not p.is_pointer or p.n_dims == 0) or nelems == 1:
+        ptr = ctypes.cast(p.data, ctypes.POINTER(c_scalar_type))
+        return ptr[0]
+
+    # Array case: build NumPy view over C memory
+    ptr = ctypes.cast(p.data, ctypes.POINTER(c_scalar_type))
+    flat = np.ctypeslib.as_array(ptr, shape=(nelems,))
+
+    shape = param_shape(p)
+    if shape and int(np.prod(shape)) == nelems:
+        return flat.reshape(shape)
+    else:
+        return flat  # fallback: 1D
+
+
+# ---------------------------------------------------------------------------
+#  Python -> IrisParam (write-back into C-owned memory)
+# ---------------------------------------------------------------------------
+
+def python_to_param(value, p: IrisParam):
+    """
+    Write a Python scalar/array back into the memory pointed by IrisParam.
+    Assumes C side has already allocated data with correct element_size/count.
+    """
+    base = iris_base_type(p.data_type)
+    if base not in TYPE_TO_CTYPE:
+        raise TypeError(f"Unsupported IRIS type for write-back: {hex(base)}")
+
+    c_scalar_type = TYPE_TO_CTYPE[base]
+    dtype         = TYPE_TO_DTYPE[base]
+
+    nelems = param_nelems(p)
+
+    # scalar
+    if (not p.is_pointer or p.n_dims == 0) or nelems == 1:
+        ptr      = ctypes.cast(p.data, ctypes.POINTER(c_scalar_type))
+        ptr[0]   = c_scalar_type(value)
+        return
+
+    # array
+    ptr  = ctypes.cast(p.data, ctypes.POINTER(c_scalar_type))
+    view = np.ctypeslib.as_array(ptr, shape=(nelems,))
+
+    arr = np.asarray(value, dtype=dtype)
+    if arr.size != nelems:
+        raise ValueError(
+            f"Size mismatch in write-back: expected {nelems}, got {arr.size}"
+        )
+
+    view[...] = arr.reshape(view.shape)
+
+
+# ---------------------------------------------------------------------------
+#  IrisSpec -> Python
+# ---------------------------------------------------------------------------
+
+def spec_to_python(spec_ptr: POINTER(IrisSpec)):
+    """
+    Convert IrisSpec* into a Python dict with nice fields.
+    """
+    if not spec_ptr:
+        return None
+
+    s = spec_ptr.contents
+
+    # Streams as a Python list of void* (opaque)
+    streams = []
+    if s.streams and s.n_streams > 0:
+        for i in range(int(s.n_streams)):
+            streams.append(s.streams[i])
+
+    dim = int(s.dim)
+
+    def read_size_array(ptr):
+        if not ptr or dim <= 0:
+            return None
+        return [int(ptr[i]) for i in range(dim)]
+
+    return {
+        "n_streams": int(s.n_streams),
+        "devno":     int(s.devno),
+        "dev_id":    int(s.dev_id),
+        "is_async":  int(s.is_async),
+        "task_id":   int(s.task_id),
+        "cmd_id":    int(s.cmd_id),
+        "streams":   streams,    # list of c_void_p
+        "ctx_ptr":   s.ctx,      # opaque pointer
+        "dim":       dim,
+        "gws":       read_size_array(s.gws),
+        "grid":      read_size_array(s.grid),
+        "block":     read_size_array(s.block),
+        "shmem_size": int(s.shmem_size),
+        "raw":       s,          # original IrisSpec ctypes struct
+    }
+
+# Callback type: void (*)(IrisParam* params, int32_t n, IrisSpec* spec)
+__PY_IRIS_CB = CFUNCTYPE(None, c_void_p, POINTER(IrisSpec), POINTER(IrisParam), c_int32)
+
+@__PY_IRIS_CB
+def __py_iris_callback_kernel(kname_ptr, spec_ptr, params_ptr, n_params):
+    # Convert IrisParam[] → Python arguments
+    params  = [params_ptr[i] for i in range(int(n_params))]
+    py_args = [param_to_python(p) for p in params]
+
+    # Convert IrisSpec → Python dict
+    spec_py = spec_to_python(spec_ptr)
+
+    # Call the user function
+    pyobj_p = ctypes.cast(kname_ptr, ctypes.POINTER(py_object))
+    py_func = pyobj_p.contents.value
+    result = py_func(spec_py, *py_args)
+
+    # Write-back semantics (optional)
+    if result is None:
+        return
+
+    # Single return value -> write into first param
+    if not isinstance(result, (tuple, list)):
+        try:
+            python_to_param(result, params[0])
+        except Exception:
+            pass
+        return
+
+    # Multiple return values -> write element-wise
+    for p, val in zip(params, result):
+        try:
+            python_to_param(val, p)
+        except Exception:
+            pass
+
 def init(sync = 1):
-    return dll.iris_init(0, None, c_int(sync))
+    launch_func = __py_iris_callback_kernel
+    dll.iris_python_init.argtypes=[__PY_IRIS_CB, ctypes.c_int32]
+    dll.iris_python_init.restype = None
+    dll.iris_python_init(launch_func, 0)
+    status = dll.iris_init(0, None, c_int(sync))
+    return status
 
 def set_enable_profiler(flag=True):
     dll.iris_set_enable_profiler(int(flag))
@@ -587,14 +948,20 @@ def task_d2h(task, mem, off=0, size=0, host=None):
         host_ctype = host.ctypes.data_as(c_void_p)
     return dll.iris_task_d2h(task, mem, c_size_t(off), c_size_t(size), host_ctype)
 
+def task_d2d(task, mem, src_dev=0, off=0, size=0, host=None):
+    host_ctype = None
+    if host != None:
+        host_ctype = host.ctypes.data_as(c_void_p)
+    return dll.iris_task_d2d(task, mem, c_size_t(off), c_size_t(size), host_ctype, src_dev)
+
 def task_h2d_full(task, mem, host):
     return dll.iris_task_h2d_full(task, mem, host.ctypes.data_as(c_void_p))
 
 def task_d2h_full(task, mem, host):
     return dll.iris_task_d2h_full(task, mem, host.ctypes.data_as(c_void_p))
 
-def task_submit(task, device, sync):
-    return dll.iris_task_submit(task, c_int(device), None, c_int(sync))
+def task_submit(task, policy, sync):
+    return dll.iris_task_submit(task, c_int(policy), None, c_int(sync))
 
 def task_wait(task):
     return dll.iris_task_wait(task)
@@ -618,7 +985,7 @@ def timer_now():
 
 mem_handle_2_pobj = {}
 class dmem_null:
-  def __init__(self, size):
+  def __init__(self, size=0):
     m = iris_mem()
     c_host = c_void_p(0)
     dll.iris_data_mem_create(byref(m), c_host, c_size_t(size))
@@ -639,14 +1006,33 @@ class dmem_base:
   track_host2dmems = {}
   def __init__(self, reuse, *args):
     self.str_data = None
+    self.host = None
+    self.dtype = None
     self.handle, self.type = self.dmem_create(reuse, args)
     if self.handle.uid not in mem_handle_2_pobj:
         mem_handle_2_pobj[self.handle.uid] = []
     mem_handle_2_pobj[self.handle.uid].append(self)
 
+  def host_data(self, dtype):
+    ptr = dll.call_ret_ptr(dll.iris_get_dmem_valid_host, self.handle)
+    buf_ptr = ctypes.cast(ptr, ctypes.POINTER(ret_type))
+    np_array = np.ctypeslib.as_array(buf_ptr, shape=(length,))
+    np_array = np_array.view(dtype)
+    return np_array
+
   def dmem_create(self, reuse, *args):
     if len(args) == 1:
       c_host = None
+      if len(args[0]) == 0:
+        m = iris_mem()
+        size=0
+        c_host = c_void_p(0)
+        dll.iris_data_mem_create(byref(m), c_host, c_size_t(size))
+        self.handle = m
+        if self.handle.uid not in mem_handle_2_pobj:
+            mem_handle_2_pobj[self.handle.uid] = []
+        mem_handle_2_pobj[self.handle.uid].append(self)
+        return m, IRIS_DMEM
       host = args[0][0]
       host_size = 0
       dim = 0
@@ -658,16 +1044,22 @@ class dmem_base:
       host_size = np.array(host.shape)
       dim = len(host_size)
       size = host.nbytes
+      self.dtype = host.dtype
       if reuse and c_host.value in dmem_base.track_host2dmems:
+        self.host = host
         return dmem_base.track_host2dmems[c_host.value], IRIS_DMEM
       m = iris_mem()
       if dim == 1:
-        dll.iris_data_mem_create(byref(m), c_host, c_size_t(size))
+        chost_size = (c_size_t * dim)(*host_size)
+        elem_type = get_iris_type(host.dtype)
+        elem_size = host.dtype.itemsize
+        dll.iris_data_mem_create_nd(byref(m), c_host, chost_size, c_int(dim), c_size_t(elem_size), c_int(elem_type))
       elif dim > 1:
         chost_size = (c_size_t * dim)(*host_size)
         elem_size = host.dtype.itemsize
         elem_type = get_iris_type(host.dtype)
         dll.iris_data_mem_create_nd(byref(m), c_host, chost_size, c_int(dim), c_size_t(elem_size), c_int(elem_type))
+      self.host = host
       dmem_base.track_host2dmems[c_host.value] = m
       return m, IRIS_DMEM
     elif len(args) == 2:
@@ -684,6 +1076,7 @@ class dmem_base:
       chost_size = (c_size_t * dim)(*host_size)
       cdev_size = (c_size_t * dim)(*dev_size)
       size = host.nbytes
+      self.host = host
       dll.iris_data_mem_create_tile(byref(m), c_host, coff, chost_size, cdev_size, c_size_t(elem_size), c_int(dim))
       return m, IRIS_DMEM
 
@@ -709,9 +1102,6 @@ class dmem_base:
     return c_host
   def mem(self):
     return self.mem
-  def release(self):
-    mem_release(self.handle)
-  
 
 class dmem(dmem_base):
   def __init__(self, *args):
@@ -753,6 +1143,26 @@ class dmem_region(dmem_base):
     uid = pmem.uid()
     self.mem = pmem
   
+class dmem_infile(dmem_base):
+    def __init__(self, file_path):
+        data, text_content = self.read_file(file_path)
+        args = text_content
+        super().__init__(True, args)
+    def read_file(self, file_path):
+        try:
+            with open(file_path, 'r') as file:
+                text_content = file.read()
+                char_array = np.array(list(text_content), dtype='<U1')
+                return char_array, text_content
+        except FileNotFoundError:
+            print(f"Error: File not found at '{file_path}'")
+            return None
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            return None
+
+
+    
 class mem:
   def __init__(self, size):
     self.handle = mem_create(size)
@@ -796,6 +1206,16 @@ class kernel:
     kernel_setmem(self.handle, idx, mem.handle, mode)
   def release(self):
     kernel_release(self.handle)
+
+class command:
+  def __init__(self, handle):
+    self.handle = handle
+
+  def profile():
+    start_time = c_double()
+    end_time = c_double()
+    dll.iris_cmd_get_profile(self.handle, byref(start_time), byref(end_time))
+    return (end_time-start_time, start_time, end_time)
 
 class size_t:
     def __init__(self, value):
@@ -954,21 +1374,40 @@ class task:
         self.params = []
         self.func = None 
         self.wrapped_py_func = None 
+        self.py_func_object = None
         if len(args) == 0:
             self.handle = task_create()
             task_handle_2_pobj[self.handle.uid] = self
             return
         (kernel, dim, off, gws, lws, params_list) = args
-        self.handle = task_create(kernel)
+        if callable(kernel):
+            self.handle = task_create(kernel.__name__)
+        else:
+            self.handle = task_create(kernel)
         self.kernel(kernel, dim, off, gws, lws, params_list)
 
     def kernel(self, kernel, dim, off, gws, lws, params, params_info=[]):
-        if len(params_info) == 0  and len(params) != len(params_info):
-            self.kernel_core2(kernel, dim, off, gws, lws, params)
+        if callable(kernel):
+            # This is python kernel function
+            self.py_func_object = ctypes.py_object(kernel)
+            self.kernel_core(kernel.__name__, dim, off, gws, lws, params, params_info)
+            dll.iris_kernel_set_python_function(self.kernel_obj, ctypes.pointer(self.py_func_object))
+            dll.iris_kernel_enable_python_interface(self.kernel_obj, iris_python_native)
         else:
-            self.kernel_core1(kernel, dim, off, gws, lws, params, params_info)
+            self.kernel_core(kernel, dim, off, gws, lws, params, params_info)
+        return self.last_command()
+
+    def kernel_core(self, kernel, dim, off, gws, lws, params, params_info=[]):
+        if len(params_info) == 0  and len(params) != len(params_info):
+            return self.kernel_core2(kernel, dim, off, gws, lws, params)
+        else:
+            return self.kernel_core1(kernel, dim, off, gws, lws, params, params_info)
     def kernel_core1(self, kernel, dim, off, gws, lws, params, params_info):
         task_kernel(self.handle, kernel, dim, off, gws, lws, params, params_info, self.params)
+        self.kernel_obj = dll.call_ret(dll.iris_task_get_last_cmd_kernel, iris_kernel, self.handle)
+
+        return self.kernel_obj
+
     def kernel_core2(self, kernel, dim, off, gws, lws, params_list):
         coff = (c_size_t * dim)(*off)
         cgws = (c_size_t * dim)(*gws)
@@ -984,8 +1423,13 @@ class task:
                 if hasattr(pobj[0], 'handle') and isinstance(pobj[0].handle, iris_mem):
                     self.params.append(pobj[0])
                     cparams[i] = ctypes.addressof(pobj[0].handle)
-                    params_info.append(pobj[1])
+                    if len(pobj) == 2 and pobj[1] == iris_flush:
+                        params_info.append(iris_w)
+                    else:
+                        params_info.append(pobj[1])
                     if len(pobj) == 3 and pobj[2] == iris_flush:
+                        flush_objs.append(pobj[0].handle)
+                    if len(pobj) == 2 and pobj[1] == iris_flush:
                         flush_objs.append(pobj[0].handle)
                 else:
                     # (NUMPY Object, modes of use, <optional flush>)
@@ -994,7 +1438,12 @@ class task:
                     dobj = dmem(host)
                     self.params.append(dobj)
                     cparams[i] = ctypes.addressof(dobj.handle)
-                    params_info.append(pobj[1])
+                    if len(pobj) == 2 and pobj[1] == iris_flush:
+                        params_info.append(iris_w)
+                    else:
+                        params_info.append(pobj[1])
+                    if len(pobj) == 2 and pobj[1] == iris_flush:
+                        flush_objs.append(dobj.handle)
                     if len(pobj) == 3 and pobj[2] == iris_flush:
                         flush_objs.append(dobj.handle)
             elif pobj == None:
@@ -1018,12 +1467,15 @@ class task:
                 print("error")
         cparams_info = (c_int * nparams)(*params_info)
         kernel_name = c_char_p(kernel) if sys.version_info[0] == 2 else c_char_p(bytes(kernel, 'ascii'))
-        dll.iris_task_kernel(self.handle, kernel_name, c_int(dim), coff, cgws, clws, c_int(nparams), cparams, cparams_info)
+        self.kernel_obj = dll.iris_task_kernel(self.handle, kernel_name, c_int(dim), coff, cgws, clws, c_int(nparams), cparams, cparams_info)
+        self.kernel_obj = dll.call_ret(dll.iris_task_get_last_cmd_kernel, iris_kernel, self.handle)
         for pobj in flush_objs:
             dll.iris_task_dmem_flush_out(self.handle, pobj)
+        return self.kernel_obj
 
-    def flush(self, mem):                                                     
-        dll.iris_task_dmem_flush_out(self.handle, mem.handle)                 
+    def flush(self, mem):
+        dll.iris_task_dmem_flush_out(self.handle, mem.handle)
+        return self.last_command()
 
     def name(self):
         dll.iris_task_get_name.restype = c_char_p
@@ -1037,7 +1489,9 @@ class task:
         c_name = c_char_p(name) if sys.version_info[0] == 2 else c_char_p(bytes(name, 'ascii'))
         dll.iris_task_set_name(self.handle, c_name)
     def set_device(self, device):
-        dll.iris_task_set_policy(self.handle, convert_obj_ctype(device)[0])
+        dll.iris_task_set_device(self.handle, convert_obj_ctype(device)[0])
+    def set_policy(self, policy):
+        dll.iris_task_set_policy(self.handle, convert_obj_ctype(policy)[0])
     def uid(self):
         dll.iris_task_get_uid.restype = c_ulong
         return dll.iris_task_get_uid(self.handle)
@@ -1092,6 +1546,11 @@ class task:
         ntasks = dll.iris_task_get_dependency_count(self.handle)
         return ntasks
 
+    def last_command(self):
+        dll.iris_task_get_last_cmd.restype = iris_kernel
+        cmd = dll.iris_task_get_last_cmd(self.handle)
+        return command(cmd)
+
     def get_depends(self):
         dll.iris_task_get_dependency_count.restype = c_int
         ntasks = dll.iris_task_get_dependency_count(self.handle)
@@ -1109,24 +1568,40 @@ class task:
         task_depend(self.handle, len(tasks_list), dep_list)
     def wait(self):
         task_wait(self.handle)
-    def dmem2dmem(self, src_mem, dst_mem):
-        dll.iris_task_dmem2dmem(self.handle, src_mem.handle, dst_mem.handle)
-    def h2d(self, mem, off=0, size=0, host=None):
-        task_h2d(self.handle, mem.handle, off, size, host)
     def params_map(self, params_map_list):
         task_params_map(self.handle, params_map_list)
+    def dmem2dmem(self, src_mem, dst_mem):
+        dll.iris_task_dmem2dmem(self.handle, src_mem.handle, dst_mem.handle)
+        return self.last_command()
+    def mem_in(self, mem, off=0, size=0, host=None):
+        task_h2d(self.handle, mem.handle, off, size, host)
+        return self.last_command()
+    def h2d(self, mem, off=0, size=0, host=None):
+        task_h2d(self.handle, mem.handle, off, size, host)
+        return self.last_command()
+    def mem_out(self, mem, off=0, size=0, host=None):
+        task_d2h(self.handle, mem.handle, off, size, host)
+        return self.last_command()
     def d2h(self, mem, off=0, size=0, host=None):
         task_d2h(self.handle, mem.handle, off, size, host)
+        return self.last_command()
+    def d2d(self, mem, src_dev=0, off=0, size=0, host=None):
+        task_d2d(self.handle, mem.handle, src_dev, off, size, host)
+        return self.last_command()
     def h2d_full(self, mem, host):
         task_h2d_full(self.handle, mem.handle, host)
+        return self.last_command()
     def d2h_full(self, mem, host):
         task_d2h_full(self.handle, mem.handle, host)
+        return self.last_command()
     def pyhost(self, func, params):
         python_task_host(self, self.handle, func, params)
+        return self.last_command()
     def host(self, func, params):
         task_host(self.handle, func, params)
-    def submit(self, device, sync = 1):
-        task_submit(self.handle, device, sync)
+        return self.last_command()
+    def submit(self, policy=iris_default, sync = 1):
+        task_submit(self.handle, policy, sync)
     def task_name(self):
         dll.iris_task_get_name(self.handle)
     def kernel_name(self):
@@ -1171,16 +1646,16 @@ class graph:
         dll.iris_graph_free(self.handle)
     def wait(self):
         dll.iris_graph_wait(self.handle)
-    def submit(self, device=iris_default, sync=1, order=None):
+    def submit(self, policy=iris_default, sync=1, order=None):
         if type(order) == np.ndarray or order != None:
             order_np = order
             if type(order) != np.ndarray:
                 order_np = np.int32(order)
             conv_order_np = convert_obj_ctype(order_np)
-            dll.iris_graph_submit_with_order(self.handle, conv_order_np[0], c_int(device), c_int(sync))
+            dll.iris_graph_submit_with_order(self.handle, conv_order_np[0], c_int(policy), c_int(sync))
         else:
-            dll.iris_graph_submit(self.handle, c_int(device), c_int(sync))
-    def submit_time(self, device=iris_default, sync=1, order=None):
+            dll.iris_graph_submit(self.handle, c_int(policy), c_int(sync))
+    def submit_time(self, policy=iris_default, sync=1, order=None):
         #stime = np.double(0.0)
         #cobj = byref(c_double(stime))
         stime = np.zeros((1), np.double)
@@ -1190,15 +1665,15 @@ class graph:
             if type(order) != np.ndarray:
                 order_np = np.int32(order)
             conv_order_np = convert_obj_ctype(order_np)
-            dll.iris_graph_submit_with_order_and_time(self.handle, conv_order_np[0], cobj, c_int(device), c_int(sync))
+            dll.iris_graph_submit_with_order_and_time(self.handle, conv_order_np[0], cobj, c_int(policy), c_int(sync))
         else:
-            dll.iris_graph_submit_with_time(self.handle, cobj, c_int(device), c_int(sync))
+            dll.iris_graph_submit_with_time(self.handle, cobj, c_int(policy), c_int(sync))
         return stime[0]
-    def add_task(self, task, device=iris_default, opt=None):
+    def add_task(self, task, policy=iris_default, opt=None):
         c_opt = c_void_p(0)
         if opt != None:
            c_opt = c_char_p(opt) if sys.version_info[0] == 2 else c_char_p(bytes(opt, 'ascii'))
-        dll.iris_graph_task(self.handle, task.handle, c_int(device), c_opt)
+        dll.iris_graph_task(self.handle, task.handle, c_int(policy), c_opt)
 
     def reset_memories(self):
         dll.iris_graph_reset_memories(self.handle)

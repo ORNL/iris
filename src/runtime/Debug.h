@@ -122,6 +122,7 @@ extern char iris_log_prefix_[];
 #define  _event_debug(fmt, ...) do { } while (0)
 #endif
 
+//#define _TRACE_ENABLE
 #ifdef _TRACE_ENABLE
 #define  _trace(fmt, ...) do { printf( BLUE "[T] %s [%s:%d:%s] " fmt RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, ##__VA_ARGS__); FFLUSH(stdout); } while (0)
 #define  _trace_debug(fmt, ...) do { printf( BRED "[T] Manual Debug %s [%s:%d:%s] " fmt RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, ##__VA_ARGS__); FFLUSH(stdout); } while (0)

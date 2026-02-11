@@ -4,6 +4,14 @@
 #define PARAM_MEM(X)              &(X)
 #define IRIS_PTR(X)               X *
 
+#define IRIS_C_STR_CORE(X) #X
+#define IRIS_C_STR(X)  IRIS_C_STR_CORE(X)
+
+#define IRIS_FUNC_CORE(X, Y) X ## Y
+#define IRIS_FUNC(X, Y) IRIS_FUNC_CORE(X, Y)
+#define IRIS_FUNC_STR(X, Y) IRIS_C_STR(IRIS_FUNC(X, Y))
+
+
 #ifndef UNDEF_IRIS_MACROS
 
 

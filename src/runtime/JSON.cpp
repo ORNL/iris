@@ -238,11 +238,22 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
             if (param_.HasMember("data_type") && param_["data_type"].IsString()) {
               const char* data_type_str = param_["data_type"].GetString();
               if (strcmp(data_type_str,"int") == 0) kparams_info[l] = sizeof(int);
-              else if(strcmp(data_type_str,"short") == 0) kparams_info[l] = sizeof(short);
-              else if(strcmp(data_type_str,"long") == 0) kparams_info[l] = sizeof(long);
-              else if(strcmp(data_type_str,"char") == 0) kparams_info[l] = sizeof(char);
-              else if(strcmp(data_type_str,"float") == 0) kparams_info[l] = sizeof(float);
-              else if(strcmp(data_type_str,"double") == 0) kparams_info[l] = sizeof(double);
+              else if(strcmp(data_type_str,"short") == 0) kparams_info[l] = sizeof(short) | iris_int16;
+              else if(strcmp(data_type_str,"long") == 0) kparams_info[l] = sizeof(long) | iris_long;
+              else if(strcmp(data_type_str,"unsigned long") == 0) kparams_info[l] = sizeof(unsigned long) | iris_unsigned_long;
+              else if(strcmp(data_type_str,"char") == 0) kparams_info[l] = sizeof(char) | iris_char;
+              else if(strcmp(data_type_str,"float") == 0) kparams_info[l] = sizeof(float) | iris_float;
+              else if(strcmp(data_type_str,"double") == 0) kparams_info[l] = sizeof(double) | iris_double;
+              else if(strcmp(data_type_str,"uint") == 0) kparams_info[l] = sizeof(unsigned int) | iris_uint;
+              else if(strcmp(data_type_str,"int") == 0) kparams_info[l] = sizeof(int) | iris_int;
+              else if(strcmp(data_type_str,"int8") == 0) kparams_info[l] = sizeof(int8_t) | iris_int8;
+              else if(strcmp(data_type_str,"int16") == 0) kparams_info[l] = sizeof(int16_t) | iris_int16;
+              else if(strcmp(data_type_str,"int32") == 0) kparams_info[l] = sizeof(int32_t) | iris_int32;
+              else if(strcmp(data_type_str,"int64") == 0) kparams_info[l] = sizeof(int64_t) | iris_int64;
+              else if(strcmp(data_type_str,"uint8") == 0) kparams_info[l] = sizeof(uint8_t) | iris_uint8;
+              else if(strcmp(data_type_str,"uint16") == 0) kparams_info[l] = sizeof(uint16_t) | iris_uint16;
+              else if(strcmp(data_type_str,"uint32") == 0) kparams_info[l] = sizeof(uint32_t) | iris_uint32;
+              else if(strcmp(data_type_str,"uint64") == 0) kparams_info[l] = sizeof(uint64_t) | iris_uint64;
               else if(strcmp(data_type_str,"long double") == 0) kparams_info[l] = sizeof(long double);
               else {
                 _error("malformed command kernel parameters scalar data_type in file[%s] -- we must know the number of bytes this data type uses!", path);
@@ -719,6 +730,7 @@ int JSON::ProcessTask(Task* task){
           _value.SetString(arg->value,arg->size,iris_output_document_.GetAllocator());
           param_.AddMember("value",_value,iris_output_document_.GetAllocator());
           param_.AddMember("data_size",arg->size,iris_output_document_.GetAllocator());
+          if (arg->data_type != 0) param_.AddMember("data_type",rapidjson::StringRef(Utils::GetTypeString(arg->data_type)),iris_output_document_.GetAllocator());
         }
         params_.PushBack(param_,iris_output_document_.GetAllocator());
       }

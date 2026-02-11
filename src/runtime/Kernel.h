@@ -21,6 +21,7 @@ class History;
 class MemHistory;
 class DataMem;
 class DataMemRegion;
+class Command;
 typedef struct _KernelArg {
   size_t size;
   char value[1024];
@@ -45,8 +46,10 @@ public:
   int SetArg(int idx, size_t size, void* value);
   int SetMem(int idx, BaseMem* mem, size_t off, int mode);
   KernelArg* ExportArgs();
-  void* GetJuliadata() { return host_if_data_; }
-  void CreateJuliadata(size_t size) { host_if_data_ = malloc(size); }
+  void* GetJuliaData() { return host_if_data_; }
+  void CreateJuliaData(size_t size) { host_if_data_ = malloc(size); }
+  void* GetPythonData() { return host_if_data_; }
+  void CreatePythonData(size_t size) { host_if_data_ = malloc(size); }
   void* GetFFIdata() { return host_if_data_; }
   void CreateFFIdata(size_t size) { host_if_data_ = malloc(size); }
   void* GetParamWrapperMemory() { return (void *)param_wrapper_mem_; }
@@ -64,7 +67,7 @@ public:
   bool is_default_kernel(int devno) { return is_default_kernel_[devno]; }
   void set_default_kernel(int devno, bool flag=true) { is_default_kernel_[devno] = flag; }
   void set_task_name(const char *name) { task_name_= string(name); }
-  void set_task(Task *task) { task_ = task; }
+  void set_task(Task *task); 
   Task *task() { return task_; }
   const char *get_task_name() { return task_name_.c_str(); }
   Platform* platform() { return platform_; }
@@ -101,6 +104,30 @@ public:
   void add_dmem_region(DataMemRegion *mem, int idx, int mode);
   void **GetCompletionEventPtr(bool new_entry=false) { return async_data_.GetCompletionEventPtr(new_entry); }
   void *GetCompletionEvent() { return async_data_.GetCompletionEvent(); }
+  void set_enable_julia_if() { enable_julia_if_ = true; }
+  bool enable_julia_if() { return enable_julia_if_; }
+  void set_julia_kernel_type(int type) { julia_kernel_type_ = type; }
+  int julia_kernel_type() { return julia_kernel_type_; }
+  void set_enable_python_if() { enable_python_if_ = true; }
+  bool enable_python_if() { return enable_python_if_; }
+  void set_python_function(void *ptr) { python_function_ = ptr; }
+  void *get_python_function() { return python_function_; }
+  void set_python_kernel_type(int type) { python_kernel_type_ = type; }
+  int python_kernel_type() { return python_kernel_type_; }
+  void set_shared_mem_size(size_t size) { shared_mem_size_ = size; }
+  size_t shared_mem_size() { return shared_mem_size_; }
+  void update_arg(int index, void *val);
+  void update_arg_core(int index, void *val);
+  void update_mem(int index, BaseMem *mem);
+  void update_mem_core(int index, BaseMem *mem);
+  void update_map(int index, BaseMem *mem, std::map<BaseMem*, int> & mem2index);
+  void set_cmd(Command *cmd) { cmd_ = cmd; }
+  void set_gws_dynamic_from_dmem(DataMem *mem);
+  DataMem *get_gws_dynamic_from_dmem() { 
+      return gws_dynamic_from_dmem_; 
+  }
+  Command *get_cmd() { return cmd_; }
+  Command *command() { return cmd_; }
 /*
 #ifdef AUTO_PAR
 #ifdef AUTO_SHADOW
@@ -110,10 +137,18 @@ public:
 */
 
 private:
+  bool enable_julia_if_;
+  bool enable_python_if_;
+  void *python_function_;
+  size_t shared_mem_size_;
+  int julia_kernel_type_;
+  int python_kernel_type_;
   int n_mems_;
+  int recommend_stram_;
   std::string name_;
   std::string task_name_;
   Task *task_;
+  Command *cmd_;
   std::map<int, KernelArg*> args_;
   void* archs_[IRIS_MAX_NDEVS];
   Device* archs_devs_[IRIS_MAX_NDEVS];
@@ -136,6 +171,7 @@ private:
   std::map<int, DataMem *> data_mems_out_;
   std::map<int, DataMemRegion *> data_mem_regions_out_;
   KernelAsyncData async_data_;
+  DataMem *gws_dynamic_from_dmem_;
 };
 
 } /* namespace rt */

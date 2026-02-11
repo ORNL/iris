@@ -68,7 +68,7 @@ int Loader::LoadHandle() {
     _trace("shared library path[%s]", realpath(map->l_name, NULL));
 #endif
   } else {
-    _warning("%s", dlerror());
+    _warning("Library:%s: %s", library(), dlerror());
     return IRIS_ERROR;
   }
 #else

@@ -1,0 +1,55 @@
+include(ENV["IRIS"] * "/src/IrisHRT.jl")
+using .IrisHRT
+using Test
+
+IrisHRT.init()
+
+hA = reshape(collect(1:64), 8, 8)
+
+hAA = IrisHRT.dmem(@view hA[3:6,3:6])
+iris_AA = IrisHRT.dmem(@view hA[2:6,3:5])
+println(Core.stdout, " IRIS AA: ", iris_AA)
+println(Core.stdout, " AA: ", @view hA[2:6, 3:5])
+
+
+hAAA = IrisHRT.reshape(hAA, 2, 8)
+
+hAAAA = IrisHRT.reshape(hAAA, 8, 2)
+
+A = reshape(collect(1:64), 8, 8)
+
+AA = IrisHRT.dmem(@view A[3:6,3:6])
+
+AAA = IrisHRT.reshape(AA, 2, 8)
+
+#RAAA = IrisHRT.reinterpret(Int8, AA)
+
+AAAA = IrisHRT.reshape(AAA, 8, 2)
+
+
+#println(Core.stdout, "--------------------------------")
+#IrisHRT.print_dmem(A, "A: ")
+A_host = IrisHRT.valid_host(A)
+#println(Core.stdout, "--------------------------------")
+#IrisHRT.print_dmem(AA, "AA: ")
+AA_host = IrisHRT.valid_host(AA)
+#println(Core.stdout, "--------------------------------")
+#IrisHRT.print_dmem(AAA, "AAA: ")
+AAA_host = IrisHRT.valid_host(AAA)
+#println(Core.stdout, "--------------------------------")
+#IrisHRT.print_dmem(AAAA, "AAAA: ")
+AAAA_host = IrisHRT.valid_host(AAAA)
+
+#println("A:", A_host)
+#println("AA:", AA_host)
+#println("AAA:", AAA_host)
+#println("AAAA:", AAAA_host)
+
+@testset "reshape_view_reshape" begin
+	@test A_host == hA
+	@test AA_host   == [19 27 35 43; 20 28 36 44; 21 29 37 45; 22 30 38 46]
+	@test AAA_host  == [19 21 27 29 35 37 43 45; 20 22 28 30 36 38 44 46]
+	@test AAAA_host == [19 35; 20 36; 21 37; 22 38; 27 43; 28 44; 29 45; 30 46]
+end
+
+IrisHRT.finalize()
