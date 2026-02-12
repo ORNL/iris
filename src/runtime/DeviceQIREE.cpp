@@ -20,6 +20,8 @@ DeviceQIREE::DeviceQIREE(LoaderQIREE* ld, int devno, int platform) : Device(devn
   ld_ = ld;
   manager_ = NULL;
   is_qiree_process_ = false;
+  is_qsim_ = true;
+  is_xacc_ = false;
   qiree_process_ = NULL;
   max_arg_idx_ = -1;
   type_ = iris_qpu;
@@ -50,6 +52,12 @@ void DeviceQIREE::CreateCQiree()
         bool create_now = true;
         if (qiree_process_ != NULL) {
             create_now = false;
+#if 1
+            if (!is_xacc_) {
+                qiree_process_->qiree_destroy();
+                qiree_process_->qiree_create();
+            }
+#endif
 #if 0
             qiree_process_->qiree_destroy();
             qiree_process_->Stop();
@@ -281,6 +289,13 @@ int DeviceQIREE::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem,
       backend_ = (const char *)params_[idx]; 
       if (strcmp(backend_, "xacc")==0) {
           is_qiree_process_ = true;
+          is_xacc_ = true;
+          is_qsim_ = false;
+      }
+      if (strcmp(backend_, "qsim")==0) {
+          is_qiree_process_ = true;
+          is_xacc_ = false;
+          is_qsim_ = true;
       }
   }
   else if (idx == 1) {
@@ -305,7 +320,9 @@ int DeviceQIREE::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem,
   }
   else if (idx == 2) {
       config_json_ = (const char *)params_[idx];
-      if (strcasecmp(config_json_, "null") == 0) config_json_ = NULL;
+      if (!is_qiree_process_) 
+          if (strcasecmp(config_json_, "null") == 0) 
+              config_json_ = NULL;
   }
   else if (idx == 4) {
       encoded_ = (CQireeResultRecord *) dev_ptr;

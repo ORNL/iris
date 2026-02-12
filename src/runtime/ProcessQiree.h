@@ -447,6 +447,8 @@ namespace iris {
                     uint8_t* ptr = (uint8_t*) base();
                     const char *backend = (const char *)ptr;
                     const char *config_json = (const char *)ptr + strlen(backend)+1;
+                    if (strcasecmp(config_json, "null") == 0)
+                        config_json = NULL;
                     _debug2(" backend:%s\n", backend);
                     _debug2(" json:%s\n", config_json);
                     QMGR_RUN_QIREE(qiree_setup_executor, qmgr->manager_, backend, config_json);

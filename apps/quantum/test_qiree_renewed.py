@@ -79,7 +79,7 @@ result = iris.dmem(h_result)
 #        [(output[i], iris.iris_r) for i in range(n)] + [ (result, iris.iris_w) ]
 #)
 post_process_task = iris.task(post_processing, 1, [], [1], [], 
-        [(output[i], iris.iris_r) for i in range(n)] + [ (result, iris.iris_w) ]
+        [ (result, iris.iris_w) ] + [(output[i], iris.iris_r) for i in range(n)]
 )
 post_process_task.depends(tasks)
 post_process_task.submit(iris.iris_cpu, sync=0)

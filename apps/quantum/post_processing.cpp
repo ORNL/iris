@@ -6,7 +6,7 @@
 // [ [64-bit to represent state, #count],  Example [0111101, 45]
 // ]
 // First record will have number of records 
-extern "C" int qiree_post_processing(CQireeResultRecord *qpu1, CQireeResultRecord *qpu2, void *result, IRIS_OPENMP_KERNEL_ARGS)
+extern "C" int qiree_post_processing(void *result, CQireeResultRecord *qpu1, CQireeResultRecord *qpu2, CQireeResultRecord *qpu3, CQireeResultRecord *qpu4, IRIS_OPENMP_KERNEL_ARGS)
 {
     printf("qpu1:%p result:%p \n", qpu1, result);
     printf("qpu2:%p result:%p \n", qpu2, result);

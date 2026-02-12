@@ -1,6 +1,7 @@
 import numpy as np
 from typing import Any, Dict, List
-
+import pdb
+import iris
 
 def _normalize_cut_int_states(cut: Any, bits_per_cut: int) -> Dict[str, int]:
     """
@@ -47,11 +48,12 @@ def _normalize_cut_int_states(cut: Any, bits_per_cut: int) -> Dict[str, int]:
 
 
 #def post_processing(params: List[Any]) -> Dict[str, int]:
-def post_processing(spec, qpu0, qpu1, qpu2, qpu3, result):
-    print("QPU1:", qpu0)
-    print("QPU2:", qpu1)
-    print("QPU1:", qpu2)
-    print("QPU2:", qpu3)
+def post_processing(spec, result, *qpus):
+    (qpu0, qpu1, qpu2, qpu3) = qpus
+    print("QPU1:", iris.CQireeResult(qpu0))
+    print("QPU2:", iris.CQireeResult(qpu1))
+    print("QPU1:", iris.CQireeResult(qpu2))
+    print("QPU2:", iris.CQireeResult(qpu3))
     params = [qpu0, qpu1, qpu2, qpu3]
     """
     Reconstruct an approximate global counts distribution from

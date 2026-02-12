@@ -51,6 +51,8 @@ public:
 
 private:
   bool is_qiree_process_;
+  bool is_xacc_;
+  bool is_qsim_;
   CQiree *manager_;
   LoaderQIREE* ld_;
   unsigned int shared_mem_bytes_;
