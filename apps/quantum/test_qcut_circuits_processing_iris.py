@@ -18,7 +18,7 @@ import pdb
 
 # Set up QIREE library path and IRIS devices
 home_dir = os.path.expanduser("~")
-#os.environ["IRIS_LIB_QIREE"] = os.path.join(home_dir, "qiree/build/lib/libcqiree.so")
+os.environ["IRIS_LIB_QIREE"] = os.path.join(home_dir, "qiree/build/lib/libcqiree.so")
 os.environ["IRIS_ARCHS"] = "openmp:qiree"
 os.environ["IRIS_QIREE_DEVICE_FACTOR"] = "8"
 os.environ["IRIS_PROFILE"] = "0"
@@ -69,7 +69,7 @@ inputs_r = [(qpu_output[i][j], iris.iris_r) for j in range(3) for i in range(num
 
 # Load QIR file paths
 home_dir = os.path.expanduser("~")
-qir_paths = [[os.path.join(".", f"qcut/qcut_circuits_qir_only/circ_{i:02}_{j}_qir.ll")
+qir_paths = [[os.path.join(home_dir, f"qcut/qcut_circuits_qir_only/circ_{i:02}_{j}_qir.ll")
               for j in range(3)] for i in range(num_fragments)]
 qir_content = [[iris.dmem_infile(qir_paths[i][j])
                 for j in range(3)] for i in range(num_fragments)]
@@ -80,12 +80,32 @@ def post_processing(spec, *inputs_r):
     inputs_r_np = iris.CQireeResult.reshape(inputs_r, [num_fragments, 3])
     print("--------------------------------------------------------")
     print("all outputs:", inputs_r_np.shape, " output:", inputs_r_np)
-    print("--------------------------------------------------------")
-    for fragment in range(inputs_r_np.shape[0]):
-        for index in range(inputs_r_np.shape[1]):
-            print(f"----({fragment},{index}): ", inputs_r_np[fragment][index])
+    
+    # Create output directory if it doesn't exist
+    os.makedirs("qcut_accelerator_buffers", exist_ok=True)
+    
+    # Write results to files
+    with open("qcut_accelerator_buffers/iris_stdout.txt", "w") as f:
+        f.write(f"Extracted circuit results from IRIS\n")
+        f.write(f"Total outputs: {len(inputs_r)} results\n")
+        f.write(f"Shape: {inputs_r_np.shape}\n")
+        f.write(f"Fragments: {inputs_r_np.shape[0]}, Subcircuits per fragment: {inputs_r_np.shape[1]}\n\n")
+        for fragment in range(inputs_r_np.shape[0]):
+            for index in range(inputs_r_np.shape[1]):
+                f.write(f"Fragment {fragment}, Subcircuit {index}:\n{inputs_r_np[fragment][index]}\n")
+    
+    with open("qcut_accelerator_buffers/circuit_results.jsonl", "w") as f:
+        for fragment in range(inputs_r_np.shape[0]):
+            for index in range(inputs_r_np.shape[1]):
+                result_dict = {
+                    "fragment": fragment,
+                    "subcircuit": index,
+                    "result": str(inputs_r_np[fragment][index])
+                }
+                f.write(json.dumps(result_dict) + "\n")
+    
     print(f"✓ Extracted {len(inputs_r)} results from {inputs_r_np.shape[0]} fragments ({inputs_r_np.shape[0] * inputs_r_np.shape[1]} subcircuits)")
-    print("--------------------------------------------------------")
+    print(f"✓ Results written to qcut_accelerator_buffers/iris_stdout.txt and circuit_results.jsonl")
 
 print(f"✓ Created {num_fragments_test} tasks")
 print(f"✓ Loaded {num_fragments_test*3} QIR circuits")
