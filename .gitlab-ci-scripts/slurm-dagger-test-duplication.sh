@@ -77,7 +77,7 @@ make -f Makefile.venv validate-test-duplication
 popd
 
 # Collect Output
-#grep -e '\[E\]' slurm-test-out.txt > errors.txt
+#grep -E '\[E\]|err' slurm-test-out.txt > errors.txt
 #grep -e 'EnvironmentLocationNotFound' slurm-test-err.txt >> errors.txt
 
 # Validate Json
