@@ -395,6 +395,7 @@ class IrisSpec(ctypes.Structure):
         ("block",      POINTER(c_size_t)),  # size_t* block
         ("streams",    POINTER(c_void_p)),  # void** streams
         ("shmem_size", c_size_t),
+        ("kernel_type",  c_int32),
     ]
 
 TYPE_TO_CTYPE = {

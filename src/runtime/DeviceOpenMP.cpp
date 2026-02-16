@@ -71,24 +71,29 @@ DeviceOpenMP::DeviceOpenMP(LoaderOpenMP* ld, int ordinal, int devno, int platfor
   FillCpuNameFromMacSysctl(name_, 256);
 #else
   FILE* fd = fopen("/proc/cpuinfo", "rb");
-  char* arg = 0;
-  size_t size = 0;
-  while (getdelim(&arg, &size, 0, fd) != -1) {
-    if (GetProcessorNameIntel(arg) == IRIS_SUCCESS) break;
-    if (GetProcessorNamePower(arg) == IRIS_SUCCESS) break;
-    if (GetProcessorNameAMD(arg) == IRIS_SUCCESS) break;
-    if (GetProcessorNameARM(arg) == IRIS_SUCCESS) break;
-    if (GetProcessorNameQualcomm(arg) == IRIS_SUCCESS) break;
-    strcpy(name_, "Unknown CPU"); break;
-  }
+  if (!fd) {
+      strcpy(name_, "Unknown CPU");
+  } else {
+      char* arg = 0;
+      size_t size = 0;
+      int found = 0;
+      while (getdelim(&arg, &size, '\n', fd) != -1) {
+          if (GetProcessorNameIntel(arg) == IRIS_SUCCESS) { found = 1; break; }
+          if (GetProcessorNamePower(arg) == IRIS_SUCCESS) { found = 1; break; }
+          if (GetProcessorNameAMD(arg) == IRIS_SUCCESS)   { found = 1; break; }
+          if (GetProcessorNameARM(arg) == IRIS_SUCCESS)   { found = 1; break; }
+          if (GetProcessorNameQualcomm(arg) == IRIS_SUCCESS) { found = 1; break; }
+      }
+      if (!found) strcpy(name_, "Unknown CPU"); 
 #endif // __APPLE__
 #ifndef DISABLE_D2D
-  enableD2D();
+      enableD2D();
 #endif
 #ifndef __APPLE__
-  free(arg);
-  fclose(fd);
+      free(arg);
+      fclose(fd);
 #endif // __APPLE__
+  }
   _info("device[%d] platform[%d] device[%s] type[%d]", devno_, platform_, name_, type_);
 }
 

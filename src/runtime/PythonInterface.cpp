@@ -71,6 +71,7 @@ int PythonHostInterfaceLoader::host_launch(IrisSpec *spec, Command *cmd, Kernel 
 {
     void *param_mem = kernel->GetParamWrapperMemory();
     void *py_fn_ptr = kernel->get_python_function();
+    spec->kernel_type = iris_python_native; // TODO: Change it later
     KernelPython *python_data = get_kernel_python(param_mem);
     SetKernelPtr(param_mem, kernel->name());
     launch_python_kernel(py_fn_ptr, spec, python_data->params(), python_data->n_params());

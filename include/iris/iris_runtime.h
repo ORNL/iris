@@ -145,6 +145,7 @@ typedef struct IrisSpec_ {
     size_t *block;
     void **streams;
     size_t shmem_size;
+    int32_t kernel_type;
 } IrisSpec;
 
 // Match the exact field order you requested.
@@ -244,12 +245,15 @@ typedef enum DeviceModel DeviceModel;
 #define iris_dt_dmem2dmem_fill  7 
 #define iris_dt_error           0
 
-#define iris_python_native               0
+#define iris_core_native                1
 
 #define iris_julia_native               0
-#define iris_core_native                1
 #define iris_julia_kernel_abstraction   2
 #define iris_julia_jacc                 3
+
+#define iris_python_native              0
+#define iris_python_numba               2
+#define iris_python_pypi                3
 
 
 #define iris_unknown            (0 << 16)

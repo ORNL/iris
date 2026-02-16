@@ -170,6 +170,7 @@ namespace iris {
         }
         int BoilerPlateHostInterfaceLoader::host_launch(IrisSpec *spec, Command *cmd, Kernel *kernel)
         {
+            spec->kernel_type = iris_core_native;
             void *param_mem = kernel->GetParamWrapperMemory();
             const char *kname =  kernel->name();
             if(iris_host_launch_with_obj) {
@@ -291,11 +292,12 @@ namespace iris {
             const char *kname =  kernel->name();
             KernelJulia *julia_data = get_kernel_julia(param_mem);
             SetKernelPtr(param_mem, kname);
+            spec->kernel_type = julia_data->julia_kernel_type();
             launch_julia_kernel(spec->task_id, spec->cmd_id, 
                     julia_data->julia_kernel_type(), 
                     spec->model, 
                     spec->devno, 
-                    spec->ctx, spec->is_async, 
+                    &spec->ctx, spec->is_async, 
                     spec->stream_index, spec->streams, spec->n_streams, 
                     julia_data->args(), julia_data->values(), 
                     julia_data->param_size(), 
@@ -437,6 +439,7 @@ namespace iris {
             void *param_mem = kernel->GetParamWrapperMemory();
             const char *kname =  kernel->name();
             if (IsFunctionExists(kname)) {
+                spec->kernel_type = iris_core_native;
                 KernelFFI *ffi_data = get_kernel_ffi(param_mem);
                 SetKernelPtr(param_mem, kname);
                 //ffi_data->add_epilog(off[0], bws[0]);
