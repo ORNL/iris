@@ -1143,12 +1143,12 @@ iris_mem iris_data_mem_create_tile_struct_with_type(void *host, size_t *off, siz
 }
 int iris_dmem_add_child(iris_mem brs_parent, iris_mem brs_child, size_t offset) {
   DataMem* parent = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_parent);
-  if (parent != NULL) {
+  if (parent == NULL) {
       _error("invalid parent memory:%lu", brs_parent.uid);
       return IRIS_ERROR;
   }
   DataMem* child = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_child);
-  if (child != NULL) {
+  if (child == NULL) {
       _error("invalid child memory:%lu", brs_child.uid);
       return IRIS_ERROR;
   }
