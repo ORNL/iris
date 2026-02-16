@@ -84,7 +84,7 @@ popd
 echo "After pop PWD $(pwd)"
 
 # Collect Output
-#grep -E '\[(E|W)\]|err' test-out.txt > errors.txt
+#grep -E '\[(E|W)\]|err\[\d+\]' test-out.txt > errors.txt
 #grep -e 'EnvironmentLocationNotFound' slurm-test-err.txt >> errors.txt
 
 # Validate Json

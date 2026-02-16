@@ -76,7 +76,7 @@ make -f Makefile.venv validate-test-correctness
 popd
 
 # Collect Output
-#grep -E '\[(E|W)\]|err' slurm-test-out.txt > errors.txt
+#grep -E '\[(E|W)\]|err\[\d+\]' slurm-test-out.txt > errors.txt
 #grep -e 'EnvironmentLocationNotFound' slurm-test-err.txt >> errors.txt
 
 # Validate Json
