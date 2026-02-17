@@ -32,8 +32,6 @@ static int iris_openmp_saxpy_setmem(int idx, void* mem) {
   return IRIS_SUCCESS;
 }
 
-#include "kernel.openmp.h"
-
 int iris_openmp_kernel(const char* name) {
   iris_openmp_lock();
   if (strcmp(name, "saxpy") == 0) {
@@ -69,4 +67,6 @@ int iris_openmp_launch(int dim, size_t *off, size_t *ndr) {
 } /* end of extern "C" */
 #endif
 #endif // ENABLE_FFI
+
+#include "kernel.openmp.h"
 
