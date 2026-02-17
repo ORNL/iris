@@ -5,26 +5,6 @@
 #include "LoaderQIREE.h"
 #include "iris/qiree.h"
 
-#define RUN_QIREE_OUT(OUT, DEFAULT, X, ...) \
-    if (ld_->X == NULL) { \
-        _error(#X " not found in QIREE library"); \
-        OUT = DEFAULT; \
-    } else { \
-        OUT = ld_->X(__VA_ARGS__); \
-    }
-#define RUN_QIREE(X, ...) \
-    if (ld_->X == NULL) { \
-        _error(#X " not found in QIREE library"); \
-    } else { \
-        ASSERT(ld_->X(__VA_ARGS__) == IRIS_SUCCESS); \
-    }
-#define RUN_QIREE_NO_RETURN(X, ...) \
-    if (ld_->X == NULL) { \
-        _error(#X " not found in QIREE library"); \
-    } else { \
-        ld_->X(__VA_ARGS__); \
-    }
-
 namespace iris {
 namespace rt {
 
