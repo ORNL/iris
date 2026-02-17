@@ -78,7 +78,7 @@ make -f Makefile.venv validate-local-workgroup-sizes
 popd
 
 # Collect Output
-#grep -E '\[(E|W)\]|err\[\d+\]' test-out.txt > errors.txt
+#grep -E '\[(E|W)\]|(err|warn)\[\d+\]' test-out.txt > errors.txt
 #grep -e 'EnvironmentLocationNotFound' slurm-test-err.txt >> errors.txt
 
 # Validate Json

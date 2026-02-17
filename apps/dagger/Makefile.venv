@@ -31,7 +31,7 @@ test-duplication:
 validate-run-policy:
 	rm -rf errors.txt ; touch errors.txt ;
 	if [ -e test-out.txt ]; then \
-    grep -E '\[(E|W)\]|err\[\d+\]' test-out.txt > errors.txt ; \
+    grep -E '\[(E|W)\]|(err|warn)\[\d+\]' test-out.txt > errors.txt ; \
     grep -e 'No such file or directory' test-out.txt | grep -v -e '\[W\]' >> errors.txt ; \
     grep -e 'Segmentation fault' test-out.txt >> errors.txt ; \
     grep -e 'EnvironmentLocationNotFound' test-out.txt >> errors.txt ; \
@@ -48,7 +48,7 @@ validate-run-policy:
 validate-test-correctness:
 	rm -rf errors.txt ; touch errors.txt ;
 	if [ -e test-out.txt ]; then \
-	grep -E '\[(E|W)\]|err\[\d+\]' test-out.txt > errors.txt ; \
+	grep -E '\[(E|W)\]|(err|warn)\[\d+\]' test-out.txt > errors.txt ; \
     grep -e 'No such file or directory' test-out.txt | grep -v -e '\[W\]' >> errors.txt ; \
 	grep -e 'Segmentation fault' test-out.txt >> errors.txt ; \
 	grep -e 'EnvironmentLocationNotFound' test-out.txt >> errors.txt ; \
@@ -65,7 +65,7 @@ validate-test-correctness:
 validate-test-duplication:
 	rm -rf errors.txt ; touch errors.txt ;
 	if [ -e test-out.txt ]; then \
-	grep -E '\[(E|W)\]|err\[\d+\]' test-out.txt > errors.txt ; \
+	grep -E '\[(E|W)\]|(err|warn)\[\d+\]' test-out.txt > errors.txt ; \
     grep -e 'No such file or directory' test-out.txt >> errors.txt ; \
 	grep -e 'Segmentation fault' test-out.txt >> errors.txt ; \
 	grep -e 'EnvironmentLocationNotFound' test-out.txt >> errors.txt ; \
@@ -82,7 +82,7 @@ validate-test-duplication:
 validate-local-workgroup-sizes:
 	rm -rf errors.txt ; touch errors.txt ;
 	if [ -e test-out.txt ]; then \
-	grep -E '\[(E|W)\]|err\[\d+\]' test-out.txt > errors.txt ; \
+	grep -E '\[(E|W)\]|(err|warn)\[\d+\]' test-out.txt > errors.txt ; \
     grep -e 'No such file or directory' test-out.txt | grep -v -e '\[W\]' >> errors.txt ; \
 	grep -e 'Segmentation fault' test-out.txt >> errors.txt ; \
 	grep -e 'EnvironmentLocationNotFound' test-out.txt >> errors.txt ; \
