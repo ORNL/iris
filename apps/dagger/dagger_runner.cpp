@@ -434,7 +434,7 @@ char LOG_BUFFER[32];
             char buffer_name[80];
             sprintf(buffer_name,"%s-%s-%d",kernel.name,buf.c_str(),argument_index);
             if (use_data_memory){
-              retcode = iris_data_mem_create(&x,host_mem[0], (int)pow(SIZE,kernel.dimensions)*sizeof(double));
+              retcode = iris_data_mem_create(&x,host_mem.back(), (int)pow(SIZE,kernel.dimensions)*sizeof(double));
               memory_task_target = iris_pending;
             }
            else
