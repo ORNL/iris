@@ -31,7 +31,7 @@ public:
   int (*qiree_load_module_from_file)(CQiree *manager, char const *filename);
   int (*qiree_num_quantum_reg)(CQiree *manager, int *result);
   int (*qiree_num_classical_reg)(CQiree *manager, int *result);
-  int (*qiree_max_result_items)(CQiree *manager, int num_shots, int *result);
+  int (*qiree_max_result_items)(CQiree *manager, int num_shots, size_t *result);
   int (*qiree_setup_executor)(CQiree *manager, char const *backend, char const *config_json);
   int (*qiree_execute)(CQiree *manager, int num_shots);
 

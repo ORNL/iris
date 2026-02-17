@@ -36,9 +36,12 @@ if not (home and os.path.exists(home)):
 #print("content: ", qir_content.host.tobytes().decode('latin-1'))
 num_shots = 1000
 backend = iris.dmem("qsim")
+config_json = iris.dmem("null") #iris.dmem_infile("config.json")
 
 num_cuts = 4
 
+circuit = "bell"
+circuit = "teleport"
 circuit = "ham_sim_16qb_c"
 # Running in parallel
 n = num_cuts
@@ -54,9 +57,11 @@ qir_content = [ iris.dmem_infile(f"{circuit}{i}.ll") for i in range(n) ]
 # single task submission: task1.submit(iris.iris_cpu)
 for i in range(n):
     tasks[i] = iris.task("qiree", 1, [], [1], [], [
-        (qir_content[i], iris.iris_r), num_shots,
+        (backend, iris.iris_r),
+        (qir_content[i], iris.iris_r), 
+        (config_json, iris.iris_r),
+        num_shots,
         (output[i], iris.iris_w),
-        (backend, iris.iris_r)
     ])
     tasks[i].submit(iris.iris_qpu, sync=0)
 
@@ -74,7 +79,7 @@ result = iris.dmem(h_result)
 #        [(output[i], iris.iris_r) for i in range(n)] + [ (result, iris.iris_w) ]
 #)
 post_process_task = iris.task(post_processing, 1, [], [1], [], 
-        [(output[i], iris.iris_r) for i in range(n)] + [ (result, iris.iris_w) ]
+        [ (result, iris.iris_w) ] + [(output[i], iris.iris_r) for i in range(n)]
 )
 post_process_task.depends(tasks)
 post_process_task.submit(iris.iris_cpu, sync=0)

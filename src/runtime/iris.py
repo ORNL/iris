@@ -62,8 +62,6 @@ class DataObjectProfile(Structure):
     def __repr__(self) -> str:
         return f"DataObjectProfile(task={self.task}, data_object={self.data_object}, datatransfer_type={self.datatransfer_type}, from_device={self.from_device}, device={self.device}, start={self.start}, end={self.end})"
 
-
-
 class library(CDLL):
     def __init__(self, library_name, read_symbols=False):
         super().__init__(library_name, mode=RTLD_GLOBAL)
@@ -720,6 +718,9 @@ def finalize():
     return dll.iris_finalize()
 
 def synchronize():
+    return dll.iris_synchronize()
+
+def sync():
     return dll.iris_synchronize()
 
 def set_nstreams(n):
@@ -1617,10 +1618,15 @@ class task:
         return ntasks, ptasks
 
     def depends(self, tasks_list):
-        if type(tasks_list) != list:
+        if isinstance(tasks_list, np.ndarray):
+            tasks_list = tasks_list.ravel().tolist()
+        elif isinstance(tasks_list, (list, tuple)):
+            tasks_list = list(tasks_list)
+        else:
             tasks_list = [ tasks_list ]
         dep_list = [t.handle for t in tasks_list]
-        task_depend(self.handle, len(tasks_list), dep_list)
+        if len(dep_list) > 0:
+            task_depend(self.handle, len(tasks_list), dep_list)
     def wait(self):
         task_wait(self.handle)
     def params_map(self, params_map_list):
@@ -1980,4 +1986,53 @@ def print_dmem(data, tag=""):
 class json_graph(graph):
     def __init__(self, json_file='graph.json', params=[]):
         self.load(json_file, params)
+
+class CQireeResult:
+    def __init__(self, values=[]):
+        if len(values) > 0:
+            self.count = values[0][1]
+            self.values = values[1:self.count+1]
+        else:
+            self.count = 0
+            self.values = []
+    def init(self, values):
+        if len(values) > 0:
+            self.count = values[0][1]
+            self.values = values[1:]
+        else:
+            self.count = 0
+            self.values = []
+    def reshape(list_of_values, dims:list[int, ...]):
+        values  = np.array([CQireeResult(d) for d in list_of_values], dtype=object)
+        return values.reshape(dims)
+    def __str__(self) -> str:
+        return (
+            f"CQireeResult(count={self.count}, "
+            f"values={self.values})"
+        )
+
+    def __repr__(self) -> str:
+        return (
+            f"CQireeResult(count={self.count}, "
+            f"values={self.values!r})"
+        )
+    
+class Quantum:
+    def empty_output(N, is_dmem=True):
+        output = np.empty(N, dtype=CQireeResultRecord)
+        if is_dmem:
+            return dmem(output)
+        else:
+            return output
+    def qiskit2qiris(counts, output):
+        n = len(counts)
+        # Header record
+        output[0] = (np.uint64(0), np.uint64(n))
+        # Payload records
+        output[1:n+1] = np.fromiter(
+            ((int(k, 2), v) for k, v in counts.items()),
+            dtype=CQireeResultRecord,
+            count=n
+        )
+        return output
 
