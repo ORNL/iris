@@ -20,6 +20,7 @@ from qiskit_aer import AerSimulator
 os.environ["IRIS_ARCHS"] = "openmp:qiree"
 iris.init()
 
+@iris.kernel(in_=["param1", "param2"], out_=["output"])
 def qiskit_task(spec, param1, param2, output):
     # Create a Quantum Circuit
     circ = QuantumCircuit(3)
@@ -58,11 +59,8 @@ param1 = iris.dmem("Hello")
 param2 = iris.dmem("World")
 output = iris.Quantum.empty_output(1024)
 
-qtask = iris.task(qiskit_task, 1, [], [1], [], 
-        [   (param1, iris.iris_r),
-            (param2, iris.iris_r),
-            (output, iris.iris_flush) ]
-)
+qtask = qiskit_task(param1, param2, output, gws=[1], flush=[output])
+
 qtask.submit(iris.iris_cpu)
 qtask.wait()
 print("Output: ", output.host)

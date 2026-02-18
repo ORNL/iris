@@ -18,7 +18,8 @@ import pdb
 
 # Set up QIREE library path and IRIS devices
 home_dir = os.path.expanduser("~")
-os.environ["IRIS_LIB_QIREE"] = os.path.join(home_dir, "qiree/build/lib/libcqiree.so")
+if "IRIS_LIB_QIREE" not in os.environ:
+    os.environ["IRIS_LIB_QIREE"] = os.path.join(home_dir, "qiree/build/lib/libcqiree.so")
 os.environ["IRIS_ARCHS"] = "openmp:qiree"
 os.environ["IRIS_QIREE_DEVICE_FACTOR"] = "8"
 os.environ["IRIS_PROFILE"] = "0"

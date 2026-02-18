@@ -55,15 +55,11 @@ qir_content = [ iris.dmem_infile(f"{circuit}{i}.ll") for i in range(n) ]
 # Feed parameters to each task and submit
 # sync tells you how long to wait for completion of the command; 0=do not wait
 # single task submission: task1.submit(iris.iris_cpu)
+original = False
 for i in range(n):
-    tasks[i] = iris.task("qiree", 1, [], [1], [], [
-        (backend, iris.iris_r),
-        (qir_content[i], iris.iris_r), 
-        (config_json, iris.iris_r),
-        num_shots,
-        (output[i], iris.iris_w),
-    ])
+    tasks[i] = iris.qiree(backend, qir_content[i], config_json, num_shots, output[i], gws=[1])
     tasks[i].submit(iris.iris_qpu, sync=0)
+
 
 
 #def post_processing(spec, qpu0, qpu1, qpu2, qpu3, result):

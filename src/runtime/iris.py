@@ -2143,3 +2143,7 @@ def kernel(in_=None, out_=None, flush_=None, dim=1, native=None):
 
     return decorator
 
+@kernel(in_=["backend", "qir", "config"], out_=["output"])
+def qiree(spec, backend, qir, config, nshots, output):
+    pass
+
