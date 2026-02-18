@@ -84,7 +84,7 @@ void Command::Clear(bool init) {
   gws_[0] = 0; gws_[1] = 1; gws_[2] = 1;
   lws_[0] = 0; lws_[1] = 1; lws_[2] = 1;
   dim_ = 1;
-  elem_size_ = 0;
+  elem_size_ = 1;
   if (init) {
     kernel_nargs_max_ = IRIS_CMD_KERNEL_NARGS_MAX;
     kernel_args_ = new KernelArg[kernel_nargs_max_];

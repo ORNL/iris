@@ -27,7 +27,7 @@ if not disable:
         task = iris.task()
         task.h2d_full(mem_x, x)
         task.h2d_full(mem_y, y)
-        task.kernel("saxpy", 1, [], [SIZE], [], [mem_s, A, mem_x, mem_y] , [iris.iris_w, 4, iris.iris_r, iris.iris_r] )
+        task.kernel("saxpy", 1, [], [SIZE], [], [mem_s, A, mem_x, mem_y] , [iris.iris_w, 4 | iris.iris_float, iris.iris_r, iris.iris_r] )
         task.d2h_full(mem_s, s)
         task.submit(iris.iris_gpu)
     else:

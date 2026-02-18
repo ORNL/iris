@@ -83,15 +83,15 @@ int PythonHostInterfaceLoader::setarg(void *param_mem, int kindex, size_t size, 
     KernelArg *arg = python_data->get_iris_arg(kindex);
     //printf("setarg python_data:%p kindex:%d arg_index:%d size:%lu value:%p\n", python_data, kindex, python_data->top(), size, value);
     if (arg->data_type != iris_unknown) 
-        python_data->set_arg_type(arg->data_type << 8);
+        python_data->set_arg_type(arg->data_type);
     else if (size == 1) 
-        python_data->set_arg_type(iris_uint8 << 8);
+        python_data->set_arg_type(iris_uint8);
     else if (size == 2) 
-        python_data->set_arg_type(iris_uint16 << 8);
+        python_data->set_arg_type(iris_uint16);
     else if (size == 4) 
-        python_data->set_arg_type(iris_uint32 << 8);
+        python_data->set_arg_type(iris_uint32);
     else if (size == 8) 
-        python_data->set_arg_type(iris_uint64 << 8);
+        python_data->set_arg_type(iris_uint64);
     else {
         _error("Unknown argument size:%lu at index for kernel:%s", size, python_data->kernel()->name());
     }

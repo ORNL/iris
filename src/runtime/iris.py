@@ -11,6 +11,7 @@ __version__ = "1.0"
 import ctypes
 from ctypes import *
 import sys
+import inspect
 import numpy as np
 import pdb
 import os
@@ -444,13 +445,13 @@ def is_custom_dtype(arr: np.ndarray) -> bool:
 def get_iris_type(np_dtype):
     if np_dtype == np.float64:
         return iris_double
-    if np_dtype == np.float32:
+    if np_dtype == np.float32 or np_dtype == float:
         return iris_float
     if np_dtype == np.int8:
         return iris_int8
     if np_dtype == np.int16:
         return iris_int16
-    if np_dtype == np.int32:
+    if np_dtype == np.int32 or np_dtype == int:
         return iris_int32
     if np_dtype == np.int64:
         return iris_int64
@@ -1507,7 +1508,8 @@ class task:
                 p = byref(cobj)
                 self.params.append(p)
                 cparams[i] = cast(p, c_void_p)
-                params_info.append(sizeof(cobj))
+                typeinfo = get_iris_type(type(pobj))
+                params_info.append(sizeof(cobj) | typeinfo)
             elif type(pobj) == size_t:
                 cobj = c_size_t(pobj.value)
                 p = byref(cobj)
@@ -2035,4 +2037,61 @@ class Quantum:
             count=n
         )
         return output
+
+# High-level decorator
+def ptask(in_=None, out_=None, flush_=None, dim=1):
+    in_ = in_ or []
+    out_ = out_ or []
+    flush_ = flush_ or []
+
+    def decorator(func):
+        sig = inspect.signature(func)
+        arg_names = list(sig.parameters.keys())
+
+        def task_builder(*args, gws=None, lws=None, off=None, shared_mem=0, device=None, stream=None):
+            if gws is None:
+                raise ValueError("gws must be provided")
+
+            if off is None:
+                off = [0] * dim
+            if lws is None:
+                lws = []
+
+            # Build param list for IRIS
+            params = []
+
+            for name, value in zip(arg_names[1:], args):
+                is_in = name in in_
+                is_out = name in out_
+                is_flush = name in flush_
+                # Output memory
+                first_arg = iris_r
+                if is_in and (is_out or is_flush):
+                    first_arg = iris_rw
+                elif is_out or is_flush:
+                    first_arg = iris_w
+                if is_flush:
+                    params.append((value, first_arg, iris_flush))
+                elif is_in or is_out:
+                    params.append((value, first_arg))
+                # Scalar argument
+                else:
+                    params.append(value)
+
+            # Create IRIS task
+            t = task(func, dim, off, gws, lws, params)
+
+            if device is not None:
+                t.set_device(device)
+            if stream is not None:
+                t.set_stream(stream)
+
+            return t
+
+        task_builder.__name__ = func.__name__
+        task_builder._original= func
+        task_builder._is_iris_ptask = True
+        return task_builder
+
+    return decorator
 
