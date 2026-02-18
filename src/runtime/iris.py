@@ -8,6 +8,7 @@ __copyright__ = "Copyright (c) 2020-2023, Oak Ridge National Laboratory (ORNL) P
 __license__ = "UT Battelle Open Source"
 __version__ = "1.0"
 
+import ast
 import ctypes
 from ctypes import *
 import sys
@@ -2038,8 +2039,34 @@ class Quantum:
         )
         return output
 
+def is_only_pass(func):
+    """
+    Returns True if function body consists only of `pass`
+    (optionally preceded by a docstring).
+    """
+    source = inspect.getsource(func)
+    tree = ast.parse(source)
+
+    # Find the function definition node
+    func_node = next(
+        node for node in ast.walk(tree)
+        if isinstance(node, ast.FunctionDef)
+    )
+
+    body = func_node.body
+
+    # Remove leading docstring if present
+    if (len(body) > 0 and
+        isinstance(body[0], ast.Expr) and
+        isinstance(body[0].value, ast.Constant) and
+        isinstance(body[0].value.value, str)):
+        body = body[1:]
+
+    # Check remaining body
+    return len(body) == 1 and isinstance(body[0], ast.Pass)
+
 # High-level decorator
-def ptask(in_=None, out_=None, flush_=None, dim=1):
+def kernel(in_=None, out_=None, flush_=None, dim=1, native=None):
     in_ = in_ or []
     out_ = out_ or []
     flush_ = flush_ or []
@@ -2048,7 +2075,7 @@ def ptask(in_=None, out_=None, flush_=None, dim=1):
         sig = inspect.signature(func)
         arg_names = list(sig.parameters.keys())
 
-        def task_builder(*args, gws=None, lws=None, off=None, shared_mem=0, device=None, stream=None):
+        def task_builder(*args, gws=None, lws=None, off=None, shared_mem=0, device=None, stream=None, flush=[], task_obj=None):
             if gws is None:
                 raise ValueError("gws must be provided")
 
@@ -2059,11 +2086,26 @@ def ptask(in_=None, out_=None, flush_=None, dim=1):
 
             # Build param list for IRIS
             params = []
+            lnative = native
+            if native == None and is_only_pass(func):
+                lnative = True
+            elif native == None:
+                lnative = False
+            flush = flush or []
 
-            for name, value in zip(arg_names[1:], args):
+            # Map value -> index
+            value_to_index = {id(v): i for i, v in enumerate(args)}
+
+            flush_positions = []
+            for obj in flush:
+                pos = value_to_index.get(id(obj))
+                if pos is None:
+                    raise ValueError(f"Flush object {obj} not found in kernel arguments")
+                flush_positions.append(pos)
+            for index, (name, value) in enumerate(zip(arg_names[1:], args)):
                 is_in = name in in_
                 is_out = name in out_
-                is_flush = name in flush_
+                is_flush = name in flush_ or index in flush_positions
                 # Output memory
                 first_arg = iris_r
                 if is_in and (is_out or is_flush):
@@ -2079,13 +2121,19 @@ def ptask(in_=None, out_=None, flush_=None, dim=1):
                     params.append(value)
 
             # Create IRIS task
-            t = task(func, dim, off, gws, lws, params)
-
-            if device is not None:
-                t.set_device(device)
-            if stream is not None:
-                t.set_stream(stream)
-
+            k_param = func
+            if lnative:
+                k_param = func.__name__
+            t = None
+            if task_obj != None:
+                # It will return command as output
+                t = task_obj.kernel(k_param, dim, off, gws, lws, params, [], shared_mem)
+            else:
+                t = task(k_param, dim, off, gws, lws, params, [], shared_mem)
+                if device is not None:
+                    t.set_device(device)
+                if stream is not None:
+                    t.set_stream(stream)
             return t
 
         task_builder.__name__ = func.__name__
