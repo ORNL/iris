@@ -131,7 +131,7 @@ __global__ void  iris_geometric_seq_core(T *arr, T start, T ratio, size_t size) 
 
 template <typename T>
 void iris_reset(T *arr, T value, size_t size, void *stream) {
-    int threadsPerBlock = 256;
+    int threadsPerBlock = IRIS_MIN(256, size);
     int blocksPerGrid = static_cast<int>((size + threadsPerBlock - 1) / threadsPerBlock);
     if (stream != NULL) {
         gpuStream_t gpu_stream = reinterpret_cast<gpuStream_t>(stream);
@@ -144,7 +144,7 @@ void iris_reset(T *arr, T value, size_t size, void *stream) {
 
 template <typename T>
 void iris_arithmetic_seq(T *arr, T start, T increment, size_t size, void *stream) {
-    int threadsPerBlock = 256;
+    int threadsPerBlock = IRIS_MIN(256, size);
     int blocksPerGrid = static_cast<int>((size + threadsPerBlock - 1) / threadsPerBlock);
     if (stream != NULL) {
         gpuStream_t gpu_stream = reinterpret_cast<gpuStream_t>(stream);
@@ -157,7 +157,7 @@ void iris_arithmetic_seq(T *arr, T start, T increment, size_t size, void *stream
 
 template <typename T>
 void iris_geometric_seq(T *arr, T start, T ratio, size_t size, void *stream) {
-    int threadsPerBlock = 256;
+    int threadsPerBlock = IRIS_MIN(256, size);
     int blocksPerGrid = static_cast<int>((size + threadsPerBlock - 1) / threadsPerBlock);
     if (stream != NULL) {
         gpuStream_t gpu_stream = reinterpret_cast<gpuStream_t>(stream);
@@ -170,7 +170,7 @@ void iris_geometric_seq(T *arr, T start, T ratio, size_t size, void *stream) {
 
 template <typename T>
 void iris_random_uniform_sobol_seq(T *arr, unsigned long long seed, size_t size, T p1, T p2, void *stream) {
-    int threadsPerBlock = 256;
+    int threadsPerBlock = IRIS_MIN(256, size);
     int blocksPerGrid = static_cast<int>((size + threadsPerBlock - 1) / threadsPerBlock);
     if (stream != NULL) {
         gpuStream_t gpu_stream = reinterpret_cast<gpuStream_t>(stream);
@@ -183,7 +183,7 @@ void iris_random_uniform_sobol_seq(T *arr, unsigned long long seed, size_t size,
 
 template <typename T>
 void iris_random_normal_sobol_seq(T *arr, unsigned long long seed, size_t size, T p1, T p2, void *stream) {
-    int threadsPerBlock = 256;
+    int threadsPerBlock = IRIS_MIN(256, size);
     int blocksPerGrid = static_cast<int>((size + threadsPerBlock - 1) / threadsPerBlock);
     if (stream != NULL) {
         gpuStream_t gpu_stream = reinterpret_cast<gpuStream_t>(stream);
@@ -196,7 +196,7 @@ void iris_random_normal_sobol_seq(T *arr, unsigned long long seed, size_t size, 
 
 template <typename T>
 void iris_random_log_normal_sobol_seq(T *arr, unsigned long long seed, size_t size, T p1, T p2, void *stream) {
-    int threadsPerBlock = 256;
+    int threadsPerBlock = IRIS_MIN(256, size);
     int blocksPerGrid = static_cast<int>((size + threadsPerBlock - 1) / threadsPerBlock);
     if (stream != NULL) {
         gpuStream_t gpu_stream = reinterpret_cast<gpuStream_t>(stream);
@@ -209,7 +209,7 @@ void iris_random_log_normal_sobol_seq(T *arr, unsigned long long seed, size_t si
 
 template <typename T>
 void iris_random_uniform_seq(T *arr, unsigned long long seed, size_t size, T p1, T p2, void *stream) {
-    int threadsPerBlock = 256;
+    int threadsPerBlock = IRIS_MIN(256, size);
     int blocksPerGrid = static_cast<int>((size + threadsPerBlock - 1) / threadsPerBlock);
     //printf("Size: %lu seed:%ld p1:%f p2:%f stream:%p\n", size, seed, (float)p1, (float)p2, stream);
     if (stream != NULL) {
@@ -223,7 +223,7 @@ void iris_random_uniform_seq(T *arr, unsigned long long seed, size_t size, T p1,
 
 template <typename T>
 void iris_random_normal_seq(T *arr, unsigned long long seed, size_t size, T p1, T p2, void *stream) {
-    int threadsPerBlock = 256;
+    int threadsPerBlock = IRIS_MIN(256, size);
     int blocksPerGrid = static_cast<int>((size + threadsPerBlock - 1) / threadsPerBlock);
     if (stream != NULL) {
         gpuStream_t gpu_stream = reinterpret_cast<gpuStream_t>(stream);
@@ -236,7 +236,7 @@ void iris_random_normal_seq(T *arr, unsigned long long seed, size_t size, T p1, 
 
 template <typename T>
 void iris_random_log_normal_seq(T *arr, unsigned long long seed, size_t size, T p1, T p2, void *stream) {
-    int threadsPerBlock = 256;
+    int threadsPerBlock = IRIS_MIN(256, size);
     int blocksPerGrid = static_cast<int>((size + threadsPerBlock - 1) / threadsPerBlock);
     if (stream != NULL) {
         gpuStream_t gpu_stream = reinterpret_cast<gpuStream_t>(stream);
