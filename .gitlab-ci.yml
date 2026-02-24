@@ -23,6 +23,7 @@ variables:
   IRIS_INSTALL_ROOT: $CI_PROJECT_DIR/install
   IRIS_INSTALL_ROOT_WO_FFI: $CI_PROJECT_DIR/install.noffi
   IRIS_INSTALL_ROOT_W_FFI: $CI_PROJECT_DIR/install.ffi
+  RUNNER_SCRIPT_TIMEOUT: 50m
 #CONDA_ROOT: /auto/ciscratch/conda
 
 .zenith-config: &zenith_config
