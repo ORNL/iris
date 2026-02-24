@@ -49,6 +49,18 @@ NVCC			?= $(CUDA_PATH)/bin/nvcc
 HIPCC			?= $(ROCM_PATH)/bin/hipcc
 NVCC_TEST       := $(shell which $(NVCC))
 HIPCC_TEST       := $(shell which $(HIPCC))
+
+ifeq ($(NVCC_TEST),)
+  NVCC := nvcc
+  NVCC_TEST := $(shell command -v $(NVCC) 2>/dev/null)
+endif
+
+ifeq ($(HIPCC_TEST),)
+  HIPCC := hipcc
+  HIPCC_TEST := $(shell command -v $(HIPCC) 2>/dev/null)
+endif
+
+
 ifeq (1, ${CPP})
 $(TEST):$(TEST).cpp
 	rm -f $(TEST)
