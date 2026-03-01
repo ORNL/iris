@@ -22,6 +22,7 @@ public:
   CUresult (*cuDeviceGetAttribute)(int* pi, CUdevice_attribute attrib, CUdevice dev);
   CUresult (*cuDeviceGetCount)(int* count);
   CUresult (*cuDeviceGetName)(char* name, int len, CUdevice dev);
+  CUresult (*cuGetErrorName)( CUresult error, const char** pStr );
   CUresult (*cuGetErrorString)( CUresult error, const char** pStr );
   CUresult (*cuCtxGetCurrent)(CUcontext* pctx);
   CUresult (*cuCtxSetCurrent)(CUcontext ctx);

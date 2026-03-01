@@ -49,6 +49,7 @@ int LoaderCUDA::LoadFunctions() {
   LOADFUNC(cuTexRefSetFilterMode);
   LOADFUNC(cuTexRefSetFlags);
   LOADFUNC(cuTexRefSetFormat);
+  LOADFUNC(cuGetErrorName);
   LOADFUNC(cuGetErrorString);
   LOADFUNC(cuPointerGetAttributes);
   LOADFUNC(cuPointerGetAttribute);
