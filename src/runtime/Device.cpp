@@ -421,7 +421,9 @@ int Device::GetStream(Task *task, BaseMem *mem, bool new_stream) {
         return DEFAULT_STREAM_INDEX;
     if (policy == STREAM_POLICY_SAME_FOR_TASK) {
         int stream = GetStream(task);
+#ifndef HANDLE_IN_BASE
         if (mem->get_source_mem() != NULL) mem = (DataMem*)mem->get_source_mem();
+#endif
         mem->set_recommended_stream(devno(), stream);
         task->set_recommended_stream(stream);
         return stream;
@@ -430,7 +432,9 @@ int Device::GetStream(Task *task, BaseMem *mem, bool new_stream) {
 #if 1
     if (new_stream || stream == -1) {
         stream = get_new_copy_stream_queue();
+#ifndef HANDLE_IN_BASE
         if (mem->get_source_mem() != NULL) mem = (DataMem*)mem->get_source_mem();
+#endif
         mem->set_recommended_stream(devno(), stream);
         task->set_recommended_stream(stream);
     }
@@ -688,7 +692,7 @@ void Device::ResolveDeviceWrite(Task *task, BaseMem *mem, Device *input_dev, boo
         else {
             int mem_stream = GetStream(task, mem);
             WaitForEvent(input_event, mem_stream, iris_event_wait_default);
-            _event_debug(" Wait Event dev:[%d][%s] src_dev:[%d][%s] mem:%lu Wait for event:%p mem_stream:%d input_stream:%d", devno(), name(), input_dev->devno(), input_dev->name(), mem->uid(), input_event, mem_stream, input_stream); 
+            _event_debug(" Wait Event dev:[%d][%s] src_dev:[%d][%s] mem:%lu src_mem:%lu Wait for event:%p mem_stream:%d input_stream:%d", devno(), name(), input_dev->devno(), input_dev->name(), mem->uid(), src_mem->uid(), input_event, mem_stream, input_stream); 
         }
     }
 }
@@ -728,6 +732,7 @@ void Device::ResolveInputWriteDependency(Task *task, BaseMem *mem, bool async, D
         }
         else if (!async) return;
         // Src and destination should be same type of device
+        _event_debug(" No instant wait use cross device event dependency dev:[%d][%s] src_dev:[%d][%s] mem:%lu src_mem:%lu Wait for event:%p mem_stream:%d input_stream:%d", devno(), name(), select_src_dev->devno(), select_src_dev->name(), mem->uid(), src_mem->uid(), src_mem->GetWriteDeviceEvent(select_src_dev->devno()), GetStream(task, mem), src_mem->GetWriteStream(select_src_dev->devno()));
         ResolveDeviceWrite(task, mem, select_src_dev, false, src_mem);
     }
     else if (resolve_type == ASYNC_DEV_INPUT_RESOLVE) {

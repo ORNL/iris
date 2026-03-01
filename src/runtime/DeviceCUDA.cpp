@@ -357,9 +357,9 @@ bool DeviceCUDA::IsAddrValidForD2D(BaseMem *mem, void *ptr)
         err=ld_->cuCtxSetCurrent(ctx_);
         _cuerror(err);
     }
-    _printf(" dev:[%d:%s] mem:%lu ctx: %p ptr:%p\n", devno(), name(), mem->uid(), ctx_, ptr);
+    //_printf(" dev:[%d:%s] mem:%lu ctx: %p ptr:%p\n", devno(), name(), mem->uid(), ctx_, ptr);
     err = ld_->cuPointerGetAttribute(&data, CU_POINTER_ATTRIBUTE_DEVICE_POINTER, (CUdeviceptr) ptr);
-    printf("err:%d\n", err);
+    //printf("err:%d\n", err);
     if (ctx_changed) {
         err=ld_->cuCtxSetCurrent(ctx);
         _cuerror(err);
@@ -1280,7 +1280,7 @@ int DeviceCUDA::MemCpy(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t 
       async = true;
       if (stream_index == DEFAULT_STREAM_INDEX) { async = false; stream_index = 0; }
   }
-  _event_debug("dev[%d][%s] task[%ld:%s] mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] q[%d] async:%d", devno_, name_, task->uid(), task->name(), mem->uid(), dst, src, stream_index, async);
+  _event_debug("dev[%d][%s] task[%ld:%s] mem[%lu] dst_dev_ptr[%p] src_dev_ptr[%p] q[%d] async:%d dim:%d src_off(%lu,%lu,%lu) dst_off(%lu,%lu,%lu)", devno_, name_, task->uid(), task->name(), mem->uid(), dst, src, stream_index, async, dim, src_off0, src_off1, src_off2, dst_off0, dst_off1, dst_off2);
   ASSERT(src_strides0 == 1);
   ASSERT(dst_strides0 == 1);
   if (dim == 3) {
@@ -1392,8 +1392,8 @@ int DeviceCUDA::MemCpy(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t 
       //_cuerror(cuMemcpy2D(&cd));
       if (async) {
           ASSERT(stream_index >= 0);
+          _event_debug(" devno:%d:%s mem:%lu stream_index:%d srcPitch:%lu srcXInBytes:%lu srcY:%lu dstPitch:%lu dstXInBytes:%lu dstY:%lu WidthInBytes:%lu Height:%lu elem_size:%lu\n", devno(), name(), mem->uid(), stream_index, cd.srcPitch, cd.srcXInBytes, cd.srcY, cd.dstPitch, cd.dstXInBytes, cd.dstY, cd.WidthInBytes, cd.Height, elem_size); 
           err = ld_->cuMemcpy2DAsync_v2(&cd, streams_[stream_index]);
-          //printf("DDDDDDDDD stream_index:%d srcPitch:%lu srcY:%lu dstPitch:%lu dstXInBytes:%lu dstY:%lu WidthInBytes:%lu Height:%lu elem_size:%lu\n", stream_index, cd.srcPitch, cd.srcY, cd.dstPitch, cd.dstXInBytes, cd.dstY, cd.WidthInBytes, cd.Height, elem_size); 
       }
       else {
           err = ld_->cuMemcpy2D_v2(&cd);
@@ -1417,7 +1417,14 @@ int DeviceCUDA::MemCpy(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t 
           if (src_type == CU_MEMORYTYPE_DEVICE) {
               src_str = "DEV"; 
           }
-          _error("\n\n task:%lu:%s %s couldn't handle the dim:%d tile copy for DMEM dev[%d][%s] task[%ld:%s] elem_size:%lu mem[%lu:%s] dst_dev_ptr[%p] src_dev_ptr[%p] src_size:%s dst_size:%s src_off:%s dst_off:%s src_strides:%s dst_strides:%s tile_size:%s [%d] [%s -> %s]", task->uid(), task->name(), tag, dim, devno_, name_, task->uid(), task->name(), elem_size, mem->uid(), mem->name(), dst, src, src_size_str.c_str(), dst_size_str.c_str(), src_off_str.c_str(), dst_off_str.c_str(), src_strides_str.c_str(), dst_strides_str.c_str(), tile_size_str.c_str(), stream_index, src_str.c_str(), dst_str.c_str());
+          const char *err_name;
+          const char *err_desc;
+          ld_->cuGetErrorName(err, &err_name);
+          ld_->cuGetErrorString(err, &err_desc);
+          CUcontext ctx;
+          ld_->cuCtxGetCurrent(&ctx);
+          
+          _error("\n\n task:%lu:%s %s couldn't handle the dim:%d tile copy for DMEM dev[%d][%s] task[%ld:%s] elem_size:%lu mem[%lu:%s] dst_dev_ptr[%p] src_dev_ptr[%p] src_size:%s dst_size:%s src_off:%s dst_off:%s src_strides:%s dst_strides:%s tile_size:%s q[%d] [%s -> %s] ctx:%p error:%s error_desc:%s", task->uid(), task->name(), tag, dim, devno_, name_, task->uid(), task->name(), elem_size, mem->uid(), mem->name(), dst, src, src_size_str.c_str(), dst_size_str.c_str(), src_off_str.c_str(), dst_off_str.c_str(), src_strides_str.c_str(), dst_strides_str.c_str(), tile_size_str.c_str(), stream_index, src_str.c_str(), dst_str.c_str(), ctx, err_name, err_desc);
           Utils::PrintStackTrace();
 #if 0
           if (dst_type == CU_MEMORYTYPE_DEVICE) {
@@ -1430,7 +1437,7 @@ int DeviceCUDA::MemCpy(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t 
           else if (src_type == CU_MEMORYTYPE_DEVICE) {
             iris::PrintArrayFull<float>((float*)dst, 4, 8, " Dst:");
           }
-#endif      
+#endif 
       }
   }
   else if (dim == 1) {

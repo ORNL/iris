@@ -12,6 +12,7 @@
 #include <utility>
 #include <string>
 using namespace std;
+#define HANDLE_IN_BASE
 
 namespace iris {
 namespace rt {
@@ -408,8 +409,24 @@ namespace rt {
 #endif
             inline int ndevs() { return ndevs_; }
             virtual inline void clear() { }
-        void set_recommended_stream(int devno, int stream) { recommended_stream_[devno] = stream; }
-        int recommended_stream(int devno) { return recommended_stream_[devno]; }
+        void set_recommended_stream(int devno, int stream) { 
+#ifdef HANDLE_IN_BASE
+            BaseMem *source_mem = (BaseMem*)get_source_mem();
+            if (source_mem != NULL && !own_events_) 
+                source_mem->set_recommended_stream(devno, stream);
+            else
+#endif
+                recommended_stream_[devno] = stream; 
+        }
+        int recommended_stream(int devno) { 
+#ifdef HANDLE_IN_BASE
+            BaseMem *source_mem = (BaseMem*)get_source_mem();
+            if (source_mem != NULL && !own_events_) 
+                return source_mem->recommended_stream(devno);
+#endif
+            return recommended_stream_[devno]; 
+        }
+        int *recommended_stream_ptr(int devno) { return &recommended_stream_[devno]; }
         void *RecordEvent(int devno, int stream, bool new_entry=false);
         void WaitForEvent(int devno, int stream, int dep_devno);
         void DestroyEvent(int devno, void *event);
