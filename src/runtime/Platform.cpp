@@ -115,7 +115,7 @@ void Platform::Reset() {
   nstreams_ = IRIS_MAX_DEVICE_NSTREAMS;
   ncopy_streams_ = IRIS_MAX_DEVICE_NCOPY_STREAMS;
   cpu_set_start_ = 0;
-  is_malloc_async_ = true;
+  is_malloc_async_ = false;
   recording_ = false;
   scheduler_dispatch_fcfs_ = false;
   enable_validation_ = false;
@@ -261,6 +261,7 @@ int Platform::Init(int* argc, char*** argv, int sync) {
   EnvironmentBoolRead("HISTORY", enable_scheduling_history_);
   EnvironmentBoolRead("EVENT_PROFILE", event_profile_enabled_);
   EnvironmentBoolRead("MALLOC_SYNC", is_malloc_async_, false);
+  EnvironmentBoolRead("MALLOC_ASYNC", is_malloc_async_);
   EnvironmentBoolRead("DISABLE_D2D", disable_d2d_);
   EnvironmentBoolRead("DISABLE_DATA_TRANSFERS", disable_data_transfers_);
   EnvironmentIntRead("OPENMP_DEVICE_FACTOR", openmp_device_factor_);
