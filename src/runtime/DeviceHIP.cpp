@@ -816,9 +816,10 @@ int DeviceHIP::MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,
   return IRIS_SUCCESS;
 }
 
-int DeviceHIP::MemCpy(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t *dst_size, size_t *dst_off, size_t *dst_strides, int src_dim, void *src, size_t *src_size, size_t *src_off, size_t *src_strides, size_t *tile_size, size_t elem_size, int src_type, int dst_type, const char *tag) 
+int DeviceHIP::MemCpy(Task *task, Device *src_dev, BaseMem *mem, int dst_dim, void *dst, size_t *dst_size, size_t *dst_off, size_t *dst_strides, int src_dim, void *src, size_t *src_size, size_t *src_off, size_t *src_strides, size_t *tile_size, size_t elem_size, int src_type, int dst_type, const char *tag) 
 {
   int dim = IRIS_MAX(dst_dim, src_dim);
+  if (src_dev == NULL) src_dev = this;
   if (mem->is_usm(devno()) || (dst == src) ) return IRIS_SUCCESS;
   if (IsContextChangeRequired()) {
       _trace("HIP context switch dev[%d][%s] task[%ld:%s] mem[%lu] self:%p thread:%p", devno_, name_, task->uid(), task->name(), mem->uid(), (void *)worker()->self(), (void *)worker()->thread());
@@ -1107,17 +1108,17 @@ int DeviceHIP::MemCpy(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t *
   }
   return IRIS_SUCCESS;
 }
-int DeviceHIP::MemD2D(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t *dst_size, size_t *dst_off, size_t *dst_strides, int src_dim, void *src, size_t *src_size, size_t *src_off, size_t *src_strides, size_t *tile_size, size_t elem_size) 
+int DeviceHIP::MemD2D(Task *task, Device *src_dev, BaseMem *mem, int dst_dim, void *dst, size_t *dst_size, size_t *dst_off, size_t *dst_strides, int src_dim, void *src, size_t *src_size, size_t *src_off, size_t *src_strides, size_t *tile_size, size_t elem_size) 
 {
-    return MemCpy(task, mem, dst_dim, dst, dst_size, dst_off, dst_strides, src_dim, src, src_size, src_off, src_strides, tile_size, elem_size, hipMemoryTypeDevice, hipMemoryTypeDevice, "D2D"); 
+    return MemCpy(task, src_dev, mem, dst_dim, dst, dst_size, dst_off, dst_strides, src_dim, src, src_size, src_off, src_strides, tile_size, elem_size, hipMemoryTypeDevice, hipMemoryTypeDevice, "D2D"); 
 }
 int DeviceHIP::MemH2D(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t *dst_size, size_t *dst_off, size_t *dst_strides, int src_dim, void *src, size_t *src_size, size_t *src_off, size_t *src_strides, size_t *tile_size, size_t elem_size) 
 {
-    return MemCpy(task, mem, dst_dim, dst, dst_size, dst_off, dst_strides, src_dim, src, src_size, src_off, src_strides, tile_size, elem_size, hipMemoryTypeHost, hipMemoryTypeDevice, "H2D"); 
+    return MemCpy(task, NULL, mem, dst_dim, dst, dst_size, dst_off, dst_strides, src_dim, src, src_size, src_off, src_strides, tile_size, elem_size, hipMemoryTypeHost, hipMemoryTypeDevice, "H2D"); 
 }
 int DeviceHIP::MemD2H(Task *task, BaseMem *mem, int dst_dim, void *dst, size_t *dst_size, size_t *dst_off, size_t *dst_strides, int src_dim, void *src, size_t *src_size, size_t *src_off, size_t *src_strides, size_t *tile_size, size_t elem_size) 
 {
-    return MemCpy(task, mem, dst_dim, dst, dst_size, dst_off, dst_strides, src_dim, src, src_size, src_off, src_strides, tile_size, elem_size, hipMemoryTypeDevice, hipMemoryTypeHost, "D2H"); 
+    return MemCpy(task, NULL, mem, dst_dim, dst, dst_size, dst_off, dst_strides, src_dim, src, src_size, src_off, src_strides, tile_size, elem_size, hipMemoryTypeDevice, hipMemoryTypeHost, "D2H"); 
 }
 
 int DeviceHIP::KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bool report_error) {

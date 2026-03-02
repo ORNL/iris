@@ -1636,7 +1636,7 @@ void Device::InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, B
             if (!mem->is_multi_dim_dev_offset() && !src_mem->is_multi_dim_dev_offset())
                 MemD2D(task, src_dev, mem, dst_arch, src_arch, copy_size);
             else
-                MemD2D(task, mem, mem->dev_dim(), dst_arch, mem->dev_tile_size(), mem->dev_off(), mem->dev_strides(IRIS_MAX(src_mem->dev_dim(), mem->dev_dim())), src_mem->dev_dim(), src_arch, src_mem->dev_tile_size(), src_mem->dev_off(), src_mem->dev_strides(IRIS_MAX(src_mem->dim(), mem->dim())), mem->dev_tile_size(), mem->elem_size());
+                MemD2D(task, src_dev, mem, mem->dev_dim(), dst_arch, mem->dev_tile_size(), mem->dev_off(), mem->dev_strides(IRIS_MAX(src_mem->dev_dim(), mem->dev_dim())), src_mem->dev_dim(), src_arch, src_mem->dev_tile_size(), src_mem->dev_off(), src_mem->dev_strides(IRIS_MAX(src_mem->dim(), mem->dim())), mem->dev_tile_size(), mem->elem_size());
                 //int MemD2D(Task *task, BaseMem *mem, int dim, void *dst, size_t *dst_off, size_t *dst_strides, void *src, size_t *src_off, size_t *src_strides, size_t *tile_size, size_t elem_size);
         }
         double end = timer_->Now();
