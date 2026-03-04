@@ -518,6 +518,7 @@ install(FILES ${libffi_BINARY_DIR}/include/ffi.h DESTINATION ${CMAKE_INSTALL_INC
 install(FILES ${libffi_BINARY_DIR}/include/ffitarget.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 set_target_properties(iris PROPERTIES LINK_FLAGS "-L${libffi_BINARY_DIR} ")
 target_link_libraries(iris ffi)
+target_link_libraries(iris rt)
 endif() #ENABLE_FFI
 
 target_compile_options(iris PRIVATE -Wall)

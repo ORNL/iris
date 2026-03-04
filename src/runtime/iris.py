@@ -1974,7 +1974,7 @@ def flush(data, sync=True):
         d.flush(sync)
 
 def release(data):
-    if isinstance(data, dmem_base) or isinstance(data, kernel) or isinstance(data, task) or isinstance(data, graph):
+    if ((not isinstance(data, np.ndarray)) and (isinstance(data, dmem_base) or isinstance(data, kernel) or isinstance(data, task) or isinstance(data, graph))):
         data.release()
         return
     d = dmem.create(data, True)
