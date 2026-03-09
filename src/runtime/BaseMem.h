@@ -389,7 +389,7 @@ namespace rt {
             void set_d2h_event(int devno, void *host_event) {
                 BaseMem *source_mem = (BaseMem*)get_source_mem();
                 if (source_mem != NULL && !own_events_) 
-                    return source_mem->clear_d2h_events();
+                    return source_mem->set_d2h_event();
                 d2h_events_[devno] = host_event;
             }
 #ifdef AUTO_PAR
