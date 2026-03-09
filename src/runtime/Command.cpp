@@ -27,6 +27,7 @@ Command::~Command() {
   if (npolymems_ && polymems_) delete [] polymems_;
   if (selector_kernel_params_) free(selector_kernel_params_);
   if (params_map_) delete [] params_map_; 
+  if (params_) free(params_);
 }
 
 void Command::set_params_map(int *pmap) { 

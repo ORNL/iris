@@ -127,7 +127,7 @@ class CMakeBuild(build_ext):
 setup(
     name='iris',
     version=f'{iris_version}',
-    author='Narasinga Rao Minisar',
+    author='Narasinga Rao Miniskar',
     author_email='miniskarnr@ornl.gov',
     description='IRIS Python package with CMake build',
     long_description=open('README.md').read(),
