@@ -7,7 +7,7 @@ Julius.init()
 
 # Problem size
 SIZE = length(ARGS) == 0 ? Int32(8) : parse(Int32, ARGS[1])
-A = 10
+A = Int32(10)
 
 function saxpy_openmp(Z, X, Y, N, A)
     nthreads = Threads.nthreads()
