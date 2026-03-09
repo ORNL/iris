@@ -27,7 +27,7 @@ s = zeros(Int32, SIZE)
 task=Julius.@jtask flush:[s], in:[x, y], submit:false, gws:[SIZE], saxpy(s, x, y, SIZE, A)  
 
 # Submit to FPGA device
-Julius.submit(task, Julius.iris_cpu)
+Julius.submit(task, Julius.iris_default)
 
 println("S = ", A, " * X + Y = ", s)
 

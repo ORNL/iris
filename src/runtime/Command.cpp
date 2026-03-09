@@ -320,7 +320,7 @@ Command* Command::CreateMemFlushOut(Task* task, DataMem* mem) {
 //    task->platform()->get_auto_dag()->set_auto_dep();
 //#endif
    // Fixed it
-   if (mem->get_current_writing_task() != NULL && mem->get_current_writing_task()->uid() != NULL
+   if (mem->get_current_writing_task() != NULL && mem->get_current_writing_task()->uid() != (unsigned long)-1
         && mem->get_current_writing_task() != task)
        task->AddDepend(mem->get_current_writing_task(), mem->get_current_writing_task()->uid());
 
