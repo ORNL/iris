@@ -48,7 +48,7 @@ namespace rt {
                 write_dev_ = -1;
                 device_map_ = new BaseMemDevice[ndevs_+1];
                 d2h_events_ = new void *[ndevs_];
-                write_event_ = new void *[ndevs+1];
+                write_event_ = new void *[ndevs_+1];
                 for (int i = 0; i < ndevs_+1; i++) {
                     if (i == ndevs_)
                         device_map_[i].Init(this, -1);

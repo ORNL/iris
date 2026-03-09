@@ -24,7 +24,7 @@ Command::Command(Task* task, int type) {
 Command::~Command() {
   if (kernel_args_) delete[] kernel_args_;
   if (kernel_) kernel_->Release();
-  if (npolymems_ && polymems_) delete polymems_;
+  if (npolymems_ && polymems_) delete [] polymems_;
   if (selector_kernel_params_) free(selector_kernel_params_);
   if (params_map_) delete [] params_map_; 
 }
@@ -46,7 +46,7 @@ void Command::set_time_end(Timer* d) {
 
 void Command::Clear(bool init) {
   n_mems_ = 0;
-  recommend_stram_ = -1;
+  recommend_stream_ = -1;
   host_ = NULL;
   params_map_ = NULL;
   kernel_ = NULL;
