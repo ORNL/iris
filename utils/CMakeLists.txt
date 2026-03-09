@@ -178,6 +178,8 @@ option(USE_FORTRAN "Enable support for Fortran 90" OFF)
 
 option(USE_SIGHANDLER   "Enable signal handler" OFF)
 option(USE_HUB          "Enable hub"            OFF)
+option(ENABLE_XSA 		"Enable Xilinx xsa as intermediate"    OFF )
+option(ENABLE_FFI 		"Enable FFI"    OFF )
 
 set(LOCAL_COMMON_FLAGS "-I$ENV{IRIS}/utils -I. -I${CMAKE_BINARY_DIR} -I$ENV{IRIS}/include")
 
@@ -609,10 +611,12 @@ message(STATUS "XILINX Target (XCL_EMULATION_MODE): ${XILINX_TARGET}")
 initVar(XILINX_LANGUAGE "opencl")
 initVar(XILINX_VERSION "1")
 initVar(XILINX_OUTPUT "xclbin")
+initVar(XILINX_XSA_OUTPUT "xsa")
 #initVar(XILINX_FREQUENCY 300000000)
 initVar(XILINX_DESIGN_CONFIG "${CMAKE_BINARY_DIR}/design.cfg")
 message(STATUS "XILINX Design config (XILINX_DESIGN_CONFIG): ${XILINX_DESIGN_CONFIG}")
 initVar(XTMP_DIR "${CMAKE_BINARY_DIR}/_x/${XILINX_TARGET}/${XILINX_LANGUAGE}/${XILINX_VERSION}")
+initVar(XILINX_XSA 	  "kernel-fpga.${XILINX_XSA_OUTPUT}")
 initVar(XILINX_XCLBIN "kernel-fpga.${XILINX_OUTPUT}")
 if (NOT XILINX_PLATFORM)
 execute_process(COMMAND bash -c "platforminfo  -l | grep baseName | awk '{print $2}' | head -n1 | sed -e s/,//g  -e s/\\\"//g"   OUTPUT_VARIABLE XILINX_PLATFORM)
@@ -691,10 +695,21 @@ function(xilinx_compile)
         list(APPEND all_xos "${CMAKE_BINARY_DIR}/${XILINX_TARGET}/${XILINX_LANGUAGE}/xo/${file_path}-${first}.xo")
         #message(STATUS "\n ARG : ${first} == ${second} == ${file_path}\n")
    endwhile()
+   if (ENABLE_XSA)
+	add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/${XILINX_TARGET}/${XILINX_LANGUAGE}/${XILINX_XSA}
+			COMMAND v++ -l -t ${XILINX_TARGET} --temp_dir ${XTMP_DIR} --config ${XILINX_DESIGN_CONFIG} --platform ${XILINX_PLATFORM} -I. ${XILINX_LDFLAGS} ${all_connectivities} ${all_xos}  -o ${CMAKE_BINARY_DIR}/${XILINX_TARGET}/${XILINX_LANGUAGE}/${XILINX_XSA}
+			DEPENDS ${all_kernel_names}
+			)
+   add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/${XILINX_TARGET}/${XILINX_LANGUAGE}/${XILINX_XCLBIN}
+		   COMMAND v++ -p -t ${XILINX_TARGET} --package.no_image --temp_dir ${XTMP_DIR} --config ${XILINX_DESIGN_CONFIG} --platform ${XILINX_PLATFORM} ${CMAKE_BINARY_DIR}/${XILINX_TARGET}/${XILINX_LANGUAGE}/${XILINX_XSA} -o ${CMAKE_BINARY_DIR}/${XILINX_TARGET}/${XILINX_LANGUAGE}/${XILINX_XCLBIN}
+		   DEPENDS ${CMAKE_BINARY_DIR}/${XILINX_TARGET}/${XILINX_LANGUAGE}/${XILINX_XSA}
+		   )
+   else()
    add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/${XILINX_TARGET}/${XILINX_LANGUAGE}/${XILINX_XCLBIN}
            COMMAND v++ -l -t ${XILINX_TARGET} --temp_dir ${XTMP_DIR} --config ${XILINX_DESIGN_CONFIG} --platform ${XILINX_PLATFORM} -I. ${XILINX_LDFLAGS} ${all_connectivities} ${all_xos}  -o ${CMAKE_BINARY_DIR}/${XILINX_TARGET}/${XILINX_LANGUAGE}/${XILINX_XCLBIN}
            DEPENDS ${all_kernel_names}
            )
+	endif()
     add_custom_target(${XILINX_XCLBIN} ALL DEPENDS design.cfg ${CMAKE_BINARY_DIR}/${XILINX_TARGET}/${XILINX_LANGUAGE}/${XILINX_XCLBIN})
     install(FILES ${CMAKE_BINARY_DIR}/${XILINX_TARGET}/${XILINX_LANGUAGE}/${XILINX_XCLBIN} DESTINATION ${LIB_INSTALL_PATH}/${XILINX_TARGET}/${XILINX_LANGUAGE})
     install(FILES ${CMAKE_BINARY_DIR}/${XILINX_TARGET}/${XILINX_LANGUAGE}/${XILINX_XCLBIN} DESTINATION ${LIB_INSTALL_PATH}/)
@@ -1064,6 +1079,9 @@ target_link_libraries(${APP_EXECUTABLE} rt pthread OpenCL)
 else() # XILINX_LANGUAGE
 target_link_libraries(${APP_EXECUTABLE} rt pthread)
 endif() # XILINX_LANGUAGE
+if (ENABLE_FFI)
+target_link_libraries(${APP_EXECUTABLE} ffi)
+endif()
 if (APP_LINK_LIB)
 target_link_libraries(${APP_EXECUTABLE} ${APP_LINK_LIB})
 endif() #APP_LINK_LIB
@@ -1078,6 +1096,9 @@ target_link_libraries(${APP_LIBRARY_NAME} rt pthread OpenCL)
 else() #XILINX_LANGUAGE
 target_link_libraries(${APP_LIBRARY_NAME} rt pthread)
 endif() #XILINX_LANGUAGE
+if (ENABLE_FFI)
+target_link_libraries(${APP_EXECUTABLE} ffi)
+endif()
 endif() #XILINX_OPENCL_SOURCES XILINX_KERNEL_SOURCES
 endif() #APP_LIB_SOURCES AND USE_XILINX
 endif() #APP_SOURCES AND USE_XILINX

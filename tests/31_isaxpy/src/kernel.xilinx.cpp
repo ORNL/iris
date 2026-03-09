@@ -1,6 +1,4 @@
-#include <hls_stream.h>
 #include <ap_int.h>
-#include <ap_fixed.h>
 
 // Kernel top function
 extern "C" {

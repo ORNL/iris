@@ -1123,8 +1123,8 @@ void Device::ExecuteKernel(Command* cmd) {
           BaseMem *mem = z.first;
           int idx = z.second;
           if (params_map != NULL && 
-                  (params_map[idx] & iris_all) == 0 && 
-                  !(params_map[idx] & type_) ) continue;
+				  (params_map[idx] != iris_all) &&
+                  !((params_map[idx] & type_)!=0)) continue;
           if (mem->GetMemHandlerType() == IRIS_DMEM ||
                   mem->GetMemHandlerType() == IRIS_DMEM_REGION) {
               DataMem *dmem = (DataMem *)mem;
@@ -1146,8 +1146,8 @@ void Device::ExecuteKernel(Command* cmd) {
     KernelArg* arg = args + idx;
     BaseMem* bmem = (BaseMem*)arg->mem;
     if (params_map != NULL && 
-        (params_map[idx] & iris_all) == 0 && 
-        !(params_map[idx] & type_) ) continue;
+		(params_map[idx] != iris_all) &&
+		!((params_map[idx] & type_)!=0)) continue;
     if (bmem && bmem->GetMemHandlerType() == IRIS_MEM) {
       Mem *mem = (Mem *)bmem;
       if (arg->mode == iris_w || arg->mode == iris_rw) {
@@ -1436,8 +1436,8 @@ void Device::ExecuteMemIn(Task *task, Command* cmd) {
     if (kernel->data_mems_in_order().size() > 0) {
         for(int idx : kernel->data_mems_in_order()) {
             if (params_map != NULL && 
-                    (params_map[idx] & iris_all) == 0 && 
-                    !(params_map[idx] & type_) ) continue;
+					(params_map[idx] != iris_all) &&
+					!((params_map[idx] & type_)!=0)) continue;
             KernelArg *karg = kernel->karg(idx);
             // If the kernel argument data transfer is proactively handled, ignore here
             if (karg->proactive) { 
@@ -1469,16 +1469,16 @@ void Device::ExecuteMemIn(Task *task, Command* cmd) {
             int idx = it.first;
             DataMem *mem = it.second;
             if (params_map != NULL && 
-                    (params_map[idx] & iris_all) == 0 && 
-                    !(params_map[idx] & type_) ) continue;
+					(params_map[idx] != iris_all) &&
+					!((params_map[idx] & type_)!=0)) continue;
             ExecuteMemInDMemIn(task, cmd, mem);
         }
         for(pair<int, DataMemRegion *> it : kernel->data_mem_regions_in()) {
             int idx = it.first;
             DataMemRegion *mem = it.second;
             if (params_map != NULL && 
-                    (params_map[idx] & iris_all) == 0 && 
-                    !(params_map[idx] & type_) ) continue;
+					(params_map[idx] != iris_all) &&
+					!((params_map[idx] & type_)!=0)) continue;
             ExecuteMemInDMemRegionIn(task, cmd, mem);
         }
     }
@@ -1494,8 +1494,8 @@ void Device::WaitForKernelInputAvailability(Task *task, Command *cmd)
         int idx = z.second;
         //if (mem->GetMemHandlerType() == IRIS_MEM) continue;
         if (params_map != NULL && 
-                (params_map[idx] & iris_all) == 0 && 
-                !(params_map[idx] & type_) ) continue;
+				(params_map[idx] != iris_all) &&
+				!((params_map[idx] & type_)!=0)) continue;
         if (!(mem->GetMemHandlerType() == IRIS_DMEM ||
                     mem->GetMemHandlerType() == IRIS_DMEM_REGION)) continue;
         DataMem *dmem = (DataMem *)mem;
@@ -2374,8 +2374,8 @@ void Device::TrackMemoryReads(Task *task, Command* cmd) {
         BaseMem *mem = z.first;
         int idx = z.second;
         if (params_map != NULL && 
-                (params_map[idx] & iris_all) == 0 && 
-                !(params_map[idx] & type_) ) continue;
+				(params_map[idx] != iris_all) &&
+				!((params_map[idx] & type_)!=0)) continue;
         //if (mem->get_source_mem() != NULL) mem = (DataMem*)mem->get_source_mem();
         if (!(mem->GetMemHandlerType() == IRIS_DMEM ||
                     mem->GetMemHandlerType() == IRIS_DMEM_REGION)) continue;
@@ -2407,8 +2407,8 @@ void Device::ExecuteMemOut(Task *task, Command* cmd) {
         BaseMem *mem = z.first;
         int idx = z.second;
         if (params_map != NULL && 
-                (params_map[idx] & iris_all) == 0 && 
-                !(params_map[idx] & type_) ) continue;
+				(params_map[idx] != iris_all) &&
+				!((params_map[idx] & type_)!=0)) continue;
         //if (mem->get_source_mem() != NULL) mem = (DataMem*)mem->get_source_mem();
         if (mem->GetMemHandlerType() == IRIS_DMEM ||
                 mem->GetMemHandlerType() == IRIS_DMEM_REGION) {
@@ -2542,8 +2542,8 @@ void Device::ResolveWriteDependencies(Task *task, Command *cmd) {
         BaseMem *mem = z.first;
         int idx = z.second;
         if (params_map != NULL && 
-                (params_map[idx] & iris_all) == 0 && 
-                !(params_map[idx] & type_) ) continue;
+				(params_map[idx] != iris_all) &&
+				!((params_map[idx] & type_)!=0)) continue;
         if (!(mem->GetMemHandlerType() == IRIS_DMEM ||
                     mem->GetMemHandlerType() == IRIS_DMEM_REGION)) continue;
         ResolveMemoryOutputDependency(task, cmd, (DataMem *)mem, dep_streams, async);
