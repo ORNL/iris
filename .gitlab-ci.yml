@@ -11,7 +11,7 @@ stages:
   before_script:
     - echo "Setting up environment..."
     - source /auto/software/iris/setup_system.source
-    - source /opt/xilinx/xrt/setup.sh
+    # - source /opt/xilinx/xrt/setup.sh
     - module load cmake
     - module load gnu
 
@@ -31,7 +31,7 @@ variables:
   before_script:
     - echo "Setting up environment..."
     - source /auto/software/iris/setup_system.source
-    - source /opt/xilinx/xrt/setup.sh
+    # - source /opt/xilinx/xrt/setup.sh
     - module load cmake
     - module load gnu
 
@@ -165,7 +165,7 @@ deploy_docs_manual-job:
   after_script:
     - echo "Setting up environment..."
     - source /auto/software/iris/setup_system.source
-    - source /opt/xilinx/xrt/setup.sh
+    # - source /opt/xilinx/xrt/setup.sh
     - module load cmake
     - module load gnu
     - export IRIS_ARCHS=$IRIS_ARCHS_CICD
@@ -359,7 +359,7 @@ test-job-zenith-all-ffi-async-s2k:
   after_script:
     - echo "Setting up environment..."
     - source /auto/software/iris/setup_system.source
-    - source /opt/xilinx/xrt/setup.sh
+    # - source /opt/xilinx/xrt/setup.sh
     - module load cmake
     - module load gnu
     - export IRIS_ARCHS=$IRIS_ARCHS_CICD
