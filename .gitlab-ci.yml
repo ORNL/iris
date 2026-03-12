@@ -626,9 +626,9 @@ coverage-collect:
     - test-backends-29-async-s2k
     - test-backends-34-async-s2k
   script:
-#    - echo "Installing iris to $IRIS_INSTALL_ROOT"
-#- bash build-coverage.sh
-    # - source $IRIS_INSTALL_ROOT.noffi.$IRIS_MACHINE/setup.source
+    - echo "Installing iris to $IRIS_INSTALL_ROOT"
+    - env -u IRIS_TAG bash build.sh -DENABLE_FFI=$IRIS_FFI_FLAG -DCMAKE_BUILD_TYPE=DEBUG -DCOVERAGE=true
+    - source $IRIS_INSTALL_ROOT/setup.source
     - python3 -m venv .venv
     - source .venv/bin/activate
     - pip install gcovr
