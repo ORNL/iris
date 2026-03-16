@@ -50,7 +50,7 @@ do
     done
     #plot timeline with gantt
     if [ "$SIZE" == "10" ] ; then
-      python ./gantt/gantt.py --dag="./lineartwo$SIZE-graph.json" --timeline="dagger-results/lineartwo${POLICY}${SIZE}${num_run}time.csv" --combined-out="./lineartwo$SIZE-$POLICY-$SYSTEM.pdf" --no-show-kernel-legend #--keep-memory-transfer-commands # --drop="Initialize-0,Initialize-1" #--title-string="Linear 10 dataset with RANDOM scheduling policy" --drop="Init"
+      python ./gantt/gantt.py --dag="dagger-payloads/lineartwo$SIZE-graph.json" --timeline="dagger-results/lineartwo${POLICY}${SIZE}0time.csv" --combined-out="./lineartwo$SIZE-$POLICY-$SYSTEM.pdf" --no-show-kernel-legend #--keep-memory-transfer-commands # --drop="Initialize-0,Initialize-1" #--title-string="Linear 10 dataset with RANDOM scheduling policy" --drop="Init"
     fi
     [ $? -ne 0 ] && echo "Failed Combined Plotting of Lineartwo $SIZE with Policy: $POLICY" &&  exit 1
   done
@@ -77,7 +77,7 @@ do
     done
     #plot timeline with gantt
     if [ "$SIZE" == "10" ] ; then
-      python ./gantt/gantt.py --dag="./linearthree$SIZE-graph.json" --timeline="dagger-results/linearthree${POLICY}${SIZE}${num_run}time.csv" --combined-out="./linearthree$SIZE-$POLICY-$SYSTEM.pdf" --no-show-kernel-legend #--keep-memory-transfer-commands # --drop="Initialize-0,Initialize-1" #--title-string="Linear 10 dataset with RANDOM scheduling policy" --drop="Init"
+      python ./gantt/gantt.py --dag="dagger-payloads/linearthree$SIZE-graph.json" --timeline="dagger-results/linearthree${POLICY}${SIZE}0time.csv" --combined-out="./linearthree$SIZE-$POLICY-$SYSTEM.pdf" --no-show-kernel-legend #--keep-memory-transfer-commands # --drop="Initialize-0,Initialize-1" #--title-string="Linear 10 dataset with RANDOM scheduling policy" --drop="Init"
     fi
     [ $? -ne 0 ] && echo "Failed Combined Plotting of Linearthree $SIZE with Policy: $POLICY" &&  exit 1
   done
