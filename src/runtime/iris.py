@@ -2077,8 +2077,7 @@ def kernel(in_=None, out_=None, flush_=None, dim=1, native=None):
 
         def task_builder(*args, gws=None, lws=None, off=None, shared_mem=0, device=None, stream=None, flush=[], task_obj=None):
             if gws is None:
-                raise ValueError("gws must be provided")
-
+                gws = [1] * dim
             if off is None:
                 off = [0] * dim
             if lws is None:
