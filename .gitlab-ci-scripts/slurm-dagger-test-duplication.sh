@@ -35,8 +35,8 @@ echo ---------------------------------------------------------------------------
 unset MODULEPATH_ROOT
 unset MODULEPATH
 source /etc/profile.d/lmod.sh
-module load cmake
-module load gnu
+# module load cmake
+# module load gnu
 
 # Load conda
 #source $CONDA_ROOT/etc/profile.d/conda.sh
