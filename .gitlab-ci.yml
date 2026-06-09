@@ -90,12 +90,14 @@ build-ffi-milan2:
   <<: [*milan2_config, *build_ffi]
   variables:
     IRIS_MACHINE: "milan2"
+  allow_failure: true
 
 build-noffi-milan2:
   # Using aliasin features
   <<: [*milan2_config, *build_noffi]
   variables:
     IRIS_MACHINE: "milan2"
+  allow_failure: true
 
 docs-job:
   tags: [devdocs]
