@@ -43,6 +43,12 @@ variables:
     # - module load cmake
     # - module load gnu
 
+.milan2-config: &milan2_config
+  tags: [milan2]
+  before_script:
+    - echo "Setting up environment..."
+    - source /auto/software/iris/setup_system.source
+
 .build-ffi: &build_ffi
   stage: build
   script:
@@ -78,6 +84,18 @@ build-noffi-zenith:
   <<: [*zenith_config, *build_noffi]
   variables:
     IRIS_MACHINE: "zenith"
+
+build-ffi-milan2:
+  # Using aliasin features
+  <<: [*milan2_config, *build_ffi]
+  variables:
+    IRIS_MACHINE: "milan2"
+
+build-noffi-milan2:
+  # Using aliasin features
+  <<: [*milan2_config, *build_noffi]
+  variables:
+    IRIS_MACHINE: "milan2"
 
 docs-job:
   tags: [devdocs]
