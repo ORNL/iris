@@ -141,19 +141,26 @@ int DeviceOpenCL::Init() {
   cl_int err;
   spec_.ctx = (void *)clctx_;
   if (is_async(false)) {
+      cl_command_queue_properties host_queue_props = 0;
+      ld_->clGetDeviceInfo(cldev_, CL_DEVICE_QUEUE_ON_HOST_PROPERTIES, sizeof(host_queue_props), &host_queue_props, NULL);
+      cl_command_queue_properties ooo_flag = CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE;
+      if (!(host_queue_props & CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE)) {
+          _warning("dev[%d][%s] does not support out-of-order host command queues (queue_props[0x%lx]); falling back to an in-order queue for async mode", devno_, name_, (unsigned long) host_queue_props);
+          ooo_flag = 0;
+      }
       for (int i = 0; i < nqueues_; i++) {
 #ifdef CL_VERSION_2_0
           const cl_queue_properties props[] = {
                   //CL_QUEUE_PROPERTIES, CL_QUEUE_PROFILING_ENABLE | CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE,
-                  CL_QUEUE_PROPERTIES, CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE,
+                  CL_QUEUE_PROPERTIES, ooo_flag,
                       0 // Terminate the properties list
           };
           if (ld_->clCreateCommandQueueWithProperties == NULL || type_ == iris_fpga)
-              clcmdq_[i] = ld_->clCreateCommandQueue(clctx_, cldev_, CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE, &err);
+              clcmdq_[i] = ld_->clCreateCommandQueue(clctx_, cldev_, ooo_flag, &err);
           else
               clcmdq_[i] = ld_->clCreateCommandQueueWithProperties(clctx_, cldev_, props, &err);
 #else
-          clcmdq_[i] = ld_->clCreateCommandQueue(clctx_, cldev_, CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE, &err);
+          clcmdq_[i] = ld_->clCreateCommandQueue(clctx_, cldev_, ooo_flag, &err);
 #endif
           _clerror(err);
       }
