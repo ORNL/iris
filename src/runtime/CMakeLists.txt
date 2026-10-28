@@ -555,14 +555,19 @@ install(TARGETS cpu_default DESTINATION ${CMAKE_INSTALL_PREFIX}/default)
 find_package(CUDAToolkit QUIET)
 
 if (CUDAToolkit_FOUND)
-    find_program(NVCC_EXECUTABLE
-        NAMES nvcc
-        HINTS ${CUDAToolkit_ROOT}/bin
-              $ENV{CUDA_PATH}/bin
-              $ENV{NVHPC_ROOT}/cuda/bin
-              /usr/local/cuda/bin
-
-    )
+    # Use the nvcc that matches the CUDAToolkit found above. Hints built from
+    # unset variables (e.g. ${CUDAToolkit_ROOT}/bin) collapse to /bin and pick
+    # up the distro nvcc instead, which may not support the host gcc.
+    if (CUDAToolkit_NVCC_EXECUTABLE)
+        set(NVCC_EXECUTABLE ${CUDAToolkit_NVCC_EXECUTABLE})
+    else()
+        find_program(NVCC_EXECUTABLE
+            NAMES nvcc
+            HINTS ${CUDAToolkit_BIN_DIR}
+                  $ENV{NVHPC_ROOT}/cuda/bin
+                  /usr/local/cuda/bin
+        )
+    endif()
     #message(STATUS "NVCC_EXECUTABLE: ${NVCC_EXECUTABLE}")
     if (NVCC_EXECUTABLE)
         #message(STATUS "CUDA found!")
