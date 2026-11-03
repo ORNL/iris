@@ -52,18 +52,22 @@ void Utils::PrintStackTrace() {
         std::string symbol = symbols[i];
         std::string hex_str = "";
         unsigned long long hex_value = 0;
+        int decimal;
         if (std::regex_match(symbol, match, pattern1)) {
             symbol = match[1].str();
         }
         else if (std::regex_match(symbol, match, pattern2)) {
             symbol = match[1].str();
             hex_str = match[2].str();
+            std::stringstream ss;
+            ss << std::hex << hex_str;
+            ss >> decimal;
             //char *end_ptr;
             //hex_value = strtoull(match[2].str().c_str(), &end_ptr, 16);
         }
         char* demangled = abi::__cxa_demangle(symbol.c_str(), func_name, &func_name_size, &status);
         if (status == 0) {
-            std::cout << "[" << i << "] " << demangled << "("<<hex_str<<")"<< std::endl;
+            std::cout << "[" << i << "] " << demangled << "("<<hex_str<<"::" << decimal <<")"<< std::endl;
         } else {
             std::cout << "[" << i << "] " << symbols[i] << std::endl;
         }
@@ -110,6 +114,49 @@ void Utils::MemCpy3D(uint8_t *dev, uint8_t *host, size_t *off,
     }
 }
 
+void Utils::MemCpy(int dim, void* dst, const size_t *dst_off, const size_t* dst_strides, 
+        const void* src, const size_t* src_off, const size_t* src_strides, 
+        const size_t* tile_size, size_t elem_size) {
+    assert(dim >= 1 && dim <= 3);
+
+    int idx[3] = {0, 0, 0};
+    int total = 1;
+    for (int d = 1; d < dim; ++d) total *= tile_size[d];
+
+    for (int linear_idx = 0; linear_idx < total; ++linear_idx) {
+        int rem = linear_idx;
+        for (int d = dim - 1; d >= 1; --d) {
+            idx[d] = rem % tile_size[d];
+            rem /= tile_size[d];
+        }
+
+        void* dst_ptr = static_cast<char*>(dst);
+        const void* src_ptr = static_cast<const char*>(src);
+
+        size_t dst_offset = 0;
+        size_t src_offset = 0;
+        for (int d = 1; d < dim; ++d) {
+            dst_offset += (dst_off[d] + idx[d]) * dst_strides[d];
+            src_offset += (src_off[d] + idx[d]) * src_strides[d];
+        }
+
+        if (dst_strides[0] == 1) {
+            dst_ptr = static_cast<char*>(dst_ptr) + (dst_offset + dst_off[0]) * elem_size;
+            src_ptr = static_cast<const char*>(src_ptr) + (src_offset + src_off[0]) * elem_size;
+            memcpy(dst_ptr, src_ptr, tile_size[0] * elem_size);
+        }
+        else {
+            dst_ptr = static_cast<char*>(dst_ptr) + (dst_offset + dst_off[0] * dst_strides[0]) * elem_size;
+            src_ptr = static_cast<const char*>(src_ptr) + (src_offset + src_off[0] * src_strides[0]) * elem_size;
+            for (size_t i = 0; i < tile_size[0]; ++i) {
+                memcpy(
+                        static_cast<char*>(dst_ptr) + i * dst_strides[0] * elem_size,
+                        static_cast<const char*>(src_ptr) + i * src_strides[0] * elem_size,
+                        elem_size);
+            }
+        }
+    }
+}
 void Utils::Logo(bool color) {
   if (color) {
     srand(time(NULL));
@@ -127,6 +174,50 @@ void Utils::Logo(bool color) {
     printf(RESET);
     fprintf(stderr, RESET);
   }
+}
+
+bool Utils::IsSizesSame(
+        const size_t *src_size,   // { elems in X-step, elems in row, elems in slice }
+        const size_t *dst_size,     // { width, height, depth } in elements
+        int          dims              // 1, 2 or 3
+        ) {
+    for(int d=0; d < dims; d++) {
+        if (src_size[d] != dst_size[d]) return false;
+    }
+    return true;
+}
+// returns true if an up-to-3D tile is laid out as one contiguous block
+bool Utils::IsTileContiguous(
+        const size_t *strides,   // { elems in X-step, elems in row, elems in slice }
+        const size_t *tile_size,     // { width, height, depth } in elements
+        int          dims              // 1, 2 or 3
+        ) {
+    size_t expect = 1;
+    for (int d = 0; d < dims; ++d) {
+        if (d > 0 && tile_size[d] > 1) {
+            // must have exactly 'expect' elements between starts of consecutive
+            // lines/slices/etc for no gaps
+            if (strides[d] != expect) {
+                return false;
+            }
+        }
+        expect *= tile_size[d];
+    }
+    return true;
+}
+string Utils::GetBackendName(int backend_id)
+{
+    string backend = "error";
+    switch(backend_id){
+        case (iris_qiree):    backend = "qiree";       break;
+        case (iris_cuda):     backend = "cuda";       break;
+        case (iris_hexagon):  backend = "hexagon";    break;
+        case (iris_hip):      backend = "hip";        break;
+        case (iris_levelzero):backend = "levelzero";  break;
+        case (iris_opencl):   backend = "opencl";     break;
+        case (iris_openmp):   backend = "cpu";        break;
+    }
+    return backend;
 }
 
 template <typename T>
@@ -327,7 +418,7 @@ int Utils::Mkdir(char* path) {
   return IRIS_SUCCESS;
 }
 
-bool Utils::Exist(char* path) {
+bool Utils::Exist(const char* path) {
   struct stat st;
   return stat(path, &st) != -1;
 }
@@ -350,9 +441,11 @@ void Utils::ReadSet(std::set<std::string> & out, const char *data)
     }
 }
 
-void Utils::ReadVector(std::vector<std::string> & out, const char *data)
+void Utils::ReadVector(std::vector<std::string> & out, const char *data, const char *delim)
 {
-    const char* delim = " :;.,";
+    const char* delim_c = " :;.,";
+    if (delim == NULL) 
+        delim = delim_c;
     std::string data_str = std::string(data);
     std::transform(data_str.begin(), data_str.end(), data_str.begin(), ::tolower);
     char* rest = (char *)data_str.c_str();
@@ -380,6 +473,10 @@ void Utils::Datetime(char* str) {
   strftime(str, 256, "%Y%m%d%H%M%S", tm);
 }
 
+#ifdef __APPLE__
+#include <mach/thread_policy.h>
+#include <mach/mach.h>
+#endif
 int Utils::CPUCoresCount() {
     unsigned int num_cores = std::thread::hardware_concurrency();
     return num_cores;
@@ -390,23 +487,34 @@ void Utils::SetThreadAffinity(unsigned int core_id) {
     if (lcore_id >= num_cores) 
         lcore_id = lcore_id % num_cores;
 #ifdef _WIN32
-    DWORD_PTR mask = 1ULL << lcore_id;
-    SetThreadAffinityMask(GetCurrentThread(), mask);
-#else //_WIN32
+    DWORD_PTR mask = (static_cast<DWORD_PTR>(1) << lcore_id);
+    DWORD_PTR result = SetThreadAffinityMask(GetCurrentThread(), mask);
+    if (result == 0) {
+        throw std::runtime_error("SetThreadAffinityMask failed");
+    }
+#elif defined(__linux__)   
     cpu_set_t cpuset;
     CPU_ZERO(&cpuset);
     CPU_SET(lcore_id, &cpuset);
 
-#if 1
+#if 0
     sched_setaffinity(0, sizeof(cpuset), &cpuset);
 #else
     pthread_t current_thread = pthread_self();
     int s = pthread_setaffinity_np(current_thread, sizeof(cpu_set_t), &cpuset);
-    printf("Device:%u Setting affinity of thread to core id:%u\n", core_id, lcore_id);
+    //printf("Device:%u Setting affinity of thread to core id:%u\n", core_id, lcore_id);
     if (s != 0)
         _error("CPU affinity set to %u is failed with pthread_setaffinity_np", core_id);
 #endif
-#endif // _WIN32
+#elif defined(__APPLE__)
+    // NOTE: macOS does not support explicit core binding.
+    // This sets an affinity tag (only groups threads; not pinned to a core).
+    thread_affinity_policy_data_t policy = { static_cast<integer_t>(lcore_id) };
+    thread_port_t mach_thread = pthread_mach_thread_np(pthread_self());
+    thread_policy_set(mach_thread, THREAD_AFFINITY_POLICY,
+                      (thread_policy_t)&policy,
+                      THREAD_AFFINITY_POLICY_COUNT);
+#endif
 }
 
 } /* namespace rt */

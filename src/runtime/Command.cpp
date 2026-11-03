@@ -4,7 +4,7 @@
 #include "Pool.h"
 #include "Task.h"
 #include "Timer.h"
-#include "Mem.h"
+#include "BaseMem.h"
 #include "Device.h"
 #include "DataMem.h"
 #include "AutoDAG.h"
@@ -24,9 +24,10 @@ Command::Command(Task* task, int type) {
 Command::~Command() {
   if (kernel_args_) delete[] kernel_args_;
   if (kernel_) kernel_->Release();
-  if (npolymems_ && polymems_) delete polymems_;
+  if (npolymems_ && polymems_) delete [] polymems_;
   if (selector_kernel_params_) free(selector_kernel_params_);
   if (params_map_) delete [] params_map_; 
+  if (params_) free(params_);
 }
 
 void Command::set_params_map(int *pmap) { 
@@ -35,23 +36,26 @@ void Command::set_params_map(int *pmap) {
 }
 
 void Command::set_time_start(Timer* d) {
-  time_start_ = d->Now();
+  time_start_ = d->Now() * 1e3; // Record it in ms
   ns_time_start_ = d->NowNS();
 }
 
 void Command::set_time_end(Timer* d) {
-  time_end_ = d->Now();
+  time_end_ = d->Now() * 1e3; // Record it in ms
   ns_time_end_ = d->NowNS();
 }
 
 void Command::Clear(bool init) {
   n_mems_ = 0;
+  recommend_stream_ = -1;
   host_ = NULL;
   params_map_ = NULL;
   kernel_ = NULL;
   task_ = NULL;
   mem_ = NULL;
   dst_mem_ = NULL;
+  condition_mem_ = NULL;
+  condition_flag_ = true;
   platform_ = NULL;
   kernel_args_ = NULL;
   polymems_ = NULL;
@@ -63,8 +67,10 @@ void Command::Clear(bool init) {
   type_name_ = std::string();
   given_name_ = false;
   name_ = "";
-  selector_kernel_params_ = NULL;
   time_ = 0.0;
+  event_time_start_ = 0.0;
+  event_time_start_flag_ = false;
+  event_time_end_ = 0.0;
   ns_time_start_ = 0;
   ns_time_end_ = 0;
   internal_memory_transfer_ = false;
@@ -79,7 +85,7 @@ void Command::Clear(bool init) {
   gws_[0] = 0; gws_[1] = 1; gws_[2] = 1;
   lws_[0] = 0; lws_[1] = 1; lws_[2] = 1;
   dim_ = 1;
-  elem_size_ = 0;
+  elem_size_ = 1;
   if (init) {
     kernel_nargs_max_ = IRIS_CMD_KERNEL_NARGS_MAX;
     kernel_args_ = new KernelArg[kernel_nargs_max_];
@@ -145,6 +151,7 @@ Command* Command::CreateInit(Task* task) {
 Command* Command::CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws) {
   Command* cmd = Create(task, IRIS_CMD_KERNEL);
   cmd->kernel_ = kernel;
+  kernel->set_cmd(cmd);
   if (cmd->kernel_args_) delete[] cmd->kernel_args_;
   cmd->kernel_args_ = kernel->ExportArgs();
   cmd->kernel_nargs_max_ = kernel->nargs();
@@ -167,6 +174,7 @@ Command* Command::CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off,
 Command* Command::CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, size_t* params_off, int* params_info, size_t* memranges) {
   Command* cmd = Create(task, IRIS_CMD_KERNEL);
   cmd->kernel_ = kernel;
+  kernel->set_cmd(cmd);
   cmd->dim_ = dim;
   cmd->name_ = kernel->name();
   kernel->set_task(task);
@@ -253,6 +261,7 @@ Command* Command::CreateKernelPolyMem(Task* task, Command* pcmd, size_t* off, si
 
   Command* cmd = Create(task, IRIS_CMD_KERNEL);
   cmd->kernel_ = kernel;
+  kernel->set_cmd(cmd);
   cmd->dim_ = dim;
   for (int i = 0; i < dim; i++) {
     cmd->off_[i] = off[i];
@@ -293,7 +302,7 @@ Command* Command::CreateKernelPolyMem(Task* task, Command* pcmd, size_t* off, si
   return cmd;
 }
 
-Command* Command::CreateMalloc(Task* task, Mem* mem) {
+Command* Command::CreateMalloc(Task* task, BaseMem* mem) {
   Command* cmd = Create(task, IRIS_CMD_MALLOC);
   cmd->mem_ = mem;
   return cmd;
@@ -311,7 +320,7 @@ Command* Command::CreateMemFlushOut(Task* task, DataMem* mem) {
 //    task->platform()->get_auto_dag()->set_auto_dep();
 //#endif
    // Fixed it
-   if (mem->get_current_writing_task() != NULL && mem->get_current_writing_task()->uid() != NULL
+   if (mem->get_current_writing_task() != NULL && mem->get_current_writing_task()->uid() != (unsigned long)-1
         && mem->get_current_writing_task() != task)
        task->AddDepend(mem->get_current_writing_task(), mem->get_current_writing_task()->uid());
 
@@ -355,7 +364,7 @@ Command* Command::CreateMemResetInput(Task* task, BaseMem *mem, ResetData & data
   return cmd;
 }
 
-Command* Command::CreateH2Broadcast(Task* task, Mem* mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host) {
+Command* Command::CreateH2Broadcast(Task* task, BaseMem* mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host) {
   Command* cmd = Create(task, IRIS_CMD_H2BROADCAST);
   cmd->mem_ = mem;
   cmd->dim_ = dim;
@@ -380,7 +389,7 @@ Command* Command::CreateDMEM2DMEM(Task* task, DataMem* src_mem, DataMem *dst_mem
   return cmd;
 }
 
-Command* Command::CreateH2D(Task* task, Mem* mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host) {
+Command* Command::CreateH2D(Task* task, BaseMem* mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host) {
   Command* cmd = Create(task, IRIS_CMD_H2D);
   cmd->mem_ = mem;
   cmd->dim_ = dim;
@@ -398,7 +407,7 @@ Command* Command::CreateH2D(Task* task, Mem* mem, size_t *off, size_t *host_size
   return cmd;
 }
 
-Command* Command::CreateH2Broadcast(Task* task, Mem* mem, size_t off, size_t size, void* host) {
+Command* Command::CreateH2Broadcast(Task* task, BaseMem* mem, size_t off, size_t size, void* host) {
   Command* cmd = Create(task, IRIS_CMD_H2BROADCAST);
   cmd->dim_ = 1;
   cmd->mem_ = mem;
@@ -408,7 +417,7 @@ Command* Command::CreateH2Broadcast(Task* task, Mem* mem, size_t off, size_t siz
   cmd->exclusive_ = true;
   return cmd;
 }
-Command* Command::CreateD2D(Task* task, Mem* mem, size_t off, size_t size, void* host, int src_dev) {
+Command* Command::CreateD2D(Task* task, BaseMem* mem, size_t off, size_t size, void* host, int src_dev) {
   Command* cmd = Create(task, IRIS_CMD_D2D);
   cmd->dim_ = 1;
   cmd->src_dev_ = src_dev;
@@ -420,7 +429,7 @@ Command* Command::CreateD2D(Task* task, Mem* mem, size_t off, size_t size, void*
   return cmd;
 }
 
-Command* Command::CreateH2D(Task* task, Mem* mem, size_t off, size_t size, void* host) {
+Command* Command::CreateH2D(Task* task, BaseMem* mem, size_t off, size_t size, void* host) {
   Command* cmd = Create(task, IRIS_CMD_H2D);
   cmd->dim_ = 1;
   cmd->mem_ = mem;
@@ -431,7 +440,7 @@ Command* Command::CreateH2D(Task* task, Mem* mem, size_t off, size_t size, void*
   return cmd;
 }
 
-Command* Command::CreateH2DNP(Task* task, Mem* mem, size_t off, size_t size, void* host) {
+Command* Command::CreateH2DNP(Task* task, BaseMem* mem, size_t off, size_t size, void* host) {
   Command* cmd = Create(task, IRIS_CMD_H2DNP);
   cmd->mem_ = mem;
   cmd->dim_ = 1;
@@ -442,7 +451,7 @@ Command* Command::CreateH2DNP(Task* task, Mem* mem, size_t off, size_t size, voi
   return cmd;
 }
 
-Command* Command::CreateD2H(Task* task, Mem* mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host) {
+Command* Command::CreateD2H(Task* task, BaseMem* mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host) {
   Command* cmd = Create(task, IRIS_CMD_D2H);
   cmd->mem_ = mem;
   cmd->dim_ = dim;
@@ -460,7 +469,7 @@ Command* Command::CreateD2H(Task* task, Mem* mem, size_t *off, size_t *host_size
   return cmd;
 }
 
-Command* Command::CreateD2H(Task* task, Mem* mem, size_t off, size_t size, void* host) {
+Command* Command::CreateD2H(Task* task, BaseMem* mem, size_t off, size_t size, void* host) {
   Command* cmd = Create(task, IRIS_CMD_D2H);
   cmd->mem_ = mem;
   cmd->dim_ = 1;
@@ -490,7 +499,7 @@ Command* Command::CreateMapFrom(Task* task, void* host) {
   return cmd;
 }
 
-Command* Command::CreateReleaseMem(Task* task, Mem* mem) {
+Command* Command::CreateReleaseMem(Task* task, BaseMem* mem) {
   Command* cmd = Create(task, IRIS_CMD_RELEASE_MEM);
   cmd->mem_ = mem;
   return cmd;
@@ -520,6 +529,41 @@ Command* Command::CreateCustom(Task* task, int tag, void* params, size_t params_
 
 void Command::Release(Command* cmd) {
   delete cmd;
+}
+
+void Command::update_arg(int index, void *val)
+{
+    ASSERT(index < kernel_nargs_);
+    KernelArg *arg = &kernel_args_[index];
+    //printf(" Value:%d %p size:%lu nargs:%d\n", *((int64_t *)val), val, arg->size, kernel_nargs_);
+    memcpy(arg->value, val, arg->size);
+    kernel_->update_arg_core(index, val);
+}
+
+void Command::update_mem(int index, BaseMem *mem)
+{
+    if (type_ == IRIS_CMD_KERNEL) {
+        ASSERT(index < kernel_nargs_);
+        KernelArg *arg = &kernel_args_[index];
+        arg->mem = mem;
+        if (kernel_ != NULL) kernel_->update_mem_core(index, mem);
+    }
+    else if (type_ == IRIS_CMD_MEM_FLUSH) {
+        mem_ = mem;       
+    }
+    else {
+        _error("Command:%lu Unsupported type:%d for this function for index:%d mem:%lu:%s task:%lu:%s", uid(), type_, index, mem->uid(), mem->name(), task_->uid(), task_->name());
+    }
+}
+
+void Command::update_src(BaseMem *mem)
+{
+    mem_ = mem;
+}
+
+void Command::update_dst(BaseMem *mem)
+{
+    dst_mem_ = mem;
 }
 
 void Command::set_selector_kernel(iris_selector_kernel func, void* params, size_t params_size) {

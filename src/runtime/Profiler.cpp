@@ -64,7 +64,7 @@ int Profiler::Write(string s, int tab) {
      string s1 = s.substr(0, space_left);
      s = s.substr(space_left);
      if (!msg_->WriteString(s1.c_str())) {
-         _error("s[%s]", s.c_str());
+         _error("path[%s] s[%s]", path_, s.c_str());
          return IRIS_ERROR;
      }
      Flush();

@@ -153,8 +153,8 @@ else()
     set(HIP_ENABLED OFF)
 endif()
 option(ENABLE_OPENMP_NVCC "Enable Host cuda kernel with NVC++ for OpenMP offload"    OFF)
-option(ENABLE_HOST2CUDA_NATIVE "Compile host2cuda kernels with NVC++ compiler"    OFF)
-option(ENABLE_HOST2HIP_NATIVE "Compile host2hip kernels with hipcc compiler"    OFF)
+option(ENABLE_HOST2CUDA_NATIVE "Compile host2cuda kernels with NVC++ compiler"    ON)
+option(ENABLE_HOST2HIP_NATIVE "Compile host2hip kernels with hipcc compiler"    ON)
 option(APP_LIB_STATIC "Enable static app lib"    OFF)
 option(SNAPDRAGON "Enable support for Hexagon"    OFF )
 option(CDSP_FLAG "Enable support for CDSP"     OFF )
@@ -178,6 +178,8 @@ option(USE_FORTRAN "Enable support for Fortran 90" OFF)
 
 option(USE_SIGHANDLER   "Enable signal handler" OFF)
 option(USE_HUB          "Enable hub"            OFF)
+option(ENABLE_XSA 		"Enable Xilinx xsa as intermediate"    OFF )
+option(ENABLE_FFI 		"Enable FFI"    OFF )
 
 set(LOCAL_COMMON_FLAGS "-I$ENV{IRIS}/utils -I. -I${CMAKE_BINARY_DIR} -I$ENV{IRIS}/include")
 
@@ -230,6 +232,8 @@ initVar(APP_FLAGS "")
 initVar(APP_LDFLAGS "")
 initVar(HEXAGON_FLAGS "")
 initVar(HEXAGON_LDFLAGS "")
+
+find_package(OpenCL)
 
 #set(COMMON_FLAGS "-Dirishxg_free_stub=irishxg_free_stub_core -Dirishxg_alloc_stub=irishxg_alloc_stub_core")
 #set(COMMON_FLAGS "")
@@ -294,6 +298,31 @@ set(STUB_TARGET "android_Release_aarch64")
 else() #USE_NDK
 set(STUB_TARGET "UbuntuARM_Release_aarch64")
 endif() #USE_NDK
+
+set(VENV_DIR "iris.venv")
+set(VENV_PYTHON "${CMAKE_BINARY_DIR}/${VENV_DIR}/bin/python3")
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+execute_process(
+    COMMAND "${Python3_EXECUTABLE}" -c "import regex"
+    RESULT_VARIABLE regex_import_result
+    OUTPUT_QUIET
+    ERROR_QUIET
+)
+if(NOT regex_import_result EQUAL 0)
+    message(STATUS "'regex' not found in venv. Installing via pip...")
+    execute_process(
+        COMMAND ${Python3_EXECUTABLE} -m venv "${VENV_DIR}"
+        RESULT_VARIABLE pip_result
+    )
+    execute_process(
+        COMMAND ${VENV_PYTHON} -m pip install regex
+    )
+    set(MATRIS_PYTHON "${VENV_PYTHON}")
+else()
+    set(MATRIS_PYTHON "python3")
+    message(STATUS "'regex' already present in virtual environment.")
+endif()
+
 
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COMMON_FLAGS} -std=gnu99")
@@ -467,7 +496,7 @@ function(extractIRISAPIs)
         get_filename_component(SRC_FILE_PATH ${first} ABSOLUTE BASE_DIR ${PROJECT_SOURCE_DIR})
         list(APPEND src_include_paths "-I${SRC_DIR_PATH}")
         add_custom_command(OUTPUT  ${CMAKE_BINARY_DIR}/${rule_name}.iris 
-            COMMAND python3 $ENV{IRIS}/utils/extract_iris_task_calls.py -input ${SRC_FILE_PATH} -compile_options "${APP_FLAGS}" -output ${CMAKE_BINARY_DIR}/${rule_name}.iris -extract 
+            COMMAND ${MATRIS_PYTHON} $ENV{IRIS}/utils/extract_iris_task_calls.py -input ${SRC_FILE_PATH} -compile_options "${APP_FLAGS}" -output ${CMAKE_BINARY_DIR}/${rule_name}.iris -extract 
             DEPENDS ${SRC_FILE_PATH}
         )
         #message(STATUS " RULE: ${rule_name}")
@@ -477,7 +506,7 @@ function(extractIRISAPIs)
         list(APPEND src_iris_files "${CMAKE_BINARY_DIR}/${rule_name}.iris")
    endwhile()
    add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/iris_app_cpu_dsp_interface.h
-           COMMAND python3 $ENV{IRIS}/utils/extract_iris_task_calls.py -input ${src_iris_files} -output ${CMAKE_BINARY_DIR}/iris_app_cpu_dsp_interface.h -generate $ENV{IRIS_NO_CODEGEN}
+           COMMAND ${MATRIS_PYTHON} $ENV{IRIS}/utils/extract_iris_task_calls.py -input ${src_iris_files} -output ${CMAKE_BINARY_DIR}/iris_app_cpu_dsp_interface.h -generate $ENV{IRIS_NO_CODEGEN}
            DEPENDS ${src_rules}
            )
     add_custom_target(iris_app_cpu_dsp_interface.h DEPENDS ${CMAKE_BINARY_DIR}/iris_app_cpu_dsp_interface.h)
@@ -582,10 +611,12 @@ message(STATUS "XILINX Target (XCL_EMULATION_MODE): ${XILINX_TARGET}")
 initVar(XILINX_LANGUAGE "opencl")
 initVar(XILINX_VERSION "1")
 initVar(XILINX_OUTPUT "xclbin")
+initVar(XILINX_XSA_OUTPUT "xsa")
 #initVar(XILINX_FREQUENCY 300000000)
 initVar(XILINX_DESIGN_CONFIG "${CMAKE_BINARY_DIR}/design.cfg")
 message(STATUS "XILINX Design config (XILINX_DESIGN_CONFIG): ${XILINX_DESIGN_CONFIG}")
 initVar(XTMP_DIR "${CMAKE_BINARY_DIR}/_x/${XILINX_TARGET}/${XILINX_LANGUAGE}/${XILINX_VERSION}")
+initVar(XILINX_XSA 	  "kernel-fpga.${XILINX_XSA_OUTPUT}")
 initVar(XILINX_XCLBIN "kernel-fpga.${XILINX_OUTPUT}")
 if (NOT XILINX_PLATFORM)
 execute_process(COMMAND bash -c "platforminfo  -l | grep baseName | awk '{print $2}' | head -n1 | sed -e s/,//g  -e s/\\\"//g"   OUTPUT_VARIABLE XILINX_PLATFORM)
@@ -664,10 +695,21 @@ function(xilinx_compile)
         list(APPEND all_xos "${CMAKE_BINARY_DIR}/${XILINX_TARGET}/${XILINX_LANGUAGE}/xo/${file_path}-${first}.xo")
         #message(STATUS "\n ARG : ${first} == ${second} == ${file_path}\n")
    endwhile()
+   if (ENABLE_XSA)
+	add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/${XILINX_TARGET}/${XILINX_LANGUAGE}/${XILINX_XSA}
+			COMMAND v++ -l -t ${XILINX_TARGET} --temp_dir ${XTMP_DIR} --config ${XILINX_DESIGN_CONFIG} --platform ${XILINX_PLATFORM} -I. ${XILINX_LDFLAGS} ${all_connectivities} ${all_xos}  -o ${CMAKE_BINARY_DIR}/${XILINX_TARGET}/${XILINX_LANGUAGE}/${XILINX_XSA}
+			DEPENDS ${all_kernel_names}
+			)
+   add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/${XILINX_TARGET}/${XILINX_LANGUAGE}/${XILINX_XCLBIN}
+		   COMMAND v++ -p -t ${XILINX_TARGET} --package.no_image --temp_dir ${XTMP_DIR} --config ${XILINX_DESIGN_CONFIG} --platform ${XILINX_PLATFORM} ${CMAKE_BINARY_DIR}/${XILINX_TARGET}/${XILINX_LANGUAGE}/${XILINX_XSA} -o ${CMAKE_BINARY_DIR}/${XILINX_TARGET}/${XILINX_LANGUAGE}/${XILINX_XCLBIN}
+		   DEPENDS ${CMAKE_BINARY_DIR}/${XILINX_TARGET}/${XILINX_LANGUAGE}/${XILINX_XSA}
+		   )
+   else()
    add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/${XILINX_TARGET}/${XILINX_LANGUAGE}/${XILINX_XCLBIN}
            COMMAND v++ -l -t ${XILINX_TARGET} --temp_dir ${XTMP_DIR} --config ${XILINX_DESIGN_CONFIG} --platform ${XILINX_PLATFORM} -I. ${XILINX_LDFLAGS} ${all_connectivities} ${all_xos}  -o ${CMAKE_BINARY_DIR}/${XILINX_TARGET}/${XILINX_LANGUAGE}/${XILINX_XCLBIN}
            DEPENDS ${all_kernel_names}
            )
+	endif()
     add_custom_target(${XILINX_XCLBIN} ALL DEPENDS design.cfg ${CMAKE_BINARY_DIR}/${XILINX_TARGET}/${XILINX_LANGUAGE}/${XILINX_XCLBIN})
     install(FILES ${CMAKE_BINARY_DIR}/${XILINX_TARGET}/${XILINX_LANGUAGE}/${XILINX_XCLBIN} DESTINATION ${LIB_INSTALL_PATH}/${XILINX_TARGET}/${XILINX_LANGUAGE})
     install(FILES ${CMAKE_BINARY_DIR}/${XILINX_TARGET}/${XILINX_LANGUAGE}/${XILINX_XCLBIN} DESTINATION ${LIB_INSTALL_PATH}/)
@@ -745,6 +787,19 @@ function(addKernelRule kernel_target kernel_sources flags ldflags libraries)
         endif()
 endfunction() #addKernelRule
 
+function(addKernelOpenCLRule kernel_target kernel_sources flags ldflags libraries)
+        add_library(${kernel_target} SHARED ${kernel_sources})
+        set_target_properties(${kernel_target} PROPERTIES COMPILE_FLAGS ${flags})
+        set_target_properties(${kernel_target} PROPERTIES LINK_FLAGS ${ldflags})
+        set_target_properties(${kernel_target} PROPERTIES PREFIX "")
+        target_link_libraries(${kernel_target} ${OpenCL_LIBRARIES})
+        add_dependencies(${kernel_target} iris_app_cpu_dsp_interface.h)
+        install(TARGETS ${kernel_target} DESTINATION ${LIB_INSTALL_PATH})
+        if (libraries)
+            target_link_libraries(${kernel_target} ${libraries})
+        endif()
+endfunction() #addKernelRule
+
 function(addKernelSpecificCompiler 
                            kernel_target 
                            compiler
@@ -760,7 +815,7 @@ function(addKernelSpecificCompiler
         string(REPLACE " " ";" ldflags_X ${ldflags_X})
         set(local_output_obj_files )
         foreach(cuda_source ${kernel_sources})
-            message(STATUS ${cuda_source})
+            #message(STATUS ${cuda_source})
             string(REGEX REPLACE " $" "" first "${cuda_source}")
             string(REGEX REPLACE "/" ".__" rule_name "${first}.iris.${kernel_target}.specific")
             string(REGEX REPLACE "\n$" "" rule_name "${rule_name}")
@@ -768,10 +823,10 @@ function(addKernelSpecificCompiler
             if (SRC_PATH STREQUAL "")
             set(SRC_PATH ".")
             endif()
-            message(STATUS "\n Processing file: ${CMAKE_CURRENT_BINARY_DIR} ${first} in path:${SRC_PATH} rule:${rule_name}\n")
+            #message(STATUS "\n Processing file: ${CMAKE_CURRENT_BINARY_DIR} ${first} in path:${SRC_PATH} rule:${rule_name}\n")
             get_filename_component(SRC_DIR_PATH ${SRC_PATH} ABSOLUTE BASE_DIR ${PROJECT_SOURCE_DIR})
             get_filename_component(SRC_FILE_PATH ${first} ABSOLUTE BASE_DIR ${PROJECT_SOURCE_DIR})
-            message(STATUS "\n ${SRC_DIR_PATH} ${SRC_FILE_PATH}\n")
+            #message(STATUS "\n ${SRC_DIR_PATH} ${SRC_FILE_PATH}\n")
             set(output "${rule_name}.o")
             add_custom_command(
                     OUTPUT ${output}
@@ -787,7 +842,7 @@ function(addKernelSpecificCompiler
         foreach(libname ${libraries})
         list(APPEND libpaths "-l${libname}")
         endforeach()
-        message(STATUS "OBJ files: ${local_output_obj_files}")
+        #message(STATUS "OBJ files: ${local_output_obj_files}")
         set(output_obj_files ${local_output_obj_files} PARENT_SCOPE)
         add_custom_command(
                 OUTPUT ${kernel_target}.so
@@ -812,7 +867,7 @@ function(addKernelCUDARule kernel_target
         string(REPLACE " " ";" ldflags_X ${ldflags_X})
         set(local_output_obj_files )
         foreach(cuda_source ${kernel_sources})
-            message(STATUS ${cuda_source})
+            #message(STATUS ${cuda_source})
             string(REGEX REPLACE " $" "" first "${cuda_source}")
             string(REGEX REPLACE "/" ".__" rule_name "${first}.iris")
             string(REGEX REPLACE "\n$" "" rule_name "${rule_name}")
@@ -820,10 +875,10 @@ function(addKernelCUDARule kernel_target
             if (SRC_PATH STREQUAL "")
             set(SRC_PATH ".")
             endif()
-            message(STATUS "\n Processing file: ${CMAKE_CURRENT_BINARY_DIR} ${first} in path:${SRC_PATH} rule:${rule_name}\n")
+            #message(STATUS "\n Processing file: ${CMAKE_CURRENT_BINARY_DIR} ${first} in path:${SRC_PATH} rule:${rule_name}\n")
             get_filename_component(SRC_DIR_PATH ${SRC_PATH} ABSOLUTE BASE_DIR ${PROJECT_SOURCE_DIR})
             get_filename_component(SRC_FILE_PATH ${first} ABSOLUTE BASE_DIR ${PROJECT_SOURCE_DIR})
-            message(STATUS "\n ${SRC_DIR_PATH} ${SRC_FILE_PATH}\n")
+            #message(STATUS "\n ${SRC_DIR_PATH} ${SRC_FILE_PATH}\n")
             set(output "${rule_name}.o")
             add_custom_command(
                     OUTPUT ${output}
@@ -841,7 +896,7 @@ function(addKernelCUDARule kernel_target
         foreach(libname ${libraries})
         list(APPEND libpaths "-l${libname}")
         endforeach()
-        message(STATUS "OBJ files: ${local_output_obj_files}")
+        #message(STATUS "OBJ files: ${local_output_obj_files}")
         set(output_obj_files ${local_output_obj_files} PARENT_SCOPE)
         add_custom_command(
                 OUTPUT lib${kernel_target}.a
@@ -865,12 +920,16 @@ if (OPENMP_KERNEL_SOURCES)
     endif() # USE_NDK
 endif() #OPENMP_KERNEL_SOURCES
 
-if (HOST2OPENCL_KERNEL_SOURCES)
-addKernelRule(kernel.host2opencl "${HOST2OPENCL_KERNEL_SOURCES}" ${HOST2OPENCL_FLAGS} ${HOST2OPENCL_LDFLAGS} "${HOST2OPENCL_LIBRARIES}")
+if (OpenCL_FOUND AND HOST2OPENCL_KERNEL_SOURCES)
+message(STATUS "→ OpenCL found: ${OpenCL_VERSION}")
+message(STATUS "   Includes: ${OpenCL_INCLUDE_DIRS}")
+message(STATUS "   Libs:     ${OpenCL_LIBRARIES}")
+#set(HOST2OPENCL_LDFLAGS "${HOST2OPENCL_LDFLAGS} ${OpenCL_LIBRARIES} -g -fPIC")
+addKernelOpenCLRule(kernel.host2opencl "${HOST2OPENCL_KERNEL_SOURCES}" ${HOST2OPENCL_FLAGS} ${HOST2OPENCL_LDFLAGS} "${HOST2OPENCL_LIBRARIES}")
 endif() #HOST2OPENCL_KERNEL_SOURCES
 
 if (HOST2XILINX_KERNEL_SOURCES AND USE_XILINX)
-addKernelRule(kernel.host2opencl.xilinx "${HOST2XILINX_KERNEL_SOURCES}" ${HOST2XILINX_FLAGS} ${HOST2XILINX_LDFLAGS} "${HOST2XILINX_LIBRARIES}")
+addKernelOpenCLRule(kernel.host2opencl.xilinx "${HOST2XILINX_KERNEL_SOURCES}" ${HOST2XILINX_FLAGS} ${HOST2XILINX_LDFLAGS} "${HOST2XILINX_LIBRARIES}")
 endif() #HOST2XILINX_KERNEL_SOURCES
 
 set(output_obj_files "")
@@ -1020,6 +1079,9 @@ target_link_libraries(${APP_EXECUTABLE} rt pthread OpenCL)
 else() # XILINX_LANGUAGE
 target_link_libraries(${APP_EXECUTABLE} rt pthread)
 endif() # XILINX_LANGUAGE
+if (ENABLE_FFI)
+target_link_libraries(${APP_EXECUTABLE} ffi)
+endif()
 if (APP_LINK_LIB)
 target_link_libraries(${APP_EXECUTABLE} ${APP_LINK_LIB})
 endif() #APP_LINK_LIB
@@ -1034,6 +1096,9 @@ target_link_libraries(${APP_LIBRARY_NAME} rt pthread OpenCL)
 else() #XILINX_LANGUAGE
 target_link_libraries(${APP_LIBRARY_NAME} rt pthread)
 endif() #XILINX_LANGUAGE
+if (ENABLE_FFI)
+target_link_libraries(${APP_EXECUTABLE} ffi)
+endif()
 endif() #XILINX_OPENCL_SOURCES XILINX_KERNEL_SOURCES
 endif() #APP_LIB_SOURCES AND USE_XILINX
 endif() #APP_SOURCES AND USE_XILINX

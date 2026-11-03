@@ -31,6 +31,7 @@ class Scheduler;
 class Graph;
 class AutoDAG;
 class Device; 
+class BaseMem;
 
 enum ProfileRecordType 
 { 
@@ -42,11 +43,13 @@ enum ProfileRecordType
     PROFILE_KERNEL = 5,
     PROFILE_O2D = 6,
     PROFILE_D2O = 7,
-    PROFILE_INIT = 8,
+    PROFILE_RESET = 8,
+    PROFILE_INIT = 9,
 }; 
 class ProfileEvent {
     public:
-        ProfileEvent(unsigned long id, int connect_dev, ProfileRecordType type, Device *event_dev, int stream) {
+        ProfileEvent(Command *cmd, unsigned long id, int connect_dev, ProfileRecordType type, Device *event_dev, int stream) {
+            cmd_ = cmd;
             start_event_ = NULL;
             end_event_ = NULL;
             type_ = type;
@@ -54,10 +57,12 @@ class ProfileEvent {
             connect_dev_ = connect_dev;
             event_dev_ = event_dev;
             stream_ = stream;
-            event_fetch_flag_ = true;
+            start_event_fetch_flag_ = false;
+            end_event_fetch_flag_ = false;
             //printf("prof_event created:%p %p\n", &start_event_, start_event_);
         }
-        ProfileEvent(unsigned long id, int connect_dev, ProfileRecordType type, Device *event_dev, float start_time, float end_time) {
+        ProfileEvent(Command *cmd, unsigned long id, int connect_dev, ProfileRecordType type, Device *event_dev, float start_time, float end_time) {
+            cmd_ = cmd;
             start_event_ = NULL;
             end_event_ = NULL;
             type_ = type;
@@ -67,17 +72,19 @@ class ProfileEvent {
             stream_ = -1;
             start_time_ = start_time;
             end_time_ = end_time;
-            event_fetch_flag_ = false;
+            start_event_fetch_flag_ = false;
+            end_event_fetch_flag_ = false;
         }
         ~ProfileEvent(){ /*It shouldn't destroy any events*/ }
         void Clean();
         float GetStartTime();
         float GetEndTime();
         void RecordStartEvent();
-        void RecordStartEvent(float start_time) { start_time_ = start_time; }
         void RecordEndEvent();
-        void RecordEndEvent(float end_time) { end_time_ = end_time; }
+        void RecordStartTime(float start_time) { start_time_ = start_time; }
+        void RecordEndTime(float end_time) { end_time_ = end_time; }
         int stream() { return stream_; }
+        Command *cmd() { return cmd_; }
         void **start_event_ptr() { return &start_event_; }
         void **end_event_ptr()   { return &end_event_; }
         void *start_event()      { return start_event_; }
@@ -88,10 +95,12 @@ class ProfileEvent {
         int connect_dev() { return connect_dev_; }
         unsigned long uid() { return id_; }
     private:
+        Command *cmd_;
         Device *event_dev_;
         float start_time_;
         float end_time_;
-        bool event_fetch_flag_; 
+        bool start_event_fetch_flag_; 
+        bool end_event_fetch_flag_; 
         void *start_event_;
         void *end_event_;
         ProfileRecordType type_;
@@ -105,19 +114,20 @@ public:
   Task(Platform* platform, int type = IRIS_TASK, const char* name = NULL, int max_cmds=IRIS_TASK_MAX_CMDS);
   virtual ~Task();
 
-  void AddCommand(Command* cmd);
+  void AddCommand(Command* cmd, int position=-1);
   void AddMemResetCommand(Command* cmd);
   void ClearCommands();
 
   void AddSubtask(Task* subtask);
   bool HasSubtasks();
 
+  void RemoveDepend(unsigned long uid);
   void AddDepend(Task* task, unsigned long uid);
 //  void RemoveDepend(Task* task);
 
   void Submit(int brs_policy, const char* opt, int sync);
 
-  bool Dispatchable();
+  bool Dispatchable(bool is_async_soft_touch=true);
   bool Executable();
   void Complete();
   void Wait();
@@ -129,6 +139,8 @@ public:
   const char* name() { return name_.c_str(); }
   void set_julia_kernel_type(int type) { julia_kernel_type_ = type; }
   int julia_kernel_type() { return julia_kernel_type_; }
+  void set_python_kernel_type(int type) { python_kernel_type_ = type; }
+  int python_kernel_type() { return python_kernel_type_; }
   void set_name(std::string name);
   void set_name(const char* name);
   bool given_name(){return given_name_;}
@@ -136,6 +148,7 @@ public:
   void set_user(bool flag=true) { user_ = flag; }
   bool disable_consistency() { return disable_consistency_; }
   bool set_disable_consistency(bool flag=true) { return disable_consistency_ = flag; }
+  void set_disable_profiling(bool flag=true) { disable_profiling_ = flag; }
   bool system() { return system_; }
   void set_system() { system_ = true; }
   bool marker() { return type_ == IRIS_MARKER; }
@@ -146,9 +159,11 @@ public:
   Command* cmd_kernel() { return cmd_kernel_; }
   Command* cmd_last() { return cmd_last_; }
   void TryReleaseTask();
+  void set_dep_dev(Device* dev) { dep_dev_ = dev; }
   void set_dev(Device* dev) { dev_ = dev; }
   Platform* platform() { return platform_; }
   Device* dev() { return dev_; }
+  Device* dep_dev() { return dep_dev_; }
   void set_devno(int devno) { devno_ = devno; }
   int devno() { return devno_; }
   int ncmds() { return ncmds_; }
@@ -168,14 +183,21 @@ public:
   int get_brs_policy(){ return brs_policy_;};
   void set_profile_data_transfers(bool flag=true) { profile_data_transfers_ = flag; }
   bool is_profile_data_transfers() { return profile_data_transfers_; }
+  void InvokeDependentTaskDevices(Device *dev);
   void AddOutDataObjectProfile(DataObjectProfile hist) { out_dataobject_profiles.push_back(hist); }
   void ClearMemOutProfile() { out_dataobject_profiles.clear(); }
   vector<DataObjectProfile> & out_mem_profiles() { return out_dataobject_profiles; }
   void set_opt(const char* opt);
   const char* get_opt(){return opt_.c_str();}
   const char* opt() { return opt_.c_str(); }
+  void set_stream_affinity(int stream) { stream_affinity_ = stream; }
+  int stream_affinity() { return stream_affinity_; }
+  void set_brs_affinity(int dev) { brs_affinity_ = dev; }
+  int brs_affinity() { return brs_affinity_; }
   int brs_policy() { return brs_policy_; }
   int recommended_stream() { return recommended_stream_; }
+  void *GetCompletionEvent() { return completion_event_; }
+  void **GetCompletionEventPtr() { return &completion_event_; }
   void stream_lock() {
     pthread_mutex_lock(&stream_mutex_);
   }
@@ -200,6 +222,17 @@ public:
   void set_ndepends(int n) { ndepends_ = n; }
   //Task** depends() { return depends_; }
   unsigned long* depends() { return depends_uids_; }
+  unsigned long depend_uid(int i) { ASSERT(i < ndepends_); return depends_uids_[i]; }
+  inline bool is_depend(unsigned long d_uid) {
+    for(int i=0; i<ndepends_; i++) {
+        if (depends_uids_[i] == d_uid) 
+            return true;
+    }
+    return false;
+  }
+  inline pair<double, double> GetTaskLevelTimeBoundaries();
+  void Validate();
+  Task* Depend(int i) { return platform_->get_task_object(depends_uids_[i]); }
   Task* depend(int i) { return platform_->get_task_object(depends_uids_[i]); }
   void* arch() { return arch_; }
   void set_stream_policy(StreamPolicy policy) { stream_policy_ = policy; }
@@ -232,11 +265,14 @@ public:
   Task* Child(int i) { return platform_->get_task_object(childs_uids_[i]); }
   int nchilds() { return nchilds_; }
   void AddChild(unsigned long uid);
+  void RemoveChild(unsigned long uid);
   void AddAllChilds();
-
+  void Print();
   Graph* get_graph(){return graph_;}
-  void set_graph(Graph* graph){graph_ = graph;}
- 
+  Graph* graph(){return graph_;}
+  void set_graph(Graph* graph){ graph_ = graph; }
+  bool submit_graph_again() { return submit_graph_again_; }
+  void set_submit_graph_again(bool flag) { submit_graph_again_ = flag; }
 #ifdef AUTO_PAR
   std::vector<BaseMem*>* get_write_list() { return &write_list_; }
   std::vector<BaseMem*>* get_read_list() { return &read_list_; }
@@ -257,7 +293,12 @@ public:
   void set_last_cmd_stream(int stream) { last_cmd_stream_ = stream; }
   int last_cmd_stream() { return last_cmd_stream_; }
   void set_last_cmd_device(Device *dev) { last_cmd_device_ = dev; }
+  iris_command get_last_cmd();
+  iris_kernel get_first_cmd_kernel();
+  iris_kernel get_last_cmd_kernel();
   Device *last_cmd_device() { return last_cmd_device_; }
+  int execute_instance() { return execute_instance_; }
+  //void enable_task_enqueued_in_multiple_devices() { is_task_enqueued_in_multiple_devices_ = true; }
 private:
   void CompleteSub();
 
@@ -272,6 +313,7 @@ private:
   Command* cmd_kernel_;
   Command* cmd_last_;
   Device* dev_;
+  Device* dep_dev_;
   int meta_data_[8];
   int n_meta_data_;
   int devno_;
@@ -280,6 +322,7 @@ private:
   std::vector<Task*> subtasks_;
   std::vector<Command *> reset_mems_;
   Graph* graph_;
+  bool submit_graph_again_;
 #ifdef AUTO_PAR
   std::vector<BaseMem*> write_list_;
   std::vector<BaseMem*> read_list_;
@@ -303,10 +346,14 @@ private:
   int nchilds_;
 
 
+  int python_kernel_type_;
   int julia_kernel_type_;
   int recommended_stream_;
   int recommended_dev_;
   int brs_policy_;
+  int brs_affinity_;
+  int stream_affinity_;
+  void *completion_event_;
   //char opt_[128];
   std::string opt_;
 
@@ -316,6 +363,7 @@ private:
   bool user_;
   bool system_;
   bool disable_consistency_;
+  bool disable_profiling_;
   bool internal_memory_transfer_;
   bool is_kernel_launch_disabled_;
   bool profile_data_transfers_;
@@ -329,6 +377,8 @@ private:
   size_t ns_time_submit_;
   size_t ns_time_start_;
   size_t ns_time_end_;
+  pthread_mutex_t child_mutex_;
+  pthread_mutex_t depend_mutex_;
   pthread_mutex_t stream_mutex_;
   pthread_mutex_t mutex_pending_;
   pthread_mutex_t mutex_executable_;
@@ -342,20 +392,26 @@ private:
   vector<DataMem *> hidden_dmem_in_;
   vector<DataMem *> hidden_dmem_out_;
 public:
+  size_t n_profile_events() { return profile_events_.size(); }
+  ExternalEventRecord * fetch_profile_records();
   vector<DataMem *> & hidden_dmem_in() { return hidden_dmem_in_; }
   vector<DataMem *> & hidden_dmem_out() { return hidden_dmem_out_; }
   vector<ProfileEvent> & profile_events() { return profile_events_; }
-  ProfileEvent & CreateProfileEvent(BaseMem *mem, int connect_dev, ProfileRecordType type, Device *dev, int stream);
-  ProfileEvent & CreateProfileEvent(Task *task, int connect_dev, ProfileRecordType type, Device *dev, int stream) {
-      profile_events_.push_back(ProfileEvent(task->uid(), connect_dev, type, dev, stream));
+  inline void Clear() { dep_dev_ = NULL; dev_ = NULL; }
+  ProfileEvent & CreateProfileEvent(Command *cmd, BaseMem *mem, int connect_dev, ProfileRecordType type, Device *dev, int stream);
+  ProfileEvent & CreateProfileEvent(Command *cmd, Task *task, int connect_dev, ProfileRecordType type, Device *dev, int stream) {
+      profile_events_.push_back(ProfileEvent(cmd, task->uid(), connect_dev, type, dev, stream));
       return profile_events_.back();
   }
-  ProfileEvent &CreateProfileEvent(Task *task, int connect_dev, ProfileRecordType type, Device *dev, float start, float end) {
-      profile_events_.push_back(ProfileEvent(task->uid(), connect_dev, type, dev, start, end));
+  ProfileEvent &CreateProfileEvent(Command *cmd, Task *task, int connect_dev, ProfileRecordType type, Device *dev, float start, float end) {
+      profile_events_.push_back(ProfileEvent(cmd, task->uid(), connect_dev, type, dev, start, end));
       return profile_events_.back();
   }
   ProfileEvent & LastProfileEvent() {
       return profile_events_.back();
+  }
+  void clear_profile_events() {
+      profile_events_.clear();
   }
   static Task* Create(Platform* platform, int type, const char* name, int max_cmds=IRIS_TASK_MAX_CMDS);
   static Task* Create(Platform* platform, int type, std::string name, int max_cmds=IRIS_TASK_MAX_CMDS) {
@@ -364,6 +420,7 @@ public:
   bool IsKernelSupported(Device *dev);
   int last_cmd_stream_;
   Device *last_cmd_device_;
+  void set_kernel_condition(BaseMem *mem, bool flag);
   void set_enable_julia_if() { enable_julia_if_ = true; }
   bool enable_julia_if() { return enable_julia_if_; }
   bool enable_julia_if_;
@@ -378,6 +435,23 @@ public:
   }
   bool j_policy_flag_;
   string j_policy_;
+  void set_enable_python_if() { enable_python_if_ = true; }
+  bool enable_python_if() { return enable_python_if_; }
+  bool enable_python_if_;
+  void set_python_policy(const char *name) { 
+      py_policy_ = string(name);
+      //printf("Configuring py_policy: %s --- %s\n", py_policy_.c_str(), name);
+      py_policy_flag_ = true;
+  }
+  const char *python_policy() { 
+      if (py_policy_flag_) return py_policy_.c_str(); 
+      return NULL;
+  }
+  bool py_policy_flag_;
+  string py_policy_;
+  int execute_instance_;
+  ExternalEventRecord *ext_records_;
+  //bool is_task_enqueued_in_multiple_devices_;
 };
 
 } /* namespace rt */

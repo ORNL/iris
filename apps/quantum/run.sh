@@ -1,0 +1,1 @@
+IRIS_QIREE_DEVICE_FACTOR=1 python3 test_qiree_renewed.py

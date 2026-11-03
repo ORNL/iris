@@ -6,9 +6,9 @@
 #SBATCH --output=slurm-test-out.txt
 #SBATCH --error=slurm-test-err.txt
 #SBATCH --exclusive
-#SBATCH --time="2:01:00"
+#SBATCH --time="1:01:00"
 
-set -x;
+set -x
 GIT_ROOT=$(git rev-parse --show-toplevel)
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
@@ -23,6 +23,8 @@ echo Started: $(date)
 echo Host: $(hostname)
 echo Path: $GIT_ROOT
 echo Groups: $(groups)
+echo IRIS_TAG: $IRIS_TAG
+echo IRIS_INSTALL_ROOT: $IRIS_INSTALL_ROOT
 echo ${SLURM_JOB_ID} > slurm.job
 echo --------------------------------------------------------------------------------
 
@@ -33,18 +35,23 @@ echo ---------------------------------------------------------------------------
 unset MODULEPATH_ROOT
 unset MODULEPATH
 source /etc/profile.d/lmod.sh
-module load cmake
-module load gnu
+# module load cmake
+# module load gnu
 
 # Load conda
 #source $CONDA_ROOT/etc/profile.d/conda.sh
 
 # General setup for IRIS
 source /auto/software/iris/setup_system.source
-IRIS_TAG=.$IRIS_TAG.$IRIS_MACHINE.$IRIS_TESTNAME IRIS_INSTALL_ROOT=$IRIS_INSTALL_ROOT bash build.sh -DENABLE_FFI=$IRIS_FFI_FLAG -DCMAKE_BUILD_TYPE=DEBUG -DCOVERAGE=true 
-source $IRIS_INSTALL_ROOT.$IRIS_TAG.$IRIS_MACHINE.$IRIS_TESTNAME/setup.source
+IRIS_TAG_ORIG=$IRIS_TAG
+IRIS_TAG=.$IRIS_TAG.$IRIS_MACHINE.$IRIS_TESTNAME
+echo Full IRIS_TAG: $IRIS_TAG
+bash build.sh -DENABLE_FFI=$IRIS_FFI_FLAG -DCMAKE_BUILD_TYPE=DEBUG -DCOVERAGE=true
+source $IRIS_INSTALL_ROOT$IRIS_TAG/setup.source
+IRIS_TAG=$IRIS_TAG_ORIG
+echo Restored IRIS_TAG: $IRIS_TAG
 
-set -x;
+set -e
 
 # Local conda environment setup
 echo "Before push PWD: $(pwd)"
@@ -66,7 +73,7 @@ make -f Makefile.venv setup
 echo "PWD1: $(pwd)"
 make -f Makefile.venv clean
 echo "PWD2: $(pwd)"
-cd $CWD 
+cd $CWD
 echo "PWD2-1: $(pwd)"
 REPEATS=10 make -f Makefile.venv run-policy
 echo "PWD3: $(pwd)"
@@ -77,7 +84,7 @@ popd
 echo "After pop PWD $(pwd)"
 
 # Collect Output
-#grep -e '\[E\]' test-out.txt > errors.txt
+#grep -E '\[(E|W)\]|(err|warn)\[\d+\]' test-out.txt > errors.txt
 #grep -e 'EnvironmentLocationNotFound' slurm-test-err.txt >> errors.txt
 
 # Validate Json

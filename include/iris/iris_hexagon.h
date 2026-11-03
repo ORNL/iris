@@ -1,6 +1,11 @@
 #ifndef IRIS_INCLUDE_IRIS_HEXAGON_H
 #define IRIS_INCLUDE_IRIS_HEXAGON_H
 
+#ifndef DO_NOT_INCLUDE_IRIS
+#define DO_NOT_INCLUDE_IRIS
+#endif
+#include "Config.h"
+
 #include <iris/iris_errno.h>
 #include <iris/hexagon/rpcmem.h>
 #include <dlfcn.h>

@@ -11,11 +11,21 @@
 namespace iris {
 namespace rt {
 
-DeviceLevelZero::DeviceLevelZero(LoaderLevelZero* ld, ze_device_handle_t zedev, ze_context_handle_t zectx, ze_driver_handle_t zedriver, int devno, int platform) : Device(devno, platform) {
+DeviceLevelZero::DeviceLevelZero(LoaderLevelZero* ld, ze_device_handle_t zedev, ze_context_handle_t zectx, ze_driver_handle_t zedriver, int ordinal, int devno, int platform) : Device(devno, platform) {
   ld_ = ld;
   zedev_ = zedev;
   zectx_ = zectx;
+  spec_.ctx = zectx_;
   zedriver_ = zedriver;
+  model_ = iris_levelzero;
+  spec_.model = model_;
+  spec_.ordinal = ordinal;
+  spec_.local_dev_id = ordinal;
+  // Below arguments are fixed for now
+  spec_.is_async = false;
+  spec_.stream_index = 0;
+  spec_.n_streams = 0;
+  spec_.streams = NULL;
 
   ze_device_properties_t props = {};
   props.stype = ZE_STRUCTURE_TYPE_DEVICE_PROPERTIES;
@@ -109,7 +119,24 @@ int DeviceLevelZero::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool r
   _zeerror(err_);
   return IRIS_SUCCESS;
 }
+int DeviceLevelZero::MemAlloc(void** mem_addr, size_t size, void *stream_v, bool reset) {
+  void** dptr = mem_addr;
+  ze_device_mem_alloc_desc_t desc = {};
+  desc.stype = ZE_STRUCTURE_TYPE_DEVICE_MEM_ALLOC_DESC;
+  err_ = ld_->zeMemAllocDevice(zectx_, &desc, size, align_, zedev_, dptr);
+  if (reset) {
+    _error("Levelzero not supported with reset for size:%lu", size);
+  }
+  _zeerror(err_);
+  return IRIS_SUCCESS;
+}
 
+int DeviceLevelZero::MemFree(void* mem_addr, void *stream_v) {
+  void* dptr = mem_addr;
+  err_ = ld_->zeMemFree(zectx_, dptr);
+  _zeerror(err_);
+  return IRIS_SUCCESS;
+}
 int DeviceLevelZero::MemFree(BaseMem *mem, void* mem_addr) {
   void* dptr = mem_addr;
   err_ = ld_->zeMemFree(zectx_, dptr);
@@ -201,8 +228,17 @@ int DeviceLevelZero::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* 
 }
 
 int DeviceLevelZero::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws) {
+  Command *cmd = kernel->command();
   _trace("kernel[%s] dim[%d] gws[%zu,%zu,%zu] lws[%zu,%zu,%zu]", kernel->name(), dim, gws[0], gws[1], gws[2], lws ? lws[0] : 0, lws ? lws[1] : 0, lws ? lws[2] : 0);
 
+  spec_.dim = dim;
+  spec_.cmd_id = cmd->uid();
+  spec_.task_id = cmd->task()->uid();
+  spec_.off = off;
+  spec_.gws = gws;
+  spec_.block = NULL;
+  spec_.grid = NULL;
+  spec_.shmem_size = kernel->shared_mem_size();
   ze_event_handle_t zeevt;
   ze_event_desc_t zeevt_desc = {};
   zeevt_desc.stype = ZE_STRUCTURE_TYPE_EVENT_DESC;

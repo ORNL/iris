@@ -45,6 +45,7 @@ public:
 private:
   void Submit(Task* task);
   void SubmitTask(Task* task);
+  inline void InvokeDevices();
   virtual void Run();
 
   void InitHubClient();
@@ -62,6 +63,7 @@ private:
   HubClient* hub_client_;
   bool hub_available_;
   bool enable_profiler_;
+  bool is_proactive_dispatch_;
   int nprofilers_;
   Profiler** profilers_;
   Timer* timer_;

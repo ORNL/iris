@@ -10,6 +10,7 @@ namespace rt {
 class LoaderOpenMP : public HostInterfaceClass {
 public:
   LoaderOpenMP();
+  LoaderOpenMP(string path);
   ~LoaderOpenMP();
 
   int LoadFunctions();

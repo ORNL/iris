@@ -2,17 +2,26 @@
 #include "Device.h"
 #include "Command.h"
 #include "Kernel.h"
+#include "Task.h"
 #include "Platform.h"
 #include "signal.h"
 #include "DataMem.h"
 
-#define INIT_SYM_FN(FN)  \
-    sym_map_fn_.insert(make_pair(string(#FN), (void **)&FN)); \
-    FN = NULL;
 namespace iris {
     namespace rt {
-        HostInterfaceLoader::HostInterfaceLoader(string kernel_env) : Loader(), kernel_env_(kernel_env) 
-        { 
+        HostInterfaceLoader::HostInterfaceLoader(string kernel_env, bool is_path) : Loader(), kernel_env_(kernel_env), is_path_(is_path)
+        {
+            pass_spec_flag_ = false;
+            INIT_SYM_FN(iris_host_init);
+            INIT_SYM_FN(iris_host_init_handles);
+            INIT_SYM_FN(iris_host_finalize_handles);
+            INIT_SYM_FN(iris_host_finalize);
+            INIT_SYM_FN(iris_host_launch);
+            INIT_SYM_FN(iris_host_launch_with_obj);
+            INIT_SYM_FN(iris_ffi_launch);
+        }
+        HostInterfaceLoader::HostInterfaceLoader() { 
+            pass_spec_flag_ = false;
             INIT_SYM_FN(iris_host_init);
             INIT_SYM_FN(iris_host_init_handles);
             INIT_SYM_FN(iris_host_finalize_handles);
@@ -23,6 +32,7 @@ namespace iris {
         }
         uint32_t HostInterfaceLoader::get_encoded_stream_device(int stream_index, int nstreams, int devno)
         {
+            // 8-bit stream_index, 8-bits for streams, devno with 16-bits
             ASSERT(stream_index < 256 && "Stream index should be <256");
             ASSERT(nstreams < 256 && "Stream index should be <256");
             ASSERT(devno < 65536 && "Stream index should be <256");
@@ -70,6 +80,8 @@ namespace iris {
         }
         const char* HostInterfaceLoader::library() {
             char* path = NULL;
+            if (is_path_)
+                return kernel_env_.c_str();
             Platform::GetPlatform()->EnvironmentGet(kernel_env_.c_str(), &path, NULL);
             return path;
         }
@@ -102,8 +114,8 @@ namespace iris {
                 *(sym_map_fn_[string(func_name)]) = symbol;
             }
         }
-        BoilerPlateHostInterfaceLoader::BoilerPlateHostInterfaceLoader(string kernel_env):
-            HostInterfaceLoader(kernel_env) {
+        BoilerPlateHostInterfaceLoader::BoilerPlateHostInterfaceLoader(string kernel_env, bool is_path):
+            HostInterfaceLoader(kernel_env, is_path) {
                 INIT_SYM_FN(iris_host_kernel);
                 INIT_SYM_FN(iris_host_setarg);
                 INIT_SYM_FN(iris_host_setmem);
@@ -113,7 +125,7 @@ namespace iris {
                 INIT_SYM_FN(iris_get_kernel_names);
                 INIT_SYM_FN(iris_set_kernel_ptr_with_obj);
             }
-        int BoilerPlateHostInterfaceLoader::launch_init(int model, int devno, int stream_index, int nstreams, void **stream, void *param_mem, Command *cmd) 
+        int BoilerPlateHostInterfaceLoader::launch_init(IrisSpec *spec, void *param_mem, Command *cmd) 
         {
             const char *kname = cmd->kernel()->name();
             if (iris_host_kernel_with_obj) {
@@ -156,20 +168,24 @@ namespace iris {
             }
             return IRIS_ERROR;
         }
-        int BoilerPlateHostInterfaceLoader::host_launch(void **stream, int stream_index, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *off, size_t *bws) 
+        int BoilerPlateHostInterfaceLoader::host_launch(IrisSpec *spec, Command *cmd, Kernel *kernel)
         {
+            spec->kernel_type = iris_core_native;
+            void *param_mem = kernel->GetParamWrapperMemory();
+            const char *kname =  kernel->name();
             if(iris_host_launch_with_obj) {
-                uint32_t dev_info = get_encoded_stream_device(stream_index, nstreams, devno);
+                uint32_t dev_info = get_encoded_stream_device(
+                        spec->stream_index, spec->n_streams, spec->devno);
                 SetKernelPtr(param_mem, kname);
                 int status = iris_host_launch_with_obj(
-                        stream, 
+                        spec->streams, 
                         param_mem, dev_info,  
-                        dim, off, bws);
+                        spec->dim, spec->off, spec->gws);
                 return IRIS_SUCCESS;
             }
             else if(iris_host_launch) {
                 int status = iris_host_launch(
-                        dim, off, bws);
+                        spec->dim, spec->off, spec->gws);
                 return IRIS_SUCCESS;
             }
             return IRIS_ERROR;
@@ -183,7 +199,7 @@ namespace iris {
                 return iris_host_setarg(kindex, size, value);
             return IRIS_ERROR;
         }
-        int BoilerPlateHostInterfaceLoader::setmem(void *param_mem, int kindex, void *mem, size_t size) 
+        int BoilerPlateHostInterfaceLoader::setmem(void *param_mem, BaseMem *bmem, int kindex, void *mem, size_t size) 
         {
             //printf("iris_host_setmem:%p kindex:%d\n", iris_host_setmem, kindex);
             if (iris_host_setmem_with_obj) 
@@ -224,12 +240,12 @@ namespace iris {
             //printf("Julia data: %p %p : %p\n", param_mem, julia_ptr, julia_data);
             *julia_ptr = julia_data;
         }
-        int JuliaHostInterfaceLoader::launch_init(int model, int devno, int stream_index, int nstreams, void **stream, void *param_mem, Command *cmd) 
+        int JuliaHostInterfaceLoader::launch_init(IrisSpec *spec, void *param_mem, Command *cmd) 
         {
             Kernel *kernel = cmd->kernel();
             const char *name = kernel->name();
-            kernel->CreateJuliadata(sizeof(KernelJulia));
-            KernelJulia *julia_data = (KernelJulia *) kernel->GetJuliadata();
+            kernel->CreateJuliaData(sizeof(KernelJulia));
+            KernelJulia *julia_data = (KernelJulia *) kernel->GetJuliaData();
             //printf("Julia Data:%p size:%lu\n", julia_data, sizeof(KernelJulia));
             set_kernel_julia(param_mem, julia_data);
             julia_data->reset();
@@ -237,8 +253,8 @@ namespace iris {
             //printf("Julia param_size:%p\n", julia_data->param_size());
             julia_data->set_kernel(kernel);
             julia_data->set_iris_args(cmd->kernel_args());
-            julia_data->add_stream(stream); 
-            julia_data->set_dev_info(stream_index, nstreams, devno);
+            julia_data->add_stream(spec->streams); 
+            julia_data->set_dev_info(spec->stream_index, spec->n_streams, spec->devno);
             julia_data->add_dev_info(); 
             return IRIS_SUCCESS;
         }
@@ -270,11 +286,27 @@ namespace iris {
             //julia_data->set_kernel_name(kernel_name);
             return IRIS_SUCCESS;
         }
-        int JuliaHostInterfaceLoader::host_launch(unsigned long task_id, void **stream, int stream_index, void *ctx, bool async, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *grid, size_t *block)
+        int JuliaHostInterfaceLoader::host_launch(IrisSpec *spec, Command *cmd, Kernel *kernel)
         {
+            void *param_mem = kernel->GetParamWrapperMemory();
+            const char *kname =  kernel->name();
             KernelJulia *julia_data = get_kernel_julia(param_mem);
             SetKernelPtr(param_mem, kname);
-            launch_julia_kernel(task_id, julia_data->julia_kernel_type(), target_, devno, ctx, async, stream_index, stream, nstreams, julia_data->args(), julia_data->values(), julia_data->param_size(), julia_data->param_dim_size(), julia_data->top(), grid, block, dim, kname);
+            spec->kernel_type = julia_data->julia_kernel_type();
+            launch_julia_kernel(spec->task_id, spec->cmd_id, 
+                    julia_data->julia_kernel_type(), 
+                    spec->model, 
+                    spec->devno, 
+                    &spec->ctx, spec->is_async, 
+                    spec->stream_index, spec->streams, spec->n_streams, 
+                    julia_data->args(), julia_data->values(), 
+                    julia_data->param_size(), 
+                    julia_data->param_dim_size(), 
+                    julia_data->param_dim_full_size(), 
+                    julia_data->param_dim_off(), 
+                    julia_data->top(), 
+                    spec->gws, spec->grid, spec->block, 
+                    spec->shmem_size, spec->dim, kname);
             return IRIS_SUCCESS;
         }
         int JuliaHostInterfaceLoader::setarg(void *param_mem, int kindex, size_t size, void *value)
@@ -283,15 +315,15 @@ namespace iris {
             KernelArg *arg = julia_data->get_iris_arg(kindex);
             //printf("setarg julia_data:%p kindex:%d arg_index:%d size:%lu value:%p\n", julia_data, kindex, julia_data->top(), size, value);
             if (arg->data_type != iris_unknown) 
-                julia_data->set_arg_type(arg->data_type);
+                julia_data->set_arg_type(arg->data_type << 8);
             else if (size == 1) 
-                julia_data->set_arg_type(iris_uint8);
+                julia_data->set_arg_type(iris_uint8 << 8);
             else if (size == 2) 
-                julia_data->set_arg_type(iris_uint16);
+                julia_data->set_arg_type(iris_uint16 << 8);
             else if (size == 4) 
-                julia_data->set_arg_type(iris_uint32);
+                julia_data->set_arg_type(iris_uint32 << 8);
             else if (size == 8) 
-                julia_data->set_arg_type(iris_uint64);
+                julia_data->set_arg_type(iris_uint64 << 8);
             else {
                 _error("Unknown argument size:%lu at index for kernel:%s", size, julia_data->kernel()->name());
             }
@@ -306,15 +338,23 @@ namespace iris {
             MemHandlerType h_type = mem->GetMemHandlerType();
             int element_size = 0;
             int dim = 1;
+            int dev_tile_dim = 1;
+            int preserve_size_flag = 0;
             if (h_type == IRIS_DMEM_REGION || h_type == IRIS_DMEM) {
                 DataMem *dmem = (DataMem *)mem;
                 element_size = (int) dmem->elem_size();
                 dim = dmem->dim();
+                if (dmem->preserve_size_flag()) {
+                    preserve_size_flag = 1 << 23;
+                }
+                dev_tile_dim = dmem->dev_tile_dim();
                 //printf("Size DIM : %lu\n", dmem->dev_size()[0]);
-                julia_data->set_dim_sizes(dmem->dev_size(), dmem->dim());
+                julia_data->set_dim_off(dmem->dev_off(), dmem->dim());
+                julia_data->set_dim_sizes(dmem->dev_tile_size(), dmem->dev_dim());
+                julia_data->set_dim_full_sizes(dmem->dev_size(), dmem->dim());
             }
             //printf("setmem julia_data:%p kindex:%d arg_index:%d mem:%p dev:%p size:%ld element_size:%d\n", julia_data, kindex, julia_data->top(), mem, mem_ptr, size, element_size);
-            julia_data->set_arg_type(iris_pointer | element_type | (element_size << 8) | dim);
+            julia_data->set_arg_type((preserve_size_flag | iris_pointer | element_type) << 8 | (element_size << 16) | (dim << 8) | dev_tile_dim);
             julia_data->set_value_ptr(mem_ptr);
             julia_data->set_size(size/element_size);
             julia_data->increment();
@@ -323,8 +363,8 @@ namespace iris {
         }
 
 #ifdef ENABLE_FFI
-        FFIHostInterfaceLoader::FFIHostInterfaceLoader(string kernel_env) :
-            HostInterfaceLoader(kernel_env) {
+        FFIHostInterfaceLoader::FFIHostInterfaceLoader(string kernel_env, bool is_path) :
+            HostInterfaceLoader(kernel_env, is_path) {
                 
             }
         int FFIHostInterfaceLoader::LoadFunctions() {
@@ -340,7 +380,7 @@ namespace iris {
             KernelFFI **ffi_ptr = (KernelFFI **)(((uint8_t *)param_mem)+ sizeof(int));
             *ffi_ptr = ffi_data;
         }
-        int FFIHostInterfaceLoader::launch_init(int model, int devno, int stream_index, int nstreams, void **stream, void *param_mem, Command *cmd) 
+        int FFIHostInterfaceLoader::launch_init(IrisSpec *spec, void *param_mem, Command *cmd) 
         {
             Kernel *kernel = cmd->kernel();
             const char *name = kernel->name();
@@ -349,14 +389,14 @@ namespace iris {
             KernelFFI *ffi_data = (KernelFFI *) kernel->GetFFIdata();
             //printf("FFI Data:%p size:%lu\n", ffi_data, sizeof(KernelFFI));
             set_kernel_ffi(param_mem, ffi_data);
-            ffi_data->init(cmd->kernel_nargs());
+            ffi_data->init(cmd->kernel_nargs(), is_pass_spec_flag());
             ffi_data->set_kernel(kernel);
             ffi_data->set_iris_args(cmd->kernel_args());
             if (iris_host_launch_with_obj) {
                 ffi_data->set_host_launch_type(HOST_LAUNCH_WITH_STREAM_DEV);
-                if (model != iris_openmp) {
-                    ffi_data->add_stream(stream); 
-                    ffi_data->set_dev_info(stream_index, nstreams, devno);
+                if (spec->model != iris_openmp) {
+                    ffi_data->add_stream(spec->streams); 
+                    ffi_data->set_dev_info(spec->stream_index, spec->n_streams, spec->devno);
                     //ffi_data->set_stream_index(stream_index);
                     //ffi_data->set_devno(devno);
                     //ffi_data->set_nstream(nstreams);
@@ -369,6 +409,10 @@ namespace iris {
             }
             else if (iris_ffi_launch)
                 ffi_data->set_host_launch_type(HOST_LAUNCH_WITH_FFI_OBJ);
+            else if (is_pass_spec_flag()) { 
+                ffi_data->set_host_launch_type(HOST_LAUNCH_FFI_SPEC);
+                ffi_data->add_spec(spec);
+            }
             else 
                 ffi_data->set_host_launch_type(HOST_LAUNCH_FFI_BARE);
             return IRIS_SUCCESS;
@@ -390,13 +434,16 @@ namespace iris {
             }
             return IRIS_ERROR;
         }
-        int FFIHostInterfaceLoader::host_launch(void **stream, int stream_index, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *off, size_t *bws)
+        int FFIHostInterfaceLoader::host_launch(IrisSpec *spec, Command *cmd, Kernel *kernel)
         {
+            void *param_mem = kernel->GetParamWrapperMemory();
+            const char *kname =  kernel->name();
             if (IsFunctionExists(kname)) {
+                spec->kernel_type = iris_core_native;
                 KernelFFI *ffi_data = get_kernel_ffi(param_mem);
                 SetKernelPtr(param_mem, kname);
                 //ffi_data->add_epilog(off[0], bws[0]);
-                ffi_data->add_epilog(off, bws);
+                ffi_data->add_epilog(spec->off, spec->gws);
                 ffi_arg rc;
                 ffi_prep_cif(ffi_data->cif(), FFI_DEFAULT_ABI, ffi_data->top(), &ffi_type_sint, ffi_data->args());
                 ffi_call(ffi_data->cif(), ffi_data->fn_ptr(), &rc, ffi_data->values());
@@ -408,17 +455,33 @@ namespace iris {
         {
             KernelFFI *ffi_data = get_kernel_ffi(param_mem);
             KernelArg *arg = ffi_data->get_iris_arg(kindex);
-            //printf("setarg ffi_data:%p kindex:%d arg_index:%d size:%lu value:%p\n", ffi_data, kindex, ffi_data->top(), size, value);
-            if (size == 1) 
+            //printf("setarg ffi_data:%p kindex:%d arg_index:%d size:%lu value:%p data_type:%d\n", ffi_data, kindex, ffi_data->top(), size, value, arg->data_type);
+            if (size == 1 && arg->data_type == iris_uint8) 
                 ffi_data->set_arg_type(&ffi_type_uint8);
+            else if (size == 1 && arg->data_type == iris_int8) 
+                ffi_data->set_arg_type(&ffi_type_sint8);
+            else if (size == 1) 
+                ffi_data->set_arg_type(&ffi_type_uint8);
+            else if (size == 2 && arg->data_type == iris_uint16) 
+                ffi_data->set_arg_type(&ffi_type_uint16);
+            else if (size == 2 && arg->data_type == iris_int16) 
+                ffi_data->set_arg_type(&ffi_type_sint16);
             else if (size == 2) 
                 ffi_data->set_arg_type(&ffi_type_uint16);
             else if (size == 4 && arg->data_type == iris_float)  // Special case to handle for double
                 ffi_data->set_arg_type(&ffi_type_float);
+            else if (size == 4 && arg->data_type == iris_uint32) 
+                ffi_data->set_arg_type(&ffi_type_uint32);
+            else if (size == 4 && arg->data_type == iris_int32) 
+                ffi_data->set_arg_type(&ffi_type_sint32);
             else if (size == 4) 
                 ffi_data->set_arg_type(&ffi_type_uint32);
             else if (size == 8 && arg->data_type == iris_double)  // Special case to handle for double
                 ffi_data->set_arg_type(&ffi_type_double);
+            else if (size == 8 && arg->data_type == iris_uint64) 
+                ffi_data->set_arg_type(&ffi_type_uint64);
+            else if (size == 8 && arg->data_type == iris_int64) 
+                ffi_data->set_arg_type(&ffi_type_sint64);
             else if (size == 8) 
                 ffi_data->set_arg_type(&ffi_type_uint64);
             else {
@@ -428,7 +491,7 @@ namespace iris {
             ffi_data->increment();
             return IRIS_SUCCESS;
         }
-        int FFIHostInterfaceLoader::setmem(void *param_mem, int kindex, void *mem, size_t size)
+        int FFIHostInterfaceLoader::setmem(void *param_mem, BaseMem *bmem, int kindex, void *mem, size_t size)
         {
             KernelFFI *ffi_data = get_kernel_ffi(param_mem);
             //printf("setmem ffi_data:%p kindex:%d arg_index:%d mem:%p\n", ffi_data, kindex, ffi_data->top(), mem);

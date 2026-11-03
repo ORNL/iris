@@ -1,7 +1,6 @@
 #include <iris/iris.hpp>
 #include <stdio.h>
 #include <stdlib.h>
-#include <malloc.h>
 
 int main(int argc, char** argv) {
   iris::Platform platform;
@@ -53,7 +52,7 @@ int main(int argc, char** argv) {
 
   iris::Task task;
   void* params0[4] = { &mem_Z, &A, &mem_X, &mem_Y };
-  int pinfo0[4] = { iris_w, sizeof(A), iris_r, iris_r };
+  int pinfo0[4] = { iris_w, sizeof(A) | iris_float, iris_r, iris_r };
   task.kernel("saxpy", 1, NULL, &SIZE, NULL, 4, params0, pinfo0);
   task.flush_out(mem_Z);
   task.submit(1, NULL, 1);

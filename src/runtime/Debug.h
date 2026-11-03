@@ -122,6 +122,7 @@ extern char iris_log_prefix_[];
 #define  _event_debug(fmt, ...) do { } while (0)
 #endif
 
+//#define _TRACE_ENABLE
 #ifdef _TRACE_ENABLE
 #define  _trace(fmt, ...) do { printf( BLUE "[T] %s [%s:%d:%s] " fmt RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, ##__VA_ARGS__); FFLUSH(stdout); } while (0)
 #define  _trace_debug(fmt, ...) do { printf( BRED "[T] Manual Debug %s [%s:%d:%s] " fmt RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, ##__VA_ARGS__); FFLUSH(stdout); } while (0)
@@ -215,24 +216,24 @@ extern char iris_log_prefix_[];
 #endif
 
 #ifdef _CLWARNING_ENABLE
-#define  _clwarning(err) do { if (err != CL_SUCCESS) { printf( RED "[W] %s [%s:%d:%s] err[%d]" RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, err); FFLUSH(stdout); } } while (0)
-#define __clwarning(err) do { if (err != CL_SUCCESS) { printf(_RED "[W] %s [%s:%d:%s] err[%d]" RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, err); FFLUSH(stdout); } } while (0)
+#define  _clwarning(err) do { if (err != CL_SUCCESS) { printf( RED "[W] %s [%s:%d:%s] warn[%d]" RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, err); FFLUSH(stdout); } } while (0)
+#define __clwarning(err) do { if (err != CL_SUCCESS) { printf(_RED "[W] %s [%s:%d:%s] warn[%d]" RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, err); FFLUSH(stdout); } } while (0)
 #else
 #define  _clwarning(err) do { } while (0)
 #define __clwarning(err) do { } while (0)
 #endif
 
 #ifdef _CUWARNING_ENABLE
-#define  _cuwarning(err) do { if (err != CUDA_SUCCESS) { printf( RED "[W] %s [%s:%d:%s] err[%d]" RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, err); FFLUSH(stdout); } } while (0)
-#define __cuwarning(err) do { if (err != CUDA_SUCCESS) { printf(_RED "[W] %s [%s:%d:%s] err[%d]" RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, err); FFLUSH(stdout); } } while (0)
+#define  _cuwarning(err) do { if (err != CUDA_SUCCESS) { printf( RED "[W] %s [%s:%d:%s] warn[%d]" RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, err); FFLUSH(stdout); } } while (0)
+#define __cuwarning(err) do { if (err != CUDA_SUCCESS) { printf(_RED "[W] %s [%s:%d:%s] warn[%d]" RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, err); FFLUSH(stdout); } } while (0)
 #else
 #define  _cuwarning(err) do { } while (0)
 #define __cuwarning(err) do { } while (0)
 #endif
 
 #ifdef _HIPWARNING_ENABLE
-#define  _hipwarning(err) do { if (err != hipSuccess) { printf( RED "[W] %s [%s:%d:%s] err[%d]" RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, err); FFLUSH(stdout); } } while (0)
-#define __hipwarning(err) do { if (err != hipSuccess) { printf(_RED "[W] %s [%s:%d:%s] err[%d]" RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, err); FFLUSH(stdout); } } while (0)
+#define  _hipwarning(err) do { if (err != hipSuccess) { printf( RED "[W] %s [%s:%d:%s] warn[%d]" RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, err); FFLUSH(stdout); } } while (0)
+#define __hipwarning(err) do { if (err != hipSuccess) { printf(_RED "[W] %s [%s:%d:%s] warn[%d]" RESET "\n", iris_log_prefix_, __SHORT_FILE__, __LINE__, __func__, err); FFLUSH(stdout); } } while (0)
 #else
 #define  _hipwarning(err) do { } while (0)
 #define __hipwarning(err) do { } while (0)

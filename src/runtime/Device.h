@@ -1,8 +1,8 @@
 #ifndef IRIS_SRC_RT_DEVICE_H
 #define IRIS_SRC_RT_DEVICE_H
 
-#include "Debug.h"
 #include "Config.h"
+#include "Debug.h"
 #include "Timer.h"
 //#include "CPUEvent.h"
 #include <map>
@@ -32,7 +32,8 @@ class Timer;
 class Worker;
 class Platform;
 class JuliaHostInterfaceLoader;
-class LoaderDefaultKernel;
+class PythonHostInterfaceLoader;
+class LoaderResetKernel;
 
 enum AsyncResolveType
 {
@@ -93,25 +94,29 @@ public:
   virtual float GetEventTime(void *event, int stream) { return 0.0f; }
   virtual void CreateEvent(void **event, int flags);
   virtual void RecordEvent(void **event, int stream, int event_creation_flag=iris_event_disable_timing);
-  virtual void WaitForEvent(void *event, int stream, int flags=0);
+  virtual int WaitForEvent(void *event, int stream, int flags=0);
   virtual void DestroyEvent(void *event);
-  virtual void DestroyEvent(BaseMem *mem, void *event);
+  void DestroyEvent(BaseMem *mem, void *event);
   virtual void EventSynchronize(void *event);
   virtual void EnablePeerAccess() { }
   virtual bool IsD2DPossible(Device *target) { return true; }
   void ProactiveTransfers(Task *task, Command *cmd);
-  void WaitForTaskInputAvailability(int devno, Task *task, Command *cmd);
+  void WaitForKernelInputAvailability(Task *task, Command *cmd);
   template <typename DMemType>
   void WaitForDataAvailability(int devno, Task *task, DMemType *mem, int read_stream=-1);
+  void CopyDataBetweenConnectedDMemRegions(Task *task, Command *cmd, DataMemRegion *rmem, DataMemRegion *dev_rmem, bool is_dev_centric=false);
+  int BringDataToHost(Task *task, Command *cmd, DataMem *mem, void *host, const char *tag);
   template <typename DMemType>
-  void InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, BaseMem *parent=NULL, DMemType *src_mem=NULL);
+  void InvokeDMemInDataTransfer(Task *task, Command *cmd, DMemType *mem, BaseMem *parent=NULL, DMemType *src_mem=NULL, bool disable_host_dirty_update=false);
   void ExecuteMemResetInput(Task *task, Command* cmd);
   void ExecuteMemIn(Task *task, Command* cmd);
   //void ExecuteMemInExternal(Command *cmd);
   void ExecuteMemInDMemIn(Task *task, Command* cmd, DataMem *mem);
   void ExecuteMemInDMemRegionIn(Task *task, Command* cmd, DataMemRegion *mem);
   void ExecuteMemOut(Task *task, Command* cmd);
-  void ExecuteMemFlushOut(Command* cmd);
+  void ExecuteMemFlushOut(Command* cmd, BaseMem *target_mem=NULL, Task *task=NULL);
+  bool IsConditionSatisfied(Task *task, Command *cmd, DataMem *mem);
+  bool IsConditionalSubmitGraphAgain(Task *task);
 #ifdef AUTO_PAR
 #ifdef AUTO_SHADOW
   void ExecuteMemFlushOutToShadow(Command* cmd);
@@ -131,13 +136,19 @@ public:
 
   Kernel* ExecuteSelectorKernel(Command* cmd);
 
-  void ResolveH2DStartEvents(Task *task, BaseMem *mem, bool async, BaseMem *src_mem=NULL);
+  void ResolveH2DStartEvents(Task *task, Command *cmd, BaseMem *mem, bool async, BaseMem *src_mem=NULL);
   void ResolveH2DEndEvents(Task *task, BaseMem *mem, bool async);
   void ResolveDeviceWrite(Task *task, BaseMem *mem, Device *input_dev, bool instant_wait, BaseMem *src_mem=NULL);
   template <AsyncResolveType resolve_type>
   inline void ResolveInputWriteDependency(Task *task, BaseMem *mem, bool async, Device *select_src_dev=NULL, BaseMem *src_mem=NULL);
+  inline void TrackMemoryReads(Task *task, Command* cmd);
+  inline void WaitForWAWDependencies(Task *task, map<pair<int, int>, void *> & dep_streams, int stream_index);
+  inline void ResolveMemoryOutputDependency(Task *task, Command *cmd, DataMem *mem, map<pair<int, int>, void *> & dep_streams, bool async);
+  inline void ResolveWriteDependencies(Task *task, Command *cmd);
+  inline void AddMemoryAccessWriteDependencies(Task *task, Command *cmd, BaseMem *mem, int mem_stream);
+  //inline void ResolveKernelDependencies(Task *task, Command *cmd);
   template <AsyncResolveType resolve_type>
-  inline void ResolveOutputWriteDependency(Task *task, BaseMem *mem, bool async, Device *select_src_dev);
+  inline void ResolveOutputWriteDependency(Task *task, Command *cmd, BaseMem *mem, bool async, Device *select_src_dev=NULL);
   inline void DeviceEventExchange(Task *task, BaseMem *mem, void *input_event, int input_stream, Device *input_dev);
   void SynchronizeInputToMemory(Task *task, BaseMem *mem);
   void GetPossibleDevices(BaseMem *mem, int devno, int *nddevs, 
@@ -157,8 +168,19 @@ public:
   virtual int BuildProgram(char* path) { return IRIS_SUCCESS; }
   virtual void *GetSharedMemPtr(void* mem, size_t size) { return mem; }
   virtual int MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset=false) = 0;
+  virtual int MemAlloc(void** mem_addr, size_t size, void *stream_v, bool reset=false) { 
+    _error("Device:%d:%s doesn't support MemAlloc", devno_, name());
+    return IRIS_ERROR;
+  }
+  virtual int MemFree(void* mem_addr, void *stream_v) {
+    _error("Device:%d:%s doesn't support MemFree", devno_, name());
+    return IRIS_ERROR;
+  }
   virtual int MemFree(BaseMem *mem, void* mem_addr) = 0;
   virtual int MemD2D(Task *task, Device *src_dev, BaseMem *mem, void *dst, void *src, size_t size) { _error("Device:%d:%s doesn't support MemD2D", devno_, name()); return IRIS_ERROR; }
+  virtual int MemD2D(Task *task, Device *src_dev, BaseMem *mem, int dim, void *dst, size_t *dst_size, size_t *dst_off, size_t *dst_strides, int src_dim, void *src, size_t *src_size, size_t *src_off, size_t *src_strides, size_t *tile_size, size_t elem_size) { _error("Device:%d:%s doesn't support MemD2D", devno_, name()); return IRIS_ERROR; }
+  virtual int MemH2D(Task *task, BaseMem *mem, int dim, void *dst, size_t *dst_size, size_t *dst_off, size_t *dst_strides, int src_dim, void *src, size_t *src_size, size_t *src_off, size_t *src_strides, size_t *tile_size, size_t elem_size) { _error("Device:%d:%s doesn't support MemH2D", devno_, name()); return IRIS_ERROR; }
+  virtual int MemD2H(Task *task, BaseMem *mem, int dim, void *dst, size_t *dst_size, size_t *dst_off, size_t *dst_strides, int src_dim, void *src, size_t *src_size, size_t *src_off, size_t *src_strides, size_t *tile_size, size_t elem_size) { _error("Device:%d:%s doesn't support MemD2H", devno_, name()); return IRIS_ERROR; }
   virtual int MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag="") = 0;
   virtual int MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag="") = 0;
   virtual int KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bool report_error=true) = 0;
@@ -205,6 +227,7 @@ public:
   }
   void set_first_event_cpu_begin_time(double time) { first_event_cpu_begin_time_ = time; }
   void EnableJuliaInterface(); 
+  void EnablePythonInterface(); 
   bool IsFree();
   int active_tasks() { return active_tasks_; }
   void FreeActiveTask() { active_tasks_--; }
@@ -213,6 +236,7 @@ public:
   int devno() { return devno_; }
   int type() { return type_; }
   int model() { return model_; }
+  int sub_model() { return sub_model_; }
   char* vendor() { return vendor_; }
   char* name() { return name_; }
   bool busy() { return busy_; }
@@ -226,18 +250,34 @@ public:
   int ok() { return errid_; }
   void set_worker(Worker* worker) { worker_ = worker; }
   Worker* worker() { return worker_; }
+  int GetStandaloneStream(Task *task);
   int GetStream(Task *task);
   int GetStream(Task *task, BaseMem *mem, bool new_stream=false);
   StreamPolicy stream_policy(Task *task);
   StreamPolicy stream_policy() { return stream_policy_; }
   double Now() { return timer_->Now(); }
+  Timer *timer() { return timer_; }
   const char *kernel_path() { return kernel_path_.c_str(); }
+  IrisSpec *spec() { return &spec_; }
 protected:
-  LoaderDefaultKernel* ld_default() { return ld_default_; }
-  void CallMemReset(BaseMem *mem, size_t size, ResetData & data, void *stream);
-  void LoadDefaultKernelLibrary(const char *key, const char *flags);
+  LoaderResetKernel* ld_reset() { return ld_reset_; }
+  void HandleMemReset(bool async, Command *cmd, Kernel *kernel, Task *task, DataMem *mem, DataMem *src_mem);
+  void CallMemReset(BaseMem *mem, size_t size, ResetData & data, void *stream, BaseMem *target_mem=NULL);
+  string CompileDefaultKernelLibrary(const char *key, const char *flags);
+  Platform *platform_obj() { return platform_obj_; }
 private:
-  LoaderDefaultKernel *ld_default_;
+  LoaderResetKernel *ld_reset_;
+  int get_new_task_stream_queue() {
+    int nqs = (ntask_sync_queues_-1);
+    if (nqs <= 0) return task_current_queue_ + nqueues_ + 1;
+    unsigned long new_current_queue;
+    do {
+        new_current_queue = task_current_queue_ + 1;
+    } while (!__sync_bool_compare_and_swap(&task_current_queue_, task_current_queue_, new_current_queue));
+    int stream = new_current_queue%nqs + nqueues_ + 1;
+    //printf("New queue:%d\n", stream);
+    return stream;
+  }
   int get_new_stream_queue(int offset=0) {
     int nqs = ((nqueues_-1)-offset);
     if (nqs <= 0) return current_queue_ + offset+1;
@@ -245,7 +285,7 @@ private:
     do {
         new_current_queue = current_queue_ + 1;
     } while (!__sync_bool_compare_and_swap(&current_queue_, current_queue_, new_current_queue));
-    int stream = new_current_queue%nqs+offset+1;
+    int stream = new_current_queue%nqs + offset + 1;
     //printf("New queue:%d\n", stream);
     return stream;
   }
@@ -263,6 +303,7 @@ protected:
   int platform_;
   int type_;
   int model_;
+  int sub_model_;
   char vendor_[128];
   char name_[256];
   char version_[64];
@@ -273,7 +314,9 @@ protected:
   int max_block_dims_[3];
   Task **dev_2_child_task_;
   int nqueues_;
+  int ntask_sync_queues_;
   int errid_;
+  int task_current_queue_;
   int current_queue_;
   int current_copy_queue_;
   int n_copy_engines_;
@@ -311,6 +354,8 @@ protected:
   int local_devno_;
   Device *root_device() { return root_dev_; }
   JuliaHostInterfaceLoader *julia_if_;
+  PythonHostInterfaceLoader *python_if_;
+  IrisSpec spec_;
 };
 
 } /* namespace rt */

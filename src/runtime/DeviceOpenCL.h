@@ -23,8 +23,14 @@ public:
   int ResetMemory(Task *task, Command *cmd, BaseMem *mem);
   int MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool reset=false);
   int MemFree(BaseMem *mem, void* mem_addr);
+  int MemAlloc(void** mem_addr, size_t size, void *stream_v, bool reset=false);
+  int MemFree(void* mem_addr, void *stream_v);
   int MemH2D(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag="");
   int MemD2H(Task *task, BaseMem* mem, size_t *off, size_t *host_sizes,  size_t *dev_sizes, size_t elem_size, int dim, size_t size, void* host, const char *tag="");
+  int MemD2D(Task *task, Device *src_dev, BaseMem *mem, void *dst, void *src, size_t size) { _error("Device:%d:%s doesn't support MemD2D", devno_, name()); return IRIS_ERROR; }
+  int MemD2D(Task *task, Device *src_dev, BaseMem *mem, int dim, void *dst, size_t *dst_size, size_t *dst_off, size_t *dst_strides, int src_dim, void *src, size_t *src_size, size_t *src_off, size_t *src_strides, size_t *tile_size, size_t elem_size) { _error("Device:%d:%s doesn't support MemD2D", devno_, name()); return IRIS_ERROR; }
+  int MemH2D(Task *task, BaseMem *mem, int dim, void *dst, size_t *dst_size, size_t *dst_off, size_t *dst_strides, int src_dim, void *src, size_t *src_size, size_t *src_off, size_t *src_strides, size_t *tile_size, size_t elem_size) { _error("Device:%d:%s doesn't support MemH2D", devno_, name()); return IRIS_ERROR; }
+  int MemD2H(Task *task, BaseMem *mem, int dim, void *dst, size_t *dst_size, size_t *dst_off, size_t *dst_strides, int src_dim, void *src, size_t *src_size, size_t *src_off, size_t *src_strides, size_t *tile_size, size_t elem_size) { _error("Device:%d:%s doesn't support MemD2H", devno_, name()); return IRIS_ERROR; }
   int KernelGet(Kernel *kernel, void** kernel_bin, const char* name, bool report_error=true);
   int KernelSetArg(Kernel* kernel, int idx, int kindex, size_t size, void* value);
   int KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* mem, size_t off);
@@ -43,7 +49,7 @@ private:
   int CreateProgram(const char* suffix, char** src, size_t* srclen);
   void CreateEvent(void **event, int flags);
   void RecordEvent(void **event, int stream, int event_creation_flag=iris_event_disable_timing);
-  void WaitForEvent(void *event, int stream, int flags);
+  int WaitForEvent(void *event, int stream, int flags);
   void DestroyEvent(void *event);
   float GetEventTime(void *event, int stream);
   void EventSynchronize(void *event);

@@ -19,6 +19,48 @@ A summary of Development Versioning Specification is shown below.
 
 ## [Unreleased]
 
+## [4.0.0] - 2026-11-03
+
+### Added
+
+#### New Capabilties
+
+- Q-IRIS: integration with QIREE/QSIM/Qiskit for quantum kernel execution, including process-based QSIM/QIREE execution (for thread-safety), qcut QIR circuit test suite, and helpers to interpret QIREE/qiskit results
+- Expanded Julia support: subarray view handling, 2D/3D native kernels, `parallel_reduce` (sum/prod/maximum/minimum) with output/temporary buffer reuse, DMEM caching, custom task/kernel policies, and copy/offset/dev_size APIs
+- Flexible DMEM region support: 3-way region protocol, partial region access, control over number of valid regions, and dynamic GWS/argument updates for kernel and copy commands
+- Conditional task execution and Graph resubmission (loop until a condition is met or a maximum iteration count is reached), plus a Graph end-task fetch API
+- Device-specific malloc/free APIs and APIs to probe whether a task or memory object is still alive
+- Support for naming tasks and memory objects (`iris_task_set_name`/`iris_task_get_name`), and an API to fetch the last kernel command of a task
+- Dynamic profiling controls: enable/disable profiling per task/graph (`iris_set_enable_profile`), DOT profiler controls, and draft profiling support for mixed-precision kernels
+- Apple/macOS support: initial compilation support, default compiler selection, and OpenMP-based threading
+- Python: `@ptask` decorator for simplified task creation, and a unified spec-based interface standardizing kernel calls across Python, host (CUDA/HIP), and Julia
+- Runtime loading of CUDA modules, and `IRIS_RUNTIME_KERNELS_PATH` environment variable
+
+### Changed
+
+- D2D CUDA/HIP memory copies now use `cuMemcpyPeer`/equivalent instead of `cuMemcpyD2D`/`hipMemcpyD2D` to avoid cross-context issues
+- Malloc-async is now disabled by default (its interaction with D2D across contexts was unreliable); opt back in with `IRIS_MALLOC_ASYNC=1`
+- CUDA/HIP memory copies support 3D/2D transfers with strides, and 2D copies that are contiguous are converted to 1D
+- Default CUDA/HIP threads-per-block is now `min(256, size)`
+- C++14 is now the required minimum standard
+- Proactive/lazy dispatch logic reworked at the scheduler and worker; proactive dispatch remains disabled by default pending further fixes
+- Python default GWS in the task builder updated to `[1]`
+- CI: adjusted module loading (no longer loads `cmake`/`gnu` modules), refined error/warning log matching, and tuned job timeouts
+
+### Removed
+
+- Redundant `Release` API from the IRIS Python interface
+- Duplicate Julia math APIs (`inner`, `dot`)
+
+### Fixed
+
+- Several DMEM/region bugs: uninitialized source FILL state in DMEM-to-DMEM copies, reset/refresh/flush issues, and async issues when a kernel writes to a full DMEM with regions
+- Multiple proactive-dispatch bugs, including multi-device dispatch and event-dependency corner cases
+- Queue-vs-scheduler cleanup ordering bug that could delete the queue before the scheduler
+- Several memory leaks and logic bugs identified via code review
+- Various build/compilation fixes across CMake, CUDA, HIP, Julia, Python, Xilinx, Zenith, and macOS
+- OpenCL async mode now queries whether the host command queue supports out-of-order execution before requesting it, falling back to an in-order queue when unsupported; fixes crashes/hangs on devices (e.g. AMD gfx1030) whose host queues reject `CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE`
+
 ## [3.0.0] - 2025-05-30
 
 ### Added
@@ -78,7 +120,8 @@ Moved documentation from external repo to be part of the code repo.
 Initial Release of IRIS, an intelligent runtime system for extremely heterogeneous architectures. IRIS discovers available functionality, manage multiple diverse programming
 systems (e.g., OpenMP, CUDA, HIP, Level Zero, OpenCL, Hexagon) simultaneously in the same application, represents data dependencies, orchestrates data movement proactively, and allows configurable work schedulers for diverse heterogeneous devices.
 
-[unreleased]: https://github.com/ORNL/iris/compare/v3.0.0...HEAD
+[unreleased]: https://github.com/ORNL/iris/compare/v4.0.0...HEAD
+[4.0.0]: https://github.com/ORNL/iris/compare/v3.0.0...v4.0.0
 [3.0.0]: https://github.com/ORNL/iris/compare/v2.0.0...v3.0.0
 [2.0.0]: https://github.com/ORNL/iris/compare/v1.0.1...v2.0.0
 [1.0.1]: https://github.com/ORNL/iris/compare/v1.0.0...v1.0.1

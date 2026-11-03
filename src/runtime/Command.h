@@ -4,6 +4,7 @@
 #include <iris/iris_poly_types.h>
 #include "BaseMem.h"
 #include "Kernel.h"
+#include "Retainable.h"
 #include "Timer.h"
 #include "Graph.h"
 #include <stddef.h>
@@ -38,13 +39,13 @@ namespace iris {
 namespace rt {
 
 class DataMem;
-class Mem;
+class BaseMem;
 class DataMem;
 class Task;
 class Graph;
 class Device;
 
-class Command {
+class Command : public Retainable<struct _iris_command, Command>{
 public:
   Command();
   Command(Task* task, int type);
@@ -68,6 +69,11 @@ public:
   size_t ws() { return gws_[0] * gws_[1] * gws_[2]; }
   size_t* gws() { return gws_; }
   size_t gws(int i) { return gws_[i]; }
+  void set_gws(size_t *gws, int dim) {
+    for(int i=0; i<dim; i++) {
+      gws_[i] = gws[i];
+    }
+  }
   size_t* lws() { return lws_; }
   size_t lws(int i) { return lws_[i]; }
   size_t elem_size() { return elem_size_; }
@@ -76,8 +82,11 @@ public:
   KernelArg* kernel_arg(int i) { return kernel_args_ + i; }
   int kernel_nargs() { return kernel_nargs_; }
   DataMem* datamem() { return (DataMem *)mem_; }
-  Mem* mem() { return (Mem *)mem_; }
+  BaseMem* mem() { return (BaseMem *)mem_; }
   DataMem* dst_mem() { return (DataMem *)dst_mem_; }
+  BaseMem* condition_mem() { return (BaseMem *)condition_mem_; }
+  bool condition_flag() { return condition_flag_; }
+  void set_condition_mem(BaseMem *mem, bool flag) { condition_mem_ = mem; condition_flag_ = flag; }
   Task* task() { return task_; }
   bool last() { return last_; }
   void set_last() { last_ = true; }
@@ -109,6 +118,24 @@ public:
   void set_time_end(Timer* d);
   double time_start() { return time_start_; }
   double time_end() { return time_end_; }
+  double event_time_start() { return event_time_start_; }
+  double event_time_end() { return event_time_end_; }
+  bool is_event_time() { return event_time_start_flag_; }
+  void set_event_time_start(double t) { 
+      if (!event_time_start_flag_ || t < event_time_start_) 
+          event_time_start_ = t; 
+      event_time_start_flag_ = true;
+  }
+  void set_event_time_end(double t) { 
+      if (t > event_time_end_) event_time_end_ = t; 
+  }
+  void reset_timers() {
+      event_time_start_flag_ = false;
+      event_time_start_ = 0.0;
+      event_time_end_ = 0.0;
+      time_start_ = 0.0;
+      time_end_ = 0.0;
+  }
   double time_duration() { return time_end_-time_start_; }
   size_t ns_time_start() { return ns_time_start_; }
   size_t ns_time_end() { return ns_time_end_; }
@@ -117,12 +144,15 @@ public:
   int get_access_index() { return access_index_; }
   int src_dev() { return src_dev_; }
   void set_src_dev(int devno) { src_dev_ = devno; }
+  int recommended_stream() { return recommend_stream_; }
+  void set_recommended_stream(int stream) { recommend_stream_ = stream; }
 private:
   void Clear(bool init);
 
 private:
   int type_;
   int devno_;
+  int recommend_stream_;
   int src_dev_;
   size_t size_;
   void* host_;
@@ -135,9 +165,14 @@ private:
   Kernel* kernel_;
   BaseMem* mem_;
   BaseMem* dst_mem_;
+  BaseMem* condition_mem_;
+  bool condition_flag_;
+  bool event_time_start_flag_;
   Task* task_;
   Platform* platform_;
   double time_;
+  double event_time_start_;
+  double event_time_end_;
   double time_start_;
   double time_end_;
   size_t ns_time_start_;
@@ -166,25 +201,29 @@ private:
   //uint8_t reset_value_;
   ResetData reset_data_;
 public:
+  void update_arg(int index, void *val);
+  void update_mem(int index, BaseMem *mem);
+  void update_src(BaseMem *mem);
+  void update_dst(BaseMem *mem);
   ResetData & reset_data() { return reset_data_; }
   static Command* Create(Task* task, int type);
   static Command* CreateInit(Task* task);
   static Command* CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws);
   static Command* CreateKernel(Task* task, Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, size_t* params_off, int* params_info, size_t* memranges);
   static Command* CreateKernelPolyMem(Task* task, Command* cmd, size_t* off, size_t* gws, iris_poly_mem* polymems, int npolymems);
-  static Command* CreateMalloc(Task* task, Mem* mem);
+  static Command* CreateMalloc(Task* task, BaseMem* mem);
   static Command* CreateMemResetInput(Task* task, BaseMem *mem, uint8_t reset_value=0);
   static Command* CreateMemResetInput(Task* task, BaseMem *mem, ResetData & data);
   static Command* CreateMemIn(Task* task, DataMem* mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host);
-  static Command* CreateH2Broadcast(Task* task, Mem* mem, size_t off, size_t size, void* host);
-  static Command* CreateH2Broadcast(Task* task, Mem* mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host);
-  static Command* CreateD2D(Task* task, Mem* mem, size_t off, size_t size, void* host, int src_dev);
+  static Command* CreateH2Broadcast(Task* task, BaseMem* mem, size_t off, size_t size, void* host);
+  static Command* CreateH2Broadcast(Task* task, BaseMem* mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host);
+  static Command* CreateD2D(Task* task, BaseMem* mem, size_t off, size_t size, void* host, int src_dev);
   static Command* CreateDMEM2DMEM(Task* task, DataMem* src_mem, DataMem *dst_mem);
-  static Command* CreateH2D(Task* task, Mem* mem, size_t off, size_t size, void* host);
-  static Command* CreateH2D(Task* task, Mem* mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host);
-  static Command* CreateH2DNP(Task* task, Mem* mem, size_t off, size_t size, void* host);
-  static Command* CreateD2H(Task* task, Mem* mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host);
-  static Command* CreateD2H(Task* task, Mem* mem, size_t off, size_t size, void* host);
+  static Command* CreateH2D(Task* task, BaseMem* mem, size_t off, size_t size, void* host);
+  static Command* CreateH2D(Task* task, BaseMem* mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host);
+  static Command* CreateH2DNP(Task* task, BaseMem* mem, size_t off, size_t size, void* host);
+  static Command* CreateD2H(Task* task, BaseMem* mem, size_t *off, size_t *host_sizes, size_t *dev_sizes, size_t elem_size, int dim, void* host);
+  static Command* CreateD2H(Task* task, BaseMem* mem, size_t off, size_t size, void* host);
   static Command* CreateMemFlushOut(Task* task, DataMem* mem);
 
 #ifdef AUTO_PAR
@@ -196,7 +235,7 @@ public:
   static Command* CreateMap(Task* task, void* host, size_t size);
   static Command* CreateMapTo(Task* task, void* host);
   static Command* CreateMapFrom(Task* task, void* host);
-  static Command* CreateReleaseMem(Task* task, Mem* mem);
+  static Command* CreateReleaseMem(Task* task, BaseMem* mem);
   static Command* CreateHost(Task* task, iris_host_python_task func, int64_t params_id);
   static Command* CreateHost(Task* task, iris_host_task func, void* params);
   static Command* CreateCustom(Task* task, int tag, void* params, size_t params_size);

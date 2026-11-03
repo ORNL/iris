@@ -7,6 +7,7 @@
 #include "Task.h"
 #include "Utils.h"
 #include "Kernel.h"
+#include "Command.h"
 #include "BaseMem.h"
 #include "DataMem.h"
 #include "DataMemRegion.h"
@@ -40,6 +41,12 @@ int iris_task_set_julia_policy(iris_task brs_task, const char *name) {
   return IRIS_SUCCESS;
 }
 
+int iris_task_set_python_policy(iris_task brs_task, const char *name) {
+  Task *task = Platform::GetPlatform()->get_task_object(brs_task);
+  task->set_python_policy(name);
+  return IRIS_SUCCESS;
+}
+
 void iris_enable_default_kernels(int flag) {
     Platform *platform = Platform::GetPlatform(); 
     platform->enable_default_kernels_load((bool) flag);
@@ -54,6 +61,26 @@ int iris_finalize() {
 
 void iris_set_enable_profiler(int flag) {
   Platform::GetPlatform()->set_enable_profiler((bool)flag);
+}
+
+int iris_get_n_profile_events(iris_task brs_task) {
+  Task *task = Platform::GetPlatform()->get_task_object(brs_task);
+  if (task != NULL) {
+    return task->n_profile_events();
+  }
+  return 0;
+}
+
+ExternalEventRecord *iris_get_profile_events(iris_task brs_task) {
+  Task *task = Platform::GetPlatform()->get_task_object(brs_task);
+  if (task != NULL) {
+    return task->fetch_profile_records();
+  }
+  return nullptr;
+}
+
+void iris_set_enable_dot_profiler(int flag) {
+  Platform::GetPlatform()->set_enable_dot_profiler((bool)flag);
 }
 
 int iris_synchronize() {
@@ -153,8 +180,29 @@ int iris_device_synchronize(int ndevs, int* devices) {
   return Platform::GetPlatform()->DeviceSynchronize(ndevs, devices);
 }
 
+void *iris_device_malloc(int devno, size_t size, void *stream, int reset) {
+  void *mem_addr;
+  Platform::GetPlatform()->DeviceMalloc(devno, &mem_addr, size, stream, reset); 
+  return mem_addr;
+}
+
+void iris_device_free(int devno, void *mem_addr, void *stream) {
+  static_cast<void>(Platform::GetPlatform()->DeviceFree(devno, mem_addr, stream)); 
+}
+
 int iris_register_policy(const char* lib, const char* name, void* params) {
   return Platform::GetPlatform()->PolicyRegister(lib, name, params);
+}
+
+void iris_task_kernel_set_condition(iris_task brs_task, iris_mem brs_mem, int flag)
+{
+    Task *task = Platform::GetPlatform()->get_task_object(brs_task);
+    BaseMem * mem = Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (mem == NULL) {
+        _error("invalid memory:%lu task:%lu:%s", brs_mem.uid, task->uid(), task->name());
+        return;
+    }
+    task->set_kernel_condition(mem, flag);   
 }
 
 iris_task iris_task_create_struct() {
@@ -167,12 +215,43 @@ int iris_task_create(iris_task* task) {
   return Platform::GetPlatform()->TaskCreate(NULL, false, task);
 }
 
+int iris_kernel_enable_julia_interface(iris_kernel brs_kernel, int type) {
+  Kernel *kernel = brs_kernel.class_obj;
+  kernel->set_enable_julia_if();
+  kernel->set_julia_kernel_type(type);
+  return IRIS_SUCCESS;
+}
+
 int iris_task_enable_julia_interface(iris_task brs_task, int type) {
   Task *task = Platform::GetPlatform()->get_task_object(brs_task);
   task->set_enable_julia_if();
   task->set_julia_kernel_type(type);
   return IRIS_SUCCESS;
 }
+
+int iris_kernel_enable_python_interface(iris_kernel brs_kernel, int type) {
+  Kernel *kernel = brs_kernel.class_obj;
+  kernel->set_enable_python_if();
+  kernel->set_python_kernel_type(type);
+  return IRIS_SUCCESS;
+}
+
+int iris_task_enable_python_interface(iris_task brs_task, int type) {
+  Task *task = Platform::GetPlatform()->get_task_object(brs_task);
+  task->set_enable_python_if();
+  task->set_python_kernel_type(type);
+  return IRIS_SUCCESS;
+}
+int iris_kernel_set_python_function(iris_kernel brs_kernel, void *ptr) {
+    Kernel *kernel = brs_kernel.class_obj;
+    kernel->set_python_function(ptr);
+    return IRIS_SUCCESS;
+}
+void *iris_kernel_get_python_function(iris_kernel brs_kernel) {
+    Kernel *kernel = brs_kernel.class_obj;
+    return kernel->get_python_function();
+}
+
 
 int iris_task_create_perm(iris_task* task) {
   return Platform::GetPlatform()->TaskCreate(NULL, true, task);
@@ -197,6 +276,12 @@ int iris_task_cmd_reset_mem(iris_task task, iris_mem mem, uint8_t reset) {
 int iris_task_set_stream_policy(iris_task brs_task, StreamPolicy policy) {
  Task *task = Platform::GetPlatform()->get_task_object(brs_task);
  if (task != NULL) task->set_stream_policy(policy);
+ return IRIS_SUCCESS;
+}
+
+int iris_task_set_stream_affinity(iris_task brs_task, int stream) {
+ Task *task = Platform::GetPlatform()->get_task_object(brs_task);
+ if (task != NULL) task->set_stream_affinity(stream);
  return IRIS_SUCCESS;
 }
 
@@ -252,6 +337,10 @@ int iris_task_h2d(iris_task task, iris_mem mem, size_t off, size_t size, void* h
 int iris_task_hidden_dmem(iris_task brs_task, iris_mem brs_mem, int mode) {
   Task *task = Platform::GetPlatform()->get_task_object(brs_task);
   BaseMem * mem = Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu task:%lu:%s", brs_mem.uid, task->uid(), task->name());
+      return IRIS_ERROR;
+  }
   if (mem->GetMemHandlerType() == IRIS_DMEM || 
           mem->GetMemHandlerType() == IRIS_DMEM_REGION) {
     DataMem *dmem = (DataMem *)mem;
@@ -290,11 +379,59 @@ size_t *iris_dmem_get_host_size(iris_mem brs_mem) {
     return NULL;
 }
 
+size_t *iris_dmem_get_host_tile_size(iris_mem brs_mem) {
+    DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (mem != NULL) return mem->host_tile_size();
+    return NULL;
+}
+size_t *iris_dmem_get_dev_tile_size(iris_mem brs_mem) {
+    DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (mem != NULL) return mem->dev_tile_size();
+    return NULL;
+}
+size_t *iris_dmem_get_dev_size(iris_mem brs_mem) {
+    DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (mem != NULL) return mem->dev_size();
+    return NULL;
+}
+
+size_t *iris_dmem_get_offsets(iris_mem brs_mem) {
+    DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (mem != NULL) return mem->local_off();
+    return NULL;
+}
+
+size_t *iris_dmem_get_offsets_from_host(iris_mem brs_mem) {
+    DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (mem != NULL) return mem->off();
+    return NULL;
+}
+
+iris_mem iris_dmem_get_source(iris_mem brs_mem)
+{
+    BaseMem* mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+    BaseMem *source = mem->get_source_mem(true);
+    if (source == NULL) {
+        iris_mem rmem = { NULL, 0UL };
+        return rmem;
+    }
+    return *(source->struct_obj());
+}
+
 int iris_dmem_set_source(iris_mem brs_mem, iris_mem source_mem)
 {
     BaseMem* mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (mem == NULL) {
+        _error("invalid memory:%lu", brs_mem.uid);
+        return IRIS_ERROR;
+    }
     BaseMem* source = (BaseMem *)Platform::GetPlatform()->get_mem_object(source_mem);
+    if (source == NULL) {
+        _error("invalid source memory:%lu", source_mem.uid);
+        return IRIS_ERROR;
+    }
     mem->set_source_mem(source);
+    mem->use_parent_events();
     return IRIS_SUCCESS;
 }
 
@@ -314,6 +451,21 @@ int iris_dmem_get_dim(iris_mem brs_mem) {
     DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
     if (mem != NULL) return mem->dim();
     return 0;
+}
+
+int iris_dmem_get_dev_dim(iris_mem brs_mem) {
+    DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (mem != NULL) return mem->dev_dim();
+    return 0;
+}
+
+int iris_dmem_get_host_dim(iris_mem brs_mem) {
+    DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (mem == NULL) return 0;
+    //DataMem *source_mem = (DataMem*)mem->get_source_mem();
+    //if (source_mem != NULL)
+    //    return source_mem->dim();
+    return mem->host_dim();
 }
 
 void *iris_get_dmem_valid_host(iris_mem brs_mem) {
@@ -350,12 +502,20 @@ void *iris_get_dmem_host_fetch_with_size(iris_mem brs_mem, size_t size) {
 
 int iris_fetch_dmem_data(iris_mem brs_mem, void *host_ptr) {
     DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (mem == NULL) {
+        _error("invalid memory:%lu", brs_mem.uid);
+        return IRIS_ERROR;
+    }
     mem->FetchDataFromDevice(host_ptr);
     return IRIS_SUCCESS;
 }
 
 int iris_fetch_dmem_data_with_size(iris_mem brs_mem, void *host_ptr, size_t size) {
     DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (mem == NULL) {
+        _error("invalid memory:%lu", brs_mem.uid);
+        return IRIS_ERROR;
+    }
     mem->FetchDataFromDevice(host_ptr, size);
     return IRIS_SUCCESS;
 }
@@ -378,6 +538,14 @@ int iris_task_kernel_object(iris_task task, iris_kernel kernel, int dim, size_t*
 
 int iris_task_kernel(iris_task task, const char* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, int* params_info) {
   return Platform::GetPlatform()->TaskKernel(task, kernel, dim, off, gws, lws, nparams, params, NULL, params_info, NULL);
+}
+
+iris_kernel iris_task_kernel_struct(iris_task task, const char* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, int* params_info) {
+  return Platform::GetPlatform()->TaskKernelStruct(task, kernel, dim, off, gws, lws, nparams, params, NULL, params_info, NULL);
+}
+
+iris_kernel iris_task_kernel_struct_with_position(iris_task task, const char* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, int* params_info, int position) {
+  return Platform::GetPlatform()->TaskKernelStruct(task, kernel, dim, off, gws, lws, nparams, params, NULL, params_info, NULL, position);
 }
 
 int iris_task_kernel_v2(iris_task task, const char* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, size_t* params_off, int* params_info) {
@@ -418,6 +586,15 @@ int iris_task_submit(iris_task task, int device, const char* opt, int sync) {
   return Platform::GetPlatform()->TaskSubmit(task, device, opt, sync);
 }
 
+int iris_task_set_device(iris_task brs_task, int device) {
+  Task *task = Platform::GetPlatform()->get_task_object(brs_task);
+  if (task != NULL) {
+    task->set_brs_affinity(device);
+    return IRIS_SUCCESS;
+  }
+  return IRIS_ERROR;
+}
+
 int iris_task_set_policy(iris_task task, int policy) {
   return Platform::GetPlatform()->SetTaskPolicy(task, policy);
 }
@@ -451,7 +628,17 @@ int iris_task_release_mem(iris_task task, iris_mem mem) {
 
 void iris_task_set_name(iris_task brs_task, const char *name) {
    Task *task = Platform::GetPlatform()->get_task_object(brs_task);
+   assert(task != NULL && "Task shouldn't be null! May be it is called after task completion.");
    task->set_name(name);
+}
+
+void iris_mem_set_name(iris_mem brs_mem, const char *name) {
+   BaseMem * mem = (BaseMem*)Platform::GetPlatform()->get_mem_object(brs_mem);
+   if (mem == NULL) {
+       _error("invalid memory:%lu", brs_mem.uid);
+       return;
+   }
+   mem->set_name(name);
 }
 
 const char *iris_kernel_get_name(iris_kernel brs_kernel) {
@@ -467,7 +654,28 @@ int iris_task_disable_consistency(iris_task brs_task) {
 
 const char *iris_task_get_name(iris_task brs_task) {
     Task *task = Platform::GetPlatform()->get_task_object(brs_task);
+    if (task == NULL) return NULL;
     return const_cast<char*>(task->name());
+}
+
+int iris_task_is_alive(iris_task brs_task) {
+    Task *task = Platform::GetPlatform()->get_task_object(brs_task);
+    if (task == NULL) return IRIS_ERROR;
+    return IRIS_SUCCESS;
+
+}
+
+int iris_mem_is_alive(iris_mem brs_mem) {
+    BaseMem * mem = (BaseMem*)Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (mem == NULL) return IRIS_ERROR;
+    return IRIS_SUCCESS;
+
+}
+
+const char *iris_mem_get_name(iris_mem brs_mem) {
+    BaseMem * mem = (BaseMem*)Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (mem == NULL) return NULL;
+    return const_cast<char*>(mem->name());
 }
 
 int iris_task_get_dependency_count(iris_task brs_task) {
@@ -476,8 +684,21 @@ int iris_task_get_dependency_count(iris_task brs_task) {
 }
 void iris_task_get_dependencies(iris_task brs_task, iris_task *tasks) {
     Task *task = Platform::GetPlatform()->get_task_object(brs_task);
+    iris_task empty_task = { NULL, (unsigned long)-1 };
     for(int i=0; i<task->ndepends(); i++) {
-        tasks[i] = *(task->depend(i)->struct_obj());
+        Task *dtask = task->depend(i);
+        if (dtask == NULL) tasks[i] = empty_task;
+        else tasks[i] = *(dtask->struct_obj());
+    }
+}
+void iris_cmd_get_profile(iris_command brs_cmd, double *start, double *end) {
+    Command *cmd = brs_cmd.class_obj;
+    if (cmd->is_event_time()) {
+        *start = cmd->event_time_start();
+        *end = cmd->event_time_end();
+    } else {
+        *start = cmd->time_start();
+        *end = cmd->time_end();
     }
 }
 int iris_cmd_kernel_get_nargs(void *cmd_p) {
@@ -527,6 +748,16 @@ iris_kernel iris_task_get_kernel(iris_task brs_task)
     Task *task = Platform::GetPlatform()->get_task_object(brs_task);
     return *(task->cmd_kernel()->kernel()->struct_obj());
 }
+iris_kernel iris_task_get_last_cmd_kernel(iris_task brs_task)
+{
+    Task *task = Platform::GetPlatform()->get_task_object(brs_task);
+    return task->get_last_cmd_kernel();
+}
+iris_command iris_task_get_last_cmd(iris_task brs_task)
+{
+    Task *task = Platform::GetPlatform()->get_task_object(brs_task);
+    return task->get_last_cmd();
+}
 int iris_task_is_cmd_kernel_exists(iris_task brs_task)
 {
     Task *task = Platform::GetPlatform()->get_task_object(brs_task);
@@ -537,6 +768,83 @@ void *iris_task_get_cmd_kernel(iris_task brs_task)
 {
     Task *task = Platform::GetPlatform()->get_task_object(brs_task);
     return task->cmd_kernel();
+}
+int iris_kernel_update_arg(iris_kernel brs_kernel, int index, void *ptr)
+{
+    Kernel *kernel = brs_kernel.class_obj;
+    kernel->update_arg(index, ptr);
+    return IRIS_SUCCESS;
+}
+int iris_command_update_arg(iris_command brs_cmd, int index, void *ptr)
+{
+    Command *cmd = brs_cmd.class_obj;
+    cmd->update_arg(index, ptr);
+    return IRIS_SUCCESS;
+}
+int iris_command_set_gws(iris_command brs_cmd, size_t *gws, int dim)
+{
+    Command *cmd = brs_cmd.class_obj;
+    //_printf("GWS: cmd:%lu gws:%lu:%lu, dim:%d\n", brs_cmd.uid, gws[0], gws[1], dim);
+    cmd->set_gws(gws, dim);
+    return IRIS_SUCCESS;
+}
+int iris_kernel_set_gws_dynamic_from_dmem(iris_kernel brs_kernel, iris_mem brs_mem)
+{
+    Kernel *kernel = brs_kernel.class_obj;
+    DataMem* mem = (DataMem*)Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (mem == NULL) {
+        _error("invalid memory:%lu", brs_mem.uid);
+        return IRIS_ERROR;
+    }
+    kernel->set_gws_dynamic_from_dmem(mem);
+    return IRIS_SUCCESS;
+}
+int iris_kernel_update_mem(iris_kernel brs_kernel, int index, iris_mem brs_mem)
+{
+    Kernel *kernel = brs_kernel.class_obj;
+    BaseMem * mem = (BaseMem*)Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (mem == NULL) {
+        _error("invalid memory:%lu", brs_mem.uid);
+        return IRIS_ERROR;
+    }
+    kernel->update_mem(index, mem);
+    return IRIS_SUCCESS;
+}
+
+int iris_command_update_mem(iris_command brs_cmd, int index, iris_mem brs_mem)
+{
+    Command *cmd= brs_cmd.class_obj;
+    BaseMem * mem = (BaseMem*)Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (mem == NULL) {
+        _error("invalid memory:%lu", brs_mem.uid);
+        return IRIS_ERROR;
+    }
+    cmd->update_mem(index, mem);
+    return IRIS_SUCCESS;
+}
+
+int iris_copyto_cmd_update_src(iris_command brs_command, iris_mem brs_mem)
+{
+    Command *cmd = brs_command.class_obj;
+    BaseMem * mem = (BaseMem*)Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (mem == NULL) {
+        _error("invalid memory:%lu", brs_mem.uid);
+        return IRIS_ERROR;
+    }
+    cmd->update_src(mem);
+    return IRIS_SUCCESS;
+}
+
+int iris_copyto_cmd_update_dst(iris_command brs_command, iris_mem brs_mem)
+{
+    Command *cmd = brs_command.class_obj;
+    BaseMem * mem = (BaseMem*)Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (mem == NULL) {
+        _error("invalid memory:%lu", brs_mem.uid);
+        return IRIS_ERROR;
+    }
+    cmd->update_dst(mem);
+    return IRIS_SUCCESS;
 }
 
 unsigned long iris_kernel_get_uid(iris_kernel brs_kernel)
@@ -550,16 +858,40 @@ unsigned long iris_task_get_uid(iris_task brs_task) {
 int iris_mem_create(size_t size, iris_mem* mem) {
   return Platform::GetPlatform()->MemCreate(size, mem);
 }
-size_t iris_mem_get_size(iris_mem mem) {
-  return Platform::GetPlatform()->get_mem_object(mem)->size();
+size_t iris_mem_get_full_size(iris_mem brs_mem) {
+  BaseMem * mem = (BaseMem*)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu", brs_mem.uid);
+      return 0;
+  }
+  return mem->full_size();
 }
 
-int iris_mem_get_type(iris_mem mem) {
-  return Platform::GetPlatform()->get_mem_object(mem)->GetMemHandlerType();
+size_t iris_mem_get_size(iris_mem brs_mem) {
+  BaseMem * mem = (BaseMem*)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu", brs_mem.uid);
+      return 0;
+  }
+  return mem->size();
 }
 
-int iris_mem_get_uid(iris_mem mem) {
-  return Platform::GetPlatform()->get_mem_object(mem)->uid();
+int iris_mem_get_type(iris_mem brs_mem) {
+  BaseMem * mem = (BaseMem*)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu", brs_mem.uid);
+      return IRIS_ERROR;
+  }
+  return mem->GetMemHandlerType();
+}
+
+unsigned long iris_mem_get_uid(iris_mem brs_mem) {
+  BaseMem * mem = (BaseMem*)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu", brs_mem.uid);
+      return (unsigned long)-1;
+  }
+  return mem->uid();
 }
 
 int iris_get_mem_element_type(iris_mem brs_mem) {
@@ -568,33 +900,58 @@ int iris_get_mem_element_type(iris_mem brs_mem) {
     return iris_unknown;
 }
 
-int iris_mem_is_reset(iris_mem mem) {
-  return Platform::GetPlatform()->get_mem_object(mem)->is_reset();
+int iris_mem_is_reset(iris_mem brs_mem) {
+  BaseMem * mem = (BaseMem*)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu", brs_mem.uid);
+      return IRIS_ERROR;
+  }
+  return mem->is_reset();
 }
 
 int iris_mem_init_reset(iris_mem brs_mem, int memset_value) {
   BaseMem * mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu", brs_mem.uid);
+      return IRIS_ERROR;
+  }
   mem->set_reset_type(iris_reset_memset);
   mem->init_reset((bool) memset_value);
   return IRIS_SUCCESS;
 }
 int iris_mem_init_reset_assign(iris_mem brs_mem, IRISValue value) {
   BaseMem * mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu", brs_mem.uid);
+      return IRIS_ERROR;
+  }
   mem->set_reset_assign(value);
   return IRIS_SUCCESS;
 }
 int iris_mem_init_reset_arith_seq(iris_mem brs_mem, IRISValue start, IRISValue increment) {
   BaseMem * mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu", brs_mem.uid);
+      return IRIS_ERROR;
+  }
   mem->set_reset_arith_seq(start, increment);
   return IRIS_SUCCESS;
 }
 int iris_mem_init_reset_geom_seq(iris_mem brs_mem, IRISValue start, IRISValue step) {
   BaseMem * mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu", brs_mem.uid);
+      return IRIS_ERROR;
+  }
   mem->set_reset_geom_seq(start, step);
   return IRIS_SUCCESS;
 }
 int iris_mem_init_reset_random_uniform_seq(iris_mem brs_mem, long long seed, IRISValue min, IRISValue max) {
   BaseMem * mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu", brs_mem.uid);
+      return IRIS_ERROR;
+  }
   mem->init_reset(true);
   mem->set_reset_type(iris_reset_random_uniform_seq);
   mem->set_reset_seed(seed);
@@ -604,6 +961,10 @@ int iris_mem_init_reset_random_uniform_seq(iris_mem brs_mem, long long seed, IRI
 }
 int iris_mem_init_reset_random_normal_seq(iris_mem brs_mem, long long seed, IRISValue mean, IRISValue stddev) {
   BaseMem * mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu", brs_mem.uid);
+      return IRIS_ERROR;
+  }
   mem->init_reset(true);
   mem->set_reset_type(iris_reset_random_normal_seq);
   mem->set_reset_seed(seed);
@@ -613,6 +974,10 @@ int iris_mem_init_reset_random_normal_seq(iris_mem brs_mem, long long seed, IRIS
 }
 int iris_mem_init_reset_random_log_normal_seq(iris_mem brs_mem, long long seed, IRISValue mean, IRISValue stddev) {
   BaseMem * mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu", brs_mem.uid);
+      return IRIS_ERROR;
+  }
   mem->init_reset(true);
   mem->set_reset_type(iris_reset_random_log_normal_seq);
   mem->set_reset_seed(seed);
@@ -622,6 +987,10 @@ int iris_mem_init_reset_random_log_normal_seq(iris_mem brs_mem, long long seed, 
 }
 int iris_mem_init_reset_random_uniform_sobol_seq(iris_mem brs_mem, IRISValue min, IRISValue max) {
   BaseMem * mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu", brs_mem.uid);
+      return IRIS_ERROR;
+  }
   mem->init_reset(true);
   mem->set_reset_type(iris_reset_random_uniform_sobol_seq);
   mem->set_reset_min(min);
@@ -630,6 +999,10 @@ int iris_mem_init_reset_random_uniform_sobol_seq(iris_mem brs_mem, IRISValue min
 }
 int iris_mem_init_reset_random_normal_sobol_seq(iris_mem brs_mem, IRISValue mean, IRISValue stddev) {
   BaseMem * mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu", brs_mem.uid);
+      return IRIS_ERROR;
+  }
   mem->init_reset(true);
   mem->set_reset_type(iris_reset_random_normal_sobol_seq);
   mem->set_reset_mean(mean);
@@ -638,6 +1011,10 @@ int iris_mem_init_reset_random_normal_sobol_seq(iris_mem brs_mem, IRISValue mean
 }
 int iris_mem_init_reset_random_log_normal_sobol_seq(iris_mem brs_mem, IRISValue mean, IRISValue stddev) {
   BaseMem * mem = (BaseMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu", brs_mem.uid);
+      return IRIS_ERROR;
+  }
   mem->init_reset(true);
   mem->set_reset_type(iris_reset_random_log_normal_sobol_seq);
   mem->set_reset_mean(mean);
@@ -766,26 +1143,166 @@ iris_mem iris_data_mem_create_tile_struct_with_type(void *host, size_t *off, siz
 }
 int iris_dmem_add_child(iris_mem brs_parent, iris_mem brs_child, size_t offset) {
   DataMem* parent = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_parent);
+  if (parent == NULL) {
+      _error("invalid parent memory:%lu", brs_parent.uid);
+      return IRIS_ERROR;
+  }
   DataMem* child = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_child);
+  if (child == NULL) {
+      _error("invalid child memory:%lu", brs_child.uid);
+      return IRIS_ERROR;
+  }
   parent->AddChild(child, offset);
   return IRIS_SUCCESS;
 }
 int iris_data_mem_clear(iris_mem brs_mem) {
   DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu", brs_mem.uid);
+      return IRIS_ERROR;
+  }
   mem->clear();
   return IRIS_SUCCESS;
 }
 int iris_data_mem_update(iris_mem mem, void *host) {
   return Platform::GetPlatform()->DataMemUpdate(mem, host);
 }
+int iris_data_mem_copyto_host(iris_mem brs_mem, void *src_host) {
+  DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu", brs_mem.uid);
+      return IRIS_ERROR;
+  }
+  mem->CopyToHost(src_host);
+  return IRIS_SUCCESS;
+}
 int iris_data_mem_refresh(iris_mem brs_mem) {
   DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu", brs_mem.uid);
+      return IRIS_ERROR;
+  }
   mem->RefreshHost();
   return IRIS_SUCCESS;
 }
+int iris_data_mem_fresh_device_data(iris_mem brs_mem) {
+  DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu", brs_mem.uid);
+      return IRIS_ERROR;
+  }
+  mem->set_dirty_all();
+  return IRIS_SUCCESS;
+}
+int iris_data_mem_update_host_offs(iris_mem brs_mem, size_t *offsets) {
+  DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu", brs_mem.uid);
+      return IRIS_ERROR;
+  }
+  return mem->update_host_offs(offsets);
+}
+int iris_data_mem_update_host_tile_size(iris_mem brs_mem, size_t *host_size) {
+  DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu", brs_mem.uid);
+      return IRIS_ERROR;
+  }
+  return mem->update_host_tile_size(host_size);
+}
 int iris_data_mem_update_host_size(iris_mem brs_mem, size_t *host_size) {
   DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu", brs_mem.uid);
+      return IRIS_ERROR;
+  }
   return mem->update_host_size(host_size);
+}
+int iris_data_mem_update_host_size_no_strides(iris_mem brs_mem, size_t *host_size) {
+  DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu", brs_mem.uid);
+      return IRIS_ERROR;
+  }
+  return mem->update_host_size(host_size, false);
+}
+int iris_data_mem_update_host_dim(iris_mem brs_mem, int dim) {
+  DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu", brs_mem.uid);
+      return IRIS_ERROR;
+  }
+  return mem->update_host_dim(dim);
+}
+int iris_data_mem_update_dim(iris_mem brs_mem, int dim) {
+  DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu", brs_mem.uid);
+      return IRIS_ERROR;
+  }
+  return mem->update_dim(dim);
+}
+int iris_data_mem_update_dev_tile_size(iris_mem brs_mem, size_t *host_size) {
+  DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu", brs_mem.uid);
+      return IRIS_ERROR;
+  }
+  return mem->update_dev_tile_size(host_size);
+}
+int iris_data_mem_update_dev_size(iris_mem brs_mem, size_t *dev_size) {
+  DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu", brs_mem.uid);
+      return IRIS_ERROR;
+  }
+  return mem->update_dev_size(dev_size);
+}
+int iris_data_mem_update_dev_size_no_strides(iris_mem brs_mem, size_t *dev_size) {
+  DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu", brs_mem.uid);
+      return IRIS_ERROR;
+  }
+  return mem->update_dev_size(dev_size, false);
+}
+int iris_data_mem_update_off(iris_mem brs_mem, size_t *off) {
+  DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu", brs_mem.uid);
+      return IRIS_ERROR;
+  }
+  return mem->update_off(off);
+}
+iris_mem iris_data_mem_copy(iris_mem src_mem)
+{
+  DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(src_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu", src_mem.uid);
+      iris_mem nmem = { NULL, 0UL };
+      return nmem;
+  }
+  DataMem *dst = mem->Copy();
+  iris_mem *brs_mem = dst->struct_obj();
+  return *brs_mem;
+}
+void iris_data_mem_print(iris_mem src_mem)
+{
+  DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(src_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu", src_mem.uid);
+      return;
+  }
+  mem->Print();
+}
+void iris_data_mem_print_with_tag(iris_mem src_mem, const char *tag)
+{
+  DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(src_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu", src_mem.uid);
+      return;
+  }
+  mem->Print(tag);
 }
 int iris_unregister_pin_memory(void *host) {
   return Platform::GetPlatform()->UnRegisterPin(host);
@@ -816,27 +1333,81 @@ iris_mem *iris_data_mem_create_region_ptr(iris_mem root_mem, int region) {
 }
 int iris_data_mem_n_regions(iris_mem brs_mem) {
   DataMem *mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu", brs_mem.uid);
+      return IRIS_ERROR;
+  }
   return mem->get_n_regions();
 }
 int iris_data_mem_update_bc(iris_mem brs_mem, int bc, int row, int col) {
   DataMem *mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu", brs_mem.uid);
+      return IRIS_ERROR;
+  }
   mem->update_bc_row_col((bool)bc, row, col);
   return IRIS_SUCCESS;
 }
 int iris_data_mem_get_rr_bc_dev(iris_mem brs_mem){
   DataMem *mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu", brs_mem.uid);
+      return IRIS_ERROR;
+  }
   return mem->get_rr_bc_dev();
 }
 unsigned long iris_data_mem_get_region_uid(iris_mem brs_mem, int region) {
   DataMem *mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu", brs_mem.uid);
+      return IRIS_ERROR;
+  }
   return mem->get_region(region)->uid();
 }
 int iris_data_mem_enable_outer_dim_regions(iris_mem mem) {
   return Platform::GetPlatform()->DataMemEnableOuterDimRegions(mem);
 }
+int iris_data_mem_enable_regions(iris_mem brs_mem, int axis) {
+  DataMem *mem= (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu", brs_mem.uid);
+      return IRIS_ERROR;
+  }
+  mem->EnableRegions(axis);
+  return IRIS_SUCCESS;
+}
+int iris_data_mem_set_valid_regions(iris_mem brs_mem, int regions) {
+  DataMem *mem= (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem == NULL) {
+      _error("invalid memory:%lu", brs_mem.uid);
+      return IRIS_ERROR;
+  }
+  mem->set_valid_regions(regions);
+  return IRIS_SUCCESS;
+}
+int iris_dmem_is_region(iris_mem brs_mem) {
+    DataMem *obj = (DataMem*)Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (obj == NULL) {
+        _error("invalid memory:%lu", brs_mem.uid);
+        return IRIS_ERROR;
+    }
+    if (obj->GetMemHandlerType() == IRIS_DMEM_REGION) {
+        return 1;
+    }
+    return 0;
+}
 iris_mem iris_get_dmem_for_region(iris_mem brs_mem) {
-    DataMemRegion *obj = (DataMemRegion*)Platform::GetPlatform()->get_mem_object(brs_mem);
-    return *(obj->get_dmem()->struct_obj());
+    DataMem *obj = (DataMem*)Platform::GetPlatform()->get_mem_object(brs_mem);
+    iris_mem dmem = { NULL, 0UL };
+    if (obj == NULL) {
+        _error("invalid memory:%lu", brs_mem.uid);
+        return dmem;
+    }
+    if (obj->GetMemHandlerType() == IRIS_DMEM_REGION) {
+        DataMemRegion *robj = (DataMemRegion *)obj;
+        return *(robj->get_dmem()->struct_obj());
+    }
+    return dmem;
 }
 
 int iris_mem_arch(iris_mem mem, int device, void** arch) {
@@ -879,6 +1450,19 @@ int iris_kernel_get(const char* name, iris_kernel* kernel) {
   return Platform::GetPlatform()->KernelGet(name, kernel);
 }
 
+int iris_kernel_set_shared_memory_size(iris_kernel brs_kernel, size_t size)
+{
+  Kernel *kernel = brs_kernel.class_obj;
+  kernel->set_shared_mem_size(size);
+  return IRIS_SUCCESS;
+}
+
+int iris_data_mem_is_size_preserved(iris_mem brs_mem) {
+  DataMem* mem = (DataMem *)Platform::GetPlatform()->get_mem_object(brs_mem);
+  if (mem != NULL) return mem->preserve_size_flag();
+  return 0;
+}
+
 int iris_kernel_setarg(iris_kernel kernel, int idx, size_t size, void* value) {
   return Platform::GetPlatform()->KernelSetArg(kernel, idx, size, value);
 }
@@ -889,6 +1473,12 @@ int iris_kernel_setmem(iris_kernel kernel, int idx, iris_mem mem, size_t mode) {
 
 int iris_kernel_setmem_off(iris_kernel kernel, int idx, iris_mem mem, size_t off, size_t mode) {
   return Platform::GetPlatform()->KernelSetMem(kernel, idx, mem, off, mode);
+}
+
+iris_command iris_kernel_cmd(iris_kernel brs_kernel) {
+  Kernel *kernel = brs_kernel.class_obj;
+  Command *cmd = kernel->get_cmd();
+  return *(cmd->struct_obj());
 }
 
 int iris_kernel_release(iris_kernel kernel) {
@@ -918,6 +1508,12 @@ int iris_is_graph_null(iris_graph graph) {
   return (int)false;
 }
 
+void iris_graph_print(iris_graph brs_graph) {
+    Graph *graph = Platform::GetPlatform()->get_graph_object(brs_graph);
+    if (graph != NULL) {
+        graph->Print();
+    }
+}
 int iris_graph_create_json(const char* json, void** params, iris_graph* graph) {
   return Platform::GetPlatform()->GraphCreateJSON(json, params, graph);
 }
@@ -974,8 +1570,26 @@ int iris_graph_submit_with_order_and_time(iris_graph graph, int *order, double *
     *time = end_time - st_time;
     return status;
 }
+int iris_graph_submit_again(iris_graph brs_graph, iris_mem brs_mem, int max_tries, int condition_flag)
+{
+    iris_graph_retain(brs_graph, true);
+    Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
+    BaseMem * mem = Platform::GetPlatform()->get_mem_object(brs_mem);
+    if (mem == NULL) {
+        _error("invalid memory:%lu", brs_mem.uid);
+        return IRIS_ERROR;
+    }
+    graph->set_submit_again(mem, max_tries, condition_flag);
+    return IRIS_SUCCESS;
+}
 int iris_graph_wait_all(int ngraphs, iris_graph* graphs) {
   return Platform::GetPlatform()->GraphWaitAll(ngraphs, graphs);
+}
+
+iris_task iris_graph_end_task(iris_graph brs_graph) {
+  Graph* graph = Platform::GetPlatform()->get_graph_object(brs_graph);
+  Task *end = graph->end();
+  return *(end->struct_obj());
 }
 
 int iris_graph_free(iris_graph brs_graph) {
@@ -1194,51 +1808,51 @@ double *iris_allocate_random_array_double(int SIZE)
 }
 void iris_print_matrix_limited_double(double *data, int M, int N, const char *description, int limit) 
 {
-    return iris::PrintMatrixLimited<double>(data, M, N, description, limit);
+    return iris::PrintArrayLimited<double>(data, M, N, description, limit);
 }
 void iris_print_matrix_full_double(double *data, int M, int N, const char *description) 
 {
-    iris::PrintMatrixFull<double>(data, M, N, description);
+    iris::PrintArrayFull<double>(data, M, N, description);
 }
 void iris_print_matrix_limited_float(float *data, int M, int N, const char *description, int limit) 
 {
-    return iris::PrintMatrixLimited<float>(data, M, N, description, limit);
+    return iris::PrintArrayLimited<float>(data, M, N, description, limit);
 }
 void iris_print_matrix_full_float(float *data, int M, int N, const char *description) 
 {
-    iris::PrintMatrixFull<float>(data, M, N, description);
+    iris::PrintArrayFull<float>(data, M, N, description);
 }
 void iris_print_matrix_limited_int64_t(int64_t *data, int M, int N, const char *description, int limit) 
 {
-    return iris::PrintMatrixLimited<int64_t>(data, M, N, description, limit);
+    return iris::PrintArrayLimited<int64_t>(data, M, N, description, limit);
 }
 void iris_print_matrix_full_int64_t(int64_t *data, int M, int N, const char *description) 
 {
-    iris::PrintMatrixFull<int64_t>(data, M, N, description);
+    iris::PrintArrayFull<int64_t>(data, M, N, description);
 }
 void iris_print_matrix_limited_int32_t(int32_t *data, int M, int N, const char *description, int limit) 
 {
-    return iris::PrintMatrixLimited<int32_t>(data, M, N, description, limit);
+    return iris::PrintArrayLimited<int32_t>(data, M, N, description, limit);
 }
 void iris_print_matrix_full_int32_t(int32_t *data, int M, int N, const char *description) 
 {
-    iris::PrintMatrixFull<int32_t>(data, M, N, description);
+    iris::PrintArrayFull<int32_t>(data, M, N, description);
 }
 void iris_print_matrix_limited_int16_t(int16_t *data, int M, int N, const char *description, int limit) 
 {
-    return iris::PrintMatrixLimited<int16_t>(data, M, N, description, limit);
+    return iris::PrintArrayLimited<int16_t>(data, M, N, description, limit);
 }
 void iris_print_matrix_full_int16_t(int16_t *data, int M, int N, const char *description) 
 {
-    iris::PrintMatrixFull<int16_t>(data, M, N, description);
+    iris::PrintArrayFull<int16_t>(data, M, N, description);
 }
 void iris_print_matrix_limited_int8_t(int8_t *data, int M, int N, const char *description, int limit) 
 {
-    return iris::PrintMatrixLimited<int8_t>(data, M, N, description, limit);
+    return iris::PrintArrayLimited<int8_t>(data, M, N, description, limit);
 }
 void iris_print_matrix_full_int8_t(int8_t *data, int M, int N, const char *description) 
 {
-    iris::PrintMatrixFull<int8_t>(data, M, N, description);
+    iris::PrintArrayFull<int8_t>(data, M, N, description);
 }
 
 int iris_logo(){
@@ -1405,4 +2019,28 @@ int iris_vendor_kernel_launch(int dev, void *kernel, int gridx, int gridy, int g
 }
 int iris_is_enabled_auto_par() {
   return (int) Platform::GetPlatform()->GetAutoPar();
+}
+python_policy_t python_policy__ = NULL;
+python_kernel_t python_kernel__ = NULL;
+int iris_python_init(void *python_launch_func, int decoupled_init)
+{
+    python_kernel__ = (python_kernel_t) python_launch_func;
+    //int32_t target = 12; 
+    //int32_t devno=0;
+    //int32_t result = python_kernel__(target, devno);
+    //printf("Result %d\n", result);
+    return Platform::GetPlatform()->PythonInit((bool)decoupled_init);
+}
+int iris_python_policy_init(void *python_policy_func) 
+{
+    python_policy__ = (python_policy_t) python_policy_func;
+    return IRIS_SUCCESS;
+}
+python_kernel_t iris_get_python_launch_func() 
+{
+    return python_kernel__;
+}
+python_policy_t iris_get_python_policy_func() 
+{
+    return python_policy__;
 }

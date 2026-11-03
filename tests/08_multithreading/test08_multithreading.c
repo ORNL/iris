@@ -2,6 +2,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <unistd.h>
+#include <sys/types.h>
+
 
 static int run(void* argp) {
   iris_init(NULL, NULL, 1);

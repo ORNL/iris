@@ -1,6 +1,8 @@
 #ifndef IRIS_SRC_RT_POLICY_H
 #define IRIS_SRC_RT_POLICY_H
 
+#include "Config.h"
+
 #define REGISTER_CUSTOM_POLICY(class_name, name)              \
   iris::rt::class_name name;                              \
   extern "C" void* name ## _instance() { return (void*) &name; }

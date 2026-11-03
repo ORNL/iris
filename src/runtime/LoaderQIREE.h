@@ -3,7 +3,16 @@
 
 #include "Loader.h"
 #include "HostInterface.h"
+#include "iris/qiree.h"
 //#include <iris/qiree/qiree.h>
+
+typedef struct CQiree_s CQiree;
+
+enum QireeReturnCode
+{
+    QIREE_SUCCESS = 0,
+    QIREE_FAIL_LOAD = 1,
+};
 
 namespace iris {
 namespace rt {
@@ -16,7 +25,17 @@ public:
   //const char* library_precheck() { return "cuInit"; }
   const char* library();// { return "libqiree.so"; }
   int LoadFunctions();
-  void (*parse_input_c)(int, char **);
+  CQiree *(*qiree_create)();
+  void (*qiree_destroy)(CQiree *manager);
+  int (*qiree_load_module_from_memory)(CQiree *manager, char const *data_contents, size_t length);
+  int (*qiree_load_module_from_file)(CQiree *manager, char const *filename);
+  int (*qiree_num_quantum_reg)(CQiree *manager, int *result);
+  int (*qiree_num_classical_reg)(CQiree *manager, int *result);
+  int (*qiree_max_result_items)(CQiree *manager, int num_shots, size_t *result);
+  int (*qiree_setup_executor)(CQiree *manager, char const *backend, char const *config_json);
+  int (*qiree_execute)(CQiree *manager, int num_shots);
+
+  int (*qiree_save_result_items)(CQiree *manager, CQireeResultRecord *encoded, size_t max);
 
 };
 

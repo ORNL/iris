@@ -14,10 +14,19 @@
 namespace iris {
 namespace rt {
 
-DeviceHexagon::DeviceHexagon(LoaderHexagon* ld, int devno, int platform) : Device(devno, platform) {
+DeviceHexagon::DeviceHexagon(LoaderHexagon* ld, int ordinal, int devno, int platform) : Device(devno, platform) {
   ld_ = ld;
   type_ = iris_hexagon;
   model_ = iris_hexagon;
+  spec_.ordinal = ordinal;
+  spec_.model = model_;
+  spec_.local_dev_id = ordinal;
+  // Below arguments are fixed for now
+  spec_.is_async = false;
+  spec_.stream_index = 0;
+  spec_.n_streams = 0;
+  spec_.streams = NULL;
+  spec_.ctx = NULL;
   strcpy(name_, "Hexagon DSP");
   _info("device[%d] platform[%d] device[%s] type[%d]", devno_, platform_, name_, type_);
 }
@@ -50,7 +59,27 @@ int DeviceHexagon::MemAlloc(BaseMem *mem, void** mem_addr, size_t size, bool res
   return IRIS_SUCCESS;
 }
 
+int DeviceHexagon::MemAlloc(void** mem_addr, size_t size, void *stream_v, bool reset) {
+  void** hxgmem = mem_addr;
+  *hxgmem = ld_->iris_hexagon_rpcmem_alloc(RPCMEM_HEAP_ID_SYSTEM, RPCMEM_DEFAULT_FLAGS, (int) size);
+  if (*hxgmem == 0) {
+    _error("hxgmem[%p]", hxgmem);
+    worker_->platform()->IncrementErrorCount();
+    return IRIS_ERROR;
+  }
+  if (reset) {
+    _error("Hexagon not supported with reset for size:%lu", size);
+  }
+  return IRIS_SUCCESS;
+}
+
 int DeviceHexagon::MemFree(BaseMem *mem, void* mem_addr) {
+  void* hxgmem = mem_addr;
+  if (hxgmem) ld_->iris_hexagon_rpcmem_free(hxgmem);
+  return IRIS_SUCCESS;
+}
+
+int DeviceHexagon::MemFree(void* mem_addr, void *stream_v) {
   void* hxgmem = mem_addr;
   if (hxgmem) ld_->iris_hexagon_rpcmem_free(hxgmem);
   return IRIS_SUCCESS;
@@ -83,6 +112,8 @@ int DeviceHexagon::KernelGet(Kernel *kernel, void** kernel_bin, const char* name
 }
 
 int DeviceHexagon::KernelLaunchInit(Command *cmd, Kernel* kernel) {
+  spec_.cmd_id = cmd->uid();
+  spec_.task_id = cmd->task()->uid();
   if (ld_->iris_hexagon_kernel_with_obj) {
       if (ld_->iris_hexagon_kernel_with_obj(
               kernel->GetParamWrapperMemory(), kernel->name())==IRIS_SUCCESS) {
@@ -109,6 +140,12 @@ int DeviceHexagon::KernelSetMem(Kernel* kernel, int idx, int kindex, BaseMem* me
 
 int DeviceHexagon::KernelLaunch(Kernel* kernel, int dim, size_t* off, size_t* gws, size_t* lws) {
   _trace("kernel[%s] dim[%d] off[%zu] gws[%zu]", kernel->name(), dim, off[0], gws[0]);
+  spec_.dim = dim;
+  spec_.off = off;
+  spec_.gws = gws;
+  spec_.block = NULL;
+  spec_.grid = NULL;
+  spec_.shmem_size = kernel->shared_mem_size();
   if (ld_->iris_hexagon_launch_with_obj) {
       ld_->SetKernelPtr(kernel->GetParamWrapperMemory(), kernel->name());
       return ld_->iris_hexagon_launch_with_obj(NULL,

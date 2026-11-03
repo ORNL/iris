@@ -10,6 +10,7 @@ namespace rt {
 class LoaderHost2HIP : public HostInterfaceClass {
 public:
   LoaderHost2HIP();
+  LoaderHost2HIP(string path);
   ~LoaderHost2HIP();
 
   int LoadFunctions();

@@ -15,24 +15,31 @@ x = np.arange(SIZE, dtype=np.int32)
 y = np.arange(SIZE, dtype=np.int32)
 s = np.arange(SIZE, dtype=np.int32)
 
+@iris.kernel(in_=["X", "Y"], flush_=["S"])
+def saxpy(spec, S, X, Y, N, A):
+    pass
+
 print('X', x)
 print('Y', y)
 print('A', A)
 print('SIZE', SIZE)
 
-mem_x = iris.mem(x.nbytes)
-mem_y = iris.mem(y.nbytes)
-mem_s = iris.mem(s.nbytes)
-
 task = iris.task()
-task.h2d(mem_x, 0, x.nbytes, x)
-task.h2d(mem_y, 0, y.nbytes, y)
-#pdb.set_trace()
-task.kernel("saxpy", 1, [0], [SIZE], [1], 
+if False:
+    mem_x = iris.mem(x.nbytes)
+    mem_y = iris.mem(y.nbytes)
+    mem_s = iris.mem(s.nbytes)
+
+    task.h2d(mem_x, 0, x.nbytes, x)
+    task.h2d(mem_y, 0, y.nbytes, y)
+    #pdb.set_trace()
+    task.kernel("saxpy", 1, [0], [SIZE], [1], 
         [mem_s,       mem_x,       mem_y,       SIZE,  A] , 
         [iris.iris_w, iris.iris_r, iris.iris_r, 4,     4] )
-task.params_map([iris.iris_ftf, iris.iris_ftf, iris.iris_ftf, iris.iris_cpu, iris.iris_ftf])
-task.d2h(mem_s, 0, s.nbytes, s)
+    task.params_map([iris.iris_all, iris.iris_all, iris.iris_all, iris.iris_cpu | iris.iris_fpga, iris.iris_all])
+    task.d2h(mem_s, 0, s.nbytes, s)
+else:
+    saxpy(s, x, y, SIZE, A, gws=[SIZE], task_obj=task)
 task.submit(iris.iris_fpga)
 
 print('S =', A, '* X + Y', s)

@@ -17,7 +17,11 @@
 #define HostInterfaceClass FFIHostInterfaceLoader
 #else
 #define HostInterfaceClass BoilerPlateHostInterfaceLoader
-#endif 
+#endif
+
+#define INIT_SYM_FN(FN)  \
+    sym_map_fn_.insert(make_pair(string(#FN), (void **)&FN)); \
+    FN = NULL;
 typedef struct _jl_value_t jl_value_t;
 typedef jl_value_t jl_function_t;
 void *jl_unbox_voidpointer(jl_value_t *v);
@@ -41,8 +45,9 @@ namespace iris {
         // function pointer. The loaders are shared across same homogeneous devices
         class HostInterfaceLoader : public Loader {
             public:
-                HostInterfaceLoader(string kernel_env);
-                HostInterfaceLoader(string kernel_env, string suffix);
+                HostInterfaceLoader(string kernel_env, bool is_path=false);
+                HostInterfaceLoader();
+                //HostInterfaceLoader(string kernel_env, string suffix);
                 virtual ~HostInterfaceLoader() { }
                 virtual const char* library();
 #ifdef DISABLE_DYNAMIC_LINKING
@@ -52,19 +57,20 @@ namespace iris {
                 virtual int LoadFunctions(){ Loader::LoadFunctions(); return IRIS_SUCCESS; }
                 virtual void finalize(int dev);
                 virtual void init(int dev);
-                virtual int launch_init(int model, int devno, int stream_index, int nstreams, void **stream, void *param_mem, Command *cmd_kernel) { return IRIS_SUCCESS; }
+                virtual int launch_init(IrisSpec *spec, void *param_mem, Command *cmd_kernel) { return IRIS_SUCCESS; }
                 virtual int setarg(void *param_mem, int index, size_t size, void *value) { return IRIS_ERROR; }
-                virtual int setmem(void *param_mem, int kindex, void *mem, size_t size) { return IRIS_ERROR; }
                 virtual int setmem(void *param_mem, BaseMem *mem, int kindex, void *mem_ptr, size_t size) { return IRIS_ERROR; }
                 static uint32_t get_encoded_stream_device(int stream_index, int nstreams, int device);
                 static uint32_t update_dev_info_stream_index(int dev_info, int stream_index);
                 static uint32_t update_dev_info_nstreams(int dev_info, int nstreams);
                 static uint32_t update_dev_info_devno(int dev_info, int devno);
-                virtual int host_launch(void **stream, int stream_index, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *off, size_t *bws) { return IRIS_ERROR; }
+                virtual int host_launch(IrisSpec *spec, Command *cmd, Kernel *kernel) { return IRIS_ERROR; }
                 virtual int host_kernel(void *param_mem, const char *kname) { return IRIS_ERROR; }
                 int SetKernelPtr(void *obj, const char *kernel_name) { return IRIS_ERROR; }
                 void LoadFunction(const char *func_name, const char *symbol);
                 void LoadFunctionStatic(const char *func_name, void *symbol);
+                void enable_spec_flag() { pass_spec_flag_ = true; }
+                bool is_pass_spec_flag() { return pass_spec_flag_; }
             protected:
                 map<string, void **> sym_map_fn_;
                 int (*iris_host_init)();
@@ -76,20 +82,22 @@ namespace iris {
                 int (*iris_host_launch_with_obj)(void *stream, void *obj, uint32_t devno, int dim, size_t *off, size_t *bws);
                 string & kernel_env() { return kernel_env_; }
             private:
+                bool pass_spec_flag_;
                 string kernel_env_;
+                bool is_path_;
         };
         class BoilerPlateHostInterfaceLoader : public HostInterfaceLoader {
             public:
-                BoilerPlateHostInterfaceLoader(string kernel_env);
+                BoilerPlateHostInterfaceLoader(string kernel_env, bool is_path=false);
                 ~BoilerPlateHostInterfaceLoader() { }
                 virtual const char* library() { return HostInterfaceLoader::library(); }
                 int LoadFunctions();
                 int host_kernel(void *param_mem, const char *kname);
                 int SetKernelPtr(void *obj, const char *kernel_name);
-                int launch_init(int model, int devno, int stream_index, int nstreams, void **stream, void *param_mem, Command *cmd);
-                int host_launch(void **stream, int stream_index, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *off, size_t *bws);
+                int launch_init(IrisSpec *spec, void *param_mem, Command *cmd);
+                int host_launch(IrisSpec *spec, Command *cmd, Kernel *kernel);
                 int setarg(void *param_mem, int kindex, size_t size, void *value);
-                int setmem(void *param_mem, int kindex, void *mem, size_t size);
+                int setmem(void *param_mem, BaseMem *bmem, int kindex, void *mem, size_t size);
             private:
                 int (*iris_host_kernel)(const char* name);
                 int (*iris_host_setarg)(int idx, size_t size, void* value);
@@ -110,6 +118,8 @@ namespace iris {
                     julia_kernel_type_ = iris_julia_native;
                     param_size_ = NULL;
                     param_dim_size_ = NULL;
+                    param_dim_full_size_ = NULL;
+                    param_dim_off_ = NULL;
                 }
                 void reset() {
                     index_ = 0;
@@ -119,12 +129,16 @@ namespace iris {
                     args_capacity_ = 0;
                     param_size_ = NULL;
                     param_dim_size_ = NULL;
+                    param_dim_full_size_ = NULL;
+                    param_dim_off_ = NULL;
                 }
                 ~KernelJulia( ) {
                     if (args_ != NULL) free(args_);
                     if (values_ != NULL) free(values_);
                     if (param_size_ != NULL) free(param_size_);
                     if (param_dim_size_ != NULL) free(param_dim_size_);
+                    if (param_dim_full_size_ != NULL) free(param_dim_full_size_);
+                    if (param_dim_off_ != NULL) free(param_dim_off_);
                 }
                 void init(int nargs) {
                     args_ = NULL;
@@ -142,13 +156,17 @@ namespace iris {
                                 sizeof(size_t) * args_capacity_);
                     if (param_dim_size_ == NULL)
                         param_dim_size_ = (size_t *)malloc(args_capacity_ * sizeof(size_t) * DMEM_MAX_DIM);
+                    if (param_dim_full_size_ == NULL)
+                        param_dim_full_size_ = (size_t *)malloc(args_capacity_ * sizeof(size_t) * DMEM_MAX_DIM);
+                    if (param_dim_off_ == NULL)
+                        param_dim_off_ = (size_t *)malloc(args_capacity_ * sizeof(size_t) * DMEM_MAX_DIM);
                     index_  = 0;
                 }
                 void set_kernel(Kernel *kernel) { kernel_ = kernel; }
                 void set_arg_type(int32_t arg_type) {
                     assert(index_ < args_capacity_);
                     args_[index_] = arg_type;
-                    //printf("Args:%p %d %d\n", args_, index_, arg_type);
+                    //printf("Args:%p %d 0x%x\n", args_, index_, arg_type);
                 }
                 void set_value(void *value) { 
                     assert(index_ < args_capacity_);
@@ -159,10 +177,20 @@ namespace iris {
                     values_[index_] = value;
                     //printf("         Values mem:%p mem_ptr:%p\n", values_ptr_[index_], values_[index_]); 
                 }
+                void set_dim_off(size_t *sizes, int dim) { 
+                    ASSERT(dim < DMEM_MAX_DIM);
+                    //printf("poor_dim_size[%d] %p dim:%d dev_size:%lu\n", index_, param_dim_size_ +index_*DMEM_MAX_DIM, dim, sizes[0]);
+                    memcpy(param_dim_off_ + index_*DMEM_MAX_DIM, sizes, sizeof(size_t)*dim);
+                }
                 void set_dim_sizes(size_t *sizes, int dim) { 
                     ASSERT(dim < DMEM_MAX_DIM);
                     //printf("poor_dim_size[%d] %p dim:%d dev_size:%lu\n", index_, param_dim_size_ +index_*DMEM_MAX_DIM, dim, sizes[0]);
                     memcpy(param_dim_size_ + index_*DMEM_MAX_DIM, sizes, sizeof(size_t)*dim);
+                }
+                void set_dim_full_sizes(size_t *sizes, int dim) { 
+                    ASSERT(dim < DMEM_MAX_DIM);
+                    //printf("poor_dim_size[%d] %p dim:%d dev_size:%lu\n", index_, param_dim_full_size_+index_*DMEM_MAX_DIM, dim, sizes[0]);
+                    memcpy(param_dim_full_size_+ index_*DMEM_MAX_DIM, sizes, sizeof(size_t)*dim);
                 }
                 void set_size(size_t size) {
                     param_size_[index_] = size;
@@ -171,6 +199,8 @@ namespace iris {
                 void set_iris_args(KernelArg *iris_args) { iris_args_ = iris_args; }
                 KernelArg *get_iris_arg(int kindex) { return iris_args_ + kindex; }
                 void **values() { return values_; }
+                size_t *param_dim_off() { return param_dim_off_; }
+                size_t *param_dim_full_size() { return param_dim_full_size_; }
                 size_t *param_dim_size() { return param_dim_size_; }
                 size_t *param_size() { return param_size_; }
                 int top() { return index_; }
@@ -205,7 +235,9 @@ namespace iris {
                 int32_t *args_;
                 void **values_;
                 size_t *param_size_;
+                size_t *param_dim_off_;
                 size_t *param_dim_size_;
+                size_t *param_dim_full_size_;
                 size_t *param_idx_;
                 void **streams_;
                 uint32_t dev_info_;
@@ -223,13 +255,13 @@ namespace iris {
                 int host_kernel(void *param_mem, const char *kname);
                 void set_kernel_julia(void *param_mem, KernelJulia *julia_data);
                 KernelJulia * get_kernel_julia(void *param_mem);
-                int launch_init(int model, int devno, int stream_index, int nstreams, void **stream, void *param_mem, Command *cmd);
+                int launch_init(IrisSpec *spec, void *param_mem, Command *cmd);
                 int SetKernelPtr(void *obj, const char *kernel_name);
-                int host_launch(unsigned long task_id, void **stream, int stream_index, void *ctx, bool async, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *off, size_t *bws);
+                int host_launch(IrisSpec *spec, Command *cmd, Kernel *kernel);
                 int setarg(void *param_mem, int kindex, size_t size, void *value);
                 int setmem(void *param_mem, BaseMem *mem, int kindex, void *mem_ptr, size_t size);
                 int set_julia_kernel_type(void *param_mem, int type);
-                void launch_julia_kernel(unsigned long task_id, int julia_kernel_type, int target, int32_t devno, void *ctx, bool async, int32_t stream_index, void **stream, int32_t nstreams, int32_t *args, void **values, size_t *param_size, size_t *param_dim_size, int32_t nparams, size_t *threads, size_t *blocks, int dim, const char *name)
+                void launch_julia_kernel(unsigned long task_id, unsigned long cmd_id, int julia_kernel_type, int target, int32_t devno, void *ctx, bool async, int32_t stream_index, void **stream, int32_t nstreams, int32_t *args, void **values, size_t *param_size, size_t *param_dim_size, size_t *param_dim_full_size, size_t *param_dim_off, int32_t nparams, size_t *gws, size_t *threads, size_t *blocks, size_t shared_mem_size, int dim, const char *name)
                 {
                     //printf("jl_is_initialized: %p jl_init:%p\n", jl_is_initialized, jl_init);
                     if (iris_get_julia_launch_func()!= NULL) {
@@ -239,7 +271,7 @@ namespace iris {
                         //for(int i=0; i<nparams; i++) {
                         //    printf("Values:i:%d arg:%d:%d values:%p\n", i, args[i], args[i]>>16, values[i]);
                         //}
-                        kernel_julia_wrapper(task_id, julia_kernel_type, target, devno, ctx, (int)async, stream_index, stream, nstreams, args, values, param_size, param_dim_size, nparams, threads, blocks, dim, name);
+                        kernel_julia_wrapper(task_id, cmd_id, julia_kernel_type, target, devno, ctx, (int)async, stream_index, stream, nstreams, args, values, param_size, param_dim_size, param_dim_full_size, param_dim_off, nparams, gws, threads, blocks, shared_mem_size, dim, name);
                         //printf("Result: %d\n", result);
                         //(*jl_atexit_hook)(0);
                     }
@@ -259,6 +291,7 @@ namespace iris {
             HOST_LAUNCH_WITH_STREAM_DEV,
             HOST_LAUNCH_BARE,
             HOST_LAUNCH_WITH_FFI_OBJ,
+            HOST_LAUNCH_FFI_SPEC,
             HOST_LAUNCH_FFI_BARE
         };
         class KernelFFI {
@@ -269,16 +302,18 @@ namespace iris {
                     values_ = NULL;
                     values_ptr_ = NULL;
                     args_capacity_ = 0;
+                    spec_ = NULL;
                 }
                 ~KernelFFI( ) {
                     if (args_ != NULL) free(args_);
                     if (values_ != NULL) free(values_);
                     if (values_ptr_ != NULL) free(values_ptr_);
                 }
-                void init(int nargs) {
+                void init(int nargs, bool is_pass_spec_flag) {
                     args_ = NULL;
                     values_ = NULL;
                     values_ptr_ = NULL;
+                    spec_ = NULL;
                     args_capacity_ = nargs+6;
                     if (args_ == NULL) 
                         args_ = (ffi_type **) malloc(
@@ -322,12 +357,19 @@ namespace iris {
                     increment();
                     set_arg_type(&ffi_type_pointer);
                     set_value(&param_size_);
+                    //printf(" off:%p ndr:%p, param_idx:%p, param_size:%p\n", off, ndr, &param_idx_, &param_size_);
                     increment();
                 }
                 void add_stream(void **stream) {
                     set_arg_type(&ffi_type_pointer);
                     streams_ = stream;
                     set_value(&streams_);
+                    increment();
+                }
+                void add_spec(IrisSpec *spec) {
+                    set_arg_type(&ffi_type_pointer);
+                    spec_ = spec;
+                    set_value(&spec_);
                     increment();
                 }
                 void add_dev_info() {
@@ -358,21 +400,22 @@ namespace iris {
                 void **streams_;
                 uint32_t dev_info_;
                 int index_;
+                IrisSpec *spec_;
         };
         class FFIHostInterfaceLoader : public HostInterfaceLoader {
             public:
-                FFIHostInterfaceLoader(string kernel_env);
+                FFIHostInterfaceLoader(string kernel_env, bool is_path=false);
                 ~FFIHostInterfaceLoader() { }
                 virtual const char* library() { return HostInterfaceLoader::library(); }
                 int LoadFunctions();
                 int host_kernel(void *param_mem, const char *kname);
                 void set_kernel_ffi(void *param_mem, KernelFFI *ffi_data);
                 KernelFFI *get_kernel_ffi(void *param_mem);
-                int launch_init(int model, int devno, int stream_index, int nstreams, void **stream, void *param_mem, Command *cmd);
+                int launch_init(IrisSpec *spec, void *param_mem, Command *cmd);
                 int SetKernelPtr(void *obj, const char *kernel_name);
-                int host_launch(void **stream, int stream_index, int nstreams, const char *kname, void *param_mem, int devno, int dim, size_t *off, size_t *bws);
+                int host_launch(IrisSpec *spec, Command *cmd, Kernel *kernel);
                 int setarg(void *param_mem, int kindex, size_t size, void *value);
-                int setmem(void *param_mem, int kindex, void *mem, size_t size);
+                int setmem(void *param_mem, BaseMem *bmem, int kindex, void *mem, size_t size);
             private:
                 ffi_cif cif_;
         };

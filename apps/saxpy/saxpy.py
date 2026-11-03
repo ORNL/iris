@@ -13,6 +13,10 @@ x = np.arange(SIZE, dtype=np.float32)
 y = np.arange(SIZE, dtype=np.float32)
 s = np.arange(SIZE, dtype=np.float32)
 
+@iris.kernel(in_=["X", "Y"], out_=["Z"])
+def saxpy(spec, Z, alpha, Y, X):
+    pass
+
 print('X', x)
 print('Y', y)
 
@@ -27,17 +31,12 @@ if not disable:
         task = iris.task()
         task.h2d_full(mem_x, x)
         task.h2d_full(mem_y, y)
-        task.kernel("saxpy", 1, [], [SIZE], [], [mem_s, A, mem_x, mem_y] , [iris.iris_w, 4, iris.iris_r, iris.iris_r] )
+        task.kernel("saxpy", 1, [], [SIZE], [], [mem_s, A, mem_x, mem_y] , [iris.iris_w, 4 | iris.iris_float, iris.iris_r, iris.iris_r] )
         task.d2h_full(mem_s, s)
         task.submit(iris.iris_gpu)
     else:
         # New DMEM way
-        task = iris.task("saxpy", 1, [], [SIZE], [], [
-                (s, iris.iris_w, iris.iris_flush),
-                A, 
-                (x, iris.iris_r), 
-                (y, iris.iris_r)
-                ])
+        task = saxpy(s, A, x, y, gws=[SIZE], flush=[y])
         task.submit(iris.iris_gpu)
     
     print('S =', A, '* X + Y', 'A:', A, 'X:',x, 'Y:', y, 'S:', s)
@@ -46,22 +45,11 @@ s0 = np.arange(SIZE, dtype=np.float32)
 s1 = np.arange(SIZE, dtype=np.float32)
 
 mem_x = iris.dmem(x)
-mem_y = iris.dmem(y)
 #mem_s0 = iris.dmem(s0)
 mem_s0 = iris.dmem_null(s0.nbytes)
 mem_s1 = iris.dmem(s1)
-task0 = iris.task("saxpy", 1, [], [SIZE], [], [
-        (mem_s0, iris.iris_w),
-        A, 
-        (mem_x, iris.iris_r), 
-        (mem_y, iris.iris_r)
-        ])
-task1 = iris.task("saxpy", 1, [], [SIZE], [], [
-        (mem_s1, iris.iris_w, iris.iris_flush),
-        A, 
-        (mem_s0, iris.iris_r), 
-        (mem_s0, iris.iris_r)
-        ])
+task0 = saxpy(mem_s0, A, mem_x, y, gws=[SIZE])
+task1 = saxpy(mem_s1, A, mem_s0, mem_s0, gws=[SIZE], flush=[mem_s1])
 task1.depends(task0)
 #task0.submit(iris.iris_gpu)
 #task1.submit(iris.iris_gpu)

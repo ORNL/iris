@@ -11,9 +11,9 @@ stages:
   before_script:
     - echo "Setting up environment..."
     - source /auto/software/iris/setup_system.source
-    - source /opt/xilinx/xrt/setup.sh
-    - module load cmake
-    - module load gnu
+    # - source /opt/xilinx/xrt/setup.sh
+    # - module load cmake
+    # - module load gnu
 
 .excl_runner:
   extends: [.iris_common]
@@ -23,6 +23,7 @@ variables:
   IRIS_INSTALL_ROOT: $CI_PROJECT_DIR/install
   IRIS_INSTALL_ROOT_WO_FFI: $CI_PROJECT_DIR/install.noffi
   IRIS_INSTALL_ROOT_W_FFI: $CI_PROJECT_DIR/install.ffi
+  RUNNER_SCRIPT_TIMEOUT: 50m
 #CONDA_ROOT: /auto/ciscratch/conda
 
 .zenith-config: &zenith_config
@@ -30,17 +31,23 @@ variables:
   before_script:
     - echo "Setting up environment..."
     - source /auto/software/iris/setup_system.source
-    - source /opt/xilinx/xrt/setup.sh
-    - module load cmake
-    - module load gnu
+    # - source /opt/xilinx/xrt/setup.sh
+    # - module load cmake
+    # - module load gnu
 
 .explorer-config: &explorer_config
   tags: [explorer]
   before_script:
     - echo "Setting up environment..."
     - source /auto/software/iris/setup_system.source
-    - module load cmake
-    - module load gnu
+    # - module load cmake
+    # - module load gnu
+
+.milan2-config: &milan2_config
+  tags: [milan2]
+  before_script:
+    - echo "Setting up environment..."
+    - source /auto/software/iris/setup_system.source
 
 .build-ffi: &build_ffi
   stage: build
@@ -77,6 +84,18 @@ build-noffi-zenith:
   <<: [*zenith_config, *build_noffi]
   variables:
     IRIS_MACHINE: "zenith"
+
+build-ffi-milan2:
+  # Using aliasin features
+  <<: [*milan2_config, *build_ffi]
+  variables:
+    IRIS_MACHINE: "milan2"
+
+build-noffi-milan2:
+  # Using aliasin features
+  <<: [*milan2_config, *build_noffi]
+  variables:
+    IRIS_MACHINE: "milan2"
 
 docs-job:
   tags: [devdocs]
@@ -122,15 +141,14 @@ deploy_docs_manual-job:
   allow_failure: true
   script:
     - echo "Installing iris to $CI_PROJECT_DIR/install"
-    # - IRIS_TAG=.ffi.$IRIS_MACHINE bash build.sh -DENABLE_FFI=ON -DCMAKE_BUILD_TYPE=DEBUG -DCOVERAGE=true
-    - IRIS_TAG=.$IRIS_TAG.$IRIS_MACHINE bash build.sh -DENABLE_FFI=$IRIS_FFI_FLAG -DCMAKE_BUILD_TYPE=DEBUG -DCOVERAGE=true
+    - env -u IRIS_TAG bash build.sh -DENABLE_FFI=$IRIS_FFI_FLAG -DCMAKE_BUILD_TYPE=DEBUG -DCOVERAGE=true
     - echo $CI_REPOSITORY_URL
     - echo $CI_PROJECT_PATH
     - echo $IRIS_MACHINE
     - echo $IRIS_TAG
     - echo $IRIS_INSTALL_ROOT.$IRIS_TAG.$IRIS_MACHINE
-    - ls $IRIS_INSTALL_ROOT.$IRIS_TAG.$IRIS_MACHINE
-    - source $IRIS_INSTALL_ROOT.$IRIS_TAG.$IRIS_MACHINE/setup.source
+    - ls $IRIS_INSTALL_ROOT
+    - source $IRIS_INSTALL_ROOT/setup.source
     - export IRIS_ARCHS=$IRIS_ARCHS_CICD
     - echo $PATH
     - echo $LD_LIBRARY_PATH
@@ -164,9 +182,9 @@ deploy_docs_manual-job:
   after_script:
     - echo "Setting up environment..."
     - source /auto/software/iris/setup_system.source
-    - source /opt/xilinx/xrt/setup.sh
-    - module load cmake
-    - module load gnu
+    # - source /opt/xilinx/xrt/setup.sh
+    # - module load cmake
+    # - module load gnu
     - export IRIS_ARCHS=$IRIS_ARCHS_CICD
     - echo $IRIS_ARCHS
     - echo $IRIS_ASYNC
@@ -358,9 +376,9 @@ test-job-zenith-all-ffi-async-s2k:
   after_script:
     - echo "Setting up environment..."
     - source /auto/software/iris/setup_system.source
-    - source /opt/xilinx/xrt/setup.sh
-    - module load cmake
-    - module load gnu
+    # - source /opt/xilinx/xrt/setup.sh
+    # - module load cmake
+    # - module load gnu
     - export IRIS_ARCHS=$IRIS_ARCHS_CICD
     - python3 -m venv .venv
     - source .venv/bin/activate
@@ -476,6 +494,7 @@ dagger-zenith-run-policy-evaluations-synchronous-explicit-data-transfers:
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: .run_sync_exp_dt
+    IRIS_TESTNAME: dagger
 
 dagger-zenith-run-policy-evaluations-synchronous-dmem:
   extends: [.dagger-zenith-run-policy-evaluations]
@@ -489,6 +508,7 @@ dagger-zenith-run-policy-evaluations-asynchronous-explicit-data-transfers:
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: .run_async_exp_dt
+    IRIS_TESTNAME: dagger
     IRIS_ASYNC: 1
 
 dagger-zenith-run-policy-evaluations-asynchronous-dmem:
@@ -496,6 +516,7 @@ dagger-zenith-run-policy-evaluations-asynchronous-dmem:
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: .run_async_dmem
+    IRIS_TESTNAME: dagger
     IRIS_ASYNC: 1
     USE_DATA_MEMORY: --use-data-memory
 
@@ -511,6 +532,7 @@ dagger-zenith-test-correctness:
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: .test-correctness
+    IRIS_TESTNAME: dagger
   artifacts:
     when: always
     paths:
@@ -542,6 +564,7 @@ dagger-zenith-test-local-workgroup-sizes-synchronous-explicit-data-transfers:
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: .local_workgroup_sync_exp_dt
+    IRIS_TESTNAME: dagger
     REPEATS: 1
 
 dagger-zenith-test-local-workgroup-sizes-synchronous-dmem:
@@ -550,6 +573,7 @@ dagger-zenith-test-local-workgroup-sizes-synchronous-dmem:
     IRIS_MACHINE: "zenith"
     REPEATS: 1
     IRIS_TAG: .local_workgroup_sync_dmem
+    IRIS_TESTNAME: dagger
     USE_DATA_MEMORY: --use-data-memory
 
 dagger-zenith-test-local-workgroup-sizes-asynchronous-explicit-data-transfers:
@@ -558,6 +582,7 @@ dagger-zenith-test-local-workgroup-sizes-asynchronous-explicit-data-transfers:
     IRIS_MACHINE: "zenith"
     REPEATS: 1
     IRIS_TAG: .local_workgroup_async_exp_dt
+    IRIS_TESTNAME: dagger
     IRIS_ASYNC: 1
 
 dagger-zenith-test-local-workgroup-sizes-asynchronous-dmem:
@@ -565,39 +590,35 @@ dagger-zenith-test-local-workgroup-sizes-asynchronous-dmem:
   variables:
     IRIS_MACHINE: "zenith"
     IRIS_TAG: .local_workgroup_async_dmem
+    IRIS_TESTNAME: dagger
     REPEATS: 1
     IRIS_ASYNC: 1
     USE_DATA_MEMORY: --use-data-memory
 
-.dagger-zenith-test-duplication:
+dagger-zenith-test-duplication:
   extends: [.dagger]
   script:
-    - source /auto/software/iris/setup_system.source
-    - echo "Installing iris to $CI_PROJECT_DIR/install"
-    - bash build.sh -DCMAKE_BUILD_TYPE=DEBUG -DCOVERAGE=true
-    - echo source $IRIS_INSTALL_ROOT/setup.source
-    - source $IRIS_INSTALL_ROOT/setup.source
     - .gitlab-ci-scripts/runner_watcher.sh $$ &
     - sbatch --partition=gpu --nodelist=zenith .gitlab-ci-scripts/slurm-dagger-test-duplication.sh
     - python3 -u .gitlab-ci-scripts/slurm-tee.py slurm-test-err.txt slurm-test-out.txt
-    - echo "Errors $(wc -l apps/dagger/errors.txt)"
-    - cat apps/dagger/errors.txt
-    - if [ -s apps/dagger/errors.txt ]; then exit 1; fi
-  artifacts:
-    when: always
-    paths:
-      - apps/dagger/test-out.txt
-      - apps/dagger/errors.txt
-      - apps/dagger/dagger-payloads
-      - apps/dagger/dagger-graphs
-      - apps/dagger/dagger-results
-      - slurm*.txt
-
-dagger-zenith-test-duplication-explicit:
-  extends: [.dagger-zenith-test-duplication]
+    - echo "Errors $(wc -l apps/dagger$IRIS_TAG/errors.txt)"
+    - cat apps/dagger$IRIS_TAG/errors.txt
+    - if [ -s apps/dagger$IRIS_TAG/errors.txt ]; then exit 1; fi
   variables:
     REPEATS: 1
     USE_DATA_MEMORY: " "
+    IRIS_MACHINE: "zenith"
+    IRIS_TAG: .test-duplication
+    IRIS_TESTNAME: dagger
+  artifacts:
+    when: always
+    paths:
+      - apps/dagger$IRIS_TAG/test-out.txt
+      - apps/dagger$IRIS_TAG/errors.txt
+      - apps/dagger$IRIS_TAG/dagger-payloads
+      - apps/dagger$IRIS_TAG/dagger-graphs
+      - apps/dagger$IRIS_TAG/dagger-results
+      - slurm*.txt
 
 coverage-collect:
   <<: *zenith_config
@@ -623,9 +644,9 @@ coverage-collect:
     - test-backends-29-async-s2k
     - test-backends-34-async-s2k
   script:
-#    - echo "Installing iris to $IRIS_INSTALL_ROOT"
-#- bash build-coverage.sh
-    # - source $IRIS_INSTALL_ROOT.noffi.$IRIS_MACHINE/setup.source
+    - echo "Installing iris to $IRIS_INSTALL_ROOT"
+    - env -u IRIS_TAG bash build.sh -DENABLE_FFI=$IRIS_FFI_FLAG -DCMAKE_BUILD_TYPE=DEBUG -DCOVERAGE=true
+    - source $IRIS_INSTALL_ROOT/setup.source
     - python3 -m venv .venv
     - source .venv/bin/activate
     - pip install gcovr

@@ -2,15 +2,65 @@ SHELL := bash
 IRIS ?= $(HOME)/.iris
 CC				:= gcc
 CXX				:= g++
+CC_BASENAME  := $(notdir $(CC))
+CXX_BASENAME := $(notdir $(CXX))
+
+
+# C standard
+ifeq ($(CC_BASENAME),nvc)
+  # NVHPC C compiler supports -std=c99 (generally)
+  CFLAGS_STD := -fPIC
+  IRIS_OPENMP_PATH := -lnvomp -L$(NVHPC_ROOT)/compilers/lib
+else ifeq ($(CC_BASENAME),nvcc)
+  # NVHPC C compiler supports -std=c99 (generally)
+  CFLAGS_STD := 
+  IRIS_OPENMP_PATH := -lnvomp -L$(NVHPC_ROOT)/compilers/lib
+else ifeq ($(CC_BASENAME),gcc)
+  CFLAGS_STD := -std=gnu99 -fPIC
+  IRIS_OPENMP_PATH := -lgomp -Wl,-rpath=$(OPENMP_PATH)
+else ifeq ($(CC_BASENAME),clang)
+  CFLAGS_STD := -std=c99 -fPIC
+  IRIS_OPENMP_PATH := -lgomp -Wl,-rpath=$(OPENMP_PATH)
+else
+  # unknown -> best effort
+  CFLAGS_STD := -std=c99 -fPIC
+  IRIS_OPENMP_PATH := -lgomp -Wl,-rpath=$(OPENMP_PATH)
+endif
+
+CXX_STD := c++11
+
+# C++ standard
+ifeq ($(CXX_BASENAME),nvc++)
+  CXXFLAGS_STD := -std=$(CXX_STD) -fPIC
+else ifeq ($(CXX_BASENAME),g++)
+  CXXFLAGS_STD := -std=$(CXX_STD) -fPIC
+else ifeq ($(CXX_BASENAME),clang++)
+  CXXFLAGS_STD := -std=$(CXX_STD) -fPIC
+else
+  CXXFLAGS_STD := -std=$(CXX_STD) -fPIC
+endif
+
 INCLUDE		+= -I$(IRIS)/include
-CFLAGS		+= ${INCLUDE} -g -std=gnu99 ${EXT_INCLUDE}
-CXXFLAGS	+= ${INCLUDE} -g -std=c++11 ${EXT_INCLUDE}
-LDFLAGS		+= -liris -lpthread -ldl ${EXT_LDFLAGS}
+CFLAGS		+= ${INCLUDE} -g ${CFLAGS_STD} ${EXT_INCLUDE}
+CXXFLAGS	+= ${INCLUDE} -g ${CXXFLAGS_STD} -std=c++11 ${EXT_INCLUDE}
 LDINC			+= -L${IRIS}/lib -L${IRIS}/lib64
+LDFLAGS		+= -liris -lpthread -ldl ${EXT_LDFLAGS} ${LDINC}
 NVCC			?= $(CUDA_PATH)/bin/nvcc
 HIPCC			?= $(ROCM_PATH)/bin/hipcc
 NVCC_TEST       := $(shell which $(NVCC))
 HIPCC_TEST       := $(shell which $(HIPCC))
+
+ifeq ($(NVCC_TEST),)
+  NVCC := nvcc
+  NVCC_TEST := $(shell command -v $(NVCC) 2>/dev/null)
+endif
+
+ifeq ($(HIPCC_TEST),)
+  HIPCC := hipcc
+  HIPCC_TEST := $(shell command -v $(HIPCC) 2>/dev/null)
+endif
+
+
 ifeq (1, ${CPP})
 $(TEST):$(TEST).cpp
 	rm -f $(TEST)

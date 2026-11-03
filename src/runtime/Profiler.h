@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <string>
+#include <vector>
 using namespace std;
 namespace iris {
 namespace rt {
@@ -17,6 +18,7 @@ public:
   virtual ~Profiler();
 
   virtual int CompleteTask(Task* task) = 0;
+  virtual void AddLoopDependency(unsigned long st_id, std::vector<unsigned long> dest_tasks) { }
 
 protected:
   virtual int Main();

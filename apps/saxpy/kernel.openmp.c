@@ -1,5 +1,7 @@
 #include <iris/iris_openmp.h>
 
+#ifndef ENABLE_FFI
+// This code is not required if FFI is enabled
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -29,8 +31,6 @@ static int iris_openmp_saxpy_setmem(int idx, void* mem) {
   }
   return IRIS_SUCCESS;
 }
-
-#include "kernel.openmp.h"
 
 int iris_openmp_kernel(const char* name) {
   iris_openmp_lock();
@@ -66,4 +66,7 @@ int iris_openmp_launch(int dim, size_t *off, size_t *ndr) {
 #ifdef __cplusplus
 } /* end of extern "C" */
 #endif
+#endif // ENABLE_FFI
+
+#include "kernel.openmp.h"
 

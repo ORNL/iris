@@ -3,7 +3,7 @@
 #include "Command.h"
 #include "Graph.h"
 #include "Kernel.h"
-#include "Mem.h"
+#include "BaseMem.h"
 #include "Platform.h"
 #include "Task.h"
 #include "Timer.h"
@@ -238,11 +238,22 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
             if (param_.HasMember("data_type") && param_["data_type"].IsString()) {
               const char* data_type_str = param_["data_type"].GetString();
               if (strcmp(data_type_str,"int") == 0) kparams_info[l] = sizeof(int);
-              else if(strcmp(data_type_str,"short") == 0) kparams_info[l] = sizeof(short);
-              else if(strcmp(data_type_str,"long") == 0) kparams_info[l] = sizeof(long);
-              else if(strcmp(data_type_str,"char") == 0) kparams_info[l] = sizeof(char);
-              else if(strcmp(data_type_str,"float") == 0) kparams_info[l] = sizeof(float);
-              else if(strcmp(data_type_str,"double") == 0) kparams_info[l] = sizeof(double);
+              else if(strcmp(data_type_str,"short") == 0) kparams_info[l] = sizeof(short) | iris_int16;
+              else if(strcmp(data_type_str,"long") == 0) kparams_info[l] = sizeof(long) | iris_long;
+              else if(strcmp(data_type_str,"unsigned long") == 0) kparams_info[l] = sizeof(unsigned long) | iris_unsigned_long;
+              else if(strcmp(data_type_str,"char") == 0) kparams_info[l] = sizeof(char) | iris_char;
+              else if(strcmp(data_type_str,"float") == 0) kparams_info[l] = sizeof(float) | iris_float;
+              else if(strcmp(data_type_str,"double") == 0) kparams_info[l] = sizeof(double) | iris_double;
+              else if(strcmp(data_type_str,"uint") == 0) kparams_info[l] = sizeof(unsigned int) | iris_uint;
+              else if(strcmp(data_type_str,"int") == 0) kparams_info[l] = sizeof(int) | iris_int;
+              else if(strcmp(data_type_str,"int8") == 0) kparams_info[l] = sizeof(int8_t) | iris_int8;
+              else if(strcmp(data_type_str,"int16") == 0) kparams_info[l] = sizeof(int16_t) | iris_int16;
+              else if(strcmp(data_type_str,"int32") == 0) kparams_info[l] = sizeof(int32_t) | iris_int32;
+              else if(strcmp(data_type_str,"int64") == 0) kparams_info[l] = sizeof(int64_t) | iris_int64;
+              else if(strcmp(data_type_str,"uint8") == 0) kparams_info[l] = sizeof(uint8_t) | iris_uint8;
+              else if(strcmp(data_type_str,"uint16") == 0) kparams_info[l] = sizeof(uint16_t) | iris_uint16;
+              else if(strcmp(data_type_str,"uint32") == 0) kparams_info[l] = sizeof(uint32_t) | iris_uint32;
+              else if(strcmp(data_type_str,"uint64") == 0) kparams_info[l] = sizeof(uint64_t) | iris_uint64;
               else if(strcmp(data_type_str,"long double") == 0) kparams_info[l] = sizeof(long double);
               else {
                 _error("malformed command kernel parameters scalar data_type in file[%s] -- we must know the number of bytes this data type uses!", path);
@@ -439,7 +450,7 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
           platform_->IncrementErrorCount();
           return IRIS_ERROR;
         }
-        Command* cmd = Command::CreateH2D(task, (Mem *)platform_->get_mem_object(*dev_mem), offset, size, host_mem);
+        Command* cmd = Command::CreateH2D(task, (BaseMem *)platform_->get_mem_object(*dev_mem), offset, size, host_mem);
         //name (optional)
         if(h2d_.HasMember("name")){
           if(!h2d_["name"].IsString()){
@@ -519,7 +530,7 @@ int JSON::Load(Graph* graph, const char* path, void** params) {
           return IRIS_ERROR;
         }
 
-        Command* cmd = Command::CreateD2H(task, (Mem *)platform_->get_mem_object(*dev_mem), offset, size, host_mem);
+        Command* cmd = Command::CreateD2H(task, (BaseMem *)platform_->get_mem_object(*dev_mem), offset, size, host_mem);
         //name (optional)
         if(d2h_.HasMember("name")){
           if(!d2h_["name"].IsString()){
@@ -573,7 +584,7 @@ int JSON::RecordFlush() {
     inputs_.PushBack(tmp,iris_output_document_.GetAllocator());
   }
   //device memory
-  for(std::vector<Mem*>::iterator iter = mems_.begin(); iter != mems_.end(); iter ++){
+  for(std::vector<BaseMem*>::iterator iter = mems_.begin(); iter != mems_.end(); iter ++){
     tmp.SetString(NameFromDeviceMem(*iter).c_str(),NameFromDeviceMem(*iter).length(),iris_output_document_.GetAllocator());
     inputs_.PushBack(tmp,iris_output_document_.GetAllocator());
   }
@@ -610,14 +621,14 @@ int JSON::UniqueUIDFromHostPointer(void* host_ptr){
   return index;
 }
 
-const std::string JSON::NameFromDeviceMem(Mem* dev_mem){
+const std::string JSON::NameFromDeviceMem(BaseMem* dev_mem){
   return std::string("devicemem-"+std::to_string(UniqueUIDFromDevicePointer(dev_mem)));
 }
 
-int JSON::UniqueUIDFromDevicePointer(Mem* dev_ptr){
+int JSON::UniqueUIDFromDevicePointer(BaseMem* dev_ptr){
   bool already_included = false;
   int index = 0;
-  for(std::vector<Mem*>::iterator it = mems_.begin(); it != mems_.end();it ++){
+  for(std::vector<BaseMem*>::iterator it = mems_.begin(); it != mems_.end();it ++){
     if (*it == dev_ptr) { already_included = true; break; }
     index++;
   }
@@ -705,7 +716,7 @@ int JSON::ProcessTask(Task* task){
         KernelArg* arg = cmd->kernel_arg(i);
         if(arg->mem){//memory
           param_.AddMember("type",rapidjson::StringRef("memory_object"),iris_output_document_.GetAllocator());
-          rapidjson::Value kernel_arg_mem_name_(NameFromDeviceMem((Mem *)arg->mem).c_str(),iris_output_document_.GetAllocator());
+          rapidjson::Value kernel_arg_mem_name_(NameFromDeviceMem((BaseMem *)arg->mem).c_str(),iris_output_document_.GetAllocator());
           param_.AddMember("value",kernel_arg_mem_name_,iris_output_document_.GetAllocator());
           param_.AddMember("size_bytes",rapidjson::Value(arg->mem_size),iris_output_document_.GetAllocator());
           //permissions
@@ -719,6 +730,7 @@ int JSON::ProcessTask(Task* task){
           _value.SetString(arg->value,arg->size,iris_output_document_.GetAllocator());
           param_.AddMember("value",_value,iris_output_document_.GetAllocator());
           param_.AddMember("data_size",arg->size,iris_output_document_.GetAllocator());
+          if (arg->data_type != 0) param_.AddMember("data_type",rapidjson::StringRef(Utils::GetTypeString(arg->data_type)),iris_output_document_.GetAllocator());
         }
         params_.PushBack(param_,iris_output_document_.GetAllocator());
       }

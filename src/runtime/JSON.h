@@ -11,6 +11,7 @@ namespace rt {
 
 class Command;
 class Graph;
+class BaseMem;
 class Mem;
 class Platform;
 class Task;
@@ -29,9 +30,9 @@ public:
 private:
   void* GetParameterInput(void** params, const char* string_to_lookup);
   int UniqueUIDFromHostPointer(void*host_ptr);
-  int UniqueUIDFromDevicePointer(Mem* dev_ptr);
+  int UniqueUIDFromDevicePointer(BaseMem* dev_ptr);
   const std::string NameFromHostPointer(void*host_ptr);
-  const std::string NameFromDeviceMem(Mem* dev_mem);
+  const std::string NameFromDeviceMem(BaseMem* dev_mem);
   int ProcessTask(Task* task);
 
   Platform* platform_;
@@ -40,7 +41,7 @@ private:
   std::vector<Task*> tasks_;
   Timer* timer_;
   std::string str_;
-  std::vector<Mem*> mems_;
+  std::vector<BaseMem*> mems_;
   std::vector<void*> host_ptrs_;
 };
 

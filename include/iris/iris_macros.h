@@ -4,6 +4,14 @@
 #define PARAM_MEM(X)              &(X)
 #define IRIS_PTR(X)               X *
 
+#define IRIS_C_STR_CORE(X) #X
+#define IRIS_C_STR(X)  IRIS_C_STR_CORE(X)
+
+#define IRIS_FUNC_CORE(X, Y) X ## Y
+#define IRIS_FUNC(X, Y) IRIS_FUNC_CORE(X, Y)
+#define IRIS_FUNC_STR(X, Y) IRIS_C_STR(IRIS_FUNC(X, Y))
+
+
 #ifndef UNDEF_IRIS_MACROS
 
 
@@ -171,7 +179,7 @@
 #define CCONCATENATE1(arg1, arg2)  CCONCATENATE2(arg1, arg2)
 #define CCONCATENATE2(arg1, arg2)  arg1##arg2
 
-#define PMI_ARG_1(X)                        iris_ftf
+#define PMI_ARG_1(X)                        iris_all
 #define PMI_ARG_0(X)                        X 
 #define PMI_CORE(...)                       PCONCATENATE(PMI_ARG_, ISEMPTY(__VA_ARGS__))(__VA_ARGS__)
 

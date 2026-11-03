@@ -22,6 +22,7 @@ public:
   CUresult (*cuDeviceGetAttribute)(int* pi, CUdevice_attribute attrib, CUdevice dev);
   CUresult (*cuDeviceGetCount)(int* count);
   CUresult (*cuDeviceGetName)(char* name, int len, CUdevice dev);
+  CUresult (*cuGetErrorName)( CUresult error, const char** pStr );
   CUresult (*cuGetErrorString)( CUresult error, const char** pStr );
   CUresult (*cuCtxGetCurrent)(CUcontext* pctx);
   CUresult (*cuCtxSetCurrent)(CUcontext ctx);
@@ -35,6 +36,7 @@ public:
   CUresult (*cuCtxDestroy)(CUcontext pctx);
   CUresult (*cuCtxSynchronize)(void);
   CUresult (*cuStreamAddCallback)(CUstream hStream, CUstreamCallback callback, void *userData, unsigned int flags);
+  CUresult (*cuMemHostGetDevicePointer)(CUdeviceptr *pdptr, void *p, unsigned int Flags);
   CUresult (*cuStreamCreate)(CUstream* phStream, unsigned int Flags);
   CUresult (*cuStreamQuery)(CUstream hStream);
   CUresult (*cuStreamDestroy)(CUstream hStream);
@@ -48,7 +50,7 @@ public:
   CUresult (*cuTexRefSetFilterMode)(CUtexref hTexRef, CUfilter_mode fm);
   CUresult (*cuTexRefSetFlags)(CUtexref hTexRef, unsigned int Flags);
   CUresult (*cuTexRefSetFormat)(CUtexref hTexRef, CUarray_format fmt, int NumPackedComponents);
-  CUresult (*cudaGetSymbolAddress)( void** devPtr, const void* symbol );
+  //CUresult (*cudaGetSymbolAddress)( void** devPtr, const void* symbol );
   CUresult (*cudaMalloc)(CUdeviceptr* dptr, size_t bytesize);
   CUresult (*cuMemAllocAsync) ( CUdeviceptr* dptr, size_t bytesize, CUstream hStream );
   CUresult (*cuMemAlloc)(CUdeviceptr* dptr, size_t bytesize);
@@ -57,7 +59,12 @@ public:
   CUresult (*cuMemFreeAsync)(CUdeviceptr dptr, CUstream hStream);
   CUresult (*cuMemcpyPeerAsync)(CUdeviceptr dstDevice, CUcontext dstContext, CUdeviceptr srcDevice, CUcontext srcContext, size_t ByteCount, CUstream hStream);
   CUresult (*cuMemcpyPeer)(CUdeviceptr dstDevice, CUcontext dstContext, CUdeviceptr srcDevice, CUcontext srcContext, size_t ByteCount);
-  CUresult (*cuMemcpy2D)(const CUDA_MEMCPY2D *pCopy);
+  CUresult (*cuMemcpy2DUnaligned)(const CUDA_MEMCPY2D *pCopy);
+  //CUresult (*cuMemcpy2DAsync_v2)(const CUDA_MEMCPY2D *pCopy, CUstream hStream);
+  CUresult (*cuMemcpy2D_v2)(const CUDA_MEMCPY2D *pCopy);
+  CUresult (*cuMemcpy2DAsync_v2)(const CUDA_MEMCPY2D *pCopy, CUstream hStream);
+  CUresult (*cuMemcpy3D_v2)(const CUDA_MEMCPY3D *pCopy);
+  CUresult (*cuMemcpy3DAsync_v2)(const CUDA_MEMCPY3D *pCopy, CUstream hStream);
   CUresult (*cuMemHostRegister_v2)(void *p, size_t bytesize, unsigned int Flags);
   CUresult (*cuMemHostUnregister)(void *p);
   CUresult (*cudaHostRegister)(void *ptr, size_t size, unsigned int flags);
@@ -75,10 +82,11 @@ public:
   CUresult (*cudaHostGetDevicePointer)(void **pDevice, void *pHost, unsigned int flags);  
   CUresult (*cudaSetDeviceFlags)(unsigned int flags);
   CUresult (*cudaMemcpy2DAsync)( void* dst, size_t dpitch, const void* src, size_t spitch, size_t width, size_t height, cudaMemcpyKind kind, CUstream stream);
-  CUresult (*cuMemcpy2DUnaligned)(const CUDA_MEMCPY2D *pCopy);
-  CUresult (*cuMemcpy2DAsync)(const CUDA_MEMCPY2D *pCopy, CUstream hStream);
-  CUresult (*cuMemcpyDtoD)(CUdeviceptr dstDevice, CUdeviceptr srcDevice, size_t size);
-  CUresult (*cuMemcpyDtoDAsync)(CUdeviceptr dstDevice, CUdeviceptr srcDevice, size_t size, CUstream hStream);
+  CUresult (*cudaMemcpy3DAsync)(const cudaMemcpy3DParms *pCopy, CUstream hStream);
+  CUresult (*cudaMemcpy3D)(const cudaMemcpy3DParms *pCopy);
+  //CUresult (*cuMemcpyDtoD)(CUdeviceptr dstDevice, CUdeviceptr srcDevice, size_t size);
+  CUresult (*cuMemcpyDtoD_v2)(CUdeviceptr dstDevice, CUdeviceptr srcDevice, size_t size);
+  CUresult (*cuMemcpyDtoDAsync_v2)(CUdeviceptr dstDevice, CUdeviceptr srcDevice, size_t size, CUstream hStream);
   CUresult (*cuMemcpyHtoD)(CUdeviceptr dstDevice, const void* srcHost, size_t ByteCount);
   CUresult (*cuMemcpyHtoDAsync)(CUdeviceptr dstDevice, const void* srcHost, size_t ByteCount, CUstream hStream);
   CUresult (*cuMemcpyDtoH)(void* dstHost, CUdeviceptr srcDevice, size_t ByteCount);

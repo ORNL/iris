@@ -61,6 +61,7 @@ public:
 
 public:
   int Init(int* argc, char*** argv, int sync);
+  int PythonInit(bool decoupled_init=true);
   int JuliaInit(bool decoupled_init=true);
   int InitWorker(int dev);
   int StartWorker(int dev, bool use_pthread=true);
@@ -73,7 +74,7 @@ public:
   int EnvironmentInit();
   int EnvironmentSet(const char* key, const char* value, bool overwrite);
   void EnvironmentIntRead(const char *env_name, int & env_var);
-  void EnvironmentBoolRead(const char *env_name, bool & flag);
+  void EnvironmentBoolRead(const char *env_name, bool & flag, bool val_set=true);
   int EnvironmentGet(const char* key, char** value, size_t* vallen, char sep='_');
   int GetFilePath(const char *key, char** value, size_t* vallen);
 
@@ -88,6 +89,8 @@ public:
   int DeviceSetDefault(int device);
   int DeviceGetDefault(int* device);
   int DeviceSynchronize(int ndevs, int* devices);
+  int DeviceMalloc(int devno, void **mem_addr, size_t size, void *stream, int reset);
+  int DeviceFree(int devno, void *mem_addr, void *stream);
 
   int PolicyRegister(const char* lib, const char* name, void* params);
   int RegisterCommand(int tag, int device, command_handler handler);
@@ -106,6 +109,7 @@ public:
   int TaskDepend(iris_task brs_task, int ntasks, iris_task* brs_tasks);
   int TaskKernel(iris_task brs_task, iris_kernel brs_kernel, int dim, size_t* off, size_t* gws, size_t* lws);
   int TaskKernel(iris_task task, const char* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, size_t* params_off, int* params_info, size_t* memranges);
+  iris_kernel TaskKernelStruct(iris_task task, const char* kernel, int dim, size_t* off, size_t* gws, size_t* lws, int nparams, void** params, size_t* params_off, int* params_info, size_t* memranges, int position=-1);
   int TaskKernelSelector(iris_task task, iris_selector_kernel func, void* params, size_t params_size);
   int TaskHost(iris_task task, iris_host_python_task func, int64_t params_id);
   int TaskHost(iris_task task, iris_host_task func, void* params);
@@ -132,8 +136,9 @@ public:
   int TaskMapFromFull(iris_task brs_task, void* host);
   int SetTaskPolicy(iris_task brs_task, int brs_policy);
   int GetTaskPolicy(iris_task brs_task);
-  int TaskSubmit(iris_task brs_task, int brs_policy, const char* opt, int wait);
-  int TaskSubmit(Task *task, int brs_policy, const char* opt, int wait);
+  int TaskSubmit(iris_task brs_task, int brs_policy=iris_default, const char* opt=NULL, int wait=1);
+  int TaskSubmit(Task *task, int brs_policy=iris_default, const char* opt=NULL, int wait=1);
+  void GraphTaskSubmit(Task *task, int brs_policy=iris_default, int wait=1);
   void TaskSafeRetain(iris_task brs_task);
   void TaskSafeRetain(unsigned long uid);
   static void TaskSafeRetainStatic(void *data);
@@ -181,6 +186,7 @@ public:
   int GraphFree(iris_graph brs_graph);
   int GraphCreateJSON(const char* json, void** params,  iris_graph* brs_graph);
   int GraphTask(iris_graph brs_graph, iris_task brs_task, int brs_policy, const char* opt);
+  int GraphSubmit(Graph *graph, int brs_policy, int sync);
   int GraphSubmit(iris_graph brs_graph, int brs_policy, int sync);
   int GraphRetain(iris_graph brs_graph, bool flag);
   int GraphSubmit(iris_graph brs_graph, int *order, int brs_policy, int sync);
@@ -246,13 +252,13 @@ public:
   BaseMem *get_mem_object(unsigned long uid) { 
       //mem_track_.Print("Mem track"); 
       BaseMem *mem = (BaseMem *)mem_track_.GetObject(uid); 
-      assert(mem != NULL);
+      //assert(mem != NULL);
       return mem; 
   }
   BaseMem *get_mem_object(iris_mem brs_mem) { 
       //mem_track_.Print("Mem track"); 
       BaseMem *mem = (BaseMem *)mem_track_.GetObject(brs_mem.uid); 
-      assert(mem != NULL);
+      //assert(mem != NULL);
       return mem; 
   }
   Graph *get_graph_object(unsigned long uid) { return (Graph *)graph_track_.GetObject(uid); }
@@ -265,10 +271,14 @@ public:
   bool is_scheduling_history_enabled() { return enable_scheduling_history_; }
   bool is_event_profile_enabled() { return event_profile_enabled_; }
   bool is_async() { return async_; }
-  void set_async(bool flag=true) { async_ = flag; enable_proactive_ = true; }
+  void set_async(bool flag=true) { async_ = flag; enable_proactive_transfers_ = flag; enable_proactive_transfers_ = flag; }
   SchedulingHistory* scheduling_history() { return scheduling_history_; }
   double time_app() { return time_app_; }
   double time_init() { return time_init_; }
+  bool enable_dot_profiler() { return enable_dot_profiler_; }
+  void set_enable_dot_profiler(bool profiler) { enable_dot_profiler_ = profiler; }
+  bool enable_validation() { return enable_validation_; }
+  void set_enable_validation(bool flag) { enable_validation_ = flag; }
   bool enable_profiler() { return enable_profiler_; }
   void set_enable_profiler(bool profiler) { enable_profiler_ = profiler; }
   int nstreams() { return nstreams_; }
@@ -286,17 +296,21 @@ public:
   bool is_kernel_launch_disabled() { return disable_kernel_launch_; }
   void set_kernel_launch_disabled(bool flag) { disable_kernel_launch_ = flag; }
   void ProfileCompletedTask(Task *task); 
+  void AddLoopDependency(Task *task, unsigned long st_id, std::vector<unsigned long> end_ids);
   hook_task hook_task_pre() { return hook_task_pre_; }
   hook_task hook_task_post() { return hook_task_post_; }
   hook_command hook_command_pre() { return hook_command_pre_; }
   hook_command hook_command_post() { return hook_command_post_; }
   bool is_julia_enabled() { return iris_get_julia_launch_func() != NULL; }
+  bool is_python_enabled() { return iris_get_python_launch_func() != NULL; }
   Kernel* GetKernel(const char* name);
   BaseMem* GetMem(iris_mem brs_mem);
   BaseMem* GetMem(void* host, size_t* off);
   shared_ptr<History> CreateHistory(string kname);
-  bool get_enable_proactive(){ return enable_proactive_;}
-  void set_enable_proactive(bool enable_proactive){ enable_proactive_ = enable_proactive;}
+  bool is_proactive_dispatch() { return enable_proactive_dispatch_; }
+  bool is_proactive_transfers(){ return enable_proactive_transfers_;}
+  void set_proactive_dispatch(bool enable_proactive){ enable_proactive_dispatch_ = enable_proactive;}
+  void set_proactive_transfers(bool enable_proactive){ enable_proactive_transfers_ = enable_proactive;}
   bool disable_init_scheduler() { return disable_init_scheduler_; }
   bool disable_init_devices() { return disable_init_devices_; }
   bool disable_init_workers() { return disable_init_workers_; }
@@ -304,7 +318,8 @@ public:
   void set_dmem_register_pin_flag(bool flag) { dmem_register_pin_flag_ = flag; }
   bool dmem_register_pin_flag() { return dmem_register_pin_flag_; }
   void enable_default_kernels_load(bool flag) { enable_default_kernels_load_ = flag; }
-
+  bool is_scheduler_dispatch_fcfs()  { return scheduler_dispatch_fcfs_; }
+  int cpu_set_start() { return cpu_set_start_; }
 #ifdef AUTO_PAR
   AutoDAG* get_auto_dag(){return auto_dag_;}
   void set_auto_dag(AutoDAG* auto_dag){auto_dag_ = auto_dag;}
@@ -391,7 +406,9 @@ private:
 
   bool recording_;
 
+  bool enable_dot_profiler_;
   bool enable_profiler_;
+  bool enable_validation_;
   Profiler* profilers_[8];
   int nprofilers_;
   int openmp_device_factor_;
@@ -420,16 +437,19 @@ private:
   hook_command hook_command_pre_;
   hook_command hook_command_post_;
 
+  int cpu_set_start_;
   char app_[256];
   char host_[256];
   double time_app_;
   double time_init_;
   char tmp_dir_[263];
-  bool enable_proactive_;
+  bool enable_proactive_dispatch_;
+  bool enable_proactive_transfers_;
   bool disable_init_devices_;
   bool disable_init_scheduler_;
   bool disable_init_workers_;
-  bool enable_default_kernels_load_;
+  bool enable_default_kernels_load_; 
+  bool scheduler_dispatch_fcfs_;
   StreamPolicy stream_policy_;
 private:
   iris_task init_tasks_[IRIS_MAX_NDEVS];
